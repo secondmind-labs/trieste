@@ -20,7 +20,6 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-    - uses: docker://pandoc/core:2.9
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
@@ -30,6 +29,10 @@ jobs:
         pip install .
         pip install -r notebooks/requirements.txt -c notebooks/constraints.txt
         pip install -r docs/requirements.txt -c docs/constraints.txt
+        TMP=$(mktemp -p $(pwd)) &&
+        wget -O $TMP_DEB 'https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb' &&
+        sudo dpkg -i $TMP_DEB
+        rm -f $TMP_DEB
     - run: |
         (cd docs ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
