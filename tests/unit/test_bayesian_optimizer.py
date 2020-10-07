@@ -19,7 +19,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
-from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
+from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.datasets import Dataset
 from trieste.models import ModelInterface
 from trieste.space import Box
@@ -42,12 +42,10 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     optimizer = BayesianOptimizer(observer, one_dimensional_range(-1, 1))
     data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
 
-    res: OptimizationResult[None] = optimizer.optimize(
+    res, _ = optimizer.optimize(
         steps, {OBJECTIVE: data}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
-
-    if res.error is not None:
-        raise res.error
+    res.unwrap()
 
     assert observer.call_count == steps
 
@@ -77,9 +75,14 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_ac
         optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': QuadraticWithUnitVariance()})
 
 
-@pytest.mark.parametrize('starting_state, expected_states', [(None, [None, 1, 2]), (3, [3, 4, 5])])
+@pytest.mark.parametrize(
+    'starting_state, expected_states_received, final_state',
+    [(None, [None, 1, 2], 3), (3, [3, 4, 5], 6)]
+)
 def test_bayesian_optimizer_uses_specified_acquisition_state(
-    starting_state: Optional[int], expected_states: List[Optional[int]]
+    starting_state: Optional[int],
+    expected_states_received: List[Optional[int]],
+    final_state: Optional[int]
 ) -> None:
     class Rule(AcquisitionRule[int, Box]):
         def __init__(self):
@@ -101,31 +104,27 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     rule = Rule()
 
-    res = BayesianOptimizer(
+    res, history = BayesianOptimizer(
         lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1)
     ).optimize(
         3, {"": zero_dataset()}, {"": QuadraticWithUnitVariance()}, rule, starting_state
     )
 
-    if res.error is not None:
-        raise res.error
-
-    assert rule.states_received == expected_states
-    assert [state.acquisition_state for state in res.history] == expected_states
+    assert rule.states_received == expected_states_received
+    assert res.unwrap().acquisition_state == final_state
+    assert [state.acquisition_state for state in history] == expected_states_received
 
 
 def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correct_type() -> None:
     optimizer = BayesianOptimizer(
         lambda x: {OBJECTIVE: Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
     )
-    res: OptimizationResult[None] = optimizer.optimize(
+    res, history = optimizer.optimize(
         3, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
 
-    if res.error is not None:
-        raise res.error
-
-    assert all(logging_state.acquisition_state is None for logging_state in res.history)
+    assert res.unwrap().acquisition_state is None
+    assert all(logging_state.acquisition_state is None for logging_state in history)
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
@@ -177,14 +176,12 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
     }
 
-    res = BayesianOptimizer(
+    res, _ = BayesianOptimizer(
         linear_and_exponential,
         Box(tf.constant([-2.0]), tf.constant([2.0]))
     ).optimize(20, data, models, AdditionRule())
+    record = res.unwrap()
 
-    if res.error is not None:
-        raise res.error
-
-    objective_values = res.datasets[LINEAR].observations + res.datasets[EXPONENTIAL].observations
+    objective_values = record.datasets[LINEAR].observations + record.datasets[EXPONENTIAL].observations
     min_idx = tf.argmin(objective_values, axis=0)[0]
-    npt.assert_allclose(res.datasets[LINEAR].query_points[min_idx], - tf.math.log(2.0), rtol=0.01)
+    npt.assert_allclose(record.datasets[LINEAR].query_points[min_idx], - tf.math.log(2.0), rtol=0.01)

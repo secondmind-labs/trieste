@@ -13,4 +13,4 @@
 # limitations under the License.
 """ This package contains library utilities. """
 from . import objectives
-from .misc import jit, shapes_equal, to_numpy
+from .misc import jit, shapes_equal, to_numpy, Result, Ok, Err

@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable
+from abc import ABC, abstractmethod
+from typing import Callable, Generic, NoReturn, TypeVar
 
 import numpy as np
 import tensorflow as tf
+from typing_extensions import final
 
 from ..type import TensorType
 
@@ -55,3 +57,103 @@ def to_numpy(t: TensorType) -> np.ndarray:
         return t.numpy()
 
     return t
+
+
+T_co = TypeVar("T_co", covariant=True)
+""" An unbounded covariant type variable. """
+
+
+class Result(Generic[T_co], ABC):
+    """
+    Represents the result of an operation that can fail with an exception. It contains either the
+    operation return value (in an :class:`Ok`), or the exception raised (in an :class:`Err`).
+
+    To check whether instances such as
+
+        >>> res = Ok(1)
+        >>> other_res = Err(ValueError("whoops"))
+
+    contain a value, use :attr:`is_ok` (or :attr:`is_err`)
+
+        >>> res.is_ok
+        True
+        >>> other_res.is_ok
+        False
+
+    We can access the value if it :attr:`is_ok` using :meth:`unwrap`.
+
+        >>> res.unwrap()
+        1
+
+    Trying to access the value of a failed :class:`Result`, or :class:`Err`, will raise the wrapped
+    exception
+
+        >>> other_res.unwrap()
+        Traceback (most recent call last):
+            ...
+        ValueError: whoops
+
+    **Note:** This class is not intended to be subclassed other than by :class:`Ok` and
+    :class:`Err`.
+    """
+    @property
+    @abstractmethod
+    def is_ok(self) -> bool:
+        """ `True` if this :class:`Result` contains a value, else `False`. """
+
+    @property
+    def is_err(self) -> bool:
+        """
+        `True` if this :class:`Result` contains an error, else `False`. The opposite of
+        :py:attr:`is_ok`.
+        """
+        return not self.is_ok
+
+    @abstractmethod
+    def unwrap(self) -> T_co:
+        """
+        :return: The contained value, if it exists.
+        :raise Exception: If there is no contained value.
+        """
+
+
+@final
+class Ok(Result[T_co]):
+    """ Wraps the result of a successful evaluation. """
+    def __init__(self, value: T_co):
+        """
+        :param value: The result of a successful evaluation.
+        """
+        self._value = value
+
+    @property
+    def is_ok(self) -> bool:
+        """ True always. """
+        return True
+
+    def unwrap(self) -> T_co:
+        """
+        :return: The wrapped value.
+        """
+        return self._value
+
+
+@final
+class Err(Result[NoReturn]):
+    """ Wraps the exception that occurred during a failed evaluation. """
+    def __init__(self, exc: Exception):
+        """
+        :param exc: The exception that occurred.
+        """
+        self._exc = exc
+
+    @property
+    def is_ok(self) -> bool:
+        """ False always. """
+        return False
+
+    def unwrap(self) -> NoReturn:
+        """
+        :raise Exception: Always. Raises the wrapped exception.
+        """
+        raise self._exc

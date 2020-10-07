@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, TypeVar, cast
+from typing import List, Mapping, Optional, Generic, Sequence, Tuple, TypeVar, cast
 
 from absl import logging
 import gpflow
@@ -30,6 +30,7 @@ from .datasets import Dataset
 from .models import ModelInterface, create_model_interface, ModelSpec
 from .observer import Observer
 from .space import SearchSpace
+from .utils import Err, Ok, Result
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -38,33 +39,25 @@ SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
 
-@dataclass(frozen=True)
-class LoggingState(Generic[S]):
-    """
-    Container used to track the state of the optimization process in :class:`BayesianOptimizer`.
-    """
-
-    datasets: Mapping[str, Dataset]
-    models: Mapping[str, ModelInterface]
-    acquisition_state: Optional[S]
-
-
-@dataclass(frozen=True)
-class OptimizationResult(Generic[S]):
-    """ Container for the result of the optimization process in :class:`BayesianOptimizer`. """
-
-    datasets: Mapping[str, Dataset]
-    models: Mapping[str, ModelInterface]
-    history: List[LoggingState[S]]
-    error: Optional[Exception]
-
-
 class BayesianOptimizer(Generic[SP]):
     """
-    This class performs Bayesian optimization, the data efficient optimization of an expensive
+    This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
+
+    @dataclass(frozen=True)
+    class Record(Generic[S]):
+        """ Container to record the state of each step of the optimization process. """
+
+        datasets: Mapping[str, Dataset]
+        """ The known data on the observer. """
+
+        models: Mapping[str, ModelInterface]
+        """ The models over the ``datasets``. """
+
+        acquisition_state: Optional[S]
+        """ The acquisition state. """
 
     def __init__(self, observer: Observer, search_space: SP):
         """
@@ -86,7 +79,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
         acquisition_state: Optional[S] = None,
         track_state: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> Tuple[Result[Record], Sequence[Record]]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -98,14 +91,8 @@ class BayesianOptimizer(Generic[SP]):
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
 
-        Within the optimization loop, this method will catch any errors raised and return them
-        instead, along with the latest data, models, and the history of the optimization process.
-        This enables the caller to restart the optimization loop from the latest successful step.
-        **Note that if an error occurred, the latest data and models might not be from the
-        ``num_steps``-th optimization step, but from the step where the error occurred. It is up to
-        the caller to check if this has happened, by checking if the result's `error` attribute is
-        populated.** Any errors encountered within this method, but outside the optimization loop,
-        will be raised as normal. These are documented below.
+        If any errors are raised during the optimization loop, this method will catch and return
+        them instead, along with the history of the optimization process.
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
@@ -128,9 +115,11 @@ class BayesianOptimizer(Generic[SP]):
             :class:`LoggingState`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step.
-        :return: The updated models, data, history containing information from every optimization
-            step (see ``track_state``), and the error if any error was encountered during
-            optimization.
+        :return: A two-tuple. The first element contains either the final optimization result,
+            including the data, models, and acquisition state, or, if an exception was raised while
+            executing the optimization loop, it contains the exception raised. In either case, the
+            second element is the optimization history up to the last successfully completed
+            optimization step inclusive, but never including the final optimization result.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``model_specs`` do not match
             - ``datasets`` or ``model_specs`` are empty
@@ -155,7 +144,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
         models = {tag: create_model_interface(spec) for tag, spec in model_specs.items()}
-        history: List[LoggingState[S]] = []
+        history: List[BayesianOptimizer.Record[S]] = []
 
         for step in range(num_steps):
             try:
@@ -178,22 +167,22 @@ class BayesianOptimizer(Generic[SP]):
                 tf.print(
                     f"Optimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"
-                    f"\nAborting process and returning results",
+                    f"\nAborting process and returning the optimization history",
                     output_stream=logging.ERROR,
                 )
 
-                return OptimizationResult(datasets, models, history, error)
+                return Err(error), history
 
-        return OptimizationResult(datasets, models, history, None)
+        return Ok(self.Record(datasets, models, acquisition_state)), history
 
 
 def _save_to_history(
-    history: List[LoggingState[S]],
+    history: List[BayesianOptimizer.Record[S]],
     datasets: Mapping[str, Dataset],
     models: Mapping[str, ModelInterface],
     acquisition_state: Optional[S],
 ) -> None:
     models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
     datasets_copy = {tag: ds for tag, ds in datasets.items()}
-    logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
+    logging_state = BayesianOptimizer.Record(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
     history.append(logging_state)

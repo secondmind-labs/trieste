@@ -150,16 +150,14 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
-
-if result.error is not None: raise result.error
+result, _ = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during
 # optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
-constraint_data = result.datasets[CONSTRAINT]
+constraint_data = result.unwrap().datasets[CONSTRAINT]
 new_data = (
     constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:]
 )

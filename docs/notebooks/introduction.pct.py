@@ -25,7 +25,6 @@ import numpy as np
 import tensorflow as tf
 
 import trieste
-from trieste.bayesian_optimizer import OptimizationResult
 from trieste.utils.objectives import branin, mk_observer
 from trieste.acquisition.rule import OBJECTIVE
 
@@ -118,18 +117,16 @@ model = {OBJECTIVE: trieste.models.create_model_interface(
 # we're only interested in the data, which captures the points where the objective was queried
 # and the resulting values. Note that the optimizer updates the model in place.
 #
-# However, since the optimization loop catches errors so as not to lose progress, we must check if
-# any errors occurred so we know the data is valid. We'll do that crudely here by re-raising any
-# such errors. You may wish instead to use the history to restore the process from an earlier point.
+# However, the optimization loop catches errors so as not to lose progress, and we must handle
+# any errors that may have occurred before we can access the data. We'll do that crudely here by
+# re-raising any such errors. You may wish instead to check for failure with the `Result`'s `is_err`
+# property and use the history to restore the process from an earlier point.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result: OptimizationResult = bo.optimize(15, initial_data, model)
-
-if result.error is not None: raise result.error
-
-dataset = result.datasets[OBJECTIVE]
+result, history = bo.optimize(15, initial_data, model)
+dataset = result.unwrap().datasets[OBJECTIVE]
 
 # %% [markdown]
 # ## Explore the results
@@ -214,7 +211,7 @@ fig.show()
 print_summary(gpr)
 
 ls_list = [
-    step.models[OBJECTIVE].model.kernel.lengthscales.numpy() for step in result.history  # type: ignore
+    step.models[OBJECTIVE].model.kernel.lengthscales.numpy() for step in history + [result.unwrap()]  # type: ignore
 ]
 
 ls = np.array(ls_list)
@@ -228,11 +225,9 @@ plt.plot(ls[:, 1])
 # the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.datasets, model)
+result, _ = bo.optimize(5, result.unwrap().datasets, model)
 
-if result.error is not None: raise result.error
-
-dataset = result.datasets[OBJECTIVE]
+dataset = result.unwrap().datasets[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
