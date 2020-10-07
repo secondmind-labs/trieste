@@ -126,33 +126,8 @@ models = {
 # We can construct the _expected constrained improvement_ acquisition function defined in Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
 
 # %%
-class ExpectedFeasibleImprovement(trieste.acquisition.rule.AcquisitionFunctionBuilder):
-    MIN_PROBABILITY = 0.5
-    PENALIZATION = 1.1
-
-    def __init__(self, constraint_builder):
-        self._constraint_builder = constraint_builder
-
-    def prepare_acquisition_function(self, datasets, models):
-        mean, _ = models[OBJECTIVE].predict(datasets[OBJECTIVE].query_points)
-
-        pof_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
-
-        pof = pof_fn(datasets[OBJECTIVE].query_points)
-        onehot = tf.cast(pof < self.MIN_PROBABILITY, mean.dtype)
-        dist = tf.reduce_max(mean) - tf.reduce_min(mean)
-        penalization = self.PENALIZATION * dist * onehot
-        eta = tf.reduce_min(mean + penalization, axis=0)
-
-        ei_fn = lambda at: trieste.acquisition.expected_improvement(
-            models[OBJECTIVE], eta, at
-        )
-
-        return lambda at: ei_fn(at) * pof_fn(at)
-
-
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
-eci = ExpectedFeasibleImprovement(pof.using(CONSTRAINT))
+eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof.using(CONSTRAINT))
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 
 # %% [markdown]

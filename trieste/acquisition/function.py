@@ -405,3 +405,96 @@ def probability_of_feasibility(
     mean, var = model.predict(at)
     distr = tfp.distributions.Normal(mean, tf.sqrt(var))
     return distr.cdf(tf.cast(threshold, at.dtype))
+
+
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+    """
+    Builder for the _expected constrained improvement_ acquisition function defined in
+    Gardner, 2014. The acquisition function computes the expected improvement from the best
+    feasible point, where feasible points are those that (probably) satisfy some constraint.
+
+    See the following for details:
+
+    ::
+
+    @inproceedings{gardner14,
+        title={Bayesian Optimization with Inequality Constraints},
+        author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+        booktitle={Proceedings of the 31st International Conference on Machine Learning},
+        year={2014},
+        volume={32},
+        number={2},
+        series={Proceedings of Machine Learning Research},
+        month={22--24 Jun},
+        publisher={PMLR},
+        url={http://proceedings.mlr.press/v32/gardner14.html},
+    }
+
+    """
+
+    _PENALIZATION_FACTOR = 1.1
+
+    def __init__(
+        self,
+        objective_tag: str,
+        constraint_builder: AcquisitionFunctionBuilder,
+        min_feasibility_probability: Union[float, tf.Tensor] = 0.5,
+    ):
+        """
+        :param objective_tag: The tag for the objective data and model.
+        :param constraint_builder: The builder for the constraint function.
+        :param min_feasibility_probability: The minimum probability of feasibility for a
+            "best point" to be considered feasible.
+        :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
+            scalar in the unit interval :math:`[0, 1]`.
+        """
+        tf.debugging.assert_scalar(min_feasibility_probability)
+
+        if not 0 <= min_feasibility_probability <= 1:
+            raise ValueError(
+                f"Minimum feasibility probability must be between 0 and 1 inclusive,"
+                f" got {min_feasibility_probability}"
+            )
+
+        self._objective_tag = objective_tag
+        self._constraint_builder = constraint_builder
+        self._min_feasibility_probability = min_feasibility_probability
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The expected constrained improvement acquisition function.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise ValueError: If the objective data is empty, or no feasible points are found in
+            ``datasets``.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        if len(objective_dataset.query_points) == 0:
+            raise ValueError(
+                "Expected improvement is defined with respect to existing points in the objective"
+                " data, but the objective data is empty."
+            )
+
+        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        pof = constraint_fn(objective_dataset.query_points)
+        is_not_feasible = pof < self._min_feasibility_probability
+
+        if tf.reduce_all(is_not_feasible):
+            raise ValueError(
+                f"Constrained expected improvement requires at least one feasible point, none found"
+                f" in feasibility probabilities {pof}."
+            )
+
+        mean, _ = objective_model.predict(objective_dataset.query_points)
+        range_of_mean = tf.reduce_max(mean) - tf.reduce_min(mean)
+        penalization = self._PENALIZATION_FACTOR * range_of_mean * tf.cast(
+            is_not_feasible, mean.dtype
+        )
+        eta = tf.reduce_min(mean + penalization, axis=0)
+
+        return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
