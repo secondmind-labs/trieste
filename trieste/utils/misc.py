@@ -11,15 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable
+from typing import Callable, TypeVar
 
 import numpy as np
 import tensorflow as tf
 
 from ..type import TensorType
 
+C = TypeVar("C", bound=Callable)
+""" A type variable bound to `typing.Callable`. """
 
-def jit(apply: bool = True, **optimize_kwargs) -> Callable[[Callable], Callable]:
+
+def jit(apply: bool = True, **optimize_kwargs) -> Callable[[C], C]:
     """
     A decorator that conditionally wraps a function with `tf.function`.
 
@@ -29,11 +32,8 @@ def jit(apply: bool = True, **optimize_kwargs) -> Callable[[Callable], Callable]
     :return: The decorator.
     """
 
-    def decorator(func: Callable) -> Callable:
-        if apply:
-            return tf.function(func, **optimize_kwargs)
-        else:
-            return func
+    def decorator(func: C) -> C:
+        return tf.function(func, **optimize_kwargs) if apply else func
 
     return decorator
 
