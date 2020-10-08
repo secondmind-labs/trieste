@@ -64,8 +64,8 @@ CONSTRAINT = "CONSTRAINT"
 
 def observer(query_points):
     return {
-        OBJECTIVE: trieste.datasets.Dataset(query_points, sim.objective(query_points)),
-        CONSTRAINT: trieste.datasets.Dataset(query_points, sim.constraint(query_points))
+        OBJECTIVE: trieste.data.Dataset(query_points, sim.objective(query_points)),
+        CONSTRAINT: trieste.data.Dataset(query_points, sim.constraint(query_points))
     }
 
 # %% [markdown]

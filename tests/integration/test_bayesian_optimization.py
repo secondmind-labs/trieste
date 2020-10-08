@@ -25,7 +25,7 @@ from trieste.acquisition.rule import (
     OBJECTIVE
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
 from trieste.utils.objectives import (

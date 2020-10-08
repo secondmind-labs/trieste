@@ -26,7 +26,7 @@ import gpflow
 import tensorflow as tf
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
-from .datasets import Dataset
+from .data import Dataset
 from .models import ModelInterface, create_model_interface, ModelSpec
 from .observer import Observer
 from .space import SearchSpace
@@ -115,7 +115,7 @@ class BayesianOptimizer(Generic[SP]):
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.datasets.Dataset` (matched
+        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` (matched
             by tag).
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to

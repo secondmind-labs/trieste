@@ -18,7 +18,7 @@ from typing import FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, ca
 import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.space import Box, SearchSpace
 from trieste.type import QueryPoints

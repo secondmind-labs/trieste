@@ -17,7 +17,7 @@ from typing import Callable
 
 import tensorflow as tf
 
-from ..datasets import Dataset
+from ..data import Dataset
 from ..observer import Observer
 from ..type import TensorType
 

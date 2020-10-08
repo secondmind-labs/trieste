@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from .. import utils
-from ..datasets import Dataset
+from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
 
@@ -205,7 +205,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableModelInterface):
 
 Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
 """
-Type alias for a function that creates minibatches from a :class:`~trieste.datasets.Dataset`.
+Type alias for a function that creates minibatches from a :class:`~trieste.data.Dataset`.
 """
 
 

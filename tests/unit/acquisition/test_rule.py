@@ -25,7 +25,7 @@ from trieste.acquisition.rule import (
     TrustRegion,
     OBJECTIVE,
 )
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
 

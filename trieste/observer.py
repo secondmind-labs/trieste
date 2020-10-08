@@ -17,7 +17,7 @@ from typing import Callable, Dict
 
 import tensorflow as tf
 
-from .datasets import Dataset
+from .data import Dataset
 
 
 Observer = Callable[[tf.Tensor], Dict[str, Dataset]]
@@ -35,7 +35,7 @@ def filter_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
     """
     :param query_points: A tensor of shape (N x M).
     :param observations: A tensor of shape (N x 1).
-    :return: A :class:`~trieste.datasets.Dataset` containing all the rows in ``query_points`` and
+    :return: A :class:`~trieste.data.Dataset` containing all the rows in ``query_points`` and
         ``observations`` where the ``observations`` are finite numbers.
     :raise ValueError or InvalidArgumentError: If ``query_points`` or ``observations`` have invalid
         shapes.
@@ -50,10 +50,10 @@ def map_is_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
     """
     :param query_points: A tensor.
     :param observations: A tensor.
-    :return: A :class:`~trieste.datasets.Dataset` containing all the rows in ``query_points``,
+    :return: A :class:`~trieste.data.Dataset` containing all the rows in ``query_points``,
         along with the tensor result of mapping the elements of ``observations`` to: `1` if they are
         a finite number, else `0`.
     :raise ValueError or InvalidArgumentError: If ``query_points`` and ``observations`` do not
-        satisfy the shape constraints of :class:`~trieste.datasets.Dataset`.
+        satisfy the shape constraints of :class:`~trieste.data.Dataset`.
     """
     return Dataset(query_points, tf.cast(_is_finite(observations), tf.uint8))

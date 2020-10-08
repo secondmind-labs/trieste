@@ -30,7 +30,7 @@ import tensorflow as tf
 import numpy as np
 import numpy.testing as npt
 
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models.model_interfaces import (
     TrainableModelInterface,
     Batcher,

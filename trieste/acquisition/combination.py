@@ -17,7 +17,7 @@ from typing import Mapping, Sequence
 import tensorflow as tf
 
 from .function import AcquisitionFunctionBuilder, AcquisitionFunction
-from ..datasets import Dataset
+from ..data import Dataset
 from ..type import QueryPoints
 from ..models import ModelInterface
 

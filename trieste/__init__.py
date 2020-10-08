@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 The library root. See :mod:`~trieste.bayesian_optimizer` for the core optimizer, which requires
-models (see :mod:`~trieste.models`), and data sets (see :mod:`~trieste.datasets`). The
+models (see :mod:`~trieste.models`), and data sets (see :mod:`~trieste.data`). The
 :mod:`~trieste.acquisition` package provides a selection of acquisition algorithms and the
 functionality to define your own.
 """
@@ -22,7 +22,7 @@ from . import (
     models,
     utils,
     bayesian_optimizer,
-    datasets,
+    data,
     observer,
     space,
     type,
