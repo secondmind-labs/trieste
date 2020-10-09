@@ -20,7 +20,7 @@ with open("README.md", "r") as file:
 setup(
     name="trieste",
     version="0.2.0",
-    author="The Trieste authors",
+    author="The Trieste contributors",
     author_email="labs@secondmind.ai",
     description="A Bayesian optimization research toolbox built on TensorFlow",
     long_description=long_description,
