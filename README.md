@@ -10,14 +10,14 @@ We welcome contributions. See [the guidelines](CONTRIBUTING.md) to get started.
 
 To install trieste, run
 ```bash
-$ pip3 install .
+$ pip install trieste
 ```
 
 ### Documentation
 
 Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) with tutorials on how to use the library, and an API reference. You can also run the tutorials interactively. They can be found in the notebooks directory, and are written as Python scripts for running with Jupytext. To run them, first install the library as above, then additional dependencies with
 ```bash
-$ pip3 install -r notebooks/requirements.txt -c notebooks/constraints.txt
+$ pip install -r notebooks/requirements.txt -c notebooks/constraints.txt
 ```
 Finally, run the notebooks with
 ```bash
