@@ -38,7 +38,6 @@ from trieste.utils.objectives import (
 from tests.util.misc import random_seed
 
 
-@gpflow.config.as_context(gpflow.config.Config(float=tf.float64))
 @random_seed(1793)
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
     (12, EfficientGlobalOptimization()),
