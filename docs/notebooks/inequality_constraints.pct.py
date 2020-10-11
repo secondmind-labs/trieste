@@ -150,7 +150,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule).result
+result, _ = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during

@@ -225,9 +225,7 @@ plt.plot(ls[:, 1])
 # the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result, _ = bo.optimize(5, result.unwrap().datasets, model)
-
-dataset = result.unwrap().datasets[OBJECTIVE]
+dataset = bo.optimize(5, result.unwrap().datasets, model).result.unwrap().datasets[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
