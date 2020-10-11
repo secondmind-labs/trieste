@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import Any, Iterator, List, Mapping, NamedTuple, Optional, Generic, TypeVar, cast
+from typing import Any, List, Mapping, NamedTuple, Optional, Generic, TypeVar, cast
 
 from absl import logging
 import gpflow
@@ -97,8 +97,8 @@ class BayesianOptimizer(Generic[SP]):
             - Updates the datasets and models with the data from the ``observer``.
 
         If any errors are raised during the optimization loop, this method will catch and return
-        # todo how to explain where it's printed?
-        them instead, along with the history of the optimization process, and print a message to ...
+        them instead, along with the history of the optimization process, and print a message (using
+        `absl` at level `logging.ERROR`).
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
