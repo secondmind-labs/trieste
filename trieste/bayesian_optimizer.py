@@ -97,12 +97,13 @@ class BayesianOptimizer(Generic[SP]):
             - Updates the datasets and models with the data from the ``observer``.
 
         If any errors are raised during the optimization loop, this method will catch and return
-        them instead, along with the history of the optimization process.
+        # todo how to explain where it's printed?
+        them instead, along with the history of the optimization process, and print a message to ...
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
               :class:`~trieste.space.SearchSpace` as specified in :meth:`__init__`.
-            - The history, if populated, will contain an acquisition state of the same type as used
+            - Any acquisition state in the optimization result will be of the same type as used
               by the ``acquisition_rule``.
 
         :param num_steps: The number of optimization steps to run.
@@ -120,11 +121,12 @@ class BayesianOptimizer(Generic[SP]):
             :class:`LoggingState`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step.
-        :return: A two-tuple. The first element contains either the final optimization result,
-            including the data, models, and acquisition state, or, if an exception was raised while
+        :return: An `OptimizationResult`. The :attr:`result` element contains either the final
+            optimization data, models and acquisition state, or, if an exception was raised while
             executing the optimization loop, it contains the exception raised. In either case, the
-            second element is the optimization history up to the last successfully completed
-            optimization step inclusive, but never including the final optimization result.
+            :attr:`history` element is the optimization history up to the last successfully
+            completed optimization step inclusive, but never including the final optimization
+            record.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``model_specs`` do not match
             - ``datasets`` or ``model_specs`` are empty
@@ -173,10 +175,12 @@ class BayesianOptimizer(Generic[SP]):
                     f"Optimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"
                     f"\nAborting process and returning the optimization history",
-                    output_stream=logging.ERROR,
+                    logging.ERROR,
                 )
 
                 return self.OptimizationResult(Err(error), history)
+
+        tf.print("Optimization completed without errors", logging.INFO)
 
         return self.OptimizationResult(Ok(self.Record(datasets, models, acquisition_state)), history)
 
