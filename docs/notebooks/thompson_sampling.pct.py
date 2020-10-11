@@ -92,9 +92,7 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result, _ = bo.optimize(5, initial_data, model_config, acq_rule)
-
-dataset = result.unwrap().datasets[OBJECTIVE]
+dataset = bo.optimize(5, initial_data, model_config, acq_rule).result.unwrap().datasets[OBJECTIVE]
 
 # %% [markdown]
 # ## Visualising the result

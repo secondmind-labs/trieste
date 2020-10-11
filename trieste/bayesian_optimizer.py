@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, Sequence, Tuple, TypeVar, cast
+from typing import Any, Iterator, List, Mapping, NamedTuple, Optional, Generic, TypeVar, cast
 
 from absl import logging
 import gpflow
@@ -59,6 +59,11 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: Optional[S]
         """ The acquisition state. """
 
+    # todo can we think of a shorter name?
+    class OptimizationResult(NamedTuple):  # mypy doesn't yet support generic named tuples
+        result: Result[BayesianOptimizer.Record[Any]]
+        history: List[BayesianOptimizer.Record[Any]]
+
     def __init__(self, observer: Observer, search_space: SP):
         """
         :param observer: The observer of the objective function.
@@ -79,7 +84,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
         acquisition_state: Optional[S] = None,
         track_state: bool = True,
-    ) -> Tuple[Result[Record], Sequence[Record]]:
+    ) -> OptimizationResult:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -171,9 +176,9 @@ class BayesianOptimizer(Generic[SP]):
                     output_stream=logging.ERROR,
                 )
 
-                return Err(error), history
+                return self.OptimizationResult(Err(error), history)
 
-        return Ok(self.Record(datasets, models, acquisition_state)), history
+        return self.OptimizationResult(Ok(self.Record(datasets, models, acquisition_state)), history)
 
 
 def _save_to_history(

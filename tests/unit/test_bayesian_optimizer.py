@@ -42,10 +42,9 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     optimizer = BayesianOptimizer(observer, one_dimensional_range(-1, 1))
     data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
 
-    res, _ = optimizer.optimize(
+    optimizer.optimize(
         steps, {OBJECTIVE: data}, {OBJECTIVE: QuadraticWithUnitVariance()}
-    )
-    res.unwrap()
+    ).result.unwrap()
 
     assert observer.call_count == steps
 
@@ -167,21 +166,22 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             EXPONENTIAL: Dataset(query_points, tf.exp(- query_points))
         }
 
-    data = {
+    data: Mapping[str, Dataset] = {
         LINEAR: Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]]))
     }
 
-    models: Dict[str, ModelInterface] = {  # mypy can't infer this type for some reason
+    models: Mapping[str, ModelInterface] = {
         LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
     }
 
-    res, _ = BayesianOptimizer(
+    data = BayesianOptimizer(
         linear_and_exponential,
         Box(tf.constant([-2.0]), tf.constant([2.0]))
-    ).optimize(20, data, models, AdditionRule())
-    record = res.unwrap()
+    ).optimize(
+        20, data, models, AdditionRule()
+    ).result.unwrap().datasets
 
-    objective_values = record.datasets[LINEAR].observations + record.datasets[EXPONENTIAL].observations
+    objective_values = data[LINEAR].observations + data[EXPONENTIAL].observations
     min_idx = tf.argmin(objective_values, axis=0)[0]
-    npt.assert_allclose(record.datasets[LINEAR].query_points[min_idx], - tf.math.log(2.0), rtol=0.01)
+    npt.assert_allclose(data[LINEAR].query_points[min_idx], - tf.math.log(2.0), rtol=0.01)

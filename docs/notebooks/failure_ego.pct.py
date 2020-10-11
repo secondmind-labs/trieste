@@ -178,8 +178,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, _ = bo.optimize(20, initial_data, models, acquisition_rule=rule)
-final_data = result.unwrap().datasets
+final_data = bo.optimize(20, initial_data, models, acquisition_rule=rule).result.unwrap().datasets
 
 arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
 print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")
