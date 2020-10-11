@@ -171,6 +171,7 @@ class BayesianOptimizer(Generic[SP]):
                     model.optimize()
 
             except Exception as error:
+                # todo test we see this error message
                 tf.print(
                     f"Optimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"
