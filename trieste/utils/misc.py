@@ -126,6 +126,9 @@ class Ok(Result[T_co]):
         """
         self._value = value
 
+    def __repr__(self) -> str:
+        return f"Ok({self._value!r})"
+
     @property
     def is_ok(self) -> bool:
         """ True always. """
@@ -146,6 +149,9 @@ class Err(Result[NoReturn]):
         :param exc: The exception that occurred.
         """
         self._exc = exc
+
+    def __repr__(self) -> str:
+        return f"Err({self._exc!r})"
 
     @property
     def is_ok(self) -> bool:

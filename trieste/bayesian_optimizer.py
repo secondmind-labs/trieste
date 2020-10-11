@@ -176,7 +176,7 @@ class BayesianOptimizer(Generic[SP]):
                     f"Optimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"
                     f"\nAborting process and returning the optimization history",
-                    logging.ERROR,
+                    output_stream=logging.ERROR
                 )
 
                 return self.OptimizationResult(Err(error), history)
