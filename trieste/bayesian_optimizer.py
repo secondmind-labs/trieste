@@ -72,8 +72,8 @@ class BayesianOptimizer(Generic[SP]):
         :param search_space: The space over which to search. Must be a
             :class:`~trieste.space.SearchSpace`.
         """
-        self.observer = observer
-        self.search_space = search_space
+        self._observer = observer
+        self._search_space = search_space
 
     def optimize(
         self,
@@ -163,10 +163,10 @@ class BayesianOptimizer(Generic[SP]):
                     _save_to_history(history, datasets, models, acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
-                    self.search_space, datasets, models, acquisition_state
+                    self._search_space, datasets, models, acquisition_state
                 )
 
-                observer_output = self.observer(query_points)
+                observer_output = self._observer(query_points)
 
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
 
