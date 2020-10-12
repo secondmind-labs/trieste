@@ -41,22 +41,40 @@ SP = TypeVar("SP", bound=SearchSpace)
 @dataclass(frozen=True)
 class LoggingState(Generic[S]):
     """
-    Container used to track the state of the optimization process in :class:`BayesianOptimizer`.
+    Container for the state of the optimization process in :class:`BayesianOptimizer` at each
+    optimization step.
     """
 
     datasets: Mapping[str, Dataset]
+    """ All observer data at this optimization step. """
+
     models: Mapping[str, ModelInterface]
+    """ The models over the :attr:`datasets`. """
+
     acquisition_state: Optional[S]
+    """ The acquisition state after this optimization step. """
 
 
 @dataclass(frozen=True)
 class OptimizationResult(Generic[S]):
-    """ Container for the result of the optimization process in :class:`BayesianOptimizer`. """
+    """ Container for the final result of the optimization process. """
 
     datasets: Mapping[str, Dataset]
+    """
+    All data from the observer (unless :attr:`error` is populated, in which case this is the data
+    from the point at which the process was interrupted).
+    """
+
     models: Mapping[str, ModelInterface]
+    """
+    The models over the :attr:`datasets` (unless :attr:`error` is populated, in which case this is
+    the models from the point at which the process was interrupted). """
+
     history: List[LoggingState[S]]
+    """ The data, models, and acquisition state at each completed optimization step. """
+
     error: Optional[Exception]
+    """ The exception that occurred, if any. """
 
 
 class BayesianOptimizer(Generic[SP]):
