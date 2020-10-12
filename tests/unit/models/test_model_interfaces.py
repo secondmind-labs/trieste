@@ -98,8 +98,8 @@ def test_trainable_model_interface_set_optimize() -> None:
 
 def _mock_data() -> Tuple[tf.Tensor, tf.Tensor]:
     return (
-        tf.constant([[1.2]], gpflow.default_float()),
-        tf.constant([[3.4]], gpflow.default_float()),
+        tf.constant([[1.2], [2.3]], gpflow.default_float()),
+        tf.constant([[3.4], [4.5]], gpflow.default_float()),
     )
 
 
