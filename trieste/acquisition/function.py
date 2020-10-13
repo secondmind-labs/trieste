@@ -20,6 +20,9 @@ import tensorflow_probability as tfp
 from ..datasets import Dataset
 from ..type import QueryPoints
 from ..models import ModelInterface
+from ..space import SearchSpace
+
+from scipy.optimize import bisect
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ Type alias for acquisition functions. """
@@ -128,6 +131,120 @@ def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints)
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+
+class MES(SingleModelAcquisitionBuilder):
+    """
+    Builder for the max-value entropy search acqusiiton function (for function minimisation)
+    """
+
+    def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param num_samples: integer determining how many samples to draw of the minimum 
+            (does not need to be large).
+        :param grid_size: number of random locations in grid used to fit the gumbel distribution 
+            and approximately generate the samples of the minimum (recommend scaling with problem dimension).
+        """
+        self._num_samples = num_samples
+        self._grid_size = grid_size
+        self._search_space = search_space
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ModelInterface
+    ) -> AcquisitionFunction:
+        """
+        Need to sample possible min-values from our posterior. To do this we implement a Gumbel sampler.
+        we approximate Pr(y*^hat<y) by Gumbel(alpha,beta) then sample from Gumbel.
+
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        :return: The MES function.
+        """
+
+        # generate random grid to fit Gumbel distribution
+        # grid consists of already queried locations and grid_size other random locations
+        query_points = self._search_space.sample(self._grid_size)
+        query_points = tf.concat([dataset.query_points,query_points],0)
+        fmean, fvar = model.predict(query_points)
+        fsd = tf.math.sqrt(fvar)
+        idx = tf.math.argmax(-fmean[:tf.shape(dataset.query_points)[0]])
+
+        # Fit Gumbel distriubtion
+        # scaling so that gumbel scale is proportional to IQ range of cdf Pr(y*<z)
+        # find quantiles Pr(y*<y1)=r1 and Pr(y*<y2)=r2
+
+        right = tf.squeeze(fmean[tf.squeeze(idx)])
+        left = right
+        probf = lambda x: tf.math.exp(tf.math.reduce_sum(tfp.distributions.Normal(tf.cast(0,tf.float64),tf.cast(1,tf.float64)).log_cdf(-(x - fmean) / fsd), axis=0))
+        
+
+        # get range for binary search
+        i = 0
+        while probf(left) < 0.75:
+            left = 2. ** i * tf.math.reduce_min(fmean - 5. * fsd) + (1. - 2. ** i) * right
+            i += 1
+        i = 0
+        while probf(right) > 0.25:
+            right = -2. ** i * tf.math.reduce_min(fmean - 5. * fsd) + (1. + 2. ** i) * tf.squeeze(fmean[tf.squeeze(idx)])
+            i += 1
+
+
+        # Binary search for 3 percentiles
+        q1, med, q2 = map(lambda val: bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001),
+                            [0.25, 0.5, 0.75])
+
+
+        # solve for gumbel params
+        beta = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
+        alpha = med + beta * tf.math.log(tf.math.log(2.))
+
+        # sample K length vector from unif([0,1])
+        # return K Y* samples
+        samples = -tf.math.log(-tf.math.log(tf.random.uniform([self._num_samples],dtype=tf.dtypes.float64))) * tf.cast(beta,tf.float64) + tf.cast(alpha,tf.float64)
+
+
+        return lambda at: self._acquisition_function(model, samples, at)
+
+    @staticmethod
+    def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+        return mes(model, samples, at)
+
+
+def mes(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    r"""
+    Computes the information gain, i.e the change in entropy of p_min if we would evaluate x.
+
+    See the following for details:
+
+    ::
+
+        @article{wang2017max,
+          title={Max-value entropy search for efficient Bayesian optimization},
+          author={Wang, Zi and Jegelka, Stefanie},
+          journal={arXiv preprint arXiv:1703.01968},
+          year={2017}
+        }
+
+    :param model: The model of the objective function.
+    :param samples: Samples from p_min
+    :param at: The points for which to calculate the expected improvement.
+    :return: The expected improvement at ``at``.
+    """
+    fmean, fvar = model.predict(at)
+    fsd = tf.math.sqrt(fvar)
+    # clip below to improve numerical stability
+    fsd = tf.clip_by_value(fsd, 1.0e-8, tf.float64.max)
+    
+    normal = tfp.distributions.Normal(tf.cast(0,tf.float64), tf.cast(1,tf.float64))
+    gamma = (samples - fmean) / fsd
+
+    # clip below to improve numerical stability
+    minus_cdf = 1 - normal.cdf(gamma)
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)
+    f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+    f_acqu_x = tf.math.reduce_mean(f_acqu_x, axis=1)
+        
+    return tf.reshape(f_acqu_x,[-1, 1])
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):

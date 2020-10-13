@@ -27,7 +27,7 @@ from ..datasets import Dataset
 from ..models import ModelInterface
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import AcquisitionFunctionBuilder, ExpectedImprovement, MES
 from . import _optimizer
 
 
@@ -91,6 +91,50 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         """
         if builder is None:
             builder = ExpectedImprovement().using(OBJECTIVE)
+
+        self._builder = builder
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ModelInterface],
+        state: None = None,
+    ) -> Tuple[QueryPoints, None]:
+        """
+        Return the query point that optimizes the acquisition function produced by `builder` (see
+        :meth:`__init__`).
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The single point to query, and `None`.
+        """
+        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        point = _optimizer.optimize(search_space, acquisition_function)
+        return point, None
+
+
+class MaxValueEntropySearch(AcquisitionRule[None, SearchSpace]):
+    """ Implements the Max-value Entropy Search, or MES, algorithm. """
+
+    def __init__(self, search_space: SearchSpace, builder: Optional[AcquisitionFunctionBuilder] = None,
+        num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param builder: The acquisition function builder to use.
+        :param search_space: The search space over which to fit Gumbel distribution
+        :param num_samples: integer determining how many samples to draw of the minimum 
+            (does not need to be large).
+        :param grid_size: number of random locations in grid used to fit the gumbel distribution 
+            and approximately generate the samples of the minimum (recommend scaling with problem dimension).
+
+            :class:`MaxValueEntropySearch` will attempt to **maximise** the corresponding
+            acquisition function.
+        """
+        if builder is None:
+            builder = MES(search_space,num_samples,grid_size).using(OBJECTIVE)
 
         self._builder = builder
 

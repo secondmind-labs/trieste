@@ -41,6 +41,8 @@ from .function import (
     SingleModelAcquisitionBuilder,
     ExpectedImprovement,
     expected_improvement,
+    MES,
+    mes,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     lower_confidence_bound,

@@ -20,6 +20,7 @@ import tensorflow as tf
 from trieste.acquisition.rule import (
     AcquisitionRule,
     EfficientGlobalOptimization,
+    MaxValueEntropySearch,
     ThompsonSampling,
     TrustRegion,
     OBJECTIVE
@@ -40,6 +41,7 @@ from tests.util.misc import random_seed
 
 @random_seed(1793)
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
+    (20, MaxValueEntropySearch(Box(tf.constant([0.0, 0.0], tf.float64), tf.constant([1.0, 1.0], tf.float64)),num_samples = 1, grid_size = 100)),
     (12, EfficientGlobalOptimization()),
     (22, TrustRegion()),
     (17, ThompsonSampling(500, 3)),
