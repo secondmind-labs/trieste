@@ -20,11 +20,11 @@ import tensorflow as tf
 from trieste.acquisition.rule import (
     AcquisitionRule,
     EfficientGlobalOptimization,
-    MaxValueEntropySearch,
     ThompsonSampling,
     TrustRegion,
     OBJECTIVE
 )
+from trieste.acquisition import MaxValueEntropySearch
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.datasets import Dataset
 from trieste.models import GaussianProcessRegression
@@ -40,12 +40,19 @@ from tests.util.misc import random_seed
 
 
 @random_seed(1793)
-@pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (20, MaxValueEntropySearch(Box(tf.constant([0.0, 0.0], tf.float64), tf.constant([1.0, 1.0], tf.float64)),num_samples = 1, grid_size = 100)),
-    (12, EfficientGlobalOptimization()),
-    (22, TrustRegion()),
-    (17, ThompsonSampling(500, 3)),
-])
+@pytest.mark.parametrize('num_steps, acquisition_rule', 
+    [(12, EfficientGlobalOptimization()),
+        (20, EfficientGlobalOptimization(MaxValueEntropySearch(
+                                        search_space = Box(
+                                            tf.constant([0.0, 0.0], tf.float64), 
+                                            tf.constant([1.0, 1.0], tf.float64)
+                                        ),
+                                        num_samples = 1, 
+                                        grid_size = 100).using(OBJECTIVE)
+                                    )),
+        (22, TrustRegion()),
+        (17, ThompsonSampling(500, 3)),
+    ])
 def test_optimizer_finds_minima_of_the_branin_function(
         num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:

@@ -133,7 +133,7 @@ def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints)
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
 
 
-class MES(SingleModelAcquisitionBuilder):
+class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
     """
     Builder for the max-value entropy search acqusiiton function (for function minimisation)
     """
@@ -172,12 +172,10 @@ class MES(SingleModelAcquisitionBuilder):
         # Fit Gumbel distriubtion
         # scaling so that gumbel scale is proportional to IQ range of cdf Pr(y*<z)
         # find quantiles Pr(y*<y1)=r1 and Pr(y*<y2)=r2
-
         right = tf.squeeze(fmean[tf.squeeze(idx)])
         left = right
         probf = lambda x: tf.math.exp(tf.math.reduce_sum(tfp.distributions.Normal(tf.cast(0,tf.float64),tf.cast(1,tf.float64)).log_cdf(-(x - fmean) / fsd), axis=0))
         
-
         # get range for binary search
         i = 0
         while probf(left) < 0.75:
@@ -188,11 +186,9 @@ class MES(SingleModelAcquisitionBuilder):
             right = -2. ** i * tf.math.reduce_min(fmean - 5. * fsd) + (1. + 2. ** i) * tf.squeeze(fmean[tf.squeeze(idx)])
             i += 1
 
-
         # Binary search for 3 percentiles
         q1, med, q2 = map(lambda val: bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001),
                             [0.25, 0.5, 0.75])
-
 
         # solve for gumbel params
         beta = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
@@ -207,10 +203,10 @@ class MES(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
-        return mes(model, samples, at)
+        return max_value_entropy_search(model, samples, at)
 
 
-def mes(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
     Computes the information gain, i.e the change in entropy of p_min if we would evaluate x.
 
@@ -232,6 +228,7 @@ def mes(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
+    
     # clip below to improve numerical stability
     fsd = tf.clip_by_value(fsd, 1.0e-8, tf.float64.max)
     
