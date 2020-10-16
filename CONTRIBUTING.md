@@ -76,7 +76,7 @@ $ tox -e tests
 
 ### Updating dependencies
 
-To update the Python dependencies used in any part of the project, update setup.py and/or any relevant requirements.txt files. Then, in the repository root, and with all virtual environments deactivated, run
+To update the Python dependencies used in any part of the project, update setup.py and/or any relevant requirements.txt files. Then, in the repository root, and with all virtual environments deactivated, run, in the `deps` directory
 ```bash
 $ ./generate_constraints.sh
 ```

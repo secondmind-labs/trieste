@@ -14,6 +14,8 @@
 
 #!/bin/bash
 
+set -e
+
 VENV_DIR=$(mktemp -d -p $(pwd))
 
 generate_for_env () {
@@ -26,19 +28,16 @@ generate_for_env () {
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
   if [ "$2" = true ]; then
-      pip install -e .
+      pip install -e .. --use-feature=2020-resolver
   fi
-  pip install -r $1/requirements.txt
+  pip install -r $1/requirements.txt --use-feature=2020-resolver
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
 
-generate_for_env notebooks true
-
-generate_for_env tests true
-
-generate_for_env common_build false
-
 generate_for_env docs false
+generate_for_env notebooks true
+generate_for_env tests true
+generate_for_env types false
 
 rm -rf $VENV_DIR

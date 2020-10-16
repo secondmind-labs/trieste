@@ -25,9 +25,9 @@ jupyterlab-pygments==0.1.2
 lazy-object-proxy==1.4.3
 MarkupSafe==1.1.1
 mistune==0.8.4
-nbclient==0.5.0
+nbclient==0.5.1
 nbconvert==6.0.7
-nbformat==5.0.7
+nbformat==5.0.8
 nbsphinx==0.7.1
 nest-asyncio==1.4.1
 packaging==20.4
@@ -35,8 +35,7 @@ pandocfilters==1.4.2
 parso==0.7.1
 pexpect==4.8.0
 pickleshare==0.7.5
-pkg-resources==0.0.0
-prompt-toolkit==3.0.7
+prompt-toolkit==3.0.8
 ptyprocess==0.6.0
 pydata-sphinx-theme==0.4.1
 Pygments==2.7.1
@@ -59,11 +58,11 @@ sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
 testpath==0.4.4
 tornado==6.0.4
-traitlets==5.0.4
+traitlets==5.0.5
 typed-ast==1.4.1
 Unidecode==1.1.1
 urllib3==1.25.10
 wcwidth==0.2.5
 webencodings==0.5.1
 wrapt==1.12.1
-zipp==3.3.0
+zipp==3.3.1
