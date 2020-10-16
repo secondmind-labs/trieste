@@ -86,7 +86,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
-        :param dataset: Unused.
+        :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
         :return: The expected improvement function.
         """
@@ -140,7 +140,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
     def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
-        :param search_space: The search space over which the acquisiiton function is defined.
+        :param search_space: The global search space over which the Bayesian optimisation problem is defined.
         :param num_samples: Number of sample draws of the minimal value.
         :param grid_size: Size of random grid used to fit the gumbel distribution 
             (recommend scaling with search space dimension).
@@ -155,7 +155,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
         if grid_size <= 0:
             raise ValueError(
-                f"num_samples must be positive, got {grid_size}"
+                f"grid_size must be positive, got {grid_size}"
             )
         self._grid_size = grid_size
 
@@ -167,7 +167,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         To do this we implement a Gumbel sampler.
         We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
 
-        :param dataset: Unused.
+        :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
         :return: The MES function.
         """
@@ -196,7 +196,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, tf.float64) + tf.cast(a,tf.float64)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
-
+    
     @staticmethod
     def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
@@ -204,7 +204,8 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
 def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
-    Computes the information gain, i.e the change in entropy of p_min if we would evaluate x.
+    Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
+    minimal value of the objective function) if we would evaluate x.
 
     See the following for details:
 
@@ -220,7 +221,7 @@ def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: Quer
     :param model: The model of the objective function.
     :param samples: Samples from p_min
     :param at: The points for which to calculate the expected improvement.
-    :return: The expected improvement at ``at``.
+    :return: The entropy reduction provided by an evaluation of ``at``.
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
@@ -232,9 +233,8 @@ def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: Quer
     minus_cdf = 1 - normal.cdf(gamma)
     minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1) # clip below to improve numerical stability
     f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-    f_acqu_x = tf.math.reduce_mean(f_acqu_x, axis=1)
         
-    return tf.reshape(f_acqu_x,[-1, 1])
+    return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):

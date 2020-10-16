@@ -27,7 +27,7 @@ from ..datasets import Dataset
 from ..models import ModelInterface
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement, MaxValueEntropySearch
+from .function import AcquisitionFunctionBuilder, ExpectedImprovement
 from . import _optimizer
 
 
