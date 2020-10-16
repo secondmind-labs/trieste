@@ -28,9 +28,9 @@ generate_for_env () {
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
   if [ "$2" = true ]; then
-      pip install -e .. --use-feature=2020-resolver
+      pip install -e ..
   fi
-  pip install -r $1/requirements.txt --use-feature=2020-resolver
+  pip install -r $1/requirements.txt
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
