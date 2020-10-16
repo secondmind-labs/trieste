@@ -192,7 +192,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         b = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
         a = med + b * tf.math.log(tf.math.log(2.))
 
-        uniform_samples = tf.random.uniform([self._num_samples],dtype=tf.dtypes.float64)
+        uniform_samples = tf.random.uniform([self._num_samples],dtype=fmean.dtype)
         gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
