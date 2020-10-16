@@ -177,7 +177,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         fsd = tf.math.sqrt(fvar)
 
         def probf(x: tf.Tensor) -> tf.Tensor :  # Build empirical CDF
-            unit_normal = tfp.distributions.Normal(tf.cast(0, tf.float64), tf.cast(1, tf.float64))
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
             log_cdf = unit_normal.log_cdf(- (x - fmean) / fsd)
             return tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
@@ -193,7 +193,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         a = med + b * tf.math.log(tf.math.log(2.))
 
         uniform_samples = tf.random.uniform([self._num_samples],dtype=tf.dtypes.float64)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, tf.float64) + tf.cast(a,tf.float64)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
     
@@ -225,9 +225,9 @@ def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: Quer
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(fsd, 1.0e-8, tf.float64.max) # clip below to improve numerical stability
+    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max) # clip below to improve numerical stability
     
-    normal = tfp.distributions.Normal(tf.cast(0,tf.float64), tf.cast(1,tf.float64))
+    normal = tfp.distributions.Normal(tf.cast(0,fmean.dtype), tf.cast(1,fmean.dtype))
     gamma = (samples - fmean) / fsd
 
     minus_cdf = 1 - normal.cdf(gamma)
