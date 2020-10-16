@@ -35,9 +35,9 @@ generate_for_env () {
   deactivate
 }
 
+generate_for_env common false
 generate_for_env docs false
 generate_for_env notebooks true
 generate_for_env tests true
-generate_for_env types false
 
 rm -rf $VENV_DIR
