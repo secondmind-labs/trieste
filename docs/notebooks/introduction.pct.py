@@ -304,11 +304,11 @@ acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
+result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
 
-if result.error is not None: raise result.error
+if result_mes.error is not None: raise result_mes.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result_mes.datasets[OBJECTIVE]
 mes_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
 
 # %% [markdown]
