@@ -131,6 +131,8 @@ if result.error is not None: raise result.error
 
 dataset = result.datasets[OBJECTIVE]
 
+ei_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
+
 # %% [markdown]
 # ## Explore the results
 # We can now get the best point found by the optimizer. Note this isn't necessarily the point that
@@ -243,3 +245,79 @@ plot_bo_points(
     num_init=len(dataset.query_points),
     idx_best=arg_min_idx,
 )
+
+# %% [markdown]
+# # Try an alternative acquisition function
+
+# %% [markdown]
+# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Max-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
+
+# %% [markdown]
+# We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
+
+# %%
+mes_acq_function = trieste.acquisition.MaxValueEntropySearch(search_space,num_samples = 5, grid_size = 5000).using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+ei_acq_function = trieste.acquisition.ExpectedImprovement().using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+
+fig, ax = plot_function_2d(mes_acq_function, mins, maxs, grid_density=40, contour=True)
+plot_bo_points(
+    dataset.query_points.numpy(),
+    ax=ax[0, 0],
+    num_init=len(dataset.query_points),
+    idx_best=arg_min_idx,
+)
+fig.suptitle("Max-value Entropy Search Acquisition Function")
+fig, ax = plot_function_2d(ei_acq_function, mins, maxs, grid_density=40, contour=True)
+plot_bo_points(
+    dataset.query_points.numpy(),
+    ax=ax[0, 0],
+    num_init=len(dataset.query_points),
+    idx_best=arg_min_idx,
+)
+fig.suptitle("Expected Improvement Acquisition Function")
+
+# %% [markdown]
+# To compare the performance of the optimization achieved by these two different acquisition functions, we re-run the above BO loop using MES. 
+
+# %% [markdown]
+# We re-initialize the model and define a new acquisiton rule.
+
+# %%
+gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
+set_trainable(gpr.likelihood, False)
+
+model = {OBJECTIVE: trieste.models.create_model_interface(
+    {
+        "model": gpr,
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {"options": dict(maxiter=100)},
+    }
+)}
+
+builder = trieste.acquisition.MaxValueEntropySearch(search_space,num_samples = 5, grid_size = 5000).using(OBJECTIVE)
+
+acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder)
+
+# %% [markdown]
+# All that remains is to run the whole BO loop for 15 steps.
+
+# %%
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+result: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
+
+if result.error is not None: raise result.error
+
+dataset = result.datasets[OBJECTIVE]
+mes_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
+
+# %% [markdown]
+# We can now plot the evolution of the best found objective function value as we increase the number of optimization steps. For this particular optimization task we see that EI provides more efficient initial optimization, however MES finds the global optimum faster.
+
+# %%
+plt.plot(mes_optimization_progress,label="MES")
+plt.plot(ei_optimization_progress,label="EI")
+plt.legend(fontsize=20)
+plt.title("Performance of different acquisition functions")
+plt.xlabel("# Optimization Steps")
+plt.ylabel("Best objective function query")
