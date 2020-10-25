@@ -24,8 +24,7 @@ import tensorflow as tf
 import gpflow
 
 import trieste
-from trieste.utils.objectives import branin, mk_observer
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.utils.objectives import branin
 
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 from util.plotting import plot_function_2d, plot_bo_points
@@ -50,23 +49,22 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
-observer = mk_observer(branin, OBJECTIVE)
-initial_data = observer(initial_query_points)
+initial_data = branin(initial_query_points)
 
 # %% [markdown]
 # We'll use Gaussian process regression to model the function.
 
 # %%
-observations = initial_data[OBJECTIVE].observations
+observations = initial_data.get().observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), 0.2 * np.ones(2,))
-gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(astuple(initial_data.get()), kernel, noise_variance=1e-5)
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = {OBJECTIVE: {
+model_config = {
     "model": gpr,
     "optimizer": gpflow.optimizers.Scipy(),
     "optimizer_args": {"options": dict(maxiter=100)},
-}}
+}
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
@@ -91,12 +89,12 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 # every step in the loop. With five steps, that's fifty points.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(branin, search_space)
 result = bo.optimize(5, initial_data, model_config, acq_rule)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.datasets.get()
 
 # %% [markdown]
 # ## Visualising the result

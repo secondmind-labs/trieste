@@ -33,6 +33,7 @@ from trieste.acquisition.function import (
 from trieste.models import ModelInterface
 from tests.util.misc import ShapeLike, various_shapes, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
+from trieste.utils.grouping import Many
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -47,7 +48,7 @@ def test_single_builder_raises_immediately_for_wrong_key() -> None:
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
-            {"bar": zero_dataset()}, {"bar": QuadraticWithUnitVariance()}
+            Many({"bar": zero_dataset()}), Many({"bar": QuadraticWithUnitVariance()})
         )
 
 
@@ -66,8 +67,8 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
 
     builder = _Mock().using("foo")
 
-    data = {"foo": zero_dataset(), "bar": zero_dataset()}
-    models = {"foo": QuadraticWithUnitVariance(), "bar": QuadraticWithUnitVariance()}
+    data = Many({"foo": zero_dataset(), "bar": zero_dataset()})
+    models = Many({"foo": QuadraticWithUnitVariance(), "bar": QuadraticWithUnitVariance()})
     builder.prepare_acquisition_function(data, models)
 
 

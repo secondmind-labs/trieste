@@ -14,9 +14,7 @@
 import numpy.testing as npt
 import tensorflow as tf
 
-from trieste.utils.objectives import (
-    branin, BRANIN_GLOBAL_ARGMIN, BRANIN_GLOBAL_MINIMUM, mk_observer,
-)
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_ARGMIN, BRANIN_GLOBAL_MINIMUM
 
 
 def test_branin_no_points_are_less_than_global_minimum() -> None:
@@ -28,15 +26,3 @@ def test_branin_no_points_are_less_than_global_minimum() -> None:
 
 def test_branin_maps_argmin_values_to_global_minima() -> None:
     npt.assert_array_almost_equal(branin(BRANIN_GLOBAL_ARGMIN), BRANIN_GLOBAL_MINIMUM)
-
-
-def test_mk_observer() -> None:
-    def foo(x: tf.Tensor) -> tf.Tensor:
-        return x + 1
-
-    x_ = tf.constant([[3.]])
-    ys = mk_observer(foo, "bar")(x_)
-
-    assert ys.keys() == {"bar"}
-    npt.assert_array_equal(ys["bar"].query_points, x_)
-    npt.assert_array_equal(ys["bar"].observations, x_ + 1)

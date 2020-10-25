@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Union
+from typing import Callable, Union, Generic
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from returns.primitives.hkt import Kind1, dekind
 
 from ..datasets import Dataset
 from ..type import QueryPoints
@@ -24,16 +25,18 @@ from ..space import SearchSpace
 
 from scipy.optimize import bisect
 
+from ..utils.grouping import Grouping, Many, One, G
+
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ Type alias for acquisition functions. """
 
 
-class AcquisitionFunctionBuilder(ABC):
+class AcquisitionFunctionBuilder(ABC, Generic[G]):
     """ An :class:`AcquisitionFunctionBuilder` builds an acquisition function. """
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Kind1[G, Dataset], models: Kind1[G, ModelInterface]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -47,7 +50,22 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
-    def using(self, tag: str) -> AcquisitionFunctionBuilder:
+    # this means users can still ignore the fact they're working with Groupings
+    def for_single(self) -> AcquisitionFunctionBuilder[One]:
+        single_builder = self
+
+        class _Anon(AcquisitionFunctionBuilder[One]):
+            def prepare_acquisition_function(
+                self, datasets: Kind1[One, Dataset], models: Kind1[One, ModelInterface]
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets.get(), models.get())
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using singles"
+
+        return _Anon()
+
+    def using(self, tag: str) -> AcquisitionFunctionBuilder[Many]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -55,11 +73,13 @@ class SingleModelAcquisitionBuilder(ABC):
         """
         single_builder = self
 
-        class _Anon(AcquisitionFunctionBuilder):
+        class _Anon(AcquisitionFunctionBuilder[Many]):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+                self, datasets: Kind1[Many, Dataset], models: Kind1[Many, ModelInterface]
             ) -> AcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+                return single_builder.prepare_acquisition_function(
+                    dekind(datasets)[tag], dekind(models)[tag]
+                )
 
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"

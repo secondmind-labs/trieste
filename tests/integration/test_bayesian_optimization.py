@@ -17,12 +17,12 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
+from trieste.acquisition import ExpectedImprovement
 from trieste.acquisition.rule import (
     AcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
-    OBJECTIVE
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.datasets import Dataset
@@ -32,7 +32,6 @@ from trieste.utils.objectives import (
     branin,
     BRANIN_GLOBAL_MINIMUM,
     BRANIN_GLOBAL_ARGMIN,
-    mk_observer,
 )
 
 from tests.util.misc import random_seed
@@ -40,16 +39,14 @@ from tests.util.misc import random_seed
 
 @random_seed(1793)
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (12, EfficientGlobalOptimization()),
-    (22, TrustRegion()),
+    (12, EfficientGlobalOptimization(ExpectedImprovement().for_single())),
+    (22, TrustRegion(ExpectedImprovement())),
     (17, ThompsonSampling(500, 3)),
 ])
-
 def test_optimizer_finds_minima_of_the_branin_function(
         num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
     search_space = Box(tf.constant([0.0, 0.0], tf.float64), tf.constant([1.0, 1.0], tf.float64))
-
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
@@ -58,21 +55,18 @@ def test_optimizer_finds_minima_of_the_branin_function(
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         return GaussianProcessRegression(gpr)
 
-    initial_query_points = search_space.sample(5)
-    observer = mk_observer(branin, OBJECTIVE)
-    initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
+    initial_data = branin(search_space.sample(5))
 
     res = BayesianOptimizer(
-        observer, search_space
+        branin, search_space
     ).optimize(
-        num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule
+        num_steps, initial_data, initial_data.map(build_model), acquisition_rule
     )
 
     if res.error is not None:
         raise res.error
 
-    dataset = res.datasets[OBJECTIVE]
+    dataset = res.datasets.get()
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 

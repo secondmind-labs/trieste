@@ -14,11 +14,13 @@
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Mapping, Sequence, Union, Type
+from typing import Callable, Sequence, Union, Type
 
 import numpy as np
 import pytest
 import tensorflow as tf
+from returns.primitives.hkt import Kind1
+
 from tests.util.model import QuadraticWithUnitVariance
 
 from trieste.acquisition.combination import Product, Sum
@@ -32,6 +34,7 @@ from trieste.acquisition.function import (
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.datasets import Dataset
 from trieste.models import ModelInterface
+from trieste.utils.grouping import G
 
 
 @dataclass
@@ -86,12 +89,12 @@ def test_reducer_fails(reducer_class):
         reducer_class()
 
 
-class _InputIdentity(AcquisitionFunctionBuilder):
+class _InputIdentity(AcquisitionFunctionBuilder[G]):
     def __init__(self, result: tf.Tensor):
         self._result = result
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Kind1[G, Dataset], models: Kind1[G, ModelInterface]
     ) -> AcquisitionFunction:
         return lambda _: self._result
 

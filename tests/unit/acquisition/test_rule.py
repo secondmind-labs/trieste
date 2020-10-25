@@ -18,48 +18,18 @@ import pytest
 import numpy.testing as npt
 import tensorflow as tf
 
+from trieste.acquisition import ExpectedImprovement
 from trieste.acquisition.function import NegativeLowerConfidenceBound
 from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
-    OBJECTIVE,
 )
 from trieste.datasets import Dataset
-from trieste.models import ModelInterface
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
 
-from tests.util.misc import one_dimensional_range, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
-
-
-@pytest.mark.parametrize('datasets', [{}, {"foo": zero_dataset()}])
-@pytest.mark.parametrize(
-    'models', [{}, {"foo": QuadraticWithUnitVariance()}, {OBJECTIVE: QuadraticWithUnitVariance()}]
-)
-def test_trust_region_raises_for_missing_datasets_key(
-        datasets: Dict[str, Dataset],
-        models: Dict[str, ModelInterface]
-) -> None:
-    search_space = one_dimensional_range(-1, 1)
-    rule = TrustRegion()
-    with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
-
-
-@pytest.mark.parametrize('models', [
-    {},
-    {"foo": QuadraticWithUnitVariance()},
-    {"foo": QuadraticWithUnitVariance(), OBJECTIVE: QuadraticWithUnitVariance()}
-])
-@pytest.mark.parametrize('datasets', [{}, {OBJECTIVE: zero_dataset()}])
-def test_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, ModelInterface]
-) -> None:
-    search_space = one_dimensional_range(-1, 1)
-    rule = ThompsonSampling(100, 10)
-    with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+from trieste.utils.grouping import One
 
 
 @pytest.mark.parametrize('search_space, expected_minimum', [
@@ -70,23 +40,21 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
 ])
 def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).for_single())
     dataset = Dataset(tf.constant([[]]), tf.constant([[]]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
-    )
+    query_point, _ = ego.acquire(search_space, One(dataset), One(QuadraticWithUnitVariance()))
     npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
 
 
 def test_trust_region_for_default_state() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
     query_point, state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, None
+        search_space, One(dataset), One(QuadraticWithUnitVariance()), None
     )
 
     npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
@@ -97,7 +65,7 @@ def test_trust_region_for_default_state() -> None:
 
 
 def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -109,7 +77,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, One(dataset), One(QuadraticWithUnitVariance()), previous_state
     )
 
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -120,7 +88,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
 
 
 def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -133,7 +101,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, One(dataset), One(QuadraticWithUnitVariance()), previous_state
     )
 
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -144,7 +112,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
 
 
 def test_trust_region_for_successful_local_to_global_trust_region_increased() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -157,7 +125,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, One(dataset), One(QuadraticWithUnitVariance()), previous_state
     )
 
     npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
@@ -167,7 +135,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
 
 
 def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -180,7 +148,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, One(dataset), One(QuadraticWithUnitVariance()), previous_state
     )
 
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous

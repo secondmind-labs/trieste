@@ -26,8 +26,7 @@ import tensorflow as tf
 
 import trieste
 from trieste.bayesian_optimizer import OptimizationResult
-from trieste.utils.objectives import branin, mk_observer
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.utils.objectives import branin
 
 from util.plotting_plotly import plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
 from util.plotting import plot_function_2d, plot_bo_points, plot_regret
@@ -65,14 +64,13 @@ fig.show()
 # the observer. We can represent the search space using a `Box`.
 
 # %%
-observer = mk_observer(branin, OBJECTIVE)
 lower_bound = tf.cast(mins, gpflow.default_float())
 upper_bound = tf.cast(maxs, gpflow.default_float())
 search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
-initial_data = observer(initial_query_points)
+initial_data = branin(initial_query_points)
 
 # %% [markdown]
 # ## Model the objective function
@@ -89,18 +87,18 @@ initial_data = observer(initial_query_points)
 # we'll need to label the model in the same way.
 
 # %%
-variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
+variance = tf.math.reduce_variance(initial_data.get().observations)
 kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
-gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(astuple(initial_data.get()), kernel, noise_variance=1e-5)
 set_trainable(gpr.likelihood, False)
 
-model = {OBJECTIVE: trieste.models.create_model_interface(
+model = trieste.models.create_model_interface(
     {
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
     }
-)}
+)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -123,13 +121,13 @@ model = {OBJECTIVE: trieste.models.create_model_interface(
 # such errors. You may wish instead to use the history to restore the process from an earlier point.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(branin, search_space)
 
 result: OptimizationResult = bo.optimize(15, initial_data, model)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.datasets.get()
 
 # %% [markdown]
 # ## Explore the results
@@ -214,7 +212,7 @@ fig.show()
 print_summary(gpr)
 
 ls_list = [
-    step.models[OBJECTIVE].model.kernel.lengthscales.numpy() for step in result.history  # type: ignore
+    step.models.get().model.kernel.lengthscales.numpy() for step in result.history  # type: ignore
 ]
 
 ls = np.array(ls_list)
@@ -232,7 +230,7 @@ result = bo.optimize(5, result.datasets, model)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.datasets.get()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)

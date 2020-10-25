@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import abstractmethod
-from typing import Mapping, Sequence
+from typing import Sequence
 
 import tensorflow as tf
+from returns.primitives.hkt import Kind1
 
 from .function import AcquisitionFunctionBuilder, AcquisitionFunction
 from ..datasets import Dataset
 from ..type import QueryPoints
 from ..models import ModelInterface
+from ..utils.grouping import G
 
 
-class Reducer(AcquisitionFunctionBuilder):
+class Reducer(AcquisitionFunctionBuilder[G]):
     """
     A :class:`Reducer` builds an :func:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
@@ -30,7 +32,7 @@ class Reducer(AcquisitionFunctionBuilder):
     defined by the method :meth:`_reduce`.
     """
 
-    def __init__(self, *builders: AcquisitionFunctionBuilder):
+    def __init__(self, *builders: AcquisitionFunctionBuilder[G]):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise ValueError: If no builders are specified.
@@ -38,14 +40,11 @@ class Reducer(AcquisitionFunctionBuilder):
         classname = self.__class__.__name__
         if len(builders) < 1:
             raise ValueError(f"{classname} expects at least one acquisition builder.")
-        if not all([isinstance(v, AcquisitionFunctionBuilder) for v in builders]):
-            raise TypeError(
-                f"{classname} expects `AcquisitionFunctionBuilder` instances as inputs."
-            )
+
         self._acquisitions = builders
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Kind1[G, Dataset], models: Kind1[G, ModelInterface]
     ) -> AcquisitionFunction:
         """
         Return an acquisition function. This acquisition function is defined by first building
@@ -68,7 +67,7 @@ class Reducer(AcquisitionFunctionBuilder):
         return evaluate_acquisition_function_fn
 
     @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:
+    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[G]]:
         """ The acquisition function builders specified at class initialisation. """
         return self._acquisitions
 

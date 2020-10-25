@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional, Tuple, Mapping
+from typing import Dict, List, Optional, Tuple
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from returns.primitives.hkt import Kind1
 
-from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
+from trieste.acquisition.rule import AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 from trieste.datasets import Dataset
 from trieste.models import ModelInterface
@@ -27,6 +28,7 @@ from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance, StaticWithUnitVariance
+from trieste.utils.grouping import One, Many
 
 
 @pytest.mark.parametrize('steps', [0, 1, 2, 5])
@@ -34,16 +36,16 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     class _CountingObserver:
         call_count = 0
 
-        def __call__(self, x: tf.Tensor) -> Dict[str, Dataset]:
+        def __call__(self, x: tf.Tensor) -> One[Dataset]:
             self.call_count += 1
-            return {OBJECTIVE: Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
+            return One(Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True)))
 
     observer = _CountingObserver()
     optimizer = BayesianOptimizer(observer, one_dimensional_range(-1, 1))
     data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
 
-    res: OptimizationResult[None] = optimizer.optimize(
-        steps, {OBJECTIVE: data}, {OBJECTIVE: QuadraticWithUnitVariance()}
+    res: OptimizationResult[None, One] = optimizer.optimize(
+        steps, One(data), One(QuadraticWithUnitVariance())
     )
 
     if res.error is not None:
@@ -65,31 +67,35 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
         datasets: Dict[str, Dataset],
         model_specs: Dict[str, ModelInterface]
 ) -> None:
-    optimizer = BayesianOptimizer(lambda x: {'foo': Dataset(x, x[:1])}, one_dimensional_range(-1, 1))
-    rule = FixedAcquisitionRule(tf.constant([[0.]]))
+    optimizer = BayesianOptimizer(
+        lambda x: Many({'foo': Dataset(x, x[:1])}), one_dimensional_range(-1, 1)
+    )
+    rule = FixedAcquisitionRule[Many](tf.constant([[0.]]))
     with pytest.raises(ValueError):
-        optimizer.optimize(10, datasets, model_specs, rule)
+        optimizer.optimize(10, Many(datasets), Many(model_specs), rule)
 
 
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
     optimizer = BayesianOptimizer(lambda x: x[:1], one_dimensional_range(-1, 1))
     with pytest.raises(ValueError):
-        optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': QuadraticWithUnitVariance()})
+        optimizer.optimize(
+            3, Many({'foo': zero_dataset()}), Many({'foo': QuadraticWithUnitVariance()})
+        )
 
 
 @pytest.mark.parametrize('starting_state, expected_states', [(None, [None, 1, 2]), (3, [3, 4, 5])])
 def test_bayesian_optimizer_uses_specified_acquisition_state(
     starting_state: Optional[int], expected_states: List[Optional[int]]
 ) -> None:
-    class Rule(AcquisitionRule[int, Box]):
+    class Rule(AcquisitionRule[int, Box, One]):
         def __init__(self):
             self.states_received = []
 
         def acquire(
             self,
             search_space: Box,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ModelInterface],
+            datasets: Kind1[One, Dataset],
+            models: Kind1[One, ModelInterface],
             state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             self.states_received.append(state)
@@ -102,9 +108,9 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     rule = Rule()
 
     res = BayesianOptimizer(
-        lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1)
+        lambda x: One(Dataset(x, x ** 2)), one_dimensional_range(-1, 1)
     ).optimize(
-        3, {"": zero_dataset()}, {"": QuadraticWithUnitVariance()}, rule, starting_state
+        3, One(zero_dataset()), One(QuadraticWithUnitVariance()), rule, starting_state
     )
 
     if res.error is not None:
@@ -116,10 +122,10 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
 def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correct_type() -> None:
     optimizer = BayesianOptimizer(
-        lambda x: {OBJECTIVE: Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
+        lambda x: One(Dataset(x, x[:1])), one_dimensional_range(-1, 1)
     )
-    res: OptimizationResult[None] = optimizer.optimize(
-        3, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticWithUnitVariance()}
+    res: OptimizationResult[None, One] = optimizer.optimize(
+        3, One(zero_dataset()), One(QuadraticWithUnitVariance())
     )
 
     if res.error is not None:
@@ -140,12 +146,12 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
 
-    class AdditionRule(AcquisitionRule[int, Box]):
+    class AdditionRule(AcquisitionRule[int, Box, Many]):
         def acquire(
                 self,
                 search_space: Box,
-                datasets: Mapping[str, Dataset],
-                models: Mapping[str, ModelInterface],
+                datasets: Kind1[Many, Dataset],
+                models: Kind1[Many, ModelInterface],
                 previous_state: Optional[int]
         ) -> Tuple[QueryPoints, int]:
             if previous_state is None:
@@ -162,20 +168,18 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
             return next_query_points, previous_state * 2
 
-    def linear_and_exponential(query_points: tf.Tensor) -> Dict[str, Dataset]:
-        return {
+    def linear_and_exponential(query_points: tf.Tensor) -> Many[Dataset]:
+        return Many({
             LINEAR: Dataset(query_points, 2 * query_points),
             EXPONENTIAL: Dataset(query_points, tf.exp(- query_points))
-        }
+        })
 
-    data = {
+    data = Many({
         LINEAR: Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]]))
-    }
+    })
 
-    models: Dict[str, ModelInterface] = {  # mypy can't infer this type for some reason
-        LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
-    }
+    models = Many({LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()})
 
     res = BayesianOptimizer(
         linear_and_exponential,

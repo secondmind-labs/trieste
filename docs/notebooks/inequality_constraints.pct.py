@@ -29,6 +29,8 @@ import trieste
 from util import inequality_constraints_utils as util
 
 # %%
+from trieste.utils.grouping import Many
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -63,10 +65,10 @@ OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
 def observer(query_points):
-    return {
+    return Many({
         OBJECTIVE: trieste.datasets.Dataset(query_points, sim.objective(query_points)),
         CONSTRAINT: trieste.datasets.Dataset(query_points, sim.constraint(query_points))
-    }
+    })
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -103,10 +105,10 @@ def create_bo_model(data):
         }
     )
 
-models = {
+models = Many({
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
     CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
-}
+})
 
 # %% [markdown]
 # ## Define the acquisition process
