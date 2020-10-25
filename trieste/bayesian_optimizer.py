@@ -19,12 +19,13 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, TypeVar, cast
+from typing import List, Mapping, Optional, Generic, TypeVar, Union, cast
 
 from absl import logging
 import gpflow
 import tensorflow as tf
 
+from .acquisition.config import AcquisitionConfig, create_acquisition_rule
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
 from .datasets import Dataset
 from .models import ModelInterface, create_model_interface, ModelSpec
@@ -83,7 +84,7 @@ class BayesianOptimizer(Generic[SP]):
         # asked at the time
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
+        acquisition_rule: Union[AcquisitionRule[S, SP], AcquisitionConfig] = ('EGO', 'EI'),
         acquisition_state: Optional[S] = None,
         track_state: bool = True,
     ) -> OptimizationResult[S]:
@@ -117,12 +118,9 @@ class BayesianOptimizer(Generic[SP]):
         :param datasets: The known observer query points and observations for each tag.
         :param model_specs: The model to use for each :class:`~trieste.datasets.Dataset` (matched
             by tag).
-        :param acquisition_rule: The acquisition rule, which defines how to search for a new point
-            on each optimization step. Defaults to
-            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
-            arguments. Note that if the default is used, this implies the tags must be
-            `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
-            acquisition state returned in the :class:`OptimizationResult` will be `None`.
+        :param acquisition_rule: The acquisition rule (or config from which to create it), which
+            defines how to search for a new point on each optimization step. See
+            :func:`~trieste.acquisition.config.create_acquisition_rule` for the config syntax.
         :param acquisition_state: The acquisition state to use on the first optimization step.
             This argument allows the caller to restore the optimization process from a previous
             :class:`LoggingState`.
@@ -145,14 +143,8 @@ class BayesianOptimizer(Generic[SP]):
         if not datasets:
             raise ValueError("dicts of datasets and model_specs must be populated.")
 
-        if acquisition_rule is None:
-            if datasets.keys() != {OBJECTIVE}:
-                raise ValueError(
-                    f"Default acquisition rule EfficientGlobalOptimization requires tag"
-                    f" {OBJECTIVE!r}, got keys {datasets.keys()}"
-                )
-
-            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
+        if not isinstance(acquisition_rule, AcquisitionRule):
+            acquisition_rule = create_acquisition_rule(acquisition_rule)
 
         models = {tag: create_model_interface(spec) for tag, spec in model_specs.items()}
         history: List[LoggingState[S]] = []

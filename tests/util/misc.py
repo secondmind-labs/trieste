@@ -15,6 +15,7 @@
 import functools
 from typing import FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
 
+import numpy as np
 import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule
@@ -37,6 +38,7 @@ def random_seed(seed: int) -> Callable[[C], C]:
     def decorator(f: C) -> C:
         @functools.wraps(f)
         def decorated(*args, **kwargs):
+            np.random.seed(seed)
             tf.random.set_seed(seed)
             return f(*args, **kwargs)
 

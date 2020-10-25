@@ -17,6 +17,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
+from trieste.acquisition import ExpectedImprovement
 from trieste.acquisition.rule import (
     AcquisitionRule,
     EfficientGlobalOptimization,
@@ -40,8 +41,8 @@ from tests.util.misc import random_seed
 
 @random_seed(1793)
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (12, EfficientGlobalOptimization()),
-    (22, TrustRegion()),
+    (12, EfficientGlobalOptimization(ExpectedImprovement().using(OBJECTIVE))),
+    (22, TrustRegion(ExpectedImprovement())),
     (17, ThompsonSampling(500, 3)),
 ])
 

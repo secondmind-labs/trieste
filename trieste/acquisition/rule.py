@@ -27,8 +27,8 @@ from ..datasets import Dataset
 from ..models import ModelInterface
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
-from . import _optimizer
+from .function import AcquisitionFunctionBuilder
+from . import SingleModelAcquisitionBuilder, _optimizer
 
 
 S = TypeVar("S")
@@ -82,17 +82,16 @@ corresponding to the optimization objective.
 class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
     """ Implements the Efficient Global Optimization, or EGO, algorithm. """
 
-    def __init__(self, builder: Optional[AcquisitionFunctionBuilder] = None):
+    def __init__(self, builder: AcquisitionFunctionBuilder):
         """
         :param builder: The acquisition function builder to use.
             :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
-            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
-            with tag `OBJECTIVE`.
+            acquisition function.
         """
-        if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
-
         self._builder = builder
+
+    def __repr__(self) -> str:
+        return f"EfficientGlobalOptimization({self._builder!r})"
 
     def acquire(
         self,
@@ -135,6 +134,9 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+
+    def __repr__(self) -> str:
+        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
 
     def acquire(
         self,
@@ -193,25 +195,21 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         is_global: Union[tf.Tensor, bool]
 
     def __init__(
-        self,
-        builder: Optional[AcquisitionFunctionBuilder] = None,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
+        self, builder: SingleModelAcquisitionBuilder, beta: float = 0.7, kappa: float = 1e-4
     ):
         """
         :param builder: The acquisition function builder to use. :class:`TrustRegion` will attempt
-            to **maximise** the corresponding acquisition function. Defaults to
-            :class:`~trieste.acquisition.ExpectedImprovement` with tag `OBJECTIVE`.
+            to **maximise** the corresponding acquisition function.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
         """
-        if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
-
-        self._builder = builder
+        self._builder = builder.using(OBJECTIVE)
         self._beta = beta
         self._kappa = kappa
+
+    def __repr__(self) -> str:
+        return f"TrustRegion({self._builder!r}, {self._beta!r}, {self._kappa!r})"
 
     def acquire(
         self,

@@ -82,6 +82,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
+    def __repr__(self) -> str:
+        return "ExpectedImprovement()"
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
@@ -243,6 +246,9 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
     minimised, so the negative is suitable for maximisation.
     """
 
+    def __repr__(self) -> str:
+        return f"NegativeLowerConfidenceBound({self._beta!r})"
+
     def __init__(self, beta: float = 1.96):
         """
         :param beta: Weighting given to the variance contribution to the lower confidence bound.
@@ -271,6 +277,9 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
     Builder for the negative of the predictive mean. The predictive mean is minimised on minimising
     the objective function. The negative predictive mean is therefore maximised.
     """
+
+    def __repr__(self) -> str:
+        return "NegativePredictiveMean()"
 
     def __init__(self):
         super().__init__(beta=0.0)
@@ -358,6 +367,9 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         super().__init__()
 
         self._threshold = threshold
+
+    def __repr__(self) -> str:
+        return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
     def threshold(self) -> Union[float, tf.Tensor]:

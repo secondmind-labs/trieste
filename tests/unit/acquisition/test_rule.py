@@ -18,6 +18,7 @@ import pytest
 import numpy.testing as npt
 import tensorflow as tf
 
+from trieste.acquisition import ExpectedImprovement
 from trieste.acquisition.function import NegativeLowerConfidenceBound
 from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
@@ -42,7 +43,7 @@ def test_trust_region_raises_for_missing_datasets_key(
         models: Dict[str, ModelInterface]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
-    rule = TrustRegion()
+    rule = TrustRegion(ExpectedImprovement())
     with pytest.raises(KeyError):
         rule.acquire(search_space, datasets, models, None)
 
@@ -79,7 +80,7 @@ def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
 
 
 def test_trust_region_for_default_state() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -97,7 +98,7 @@ def test_trust_region_for_default_state() -> None:
 
 
 def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -120,7 +121,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
 
 
 def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -144,7 +145,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
 
 
 def test_trust_region_for_successful_local_to_global_trust_region_increased() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -167,7 +168,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
 
 
 def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(NegativeLowerConfidenceBound(0))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
