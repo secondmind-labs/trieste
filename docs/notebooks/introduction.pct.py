@@ -256,7 +256,9 @@ plot_bo_points(
 # We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
 
 # %%
-mes_acq_function = trieste.acquisition.MaxValueEntropySearch(search_space,num_samples = 5, grid_size = 5000).using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+mes_acq_function = trieste.acquisition.MaxValueEntropySearch(
+    search_space, num_samples=5, grid_size=5000
+).using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 ei_acq_function = trieste.acquisition.ExpectedImprovement().using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 
 fig, ax = plot_function_2d(mes_acq_function, mins, maxs, grid_density=40, contour=True)
