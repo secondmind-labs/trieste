@@ -17,7 +17,7 @@ from typing import Callable, Mapping, Union
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..datasets import Dataset
+from ..data import Dataset
 from ..type import QueryPoints
 from ..models import ModelInterface
 from ..space import SearchSpace

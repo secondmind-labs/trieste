@@ -100,8 +100,8 @@ def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
     return {
-        OBJECTIVE: trieste.datasets.Dataset(x[mask], y[mask]),
-        FAILURE: trieste.datasets.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
+        OBJECTIVE: trieste.data.Dataset(x[mask], y[mask]),
+        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
     }
 
 # %% [markdown]

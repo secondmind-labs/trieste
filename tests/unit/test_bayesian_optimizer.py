@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType

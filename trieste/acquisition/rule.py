@@ -23,7 +23,7 @@ from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
 import tensorflow as tf
 from typing_extensions import Final
 
-from ..datasets import Dataset
+from ..data import Dataset
 from ..models import ModelInterface
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
@@ -64,7 +64,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param datasets: The known observer query points and observations for each tag.
-        :param models: The model to use for each :class:`~trieste.datasets.Dataset` in ``datasets``
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
         :param state: The acquisition state from the previous step, if there was a previous step,
             else `None`.

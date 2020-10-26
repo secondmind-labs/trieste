@@ -20,7 +20,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from trieste.acquisition import SingleModelAcquisitionBuilder
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.acquisition.function import (
     AcquisitionFunction,
     ExpectedImprovement,

@@ -16,7 +16,7 @@ from typing import Tuple
 
 import pytest
 import tensorflow as tf
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 
 
 @pytest.mark.parametrize('query_points_leading_shape, observations_leading_shape', [

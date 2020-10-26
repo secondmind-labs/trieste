@@ -19,7 +19,7 @@ import numpy.testing as npt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.type import QueryPoints, ObserverEvaluations, TensorType
 from tests.util.misc import random_seed

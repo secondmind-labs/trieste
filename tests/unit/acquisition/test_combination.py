@@ -30,7 +30,7 @@ from trieste.acquisition.function import (
     lower_confidence_bound,
 )
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 
 
