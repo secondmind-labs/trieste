@@ -28,7 +28,9 @@ import tensorflow as tf
 import trieste
 from trieste.utils import objectives
 
-from util.plotting_plotly import plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
+from util.plotting_plotly import (
+    plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
+)
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 # %%
@@ -40,15 +42,9 @@ tf.random.set_seed(1234)
 # %% [markdown]
 # ## The problem
 #
-# This notebook is similar to the _Introduction_ notebook, where we look to find the
-# minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. But here,
-# we constrain the problem, by adding an area to the search space in which the objective fails to
-# evaluate.
+# This notebook is similar to the _Introduction_ notebook, where we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. But here, we constrain the problem, by adding an area to the search space in which the objective fails to evaluate.
 #
-# We represent this setup with a function `masked_branin` that produces null values when evaluated
-# in the rectangle with corners $(0.25, 0.1)$, $(0.75, 0.9)$. It's important to remember that while
-# _we_ know where this _failure region_ is, this function is a black box from the optimizer's point
-# of view: the optimizer must learn it.
+# We represent this setup with a function `masked_branin` that produces null values when evaluated in the rectangle with corners $(0.25, 0.1)$, $(0.75, 0.9)$. It's important to remember that while _we_ know where this _failure region_ is, this function is a black box from the optimizer's point of view: the optimizer must learn it.
 
 # %%
 def masked_branin(x):
@@ -114,10 +110,7 @@ initial_data = observer(search_space.sample(num_init_points))
 # %% [markdown]
 # ## Modelling the data
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed
-# with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a
-# GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP`
-# with Bernoulli likelihood. We'll train both models with L-BFGS-based optimizers.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood. We'll train both models with L-BFGS-based optimizers.
 
 # %%
 def create_regression_model(data):
@@ -155,10 +148,7 @@ models = {
 # %% [markdown]
 # ## Create a custom acquisition function
 #
-# We'll need a custom acquisition function for this problem. This function is the product of the
-# expected improvement for the objective data and the predictive mean for the failure data. We
-# can specify which data and model to use in each acquisition function builder with the `OBJECTIVE`
-# and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
+# We'll need a custom acquisition function for this problem. This function is the product of the expected improvement for the objective data and the predictive mean for the failure data. We can specify which data and model to use in each acquisition function builder with the `OBJECTIVE` and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
 
 # %%
 class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
@@ -166,14 +156,14 @@ class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
         return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
 
 ei = trieste.acquisition.ExpectedImprovement()
-acq_fn = trieste.acquisition.Product(ei.using(OBJECTIVE), ProbabilityOfValidity().using(FAILURE))
+pov = ProbabilityOfValidity()
+acq_fn = trieste.acquisition.Product(ei.using(OBJECTIVE), pov.using(FAILURE))
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
 
 # %% [markdown]
 # ## Run the optimizer
 #
-# Now, we run the Bayesian optimization loop for twenty steps, and print the location of the
-# query point corresponding to the minimum observation.
+# Now, we run the Bayesian optimization loop for twenty steps, and print the location of the query point corresponding to the minimum observation.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -188,9 +178,7 @@ arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
 print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %% [markdown]
-# We can visualise where the optimizer queried on a contour plot of the Branin with the failure
-# region. The minimum observation can be seen along the bottom axis towards the right, outside of
-# the failure region.
+# We can visualise where the optimizer queried on a contour plot of the Branin with the failure region. The minimum observation can be seen along the bottom axis towards the right, outside of the failure region.
 
 # %%
 mask_fail = final_data[FAILURE].observations.numpy().flatten().astype(int) == 0
@@ -204,8 +192,7 @@ plot_bo_points(
 plt.show()
 
 # %% [markdown]
-# We can also plot the mean and variance of the predictive distribution over the search space, first
-# for the objective data and model ...
+# We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
 arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
