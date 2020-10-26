@@ -176,21 +176,22 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     @dataclass(frozen=True)
     class State:
-        """
-        The acquisition state for the :class:`TrustRegion` acquisition rule.
-
-        :ivar acquisition_space: The search space.
-        :ivar eps: The (maximum) vector from the current best point to each bound of the acquisition
-            space.
-        :ivar y_min: The minimum observed value.
-        :ivar is_global: `True` if the search space was global, else `False` if it was local. May be
-            a scalar boolean `tf.Tensor` instead of a `bool`.
-        """
+        """ The acquisition state for the :class:`TrustRegion` acquisition rule. """
 
         acquisition_space: Box
+        """ The search space. """
+
         eps: tf.Tensor
+        """ The (maximum) vector from the current best point to each bound of the acquisition space. """
+
         y_min: tf.Tensor
+        """ The minimum observed value. """
+
         is_global: Union[tf.Tensor, bool]
+        """
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean `tf.Tensor`
+        instead of a `bool`.
+        """
 
     def __init__(
         self,
