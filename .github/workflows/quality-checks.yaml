@@ -14,7 +14,7 @@
 
 on:
   pull_request:
-    branches: [ develop, master ]
+    branches: develop
 
 jobs:
   common:
