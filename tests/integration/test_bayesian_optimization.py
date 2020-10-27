@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
 
 import gpflow
 import numpy.testing as npt
@@ -22,18 +23,12 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
-    OBJECTIVE
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
-from trieste.utils.objectives import (
-    branin,
-    BRANIN_GLOBAL_MINIMUM,
-    BRANIN_GLOBAL_ARGMIN,
-    mk_observer,
-)
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_ARGMIN
 
 from tests.util.misc import random_seed
 
@@ -58,21 +53,20 @@ def test_optimizer_finds_minima_of_the_branin_function(
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         return GaussianProcessRegression(gpr)
 
-    initial_query_points = search_space.sample(5)
-    observer = mk_observer(branin, OBJECTIVE)
-    initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
+    initial_qp = search_space.sample(5)
+    initial_data = Dataset(initial_qp, branin(initial_qp))
+    model = build_model(initial_data)
 
-    res = BayesianOptimizer(
-        observer, search_space
+    res, _ = BayesianOptimizer(
+        branin, search_space
     ).optimize(
-        num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule
+        num_steps, initial_data, model, acquisition_rule
     )
 
     if res.error is not None:
         raise res.error
 
-    dataset = res.datasets[OBJECTIVE]
+    dataset = res.dataset
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 

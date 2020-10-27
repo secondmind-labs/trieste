@@ -13,12 +13,9 @@
 # limitations under the License.
 """ This module contains toy objective functions, useful for experimentation. """
 import math
-from typing import Callable
 
 import tensorflow as tf
 
-from ..data import Dataset
-from ..observer import Observer
 from ..type import TensorType
 
 
@@ -53,12 +50,3 @@ BRANIN_GLOBAL_ARGMIN = (_ORIGINAL_BRANIN_ARGMIN + [5.0, 0.0]) / 15.0
 
 BRANIN_GLOBAL_MINIMUM = tf.constant(0.397887)
 """ The global miminum of the :func:`branin` function. """
-
-
-def mk_observer(objective: Callable[[tf.Tensor], tf.Tensor], key: str) -> Observer:
-    """
-    :param objective: An objective function designed to be used with a single data set and model.
-    :param key: The key to use to access the data from the observer result.
-    :return: An observer returning the data from ``objective`` with the specified ``key``.
-    """
-    return lambda qp: {key: Dataset(qp, objective(qp))}

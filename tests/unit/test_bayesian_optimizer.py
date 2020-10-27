@@ -18,15 +18,18 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
-from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
+from trieste.acquisition import ExpectedImprovement
+from trieste.acquisition.rule import SerialAcquisitionRule, SerialBasic
+from trieste.bayesian_optimizer import BayesianOptimizer, SerialBayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
-from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
+from tests.util.misc import FixedSerialAcquisitionRule, one_dimensional_range, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance, StaticWithUnitVariance
+
+# todo review, rename and reorganise tests
 
 
 @pytest.mark.parametrize('steps', [0, 1, 2, 5])
@@ -36,14 +39,15 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
 
         def __call__(self, x: tf.Tensor) -> Dict[str, Dataset]:
             self.call_count += 1
-            return {OBJECTIVE: Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
+            return {"foo": Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
 
     observer = _CountingObserver()
-    optimizer = BayesianOptimizer(observer, one_dimensional_range(-1, 1))
+    optimizer = SerialBayesianOptimizer(observer, one_dimensional_range(-1, 1))
     data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
+    acquisition_rule = SerialBasic(ExpectedImprovement().using("foo"))
 
-    res: OptimizationResult[None] = optimizer.optimize(
-        steps, {OBJECTIVE: data}, {OBJECTIVE: QuadraticWithUnitVariance()}
+    res, _ = optimizer.optimize(
+        steps, {"foo": data}, {"foo": QuadraticWithUnitVariance()}, acquisition_rule
     )
 
     if res.error is not None:
@@ -65,23 +69,17 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
         datasets: Dict[str, Dataset],
         model_specs: Dict[str, ModelInterface]
 ) -> None:
-    optimizer = BayesianOptimizer(lambda x: {'foo': Dataset(x, x[:1])}, one_dimensional_range(-1, 1))
-    rule = FixedAcquisitionRule(tf.constant([[0.]]))
+    optimizer = SerialBayesianOptimizer(lambda x: {'foo': Dataset(x, x[:1])}, one_dimensional_range(-1, 1))
+    rule = FixedSerialAcquisitionRule(tf.constant([[0.]]))
     with pytest.raises(ValueError):
         optimizer.optimize(10, datasets, model_specs, rule)
-
-
-def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
-    optimizer = BayesianOptimizer(lambda x: x[:1], one_dimensional_range(-1, 1))
-    with pytest.raises(ValueError):
-        optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': QuadraticWithUnitVariance()})
 
 
 @pytest.mark.parametrize('starting_state, expected_states', [(None, [None, 1, 2]), (3, [3, 4, 5])])
 def test_bayesian_optimizer_uses_specified_acquisition_state(
     starting_state: Optional[int], expected_states: List[Optional[int]]
 ) -> None:
-    class Rule(AcquisitionRule[int, Box]):
+    class Rule(SerialAcquisitionRule[int, Box]):
         def __init__(self):
             self.states_received = []
 
@@ -101,7 +99,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     rule = Rule()
 
-    res = BayesianOptimizer(
+    res, history = SerialBayesianOptimizer(
         lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1)
     ).optimize(
         3, {"": zero_dataset()}, {"": QuadraticWithUnitVariance()}, rule, starting_state
@@ -111,21 +109,19 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         raise res.error
 
     assert rule.states_received == expected_states
-    assert [state.acquisition_state for state in res.history] == expected_states
+    assert [state.acquisition_state for state in history] == expected_states
 
 
 def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correct_type() -> None:
-    optimizer = BayesianOptimizer(
-        lambda x: {OBJECTIVE: Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
-    )
-    res: OptimizationResult[None] = optimizer.optimize(
-        3, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticWithUnitVariance()}
-    )
+    history: List[BayesianOptimizer.LoggingState[None]]
+    res, history = BayesianOptimizer(
+        lambda x: x[:1], one_dimensional_range(-1, 1)
+    ).optimize(3, zero_dataset(), QuadraticWithUnitVariance())
 
     if res.error is not None:
         raise res.error
 
-    assert all(logging_state.acquisition_state is None for logging_state in res.history)
+    assert all(logging_state.acquisition_state is None for logging_state in history)
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
@@ -140,7 +136,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
 
-    class AdditionRule(AcquisitionRule[int, Box]):
+    class AdditionRule(SerialAcquisitionRule[int, Box]):
         def acquire(
                 self,
                 search_space: Box,
@@ -177,7 +173,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
     }
 
-    res = BayesianOptimizer(
+    res, _ = SerialBayesianOptimizer(
         linear_and_exponential,
         Box(tf.constant([-2.0]), tf.constant([2.0]))
     ).optimize(20, data, models, AdditionRule())

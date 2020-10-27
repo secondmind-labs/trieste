@@ -28,8 +28,8 @@ from trieste.acquisition.function import (
     NegativeLowerConfidenceBound,
     expected_improvement,
     lower_confidence_bound,
+    SerialAcquisitionFunctionBuilder,
 )
-from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ModelInterface
 
@@ -86,7 +86,7 @@ def test_reducer_fails(reducer_class):
         reducer_class()
 
 
-class _InputIdentity(AcquisitionFunctionBuilder):
+class _InputIdentity(SerialAcquisitionFunctionBuilder):
     def __init__(self, result: tf.Tensor):
         self._result = result
 

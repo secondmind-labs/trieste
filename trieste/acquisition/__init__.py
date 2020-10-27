@@ -38,7 +38,6 @@ from . import rule
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    SingleModelAcquisitionBuilder,
     ExpectedImprovement,
     expected_improvement,
     MaxValueEntropySearch,

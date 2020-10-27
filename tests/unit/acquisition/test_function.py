@@ -19,9 +19,8 @@ import numpy.testing as npt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.acquisition import SingleModelAcquisitionBuilder
-from trieste.data import Dataset
 from trieste.acquisition.function import (
+    AcquisitionFunctionBuilder,
     AcquisitionFunction,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
@@ -30,12 +29,13 @@ from trieste.acquisition.function import (
     lower_confidence_bound,
     probability_of_feasibility,
 )
+from trieste.data import Dataset
 from trieste.models import ModelInterface
 from tests.util.misc import ShapeLike, various_shapes, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
 
 
-class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
+class _IdentitySingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
@@ -56,7 +56,7 @@ def test_single_builder_repr_includes_class_name() -> None:
 
 
 def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
-    class _Mock(SingleModelAcquisitionBuilder):
+    class _Mock(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, dataset: Dataset, model: ModelInterface
         ) -> AcquisitionFunction:

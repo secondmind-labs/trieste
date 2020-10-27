@@ -17,7 +17,7 @@ from typing import FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, ca
 
 import tensorflow as tf
 
-from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.rule import SerialAcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ModelInterface
 from trieste.space import Box, SearchSpace
@@ -63,7 +63,7 @@ def one_dimensional_range(lower: float, upper: float) -> Box:
     return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
 
 
-class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+class FixedSerialAcquisitionRule(SerialAcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
     def __init__(self, query_points: QueryPoints):
         """

@@ -161,13 +161,13 @@ models = {
 # and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
 
 # %%
-class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
+class ProbabilityOfValidity(trieste.acquisition.AcquisitionFunctionBuilder):
     def prepare_acquisition_function(self, dataset, model):
         return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
 
 ei = trieste.acquisition.ExpectedImprovement()
 acq_fn = trieste.acquisition.Product(ei.using(OBJECTIVE), ProbabilityOfValidity().using(FAILURE))
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
+rule = trieste.acquisition.rule.SerialBasic(acq_fn)
 
 # %% [markdown]
 # ## Run the optimizer
@@ -176,9 +176,9 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
 # query point corresponding to the minimum observation.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.SerialBayesianOptimizer(observer, search_space)
 
-result = bo.optimize(20, initial_data, models, acquisition_rule=rule)
+result, _ = bo.optimize(20, initial_data, models, acquisition_rule=rule)
 
 if result.error is not None: raise result.error
 
