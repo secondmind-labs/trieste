@@ -73,13 +73,13 @@ def test_dataset_raises_on_initialisation_for_invalid_ranks(
 
 
 def test_dataset_getters() -> None:
-    query_points, observations = tf.zeros((3, 3)), tf.zeros((3, 3))
+    query_points, observations = tf.constant([[0.0]]), tf.constant([[1.0]])
     dataset = Dataset(query_points, observations)
     assert tf.reduce_all(dataset.query_points == query_points)
     assert tf.reduce_all(dataset.observations == observations)
 
 
-def test_concatenate_datasets() -> None:
+def test_dataset_concatenation() -> None:
     qp_this = [[1.2, 3.4], [5.6, 7.8]]
     qp_that = [[5., 6.], [7., 8.]]
 
