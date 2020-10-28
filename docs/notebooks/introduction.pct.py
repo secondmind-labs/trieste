@@ -195,7 +195,7 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 # intervals of its predictive distribution.
 
 # %%
-fig = plot_gp_plotly(model['OBJECTIVE'].model, mins, maxs, grid_density=30)
+fig = plot_gp_plotly(model[OBJECTIVE].model, mins, maxs, grid_density=30)
 
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
@@ -215,7 +215,7 @@ fig.show()
 # evolved over iterations
 
 # %%
-print_summary(model['OBJECTIVE'].model)
+print_summary(model[OBJECTIVE].model)
 
 ls_list = [
     step.models[OBJECTIVE].model.kernel.lengthscales.numpy() for step in result.history  # type: ignore
