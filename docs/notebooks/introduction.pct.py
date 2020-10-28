@@ -74,6 +74,7 @@ num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
+
 # %% [markdown]
 # ## Model the objective function
 #
@@ -89,18 +90,21 @@ initial_data = observer(initial_query_points)
 # we'll need to label the model in the same way.
 
 # %%
-variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
-kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
-gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
-set_trainable(gpr.likelihood, False)
-
-model = {OBJECTIVE: trieste.models.create_model_interface(
-    {
+def build_model(data):
+    variance = tf.math.reduce_variance(data.observations)
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
+    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    set_trainable(gpr.likelihood, False)
+    
+    return {OBJECTIVE: trieste.models.create_model_interface(
+        {
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
-    }
-)}
+        }
+    )}
+
+model = build_model(initial_data[OBJECTIVE])
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -130,8 +134,6 @@ result: OptimizationResult = bo.optimize(15, initial_data, model)
 if result.error is not None: raise result.error
 
 dataset = result.datasets[OBJECTIVE]
-
-ei_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
 
 # %% [markdown]
 # ## Explore the results
@@ -193,7 +195,7 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 # intervals of its predictive distribution.
 
 # %%
-fig = plot_gp_plotly(gpr, mins, maxs, grid_density=30)
+fig = plot_gp_plotly(model['OBJECTIVE'].model, mins, maxs, grid_density=30)
 
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
@@ -213,7 +215,7 @@ fig.show()
 # evolved over iterations
 
 # %%
-print_summary(gpr)
+print_summary(model['OBJECTIVE'].model)
 
 ls_list = [
     step.models[OBJECTIVE].model.kernel.lengthscales.numpy() for step in result.history  # type: ignore
@@ -256,10 +258,11 @@ plot_bo_points(
 # We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
 
 # %%
-mes_acq_function = trieste.acquisition.MaxValueEntropySearch(
-    search_space, num_samples=5, grid_size=5000
-).using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
-ei_acq_function = trieste.acquisition.ExpectedImprovement().using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+mes = trieste.acquisition.MaxValueEntropySearch(
+    search_space, num_samples=5, grid_size=5000)
+ei = trieste.acquisition.ExpectedImprovement()
+mes_acq_function = mes.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 
 fig, ax = plot_function_2d(mes_acq_function, mins, maxs, grid_density=40, contour=True)
 plot_bo_points(
@@ -285,20 +288,8 @@ fig.suptitle("Expected Improvement Acquisition Function")
 # We re-initialize the model and define a new acquisiton rule.
 
 # %%
-gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
-set_trainable(gpr.likelihood, False)
-
-model = {OBJECTIVE: trieste.models.create_model_interface(
-    {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
-    }
-)}
-
-builder = trieste.acquisition.MaxValueEntropySearch(search_space,num_samples = 5, grid_size = 5000).using(OBJECTIVE)
-
-acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder)
+model = build_model(initial_data[OBJECTIVE])
+acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mes.using(OBJECTIVE))
 
 # %% [markdown]
 # All that remains is to run the whole BO loop for 15 steps.
@@ -310,8 +301,9 @@ result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
 
 if result_mes.error is not None: raise result_mes.error
 
-dataset = result_mes.datasets[OBJECTIVE]
-mes_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
+dataset_mes = result_mes.datasets[OBJECTIVE]
+mes_optimization_progress = np.minimum.accumulate(dataset_mes.observations)[5:]
+ei_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
 
 # %% [markdown]
 # We can now plot the evolution of the best found objective function value as we increase the number of optimization steps. For this particular optimization task we see that EI provides more efficient initial optimization, however MES finds the global optimum faster.
