@@ -268,6 +268,8 @@ acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mes.using(OBJECT
 # All that remains is to run the whole BO loop for 15 steps.
 
 # %%
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
 result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
 
 if result_mes.error is not None: raise result_mes.error
