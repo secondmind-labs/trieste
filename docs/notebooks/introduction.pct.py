@@ -68,7 +68,6 @@ num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
-
 # %% [markdown]
 # ## Model the objective function
 #
@@ -84,14 +83,12 @@ def build_model(data):
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
-    
-    return {OBJECTIVE: trieste.models.create_model_interface(
-        {
+
+    return {OBJECTIVE: trieste.models.create_model_interface({
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
-        }
-    )}
+    })}
 
 model = build_model(initial_data[OBJECTIVE])
 
@@ -234,7 +231,8 @@ plot_bo_points(
 
 # %%
 mes = trieste.acquisition.MaxValueEntropySearch(
-    search_space, num_samples=5, grid_size=5000)
+    search_space, num_samples=5, grid_size=5000
+)
 ei = trieste.acquisition.ExpectedImprovement()
 mes_acq_function = mes.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
@@ -270,8 +268,6 @@ acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mes.using(OBJECT
 # All that remains is to run the whole BO loop for 15 steps.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
 result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
 
 if result_mes.error is not None: raise result_mes.error
