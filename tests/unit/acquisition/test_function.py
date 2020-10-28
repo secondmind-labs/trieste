@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from typing import List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -32,7 +32,8 @@ from trieste.acquisition.function import (
 )
 from trieste.models import ModelInterface
 from tests.util.misc import ShapeLike, various_shapes, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance
+from tests.util.model import QuadraticWithUnitVariance, StaticModelInterface, StaticWithUnitVariance
+from trieste.type import TensorType
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -71,6 +72,8 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
     builder.prepare_acquisition_function(data, models)
 
 
+# todo shouldn't this test that it defines eta as the best posterior mean, as opposed to the best
+#  observation? does it test that? if so, change test name
 @pytest.mark.parametrize('query_at', [
     tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
 ])
@@ -86,13 +89,34 @@ def test_expected_improvement_builder_builds_expected_improvement(
 
 
 def test_expected_improvement() -> None:
-    def _ei(x: tf.Tensor) -> tf.Tensor:
-        n = tfp.distributions.Normal(0, 1)
-        return - x * n.cdf(-x) + n.prob(-x)
+    class _Model(StaticWithUnitVariance):
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+            def mk_range(
+                leq_zero: tf.Tensor, zero_to_one: tf.Tensor, gt_one: tf.Tensor
+            ) -> tf.Tensor:
+                return tf.where(
+                    query_points <= 0.0, leq_zero, tf.where(query_points < 1.0, zero_to_one, gt_one)
+                )
 
-    query_at = tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
-    actual = expected_improvement(QuadraticWithUnitVariance(), tf.constant([0.]), query_at)
-    npt.assert_array_almost_equal(actual, _ei(query_at ** 2))
+            mean = mk_range(tf.constant([[10.0]]), tf.constant([[-7.0]]), tf.constant([[5.0]]))
+            var = mk_range(tf.constant([[1.0]]), tf.constant([[1.0]]), tf.constant([[1.0]]))
+            return mean, var
+
+    x = tf.constant([[-1.0], [0.0], [0.5], [1.0], [2.0]])
+    npt.assert_allclose(
+        expected_improvement(_Model(), tf.constant([5.0]), x),
+        tf.constant([[0.0], [0.0], [12.0], [12.0], [0.0]])
+    )
+
+
+# def test_expected_improvement() -> None:
+#     def _ei(x: tf.Tensor) -> tf.Tensor:
+#         n = tfp.distributions.Normal(0, 1)
+#         return - x * n.cdf(-x) + n.prob(-x)
+#
+#     query_at = tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
+#     actual = expected_improvement(QuadraticWithUnitVariance(), tf.constant([0.]), query_at)
+#     npt.assert_array_almost_equal(actual, _ei(query_at ** 2))
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:

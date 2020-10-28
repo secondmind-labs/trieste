@@ -124,10 +124,12 @@ def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints)
        }
 
     :param model: The model of the objective function.
-    :param eta: The "best" observation.
+    :param eta: The "best" observation, with shape [1].
     :param at: The points for which to calculate the expected improvement.
     :return: The expected improvement at ``at``.
     """
+    tf.debugging.assert_shapes([(eta, [1])])
+
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
