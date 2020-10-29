@@ -92,36 +92,86 @@ def test_expected_improvement_builder_builds_expected_improvement(
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-@random_seed()
-@pytest.mark.parametrize('best', [tf.constant([[0.0]])])
-def test_expected_improvement(best: tf.Tensor) -> None:
-    x_range = tf.linspace(0.0, 1.0, 101)
+# @random_seed()
+# # @pytest.mark.parametrize('best', [tf.cast(100.0 * BRANIN_GLOBAL_MINIMUM, dtype=tf.float64)])
+# @pytest.mark.parametrize('best', [tf.cast(BRANIN_GLOBAL_MINIMUM, dtype=tf.float64)])
+# # @pytest.mark.parametrize('best', [tf.cast(branin(tf.constant([[0.3, 0.3]])), dtype=tf.float64)])
+# def test_expected_improvement(best: tf.Tensor) -> None:
+#     x_range = tf.linspace(0.0, 1.0, 101)
+#     xs = tf.cast(
+#         tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2)),
+#         tf.float64
+#     )
+#
+#     class _Model(GaussianMarginal):
+#         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+#             # todo do we want this to match the observations exactly?
+#             #  could do - branin is after all a distortion of some similar function
+#             mean_ = tf.cast(branin(query_points), tf.float64)
+#             var_ = tf.ones_like(mean_)  # todo make more interesting
+#             return mean_, var_
+#
+#     xs = tf.constant([[0.3, 0.6]], dtype=tf.float64)
+#     print()
+#     print()
+#     print()
+#     print()
+#     print(xs)
+#     mean, var = _Model().predict(xs)
+#     dist = tfp.distributions.TruncatedNormal(
+#         tf.squeeze(best - mean), tf.sqrt(tf.squeeze(var)), 0.0, mean.dtype.max
+#     )
+#     ei_approx = tf.reshape(dist.mean(), [-1, 1])
+#     print("ei_approx")
+#     print(ei_approx)
+#     print("best")
+#     print(best)
+#     print("mean")
+#     print(mean)
+#
+#     ei = expected_improvement(_Model(), tf.squeeze(best), xs)
+#
+#     # workaround for inf .mean() values
+#     valid_points = tf.logical_not(tf.math.is_inf(ei_approx))
+#     ei_approx = tf.boolean_mask(ei_approx, valid_points)
+#     ei = tf.boolean_mask(ei, valid_points)
+#     # ei_approx = tf.where(tf.math.is_inf(ei_approx), tf.cast(0.0, tf.float64), ei_approx)
+#
+#     npt.assert_allclose(ei, ei_approx)
+
+
+@random_seed(5555)
+def test_expected_improvement() -> None:
+    x_range = tf.linspace(0.0, 1.0, 11)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
+
+    def mean_and_var(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        mean_ = branin(x)
+        variance_ = tf.ones_like(mean_)  # todo make more interesting
+        return mean_, variance_
+
+    mean, variance = mean_and_var(xs)
+
+    num_samples_per_point = 10000  # todo can we reduce this?
+    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+
+    best = tf.constant([50.0])  # todo parametrize over best?
+
+    truncated = tf.where(samples < best, best - samples, 0)
+    ei_approx = tf.reduce_sum(truncated, axis=0) / num_samples_per_point
 
     class _Model(GaussianMarginal):
         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-            # todo do we want this to match the observations exactly?
-            #  could do - branin is after all a distortion of some similar function
-            mean = branin(query_points)
-            var = tf.ones_like(mean)  # todo make more interesting
-            return mean, var
+            return mean_and_var(query_points)
 
-    mean, var = _Model().predict(xs)
-    dist = tfp.distributions.TruncatedNormal(best - mean, tf.sqrt(var), 0.0, mean.dtype.max)
-    ei_approx = dist.mean()
+    ei = expected_improvement(_Model(), best, xs)
 
-    ei = expected_improvement(_Model(), tf.squeeze(best), xs)
-
-    # workaround for inf .mean() values
-    valid_points = tf.logical_not(tf.math.is_inf(ei_approx))
-    ei_approx = tf.boolean_mask(ei_approx, valid_points)
-    ei = tf.boolean_mask(ei, valid_points)
-    # ei_approx = tf.where(tf.math.is_inf(ei_approx), tf.cast(0.0, tf.float64), ei_approx)
-
-    print(ei[40:50])
-    print(ei_approx[40:50])
-
-    npt.assert_allclose(ei, ei_approx)
+    # differ = abs(ei - ei_approx) > 1e-9 + 0.03 * ei_approx
+    # print()
+    # print()
+    # print(tf.boolean_mask(ei_approx, differ))
+    # print(tf.boolean_mask(ei, differ))
+    npt.assert_allclose(ei, ei_approx, rtol=0.04, atol=1e-9)  # todo are these tolerances good?
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
