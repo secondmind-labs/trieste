@@ -127,8 +127,9 @@ def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints)
     :param eta: The "best" observation, with shape [1].
     :param at: The points for which to calculate the expected improvement.
     :return: The expected improvement at ``at``.
+    :raise ValueError (or InvalidArgumentError): If eta has the wrong shape.
     """
-    tf.debugging.assert_shapes([(eta, [1])])
+    tf.debugging.assert_shapes([(eta, [1])], "eta has an invalid shape")
 
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))

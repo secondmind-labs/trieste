@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from dataclasses import dataclass
 from typing import List, Tuple
 from unittest.mock import MagicMock
 
@@ -31,9 +34,10 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
 )
 from trieste.models import ModelInterface
-from tests.util.misc import ShapeLike, various_shapes, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance, StaticModelInterface, StaticWithUnitVariance
+from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
+from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal, StaticModelInterface
 from trieste.type import TensorType
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_ARGMIN, BRANIN_GLOBAL_MINIMUM
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -88,35 +92,36 @@ def test_expected_improvement_builder_builds_expected_improvement(
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-def test_expected_improvement() -> None:
-    class _Model(StaticWithUnitVariance):
-        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-            def mk_range(
-                leq_zero: tf.Tensor, zero_to_one: tf.Tensor, gt_one: tf.Tensor
-            ) -> tf.Tensor:
-                return tf.where(
-                    query_points <= 0.0, leq_zero, tf.where(query_points < 1.0, zero_to_one, gt_one)
-                )
+@random_seed()
+@pytest.mark.parametrize('best', [tf.constant([[0.0]])])
+def test_expected_improvement(best: tf.Tensor) -> None:
+    x_range = tf.linspace(0.0, 1.0, 101)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
 
-            mean = mk_range(tf.constant([[10.0]]), tf.constant([[-7.0]]), tf.constant([[5.0]]))
-            var = mk_range(tf.constant([[1.0]]), tf.constant([[1.0]]), tf.constant([[1.0]]))
+    class _Model(GaussianMarginal):
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+            # todo do we want this to match the observations exactly?
+            #  could do - branin is after all a distortion of some similar function
+            mean = branin(query_points)
+            var = tf.ones_like(mean)  # todo make more interesting
             return mean, var
 
-    x = tf.constant([[-1.0], [0.0], [0.5], [1.0], [2.0]])
-    npt.assert_allclose(
-        expected_improvement(_Model(), tf.constant([5.0]), x),
-        tf.constant([[0.0], [0.0], [12.0], [12.0], [0.0]])
-    )
+    mean, var = _Model().predict(xs)
+    dist = tfp.distributions.TruncatedNormal(best - mean, tf.sqrt(var), 0.0, mean.dtype.max)
+    ei_approx = dist.mean()
 
+    ei = expected_improvement(_Model(), tf.squeeze(best), xs)
 
-# def test_expected_improvement() -> None:
-#     def _ei(x: tf.Tensor) -> tf.Tensor:
-#         n = tfp.distributions.Normal(0, 1)
-#         return - x * n.cdf(-x) + n.prob(-x)
-#
-#     query_at = tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
-#     actual = expected_improvement(QuadraticWithUnitVariance(), tf.constant([0.]), query_at)
-#     npt.assert_array_almost_equal(actual, _ei(query_at ** 2))
+    # workaround for inf .mean() values
+    valid_points = tf.logical_not(tf.math.is_inf(ei_approx))
+    ei_approx = tf.boolean_mask(ei_approx, valid_points)
+    ei = tf.boolean_mask(ei, valid_points)
+    # ei_approx = tf.where(tf.math.is_inf(ei_approx), tf.cast(0.0, tf.float64), ei_approx)
+
+    print(ei[40:50])
+    print(ei_approx[40:50])
+
+    npt.assert_allclose(ei, ei_approx)
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:

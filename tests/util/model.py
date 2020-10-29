@@ -33,13 +33,13 @@ class StaticModelInterface(ModelInterface, ABC):
         pass
 
 
-class StaticWithUnitVariance(StaticModelInterface, ABC):
+class GaussianMarginal(StaticModelInterface, ABC):
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
 
 
-class QuadraticWithUnitVariance(StaticWithUnitVariance):
+class QuadraticWithUnitVariance(GaussianMarginal):
     r""" An untrainable model hardcoded to the function :math:`y = \sum x^2` with unit variance. """
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         mean = tf.reduce_sum(query_points ** 2, axis=1, keepdims=True)
