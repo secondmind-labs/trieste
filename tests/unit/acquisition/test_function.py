@@ -92,54 +92,6 @@ def test_expected_improvement_builder_builds_expected_improvement(
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-# @random_seed()
-# # @pytest.mark.parametrize('best', [tf.cast(100.0 * BRANIN_GLOBAL_MINIMUM, dtype=tf.float64)])
-# @pytest.mark.parametrize('best', [tf.cast(BRANIN_GLOBAL_MINIMUM, dtype=tf.float64)])
-# # @pytest.mark.parametrize('best', [tf.cast(branin(tf.constant([[0.3, 0.3]])), dtype=tf.float64)])
-# def test_expected_improvement(best: tf.Tensor) -> None:
-#     x_range = tf.linspace(0.0, 1.0, 101)
-#     xs = tf.cast(
-#         tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2)),
-#         tf.float64
-#     )
-#
-#     class _Model(GaussianMarginal):
-#         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-#             # todo do we want this to match the observations exactly?
-#             #  could do - branin is after all a distortion of some similar function
-#             mean_ = tf.cast(branin(query_points), tf.float64)
-#             var_ = tf.ones_like(mean_)  # todo make more interesting
-#             return mean_, var_
-#
-#     xs = tf.constant([[0.3, 0.6]], dtype=tf.float64)
-#     print()
-#     print()
-#     print()
-#     print()
-#     print(xs)
-#     mean, var = _Model().predict(xs)
-#     dist = tfp.distributions.TruncatedNormal(
-#         tf.squeeze(best - mean), tf.sqrt(tf.squeeze(var)), 0.0, mean.dtype.max
-#     )
-#     ei_approx = tf.reshape(dist.mean(), [-1, 1])
-#     print("ei_approx")
-#     print(ei_approx)
-#     print("best")
-#     print(best)
-#     print("mean")
-#     print(mean)
-#
-#     ei = expected_improvement(_Model(), tf.squeeze(best), xs)
-#
-#     # workaround for inf .mean() values
-#     valid_points = tf.logical_not(tf.math.is_inf(ei_approx))
-#     ei_approx = tf.boolean_mask(ei_approx, valid_points)
-#     ei = tf.boolean_mask(ei, valid_points)
-#     # ei_approx = tf.where(tf.math.is_inf(ei_approx), tf.cast(0.0, tf.float64), ei_approx)
-#
-#     npt.assert_allclose(ei, ei_approx)
-
-
 @random_seed(5555)
 def test_expected_improvement() -> None:
     x_range = tf.linspace(0.0, 1.0, 11)
