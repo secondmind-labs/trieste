@@ -28,7 +28,7 @@ C = TypeVar('C', bound=Callable)
 """ Type variable for callables. """
 
 
-def random_seed(seed: int = 1234) -> Callable[[C], C]:
+def random_seed(seed: int = 0) -> Callable[[C], C]:
     """
     :param seed: The randomness seed to use.
     :return: A decorator. The decorated function will set the TensorFlow randomness seed to `seed`

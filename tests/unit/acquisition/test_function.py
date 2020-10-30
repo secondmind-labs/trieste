@@ -36,7 +36,7 @@ from trieste.models import ModelInterface
 from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
 from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 from trieste.type import TensorType
-from trieste.utils.objectives import branin
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -92,10 +92,20 @@ def test_expected_improvement_builder_builds_expected_improvement(
 
 
 @random_seed()
-def test_expected_improvement() -> None:
+@pytest.mark.parametrize('best, rtol, atol', [
+    # todo are these tolerances ok?
+    (tf.constant([50.0]), 0.015, 1e-9),
+    (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
+    (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
+])
+def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None:
+    best = tf.cast(best, dtype=tf.float64)
+
+    num_samples_per_point = 40_000
+
     x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
-    xs = tf.cast(xs, dtype=tf.float64)
 
     def mean_and_var(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         mean_ = branin(x)
@@ -105,11 +115,7 @@ def test_expected_improvement() -> None:
 
     mean, variance = mean_and_var(xs)
 
-    num_samples_per_point = 300_000  # todo can we reduce this?
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
-
-    best = tf.constant([50.0])  # todo parametrize over best?
-    best = tf.cast(best, dtype=tf.float64)
 
     truncated = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_sum(truncated, axis=0) / num_samples_per_point
@@ -120,15 +126,15 @@ def test_expected_improvement() -> None:
 
     ei = expected_improvement(_Model(), best, xs)
 
-    # differ = tf.reshape(abs(ei - ei_approx) > 1e-9 + 0.01 * ei_approx, [-1])
-    # print()
-    # print()
-    # print(tf.boolean_mask(xs, differ))
-    # print(tf.boolean_mask(branin(xs), differ))
-    # print(tf.boolean_mask(ei, differ))
-    # print(tf.boolean_mask(ei_approx, differ))
+    differ = tf.reshape(abs(ei - ei_approx) > atol + rtol * ei_approx, [-1])
+    print()
+    print()
+    print(tf.boolean_mask(xs, differ))
+    print(tf.boolean_mask(branin(xs), differ))
+    print(tf.boolean_mask(ei, differ))
+    print(tf.boolean_mask(ei_approx, differ))
 
-    npt.assert_allclose(ei, ei_approx, rtol=0.01, atol=1e-9)  # todo are these tolerances good?
+    npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
