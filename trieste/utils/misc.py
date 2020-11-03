@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, TypeVar
+from typing import Callable, Mapping, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -55,3 +55,16 @@ def to_numpy(t: TensorType) -> np.ndarray:
         return t.numpy()
 
     return t
+
+
+K = TypeVar("K")
+U = TypeVar("U")
+V = TypeVar("V")
+W = TypeVar("W")
+
+
+def zip_with(u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], W]) -> Mapping[K, W]:
+    if u.keys() != v.keys():
+        raise ValueError
+
+    return {k: f(u[k], v[k]) for k in u}

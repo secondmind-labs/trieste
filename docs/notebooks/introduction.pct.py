@@ -93,14 +93,14 @@ initial_data = observer(initial_query_points)
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(astuple(trieste.data.Dataset.empty([2], [1])), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
-    
+
     return {OBJECTIVE: trieste.models.create_model_interface(
         {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {"options": dict(maxiter=100)},
         }
     )}
 

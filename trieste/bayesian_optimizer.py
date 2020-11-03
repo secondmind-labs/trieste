@@ -17,9 +17,10 @@ This module contains the :class:`BayesianOptimizer` class, used to perform Bayes
 from __future__ import annotations
 
 import copy
+import operator
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, TypeVar, cast
+from typing import List, Mapping, Optional, Generic, Tuple, TypeVar, cast
 
 from absl import logging
 import gpflow
@@ -30,6 +31,7 @@ from .data import Dataset
 from .models import ModelInterface, create_model_interface, ModelSpec
 from .observer import Observer
 from .space import SearchSpace
+from .utils.misc import zip_with
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -110,6 +112,8 @@ class BayesianOptimizer(Generic[SP]):
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
 
         For each step in ``num_steps``, this method:
+            - Updates the models with all known data found by applying the corresponding
+              ``transforms`` to the query points and ``observer`` result.
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
               ``datasets`` and models built from the ``model_specs``.
@@ -180,17 +184,19 @@ class BayesianOptimizer(Generic[SP]):
                 if track_state:
                     _save_to_history(history, datasets, models, acquisition_state)
 
-                query_points, acquisition_state = acquisition_rule.acquire(
-                    self._search_space, datasets, models, acquisition_state
+                step_result: Tuple[tf.Tensor, S] = optimize(
+                    datasets,
+                    models,
+                    self._search_space,
+                    acquisition_rule,
+                    acquisition_state
                 )
+                query_points, acquisition_state = step_result
 
-                observer_output = self._observer(query_points)
+                datasets = zip_with(datasets, self._observer(query_points), operator.add)
 
-                datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
-
-                for tag, model in models.items():
-                    model.update(datasets[tag])
-                    model.optimize()
+                # note we haven't updated the model with the new data as we don't want to update the
+                # models more than we absolutely need to
 
             except Exception as error:
                 tf.print(
@@ -215,3 +221,33 @@ def _save_to_history(
     datasets_copy = {tag: ds for tag, ds in datasets.items()}
     logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
     history.append(logging_state)
+
+
+def optimize(
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, ModelInterface],
+    search_space: SP,
+    acquisition_rule: AcquisitionRule[S, SP],
+    acquisition_state: Optional[S] = None,
+) -> Tuple[tf.Tensor, S]:
+    if not datasets:
+        raise ValueError
+
+    # this assumes the models haven't been trained on the new data. I can't work out a way of
+    #  automating the model update without making this assumption
+    #
+    # related: our main concern is optimization. viewing the model is secondary, and updating the
+    #  model takes time (potentially a lot of time). So we should default to just finding the next
+    #  best point, and NOT update the model after getting a new point
+    _update_models(datasets, models)
+
+    return acquisition_rule.acquire(search_space, datasets, models, acquisition_state)
+
+
+def _update_models(
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, ModelInterface]
+) -> None:
+    for model, dataset in zip_with(models, datasets, lambda x, y: (x, y)).values():
+        model.update(dataset)
+        model.optimize()

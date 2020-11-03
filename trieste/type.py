@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains type aliases."""
-from typing import Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -28,3 +28,5 @@ ObserverEvaluations = TensorType
 
 AcquisitionEvaluations = TensorType
 """Type alias for evaluations of acquisition functions."""
+
+ShapeLike = Union[List[int], Tuple[int, ...], tf.TensorShape]

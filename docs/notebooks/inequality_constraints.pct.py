@@ -89,11 +89,11 @@ plt.show()
 # We'll model the objective and constraint data with their own Gaussian process regression models.
 
 # %%
-def create_bo_model(data):
+def create_bo_model():
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(astuple(opt.datasets.Dataset.empty([2], [1])), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
     return trieste.models.create_model_interface(
         {
@@ -103,10 +103,7 @@ def create_bo_model(data):
         }
     )
 
-models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
-}
+models = {OBJECTIVE: create_bo_model(), CONSTRAINT: create_bo_model()}
 
 # %% [markdown]
 # ## Define the acquisition process

@@ -13,12 +13,15 @@
 # limitations under the License.
 """ This module contains utilities for `Observer` data. """
 from __future__ import annotations
-
 from dataclasses import dataclass
 
 import tensorflow as tf
+from typing_extensions import final
+
+from .type import ShapeLike
 
 
+@final
 @dataclass(frozen=True)
 class Dataset:
     """
@@ -84,3 +87,9 @@ class Dataset:
         :return: The number of query points, or equivalently the number of observations.
         """
         return tf.shape(self.observations)[0]
+
+    @classmethod
+    def empty(cls, query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
+        return Dataset(
+            tf.zeros([0] + list(query_point_shape)), tf.zeros([0] + list(observation_shape))
+        )

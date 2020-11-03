@@ -40,7 +40,7 @@ from tests.util.misc import random_seed
 
 @random_seed(1793)
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (12, EfficientGlobalOptimization()),
+    (23, EfficientGlobalOptimization()),
     (22, TrustRegion()),
     (17, ThompsonSampling(500, 3)),
 ])
