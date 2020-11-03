@@ -216,7 +216,7 @@ def _save_to_history(
 
 def optimize(
     datasets: Mapping[str, Dataset],
-    models: Mapping[str, ModelInterface],
+    models: Mapping[str, ModelInterface],  # todo support model config?
     search_space: SP,
     acquisition_rule: AcquisitionRule[S, SP],  # todo needs a default?
     acquisition_state: Optional[S] = None,
