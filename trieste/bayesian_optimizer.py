@@ -218,9 +218,20 @@ def optimize(
     datasets: Mapping[str, Dataset],
     models: Mapping[str, ModelInterface],
     search_space: SP,
-    acquisition_rule: AcquisitionRule[S, SP],
+    acquisition_rule: AcquisitionRule[S, SP],  # todo needs a default?
     acquisition_state: Optional[S] = None,
 ) -> Tuple[tf.Tensor, S]:
+    """
+    Optimize the ``models`` with the specified ``datasets``, then find and return the best point in
+    ``search_space`` to query the observer, according to the specified ``acquisition_rule``.
+
+    :param datasets: All known data from the observer.
+    :param models: The models over the ``datasets``.
+    :param search_space: The space over which to search for the next query point.
+    :param acquisition_rule: The rule for finding new query points.
+    :param acquisition_state: The previous state, if any, of the ``acquisition_rule``.
+    :return: The next point(s) to query, and the new acquisition state.
+    """
     if not datasets:
         raise ValueError
 
