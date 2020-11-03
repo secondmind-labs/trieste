@@ -112,8 +112,6 @@ class BayesianOptimizer(Generic[SP]):
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
 
         For each step in ``num_steps``, this method:
-            - Updates the models with all known data found by applying the corresponding
-              ``transforms`` to the query points and ``observer`` result.
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
               ``datasets`` and models built from the ``model_specs``.
@@ -184,20 +182,13 @@ class BayesianOptimizer(Generic[SP]):
                 if track_state:
                     _save_to_history(history, datasets, models, acquisition_state)
 
-                step_result: Tuple[tf.Tensor, S] = optimize(
-                    datasets,
-                    models,
-                    self._search_space,
-                    acquisition_rule,
-                    acquisition_state
+                query_points, acquisition_state = acquisition_rule.acquire(
+                    self._search_space, datasets, models, acquisition_state
                 )
-                query_points, acquisition_state = step_result
 
                 datasets = zip_with(datasets, self._observer(query_points), operator.add)
 
-                # note we haven't updated the model with the new data as we don't want to update the
-                # models more than we absolutely need to
-
+                _update_models(datasets, models)
             except Exception as error:
                 tf.print(
                     f"Optimization failed at step {step}, encountered error with traceback:"

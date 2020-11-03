@@ -120,28 +120,24 @@ initial_data = observer(search_space.sample(num_init_points))
 # with Bernoulli likelihood. We'll train both models with L-BFGS-based optimizers.
 
 # %%
-empty_data = opt.datasets.Dataset.empty([2], [1])
-
-def create_regression_model():
-    # if I want to define the model without any data, how would I choose initial kernel
-    # hyperparameters?
-    variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
-    kernel = gpflow.kernels.Matern52(variance, 0.2 * np.ones([2]))
-    gpr = gpflow.models.GPR(astuple(empty_data), kernel, noise_variance=1e-5)
+def create_regression_model(data):
+    variance = tf.math.reduce_variance(data.observations)
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
+    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
     return gpr
 
 
-def create_classification_model():
-    variance = tf.math.reduce_variance(initial_data[FAILURE].observations)
-    kernel = gpflow.kernels.SquaredExponential(variance, 0.1 * np.ones([2]))
+def create_classification_model(data):
+    variance = tf.math.reduce_variance(data.observations)
+    kernel = gpflow.kernels.SquaredExponential(variance, lengthscales=0.1 * np.ones(2,))
     likelihood = gpflow.likelihoods.Bernoulli()
-    # todo VGP can't handle empty data
-    return gpflow.models.VGP(astuple(empty_data), kernel, likelihood)
+    vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
+    return vgp
 
 
-regression_model = create_regression_model()
-classification_model = create_classification_model()
+regression_model = create_regression_model(initial_data[OBJECTIVE])
+classification_model = create_classification_model(initial_data[FAILURE])
 
 models = {
     OBJECTIVE: {
