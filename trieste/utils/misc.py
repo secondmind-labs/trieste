@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Callable, Mapping, Optional, Tuple, TypeVar, overload
+from typing import Any, Callable, Mapping, Tuple, TypeVar, overload
 
 import numpy as np
 import tensorflow as tf
@@ -58,9 +58,16 @@ def to_numpy(t: TensorType) -> np.ndarray:
 
 
 K = TypeVar("K")
+""" Unbound type variable. """
+
 U = TypeVar("U")
+""" Unbound type variable. """
+
 V = TypeVar("V")
+""" Unbound type variable. """
+
 W = TypeVar("W")
+""" Unbound type variable. """
 
 
 @overload
