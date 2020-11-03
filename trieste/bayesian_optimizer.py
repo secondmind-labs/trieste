@@ -239,6 +239,6 @@ def _update_models(
     datasets: Mapping[str, Dataset],
     models: Mapping[str, ModelInterface]
 ) -> None:
-    for model, dataset in zip_with(models, datasets, lambda x, y: (x, y)).values():
+    for model, dataset in zip_with(models, datasets).values():
         model.update(dataset)
         model.optimize()

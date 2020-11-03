@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Mapping, TypeVar
+from typing import Any, Callable, Mapping, Optional, Tuple, TypeVar, overload
 
 import numpy as np
 import tensorflow as tf
@@ -63,7 +63,17 @@ V = TypeVar("V")
 W = TypeVar("W")
 
 
+@overload
+def zip_with(u: Mapping[K, U], v: Mapping[K, V]) -> Mapping[K, Tuple[U, V]]:
+    ...
+
+
+@overload
 def zip_with(u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], W]) -> Mapping[K, W]:
+    ...
+
+
+def zip_with(u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], Any] = lambda u, v: (u, v)) -> Mapping[K, Any]:
     if u.keys() != v.keys():
         raise ValueError
 
