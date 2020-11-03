@@ -73,8 +73,25 @@ def zip_with(u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], W]) -> Mapp
     ...
 
 
-def zip_with(u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], Any] = lambda u, v: (u, v)) -> Mapping[K, Any]:
+def zip_with(
+    u: Mapping[K, U], v: Mapping[K, V], f: Callable[[U, V], Any] = lambda u, v: (u, v)
+) -> Mapping[K, Any]:
+    """
+    Zip the mappings ``u`` and ``v``, combining the values according to the function ``f``. For
+    example:
+
+    >>> zip_with({'a': 1, 'b': 2}, {'a': 3, 'b': 4})
+    {'a': (1, 3), 'b': (2, 4)}
+    >>> zip_with({'a': 1, 'b': 2}, {'a': 3, 'b': 4}, lambda a, b: a + b)
+    {'a': 4, 'b': 6}
+
+    :param u: A mapping.
+    :param v: A mapping with the same keys as ``u``.
+    :param f: A function taking one value from each of ``u`` and ``v``.
+    :return: A mapping with the same keys as ``u`` and ``v``. For each key, the value is found by
+        applying ``f`` to the corresponding values in ``u`` and ``v``.
+    """
     if u.keys() != v.keys():
-        raise ValueError
+        raise ValueError(f"u and v must have the same keys, got {u.keys()} and {v.keys()}")
 
     return {k: f(u[k], v[k]) for k in u}
