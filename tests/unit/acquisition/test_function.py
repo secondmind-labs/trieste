@@ -117,8 +117,8 @@ def test_expected_improvement(
 
     mean, variance = _Model().predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
-    truncated = tf.where(samples < best, best - samples, 0)
-    ei_approx = tf.reduce_sum(truncated, axis=0) / num_samples_per_point
+    samples_improvement = tf.where(samples < best, best - samples, 0)
+    ei_approx = tf.reduce_mean(samples_improvement, axis=0)
 
     ei = expected_improvement(_Model(), best, xs)
 
