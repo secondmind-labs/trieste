@@ -96,10 +96,13 @@ def test_expected_improvement_builder_builds_expected_improvement(
     (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
     (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
 ])
-@pytest.mark.parametrize('variance_scale', tf.constant([0.1, 1.0, 10.0], dtype=tf.float64))
+@pytest.mark.parametrize('variance_scale, num_samples_per_point', [
+    (0.1, 1000), (1.0, 50_000), (10.0, 1_000_000)
+])
 def test_expected_improvement(
-    variance_scale: tf.Tensor, best: tf.Tensor, rtol: float, atol: float
+    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
 ) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)
 
     x_range = tf.linspace(0.0, 1.0, 11)
@@ -112,7 +115,6 @@ def test_expected_improvement(
         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             return branin(query_points), self.kernel(query_points, query_points)[:, None]
 
-    num_samples_per_point = 1_000_000
     mean, variance = _Model().predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
     truncated = tf.where(samples < best, best - samples, 0)
