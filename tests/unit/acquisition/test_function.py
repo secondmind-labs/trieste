@@ -94,12 +94,16 @@ def test_expected_improvement_builder_builds_expected_improvement(
 
 @random_seed()
 @pytest.mark.parametrize('best, rtol, atol', [
-    # todo these absolute tolerances are a bit high
+    # todo these tolerances are a bit high
     (tf.constant([50.0]), 0.01, 1e-3),
-    (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
-    (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
+    (BRANIN_GLOBAL_MINIMUM[None], 0.03, 1e-3),
+    (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.03, 1e-3)
 ])
-def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None:
+@pytest.mark.parametrize('variance_scale', [0.1, 1.0, 10.0, 100.0])
+def test_expected_improvement(
+    variance_scale: float, best: tf.Tensor, rtol: float, atol: float
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)
 
     num_samples_per_point = 1_000_000
@@ -110,9 +114,7 @@ def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None
 
     # x, x' are [samples, 2]
     # kernel(x, x') is [samples x samples, 1]?
-    kernel = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.constant(10, tf.float64), length_scale=0.25
-    ).apply
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25).apply
 
     def mean_and_var(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         return branin(x), kernel(x, x)[:, None]
