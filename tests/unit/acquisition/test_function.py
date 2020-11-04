@@ -124,6 +124,7 @@ def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None
     truncated = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_sum(truncated, axis=0) / num_samples_per_point
 
+    # todo is this right, to use the same mean and var in the model as in the samples?
     class _Model(GaussianMarginal):
         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             return mean_and_var(query_points)
