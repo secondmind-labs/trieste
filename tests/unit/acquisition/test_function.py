@@ -98,7 +98,6 @@ def test_expected_improvement_builder_builds_expected_improvement(
     (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
     (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
 ])
-# todo this fails for variance scale 100. is that ok?
 @pytest.mark.parametrize('variance_scale', tf.constant([0.1, 1.0, 10.0], dtype=tf.float64))
 def test_expected_improvement(
     variance_scale: tf.Tensor, best: tf.Tensor, rtol: float, atol: float
@@ -115,12 +114,9 @@ def test_expected_improvement(
         def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             return branin(query_points), self.kernel(query_points, query_points)[:, None]
 
-    mean, variance = _Model().predict(xs)
-
     num_samples_per_point = 1_000_000
-
+    mean, variance = _Model().predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
-
     truncated = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_sum(truncated, axis=0) / num_samples_per_point
 
