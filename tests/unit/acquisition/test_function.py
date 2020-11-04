@@ -96,8 +96,8 @@ def test_expected_improvement_builder_builds_expected_improvement(
 @pytest.mark.parametrize('best, rtol, atol', [
     # todo these tolerances are a bit high
     (tf.constant([50.0]), 0.01, 1e-3),
-    (BRANIN_GLOBAL_MINIMUM[None], 0.03, 1e-3),
-    (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.03, 1e-3)
+    (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
+    (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
 ])
 @pytest.mark.parametrize('variance_scale', [0.1, 1.0, 10.0, 100.0])
 def test_expected_improvement(
