@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Tuple
 from unittest.mock import MagicMock
 
-import gpflow
 import pytest
 import numpy.testing as npt
 import tensorflow as tf
@@ -34,10 +33,11 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
 )
 from trieste.models import ModelInterface
-from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
-from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
+
+from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
+from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
