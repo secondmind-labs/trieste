@@ -55,7 +55,7 @@ def test_quadratic_with_unit_variance() -> None:
 
 @random_seed(1234)
 def test_static_with_unit_variance_sample() -> None:
-    class _Sum(StaticWithUnitVariance):
+    class _Sum(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             mean = tf.reduce_sum(query_points, axis=1, keepdims=True)
             return mean, tf.ones_like(mean)

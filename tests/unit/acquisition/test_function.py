@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Tuple
 from unittest.mock import MagicMock
 
+import gpflow
 import pytest
 import numpy.testing as npt
 import tensorflow as tf
@@ -93,25 +94,28 @@ def test_expected_improvement_builder_builds_expected_improvement(
 
 @random_seed()
 @pytest.mark.parametrize('best, rtol, atol', [
-    # todo are these tolerances ok?
-    (tf.constant([50.0]), 0.015, 1e-9),
+    # todo these absolute tolerances are a bit high
+    (tf.constant([50.0]), 0.01, 1e-3),
     (BRANIN_GLOBAL_MINIMUM[None], 0.01, 1e-3),
     (BRANIN_GLOBAL_MINIMUM[None] * 1.01, 0.01, 1e-3)
 ])
 def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None:
     best = tf.cast(best, dtype=tf.float64)
 
-    num_samples_per_point = 40_000
+    num_samples_per_point = 1_000_000
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
 
+    # x, x' are [samples, 2]
+    # kernel(x, x') is [samples x samples, 1]?
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(
+        amplitude=tf.constant(10, tf.float64), length_scale=0.25
+    ).apply
+
     def mean_and_var(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        mean_ = branin(x)
-        variance_ = tf.ones_like(mean_)  # todo make more interesting
-        variance_ = tf.cast(variance_, dtype=tf.float64)
-        return mean_, variance_
+        return branin(x), kernel(x, x)[:, None]
 
     mean, variance = mean_and_var(xs)
 
@@ -126,13 +130,13 @@ def test_expected_improvement(best: tf.Tensor, rtol: float, atol: float) -> None
 
     ei = expected_improvement(_Model(), best, xs)
 
-    differ = tf.reshape(abs(ei - ei_approx) > atol + rtol * ei_approx, [-1])
-    print()
-    print()
-    print(tf.boolean_mask(xs, differ))
-    print(tf.boolean_mask(branin(xs), differ))
-    print(tf.boolean_mask(ei, differ))
-    print(tf.boolean_mask(ei_approx, differ))
+    # differ = tf.reshape(abs(ei - ei_approx) > atol + rtol * ei_approx, [-1])
+    # print()
+    # print()
+    # print(tf.boolean_mask(xs, differ))
+    # print(tf.boolean_mask(branin(xs), differ))
+    # print(tf.boolean_mask(ei, differ))
+    # print(tf.boolean_mask(ei_approx, differ))
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
