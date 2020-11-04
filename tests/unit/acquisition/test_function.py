@@ -76,8 +76,6 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
     builder.prepare_acquisition_function(data, models)
 
 
-# todo shouldn't this test that it defines eta as the best posterior mean, as opposed to the best
-#  observation? does it test that? if so, change test name
 @pytest.mark.parametrize('query_at', [
     tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
 ])
