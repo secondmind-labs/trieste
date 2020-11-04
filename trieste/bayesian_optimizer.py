@@ -233,7 +233,7 @@ def optimize(
     :return: The next point(s) to query, and the new acquisition state.
     """
     if not datasets:
-        raise ValueError
+        raise ValueError("datasets and models must be populated")
 
     # this assumes the models haven't been trained on the new data. I can't work out a way of
     #  automating the model update without making this assumption
