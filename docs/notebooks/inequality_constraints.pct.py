@@ -58,7 +58,7 @@ search_space = trieste.space.Box(
 )
 
 # %% [markdown]
-# The objective and constraint functions are accessible as methods on the `Simulation` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
+# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
 
 # %%
 util.plot_objective_and_constraints(search_space, Sim)
