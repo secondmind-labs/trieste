@@ -35,24 +35,33 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## The problem
 #
-# In this tutorial, we replicate one of the results of Gardner, 2014 [1], specifically their
-# synthetic experiment "simulation 1", which consists of an objective function with a single
-# constraint, defined over a two-dimensional input domain. We'll start by defining the problem
-# parameters.
+# In this tutorial, we replicate one of the results of Gardner, 2014 [1], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
 
 # %%
-lower_bound = tf.cast([0.0, 0.0], default_float())
-upper_bound = tf.cast([6.0, 6.0], default_float())
-sim = util.Simulation(lower_bound, upper_bound, threshold=0.5)
-search_space = trieste.space.Box(lower_bound, upper_bound)
+class Sim:
+    threshold = 0.5
+
+    @staticmethod
+    def objective(input_data):
+        x, y = input_data[..., -2], input_data[..., -1]
+        z = tf.cos(2.0 * x) * tf.cos(y) + tf.sin(x)
+        return z[:, None]
+
+    @staticmethod
+    def constraint(input_data):
+        x, y = input_data[:, -2], input_data[:, -1]
+        z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
+        return z[:, None]
+
+search_space = trieste.space.Box(
+    tf.cast([0.0, 0.0], default_float()), tf.cast([6.0, 6.0], default_float())
+)
 
 # %% [markdown]
-# The objective and constraint functions are accessible as methods on the `Simulation`
-# class. Let's visualise these functions, as well as the constrained objective formed by applying a
-# mask to the objective over regions where the constraint function crosses the threshold.
+# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
 
 # %%
-util.plot_objective_and_constraints(sim)
+util.plot_objective_and_constraints(search_space, Sim)
 plt.show()
 
 # %% [markdown]
@@ -64,8 +73,8 @@ CONSTRAINT = "CONSTRAINT"
 
 def observer(query_points):
     return {
-        OBJECTIVE: trieste.data.Dataset(query_points, sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, sim.constraint(query_points))
+        OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
+        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points))
     }
 
 # %% [markdown]
@@ -79,7 +88,10 @@ initial_data = observer(search_space.sample(5))
 
 # %%
 util.plot_init_query_points(
-    sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT])
+    search_space,
+    Sim,
+    astuple(initial_data[OBJECTIVE]),
+    astuple(initial_data[CONSTRAINT])
 )
 plt.show()
 
@@ -111,8 +123,7 @@ models = {
 # %% [markdown]
 # ## Define the acquisition process
 #
-# We can construct the _expected constrained improvement_ acquisition function defined in
-# Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
+# We can construct the _expected constrained improvement_ acquisition function defined in Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
 
 # %%
 class ExpectedFeasibleImprovement(trieste.acquisition.rule.AcquisitionFunctionBuilder):
@@ -133,11 +144,14 @@ class ExpectedFeasibleImprovement(trieste.acquisition.rule.AcquisitionFunctionBu
         penalization = self.PENALIZATION * dist * onehot
         eta = tf.reduce_min(mean + penalization, axis=0)
 
-        ei_fn = lambda at: trieste.acquisition.expected_improvement(models[OBJECTIVE], eta, at)
+        ei_fn = lambda at: trieste.acquisition.expected_improvement(
+            models[OBJECTIVE], eta, at
+        )
+
         return lambda at: ei_fn(at) * pof_fn(at)
 
 
-pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=sim.threshold)
+pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = ExpectedFeasibleImprovement(pof.using(CONSTRAINT))
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 
@@ -155,8 +169,7 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 if result.error is not None: raise result.error
 
 # %% [markdown]
-# To conclude, we visualise the resulting data. Orange dots show the new points queried during
-# optimization. Notice the concentration of these points in regions near the local minima.
+# To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
 constraint_data = result.datasets[CONSTRAINT]
@@ -165,7 +178,11 @@ new_data = (
 )
 
 util.plot_init_query_points(
-    sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT]), new_data
+    search_space,
+    Sim,
+    astuple(initial_data[OBJECTIVE]),
+    astuple(initial_data[CONSTRAINT]),
+    new_data
 )
 plt.show()
 
@@ -175,7 +192,9 @@ plt.show()
 # ```
 # [1] @inproceedings{gardner14,
 #       title={Bayesian Optimization with Inequality Constraints},
-#       author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+#       author={
+#         Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham
+#       },
 #       booktitle={Proceedings of the 31st International Conference on Machine Learning},
 #       year={2014},
 #       volume={32},
