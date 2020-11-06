@@ -97,8 +97,8 @@ def test_expected_improvement_builder_builds_expected_improvement(
 @pytest.mark.parametrize('variance_scale, num_samples_per_point, rtol, atol', [
     (0.1, 1000, 0.01, 1e-9),
     (1.0, 50_000, 0.01, 1e-3),
-    (10.0, 1_000_000, 0.01, 1e-3),
-    (100.0, 1_000_000, 0.02, 1e-3),
+    (10.0, 100_000, 0.01, 1e-2),
+    (100.0, 100_000, 0.011, 1e-1),
 ])
 def test_expected_improvement(
     variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
