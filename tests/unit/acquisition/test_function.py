@@ -92,7 +92,7 @@ def test_expected_improvement_builder_builds_expected_improvement(
 
 @random_seed()
 @pytest.mark.parametrize('best', [
-    tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM[None], BRANIN_GLOBAL_MINIMUM[None] * 1.01
+    tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01
 ])
 @pytest.mark.parametrize('variance_scale, num_samples_per_point, rtol, atol', [
     (0.1, 1000, 0.01, 1e-9),
