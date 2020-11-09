@@ -277,7 +277,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(data, models_)
 
 
-def test_expected_constrained_improvement_raises_for_no_feasible_points() -> None:
+def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
@@ -286,10 +286,14 @@ def test_expected_constrained_improvement_raises_for_no_feasible_points() -> Non
 
     data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
-    builder = ExpectedConstrainedImprovement("foo", _Constraint())
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(data, models_)
 
-    with pytest.raises(ValueError):
-        builder.prepare_acquisition_function(data, models_)
+    constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
+
+    xs = tf.range(-10.0, 10.0, 100)
+    npt.assert_allclose(eci(xs), constraint_fn(xs))
 
 
 def test_expected_constrained_improvement_min_feasibility_probability_bound_is_inclusive() -> None:
