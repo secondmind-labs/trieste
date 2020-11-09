@@ -485,10 +485,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         is_not_feasible = pof < self._min_feasibility_probability
 
         if tf.reduce_all(is_not_feasible):
-            raise ValueError(
-                f"Constrained expected improvement requires at least one feasible point, none found"
-                f" in feasibility probabilities {pof}."
-            )
+            return constraint_fn
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
         range_of_mean = tf.reduce_max(mean) - tf.reduce_min(mean)
