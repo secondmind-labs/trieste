@@ -269,7 +269,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         ) -> AcquisitionFunction:
             return lambda x: x
 
-    data = {"foo": Dataset(tf.constant([[]]), tf.constant([[]]))}
+    data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
     builder = ExpectedConstrainedImprovement("foo", _Constraint())
 
