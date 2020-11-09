@@ -474,7 +474,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
-        if len(objective_dataset.query_points) == 0:
+        if len(objective_dataset) == 0:
             raise ValueError(
                 "Expected improvement is defined with respect to existing points in the objective"
                 " data, but the objective data is empty."
