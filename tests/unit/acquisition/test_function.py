@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+from typing import Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -31,8 +33,11 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
 )
 from trieste.models import ModelInterface
-from tests.util.misc import ShapeLike, various_shapes, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance
+from trieste.type import TensorType
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
+
+from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
+from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -85,14 +90,40 @@ def test_expected_improvement_builder_builds_expected_improvement(
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-def test_expected_improvement() -> None:
-    def _ei(x: tf.Tensor) -> tf.Tensor:
-        n = tfp.distributions.Normal(0, 1)
-        return - x * n.cdf(-x) + n.prob(-x)
+@random_seed()
+@pytest.mark.parametrize('best', [
+    tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01
+])
+@pytest.mark.parametrize('variance_scale, num_samples_per_point, rtol, atol', [
+    (0.1, 1000, 0.01, 1e-9),
+    (1.0, 50_000, 0.01, 1e-3),
+    (10.0, 100_000, 0.01, 1e-2),
+    (100.0, 150_000, 0.01, 1e-1),
+])
+def test_expected_improvement(
+    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+    best = tf.cast(best, dtype=tf.float64)
 
-    query_at = tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
-    actual = expected_improvement(QuadraticWithUnitVariance(), tf.constant([0.]), query_at)
-    npt.assert_array_almost_equal(actual, _ei(query_at ** 2))
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
+
+    class _Model(GaussianMarginal):
+        kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25).apply
+
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+            return branin(query_points), self.kernel(query_points, query_points)[:, None]
+
+    mean, variance = _Model().predict(xs)
+    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+    samples_improvement = tf.where(samples < best, best - samples, 0)
+    ei_approx = tf.reduce_mean(samples_improvement, axis=0)
+
+    ei = expected_improvement(_Model(), best, xs)
+
+    npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:

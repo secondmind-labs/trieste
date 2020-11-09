@@ -26,7 +26,7 @@ from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance, StaticWithUnitVariance
+from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 
 
 @pytest.mark.parametrize('steps', [0, 1, 2, 5])
@@ -129,11 +129,11 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
-    class ExponentialWithUnitVariance(StaticWithUnitVariance):
+    class ExponentialWithUnitVariance(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return tf.exp(- query_points), tf.ones_like(query_points)
 
-    class LinearWithUnitVariance(StaticWithUnitVariance):
+    class LinearWithUnitVariance(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return 2 * query_points, tf.ones_like(query_points)
 

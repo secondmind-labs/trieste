@@ -51,8 +51,8 @@ _ORIGINAL_BRANIN_ARGMIN = tf.constant([[-math.pi, 12.275], [math.pi, 2.275], [9.
 BRANIN_GLOBAL_ARGMIN = (_ORIGINAL_BRANIN_ARGMIN + [5.0, 0.0]) / 15.0
 """ The three global minimizers of the :func:`branin` function. """
 
-BRANIN_GLOBAL_MINIMUM = tf.constant(0.397887)
-""" The global miminum of the :func:`branin` function. """
+BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887])
+""" The global miminum of the :func:`branin` function, with shape [1]. """
 
 
 def mk_observer(objective: Callable[[tf.Tensor], tf.Tensor], key: str) -> Observer:
