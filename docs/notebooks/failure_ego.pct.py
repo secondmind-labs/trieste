@@ -27,6 +27,8 @@ import tensorflow as tf
 
 import trieste
 from trieste.utils import objectives
+from trieste.models.model_interfaces import VariationalGaussianProcess
+from gpflow.models import VGP
 
 from util.plotting_plotly import (
     plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
@@ -39,6 +41,7 @@ gpflow.config.set_default_float(np.float64)
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
+
 # %% [markdown]
 # ## The problem
 #
@@ -50,11 +53,12 @@ tf.random.set_seed(1234)
 def masked_branin(x):
     x0 = np.abs(x[:, 0] - 0.5) < 0.25
     x1 = np.abs(x[:, 1] - 0.5) < 0.140
-    mask_nan = np.sqrt((x[:, 0]- 0.5)**2 + (x[:, 1] - .4)**2) < 0.3
-    #mask_nan = np.logical_and(x0, x1)
+    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
+    # mask_nan = np.logical_and(x0, x1)
     y = np.array(objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
+
 
 # %% [markdown]
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
@@ -93,6 +97,7 @@ fig.show()
 OBJECTIVE = "OBJECTIVE"
 FAILURE = "FAILURE"
 
+
 def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
@@ -101,6 +106,7 @@ def observer(x):
         FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
     }
 
+
 # %% [markdown]
 # We can evaluate the observer at points sampled from the search space.
 
@@ -108,86 +114,71 @@ def observer(x):
 num_init_points = 15
 initial_data = observer(search_space.sample(num_init_points))
 
+
 # %% [markdown]
-# ## Modelling the data
+# ## Model the data
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood. We'll train both models with L-BFGS-based optimizers.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
 
 # %%
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2, ))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
     return gpr
 
 
 def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(variance=100., lengthscales=0.2 * np.ones(2,))
-
+    kernel = gpflow.kernels.SquaredExponential(variance=100., lengthscales=0.2 * np.ones(2, ))
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
     set_trainable(vgp.kernel.variance, False)
-    set_trainable(vgp.kernel.lengthscales, False)
     return vgp
 
 
 regression_model = create_regression_model(initial_data[OBJECTIVE])
 classification_model = create_classification_model(initial_data[FAILURE])
 
+# %% [markdown]
+# ## Create a custom optimize method
+# The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
+
+# %%
+class NatGradTrainedVGP(VariationalGaussianProcess):
+    def __init__(self, model: VGP, maxiter: int = 100, learning_rate: float = 1e-3, gamma: float = 0.1):
+        """
+        :param model: The GPflow model to wrap.
+        """
+        super().__init__(model)
+        self._learning_rate = learning_rate
+        self._gamma = gamma
+        self._maxiter = maxiter
+
+    def optimize(self):
+        from gpflow.optimizers import NaturalGradient
+        set_trainable(self.model.q_mu, False)
+        set_trainable(self.model.q_sqrt, False)
+        variational_params = [(self.model.q_mu, self.model.q_sqrt)]
+        adam_opt_for_vgp = tf.optimizers.Adam(self._learning_rate)
+        natgrad_opt = NaturalGradient(gamma=self._gamma)
+
+        for step in range(self._maxiter):
+            natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
+            adam_opt_for_vgp.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
+
+# %% [markdown]
+# The GPR model will be trained with an L-BFGS-based optimizer. The GPC model will be trained using a custom algorithm.
+
+# %%
 models = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
     },
-    FAILURE: {
-        "model": classification_model,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=500)},
-    },
+    FAILURE: NatGradTrainedVGP(classification_model)
 }
-
-# %%
-classification_model
-
-# %%
-print(models['FAILURE'])
-from trieste.models import create_model_interface
-models = {tag: create_model_interface(spec) for tag, spec in models.items()}
-
-models['FAILURE'].update(initial_data['FAILURE'])
-models['FAILURE'].optimize()
-
-mask_fail = initial_data[FAILURE].observations.numpy().flatten().astype(int) == 0
-
-fig, ax = plot_gp_2d(
-    classification_model,
-    mins,
-    maxs,
-    grid_density=50,
-    contour=True,
-    figsize=(12, 5),
-    predict_y=True,
-)
-
-plot_bo_points(
-    initial_data[FAILURE].query_points.numpy(),
-    ax=ax[0, 0],
-    mask_fail=mask_fail,
-)
-
-plot_bo_points(
-    initial_data[FAILURE].query_points.numpy(),
-    ax=ax[0, 1],
-    mask_fail=mask_fail,
-)
-
-plt.show()
-
-# %%
-classification_model
-
 
 # %% [markdown]
 # ## Create a custom acquisition function
@@ -198,6 +189,7 @@ classification_model
 class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
         return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
+
 
 ei = trieste.acquisition.ExpectedImprovement()
 pov = ProbabilityOfValidity()
@@ -284,9 +276,3 @@ plot_bo_points(
 )
 
 plt.show()
-
-# %%
-
-# %%
-
-# %%
