@@ -24,10 +24,11 @@ from gpflow import set_trainable
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-
+from typing import Dict
 import trieste
 from trieste.utils import objectives
 from trieste.models.model_interfaces import VariationalGaussianProcess
+from trieste.models import ModelSpec
 from gpflow.models import VGP
 from gpflow.optimizers import NaturalGradient
 
