@@ -49,8 +49,9 @@ tf.random.set_seed(1234)
 # %%
 def masked_branin(x):
     x0 = np.abs(x[:, 0] - 0.5) < 0.25
-    x1 = np.abs(x[:, 1] - 0.5) < 0.40
-    mask_nan = np.logical_and(x0, x1)
+    x1 = np.abs(x[:, 1] - 0.5) < 0.140
+    mask_nan = np.sqrt((x[:, 0]- 0.5)**2 + (x[:, 1] - .4)**2) < 0.3
+    #mask_nan = np.logical_and(x0, x1)
     y = np.array(objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
@@ -71,7 +72,7 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 # region.
 
 # %%
-fig = plot_function_plotly(masked_branin, mins, maxs, grid_density=20)
+fig = plot_function_plotly(masked_branin, mins, maxs, grid_density=70)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -122,10 +123,12 @@ def create_regression_model(data):
 
 
 def create_classification_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.SquaredExponential(variance, lengthscales=0.1 * np.ones(2,))
+    kernel = gpflow.kernels.SquaredExponential(variance=100., lengthscales=0.2 * np.ones(2,))
+
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
+    set_trainable(vgp.kernel.variance, False)
+    set_trainable(vgp.kernel.lengthscales, False)
     return vgp
 
 
@@ -144,6 +147,47 @@ models = {
         "optimizer_args": {"options": dict(maxiter=500)},
     },
 }
+
+# %%
+classification_model
+
+# %%
+print(models['FAILURE'])
+from trieste.models import create_model_interface
+models = {tag: create_model_interface(spec) for tag, spec in models.items()}
+
+models['FAILURE'].update(initial_data['FAILURE'])
+models['FAILURE'].optimize()
+
+mask_fail = initial_data[FAILURE].observations.numpy().flatten().astype(int) == 0
+
+fig, ax = plot_gp_2d(
+    classification_model,
+    mins,
+    maxs,
+    grid_density=50,
+    contour=True,
+    figsize=(12, 5),
+    predict_y=True,
+)
+
+plot_bo_points(
+    initial_data[FAILURE].query_points.numpy(),
+    ax=ax[0, 0],
+    mask_fail=mask_fail,
+)
+
+plot_bo_points(
+    initial_data[FAILURE].query_points.numpy(),
+    ax=ax[0, 1],
+    mask_fail=mask_fail,
+)
+
+plt.show()
+
+# %%
+classification_model
+
 
 # %% [markdown]
 # ## Create a custom acquisition function
@@ -240,3 +284,9 @@ plot_bo_points(
 )
 
 plt.show()
+
+# %%
+
+# %%
+
+# %%

@@ -16,13 +16,15 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
+from gpflow.utilities import set_trainable
 import numpy as np
 import tensorflow as tf
+from gpflow.covariances.kuus import Kuu
 
 from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
-
+from ..utils import to_numpy
 
 class ModelInterface(ABC):
     """ A trainable probabilistic model. """
@@ -274,13 +276,18 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         assert dataset.observations.shape[-1] == y.shape[-1]
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
-        num_latent_gps = model.num_latent_gps
+
+        new_q_mu, new_q_var = self.model.predict_f(dataset.query_points, full_cov=True)
+
+        new_q_sqrt = tf.linalg.cholesky(
+            new_q_var
+            + gpflow.config.default_jitter() * (tf.eye(num_data, dtype=new_q_var.dtype)[None])
+        )
+
         model.data = data
         model.num_data = num_data
-        model.q_mu = gpflow.Parameter(np.zeros((num_data, num_latent_gps)))
-        q_sqrt = np.eye(num_data)
-        q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
-        model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu = gpflow.Parameter(new_q_mu)
+        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
