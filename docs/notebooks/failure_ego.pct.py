@@ -155,7 +155,7 @@ class NatGradTrainedVGP(VariationalGaussianProcess):
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
-models = {
+models: Dict[str, ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
