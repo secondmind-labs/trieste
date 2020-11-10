@@ -93,5 +93,10 @@ def test_dataset_concatenation() -> None:
     assert tf.reduce_all(merged.observations == tf.constant(obs_this + obs_that))
 
 
-def test_dataset_length() -> None:
-    assert len(Dataset(tf.ones((7, 8, 10)), tf.ones((7, 8, 13)))) == 7
+@pytest.mark.parametrize('data, length', [
+    (Dataset(tf.ones((7, 8, 10)), tf.ones((7, 8, 13))), 7),
+    (Dataset(tf.ones([0, 2]), tf.ones([0, 1])), 0),
+    (Dataset(tf.constant([[]]), tf.constant([[]])), 1),
+])
+def test_dataset_length(data: Dataset, length: int) -> None:
+    assert len(data) == length
