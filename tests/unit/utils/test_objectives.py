@@ -27,7 +27,8 @@ def test_branin_no_points_are_less_than_global_minimum() -> None:
 
 
 def test_branin_maps_argmin_values_to_global_minima() -> None:
-    npt.assert_array_almost_equal(branin(BRANIN_GLOBAL_ARGMIN), BRANIN_GLOBAL_MINIMUM)
+    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [3, 1])
+    npt.assert_allclose(branin(BRANIN_GLOBAL_ARGMIN), expected, atol=1e-6)
 
 
 def test_mk_observer() -> None:
