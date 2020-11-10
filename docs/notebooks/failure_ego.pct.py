@@ -47,7 +47,7 @@ tf.random.set_seed(1234)
 #
 # This notebook is similar to the _Introduction_ notebook, where we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. But here, we constrain the problem, by adding an area to the search space in which the objective fails to evaluate.
 #
-# We represent this setup with a function `masked_branin` that produces null values when evaluated in the rectangle with corners $(0.25, 0.1)$, $(0.75, 0.9)$. It's important to remember that while _we_ know where this _failure region_ is, this function is a black box from the optimizer's point of view: the optimizer must learn it.
+# We represent this setup with a function `masked_branin` that produces null values when evaluated in the disk with center $(0.5, 0.4)$ and radius $0.3$. It's important to remember that while _we_ know where this _failure region_ is, this function is a black box from the optimizer's point of view: the optimizer must learn it.
 
 # %%
 def masked_branin(x):
