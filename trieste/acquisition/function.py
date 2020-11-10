@@ -24,6 +24,9 @@ from ..space import SearchSpace
 
 from scipy.optimize import bisect
 
+from gpflow.config import default_float, default_jitter
+from gpflow.utilities.ops import leading_transpose
+
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ Type alias for acquisition functions. """
 
@@ -138,7 +141,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
     Builder for the max-value entropy search acquisition function (for function minimisation)
     """
 
-    def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
         :param search_space: The global search space over which the Bayesian optimisation problem is defined.
         :param num_samples: Number of sample draws of the minimal value.
@@ -405,3 +408,74 @@ def probability_of_feasibility(
     mean, var = model.predict(at)
     distr = tfp.distributions.Normal(mean, tf.sqrt(var))
     return distr.cdf(tf.cast(threshold, at.dtype))
+
+
+class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
+    """
+    Builder for the expected improvement function where the "best" value is taken to be the minimum
+    of the posterior mean at observed points.
+    """
+
+    def __init__(self, eps_shape: [int], num_samples: int = 1):
+
+        super().__init__()
+
+        eps_shape = tf.concat([eps_shape, [num_samples]], 0)
+        self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [..., N, D, S]
+
+    def predict_f_samples_with_reparametrisation_trick(self, model: ModelInterface, at: QueryPoints) -> tf.Tensor:
+        mean, cov = model.predict_f(at, full_cov=True, full_output_cov=True)
+        # mean: [..., N, L]
+        # cov: [..., L, N, N]
+        mean_for_sample = tf.linalg.adjoint(mean)  # [..., L, N]
+        mean_shape = tf.shape(mean)
+        num_latent = mean_shape[-1]
+
+        jittermat = (
+            tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+        )  # [..., N, D, D]
+
+        chol = tf.linalg.cholesky(cov + jittermat)  # [..., N, L, L]
+        samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, self.eps)  # [..., N, L, S]
+        samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
+        samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
+
+        return samples
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ModelInterface
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :return: An acquisition function.
+        """
+
+
+class MonteCarloExpectedImprovement(MonteCarloAcquisition):
+    """
+    Builder for the Monte_carlo based expected improvement.
+    """
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ModelInterface
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected improvement function.
+        """
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        return lambda at: self._acquisition_function(self, model, eta, at)
+
+    @staticmethod
+    def _acquisition_function(
+            self, model: ModelInterface, eta: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
+
+        samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [..., (S), N, L]
+        samples = samples[..., 0]
+        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
+        ei = tf.math.reduce_mean(improvement, axis=0)  # todo: ensure this broadcasts properly
+        return ei

@@ -236,6 +236,10 @@ mes = trieste.acquisition.MaxValueEntropySearch(
 ei = trieste.acquisition.ExpectedImprovement()
 mes_acq_function = mes.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+mcei = trieste.acquisition.MonteCarloExpectedImprovement(
+    eps_shape=[1], num_samples=100
+)
+mcei_acq_function = mcei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 
 fig, ax = plot_function_2d(mes_acq_function, mins, maxs, grid_density=40, contour=True)
 plot_bo_points(
@@ -288,3 +292,5 @@ plt.legend(fontsize=20)
 plt.title("Performance of different acquisition functions")
 plt.xlabel("# Optimization Steps")
 plt.ylabel("Best objective function query")
+
+# %%
