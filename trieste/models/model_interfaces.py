@@ -16,15 +16,12 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
-from gpflow.utilities import set_trainable
 import numpy as np
 import tensorflow as tf
-from gpflow.covariances.kuus import Kuu
 
 from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
-from ..utils import to_numpy
 
 class ModelInterface(ABC):
     """ A trainable probabilistic model. """
