@@ -273,18 +273,13 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         assert dataset.observations.shape[-1] == y.shape[-1]
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
-
-        new_q_mu, new_q_var = self.model.predict_f(dataset.query_points, full_cov=True)
-
-        new_q_sqrt = tf.linalg.cholesky(
-            new_q_var
-            + gpflow.config.default_jitter() * (tf.eye(num_data, dtype=new_q_var.dtype)[None])
-        )
-
+        num_latent_gps = model.num_latent_gps
         model.data = data
         model.num_data = num_data
-        model.q_mu = gpflow.Parameter(new_q_mu)
-        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu = gpflow.Parameter(np.zeros((num_data, num_latent_gps)))
+        q_sqrt = np.eye(num_data)
+        q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
+        model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
