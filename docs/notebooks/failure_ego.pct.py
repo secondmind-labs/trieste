@@ -140,14 +140,11 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 class NatGradTrainedVGP(VariationalGaussianProcess):
-    def __init__(self, model: VGP, maxiter: int = 100, learning_rate: float = 1e-3, gamma: float = 0.1):
-        """
-        :param model: The GPflow model to wrap.
-        """
+    def __init__(self, model):
         super().__init__(model)
-        self._learning_rate = learning_rate
-        self._gamma = gamma
-        self._maxiter = maxiter
+        self._learning_rate = 1e-3
+        self._gamma = 0.1
+        self._maxiter = 100
 
     def optimize(self):
         set_trainable(self.model.q_mu, False)
