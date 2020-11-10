@@ -152,7 +152,7 @@ class NatGradTrainedVGP(VariationalGaussianProcess):
             adam_opt.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
 
 # %% [markdown]
-# The GPR model will be trained with an L-BFGS-based optimizer. The GPC model will be trained using a custom algorithm.
+# We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
 models = {
