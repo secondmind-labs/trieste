@@ -140,22 +140,16 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 class NatGradTrainedVGP(VariationalGaussianProcess):
-    def __init__(self, model):
-        super().__init__(model)
-        self._learning_rate = 1e-3
-        self._gamma = 0.1
-        self._maxiter = 100
-
     def optimize(self):
         set_trainable(self.model.q_mu, False)
         set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
-        adam_opt_for_vgp = tf.optimizers.Adam(self._learning_rate)
-        natgrad_opt = NaturalGradient(gamma=self._gamma)
+        adam_opt = tf.optimizers.Adam(1e-3)
+        natgrad_opt = NaturalGradient(gamma=0.1)
 
-        for step in range(self._maxiter):
+        for step in range(100):
             natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
-            adam_opt_for_vgp.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
+            adam_opt.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
 
 # %% [markdown]
 # The GPR model will be trained with an L-BFGS-based optimizer. The GPC model will be trained using a custom algorithm.
