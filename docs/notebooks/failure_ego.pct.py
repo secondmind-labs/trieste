@@ -29,6 +29,7 @@ import trieste
 from trieste.utils import objectives
 from trieste.models.model_interfaces import VariationalGaussianProcess
 from gpflow.models import VGP
+from gpflow.optimizers import NaturalGradient
 
 from util.plotting_plotly import (
     plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
@@ -41,7 +42,6 @@ gpflow.config.set_default_float(np.float64)
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
-
 # %% [markdown]
 # ## The problem
 #
@@ -51,14 +51,10 @@ tf.random.set_seed(1234)
 
 # %%
 def masked_branin(x):
-    x0 = np.abs(x[:, 0] - 0.5) < 0.25
-    x1 = np.abs(x[:, 1] - 0.5) < 0.140
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
-    # mask_nan = np.logical_and(x0, x1)
     y = np.array(objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
-
 
 # %% [markdown]
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
@@ -97,7 +93,6 @@ fig.show()
 OBJECTIVE = "OBJECTIVE"
 FAILURE = "FAILURE"
 
-
 def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
@@ -105,7 +100,6 @@ def observer(x):
         OBJECTIVE: trieste.data.Dataset(x[mask], y[mask]),
         FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
     }
-
 
 # %% [markdown]
 # We can evaluate the observer at points sampled from the search space.
@@ -156,7 +150,6 @@ class NatGradTrainedVGP(VariationalGaussianProcess):
         self._maxiter = maxiter
 
     def optimize(self):
-        from gpflow.optimizers import NaturalGradient
         set_trainable(self.model.q_mu, False)
         set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
@@ -189,7 +182,6 @@ models = {
 class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
         return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
-
 
 ei = trieste.acquisition.ExpectedImprovement()
 pov = ProbabilityOfValidity()
