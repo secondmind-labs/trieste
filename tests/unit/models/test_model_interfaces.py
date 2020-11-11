@@ -124,6 +124,15 @@ def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
+def _vgp2(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Gaussian()
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
+    m = VGP((x, y), kernel, likelihood)
+    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
+    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
+    return m
+
+
 @pytest.fixture(
     name="gpr_interface_factory",
     params=[
@@ -142,6 +151,10 @@ def _reference_gpr(x: tf.Tensor, y: tf.Tensor) -> gpflow.models.GPR:
 
 def _3x_plus_10(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + 10
+
+
+def _sin_10_x(x: tf.Tensor) -> tf.Tensor:
+    return 2.0 * tf.math.sin(x/3.)
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
@@ -181,13 +194,10 @@ def test_vgp_update_updates_num_data() -> None:
 
 @random_seed(1357)
 def test_vgp_update_updates_vi() -> None:
-    x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
-    y_observed = _3x_plus_gaussian_noise(x_observed)
-    model = VariationalGaussianProcess(_vgp(x_observed, y_observed))
+    x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
+    y_observed = _sin_10_x(x_observed)
+    model = VariationalGaussianProcess(_vgp2(x_observed, y_observed))
 
-    gpflow.optimizers.Scipy().minimize(
-        model.loss, model.trainable_variables,
-    )
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
     data = Dataset(x_observed, y_observed)
@@ -196,7 +206,7 @@ def test_vgp_update_updates_vi() -> None:
     new_q_mu = model.model.q_mu.numpy()
     new_q_sqrt = model.model.q_sqrt.numpy()
 
-    npt.assert_allclose(old_q_mu, new_q_mu)
+    npt.assert_allclose(old_q_mu, new_q_mu, atol=1e-5)
     npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
 
 

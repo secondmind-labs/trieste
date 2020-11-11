@@ -278,7 +278,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
         assert self.model.q_sqrt.shape.ndims == 3
 
-        jitter = 10 * gpflow.config.default_jitter()
+        jitter = gpflow.config.default_jitter()
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
         Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
