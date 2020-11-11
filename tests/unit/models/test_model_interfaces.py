@@ -190,8 +190,8 @@ def test_vgp_update_updates_vi() -> None:
     )
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
-
-    model.update(Dataset(x_observed, y_observed))
+    data = Dataset(x_observed, y_observed)
+    model.update(data)
 
     new_q_mu = model.model.q_mu.numpy()
     new_q_sqrt = model.model.q_sqrt.numpy()
