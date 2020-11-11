@@ -188,16 +188,16 @@ def test_vgp_update_updates_vi() -> None:
     gpflow.optimizers.Scipy().minimize(
         model.loss, model.trainable_variables,
     )
-    old_q_mu = model.q_mu.value()
-    old_q_sqrt = model.q_sqrt.value()
+    old_q_mu = model.model.q_mu.numpy()
+    old_q_sqrt = model.model.q_sqrt.numpy()
 
     model.update(Dataset(x_observed, y_observed))
 
-    new_q_mu = model.q_mu.value()
-    new_q_sqrt = model.q_sqrt.value()
+    new_q_mu = model.model.q_mu.numpy()
+    new_q_sqrt = model.model.q_sqrt.numpy()
 
     npt.assert_allclose(old_q_mu, new_q_mu)
-    npt.assert_allclose(old_q_sqrt, new_q_sqrt)
+    npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
 
 
 @random_seed(1357)
