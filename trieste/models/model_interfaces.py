@@ -23,7 +23,6 @@ from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
-
 class ModelInterface(ABC):
     """ A trainable probabilistic model. """
 
