@@ -33,7 +33,6 @@ from util.plotting_plotly import (
 )
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
-
 # %%
 gpflow.config.set_default_jitter(1e-5)
 gpflow.config.set_default_float(np.float64)
