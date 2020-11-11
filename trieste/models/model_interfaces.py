@@ -275,22 +275,16 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
 
-        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)
+        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
         assert self.model.q_sqrt.shape.ndims == 3
 
-        Kmm = model.kernel(dataset.query_points)
-        Kmm += gpflow.config.default_jitter() * tf.eye(num_data, dtype=Kmm.dtype)
-        Lmm = tf.linalg.cholesky(Kmm)
-        new_q_mu = tf.linalg.triangular_solve(Lmm, tf.transpose(f_mu)[..., None])
-        new_q_mu = tf.linalg.matrix_transpose(new_q_mu[..., 0])
-        Linv_f_cov = tf.linalg.triangular_solve(Lmm, f_cov)
-        new_q_var = tf.linalg.matrix_transpose(
-            tf.linalg.triangular_solve(Lmm, tf.linalg.matrix_transpose(Linv_f_cov))
-        )
-        new_q_sqrt = tf.linalg.cholesky(
-            new_q_var
-            + gpflow.config.default_jitter() * (tf.eye(num_data, dtype=new_q_var.dtype)[None])
-        )
+        jitter = gpflow.config.default_jitter()
+        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
+        Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
+        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L^{-1} f_cov
+        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(S_v + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [L, N, N]
 
         model.data = data
         model.num_data = num_data

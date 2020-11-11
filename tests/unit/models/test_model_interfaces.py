@@ -180,6 +180,27 @@ def test_vgp_update_updates_num_data() -> None:
 
 
 @random_seed(1357)
+def test_vgp_update_updates_vi() -> None:
+    x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    model = VariationalGaussianProcess(_vgp(x_observed, y_observed))
+
+    gpflow.optimizers.Scipy().minimize(
+        model.loss, model.trainable_variables,
+    )
+    old_q_mu = model.q_mu.value()
+    old_q_sqrt = model.q_sqrt.value()
+
+    model.update(Dataset(x_observed, y_observed))
+
+    new_q_mu = model.q_mu.value()
+    new_q_sqrt = model.q_sqrt.value()
+
+    npt.assert_allclose(old_q_mu, new_q_mu)
+    npt.assert_allclose(old_q_sqrt, new_q_sqrt)
+
+
+@random_seed(1357)
 def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> None:
     model = gpr_interface_factory(*_mock_data())
     loss = model.loss()
