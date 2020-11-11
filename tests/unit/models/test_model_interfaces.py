@@ -124,7 +124,7 @@ def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
-def _vgp2(x: tf.Tensor, y: tf.Tensor) -> VGP:
+def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
@@ -153,7 +153,7 @@ def _3x_plus_10(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + 10
 
 
-def _sin_10_x(x: tf.Tensor) -> tf.Tensor:
+def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
     return 2.0 * tf.math.sin(x/3.)
 
 
@@ -193,10 +193,10 @@ def test_vgp_update_updates_num_data() -> None:
 
 
 @random_seed(1357)
-def test_vgp_update_updates_vi() -> None:
+def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
-    y_observed = _sin_10_x(x_observed)
-    model = VariationalGaussianProcess(_vgp2(x_observed, y_observed))
+    y_observed = _2sin_x_over_3(x_observed)
+    model = VariationalGaussianProcess(_vgp_matern(x_observed, y_observed))
 
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
