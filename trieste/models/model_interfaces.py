@@ -273,13 +273,22 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         assert dataset.observations.shape[-1] == y.shape[-1]
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
-        num_latent_gps = model.num_latent_gps
+
+        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
+        assert self.model.q_sqrt.shape.ndims == 3
+
+        jitter = gpflow.config.default_jitter()
+        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
+        Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
+        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L^{-1} f_cov
+        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(S_v + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [L, N, N]
+
         model.data = data
         model.num_data = num_data
-        model.q_mu = gpflow.Parameter(np.zeros((num_data, num_latent_gps)))
-        q_sqrt = np.eye(num_data)
-        q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
-        model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu = gpflow.Parameter(new_q_mu)
+        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
