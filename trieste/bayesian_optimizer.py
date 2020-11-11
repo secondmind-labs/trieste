@@ -171,8 +171,9 @@ class BayesianOptimizer(Generic[SP]):
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
 
                 for tag, model in models.items():
-                    model.update(datasets[tag])
-                    model.optimize()
+                    dataset = datasets[tag]
+                    model.update(dataset)
+                    model.optimize(dataset)
 
             except Exception as error:
                 tf.print(

@@ -19,10 +19,8 @@ GPflow models, and tooling for creating :class:`ModelInterface`\ s from config.
 from .config import ModelConfig, ModelSpec, create_model_interface
 from .model_interfaces import (
     ModelInterface,
-    TrainableModelInterface,
     GPflowPredictor,
     GaussianProcessRegression,
-    Batcher,
     SparseVariational,
     VariationalGaussianProcess,
     supported_models,

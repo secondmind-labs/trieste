@@ -29,7 +29,7 @@ class StaticModelInterface(ModelInterface, ABC):
     def update(self, dataset: Dataset) -> None:
         pass
 
-    def optimize(self) -> None:
+    def optimize(self, dataset: Dataset) -> None:
         pass
 
 
