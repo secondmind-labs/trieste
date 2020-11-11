@@ -275,8 +275,18 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
 
-        new_q_mu, new_q_var = self.model.predict_f(dataset.query_points, full_cov=True)
+        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)
+        assert self.model.q_sqrt.shape.ndims == 3
 
+        Kmm = model.kernel(dataset.query_points)
+        Kmm += gpflow.config.default_jitter() * tf.eye(num_data, dtype=Kmm.dtype)
+        Lmm = tf.linalg.cholesky(Kmm)
+        new_q_mu = tf.linalg.triangular_solve(Lmm, tf.transpose(f_mu)[..., None])
+        new_q_mu = tf.linalg.matrix_transpose(new_q_mu[..., 0])
+        Linv_f_cov = tf.linalg.triangular_solve(Lmm, f_cov)
+        new_q_var = tf.linalg.matrix_transpose(
+            tf.linalg.triangular_solve(Lmm, tf.linalg.matrix_transpose(Linv_f_cov))
+        )
         new_q_sqrt = tf.linalg.cholesky(
             new_q_var
             + gpflow.config.default_jitter() * (tf.eye(num_data, dtype=new_q_var.dtype)[None])
