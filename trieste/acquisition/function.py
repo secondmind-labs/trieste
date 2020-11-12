@@ -421,9 +421,18 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
     def __init__(self, eps_shape: [int]):
 
         super().__init__()
+        assert len(eps_shape) == 3
         self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, B, L]
 
     def predict_f_samples_with_reparametrisation_trick(self, model: ModelInterface, at: QueryPoints) -> tf.Tensor:
+        """
+        Returns samples according to the reparametrization trick. The sample size S is determined by eps,
+        the batch size B must be compatible between eps and at, N is the number of batches of query points
+        and L is the number of latent processes.
+        :param model:
+        :param at: batch of query points [N, D] or [N, B, D]
+        :return: a [S, N, B, L] tensor
+        """
         # mean, cov = model.predict_f(at, full_cov=True, full_output_cov=True)
 
         if len(at.shape) == 2:
@@ -433,6 +442,8 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
             samples = mean[None, :, None, :] + \
                       tf.math.sqrt(cov)[None, :, None, :] * self.eps[:, None, ...]  # [S, N, B, L]
         else:
+            assert at.shape[1] == self.eps.shape[1]
+
             mean, cov = model.predict(at, full_cov=True)
             # mean: [..., N, L]
             # cov: [..., L, N, N]
@@ -486,5 +497,6 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
         samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [S, N, B, L]
         samples = samples[..., 0, 0]
         improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
-        ei = tf.math.reduce_mean(improvement, axis=0)  # todo: ensure this broadcasts properly
+        # ei = tf.math.reduce_mean(improvement, axis=0, keepdims=True)  # todo: ensure this broadcasts properly
+        ei = tf.math.reduce_mean(improvement, axis=0)[:, None]  # todo: ensure this broadcasts properly
         return ei
