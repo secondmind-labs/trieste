@@ -36,7 +36,7 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -50,7 +50,6 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
-
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
@@ -86,7 +85,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
-
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
@@ -165,7 +163,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         Need to sample possible min-values from our posterior. 
@@ -256,7 +254,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -370,7 +368,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -381,13 +379,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-            model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
     ) -> tf.Tensor:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+    model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
 ) -> tf.Tensor:
     r"""
     The probability of feasibility acquisition function defined in Garner, 2014 as
