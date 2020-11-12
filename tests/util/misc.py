@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
-from trieste.models import ModelInterface
+from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
 from trieste.type import QueryPoints
 
@@ -75,7 +75,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
             self,
             search_space: SearchSpace,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ModelInterface],
+            models: Mapping[str, ProbabilisticModel],
             state: None = None
     ) -> Tuple[QueryPoints, None]:
         """

@@ -24,7 +24,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
-from ..models import ModelInterface
+from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
@@ -46,7 +46,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         self,
         search_space: SP,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
     ) -> Tuple[QueryPoints, S]:
         """
@@ -98,7 +98,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -140,7 +140,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -218,7 +218,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self,
         search_space: Box,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
     ) -> Tuple[QueryPoints, State]:
         """

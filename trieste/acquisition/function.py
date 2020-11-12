@@ -19,7 +19,7 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..type import QueryPoints
-from ..models import ModelInterface
+from ..models import ProbabilisticModel
 from ..space import SearchSpace
 
 from scipy.optimize import bisect
@@ -33,7 +33,7 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -57,7 +57,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
@@ -68,7 +68,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -83,7 +83,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     of the posterior mean at observed points.
     """
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -95,11 +95,11 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, eta, at)
 
     @staticmethod
-    def _acquisition_function(model: ModelInterface, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
-def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
     The Expected Improvement (EI) acquisition function for single-objective global optimization.
     Return the expectation of the improvement at ``at`` over the current "best" observation ``eta``,
@@ -160,7 +160,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         Need to sample possible min-values from our posterior. 
@@ -198,11 +198,11 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
     
     @staticmethod
-    def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
 
 
-def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
     minimal value of the objective function) if we would evaluate x.
@@ -251,7 +251,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -262,7 +262,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, self._beta, at)
 
     @staticmethod
-    def _acquisition_function(model: ModelInterface, beta: float, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
         return -lower_confidence_bound(model, beta, at)
 
 
@@ -276,7 +276,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         super().__init__(beta=0.0)
 
 
-def lower_confidence_bound(model: ModelInterface, beta: float, at: QueryPoints) -> tf.Tensor:
+def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
     r"""
     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
 
@@ -365,7 +365,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -376,13 +376,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+        model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
     ) -> tf.Tensor:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+    model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
 ) -> tf.Tensor:
     r"""
     The probability of feasibility acquisition function defined in Garner, 2014 as

@@ -32,7 +32,7 @@ import numpy.testing as npt
 
 from trieste.data import Dataset
 from trieste.models.model_interfaces import (
-    TrainableModelInterface,
+    CustomTrainable,
     Batcher,
     GaussianProcessRegression,
     GPflowPredictor,
@@ -42,10 +42,9 @@ from trieste.models.model_interfaces import (
 from trieste.type import ObserverEvaluations, TensorType, QueryPoints
 
 from tests.util.misc import random_seed
-from tests.util.model import StaticModelInterface
 
 
-class _MinimalTrainable(TrainableModelInterface):
+class _MinimalTrainable(CustomTrainable):
     def loss(self) -> tf.Tensor:
         raise NotImplementedError
 
@@ -257,13 +256,13 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
 
 
-class _QuadraticStaticPredictor(GPflowPredictor, StaticModelInterface):
+class _QuadraticPredictor(GPflowPredictor):
     @property
     def model(self) -> GPModel:
-        return _QuadraticStaticGPModel()
+        return _QuadraticGPModel()
 
 
-class _QuadraticStaticGPModel(GPModel):
+class _QuadraticGPModel(GPModel):
     def __init__(self):
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used
@@ -284,7 +283,7 @@ class _QuadraticStaticGPModel(GPModel):
 
 
 def test_gpflow_predictor_predict() -> None:
-    model = _QuadraticStaticPredictor()
+    model = _QuadraticPredictor()
     mean, variance = model.predict(tf.constant([[2.5]], gpflow.default_float()))
     assert mean.shape == [1, 1]
     assert variance.shape == [1, 1]
@@ -294,7 +293,7 @@ def test_gpflow_predictor_predict() -> None:
 
 @random_seed(1357)
 def test_gpflow_predictor_sample() -> None:
-    model = _QuadraticStaticPredictor()
+    model = _QuadraticPredictor()
     samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), 10_000)
 
     assert samples.shape == [10_000, 1, 1]
@@ -307,7 +306,7 @@ def test_gpflow_predictor_sample() -> None:
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
-    samples = _QuadraticStaticPredictor().sample(tf.constant([[50.]], gpflow.default_float()), 0)
+    samples = _QuadraticPredictor().sample(tf.constant([[50.]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
 
 

@@ -107,7 +107,7 @@ def create_bo_model(data):
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model_interface(
+    return trieste.models.create_model(
         {
             "model": gpr,
             "optimizer": gpflow.optimizers.Scipy(),
