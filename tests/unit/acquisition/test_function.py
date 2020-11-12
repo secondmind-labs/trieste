@@ -204,7 +204,7 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
 def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
     class _Certainty(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return tf.ones_like
 
@@ -224,7 +224,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
 def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(x >= 0, x.dtype)
 
@@ -244,7 +244,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
 def test_expected_constrained_improvement_is_less_for_constrained_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(x >= 0, x.dtype)
 
@@ -265,7 +265,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
 def test_expected_constrained_improvement_raises_for_empty_data() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return lambda x: x
 
@@ -280,7 +280,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
 def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.logical_and(0.0 <= x, x < 1.0), x.dtype)
 
@@ -301,7 +301,7 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
             return pof
 
