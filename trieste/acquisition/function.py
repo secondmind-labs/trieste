@@ -61,7 +61,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                    self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
@@ -72,7 +72,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -88,7 +88,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     """
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
