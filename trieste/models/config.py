@@ -18,15 +18,15 @@ from typing import Any, Dict, Union
 import gpflow
 import tensorflow as tf
 
-from .model_interfaces import ModelInterface, Optimizer, supported_models
+from .model_interfaces import TrainableProbabilisticModel, Optimizer, supported_models
 
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """ Specification for building a :class:`~trieste.models.ModelInterface`. """
+    """ Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`. """
 
-    model: Union[tf.Module, ModelInterface]
-    """ The :class:`~trieste.models.ModelInterface`, or the model to wrap in one. """
+    model: Union[tf.Module, TrainableProbabilisticModel]
+    """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
 
     optimizer: Optimizer = field(default_factory=lambda: gpflow.optimizers.Scipy())
     """ The optimizer with which to train the model (by minimizing its loss function). """
@@ -48,7 +48,7 @@ class ModelConfig:
         return ModelConfig(**d)
 
     def _check_model_type(self) -> None:
-        if isinstance(self.model, ModelInterface):
+        if isinstance(self.model, TrainableProbabilisticModel):
             return
 
         for model_type in supported_models:
@@ -57,11 +57,11 @@ class ModelConfig:
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
-    def create_model_interface(self) -> ModelInterface:
+    def create_model_interface(self) -> TrainableProbabilisticModel:
         """
         :return: A model built from this model configuration.
         """
-        if isinstance(self.model, ModelInterface):
+        if isinstance(self.model, TrainableProbabilisticModel):
             return self.model
 
         for model_type, model_interface in supported_models.items():
@@ -74,19 +74,19 @@ class ModelConfig:
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
 
-ModelSpec = Union[Dict[str, Any], ModelConfig, ModelInterface]
+ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
-def create_model_interface(config: ModelSpec) -> ModelInterface:
+def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
     """
-    :param config: A :class:`ModelInterface` or configuration of a model.
-    :return: A :class:`~trieste.models.ModelInterface` build according to ``config``.
+    :param config: A :class:`TrainableProbabilisticModel` or configuration of a model.
+    :return: A :class:`~trieste.models.TrainableProbabilisticModel` build according to ``config``.
     """
     if isinstance(config, ModelConfig):
         return config.create_model_interface()
     elif isinstance(config, dict):
         return ModelConfig(**config).create_model_interface()
-    elif isinstance(config, ModelInterface):
+    elif isinstance(config, TrainableProbabilisticModel):
         return config
-    raise NotImplementedError("Unknown format passed to create a ModelInterface.")
+    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel.")

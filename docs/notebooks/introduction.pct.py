@@ -84,10 +84,10 @@ def build_model(data):
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
 
-    return {OBJECTIVE: trieste.models.create_model_interface({
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
+    return {OBJECTIVE: trieste.models.create_model({
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {"options": dict(maxiter=100)},
     })}
 
 model = build_model(initial_data[OBJECTIVE])

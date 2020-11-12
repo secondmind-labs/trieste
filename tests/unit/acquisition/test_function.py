@@ -32,7 +32,7 @@ from trieste.acquisition.function import (
     lower_confidence_bound,
     probability_of_feasibility,
 )
-from trieste.models import ModelInterface
+from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
 
@@ -42,7 +42,7 @@ from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         return lambda at: at
 
@@ -63,7 +63,7 @@ def test_single_builder_repr_includes_class_name() -> None:
 def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
     class _Mock(SingleModelAcquisitionBuilder):
         def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ProbabilisticModel
         ) -> AcquisitionFunction:
             assert dataset is data["foo"]
             assert model is models["foo"]
@@ -140,7 +140,7 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
 @pytest.mark.parametrize('beta', [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(ValueError):
-        lower_confidence_bound(MagicMock(ModelInterface), beta, tf.constant([[]]))
+        lower_confidence_bound(MagicMock(ProbabilisticModel), beta, tf.constant([[]]))
 
 
 @pytest.mark.parametrize('beta', [0.0, 0.1, 7.8])

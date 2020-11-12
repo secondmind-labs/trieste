@@ -20,12 +20,13 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from trieste.data import Dataset
-from trieste.models import ModelInterface
+from trieste.models import TrainableProbabilisticModel, ProbabilisticModel
 from trieste.type import QueryPoints, ObserverEvaluations, TensorType
 from tests.util.misc import random_seed
 
 
-class StaticModelInterface(ModelInterface, ABC):
+class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
+    """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
     def update(self, dataset: Dataset) -> None:
         pass
 
@@ -33,14 +34,18 @@ class StaticModelInterface(ModelInterface, ABC):
         pass
 
 
-class GaussianMarginal(StaticModelInterface, ABC):
+class GaussianMarginal(ProbabilisticModel, ABC):
+    """ A probabilistic with a Gaussian marginal distribution at each point. """
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
 
 
 class QuadraticWithUnitVariance(GaussianMarginal):
-    r""" An untrainable model hardcoded to the function :math:`y = \sum x^2` with unit variance. """
+    r"""
+    A probabilistic model with mean :math:`x \mapsto \sum x^2`, unit variance, and Gaussian
+    marginal distribution.
+    """
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         mean = tf.reduce_sum(query_points ** 2, axis=1, keepdims=True)
         return mean, tf.ones_like(mean)
@@ -54,7 +59,7 @@ def test_quadratic_with_unit_variance() -> None:
 
 
 @random_seed()
-def test_guassian_marginal_sample() -> None:
+def test_gaussian_marginal_sample() -> None:
     class _Sum(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             mean = tf.reduce_sum(query_points, axis=1, keepdims=True)

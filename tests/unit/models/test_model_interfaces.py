@@ -32,7 +32,7 @@ import numpy.testing as npt
 
 from trieste.data import Dataset
 from trieste.models.model_interfaces import (
-    TrainableModelInterface,
+    CustomTrainable,
     Batcher,
     GaussianProcessRegression,
     GPflowPredictor,
@@ -42,10 +42,9 @@ from trieste.models.model_interfaces import (
 from trieste.type import ObserverEvaluations, TensorType, QueryPoints
 
 from tests.util.misc import random_seed
-from tests.util.model import StaticModelInterface
 
 
-class _MinimalTrainable(TrainableModelInterface):
+class _MinimalTrainable(CustomTrainable):
     def loss(self) -> tf.Tensor:
         raise NotImplementedError
 
@@ -257,7 +256,7 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
 
 
-class _QuadraticStaticPredictor(GPflowPredictor, StaticModelInterface):
+class _QuadraticStaticPredictor(GPflowPredictor):
     @property
     def model(self) -> GPModel:
         return _QuadraticStaticGPModel()

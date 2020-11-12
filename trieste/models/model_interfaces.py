@@ -16,31 +16,21 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
-import numpy as np
 import tensorflow as tf
 
 from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
-class ModelInterface(ABC):
-    """ A trainable probabilistic model. """
 
-    @abstractmethod
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update the model given the specified ``dataset``. Does not train the model.
-
-        :param dataset: The data with which to update the model.
-        """
-        raise NotImplementedError
+class ProbabilisticModel(ABC):
+    """ A probabilistic model. """
 
     @abstractmethod
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
-        ``query_points``, conditioned on the current data (see :meth:`update` to update the model
-        given new data).
+        ``query_points``.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance.
@@ -59,6 +49,19 @@ class ModelInterface(ABC):
         """
         raise NotImplementedError
 
+
+class TrainableProbabilisticModel(ProbabilisticModel):
+    """ A trainable probabilistic model. """
+
+    @abstractmethod
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
+
+        :param dataset: The data with which to update the model.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def optimize(self) -> None:
         """ Optimize the model parameters. """
@@ -68,7 +71,7 @@ class ModelInterface(ABC):
 Optimizer = Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
 
 
-class TrainableModelInterface(tf.Module, ModelInterface, ABC):
+class CustomTrainable(tf.Module, TrainableProbabilisticModel, ABC):
     """
     A utility class that provides a default optimization strategy, as well as the ability to modify
     various elements of this strategy.
@@ -160,8 +163,8 @@ class TrainableModelInterface(tf.Module, ModelInterface, ABC):
         self._optimize_fn = optimization_fn
 
 
-class GPflowPredictor(ModelInterface, ABC):
-    """ A trainable wrapper for a GPflow Gaussian process model. """
+class GPflowPredictor(ProbabilisticModel, ABC):
+    """ A wrapper for a GPflow Gaussian process model. """
 
     @property
     @abstractmethod
@@ -175,7 +178,7 @@ class GPflowPredictor(ModelInterface, ABC):
         return self.model.predict_f_samples(query_points, num_samples)
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableModelInterface):
+class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
     def __init__(self, model: Union[GPR, SGPR]):
         """
         :param model: The GPflow model to wrap.
@@ -208,7 +211,7 @@ Type alias for a function that creates minibatches from a :class:`~trieste.data.
 """
 
 
-class SparseVariational(GPflowPredictor, ABC):
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(
         self,
         model: SVGP,
@@ -294,12 +297,12 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], TrainableModelInterface]] = {
+supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
 }
 """
-:var supported_models: A mapping of third-party model types to :class:`ModelInterface` classes
+:var supported_models: A mapping of third-party model types to :class:`TrainableProbabilisticModel` classes
 that wrap models of those types.
 """
