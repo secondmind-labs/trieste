@@ -37,7 +37,7 @@ class ModelInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
         ``query_points``, conditioned on the current data (see :meth:`update` to update the model
@@ -169,8 +169,8 @@ class GPflowPredictor(ModelInterface, ABC):
     def model(self) -> GPModel:
         """ The underlying GPflow model. """
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-        return self.model.predict_f(query_points)
+    def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
+        return self.model.predict_f(query_points, full_cov=full_cov, full_output_cov=False)
 
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         return self.model.predict_f_samples(query_points, num_samples)
@@ -282,7 +282,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
         model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
 
 

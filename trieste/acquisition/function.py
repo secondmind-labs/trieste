@@ -36,7 +36,7 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -50,6 +50,7 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
+
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
@@ -60,7 +61,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+                    self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
@@ -71,7 +72,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -85,8 +86,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
+
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -163,7 +165,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         Need to sample possible min-values from our posterior. 
@@ -175,11 +177,11 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         :return: The MES function.
         """
         query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points,query_points],0)
+        query_points = tf.concat([dataset.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
-        def probf(x: tf.Tensor) -> tf.Tensor :  # Build empirical CDF
+        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
             unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
             log_cdf = unit_normal.log_cdf(- (x - fmean) / fsd)
             return tf.exp(tf.reduce_sum(log_cdf, axis=0))
@@ -189,17 +191,17 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
         def binary_search(val: float) -> float:  # Fit Gumbel quantiles
             return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
-        
+
         q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
 
         b = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
         a = med + b * tf.math.log(tf.math.log(2.))
 
-        uniform_samples = tf.random.uniform([self._num_samples],dtype=fmean.dtype)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a, fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
-    
+
     @staticmethod
     def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
@@ -228,15 +230,15 @@ def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: Quer
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max) # clip below to improve numerical stability
-    
-    normal = tfp.distributions.Normal(tf.cast(0,fmean.dtype), tf.cast(1,fmean.dtype))
+    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max)  # clip below to improve numerical stability
+
+    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
     gamma = (samples - fmean) / fsd
 
     minus_cdf = 1 - normal.cdf(gamma)
-    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1) # clip below to improve numerical stability
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
     f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-        
+
     return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
@@ -254,7 +256,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -368,7 +370,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -379,13 +381,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+            model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
     ) -> tf.Tensor:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
 ) -> tf.Tensor:
     r"""
     The probability of feasibility acquisition function defined in Garner, 2014 as
@@ -416,35 +418,42 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
     of the posterior mean at observed points.
     """
 
-    def __init__(self, eps_shape: [int], num_samples: int = 1):
+    def __init__(self, eps_shape: [int]):
 
         super().__init__()
-
-        eps_shape = tf.concat([eps_shape, [num_samples]], 0)
-        self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [..., N, D, S]
+        self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, B, L]
 
     def predict_f_samples_with_reparametrisation_trick(self, model: ModelInterface, at: QueryPoints) -> tf.Tensor:
-        mean, cov = model.predict_f(at, full_cov=True, full_output_cov=True)
-        # mean: [..., N, L]
-        # cov: [..., L, N, N]
-        mean_for_sample = tf.linalg.adjoint(mean)  # [..., L, N]
-        mean_shape = tf.shape(mean)
-        num_latent = mean_shape[-1]
+        # mean, cov = model.predict_f(at, full_cov=True, full_output_cov=True)
 
-        jittermat = (
-            tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
-        )  # [..., N, D, D]
+        if len(at.shape) == 2:
+            mean, cov = model.predict(at)
+            # mean: [N, L]
+            # cov: [N, L]
+            samples = mean[None, :, None, :] + \
+                      tf.math.sqrt(cov)[None, :, None, :] * self.eps[:, None, ...]  # [S, N, B, L]
+        else:
+            mean, cov = model.predict(at, full_cov=True)
+            # mean: [..., N, L]
+            # cov: [..., L, N, N]
+            mean_for_sample = tf.linalg.adjoint(mean)  # [..., L, N]
+            mean_shape = tf.shape(mean)
+            num_latent = mean_shape[-1]
 
-        chol = tf.linalg.cholesky(cov + jittermat)  # [..., N, L, L]
-        samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, self.eps)  # [..., N, L, S]
-        samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
-        samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
+            jittermat = (
+                    tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+            )  # [..., N, D, D]
+
+            chol = tf.linalg.cholesky(cov + jittermat)  # [..., N, L, L]
+            samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, self.eps)  # [..., N, L, S]
+            samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
+            samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
 
         return samples
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -457,8 +466,9 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
     """
     Builder for the Monte_carlo based expected improvement.
     """
+
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ModelInterface
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -473,9 +483,8 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
     def _acquisition_function(
             self, model: ModelInterface, eta: tf.Tensor, at: QueryPoints
     ) -> tf.Tensor:
-
-        samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [..., (S), N, L]
-        samples = samples[..., 0]
+        samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [S, N, B, L]
+        samples = samples[..., 0, 0]
         improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
         ei = tf.math.reduce_mean(improvement, axis=0)  # todo: ensure this broadcasts properly
         return ei
