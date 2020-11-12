@@ -177,7 +177,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]]))
     }
 
-    models: Dict[str, TrainableProbabilisticModel] = {  # mypy can't infer this type for some reason
+    models: Dict[str, TrainableProbabilisticModel] = {  # mypy can't infer this type
         LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
     }
 
