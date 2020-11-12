@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Mapping, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -25,6 +25,8 @@ from trieste.acquisition import SingleModelAcquisitionBuilder
 from trieste.data import Dataset
 from trieste.acquisition.function import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    ExpectedConstrainedImprovement,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
@@ -37,7 +39,7 @@ from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
 
 from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
-from tests.util.model import QuadraticWithUnitVariance, GaussianMarginal
+from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVariance, GaussianMarginal
 
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
@@ -191,3 +193,126 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
     threshold = tf.ones(shape)
     with pytest.raises(ValueError):
         ProbabilityOfFeasibility(threshold)
+
+
+def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    with pytest.raises(ValueError):
+        ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+
+
+def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
+    class _Certainty(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return tf.ones_like
+
+    data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
+    models_ = {"foo": QuadraticWithUnitVariance()}
+
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Certainty(), 0
+    ).prepare_acquisition_function(data, models_)
+
+    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
+
+    at = tf.constant([[-0.1], [1.23], [-6.78]])
+    npt.assert_allclose(eci(at), ei(at))
+
+
+def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: tf.cast(x >= 0, x.dtype)
+
+    models_ = {"foo": QuadraticWithUnitVariance()}
+
+    eci_data = {"foo": Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(eci_data, models_)
+
+    ei_data = {"foo": Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))}
+    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(ei_data, models_)
+
+    npt.assert_allclose(eci(tf.constant([[0.1]])), ei(tf.constant([[0.1]])))
+
+
+def test_expected_constrained_improvement_is_less_for_constrained_points() -> None:
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: tf.cast(x >= 0, x.dtype)
+
+    def two_global_minima(x: tf.Tensor) -> tf.Tensor:
+        return x ** 4 / 4 - x ** 2 / 2
+
+    initial_query_points = tf.constant([[- 2.0], [0.0], [1.2]])
+    data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
+    models_ = {"foo": CustomMeanWithUnitVariance(two_global_minima)}
+
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(data, models_)
+
+    npt.assert_array_less(eci(tf.constant(- 1.0)), eci(tf.constant(1.0)))
+
+
+def test_expected_constrained_improvement_raises_for_empty_data() -> None:
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: x
+
+    data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
+    models_ = {"foo": QuadraticWithUnitVariance()}
+    builder = ExpectedConstrainedImprovement("foo", _Constraint())
+
+    with pytest.raises(ValueError):
+        builder.prepare_acquisition_function(data, models_)
+
+
+def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: tf.cast(tf.logical_and(0.0 <= x, x < 1.0), x.dtype)
+
+    data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
+    models_ = {"foo": QuadraticWithUnitVariance()}
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(data, models_)
+
+    constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
+
+    xs = tf.range(-10.0, 10.0, 100)
+    npt.assert_allclose(eci(xs), constraint_fn(xs))
+
+
+def test_expected_constrained_improvement_min_feasibility_probability_bound_is_inclusive() -> None:
+    pof = tfp.bijectors.Sigmoid().forward
+
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return pof
+
+    models_ = {"foo": QuadraticWithUnitVariance()}
+
+    data = {"foo": Dataset(tf.constant([[1.1], [2.0]]), tf.constant([[1.21], [4.0]]))}
+    eci = ExpectedConstrainedImprovement(
+        "foo", _Constraint(), min_feasibility_probability=pof(1.0)
+    ).prepare_acquisition_function(data, models_)
+
+    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
+
+    x = tf.constant([[1.5]])
+    npt.assert_allclose(eci(x), ei(x) * pof(x))
