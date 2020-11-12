@@ -35,7 +35,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
 
 
 class GaussianMarginal(ProbabilisticModel, ABC):
-    """ A probabilistic with a Gaussian marginal distribution at each point. """
+    """ A probabilistic model with a Gaussian marginal distribution at each point. """
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
