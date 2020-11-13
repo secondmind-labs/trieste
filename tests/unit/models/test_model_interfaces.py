@@ -302,6 +302,7 @@ def test_gpflow_predictor_sample() -> None:
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
     npt.assert_allclose(sample_mean, [[6.25]], rtol=0.01)
+    # todo is this failing because the variance uses cross-terms in the covariance?
     npt.assert_allclose(sample_variance, 1.0, rtol=0.01)
 
 
