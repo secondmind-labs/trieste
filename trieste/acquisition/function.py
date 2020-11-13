@@ -443,9 +443,9 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
             assert at.shape[1] == self.eps.shape[1]
 
             mean, cov = model.predict(at, full_cov=True)
-            # mean: [..., N, L]
-            # cov: [..., L, N, N]
-            mean_for_sample = tf.linalg.adjoint(mean)  # [..., L, N]
+            # mean: [N, B, L]
+            # cov: [N, L, B, B]
+            mean_for_sample = tf.linalg.adjoint(mean)  # ??[..., L, N]
             mean_shape = tf.shape(mean)
             num_latent = mean_shape[-1]
 

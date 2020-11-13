@@ -27,9 +27,9 @@ from ..data import Dataset
 from ..models import ModelInterface
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import AcquisitionFunctionBuilder, ExpectedImprovement, MonteCarloExpectedImprovement
 from . import _optimizer
-
+from ..space import Box
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -90,7 +90,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
             with tag `OBJECTIVE`.
         """
         if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
+            builder = MonteCarloExpectedImprovement(eps_shape=[]).using(OBJECTIVE)
 
         self._builder = builder
 
@@ -294,3 +294,61 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_
+
+
+class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+    """ Implements a acquisition rule for a batch of query points """
+
+    def __init__(self, num_query_points: int,
+                 builder: Optional[AcquisitionFunctionBuilder] = None):
+        """
+        :param num_query_points: The number of points to acquire.
+        :param builder: The acquisition function builder to use.
+            :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
+            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
+            with tag `OBJECTIVE`.
+        """
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
+        self._num_query_points = num_query_points
+
+        if builder is None:
+            num_samples = 100
+            builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
+
+        self._builder = builder
+
+    def expand_search_space(self, search_space: SearchSpace):
+        assert isinstance(search_space, Box)
+
+        lower_bound, upper_bound = search_space.lower, search_space.upper
+        expanded_lower_bound = tf.tile(lower_bound, [self._num_query_points])
+        expanded_upper_bound = tf.tile(upper_bound, [self._num_query_points])
+        return Box(expanded_lower_bound, expanded_upper_bound)
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ModelInterface],
+        state: None = None,
+    ) -> Tuple[QueryPoints, None]:
+        """
+        Return the query point that optimizes the acquisition function produced by `builder` (see
+        :meth:`__init__`).
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The single point to query, and `None`.
+        """
+        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        vectorized_points = _optimizer.optimize(search_space, acquisition_function)
+
+        return points, None
