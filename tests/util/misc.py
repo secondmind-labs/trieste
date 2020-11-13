@@ -32,7 +32,7 @@ C = TypeVar('C', bound=Callable)
 def random_seed(f: C) -> C:
     """
     :param f: A function.
-    :return: The function ``f``, but with a hardcoded TensorFlow randomness seed.
+    :return: The function ``f``, but with the TensorFlow randomness seed fixed to a hardcoded value.
     """
     @functools.wraps(f)
     def decorated(*args, **kwargs):
