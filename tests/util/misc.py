@@ -26,7 +26,7 @@ from trieste.type import QueryPoints
 from trieste.utils import shapes_equal
 
 C = TypeVar('C', bound=Callable)
-""" Type variable for callables. """
+""" Type variable bound to `typing.Callable`. """
 
 
 def random_seed(f: C) -> C:
