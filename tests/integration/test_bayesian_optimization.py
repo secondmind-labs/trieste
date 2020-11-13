@@ -38,7 +38,7 @@ from trieste.utils.objectives import (
 from tests.util.misc import random_seed
 
 
-@random_seed(1793)
+@random_seed
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
     (12, EfficientGlobalOptimization()),
     (22, TrustRegion()),

@@ -29,21 +29,17 @@ C = TypeVar('C', bound=Callable)
 """ Type variable for callables. """
 
 
-def random_seed(seed: int = 0) -> Callable[[C], C]:
+def random_seed(f: C) -> C:
     """
-    :param seed: The randomness seed to use.
-    :return: A decorator. The decorated function will set the TensorFlow randomness seed to `seed`
-        before executing.
+    :param f: A function.
+    :return: The function ``f``, but with a hardcoded TensorFlow randomness seed.
     """
-    def decorator(f: C) -> C:
-        @functools.wraps(f)
-        def decorated(*args, **kwargs):
-            tf.random.set_seed(seed)
-            return f(*args, **kwargs)
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        tf.random.set_seed(0)
+        return f(*args, **kwargs)
 
-        return cast(C, decorated)
-
-    return decorator
+    return cast(C, decorated)
 
 
 def zero_dataset() -> Dataset:

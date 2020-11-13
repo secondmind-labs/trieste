@@ -191,7 +191,7 @@ def test_vgp_update_updates_num_data() -> None:
     assert new_num_data - num_data == 2
 
 
-@random_seed(1357)
+@random_seed
 def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _2sin_x_over_3(x_observed)
@@ -209,7 +209,7 @@ def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
 
 
-@random_seed(1357)
+@random_seed
 def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> None:
     model = gpr_interface_factory(*_mock_data())
     loss = model.loss()
@@ -217,7 +217,7 @@ def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> 
     assert model.loss() < loss
 
 
-@random_seed(1357)
+@random_seed
 @pytest.mark.parametrize("optimizer", [gpflow.optimizers.Scipy(), tf.optimizers.Adam(), None])
 def test_gaussian_process_regression_optimize(
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer, None], gpr_interface_factory
@@ -234,7 +234,7 @@ def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + np.random.normal(scale=0.01, size=x.shape)
 
 
-@random_seed(1357)
+@random_seed
 def test_variational_gaussian_process_predict() -> None:
     x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -291,7 +291,7 @@ def test_gpflow_predictor_predict() -> None:
     npt.assert_allclose(variance, [[1.0]], rtol=0.01)
 
 
-@random_seed(1357)
+@random_seed
 def test_gpflow_predictor_sample() -> None:
     model = _QuadraticPredictor()
     samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), 10_000)
