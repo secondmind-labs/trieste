@@ -15,6 +15,7 @@
 import functools
 from typing import FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
 
+import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule
@@ -99,3 +100,8 @@ def various_shapes() -> FrozenSet[Tuple[int, ...]]:
     return frozenset(
         {(), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6)}
     )
+
+
+def assert_dataset_allclose(this: Dataset, that: Dataset) -> None:
+    npt.assert_allclose(this.query_points, that.query_points)
+    npt.assert_allclose(this.observations, that.observations)
