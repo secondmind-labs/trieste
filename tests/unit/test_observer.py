@@ -24,7 +24,7 @@ from tests.util.misc import ShapeLike, assert_datasets_allclose
 def _sum_with_nan_at_origin(t: tf.Tensor) -> tf.Tensor:
     is_at_origin = tf.reduce_all(t == [[0., 0.]], axis=-1, keepdims=True)
     sums = tf.reduce_sum(t, axis=-1, keepdims=True)
-    return tf.where(is_at_origin, tf.constant([[np.nan]]), sums)
+    return tf.where(is_at_origin, [[np.nan]], sums)
 
 
 @pytest.mark.parametrize('query_points, expected', [
@@ -42,11 +42,12 @@ def _sum_with_nan_at_origin(t: tf.Tensor) -> tf.Tensor:
             tf.constant([[-1.], [1.], [2.], [4.]])
         )
     ),
-    (tf.constant([[0., 0.]]), Dataset(tf.zeros(0, 2), tf.zeros(0, 1))),  # only failure point
-    (tf.zeros(0, 2), Dataset(tf.zeros(0, 2), tf.zeros(0, 1))),  # empty data
+    (tf.constant([[0., 0.]]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # only failure point
+    (tf.zeros([0, 2]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # empty data
 ])
 def test_filter_finite(query_points: tf.Tensor, expected: Dataset) -> None:
-    assert_datasets_allclose(Dataset(query_points, _sum_with_nan_at_origin(query_points)), expected)
+    actual = filter_finite(query_points, _sum_with_nan_at_origin(query_points))
+    assert_datasets_allclose(actual, expected)
 
 
 @pytest.mark.parametrize('qp_shape, obs_shape', [
@@ -63,10 +64,12 @@ def test_filter_finite_raises_for_invalid_shapes(qp_shape: ShapeLike, obs_shape:
 def test_map_is_finite() -> None:
     query_points = tf.constant([[0., 0.]] + [[-1., 0.], [1., 0.], [0., 2.], [1., 3.]])
     is_finite = map_is_finite(query_points, _sum_with_nan_at_origin(query_points))
-    expected = Dataset(query_points, tf.constant([[0.], [1.], [1.], [1.], [1.]]))
+    expected = Dataset(query_points, tf.constant([[0], [1], [1], [1], [1]], tf.uint8))
     assert_datasets_allclose(is_finite, expected)
 
 
 def test_map_is_finite_with_empty_data() -> None:
-    empty = tf.zeros(0, 2)
-    assert_datasets_allclose(map_is_finite(empty, empty), Dataset(empty, empty))
+    assert_datasets_allclose(
+        map_is_finite(tf.zeros([0, 2]), tf.zeros([0, 1])),
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1], tf.uint8))
+    )
