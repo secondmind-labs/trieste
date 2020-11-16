@@ -23,7 +23,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
 from trieste.type import QueryPoints
-
+from trieste.utils import shapes_equal
 
 C = TypeVar('C', bound=Callable)
 """ Type variable for callables. """
@@ -109,14 +109,16 @@ def assert_datasets_allclose(this: Dataset, that: Dataset) -> None:
 
     :param this: A dataset.
     :param that: A dataset.
-    :raise ValueError (or InvalidArgumentError): If shapes or dtypes do not match.
-    :raise AssertionError: If elements are not approximately equal.
+    :raise AssertionError: If any of the following are true:
+        - shapes are not equal
+        - dtypes are not equal
+        - elements are not approximately equal.
     """
-    tf.debugging.assert_shapes(this.query_points, that.query_points.shape)
-    tf.debugging.assert_shapes(this.observations, that.observations.shape)
+    assert shapes_equal(this.query_points, that.query_points)
+    assert shapes_equal(this.observations, that.observations)
 
-    tf.debugging.assert_type(this.query_points, that.query_points.dtype)
-    tf.debugging.assert_type(this.observations, that.observations.dtype)
+    assert this.query_points.dtype == that.query_points.dtype
+    assert this.observations.dtype == that.observations.dtype
 
     npt.assert_allclose(this.query_points, that.query_points)
     npt.assert_allclose(this.observations, that.observations)
