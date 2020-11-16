@@ -16,7 +16,10 @@ from typing import Tuple
 
 import pytest
 import tensorflow as tf
+
+from tests.util.misc import ShapeLike, assert_datasets_allclose
 from trieste.data import Dataset
+from trieste.utils import shapes_equal
 
 
 @pytest.mark.parametrize('query_points_leading_shape, observations_leading_shape', [
@@ -28,9 +31,9 @@ from trieste.data import Dataset
 ])
 @pytest.mark.parametrize('last_dim_size', [0, 1, 5])
 def test_dataset_raises_on_initialisation_for_different_leading_shapes(
-        query_points_leading_shape: Tuple[int, ...],
-        observations_leading_shape: Tuple[int, ...],
-        last_dim_size: int
+    query_points_leading_shape: Tuple[int, ...],
+    observations_leading_shape: Tuple[int, ...],
+    last_dim_size: int
 ) -> None:
     query_points = tf.zeros(query_points_leading_shape + (last_dim_size,))
     observations = tf.ones(observations_leading_shape + (last_dim_size,))
@@ -44,8 +47,7 @@ def test_dataset_raises_on_initialisation_for_different_leading_shapes(
     ((1, 2), (1, 2, 3)),
 ])
 def test_dataset_raises_on_initialisation_for_different_ranks(
-        query_points_shape: Tuple[int, ...],
-        observations_shape: Tuple[int, ...]
+    query_points_shape: ShapeLike, observations_shape: ShapeLike
 ) -> None:
     query_points = tf.zeros(query_points_shape)
     observations = tf.ones(observations_shape)
@@ -62,8 +64,7 @@ def test_dataset_raises_on_initialisation_for_different_ranks(
     ((1, 2), (1, 2, 3)),
 ])
 def test_dataset_raises_on_initialisation_for_invalid_ranks(
-        query_points_shape: Tuple[int, ...],
-        observations_shape: Tuple[int, ...]
+    query_points_shape: ShapeLike, observations_shape: ShapeLike
 ) -> None:
     query_points = tf.zeros(query_points_shape)
     observations = tf.ones(observations_shape)
@@ -75,22 +76,69 @@ def test_dataset_raises_on_initialisation_for_invalid_ranks(
 def test_dataset_getters() -> None:
     query_points, observations = tf.constant([[0.0]]), tf.constant([[1.0]])
     dataset = Dataset(query_points, observations)
+    assert dataset.query_points.dtype == query_points.dtype
+    assert dataset.observations.dtype == observations.dtype
+
+    assert shapes_equal(dataset.query_points, query_points)
+    assert shapes_equal(dataset.observations, observations)
+
     assert tf.reduce_all(dataset.query_points == query_points)
     assert tf.reduce_all(dataset.observations == observations)
 
 
-def test_dataset_concatenation() -> None:
-    qp_this = [[1.2, 3.4], [5.6, 7.8]]
-    qp_that = [[5., 6.], [7., 8.]]
+@pytest.mark.parametrize('lhs, rhs, expected', [
+    (  # lhs and rhs populated
+        Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
+        Dataset(tf.constant([[5., 6.], [7., 8.]]), tf.constant([[-1.], [-2.]])),
+        Dataset(
+            tf.constant([[1.2, 3.4], [5.6, 7.8], [5., 6.], [7., 8.],]),
+            tf.constant([[1.1], [2.2], [-1.], [-2.]])
+        )
+    ),
+    (  # lhs populated
+        Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
+        Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
+    ),
+    (  # rhs populated
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
+        Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
+        Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
+    ),
+    (  # both empty
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
+        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
+    )
+])
+def test_dataset_concatenation(lhs: Dataset, rhs: Dataset, expected: Dataset) -> None:
+    assert_datasets_allclose(lhs + rhs, expected)
 
-    obs_this = [[1.1, 2.2], [3.3, 4.4]]
-    obs_that = [[-1., -2.], [-3., -4.]]
 
-    this = Dataset(tf.constant(qp_this), tf.constant(obs_this))
-    that = Dataset(tf.constant(qp_that), tf.constant(obs_that))
-    merged = this + that
-    assert tf.reduce_all(merged.query_points == tf.constant(qp_this + qp_that))
-    assert tf.reduce_all(merged.observations == tf.constant(obs_this + obs_that))
+@pytest.mark.parametrize('lhs, rhs', [
+    (  # incompatible query points shape
+        Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+        Dataset(tf.constant([[1.0, 1.0]]), tf.constant([[1.0]]))
+    ),
+    (  # incompatible observations shape
+        Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+        Dataset(tf.constant([[1.0]]), tf.constant([[1.0, 1.0]]))
+    ),
+    (  # incompatible query points dtype
+        Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+        Dataset(tf.constant([[1.0]], dtype=tf.float64), tf.constant([[1.0]]))
+    ),
+    (  # incompatible observations dtype
+        Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+        Dataset(tf.constant([[1.0]]), tf.constant([[1.0]], dtype=tf.float64))
+    ),
+])
+def test_dataset_concatentation_raises_for_incompatible_data(lhs: Dataset, rhs: Dataset) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        lhs + rhs
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        rhs + lhs
 
 
 @pytest.mark.parametrize('data, length', [
