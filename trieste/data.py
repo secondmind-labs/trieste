@@ -40,6 +40,12 @@ class Dataset:
         tf.debugging.assert_rank_at_least(self.query_points, 2)
         tf.debugging.assert_rank_at_least(self.observations, 2)
 
+        if 0 in (self.query_points.shape[-1], self.observations.shape[-1]):
+            raise ValueError(
+                f"query_points and observations cannot have dimension 0, got shapes"
+                f" {self.query_points.shape} and {self.observations.shape}."
+            )
+
         if self.query_points.shape[:-1] != self.observations.shape[:-1]:
             raise ValueError(
                 f"Leading shapes of query_points and observations must match. Got shapes"

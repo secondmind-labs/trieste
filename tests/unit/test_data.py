@@ -22,6 +22,12 @@ from trieste.data import Dataset
 from trieste.utils import shapes_equal
 
 
+def test_dataset_raises_for_zero_dimensional_data() -> None:
+    query_points, observations = tf.constant([[]]), tf.constant([[]])
+    with pytest.raises(ValueError):
+        Dataset(query_points, observations)
+
+
 @pytest.mark.parametrize('query_points_leading_shape, observations_leading_shape', [
     ((1,), (2,)),
     ((2,), (1,)),
@@ -29,8 +35,8 @@ from trieste.utils import shapes_equal
     ((5, 6), (4, 6)),
     ((5, 6), (4, 4)),
 ])
-@pytest.mark.parametrize('last_dim_size', [0, 1, 5])
-def test_dataset_raises_on_initialisation_for_different_leading_shapes(
+@pytest.mark.parametrize('last_dim_size', [1, 5])
+def test_dataset_raises_for_different_leading_shapes(
     query_points_leading_shape: Tuple[int, ...],
     observations_leading_shape: Tuple[int, ...],
     last_dim_size: int
@@ -46,7 +52,7 @@ def test_dataset_raises_on_initialisation_for_different_leading_shapes(
     ((1, 2), (1,)),
     ((1, 2), (1, 2, 3)),
 ])
-def test_dataset_raises_on_initialisation_for_different_ranks(
+def test_dataset_raises_for_different_ranks(
     query_points_shape: ShapeLike, observations_shape: ShapeLike
 ) -> None:
     query_points = tf.zeros(query_points_shape)
@@ -63,7 +69,7 @@ def test_dataset_raises_on_initialisation_for_different_ranks(
     ((1, 2), (1,)),
     ((1, 2), (1, 2, 3)),
 ])
-def test_dataset_raises_on_initialisation_for_invalid_ranks(
+def test_dataset_raises_for_invalid_ranks(
     query_points_shape: ShapeLike, observations_shape: ShapeLike
 ) -> None:
     query_points = tf.zeros(query_points_shape)
@@ -144,7 +150,7 @@ def test_dataset_concatentation_raises_for_incompatible_data(lhs: Dataset, rhs: 
 @pytest.mark.parametrize('data, length', [
     (Dataset(tf.ones((7, 8, 10)), tf.ones((7, 8, 13))), 7),
     (Dataset(tf.ones([0, 2]), tf.ones([0, 1])), 0),
-    (Dataset(tf.constant([[]]), tf.constant([[]])), 1),
+    (Dataset(tf.ones([1, 0, 2]), tf.ones([1, 0, 1])), 1),
 ])
 def test_dataset_length(data: Dataset, length: int) -> None:
     assert len(data) == length
