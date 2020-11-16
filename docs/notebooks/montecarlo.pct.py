@@ -102,26 +102,26 @@ model = build_model(initial_data[OBJECTIVE])
 # We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
 
 # %%
-ei = trieste.acquisition.ExpectedImprovement()
-ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
-mcei = trieste.acquisition.MonteCarloExpectedImprovement(
-    eps_shape=[100, 1, 1]  # [S, B, L]
-)
-mcei_acq_function = mcei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
-
-fig, ax = plot_function_2d(mcei_acq_function, mins, maxs, grid_density=40, contour=True)
-plot_bo_points(
-    initial_data['OBJECTIVE'].query_points.numpy(),
-    ax=ax[0, 0],
-)
-fig.suptitle("MC-EI Acquisition Function")
-
-fig, ax = plot_function_2d(ei_acq_function, mins, maxs, grid_density=40, contour=True)
-plot_bo_points(
-    initial_data['OBJECTIVE'].query_points.numpy(),
-    ax=ax[0, 0],
-)
-fig.suptitle("Expected Improvement Acquisition Function")
+# ei = trieste.acquisition.ExpectedImprovement()
+# ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+# mcei = trieste.acquisition.MonteCarloExpectedImprovement(
+#     eps_shape=[1000, 1, 1]  # [S, B, L]
+# )
+# mcei_acq_function = mcei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
+#
+# fig, ax = plot_function_2d(mcei_acq_function, mins, maxs, grid_density=40, contour=True)
+# plot_bo_points(
+#     initial_data['OBJECTIVE'].query_points.numpy(),
+#     ax=ax[0, 0],
+# )
+# fig.suptitle("MC-EI Acquisition Function")
+#
+# fig, ax = plot_function_2d(ei_acq_function, mins, maxs, grid_density=40, contour=True)
+# plot_bo_points(
+#     initial_data['OBJECTIVE'].query_points.numpy(),
+#     ax=ax[0, 0],
+# )
+# fig.suptitle("Expected Improvement Acquisition Function")
 
 # %% [markdown]
 # To compare the performance of the optimization achieved by these two different acquisition functions, we re-run the above BO loop using MES.
@@ -130,20 +130,42 @@ fig.suptitle("Expected Improvement Acquisition Function")
 # We re-initialize the model and define a new acquisiton rule.
 
 # %%
-model = build_model(initial_data[OBJECTIVE])
-acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
+# model = build_model(initial_data[OBJECTIVE])
+# acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
 
 # %% [markdown]
 # All that remains is to run the whole BO loop for 15 steps.
-
-# %%
+#
+# # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+#
+# result = bo.optimize(2, initial_data, model, acquisition_rule=acq_rule)
+#
+# if result.error is not None: raise result.error
+#
+# dataset = result.datasets[OBJECTIVE]
+#
+# arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+# fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
+#
+# plot_bo_points(
+#     dataset.query_points.numpy(),
+#     ax=ax[0, 0],
+#     num_init=len(initial_query_points),
+#     idx_best=arg_min_idx,
+# )
 
-result = bo.optimize(15, initial_data, model)
+batch_mcei = trieste.acquisition.MonteCarloExpectedImprovement(
+    eps_shape=[200, 2, 1]  # [S, B, L]
+)
+batch_acq_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=2,
+                                                               builder=batch_mcei.using(OBJECTIVE))
 
-if result.error is not None: raise result.error
+batch_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_acq_rule)
 
-dataset = result.datasets[OBJECTIVE]
+if batch_result.error is not None: raise batch_result.error
+
+dataset = batch_result.datasets[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)

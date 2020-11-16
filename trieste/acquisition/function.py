@@ -445,18 +445,31 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
             mean, cov = model.predict(at, full_cov=True)
             # mean: [N, B, L]
             # cov: [N, L, B, B]
-            mean_for_sample = tf.linalg.adjoint(mean)  # ??[..., L, N]
-            mean_shape = tf.shape(mean)
-            num_latent = mean_shape[-1]
+            mean_for_sample = tf.linalg.adjoint(mean)  # [N, L, B]
+            mean_shape = tf.shape(mean_for_sample)
+            B = mean_shape[-1]
 
             jittermat = (
-                    tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
-            )  # [..., N, D, D]
+                    tf.eye(B, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+            )  # [N, L, B, B]
 
-            chol = tf.linalg.cholesky(cov + jittermat)  # [..., N, L, L]
-            samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, self.eps)  # [..., N, L, S]
-            samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
-            samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
+            eps = tf.transpose(self.eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
+
+            chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
+            samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
+            samples = tf.transpose(samples, [3, 0, 2, 1])
+
+            # samples = leading_transpose(samples, [..., -1, -3, -2])  # [N, S, L, B]
+
+            # jittermat = (
+            #         tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+            # )  # [N, B, L, L]
+            #
+            # chol = tf.linalg.cholesky(cov)  #  + jittermat)  # [N, L, B, B]
+            # samples = mean[:, None, :, :] + tf.linalg.matmul(chol, self.eps)  # [N, S, B, L]
+            # # samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
+            # # samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
+            # samples = tf.transpose(samples, perm=[1, 0, 2, 3])
 
         return samples
 
@@ -493,8 +506,8 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
             self, model: ModelInterface, eta: tf.Tensor, at: QueryPoints
     ) -> tf.Tensor:
         samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [S, N, B, L]
-        samples = samples[..., 0, 0]
-        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
-        # ei = tf.math.reduce_mean(improvement, axis=0, keepdims=True)  # todo: ensure this broadcasts properly
-        ei = tf.math.reduce_mean(improvement, axis=0)[:, None]  # todo: ensure this broadcasts properly
+        samples = samples[..., 0]
+        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N, B]
+        batch_improvement = tf.math.reduce_mean(improvement, axis=-1)  # [S, N]
+        ei = tf.math.reduce_mean(batch_improvement, axis=0)[:, None]
         return ei

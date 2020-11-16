@@ -18,7 +18,7 @@ the Bayesian optimization process.
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
+from typing import Callable, TypeVar, Generic, Optional, Tuple, Mapping, Union
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -36,6 +36,9 @@ S = TypeVar("S")
 
 SP = TypeVar("SP", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`SearchSpace`. """
+
+AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+""" Type alias for acquisition functions. """
 
 
 class AcquisitionRule(ABC, Generic[S, SP]):
@@ -90,7 +93,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
             with tag `OBJECTIVE`.
         """
         if builder is None:
-            builder = MonteCarloExpectedImprovement(eps_shape=[]).using(OBJECTIVE)
+            builder = ExpectedImprovement().using(OBJECTIVE)
 
         self._builder = builder
 
@@ -290,6 +293,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             )
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+
         point = _optimizer.optimize(acquisition_space, acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
@@ -330,6 +334,9 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         expanded_upper_bound = tf.tile(upper_bound, [self._num_query_points])
         return Box(expanded_lower_bound, expanded_upper_bound)
 
+    def vectorize_batch_acquisition(self, acquisition_function, dim):
+        return lambda at: acquisition_function(tf.reshape(at, [-1, self._num_query_points, dim]))
+
     def acquire(
         self,
         search_space: SearchSpace,
@@ -348,7 +355,13 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         :param state: Unused.
         :return: The single point to query, and `None`.
         """
+        expanded_search_space = self.expand_search_space(search_space)
+        dim = search_space.lower.shape[0]
+
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        vectorized_points = _optimizer.optimize(search_space, acquisition_function)
+        vectorized_batch_acquisition = self.vectorize_batch_acquisition(acquisition_function, dim)
+
+        vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
+        points = tf.reshape(vectorized_points, [self._num_query_points, -1])
 
         return points, None
