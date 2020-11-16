@@ -132,7 +132,7 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     model = QuadraticWithUnitVariance()
     beta = 1.96
     acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(
-        Dataset(tf.constant([[]]), tf.constant([[]])), model
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
     )
     query_at = tf.constant([[-3.], [-2.], [-1.], [0.], [1.], [2.], [3.]])
     expected = - lower_confidence_bound(model, beta, query_at)
