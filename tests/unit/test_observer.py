@@ -81,7 +81,6 @@ def test_map_is_finite() -> None:
 
 
 def test_map_is_finite_with_empty_data() -> None:
-    assert_datasets_allclose(
-        map_is_finite(tf.zeros([0, 2]), tf.zeros([0, 1])),
-        Dataset(tf.zeros([0, 2]), tf.zeros([0, 1], tf.uint8))
-    )
+    query_points, observations = tf.zeros([0, 2]), tf.zeros([0, 1])
+    expected = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1], tf.uint8))
+    assert_datasets_allclose(map_is_finite(query_points, observations), expected)
