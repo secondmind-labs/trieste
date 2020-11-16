@@ -93,7 +93,7 @@ ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
-def various_shapes(*, excluding_ranks: Container[int]) -> FrozenSet[Tuple[int, ...]]:
+def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[int, ...]]:
     """
     :param excluding_ranks: Ranks to exclude from the result.
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank

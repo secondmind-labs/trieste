@@ -150,7 +150,12 @@ class Box(SearchSpace):
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from the search space.
         """
-        tf.debugging.assert_shapes([(value, self._lower.shape)])
+        if not shapes_equal(value, self._lower):
+            raise ValueError(
+                f"value must have same dimensionality as search space: {self._lower.shape},"
+                f" got shape {value.shape}"
+            )
+
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> tf.Tensor:
