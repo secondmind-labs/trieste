@@ -39,6 +39,8 @@ class SearchSpace(ABC):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `tf.Tensor` instead of the `bool` itself.
+        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
+            from this :class:`SearchSpace`.
         """
 
 
@@ -58,8 +60,10 @@ class DiscreteSearchSpace(SearchSpace):
 
     def __init__(self, points: TensorType):
         """
-        :param points: The points that define the discrete space.
+        :param points: The points that define the discrete space, with shape ('N', 'D').
+        :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
         """
+        tf.debugging.assert_shapes([(points, ('N', 'D'))])
         self._points = points
 
     @property
@@ -68,11 +72,8 @@ class DiscreteSearchSpace(SearchSpace):
         return self._points
 
     def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
-        if tf.size(value) == tf.shape(self._points)[-1]:
-            is_point_for_all_points = tf.reduce_all(value == self._points, axis=1)
-            return tf.reduce_any(is_point_for_all_points)
-
-        return False
+        tf.debugging.assert_shapes([(value, self.points.shape[1:])])
+        return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
     def sample(self, num_samples: int) -> tf.Tensor:
         """
@@ -146,14 +147,10 @@ class Box(SearchSpace):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `tf.Tensor` instead of the `bool` itself.
-        :raise ValueError: If ``value`` has a different shape from the search space.
+        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
+            from the search space.
         """
-        if not shapes_equal(value, self._lower):
-            raise ValueError(
-                f"Point must have the same shape as the Box bounds, got {value.shape}, expected"
-                f" {self._lower.shape}"
-            )
-
+        tf.debugging.assert_shapes([(value, self._lower.shape)])
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> tf.Tensor:

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import functools
-from typing import FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
+from typing import Container, FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -93,13 +93,16 @@ ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
-def various_shapes() -> FrozenSet[Tuple[int, ...]]:
+def various_shapes(*, excluding_ranks: Container[int]) -> FrozenSet[Tuple[int, ...]]:
     """
-    :return: A reasonably comprehensive variety of tensor shapes.
+    :param excluding_ranks: Ranks to exclude from the result.
+    :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank
+        in ``excluding_ranks``.
     """
-    return frozenset(
-        {(), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6)}
-    )
+    shapes = {
+        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6)
+    }
+    return frozenset(s for s in shapes if len(s) not in excluding_ranks)
 
 
 def assert_datasets_allclose(this: Dataset, that: Dataset) -> None:

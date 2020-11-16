@@ -11,17 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from _ast import operator
+from functools import reduce
 from typing import Tuple, List
 
 import pytest
+import numpy.testing as npt
 import tensorflow as tf
 
+from tests.util.misc import ShapeLike, various_shapes
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
 
 
 def _points_in_2D_search_space() -> tf.Tensor:
     return tf.constant([[-1., .4], [-1., .6], [0., .4], [0., .6], [1., .4], [1., .6]])
+
+
+@pytest.mark.parametrize('shape', various_shapes(excluding_ranks=[2]))
+def test_discrete_search_space_raises_for_invalid_shapes(shape: ShapeLike) -> None:
+    with pytest.raises(ValueError):
+        DiscreteSearchSpace(tf.random.uniform(shape))
+
+
+def test_discrete_search_space_points() -> None:
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    npt.assert_array_equal(space.points, _points_in_2D_search_space())
 
 
 @pytest.mark.parametrize('point', list(_points_in_2D_search_space()))
@@ -37,6 +51,20 @@ def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None
 ])
 def test_discrete_search_space_does_not_contain_other_points(point: tf.Tensor) -> None:
     assert point not in DiscreteSearchSpace(_points_in_2D_search_space())
+
+
+@pytest.mark.parametrize('points, test_point', [
+    (tf.constant([[0.0]]), tf.constant([0.0, 0.0])),
+    (tf.constant([[0.0, 0.0]]), tf.constant(0.0)),
+    (tf.constant([[0.0, 0.0]]), tf.constant([0.0])),
+    (tf.constant([[0.0, 0.0]]), tf.constant([0.0, 0.0, 0.0])),
+])
+def test_discrete_search_space_contains_raises_for_invalid_shapes(
+    points: tf.Tensor, test_point: tf.Tensor
+) -> None:
+    space = DiscreteSearchSpace(points)
+    with pytest.raises(ValueError):
+        _ = test_point in space
 
 
 def _assert_correct_number_of_unique_constrained_samples(
@@ -69,7 +97,7 @@ def test_discrete_search_space_sampling_raises_when_too_many_samples_are_request
         search_space.sample(num_samples)
 
 
-def _pairs_of_different_shapes() -> List[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
+def _pairs_of_different_shapes() -> List[Tuple[ShapeLike, ShapeLike]]:
     return [
         ((), (1,)),
         ((1,), (1, 2)),
@@ -79,8 +107,8 @@ def _pairs_of_different_shapes() -> List[Tuple[Tuple[int, ...], Tuple[int, ...]]
 
 @pytest.mark.parametrize('lower_shape, upper_shape', _pairs_of_different_shapes())
 def test_box_raises_if_bounds_have_different_shape(
-        lower_shape: Tuple[int, ...],
-        upper_shape: Tuple[int, ...]
+        lower_shape: ShapeLike,
+        upper_shape: ShapeLike
 ) -> None:
     lower, upper = tf.zeros(lower_shape), tf.ones(upper_shape)
 
@@ -111,11 +139,17 @@ def test_box_raises_if_bounds_have_different_dtypes(
     (tf.constant([2.3, -.1, 8.]), tf.constant([3., -.1, 8.]))  # one lower equal to upper
 ])
 def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
-        lower: tf.Tensor,
-        upper: tf.Tensor
+    lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
     with pytest.raises(ValueError):
         Box(lower, upper)
+
+
+def test_box_bounds_attributes() -> None:
+    lower, upper = tf.zeros([2]), tf.ones([2])
+    box = Box(lower, upper)
+    npt.assert_array_equal(box.lower, lower)
+    npt.assert_array_equal(box.upper, upper)
 
 
 @pytest.mark.parametrize('point', [
@@ -139,13 +173,12 @@ def test_box_does_not_contain_point(point: tf.Tensor) -> None:
 
 @pytest.mark.parametrize('bound_shape, point_shape', _pairs_of_different_shapes())
 def test_box_contains_raises_on_point_of_different_shape(
-        bound_shape: Tuple[int],
-        point_shape: Tuple[int],
+    bound_shape: ShapeLike, point_shape: ShapeLike,
 ) -> None:
     box = Box(tf.zeros(bound_shape), tf.ones(bound_shape))
     point = tf.zeros(point_shape)
 
-    with pytest.raises(ValueError, match='(bound)|(point)'):
+    with pytest.raises(ValueError):
         _ = point in box
 
 
