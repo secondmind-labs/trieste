@@ -42,7 +42,7 @@ def _sum_with_nan_at_origin(t: tf.Tensor) -> tf.Tensor:
             tf.constant([[-1.], [1.], [2.], [4.]])
         )
     ),
-    (tf.constant([[0., 0.]]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # only failure point
+    (tf.constant([[0., 0.]]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # only failure points
     (tf.zeros([0, 2]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # empty data
 ])
 def test_filter_finite(query_points: tf.Tensor, expected: Dataset) -> None:
@@ -62,9 +62,9 @@ def test_filter_finite_raises_for_invalid_shapes(qp_shape: ShapeLike, obs_shape:
 
 
 def test_map_is_finite() -> None:
-    query_points = tf.constant([[0., 0.]] + [[-1., 0.], [1., 0.], [0., 2.], [1., 3.]])
+    query_points = tf.constant([[-1., 0.], [1., 0.], [0., 2.], [0., 0.], [1., 3.]])
     is_finite = map_is_finite(query_points, _sum_with_nan_at_origin(query_points))
-    expected = Dataset(query_points, tf.constant([[0], [1], [1], [1], [1]], tf.uint8))
+    expected = Dataset(query_points, tf.constant([[1], [1], [1], [0], [1]], tf.uint8))
     assert_datasets_allclose(is_finite, expected)
 
 
