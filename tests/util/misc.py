@@ -103,5 +103,20 @@ def various_shapes() -> FrozenSet[Tuple[int, ...]]:
 
 
 def assert_dataset_allclose(this: Dataset, that: Dataset) -> None:
+    """
+    Check the :attr:`query_points` in ``this`` and ``that`` have the same shape and dtype, and all
+    elements are approximately equal. Also check the same for :attr:`observations`.
+
+    :param this: A dataset.
+    :param that: A dataset.
+    :raise ValueError (or InvalidArgumentError): If shapes or dtypes do not match.
+    :raise AssertionError: If elements are not approximately equal.
+    """
+    tf.debugging.assert_shapes(this.query_points, that.query_points.shape)
+    tf.debugging.assert_shapes(this.observations, that.observations.shape)
+
+    tf.debugging.assert_type(this.query_points, that.query_points.dtype)
+    tf.debugging.assert_type(this.observations, that.observations.dtype)
+
     npt.assert_allclose(this.query_points, that.query_points)
     npt.assert_allclose(this.observations, that.observations)
