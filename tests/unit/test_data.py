@@ -22,8 +22,14 @@ from trieste.data import Dataset
 from trieste.utils import shapes_equal
 
 
-def test_dataset_raises_for_zero_dimensional_data() -> None:
-    query_points, observations = tf.constant([[]]), tf.constant([[]])
+@pytest.mark.parametrize('query_points, observations', [
+    (tf.constant([[]]), tf.constant([[]])),
+    (tf.constant([[0.0], [1.0], [2.0]]), tf.constant([[], [], []])),
+    (tf.constant([[], [], []]), tf.constant([[0.0], [1.0], [2.0]])),
+])
+def test_dataset_raises_for_zero_dimensional_data(
+    query_points: tf.Tensor, observations: tf.Tensor
+) -> None:
     with pytest.raises(ValueError):
         Dataset(query_points, observations)
 
