@@ -102,7 +102,7 @@ def various_shapes() -> FrozenSet[Tuple[int, ...]]:
     )
 
 
-def assert_dataset_allclose(this: Dataset, that: Dataset) -> None:
+def assert_datasets_allclose(this: Dataset, that: Dataset) -> None:
     """
     Check the :attr:`query_points` in ``this`` and ``that`` have the same shape and dtype, and all
     elements are approximately equal. Also check the same for :attr:`observations`.
