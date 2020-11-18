@@ -71,7 +71,7 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
 ])
 def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
     ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[]]), tf.constant([[]]))
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
