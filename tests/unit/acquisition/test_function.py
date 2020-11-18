@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 from typing import Mapping, Tuple
-from unittest.mock import MagicMock
 
 import pytest
 import numpy.testing as npt
@@ -78,18 +77,21 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
     builder.prepare_acquisition_function(data, models)
 
 
-@pytest.mark.parametrize('query_at', [
-    tf.constant([[-2.0], [-1.5], [-1.0], [-0.5], [0.0], [0.5], [1.0], [1.5], [2.0]])
-])
-def test_expected_improvement_builder_builds_expected_improvement(
-        query_at: tf.Tensor
-) -> None:
-    dataset = Dataset(tf.constant([[-2.], [-1.], [0.], [1.], [2.]]), tf.zeros([5, 1]))
+def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
+    # we shift the observations so that we know the best is from the model not the data
+    dataset = Dataset(tf.constant([[-2.], [-1.], [0.], [1.], [2.]]), tf.zeros([5, 1]) + 0.1)
     model = QuadraticWithUnitVariance()
-    builder = ExpectedImprovement()
-    acq_fn = builder.prepare_acquisition_function(dataset, model)
-    expected = expected_improvement(model, tf.constant([0.]), query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    xs = tf.linspace([-10.], [10.], 100)
+    expected = expected_improvement(model, tf.constant([0.]), xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+
+
+def test_expected_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(ValueError):
+        ExpectedImprovement().prepare_acquisition_function(data, QuadraticWithUnitVariance())
 
 
 @random_seed()
@@ -134,7 +136,7 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(
         Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
     )
-    query_at = tf.constant([[-3.], [-2.], [-1.], [0.], [1.], [2.], [3.]])
+    query_at = tf.linspace([-10], [10], 100)
     expected = - lower_confidence_bound(model, beta, query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
@@ -142,7 +144,7 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
 @pytest.mark.parametrize('beta', [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(ValueError):
-        lower_confidence_bound(MagicMock(ProbabilisticModel), beta, tf.constant([[]]))
+        lower_confidence_bound(QuadraticWithUnitVariance(), beta, tf.constant([[]]))
 
 
 @pytest.mark.parametrize('beta', [0.0, 0.1, 7.8])

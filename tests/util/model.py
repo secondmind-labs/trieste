@@ -47,6 +47,7 @@ class CustomMeanWithUnitVariance(GaussianMarginal):
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         mean = self._f(query_points)
+        # todo make variance 0.25
         return mean, tf.ones_like(mean)
 
 
@@ -57,7 +58,7 @@ class QuadraticWithUnitVariance(GaussianMarginal):
     """
     def __init__(self):
         self._model = CustomMeanWithUnitVariance(
-            lambda x: tf.reduce_sum(x ** 2, axis=1, keepdims=True)
+            lambda x: tf.reduce_sum(x ** 2, axis=1, keepdims=True)  # todo shift mean
         )
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:

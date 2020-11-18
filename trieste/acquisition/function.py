@@ -86,10 +86,14 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer.
+        :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
         :return: The expected improvement function.
+        :raise ValueError: If ``dataset`` is empty.
         """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at)
