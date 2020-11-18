@@ -78,8 +78,10 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
-    # we shift the observations so that we know the best is from the model not the data
-    dataset = Dataset(tf.constant([[-2.], [-1.], [0.], [1.], [2.]]), tf.zeros([5, 1]) + 0.1)
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
     model = QuadraticWithUnitVariance()
     acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
     xs = tf.linspace([-10.], [10.], 100)
