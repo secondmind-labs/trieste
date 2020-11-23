@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains implementations of various types of search space. """
+from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Union
 
@@ -172,16 +173,19 @@ class Box(SearchSpace):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __mul__(self, other_box):
+    def __mul__(self, other_box: Box):
         """
         Combines 2 Box spaces into a single one by concatenating their respective lower and upper bounds.
         :param other_box: :class:`Box`.
         :return: the new combined :class:`Box`.
         :raise ValueError (or InvalidArgumentError): If ``other_box`` is not from :class:`Box`.
         """
-        if isinstance(other_box, Box):
-            expanded_lower_bound = tf.concat([self._lower, other_box.lower], axis=-1)
-            expanded_upper_bound = tf.concat([self._upper, other_box.upper], axis=-1)
-            return Box(expanded_lower_bound, expanded_upper_bound)
-        else:
-            raise ValueError(f"Box search space can only be concatenated with another box, got {isinstance(other_box)}")
+        if self.lower.dtype is not other_box.lower.dtype:
+            raise TypeError(
+                f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
+                f" {other_box.lower.dtype}"
+            )
+
+        expanded_lower_bound = tf.concat([self._lower, other_box.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self._upper, other_box.upper], axis=-1)
+        return Box(expanded_lower_bound, expanded_upper_bound)
