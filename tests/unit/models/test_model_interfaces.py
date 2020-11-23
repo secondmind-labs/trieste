@@ -294,16 +294,17 @@ def test_gpflow_predictor_predict() -> None:
 @random_seed
 def test_gpflow_predictor_sample() -> None:
     model = _QuadraticPredictor()
-    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), 10_000)
+    num_samples = 20_000
+    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
 
-    assert samples.shape == [10_000, 1, 1]
+    assert samples.shape == [num_samples, 1, 1]
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
-    npt.assert_allclose(sample_mean, [[6.25]], rtol=0.01)
-    # todo is this failing because the variance uses cross-terms in the covariance?
-    npt.assert_allclose(sample_variance, 1.0, rtol=0.01)
+    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, [[6.25]], rtol=linear_error)
+    npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
