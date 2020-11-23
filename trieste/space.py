@@ -174,8 +174,8 @@ class Box(SearchSpace):
 
     def __mul__(self, other_box):
         if isinstance(other_box, Box):
-            expanded_lower_bound = tf.concat([self._lower, other_box.lower])
-            expanded_upper_bound = tf.concat([self._upper, other_box.upper])
+            expanded_lower_bound = tf.concat([self._lower, other_box.lower], axis=-1)
+            expanded_upper_bound = tf.concat([self._upper, other_box.upper], axis=-1)
             return Box(expanded_lower_bound, expanded_upper_bound)
         else:
             raise ValueError(f"Box search space can only be concatenated with another box, got {isinstance(other_box)}")
