@@ -71,7 +71,7 @@ def test_quadratic_with_unit_variance() -> None:
     npt.assert_array_almost_equal(var, tf.constant([[1.], [1.], [1.]]))
 
 
-@random_seed()
+@random_seed
 def test_gaussian_marginal_sample() -> None:
     class _Sum(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:

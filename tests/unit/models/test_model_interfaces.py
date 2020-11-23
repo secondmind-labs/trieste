@@ -191,7 +191,7 @@ def test_vgp_update_updates_num_data() -> None:
     assert new_num_data - num_data == 2
 
 
-@random_seed(1357)
+@random_seed
 def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _2sin_x_over_3(x_observed)
@@ -209,7 +209,7 @@ def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
 
 
-@random_seed(1357)
+@random_seed
 def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> None:
     model = gpr_interface_factory(*_mock_data())
     loss = model.loss()
@@ -217,7 +217,7 @@ def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> 
     assert model.loss() < loss
 
 
-@random_seed(1357)
+@random_seed
 @pytest.mark.parametrize("optimizer", [gpflow.optimizers.Scipy(), tf.optimizers.Adam(), None])
 def test_gaussian_process_regression_optimize(
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer, None], gpr_interface_factory
@@ -234,7 +234,7 @@ def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + np.random.normal(scale=0.01, size=x.shape)
 
 
-@random_seed(1357)
+@random_seed
 def test_variational_gaussian_process_predict() -> None:
     x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -291,18 +291,20 @@ def test_gpflow_predictor_predict() -> None:
     npt.assert_allclose(variance, [[1.0]], rtol=0.01)
 
 
-@random_seed(1357)
+@random_seed
 def test_gpflow_predictor_sample() -> None:
     model = _QuadraticPredictor()
-    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), 10_000)
+    num_samples = 20_000
+    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
 
-    assert samples.shape == [10_000, 1, 1]
+    assert samples.shape == [num_samples, 1, 1]
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
-    npt.assert_allclose(sample_mean, [[6.25]], rtol=0.01)
-    npt.assert_allclose(sample_variance, 1.0, rtol=0.01)
+    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, [[6.25]], rtol=linear_error)
+    npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
