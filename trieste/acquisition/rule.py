@@ -345,7 +345,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, Box]):
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
-        Return the query point that optimizes the acquisition function produced by `builder` (see
+        Return the batch of query points that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
 
         :param search_space: The global search space over which the optimization problem
@@ -353,7 +353,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, Box]):
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
-        :return: The single point to query, and `None`.
+        :return: The batch of points to query, and `None`.
         """
         expanded_search_space = self.expand_search_space(search_space)
         dim = search_space.lower.shape[0]
