@@ -173,6 +173,12 @@ class Box(SearchSpace):
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
     def __mul__(self, other_box):
+        """
+        Combines 2 Box spaces into a single one by concatenating their respective lower and upper bounds.
+        :param other_box: :class:`Box`.
+        :return: the new combined :class:`Box`.
+        :raise ValueError (or InvalidArgumentError): If ``other_box`` is not from :class:`Box`.
+        """
         if isinstance(other_box, Box):
             expanded_lower_bound = tf.concat([self._lower, other_box.lower], axis=-1)
             expanded_upper_bound = tf.concat([self._upper, other_box.upper], axis=-1)
