@@ -300,7 +300,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         return point, state_
 
 
-class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+class BatchAcquisitionRule(AcquisitionRule[None, Box]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
@@ -326,7 +326,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
 
         self._builder = builder
 
-    def expand_search_space(self, search_space: SearchSpace):
+    def expand_search_space(self, search_space: Box):
         assert isinstance(search_space, Box)
 
         lower_bound, upper_bound = search_space.lower, search_space.upper
@@ -339,7 +339,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
 
     def acquire(
         self,
-        search_space: SearchSpace,
+        search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ModelInterface],
         state: None = None,
