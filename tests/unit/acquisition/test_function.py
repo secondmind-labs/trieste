@@ -96,7 +96,7 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
         ExpectedImprovement().prepare_acquisition_function(data, QuadraticWithUnitVariance())
 
 
-@random_seed()
+@random_seed
 @pytest.mark.parametrize('best', [
     tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01
 ])
