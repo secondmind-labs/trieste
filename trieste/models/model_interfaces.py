@@ -170,7 +170,7 @@ class GPflowPredictor(ModelInterface, ABC):
         """ The underlying GPflow model. """
 
     def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
-        return self.model.predict_f(query_points, full_cov=full_cov, full_output_cov=False)
+        return self.model.predict_f(query_points, full_cov=full_cov)
 
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         return self.model.predict_f_samples(query_points, num_samples)
