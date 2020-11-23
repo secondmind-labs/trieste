@@ -19,6 +19,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
+from functools import reduce
+import operator
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -294,3 +296,68 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_
+
+
+class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+    """ Implements a acquisition rule for a batch of query points """
+
+    def __init__(self, num_query_points: int,
+                 builder: Optional[AcquisitionFunctionBuilder] = None):
+        """
+        :param num_query_points: The number of points to acquire.
+        :param builder: The acquisition function builder to use.
+            :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
+            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
+            with tag `OBJECTIVE`.
+        """
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
+        self._num_query_points = num_query_points
+
+        if builder is None:
+            builder = ExpectedImprovement().using(OBJECTIVE)  # this is a placeholder for now
+            # num_samples = 100
+            # builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
+
+        self._builder = builder
+
+    def _vectorize_batch_acquisition(self, acquisition_function):
+        return lambda at: acquisition_function(tf.reshape(at, [at.shape[:-1], self._num_query_points, -1]))
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: None = None,
+    ) -> Tuple[QueryPoints, None]:
+        """
+        Return the batch of query points that optimizes the acquisition function produced by `builder` (see
+        :meth:`__init__`).
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The batch of points to query, and `None`.
+        """
+        expanded_search_space = _expand_search_space(search_space, self._num_query_points)
+
+        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        vectorized_batch_acquisition = self._vectorize_batch_acquisition(acquisition_function)
+
+        vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
+        points = tf.reshape(vectorized_points, [self._num_query_points, -1])
+
+        return points, None
+
+
+def _expand_search_space(search_space: SearchSpace, times: int):
+    expanded_search_space = search_space
+    for _ in range(times-1):
+        expanded_search_space *= search_space
+    return expanded_search_space
