@@ -171,3 +171,11 @@ class Box(SearchSpace):
             this :class:`Box`.
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __mul__(self, other_box):
+        if isinstance(other_box, Box):
+            expanded_lower_bound = tf.concat([self._lower, other_box.lower])
+            expanded_upper_bound = tf.concat([self._upper, other_box.upper])
+            return Box(expanded_lower_bound, expanded_upper_bound)
+        else:
+            raise ValueError(f"Box search space can only be concatenated with another box, got {isinstance(other_box)}")

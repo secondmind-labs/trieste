@@ -212,3 +212,12 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
 
     with pytest.raises(ValueError):
         dss.sample(num_samples + 1)
+
+
+def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    new_box = box * box
+
+    assert len(new_box.lower) == 6
+    assert len(new_box.upper) == 6
