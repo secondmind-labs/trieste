@@ -39,9 +39,6 @@ class TFOptimizer(Optimizer):
     batch_size: Optional[int] = None
     dataset_builder: Optional[DatasetBuilder] = None
 
-    def __post_init__(self):
-        if self.max_iter is None:
-            raise ValueError("Max iterations expected to be set")
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> Callable:
         def creator_fn(data: Union[Tuple, Iterable]):
@@ -54,7 +51,7 @@ class TFOptimizer(Optimizer):
         elif self.dataset_builder is None:
             d = tf.data.Dataset.from_tensor_slices((dataset.query_points, dataset.observations))
             size = len(dataset)
-            data: Iterable = iter(
+            data = iter(
                 d.shuffle(size)
                 .batch(self.batch_size)
                 .prefetch(tf.data.experimental.AUTOTUNE)
