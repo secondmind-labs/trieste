@@ -173,7 +173,7 @@ class Box(SearchSpace):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __mul__(self, box: Box):
+    def __mul__(self, box: Box) -> Box:
         """
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
         :param box: :class:`Box`.
