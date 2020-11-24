@@ -221,3 +221,22 @@ def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
 
     assert len(new_box.lower) == 6
     assert len(new_box.upper) == 6
+
+
+def test_box_product_bounds_are_the_concatenation_of_original_bounds(
+) -> None:
+    box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
+    box2 = Box(tf.constant([4., 5., 6.]), tf.constant([7., 8., 9.]))
+
+    res = box1 * box2
+    npt.assert_allclose(res.lower, [0, 1, 4, 5, 6])
+    npt.assert_allclose(res.upper, [2, 3, 7, 8, 9])
+
+
+def test_box_product_raises_if_bounds_have_different_types(
+) -> None:
+    box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
+    box2 = Box(tf.constant([4., 5.], tf.float64), tf.constant([6., 7.], tf.float64))
+
+    with pytest.raises(TypeError):
+        _ = box1 * box2
