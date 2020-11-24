@@ -233,8 +233,7 @@ def test_box_product_bounds_are_the_concatenation_of_original_bounds(
     npt.assert_allclose(res.upper, [2, 3, 7, 8, 9])
 
 
-def test_box_product_raises_if_bounds_have_different_types(
-) -> None:
+def test_box_product_raises_if_bounds_have_different_types() -> None:
     box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
     box2 = Box(tf.constant([4., 5.], tf.float64), tf.constant([6., 7.], tf.float64))
 
