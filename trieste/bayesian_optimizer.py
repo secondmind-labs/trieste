@@ -26,8 +26,8 @@ import gpflow
 import tensorflow as tf
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
-from .datasets import Dataset
-from .models import ModelInterface, create_model_interface, ModelSpec
+from .data import Dataset
+from .models import ProbabilisticModel, create_model, ModelSpec
 from .observer import Observer
 from .space import SearchSpace
 
@@ -41,22 +41,40 @@ SP = TypeVar("SP", bound=SearchSpace)
 @dataclass(frozen=True)
 class LoggingState(Generic[S]):
     """
-    Container used to track the state of the optimization process in :class:`BayesianOptimizer`.
+    Container for the state of the optimization process in :class:`BayesianOptimizer` at each
+    optimization step.
     """
 
     datasets: Mapping[str, Dataset]
-    models: Mapping[str, ModelInterface]
+    """ All observer data at this optimization step. """
+
+    models: Mapping[str, ProbabilisticModel]
+    """ The models over the :attr:`datasets`. """
+
     acquisition_state: Optional[S]
+    """ The acquisition state after this optimization step. """
 
 
 @dataclass(frozen=True)
 class OptimizationResult(Generic[S]):
-    """ Container for the result of the optimization process in :class:`BayesianOptimizer`. """
+    """ Container for the final result of the optimization process. """
 
     datasets: Mapping[str, Dataset]
-    models: Mapping[str, ModelInterface]
+    """
+    All data from the observer (unless :attr:`error` is populated, in which case this is the data
+    from the point at which the process was interrupted).
+    """
+
+    models: Mapping[str, ProbabilisticModel]
+    """
+    The models over the :attr:`datasets` (unless :attr:`error` is populated, in which case this is
+    the models from the point at which the process was interrupted). """
+
     history: List[LoggingState[S]]
+    """ The data, models, and acquisition state at each completed optimization step. """
+
     error: Optional[Exception]
+    """ The exception that occurred, if any. """
 
 
 class BayesianOptimizer(Generic[SP]):
@@ -72,8 +90,8 @@ class BayesianOptimizer(Generic[SP]):
         :param search_space: The space over which to search. Must be a
             :class:`~trieste.space.SearchSpace`.
         """
-        self.observer = observer
-        self.search_space = search_space
+        self._observer = observer
+        self._search_space = search_space
 
     def optimize(
         self,
@@ -115,7 +133,7 @@ class BayesianOptimizer(Generic[SP]):
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.datasets.Dataset` (matched
+        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` (matched
             by tag).
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
@@ -154,7 +172,7 @@ class BayesianOptimizer(Generic[SP]):
 
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
-        models = {tag: create_model_interface(spec) for tag, spec in model_specs.items()}
+        models = {tag: create_model(spec) for tag, spec in model_specs.items()}
         history: List[LoggingState[S]] = []
 
         for step in range(num_steps):
@@ -163,10 +181,10 @@ class BayesianOptimizer(Generic[SP]):
                     _save_to_history(history, datasets, models, acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
-                    self.search_space, datasets, models, acquisition_state
+                    self._search_space, datasets, models, acquisition_state
                 )
 
-                observer_output = self.observer(query_points)
+                observer_output = self._observer(query_points)
 
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
 
@@ -191,7 +209,7 @@ class BayesianOptimizer(Generic[SP]):
 def _save_to_history(
     history: List[LoggingState[S]],
     datasets: Mapping[str, Dataset],
-    models: Mapping[str, ModelInterface],
+    models: Mapping[str, ProbabilisticModel],
     acquisition_state: Optional[S],
 ) -> None:
     models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}

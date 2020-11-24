@@ -17,17 +17,16 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 import gpflow
 from dataclasses import dataclass
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
-import numpy as np
 import tensorflow as tf
 
 from .optimizer import Optimizer
 from .. import utils
-from ..datasets import Dataset
+from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
 
-class ModelInterface(ABC):
-    """ A trainable probabilistic model. """
+class ProbabilisticModel(ABC):
+    """ A probabilistic model. """
 
     @abstractmethod
     def optimize(self, dataset: Dataset) -> None:
@@ -49,8 +48,7 @@ class ModelInterface(ABC):
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
-        ``query_points``, conditioned on the current data (see :meth:`update` to update the model
-        given new data).
+        ``query_points``.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance.
@@ -70,7 +68,7 @@ class ModelInterface(ABC):
         raise NotImplementedError
 
 
-class GPflowPredictor(ModelInterface, ABC):
+class GPflowPredictor(ProbabilisticModel, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
     def __init__(self, optimizer: Optional[Optimizer] = None):
@@ -122,12 +120,7 @@ class GaussianProcessRegression(GPflowPredictor):
 
 
 class SparseVariational(GPflowPredictor):
-    def __init__(
-        self,
-        model: SVGP,
-        data: Dataset,
-        optimizer: Optional[Optimizer] = None
-    ):
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
         :param optimizer: The optimizer to use for optimization.
         :param model: The underlying GPflow sparse variational model.
@@ -164,24 +157,35 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         assert dataset.observations.shape[-1] == y.shape[-1]
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
-        num_latent_gps = model.num_latent_gps
+
+        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
+        assert self.model.q_sqrt.shape.ndims == 3
+
+        jitter = gpflow.config.default_jitter()
+        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
+        Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
+        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L^{-1} f_cov
+        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(
+            S_v + tf.eye(num_data, dtype=Knn.dtype) * jitter
+        )  # [L, N, N]
+
         model.data = data
         model.num_data = num_data
-        model.q_mu = gpflow.Parameter(np.zeros((num_data, num_latent_gps)))
-        q_sqrt = np.eye(num_data)
-        q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
-        model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu = gpflow.Parameter(new_q_mu)
+        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], ModelInterface]] = {
+supported_models: Dict[Any, Callable[[Any], ProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
 }
 """
-:var supported_models: A mapping of third-party model types to :class:`ModelInterface` classes
+:var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
 that wrap models of those types.
 """

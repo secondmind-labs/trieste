@@ -25,7 +25,7 @@ from trieste.acquisition.rule import (
     OBJECTIVE
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
 from trieste.utils.objectives import (
@@ -38,10 +38,9 @@ from trieste.utils.objectives import (
 from tests.util.misc import random_seed
 
 
-@gpflow.config.as_context(gpflow.config.Config(float=tf.float64))
-@random_seed(1793)
+@random_seed
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (12, EfficientGlobalOptimization()),
+    (30, EfficientGlobalOptimization()),
     (22, TrustRegion()),
     (17, ThompsonSampling(500, 3)),
 ])

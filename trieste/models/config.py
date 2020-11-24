@@ -18,7 +18,7 @@ from typing import Any, Dict, Union
 import gpflow
 import tensorflow as tf
 
-from .model_interfaces import ModelInterface, supported_models
+from .model_interfaces import ProbabilisticModel, supported_models
 from .optimizer import Optimizer, create_optimizer
 
 
@@ -28,10 +28,10 @@ def _default_optimizer():
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """ Specification for building a :class:`~trieste.models.ModelInterface`. """
+    """ Specification for building a :class:`~trieste.models.ProbabilisticModel`. """
 
-    model: Union[tf.Module, ModelInterface]
-    """ The :class:`~trieste.models.ModelInterface`, or the model to wrap in one. """
+    model: Union[tf.Module, ProbabilisticModel]
+    """ The :class:`~trieste.models.ProbabilisticModel`, or the model to wrap in one. """
 
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer] = field(default_factory=_default_optimizer)
     """ The optimizer with which to train the model (by minimizing its loss function). """
@@ -53,7 +53,7 @@ class ModelConfig:
         return ModelConfig(**d)
 
     def _check_model_type(self) -> None:
-        if isinstance(self.model, ModelInterface):
+        if isinstance(self.model, ProbabilisticModel):
             return
 
         for model_type in supported_models:
@@ -62,10 +62,13 @@ class ModelConfig:
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
-    def create_model_interface(self) -> ModelInterface:
+    def create_model_interface(self) -> ProbabilisticModel:
         """
         :return: A model built from this model configuration.
         """
+        if isinstance(self.model, ProbabilisticModel):
+            return self.model
+
         optimizer = self.optimizer
         optimizer = create_optimizer(self.optimizer, self.optimizer_args)
 
@@ -77,19 +80,19 @@ class ModelConfig:
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
 
-ModelSpec = Union[Dict[str, Any], ModelConfig, ModelInterface]
+ModelSpec = Union[Dict[str, Any], ModelConfig, ProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
-def create_model_interface(config: ModelSpec) -> ModelInterface:
+def create_model(config: ModelSpec) -> ProbabilisticModel:
     """
-    :param config: A :class:`ModelInterface` or configuration of a model.
-    :return: A :class:`~trieste.models.ModelInterface` build according to ``config``.
+    :param config: A :class:`ProbabilisticModel` or configuration of a model.
+    :return: A :class:`~trieste.models.ProbabilisticModel` build according to ``config``.
     """
     if isinstance(config, ModelConfig):
         return config.create_model_interface()
     elif isinstance(config, dict):
         return ModelConfig(**config).create_model_interface()
-    elif isinstance(config, ModelInterface):
+    elif isinstance(config, ProbabilisticModel):
         return config
-    raise NotImplementedError("Unknown format passed to create a ModelInterface.")
+    raise NotImplementedError("Unknown format passed to create a ProbabilisticModel.")

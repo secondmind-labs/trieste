@@ -17,9 +17,9 @@ from typing import Mapping, Sequence
 import tensorflow as tf
 
 from .function import AcquisitionFunctionBuilder, AcquisitionFunction
-from ..datasets import Dataset
+from ..data import Dataset
 from ..type import QueryPoints
-from ..models import ModelInterface
+from ..models import ProbabilisticModel
 
 
 class Reducer(AcquisitionFunctionBuilder):
@@ -45,7 +45,7 @@ class Reducer(AcquisitionFunctionBuilder):
         self._acquisitions = builders
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         Return an acquisition function. This acquisition function is defined by first building

@@ -72,7 +72,7 @@ $ tox -e tests
 
 #### Continuous integration
 
-[GitHub actions](https://docs.github.com/en/actions) will automatically run the quality checks against pull requests to develop or master, by calling into tox. The GitHub repository is set up such that these need to pass in order to merge.
+[GitHub actions](https://docs.github.com/en/actions) will automatically run the quality checks against pull requests to the develop branch, by calling into tox. The GitHub repository is set up such that these need to pass in order to merge.
 
 ### Updating dependencies
 

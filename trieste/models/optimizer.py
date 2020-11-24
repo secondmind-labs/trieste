@@ -7,7 +7,7 @@ import scipy
 
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 from ..utils import jit
-from ..datasets import Dataset
+from ..data import Dataset
 
 
 DatasetTransformer = Callable[[Dataset, Optional[int]], Union[Iterable, Tuple]]

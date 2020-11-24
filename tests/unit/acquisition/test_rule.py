@@ -25,8 +25,8 @@ from trieste.acquisition.rule import (
     TrustRegion,
     OBJECTIVE,
 )
-from trieste.datasets import Dataset
-from trieste.models import ModelInterface
+from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
 
 from tests.util.misc import one_dimensional_range, zero_dataset
@@ -39,7 +39,7 @@ from tests.util.model import QuadraticWithUnitVariance
 )
 def test_trust_region_raises_for_missing_datasets_key(
         datasets: Dict[str, Dataset],
-        models: Dict[str, ModelInterface]
+        models: Dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = TrustRegion()
@@ -54,7 +54,7 @@ def test_trust_region_raises_for_missing_datasets_key(
 ])
 @pytest.mark.parametrize('datasets', [{}, {OBJECTIVE: zero_dataset()}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, ModelInterface]
+    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = ThompsonSampling(100, 10)
@@ -71,7 +71,7 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
 ])
 def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
     ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[]]), tf.constant([[]]))
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )

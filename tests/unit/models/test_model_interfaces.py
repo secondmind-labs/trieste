@@ -31,10 +31,10 @@ import numpy as np
 import numpy.testing as npt
 
 from dataclasses import astuple
-from trieste.datasets import Dataset
+from trieste.data import Dataset
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.models.model_interfaces import (
-    ModelInterface,
+    ProbabilisticModel,
     GaussianProcessRegression,
     GPflowPredictor,
     SparseVariational,
@@ -43,16 +43,18 @@ from trieste.models.model_interfaces import (
 from trieste.type import ObserverEvaluations, TensorType, QueryPoints
 
 from tests.util.misc import random_seed
-from tests.util.model import StaticModelInterface
 
 
-class _MinimalTrainable(ModelInterface):
+class _MinimalTrainable(ProbabilisticModel):
     def __init__(self, optimizer: Optimizer):
         self.optimizer = optimizer
 
     def optimize(self, dataset: Dataset):
         self.optimizer.optimize(None, None)
 
+    def loss(self) -> tf.Tensor:
+        raise NotImplementedError
+ 
     def update(self, dataset: Dataset) -> None:
         raise NotImplementedError
 
@@ -79,8 +81,8 @@ def test_trainable_model_interface_set_optimize() -> None:
 
 def _mock_data() -> Tuple[tf.Tensor, tf.Tensor]:
     return (
-        tf.constant([[1.2]], gpflow.default_float()),
-        tf.constant([[3.4]], gpflow.default_float()),
+        tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
+        tf.constant([[1.2], [3.4], [5.6], [7.8]], gpflow.default_float()),
     )
 
 
@@ -99,6 +101,15 @@ def _svgp(inducing_variable: tf.Tensor) -> SVGP:
 def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Linear()
+    m = VGP((x, y), kernel, likelihood)
+    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
+    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
+    return m
+
+
+def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Gaussian()
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
     variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
     gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
@@ -125,6 +136,10 @@ def _reference_gpr(x: tf.Tensor, y: tf.Tensor) -> gpflow.models.GPR:
 
 def _3x_plus_10(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + 10
+
+
+def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
+    return 2.0 * tf.math.sin(x/3.)
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
@@ -167,7 +182,25 @@ def test_vgp_update_updates_num_data() -> None:
     assert new_num_data - num_data == 2
 
 
-@random_seed(1357)
+@random_seed
+def test_vgp_update_q_mu_sqrt_unchanged() -> None:
+    x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
+    y_observed = _2sin_x_over_3(x_observed)
+    model = VariationalGaussianProcess(_vgp_matern(x_observed, y_observed))
+
+    old_q_mu = model.model.q_mu.numpy()
+    old_q_sqrt = model.model.q_sqrt.numpy()
+    data = Dataset(x_observed, y_observed)
+    model.update(data)
+
+    new_q_mu = model.model.q_mu.numpy()
+    new_q_sqrt = model.model.q_sqrt.numpy()
+
+    npt.assert_allclose(old_q_mu, new_q_mu, atol=1e-5)
+    npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
+
+
+@random_seed
 def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> None:
     data = _mock_data()
     model = gpr_interface_factory(*data)
@@ -177,7 +210,7 @@ def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> 
     assert internal_model.training_loss() < loss
 
 
-@random_seed(1357)
+@random_seed
 @pytest.mark.parametrize("optimizer", [gpflow.optimizers.Scipy(), tf.optimizers.Adam(), None])
 def test_gaussian_process_regression_optimize(
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer, None], gpr_interface_factory
@@ -195,7 +228,7 @@ def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + np.random.normal(scale=0.01, size=x.shape)
 
 
-@random_seed(1357)
+@random_seed
 def test_variational_gaussian_process_predict() -> None:
     x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -220,13 +253,16 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
 
 
-class _QuadraticStaticPredictor(GPflowPredictor, StaticModelInterface):
+class _QuadraticPredictor(GPflowPredictor):
     @property
     def model(self) -> GPModel:
-        return _QuadraticStaticGPModel()
+        return _QuadraticGPModel()
+    
+    def update(self, dataset: Dataset) -> None:
+        pass
 
 
-class _QuadraticStaticGPModel(GPModel):
+class _QuadraticGPModel(GPModel):
     def __init__(self):
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used
@@ -248,7 +284,7 @@ class _QuadraticStaticGPModel(GPModel):
 
 
 def test_gpflow_predictor_predict() -> None:
-    model = _QuadraticStaticPredictor()
+    model = _QuadraticPredictor()
     mean, variance = model.predict(tf.constant([[2.5]], gpflow.default_float()))
     assert mean.shape == [1, 1]
     assert variance.shape == [1, 1]
@@ -256,22 +292,24 @@ def test_gpflow_predictor_predict() -> None:
     npt.assert_allclose(variance, [[1.0]], rtol=0.01)
 
 
-@random_seed(1357)
+@random_seed
 def test_gpflow_predictor_sample() -> None:
-    model = _QuadraticStaticPredictor()
-    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), 10_000)
+    model = _QuadraticPredictor()
+    num_samples = 20_000
+    samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
 
-    assert samples.shape == [10_000, 1, 1]
+    assert samples.shape == [num_samples, 1, 1]
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
-    npt.assert_allclose(sample_mean, [[6.25]], rtol=0.01)
-    npt.assert_allclose(sample_variance, 1.0, rtol=0.01)
+    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, [[6.25]], rtol=linear_error)
+    npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
-    samples = _QuadraticStaticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
+    samples = _QuadraticPredictor().sample(tf.constant([[50.]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
 
 

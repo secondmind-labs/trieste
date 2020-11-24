@@ -11,41 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from dataclasses import dataclass
-from typing import List
-
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 
 from .plotting import create_grid
 
 
-@dataclass
-class Simulation:
-    lower_bound: List[float]
-    upper_bound: List[float]
-    threshold: float
-
-    @staticmethod
-    def objective(input_data: tf.Tensor) -> tf.Tensor:
-        x, y = input_data[..., -2], input_data[..., -1]
-        z = tf.cos(2.0 * x) * tf.cos(y) + tf.sin(x)
-        return z[:, None]
-
-    @staticmethod
-    def constraint(input_data: tf.Tensor) -> tf.Tensor:
-        x, y = input_data[:, -2], input_data[:, -1]
-        z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
-        return z[:, None]
-
-
-def plot_objective_and_constraints(simulation):
+def plot_objective_and_constraints(search_space, simulation):
     objective_fn = simulation.objective
     constraint_fn = simulation.constraint
-    lower_bound = simulation.lower_bound
-    upper_bound = simulation.upper_bound
+    lower_bound = search_space.lower
+    upper_bound = search_space.upper
 
     grid, xx, yy = create_grid(lower_bound, upper_bound, grid_density=80)
     objective = objective_fn(grid).numpy()
@@ -77,11 +53,11 @@ def plot_objective_and_constraints(simulation):
     return fig
 
 
-def plot_init_query_points(simulation, objective_data, constraint_data, new_constraint_data=None):
+def plot_init_query_points(search_space, simulation, objective_data, constraint_data, new_constraint_data=None):
     objective_fn = simulation.objective
     constraint_fn = simulation.constraint
-    lower_bound = simulation.lower_bound
-    upper_bound = simulation.upper_bound
+    lower_bound = search_space.lower
+    upper_bound = search_space.upper
     levels = 30
     psize = 15
     cw, cb, co = "white", "tab:blue", "tab:orange"

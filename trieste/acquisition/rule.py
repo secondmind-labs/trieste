@@ -23,8 +23,8 @@ from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
 import tensorflow as tf
 from typing_extensions import Final
 
-from ..datasets import Dataset
-from ..models import ModelInterface
+from ..data import Dataset
+from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
@@ -46,7 +46,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         self,
         search_space: SP,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
     ) -> Tuple[QueryPoints, S]:
         """
@@ -64,7 +64,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param datasets: The known observer query points and observations for each tag.
-        :param models: The model to use for each :class:`~trieste.datasets.Dataset` in ``datasets``
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
         :param state: The acquisition state from the previous step, if there was a previous step,
             else `None`.
@@ -98,7 +98,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -140,7 +140,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -176,21 +176,22 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     @dataclass(frozen=True)
     class State:
-        """
-        The acquisition state for the :class:`TrustRegion` acquisition rule.
-
-        :ivar acquisition_space: The search space.
-        :ivar eps: The (maximum) vector from the current best point to each bound of the acquisition
-            space.
-        :ivar y_min: The minimum observed value.
-        :ivar is_global: `True` if the search space was global, else `False` if it was local. May be
-            a scalar boolean `tf.Tensor` instead of a `bool`.
-        """
+        """ The acquisition state for the :class:`TrustRegion` acquisition rule. """
 
         acquisition_space: Box
+        """ The search space. """
+
         eps: tf.Tensor
+        """ The (maximum) vector from the current best point to each bound of the acquisition space. """
+
         y_min: tf.Tensor
+        """ The minimum observed value. """
+
         is_global: Union[tf.Tensor, bool]
+        """
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean `tf.Tensor`
+        instead of a `bool`.
+        """
 
     def __init__(
         self,
@@ -217,7 +218,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self,
         search_space: Box,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
     ) -> Tuple[QueryPoints, State]:
         """

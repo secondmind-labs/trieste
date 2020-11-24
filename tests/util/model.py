@@ -13,19 +13,20 @@
 # limitations under the License.
 
 from abc import ABC
-from typing import Tuple
+from typing import Callable, Tuple
 
 import numpy.testing as npt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.datasets import Dataset
-from trieste.models import ModelInterface
+from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
 from trieste.type import QueryPoints, ObserverEvaluations, TensorType
 from tests.util.misc import random_seed
 
 
-class StaticModelInterface(ModelInterface, ABC):
+class PseudoProbabilisticModel(ProbabilisticModel, ABC):
+    """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
     def update(self, dataset: Dataset) -> None:
         pass
 
@@ -33,17 +34,34 @@ class StaticModelInterface(ModelInterface, ABC):
         pass
 
 
-class StaticWithUnitVariance(StaticModelInterface, ABC):
+class GaussianMarginal(PseudoProbabilisticModel, ABC):
+    """ A probabilistic model with a Gaussian marginal distribution at each point. """
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
 
 
-class QuadraticWithUnitVariance(StaticWithUnitVariance):
-    r""" An untrainable model hardcoded to the function :math:`y = \sum x^2` with unit variance. """
+class CustomMeanWithUnitVariance(GaussianMarginal):
+    def __init__(self, f: Callable[[tf.Tensor], tf.Tensor]):
+        self._f = f
+
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-        mean = tf.reduce_sum(query_points ** 2, axis=1, keepdims=True)
+        mean = self._f(query_points)
         return mean, tf.ones_like(mean)
+
+
+class QuadraticWithUnitVariance(GaussianMarginal):
+    r"""
+    A probabilistic model with mean :math:`x \mapsto \sum x^2`, unit variance, and Gaussian
+    marginal distribution.
+    """
+    def __init__(self):
+        self._model = CustomMeanWithUnitVariance(
+            lambda x: tf.reduce_sum(x ** 2, axis=1, keepdims=True)
+        )
+
+    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+        return self._model.predict(query_points)
 
 
 def test_quadratic_with_unit_variance() -> None:
@@ -53,9 +71,9 @@ def test_quadratic_with_unit_variance() -> None:
     npt.assert_array_almost_equal(var, tf.constant([[1.], [1.], [1.]]))
 
 
-@random_seed(1234)
-def test_static_with_unit_variance_sample() -> None:
-    class _Sum(StaticWithUnitVariance):
+@random_seed
+def test_gaussian_marginal_sample() -> None:
+    class _Sum(GaussianMarginal):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             mean = tf.reduce_sum(query_points, axis=1, keepdims=True)
             return mean, tf.ones_like(mean)

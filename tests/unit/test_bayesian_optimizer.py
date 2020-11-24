@@ -20,13 +20,17 @@ import tensorflow as tf
 
 from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
-from trieste.datasets import Dataset
-from trieste.models import ModelInterface
+from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance, StaticWithUnitVariance
+from tests.util.model import QuadraticWithUnitVariance, PseudoProbabilisticModel, GaussianMarginal
+
+
+class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoProbabilisticModel):
+    pass
 
 
 @pytest.mark.parametrize('steps', [0, 1, 2, 5])
@@ -43,7 +47,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
 
     res: OptimizationResult[None] = optimizer.optimize(
-        steps, {OBJECTIVE: data}, {OBJECTIVE: QuadraticWithUnitVariance()}
+        steps, {OBJECTIVE: data}, {OBJECTIVE: _PseudoTrainableQuadratic()}
     )
 
     if res.error is not None:
@@ -55,15 +59,15 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
 @pytest.mark.parametrize('datasets, model_specs', [
     ({}, {}),
     ({'foo': zero_dataset()}, {}),
-    ({'foo': zero_dataset()}, {'bar': QuadraticWithUnitVariance()}),
+    ({'foo': zero_dataset()}, {'bar': _PseudoTrainableQuadratic()}),
     ({'foo': zero_dataset()}, {
-        'foo': QuadraticWithUnitVariance(),
-        'bar': QuadraticWithUnitVariance()
+        'foo': _PseudoTrainableQuadratic(),
+        'bar': _PseudoTrainableQuadratic()
     }),
 ])
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
         datasets: Dict[str, Dataset],
-        model_specs: Dict[str, ModelInterface]
+        model_specs: Dict[str, ProbabilisticModel]
 ) -> None:
     optimizer = BayesianOptimizer(lambda x: {'foo': Dataset(x, x[:1])}, one_dimensional_range(-1, 1))
     rule = FixedAcquisitionRule(tf.constant([[0.]]))
@@ -74,7 +78,7 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
     optimizer = BayesianOptimizer(lambda x: x[:1], one_dimensional_range(-1, 1))
     with pytest.raises(ValueError):
-        optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': QuadraticWithUnitVariance()})
+        optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': _PseudoTrainableQuadratic()})
 
 
 @pytest.mark.parametrize('starting_state, expected_states', [(None, [None, 1, 2]), (3, [3, 4, 5])])
@@ -89,7 +93,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ModelInterface],
+            models: Mapping[str, ProbabilisticModel],
             state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             self.states_received.append(state)
@@ -104,7 +108,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     res = BayesianOptimizer(
         lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1)
     ).optimize(
-        3, {"": zero_dataset()}, {"": QuadraticWithUnitVariance()}, rule, starting_state
+        3, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()}, rule, starting_state
     )
 
     if res.error is not None:
@@ -119,7 +123,7 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
         lambda x: {OBJECTIVE: Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
     )
     res: OptimizationResult[None] = optimizer.optimize(
-        3, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticWithUnitVariance()}
+        3, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: _PseudoTrainableQuadratic()}
     )
 
     if res.error is not None:
@@ -129,11 +133,11 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
-    class ExponentialWithUnitVariance(StaticWithUnitVariance):
+    class ExponentialWithUnitVariance(GaussianMarginal, PseudoProbabilisticModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return tf.exp(- query_points), tf.ones_like(query_points)
 
-    class LinearWithUnitVariance(StaticWithUnitVariance):
+    class LinearWithUnitVariance(GaussianMarginal, PseudoProbabilisticModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return 2 * query_points, tf.ones_like(query_points)
 
@@ -145,7 +149,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
                 self,
                 search_space: Box,
                 datasets: Mapping[str, Dataset],
-                models: Mapping[str, ModelInterface],
+                models: Mapping[str, ProbabilisticModel],
                 previous_state: Optional[int]
         ) -> Tuple[QueryPoints, int]:
             if previous_state is None:
@@ -173,7 +177,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]]))
     }
 
-    models: Dict[str, ModelInterface] = {  # mypy can't infer this type for some reason
+    models: Dict[str, ProbabilisticModel] = {  # mypy can't infer this type
         LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
     }
 
