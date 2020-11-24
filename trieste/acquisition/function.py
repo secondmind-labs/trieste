@@ -23,9 +23,7 @@ from ..models import ProbabilisticModel
 from ..space import SearchSpace
 
 from scipy.optimize import bisect
-
 from gpflow.config import default_float, default_jitter
-from gpflow.utilities.ops import leading_transpose
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ Type alias for acquisition functions. """
@@ -546,18 +544,6 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
             chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
             samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
             samples = tf.transpose(samples, [3, 0, 2, 1])
-
-            # samples = leading_transpose(samples, [..., -1, -3, -2])  # [N, S, L, B]
-
-            # jittermat = (
-            #         tf.eye(num_latent, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
-            # )  # [N, B, L, L]
-            #
-            # chol = tf.linalg.cholesky(cov)  #  + jittermat)  # [N, L, B, B]
-            # samples = mean[:, None, :, :] + tf.linalg.matmul(chol, self.eps)  # [N, S, B, L]
-            # # samples = leading_transpose(samples, [..., -1, -3, -2])  # [..., S, N, L]
-            # # samples = tf.linalg.adjoint(samples)  # [..., (S), N, L]
-            # samples = tf.transpose(samples, perm=[1, 0, 2, 3])
 
         return samples
 
