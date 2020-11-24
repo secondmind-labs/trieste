@@ -16,7 +16,6 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
-import numpy as np
 import tensorflow as tf
 
 from .. import utils
@@ -24,24 +23,14 @@ from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
 
-class ModelInterface(ABC):
-    """ A trainable probabilistic model. """
-
-    @abstractmethod
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update the model given the specified ``dataset``. Does not train the model.
-
-        :param dataset: The data with which to update the model.
-        """
-        raise NotImplementedError
+class ProbabilisticModel(ABC):
+    """ A probabilistic model. """
 
     @abstractmethod
     def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
-        ``query_points``, conditioned on the current data (see :meth:`update` to update the model
-        given new data).
+        ``query_points``.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance.
@@ -60,6 +49,19 @@ class ModelInterface(ABC):
         """
         raise NotImplementedError
 
+
+class TrainableProbabilisticModel(ProbabilisticModel):
+    """ A trainable probabilistic model. """
+
+    @abstractmethod
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
+
+        :param dataset: The data with which to update the model.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def optimize(self) -> None:
         """ Optimize the model parameters. """
@@ -69,7 +71,7 @@ class ModelInterface(ABC):
 Optimizer = Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
 
 
-class TrainableModelInterface(tf.Module, ModelInterface, ABC):
+class CustomTrainable(tf.Module, TrainableProbabilisticModel, ABC):
     """
     A utility class that provides a default optimization strategy, as well as the ability to modify
     various elements of this strategy.
@@ -161,8 +163,8 @@ class TrainableModelInterface(tf.Module, ModelInterface, ABC):
         self._optimize_fn = optimization_fn
 
 
-class GPflowPredictor(ModelInterface, ABC):
-    """ A trainable wrapper for a GPflow Gaussian process model. """
+class GPflowPredictor(ProbabilisticModel, ABC):
+    """ A wrapper for a GPflow Gaussian process model. """
 
     @property
     @abstractmethod
@@ -176,7 +178,7 @@ class GPflowPredictor(ModelInterface, ABC):
         return self.model.predict_f_samples(query_points, num_samples)
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableModelInterface):
+class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
     def __init__(self, model: Union[GPR, SGPR]):
         """
         :param model: The GPflow model to wrap.
@@ -209,7 +211,7 @@ Type alias for a function that creates minibatches from a :class:`~trieste.data.
 """
 
 
-class SparseVariational(GPflowPredictor, ABC):
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(
         self,
         model: SVGP,
@@ -274,24 +276,33 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         assert dataset.observations.shape[-1] == y.shape[-1]
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
-        num_latent_gps = model.num_latent_gps
+
+        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
+        assert self.model.q_sqrt.shape.ndims == 3
+
+        jitter = gpflow.config.default_jitter()
+        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
+        Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
+        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L^{-1} f_cov
+        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(S_v + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [L, N, N]
+
         model.data = data
         model.num_data = num_data
-        model.q_mu = gpflow.Parameter(np.zeros((num_data, num_latent_gps)))
-        q_sqrt = np.eye(num_data)
-        q_sqrt = np.repeat(q_sqrt[None], num_latent_gps, axis=0)
-        model.q_sqrt = gpflow.Parameter(q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu = gpflow.Parameter(new_q_mu)
+        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: QueryPoints, full_cov: bool = False) -> Tuple[ObserverEvaluations, TensorType]:
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], TrainableModelInterface]] = {
+supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
 }
 """
-:var supported_models: A mapping of third-party model types to :class:`ModelInterface` classes
+:var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
 that wrap models of those types.
 """

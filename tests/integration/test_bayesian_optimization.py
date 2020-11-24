@@ -38,18 +38,16 @@ from trieste.utils.objectives import (
 from tests.util.misc import random_seed
 
 
-@random_seed(1793)
+@random_seed
 @pytest.mark.parametrize('num_steps, acquisition_rule', [
-    (12, EfficientGlobalOptimization()),
+    (30, EfficientGlobalOptimization()),
     (22, TrustRegion()),
     (17, ThompsonSampling(500, 3)),
 ])
-
 def test_optimizer_finds_minima_of_the_branin_function(
         num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
     search_space = Box(tf.constant([0.0, 0.0], tf.float64), tf.constant([1.0, 1.0], tf.float64))
-
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)

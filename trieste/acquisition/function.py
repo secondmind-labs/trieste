@@ -19,7 +19,7 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..type import QueryPoints
-from ..models import ModelInterface
+from ..models import ProbabilisticModel
 from ..space import SearchSpace
 
 from scipy.optimize import bisect
@@ -36,7 +36,7 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -60,7 +60,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
@@ -71,7 +71,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -86,23 +86,27 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     of the posterior mean at observed points.
     """
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer.
+        :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
         :return: The expected improvement function.
+        :raise ValueError: If ``dataset`` is empty.
         """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at)
 
     @staticmethod
-    def _acquisition_function(model: ModelInterface, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
-def expected_improvement(model: ModelInterface, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
     The Expected Improvement (EI) acquisition function for single-objective global optimization.
     Return the expectation of the improvement at ``at`` over the current "best" observation ``eta``,
@@ -163,7 +167,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         Need to sample possible min-values from our posterior. 
@@ -201,11 +205,11 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
 
     @staticmethod
-    def _acquisition_function(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
 
 
-def max_value_entropy_search(model: ModelInterface, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
     minimal value of the objective function) if we would evaluate x.
@@ -254,7 +258,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -265,7 +269,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, self._beta, at)
 
     @staticmethod
-    def _acquisition_function(model: ModelInterface, beta: float, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
         return -lower_confidence_bound(model, beta, at)
 
 
@@ -279,7 +283,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         super().__init__(beta=0.0)
 
 
-def lower_confidence_bound(model: ModelInterface, beta: float, at: QueryPoints) -> tf.Tensor:
+def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
     r"""
     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
 
@@ -368,7 +372,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelInterface
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -379,13 +383,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+        model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
     ) -> tf.Tensor:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ModelInterface, threshold: Union[float, tf.Tensor], at: QueryPoints
+    model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
 ) -> tf.Tensor:
     r"""
     The probability of feasibility acquisition function defined in Garner, 2014 as
@@ -410,6 +414,90 @@ def probability_of_feasibility(
     return distr.cdf(tf.cast(threshold, at.dtype))
 
 
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+    """
+    Builder for the _expected constrained improvement_ acquisition function defined in
+    Gardner, 2014. The acquisition function computes the expected improvement from the best
+    feasible point, where feasible points are those that (probably) satisfy some constraint. Where
+    there are no feasible points, this builder simply builds the constraint function.
+
+    See the following for details:
+
+    ::
+
+    @inproceedings{gardner14,
+        title={Bayesian Optimization with Inequality Constraints},
+        author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+        booktitle={Proceedings of the 31st International Conference on Machine Learning},
+        year={2014},
+        volume={32},
+        number={2},
+        series={Proceedings of Machine Learning Research},
+        month={22--24 Jun},
+        publisher={PMLR},
+        url={http://proceedings.mlr.press/v32/gardner14.html},
+    }
+
+    """
+
+    def __init__(
+        self,
+        objective_tag: str,
+        constraint_builder: AcquisitionFunctionBuilder,
+        min_feasibility_probability: Union[float, tf.Tensor] = 0.5,
+    ):
+        """
+        :param objective_tag: The tag for the objective data and model.
+        :param constraint_builder: The builder for the constraint function.
+        :param min_feasibility_probability: The minimum probability of feasibility for a
+            "best point" to be considered feasible.
+        :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
+            scalar in the unit interval :math:`[0, 1]`.
+        """
+        tf.debugging.assert_scalar(min_feasibility_probability)
+
+        if not 0 <= min_feasibility_probability <= 1:
+            raise ValueError(
+                f"Minimum feasibility probability must be between 0 and 1 inclusive,"
+                f" got {min_feasibility_probability}"
+            )
+
+        self._objective_tag = objective_tag
+        self._constraint_builder = constraint_builder
+        self._min_feasibility_probability = min_feasibility_probability
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The expected constrained improvement acquisition function.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise ValueError: If the objective data is empty.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        if len(objective_dataset) == 0:
+            raise ValueError(
+                "Expected improvement is defined with respect to existing points in the objective"
+                " data, but the objective data is empty."
+            )
+
+        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        pof = constraint_fn(objective_dataset.query_points)
+        is_feasible = pof >= self._min_feasibility_probability
+
+        if not tf.reduce_any(is_feasible):
+            return constraint_fn
+
+        mean, _ = objective_model.predict(objective_dataset.query_points)
+        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+
+        return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
 class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
@@ -422,7 +510,7 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
         assert len(eps_shape) == 3
         self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, B, L]
 
-    def predict_f_samples_with_reparametrisation_trick(self, model: ModelInterface, at: QueryPoints) -> tf.Tensor:
+    def predict_f_samples_with_reparametrisation_trick(self, model: ProbabilisticModel, at: QueryPoints) -> tf.Tensor:
         """
         Returns samples according to the reparametrization trick. The sample size S is determined by eps,
         the batch size B must be compatible between eps and at, N is the number of batches of query points
@@ -475,7 +563,7 @@ class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
 
     @abstractmethod
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -490,7 +578,7 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
     """
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ModelInterface
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -503,7 +591,7 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
 
     @staticmethod
     def _acquisition_function(
-            self, model: ModelInterface, eta: tf.Tensor, at: QueryPoints
+            self, model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
     ) -> tf.Tensor:
         samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [S, N, B, L]
         samples = samples[..., 0]

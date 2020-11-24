@@ -31,7 +31,7 @@ from trieste.acquisition.function import (
 )
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
-from trieste.models import ModelInterface
+from trieste.models import ProbabilisticModel
 
 
 @dataclass
@@ -91,7 +91,7 @@ class _InputIdentity(AcquisitionFunctionBuilder):
         self._result = result
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ModelInterface]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         return lambda _: self._result
 

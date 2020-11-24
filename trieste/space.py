@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains implementations of various types of search space. """
+from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Union
 
@@ -39,6 +40,8 @@ class SearchSpace(ABC):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `tf.Tensor` instead of the `bool` itself.
+        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
+            from this :class:`SearchSpace`.
         """
 
 
@@ -58,8 +61,10 @@ class DiscreteSearchSpace(SearchSpace):
 
     def __init__(self, points: TensorType):
         """
-        :param points: The points that define the discrete space.
+        :param points: The points that define the discrete space, with shape ('N', 'D').
+        :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
         """
+        tf.debugging.assert_shapes([(points, ('N', 'D'))])
         self._points = points
 
     @property
@@ -68,11 +73,8 @@ class DiscreteSearchSpace(SearchSpace):
         return self._points
 
     def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
-        if tf.size(value) == tf.shape(self._points)[-1]:
-            is_point_for_all_points = tf.reduce_all(value == self._points, axis=1)
-            return tf.reduce_any(is_point_for_all_points)
-
-        return False
+        tf.debugging.assert_shapes([(value, self.points.shape[1:])])
+        return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
     def sample(self, num_samples: int) -> tf.Tensor:
         """
@@ -146,12 +148,13 @@ class Box(SearchSpace):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `tf.Tensor` instead of the `bool` itself.
-        :raise ValueError: If ``value`` has a different shape from the search space.
+        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
+            from the search space.
         """
         if not shapes_equal(value, self._lower):
             raise ValueError(
-                f"Point must have the same shape as the Box bounds, got {value.shape}, expected"
-                f" {self._lower.shape}"
+                f"value must have same dimensionality as search space: {self._lower.shape},"
+                f" got shape {value.shape}"
             )
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
@@ -169,3 +172,25 @@ class Box(SearchSpace):
             this :class:`Box`.
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __mul__(self, box: Box):
+        """
+        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
+        :param box: :class:`Box`.
+        :return: the new combined :class:`Box`, or NotImplemented if respective bounds have different dtypes.
+        """
+        if self.lower.dtype is not box.lower.dtype:
+            return NotImplemented(
+                f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
+                f" {box.lower.dtype}"
+            )
+
+        expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
+        return Box(expanded_lower_bound, expanded_upper_bound)
+
+    def __pow__(self, other: int):
+        expanded_box = self
+        for _ in range(other-1):
+            expanded_box *= self
+        return expanded_box

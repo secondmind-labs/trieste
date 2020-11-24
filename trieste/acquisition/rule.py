@@ -24,7 +24,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
-from ..models import ModelInterface
+from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement, MonteCarloExpectedImprovement
@@ -49,7 +49,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         self,
         search_space: SP,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
     ) -> Tuple[QueryPoints, S]:
         """
@@ -101,7 +101,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -143,7 +143,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
@@ -221,7 +221,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self,
         search_space: Box,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
     ) -> Tuple[QueryPoints, State]:
         """
@@ -300,7 +300,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         return point, state_
 
 
-class BatchAcquisitionRule(AcquisitionRule[None, Box]):
+class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
@@ -321,33 +321,25 @@ class BatchAcquisitionRule(AcquisitionRule[None, Box]):
         self._num_query_points = num_query_points
 
         if builder is None:
-            num_samples = 100
-            builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
+            builder = ExpectedImprovement().using(OBJECTIVE)  # this is a placeholder for now
+            # num_samples = 100
+            # builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
 
         self._builder = builder
 
-    def expand_search_space(self, search_space: Box):
-        assert isinstance(search_space, Box)
-
-        lower_bound, upper_bound = search_space.lower, search_space.upper
-        expanded_lower_bound = tf.tile(lower_bound, [self._num_query_points])
-        expanded_upper_bound = tf.tile(upper_bound, [self._num_query_points])
-        return Box(expanded_lower_bound, expanded_upper_bound)
-
-    def vectorize_batch_acquisition(self, acquisition_function, dim):
-        return lambda at: acquisition_function(tf.reshape(at, [-1, self._num_query_points, dim]))
+    def _vectorize_batch_acquisition(self, acquisition_function):
+        return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
 
     def acquire(
         self,
-        search_space: Box,
+        search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ModelInterface],
+        models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
         Return the batch of query points that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
-
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param datasets: The known observer query points and observations.
@@ -355,11 +347,10 @@ class BatchAcquisitionRule(AcquisitionRule[None, Box]):
         :param state: Unused.
         :return: The batch of points to query, and `None`.
         """
-        expanded_search_space = self.expand_search_space(search_space)
-        dim = search_space.lower.shape[0]
+        expanded_search_space = search_space ** self._num_query_points
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        vectorized_batch_acquisition = self.vectorize_batch_acquisition(acquisition_function, dim)
+        vectorized_batch_acquisition = self._vectorize_batch_acquisition(acquisition_function)
 
         vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
         points = tf.reshape(vectorized_points, [self._num_query_points, -1])
