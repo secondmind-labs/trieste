@@ -177,11 +177,10 @@ class Box(SearchSpace):
         """
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
         :param box: :class:`Box`.
-        :return: the new combined :class:`Box`.
-        :raise ValueError (or InvalidArgumentError): If ``box`` is not from :class:`Box`.
+        :return: the new combined :class:`Box`, or NotImplemented if respective bounds have different dtypes.
         """
         if self.lower.dtype is not box.lower.dtype:
-            raise TypeError(
+            return NotImplemented(
                 f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
                 f" {box.lower.dtype}"
             )
