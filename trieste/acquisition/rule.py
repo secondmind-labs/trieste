@@ -324,7 +324,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._builder = builder
 
     def _vectorize_batch_acquisition(self, acquisition_function):
-        return lambda at: acquisition_function(tf.reshape(at, [at.shape[:-1], self._num_query_points, -1]))
+        return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
 
     def acquire(
         self,

@@ -24,10 +24,14 @@ from trieste.acquisition.rule import (
     ThompsonSampling,
     TrustRegion,
     OBJECTIVE,
+    BatchAcquisitionRule,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
+from trieste.acquisition import SingleModelAcquisitionBuilder
+
+from trieste.acquisition.function import AcquisitionFunction
 
 from tests.util.misc import one_dimensional_range, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
@@ -186,3 +190,33 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
+
+
+class _BatchModelMinusMeanMaximumSingleBuilder(SingleModelAcquisitionBuilder):
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
+
+
+def test_batch_acquisition_returns_batches_of_right_size() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 3
+    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    query_point, _ = ego.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
+    )
+    assert query_point.shape == [num_query_points, 2]
+
+
+def test_batch_acquisition_finds_minimum() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    expected_minimum = tf.constant([0., 0.])
+    num_query_points = 4
+    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    query_point, _ = ego.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
+    )
+    npt.assert_allclose(query_point - expected_minimum[None, :], 0., atol=1e-3)
