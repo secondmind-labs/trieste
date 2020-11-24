@@ -343,7 +343,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         :param state: Unused.
         :return: The batch of points to query, and `None`.
         """
-        expanded_search_space = _expand_search_space(search_space, self._num_query_points)
+        expanded_search_space = search_space ** self._num_query_points
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
         vectorized_batch_acquisition = self._vectorize_batch_acquisition(acquisition_function)
@@ -352,10 +352,3 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         points = tf.reshape(vectorized_points, [self._num_query_points, -1])
 
         return points, None
-
-
-def _expand_search_space(search_space: SearchSpace, times: int):
-    expanded_search_space = search_space
-    for _ in range(times-1):
-        expanded_search_space *= search_space
-    return expanded_search_space
