@@ -173,19 +173,19 @@ class Box(SearchSpace):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __mul__(self, other_box: Box):
+    def __mul__(self, box: Box):
         """
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
-        :param other_box: :class:`Box`.
+        :param box: :class:`Box`.
         :return: the new combined :class:`Box`.
-        :raise ValueError (or InvalidArgumentError): If ``other_box`` is not from :class:`Box`.
+        :raise ValueError (or InvalidArgumentError): If ``box`` is not from :class:`Box`.
         """
-        if self.lower.dtype is not other_box.lower.dtype:
+        if self.lower.dtype is not box.lower.dtype:
             raise TypeError(
                 f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
-                f" {other_box.lower.dtype}"
+                f" {box.lower.dtype}"
             )
 
-        expanded_lower_bound = tf.concat([self._lower, other_box.lower], axis=-1)
-        expanded_upper_bound = tf.concat([self._upper, other_box.upper], axis=-1)
+        expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
