@@ -175,7 +175,7 @@ class Box(SearchSpace):
 
     def __mul__(self, other_box: Box):
         """
-        Combines 2 Box spaces into a single one by concatenating their respective lower and upper bounds.
+        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
         :param other_box: :class:`Box`.
         :return: the new combined :class:`Box`.
         :raise ValueError (or InvalidArgumentError): If ``other_box`` is not from :class:`Box`.
