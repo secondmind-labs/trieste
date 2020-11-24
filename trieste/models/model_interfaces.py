@@ -161,15 +161,17 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
         assert self.model.q_sqrt.shape.ndims == 3
 
-        jitter = gpflow.config.default_jitter()
+        # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
+        # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
+        # Hence we need to backtransform from f_mu and f_cov to obtain the updated
+        # new_q_mu and new_q_sqrt:
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
-        Lnn = tf.linalg.cholesky(Knn + tf.eye(num_data, dtype=Knn.dtype) * jitter)  # [N, N]
+        jitter_mat = gpflow.config.default_jitter() * tf.eye(num_data, dtype=Knn.dtype)
+        Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
-        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L^{-1} f_cov
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
-        new_q_sqrt = tf.linalg.cholesky(
-            S_v + tf.eye(num_data, dtype=Knn.dtype) * jitter
-        )  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
         model.data = data
         model.num_data = num_data
