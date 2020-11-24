@@ -28,7 +28,7 @@ Note: If you experience missing dependencies, check the notebooks are using the 
 ### Getting help
 
 - To submit a pull request, file a bug report, or make a feature request, see the [contribution guidelines](CONTRIBUTING.md).
-- For more open-ended questions, or for anything else, join the community discussions on our [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-hsl5m8oj-m5VW8_ND~~~GbxPXD1Dz4A).
+- For more open-ended questions, or for anything else, join the community discussions on our [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-jmac0bz5-A~WBezivf5uhP1JG9i30FA).
 
 # License
 
