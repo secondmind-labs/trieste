@@ -181,10 +181,7 @@ class Box(SearchSpace):
         :raise TypeError: If the lhs and rhs :class:`Box` bounds have different types.
         """
         if self.lower.dtype is not box.lower.dtype:
-            return NotImplemented(
-                f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
-                f" {box.lower.dtype}"
-            )
+            return NotImplemented
 
         expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
         expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
