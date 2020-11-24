@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains implementations of various types of search space. """
+from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Union
 
@@ -171,3 +172,19 @@ class Box(SearchSpace):
             this :class:`Box`.
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __mul__(self, box: Box):
+        """
+        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
+        :param box: :class:`Box`.
+        :return: the new combined :class:`Box`, or NotImplemented if respective bounds have different dtypes.
+        """
+        if self.lower.dtype is not box.lower.dtype:
+            return NotImplemented(
+                f"Bounds of both boxes must have the same dtype, got {self.lower.dtype} and"
+                f" {box.lower.dtype}"
+            )
+
+        expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
+        return Box(expanded_lower_bound, expanded_upper_bound)
