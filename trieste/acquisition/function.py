@@ -505,7 +505,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
 
 class BatchAcquisitionFunctionBuilder(ABC):
-    """ An :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
+    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
 
     @abstractmethod
     def prepare_acquisition_function(
