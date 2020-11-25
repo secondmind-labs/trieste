@@ -510,7 +510,7 @@ class BatchAcquisitionFunctionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
+    ) -> BatchAcquisitionFunction:
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
