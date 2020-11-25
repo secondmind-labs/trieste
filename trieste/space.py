@@ -189,7 +189,7 @@ class Box(SearchSpace):
         expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
 
-    def __pow__(self, other: int):
+    def __pow__(self, other: int) -> Box:
         expanded_box = self
         for _ in range(other-1):
             expanded_box *= self
