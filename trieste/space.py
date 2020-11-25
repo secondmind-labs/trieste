@@ -119,7 +119,16 @@ class DiscreteSearchSpace(SearchSpace):
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         """
-        Return the Cartesian product of the two :class:`DiscreteSearchSpace`
+        Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
+        
+            >>> sa = DiscreteSearchSpace(tf.constant([[0, 1], [2, 3]]))
+            >>> sb = DiscreteSearchSpace(tf.constant([[4, 5, 6], [7, 8, 9]]))
+            >>> (sa * sb).points.numpy()
+            array([[0, 1, 4, 5, 6],
+                   [0, 1, 7, 8, 9],
+                   [2, 3, 4, 5, 6],
+                   [2, 3, 7, 8, 9]])
+
         :param dss: :class:`DiscreteSearchSpace`.
         :return: the new combined :class:`DiscreteSearchSpace`
         :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different types.
