@@ -117,7 +117,7 @@ class DiscreteSearchSpace(SearchSpace):
 
         return tf.random.shuffle(self._points)[:num_samples, :]
 
-    def __mul__(self, dss: DiscreteSearchSpace) -> DiscreteSearchSpace:
+    def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         """
         Return the Cartesian product of the two :class:`DiscreteSearchSpace`
         :param dss: :class:`DiscreteSearchSpace`.
