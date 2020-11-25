@@ -62,7 +62,7 @@ class SearchSpace(ABC):
         :raise ValueError: If the exponent ``other`` is less than 1.
         """
         if other < 1:
-            raise ValueError("message here please")
+            raise ValueError("The exponent ``other`` can only be a strictly positive integer")
 
         space = self
         for _ in range(other-1):
