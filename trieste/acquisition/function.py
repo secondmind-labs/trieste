@@ -25,12 +25,14 @@ from ..space import SearchSpace
 from scipy.optimize import bisect
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. """
+""" Type alias for acquisition functions. 
+
+AcquisitionFunction handles query points of shape [..., D] and returns [..., 1] values.
+"""
 BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ 
 Type alias for batch acquisition functions. 
 
-While an AcquisitionFunction handles query points of shape [..., D] and returns [..., 1] values,
 BatchAcquisitionFunction handles batches of query points of shape [..., B, D] and returns [..., 1] values.
 """
 

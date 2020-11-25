@@ -29,9 +29,7 @@ from trieste.acquisition.rule import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
-from trieste.acquisition import SingleModelAcquisitionBuilder
-
-from trieste.acquisition.function import AcquisitionFunction
+from trieste.acquisition.function import AcquisitionFunction, BatchAcquisitionFunctionBuilder
 
 from tests.util.misc import one_dimensional_range, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
@@ -192,7 +190,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
 
 
-class _BatchModelMinusMeanMaximumSingleBuilder(SingleModelAcquisitionBuilder):
+class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
