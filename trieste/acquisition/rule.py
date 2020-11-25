@@ -27,7 +27,9 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import (AcquisitionFunctionBuilder,
+                       ExpectedImprovement,
+                       BatchAcquisitionFunctionBuilder)
 from . import _optimizer
 
 
@@ -300,7 +302,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
-                 builder: AcquisitionFunctionBuilder):
+                 builder: BatchAcquisitionFunctionBuilder):
         """
         :param num_query_points: The number of points to acquire.
         :param builder: The acquisition function builder to use.
@@ -339,8 +341,8 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         """
         expanded_search_space = search_space ** self._num_query_points
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        vectorized_batch_acquisition = self._vectorize_batch_acquisition(acquisition_function)
+        batch_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        vectorized_batch_acquisition = self._vectorize_batch_acquisition(batch_acquisition_function)
 
         vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
         points = tf.reshape(vectorized_points, [self._num_query_points, -1])
