@@ -47,7 +47,7 @@ class SearchSpace(ABC):
         """
 
     @abstractmethod
-    def __mul__(self: Type[SP], other: SP) -> SP:
+    def __mul__(self: SP, other: SP) -> SP:
         """
         TODO
         :param other:
