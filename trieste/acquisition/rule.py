@@ -308,7 +308,6 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         :param builder: The acquisition function builder to use.
             :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
             acquisition function.
-            with tag `OBJECTIVE`.
         """
 
         if not num_query_points > 0:
