@@ -48,10 +48,9 @@ class SearchSpace(ABC):
 
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
-        """
-        TODO
-        :param other:
-        :return:
+        """        
+        :param other: A search space of the same type as this search space.
+        :return: The Cartesian product of this search space with ``other``.
         """
 
     @abstractmethod
