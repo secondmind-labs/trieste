@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Dict, Mapping
 
 import pytest
 import numpy.testing as npt
@@ -25,6 +25,7 @@ from trieste.acquisition.rule import (
     TrustRegion,
     OBJECTIVE,
     BatchAcquisitionRule,
+    BatchAcquisitionFunction,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -191,6 +192,25 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
 
 
 class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
+    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(BatchAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            ) -> BatchAcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -200,7 +220,9 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
 def test_batch_acquisition_returns_batches_of_right_size() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 3
-    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+    ego = BatchAcquisitionRule(
+        num_query_points,
+        _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
@@ -212,7 +234,9 @@ def test_batch_acquisition_finds_minimum() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     expected_minimum = tf.constant([0., 0.])
     num_query_points = 4
-    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+    ego = BatchAcquisitionRule(
+        num_query_points,
+        _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
