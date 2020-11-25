@@ -213,7 +213,7 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
+    ) -> BatchAcquisitionFunction:
         return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
 
 
