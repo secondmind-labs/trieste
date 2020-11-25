@@ -14,12 +14,14 @@
 """ This module contains implementations of various types of search space. """
 from __future__ import annotations
 from abc import abstractmethod, ABC
-from typing import Union
+from typing import Union, Type, TypeVar
 
 import tensorflow as tf
 
 from .type import TensorType
 from .utils import shapes_equal
+
+SP = TypeVar("SP", bound="SearchSpace")
 
 
 class SearchSpace(ABC):
@@ -43,6 +45,21 @@ class SearchSpace(ABC):
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from this :class:`SearchSpace`.
         """
+
+    @abstractmethod
+    def __mul__(self: Type[SP], other: SP) -> SP:
+        """
+        TODO
+        :param other:
+        :return:
+        """
+
+    @abstractmethod
+    def __pow__(self: Type[SP], other: int) -> SP:
+        space = self
+        for _ in range(other-1):
+            space *= self
+        return space
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -108,12 +125,6 @@ class DiscreteSearchSpace(SearchSpace):
         cartesian_product = tf.concat([tile_self, tile_dss], axis=2)
 
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [N * M, -1]))
-
-    def __pow__(self, other: int) -> DiscreteSearchSpace:
-        expanded_dss = self
-        for _ in range(other-1):
-            expanded_dss *= self
-        return expanded_dss
 
 
 class Box(SearchSpace):
@@ -210,9 +221,3 @@ class Box(SearchSpace):
         expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
         expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
-
-    def __pow__(self, other: int) -> Box:
-        expanded_box = self
-        for _ in range(other-1):
-            expanded_box *= self
-        return expanded_box

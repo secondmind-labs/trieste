@@ -25,7 +25,7 @@ from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import SearchSpace, Box, DiscreteSpace
+from ..space import SearchSpace, Box
 from ..type import QueryPoints
 from .function import (AcquisitionFunctionBuilder,
                        ExpectedImprovement,
@@ -298,7 +298,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         return point, state_
 
 
-class BatchAcquisitionRule(AcquisitionRule[None, Union[Box, DiscreteSpace]]):
+class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
@@ -324,7 +324,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, Union[Box, DiscreteSpace]]):
 
     def acquire(
         self,
-        search_space: Union[Box, DiscreteSpace],
+        search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
