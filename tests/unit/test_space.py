@@ -214,8 +214,7 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
         dss.sample(num_samples + 1)
 
 
-def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
-) -> None:
+def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large() -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     new_box = box * box
 
@@ -223,8 +222,7 @@ def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
     assert len(new_box.upper) == 6
 
 
-def test_box_product_bounds_are_the_concatenation_of_original_bounds(
-) -> None:
+def test_box_product_bounds_are_the_concatenation_of_original_bounds() -> None:
     box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
     box2 = Box(tf.constant([4., 5., 6.]), tf.constant([7., 8., 9.]))
 
@@ -233,8 +231,7 @@ def test_box_product_bounds_are_the_concatenation_of_original_bounds(
     npt.assert_allclose(res.upper, [2, 3, 7, 8, 9])
 
 
-def test_box_product_raises_if_bounds_have_different_types(
-) -> None:
+def test_box_product_raises_if_bounds_have_different_types() -> None:
     box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
     box2 = Box(tf.constant([4., 5.], tf.float64), tf.constant([6., 7.], tf.float64))
 
