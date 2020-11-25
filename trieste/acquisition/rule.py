@@ -300,12 +300,12 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
-                 builder: Optional[AcquisitionFunctionBuilder] = None):
+                 builder: AcquisitionFunctionBuilder):
         """
         :param num_query_points: The number of points to acquire.
         :param builder: The acquisition function builder to use.
-            :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
-            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
+            :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
+            acquisition function.
             with tag `OBJECTIVE`.
         """
 
@@ -315,12 +315,6 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
             )
 
         self._num_query_points = num_query_points
-
-        if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)  # this is a placeholder for now
-            # num_samples = 100
-            # builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
-
         self._builder = builder
 
     def _vectorize_batch_acquisition(self, acquisition_function):
