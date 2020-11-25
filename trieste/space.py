@@ -126,9 +126,9 @@ class DiscreteSearchSpace(SearchSpace):
             array([[0, 1, 4, 5, 6],
                    [0, 1, 7, 8, 9],
                    [2, 3, 4, 5, 6],
-                   [2, 3, 7, 8, 9]])
+                   [2, 3, 7, 8, 9]], dtype=int32)
 
-        :param dss: :class:`DiscreteSearchSpace`.
+        :param other: :class:`DiscreteSearchSpace`.
         :return: the new combined :class:`DiscreteSearchSpace`
         :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different types.
         """
