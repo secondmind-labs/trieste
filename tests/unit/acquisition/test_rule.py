@@ -192,29 +192,29 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
 
 
 class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
-    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
-        """
-        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
-        :return: An acquisition function builder that selects the model and dataset specified by
-            ``tag``, as defined in :meth:`prepare_acquisition_function`.
-        """
-        single_builder = self
-
-        class _Anon(BatchAcquisitionFunctionBuilder):
-            def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-            ) -> BatchAcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
-
-            def __repr__(self) -> str:
-                return f"{single_builder!r} using tag {tag!r}"
-
-        return _Anon()
+    # def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
+    #     """
+    #     :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+    #     :return: An acquisition function builder that selects the model and dataset specified by
+    #         ``tag``, as defined in :meth:`prepare_acquisition_function`.
+    #     """
+    #     single_builder = self
+    #
+    #     class _Anon(BatchAcquisitionFunctionBuilder):
+    #         def prepare_acquisition_function(
+    #             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    #         ) -> BatchAcquisitionFunction:
+    #             return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+    #
+    #         def __repr__(self) -> str:
+    #             return f"{single_builder!r} using tag {tag!r}"
+    #
+    #     return _Anon()
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, dataset: Dataset, model: Mapping[str, ProbabilisticModel]
     ) -> BatchAcquisitionFunction:
-        return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
+        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
 
 
 def test_batch_acquisition_returns_batches_of_right_size() -> None:
@@ -222,7 +222,7 @@ def test_batch_acquisition_returns_batches_of_right_size() -> None:
     num_query_points = 3
     ego = BatchAcquisitionRule(
         num_query_points,
-        _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+        _BatchModelMinusMeanMaximumSingleBuilder())
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
@@ -236,7 +236,7 @@ def test_batch_acquisition_finds_minimum() -> None:
     num_query_points = 4
     ego = BatchAcquisitionRule(
         num_query_points,
-        _BatchModelMinusMeanMaximumSingleBuilder().using(OBJECTIVE))
+        _BatchModelMinusMeanMaximumSingleBuilder())
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
