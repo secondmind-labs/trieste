@@ -237,3 +237,23 @@ def test_box_product_raises_if_bounds_have_different_types() -> None:
 
     with pytest.raises(TypeError):
         _ = box1 * box2
+
+def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
+    dss1 = DiscreteSearchSpace(tf.constant([[-1., -1.4], [-1.5, -3.6], [-.5, -.6]]))
+    dss2 = DiscreteSearchSpace(tf.constant([[1., 1.4], [1.5, 3.6]]))
+    [n1, d1] = dss1.points.shape
+    [n2, d2] = dss2.points.shape
+    res = dss1 * dss2
+
+    assert res.points.shape[0] == n1*n2
+    assert res.points.shape[1] == d1 + d2
+    assert all(point in dss1 for point in res.points[:, :2])
+    assert all(point in dss2 for point in res.points[:, 2:])
+
+
+def test_discrete_search_space_product_raises_if_points_have_different_types() -> None:
+    dss1 = DiscreteSearchSpace(_points_in_2D_search_space())
+    dss2 = DiscreteSearchSpace(tf.constant([[1., 1.4], [-1.5, 3.6]], tf.float64))
+
+    with pytest.raises(TypeError):
+        _ = dss1 * dss2

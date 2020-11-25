@@ -91,6 +91,30 @@ class DiscreteSearchSpace(SearchSpace):
 
         return tf.random.shuffle(self._points)[:num_samples, :]
 
+    def __mul__(self, dss: DiscreteSearchSpace) -> DiscreteSearchSpace:
+        """
+        Return the Cartesian product of the two :class:`DiscreteSearchSpace`
+        :param dss: :class:`DiscreteSearchSpace`.
+        :return: the new combined :class:`DiscreteSearchSpace`
+        :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different types.
+        """
+        if self._points.dtype is not dss._points.dtype:
+            return NotImplemented
+
+        N = self._points.shape[0]
+        M = dss._points.shape[0]
+        tile_self = tf.tile(tf.expand_dims(self.points, 1), [1, M, 1])
+        tile_dss = tf.tile(tf.expand_dims(dss.points, 0), [N, 1, 1])
+        cartesian_product = tf.concat([tile_self, tile_dss], axis=2)
+
+        return DiscreteSearchSpace(tf.reshape(cartesian_product, [N * M, -1]))
+
+    def __pow__(self, other: int) -> DiscreteSearchSpace:
+        expanded_dss = self
+        for _ in range(other-1):
+            expanded_dss *= self
+        return expanded_dss
+
 
 class Box(SearchSpace):
     r"""
