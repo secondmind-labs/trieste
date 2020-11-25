@@ -62,6 +62,9 @@ class SearchSpace(ABC):
         :return: The Cartesian product of ``other`` instances of this search space.
         :raise ValueError: If the exponent ``other`` is less than 1.
         """
+        if other < 1:
+            raise ValueError("message here please")
+
         space = self
         for _ in range(other-1):
             space *= self
