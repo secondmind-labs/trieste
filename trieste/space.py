@@ -53,7 +53,6 @@ class SearchSpace(ABC):
         :return: The Cartesian product of this search space with ``other``.
         """
 
-    @abstractmethod
     def __pow__(self: SP, other: int) -> SP:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to `s * s * s`.
@@ -133,13 +132,13 @@ class DiscreteSearchSpace(SearchSpace):
         :return: the new combined :class:`DiscreteSearchSpace`
         :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different types.
         """
-        if self._points.dtype is not dss._points.dtype:
+        if self._points.dtype is not other._points.dtype:
             return NotImplemented
 
         N = self._points.shape[0]
-        M = dss._points.shape[0]
+        M = other._points.shape[0]
         tile_self = tf.tile(tf.expand_dims(self.points, 1), [1, M, 1])
-        tile_dss = tf.tile(tf.expand_dims(dss.points, 0), [N, 1, 1])
+        tile_dss = tf.tile(tf.expand_dims(other.points, 0), [N, 1, 1])
         cartesian_product = tf.concat([tile_self, tile_dss], axis=2)
 
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [N * M, -1]))
@@ -226,16 +225,16 @@ class Box(SearchSpace):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __mul__(self, box: Box) -> Box:
+    def __mul__(self, other: Box) -> Box:
         """
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
         :param box: :class:`Box`.
         :return: the new combined :class:`Box`
         :raise TypeError: If the lhs and rhs :class:`Box` bounds have different types.
         """
-        if self.lower.dtype is not box.lower.dtype:
+        if self.lower.dtype is not other.lower.dtype:
             return NotImplemented
 
-        expanded_lower_bound = tf.concat([self._lower, box.lower], axis=-1)
-        expanded_upper_bound = tf.concat([self._upper, box.upper], axis=-1)
+        expanded_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
