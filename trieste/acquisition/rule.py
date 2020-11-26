@@ -27,7 +27,14 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement, MonteCarloExpectedImprovement
+
+from .function import (AcquisitionFunctionBuilder,
+                       ExpectedImprovement,
+                       BatchAcquisitionFunctionBuilder,
+                       BatchAcquisitionFunction,
+                       AcquisitionFunction,
+                       MonteCarloExpectedImprovement)
+
 from . import _optimizer
 from ..space import Box
 
@@ -304,13 +311,12 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ Implements a acquisition rule for a batch of query points """
 
     def __init__(self, num_query_points: int,
-                 builder: Optional[AcquisitionFunctionBuilder] = None):
+                 builder: BatchAcquisitionFunctionBuilder):
         """
         :param num_query_points: The number of points to acquire.
         :param builder: The acquisition function builder to use.
-            :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
-            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
-            with tag `OBJECTIVE`.
+            :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
+            acquisition function.
         """
 
         if not num_query_points > 0:
@@ -319,15 +325,9 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
             )
 
         self._num_query_points = num_query_points
-
-        if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)  # this is a placeholder for now
-            # num_samples = 100
-            # builder = MonteCarloExpectedImprovement(eps_shape=[num_samples, num_query_points, 1]).using(OBJECTIVE)  # [S, B, L]
-
         self._builder = builder
 
-    def _vectorize_batch_acquisition(self, acquisition_function):
+    def _vectorize_batch_acquisition(self, acquisition_function: BatchAcquisitionFunction) -> AcquisitionFunction:
         return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
 
     def acquire(
@@ -349,8 +349,8 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         """
         expanded_search_space = search_space ** self._num_query_points
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        vectorized_batch_acquisition = self._vectorize_batch_acquisition(acquisition_function)
+        batch_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        vectorized_batch_acquisition = self._vectorize_batch_acquisition(batch_acquisition_function)
 
         vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
         points = tf.reshape(vectorized_points, [self._num_query_points, -1])

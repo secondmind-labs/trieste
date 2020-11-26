@@ -214,8 +214,7 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
         dss.sample(num_samples + 1)
 
 
-def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
-) -> None:
+def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large() -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     new_box = box * box
 
@@ -223,8 +222,7 @@ def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large(
     assert len(new_box.upper) == 6
 
 
-def test_box_product_bounds_are_the_concatenation_of_original_bounds(
-) -> None:
+def test_box_product_bounds_are_the_concatenation_of_original_bounds() -> None:
     box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
     box2 = Box(tf.constant([4., 5., 6.]), tf.constant([7., 8., 9.]))
 
@@ -233,10 +231,29 @@ def test_box_product_bounds_are_the_concatenation_of_original_bounds(
     npt.assert_allclose(res.upper, [2, 3, 7, 8, 9])
 
 
-def test_box_product_raises_if_bounds_have_different_types(
-) -> None:
+def test_box_product_raises_if_bounds_have_different_types() -> None:
     box1 = Box(tf.constant([0., 1.]), tf.constant([2., 3.]))
     box2 = Box(tf.constant([4., 5.], tf.float64), tf.constant([6., 7.], tf.float64))
 
     with pytest.raises(TypeError):
         _ = box1 * box2
+
+def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
+    dss1 = DiscreteSearchSpace(tf.constant([[-1., -1.4], [-1.5, -3.6], [-.5, -.6]]))
+    dss2 = DiscreteSearchSpace(tf.constant([[1., 1.4], [1.5, 3.6]]))
+    [n1, d1] = dss1.points.shape
+    [n2, d2] = dss2.points.shape
+    res = dss1 * dss2
+
+    assert res.points.shape[0] == n1*n2
+    assert res.points.shape[1] == d1 + d2
+    assert all(point in dss1 for point in res.points[:, :2])
+    assert all(point in dss2 for point in res.points[:, 2:])
+
+
+def test_discrete_search_space_product_raises_if_points_have_different_types() -> None:
+    dss1 = DiscreteSearchSpace(_points_in_2D_search_space())
+    dss2 = DiscreteSearchSpace(tf.constant([[1., 1.4], [-1.5, 3.6]], tf.float64))
+
+    with pytest.raises(TypeError):
+        _ = dss1 * dss2

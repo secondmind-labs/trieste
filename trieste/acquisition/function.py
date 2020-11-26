@@ -26,7 +26,16 @@ from scipy.optimize import bisect
 from gpflow.config import default_float, default_jitter
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. """
+""" Type alias for acquisition functions. 
+
+AcquisitionFunction handles query points of shape [..., D] and returns [..., 1] values.
+"""
+BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+""" 
+Type alias for batch acquisition functions. 
+
+BatchAcquisitionFunction handles batches of query points of shape [..., B, D] and returns [..., 1] values.
+"""
 
 
 class AcquisitionFunctionBuilder(ABC):
@@ -585,3 +594,17 @@ class MonteCarloExpectedImprovement(MonteCarloAcquisition):
         batch_improvement = tf.math.reduce_mean(improvement, axis=-1)  # [S, N]
         ei = tf.math.reduce_mean(batch_improvement, axis=0)[:, None]
         return ei
+
+
+class BatchAcquisitionFunctionBuilder(ABC):
+    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> BatchAcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: A batch acquisition function.
+        """
