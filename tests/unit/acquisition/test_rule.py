@@ -222,4 +222,4 @@ def test_batch_acquisition_finds_minimum() -> None:
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
-    npt.assert_allclose(query_point - expected_minimum[None, :], 0., atol=1e-3)
+    npt.assert_allclose(query_point, [[0., 0.]] * num_query_points, atol=1e-3)
