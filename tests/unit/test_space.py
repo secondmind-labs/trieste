@@ -238,6 +238,7 @@ def test_box_product_raises_if_bounds_have_different_types() -> None:
     with pytest.raises(TypeError):
         _ = box1 * box2
 
+
 def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
     dss1 = DiscreteSearchSpace(tf.constant([[-1., -1.4], [-1.5, -3.6], [-.5, -.6]]))
     dss2 = DiscreteSearchSpace(tf.constant([[1., 1.4], [1.5, 3.6]]))
