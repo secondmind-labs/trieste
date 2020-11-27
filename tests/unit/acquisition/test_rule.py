@@ -198,9 +198,8 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
         return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
 
 
-def test_batch_acquisition_returns_batches_of_right_size_and_finds_minimum() -> None:
+def test_batch_acquisition_finds_minimum() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    expected_minimum = tf.constant([0., 0.])
     num_query_points = 4
     ego = BatchAcquisitionRule(
         num_query_points,
@@ -209,4 +208,5 @@ def test_batch_acquisition_returns_batches_of_right_size_and_finds_minimum() -> 
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
+
     npt.assert_allclose(query_point, [[0., 0.]] * num_query_points, atol=1e-3)
