@@ -301,15 +301,13 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
 
 class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
-    """ Implements a acquisition rule for a batch of query points """
+    """ Implements an acquisition rule for a batch of query points. """
 
-    def __init__(self, num_query_points: int,
-                 builder: BatchAcquisitionFunctionBuilder):
+    def __init__(self, num_query_points: int, builder: BatchAcquisitionFunctionBuilder):
         """
         :param num_query_points: The number of points to acquire.
-        :param builder: The acquisition function builder to use.
-            :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
-            acquisition function.
+        :param builder: The acquisition function builder to use. :class:`BatchAcquisitionRule` will
+            attempt to **maximise** the corresponding acquisition function.
         """
 
         if not num_query_points > 0:
@@ -320,8 +318,12 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
         self._builder = builder
 
-    def _vectorize_batch_acquisition(self, acquisition_function: BatchAcquisitionFunction) -> AcquisitionFunction:
-        return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
+    def _vectorize_batch_acquisition(
+        self, acquisition_function: BatchAcquisitionFunction
+    ) -> AcquisitionFunction:
+        return lambda at: acquisition_function(
+            tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1])
+        )
 
     def acquire(
         self,
@@ -331,10 +333,10 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
-        Return the batch of query points that optimizes the acquisition function produced by `builder` (see
-        :meth:`__init__`).
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        Return the batch of query points that optimizes the acquisition function produced by
+        `builder` (see :meth:`__init__`).
+
+        :param search_space: The global search space over which the optimization problem is defined.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
