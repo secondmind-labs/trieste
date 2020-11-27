@@ -224,13 +224,13 @@ plot_bo_points(
 # # Try an alternative acquisition function
 
 # %% [markdown]
-# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Max-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
+# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Min-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
 
 # %% [markdown]
 # We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
 
 # %%
-mes = trieste.acquisition.MaxValueEntropySearch(
+mes = trieste.acquisition.MinValueEntropySearch(
     search_space, num_samples=5, grid_size=5000
 )
 ei = trieste.acquisition.ExpectedImprovement()
@@ -270,7 +270,7 @@ acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mes.using(OBJECT
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
+result_mes: OptimizationResult = bo.optimize(20, initial_data, model, acq_rule)
 
 if result_mes.error is not None: raise result_mes.error
 
