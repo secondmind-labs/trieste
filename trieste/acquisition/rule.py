@@ -27,7 +27,11 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import (AcquisitionFunctionBuilder,
+                       ExpectedImprovement,
+                       BatchAcquisitionFunctionBuilder,
+                       BatchAcquisitionFunction,
+                       AcquisitionFunction)
 from . import _optimizer
 
 
@@ -294,3 +298,54 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_
+
+
+class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+    """ Implements a acquisition rule for a batch of query points """
+
+    def __init__(self, num_query_points: int,
+                 builder: BatchAcquisitionFunctionBuilder):
+        """
+        :param num_query_points: The number of points to acquire.
+        :param builder: The acquisition function builder to use.
+            :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
+            acquisition function.
+        """
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
+        self._num_query_points = num_query_points
+        self._builder = builder
+
+    def _vectorize_batch_acquisition(self, acquisition_function: BatchAcquisitionFunction) -> AcquisitionFunction:
+        return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: None = None,
+    ) -> Tuple[QueryPoints, None]:
+        """
+        Return the batch of query points that optimizes the acquisition function produced by `builder` (see
+        :meth:`__init__`).
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The batch of points to query, and `None`.
+        """
+        expanded_search_space = search_space ** self._num_query_points
+
+        batch_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        vectorized_batch_acquisition = self._vectorize_batch_acquisition(batch_acquisition_function)
+
+        vectorized_points = _optimizer.optimize(expanded_search_space, vectorized_batch_acquisition)
+        points = tf.reshape(vectorized_points, [self._num_query_points, -1])
+
+        return points, None

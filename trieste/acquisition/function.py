@@ -25,7 +25,16 @@ from ..space import SearchSpace
 from scipy.optimize import bisect
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. """
+""" Type alias for acquisition functions. 
+
+AcquisitionFunction handles query points of shape [..., D] and returns [..., 1] values.
+"""
+BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+""" 
+Type alias for batch acquisition functions. 
+
+BatchAcquisitionFunction handles batches of query points of shape [..., B, D] and returns [..., 1] values.
+"""
 
 
 class AcquisitionFunctionBuilder(ABC):
@@ -493,3 +502,17 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
+class BatchAcquisitionFunctionBuilder(ABC):
+    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> BatchAcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: A batch acquisition function.
+        """
