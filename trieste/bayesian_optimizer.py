@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from typing import List, Mapping, Optional, Generic, TypeVar, cast
 
 from absl import logging
-import gpflow
 import tensorflow as tf
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
@@ -178,7 +177,9 @@ class BayesianOptimizer(Generic[SP]):
         for step in range(num_steps):
             try:
                 if track_state:
-                    _save_to_history(history, datasets, models, acquisition_state)
+                    history.append(LoggingState(
+                        copy.copy(datasets), copy.deepcopy(models), copy.deepcopy(acquisition_state)
+                    ))
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state
@@ -203,15 +204,3 @@ class BayesianOptimizer(Generic[SP]):
                 return OptimizationResult(datasets, models, history, error)
 
         return OptimizationResult(datasets, models, history, None)
-
-
-def _save_to_history(
-    history: List[LoggingState[S]],
-    datasets: Mapping[str, Dataset],
-    models: Mapping[str, TrainableProbabilisticModel],
-    acquisition_state: Optional[S],
-) -> None:
-    models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
-    datasets_copy = {tag: ds for tag, ds in datasets.items()}
-    logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
-    history.append(logging_state)

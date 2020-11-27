@@ -11,62 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from abc import abstractmethod, ABC
-from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+import copy
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar, Union, cast
 
 import gpflow
-from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
 import tensorflow as tf
+from gpflow.models import GPModel, GPR, SGPR, SVGP, VGP
+from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 from .. import utils
+from .models import ProbabilisticModel, TrainableProbabilisticModel
 from ..data import Dataset
-from ..type import ObserverEvaluations, QueryPoints, TensorType
-
-
-class ProbabilisticModel(ABC):
-    """ A probabilistic model. """
-
-    @abstractmethod
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-        """
-        Return the predicted mean and variance of the latent function(s) at the specified
-        ``query_points``.
-
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
-        """
-        Return ``num_samples`` samples from the predictive distribution at ``query_points``.
-
-        :param query_points: The points at which to sample.
-        :param num_samples: The number of samples at each point.
-        :return: The samples. Has shape [S, Q, D], where S is the number of samples, Q is the number
-            of query points, and D is the dimension of the predictive distribution.
-        """
-        raise NotImplementedError
-
-
-class TrainableProbabilisticModel(ProbabilisticModel):
-    """ A trainable probabilistic model. """
-
-    @abstractmethod
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update the model given the specified ``dataset``. Does not train the model.
-
-        :param dataset: The data with which to update the model.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def optimize(self) -> None:
-        """ Optimize the model parameters. """
-        raise NotImplementedError
-
 
 Optimizer = Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
 
@@ -178,6 +137,9 @@ class GPflowPredictor(ProbabilisticModel, ABC):
         return self.model.predict_f_samples(query_points, num_samples)
 
 
+_M = TypeVar("_M", bound="GaussianProcessRegression")
+
+
 class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
     def __init__(self, model: Union[GPR, SGPR]):
         """
@@ -204,6 +166,14 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
 
         self.model.data = dataset.query_points, dataset.observations
 
+    def __deepcopy__(self: _M, memo: Dict[int, object]) -> _M:
+        deepcopy_method = self.__deepcopy__
+        self.__deepcopy__ = None
+        cp = gpflow.utilities.deepcopy(self, memo)
+        self.__deepcopy__ = deepcopy_method
+        cp.__deepcopy__ = deepcopy_method
+        return cp
+
 
 Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
 """
@@ -228,11 +198,11 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         :param optimizer: The optimizer to use for optimization.
         :param batcher: A function to convert training data into (mini)batches for optimization.
         """
-        self._optimizer = optimizer
-        self._iterations = iterations
-        self._batcher = batcher
         self._model = model
         self._data = data
+        self._iterations = iterations
+        self._optimizer = optimizer
+        self._batcher = batcher
         self._apply_jit = apply_jit
 
     @property
@@ -266,6 +236,18 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         for i, batch in enumerate(batch_iterator):
             if i < self._iterations:
                 _step(batch)
+
+    def __deepcopy__(self, memo: Dict[int, object]) -> SparseVariational:
+        deepcopied = SparseVariational(
+            gpflow.utilities.deepcopy(self.model, memo),
+            self._data,
+            copy.deepcopy(self._optimizer, memo),
+            self._iterations,
+            cast(Batcher, copy.deepcopy(self._batcher, memo)),
+            self._apply_jit
+        )
+        memo[id(self)] = deepcopied
+        return deepcopied
 
 
 class VariationalGaussianProcess(GaussianProcessRegression):
@@ -310,3 +292,74 @@ supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
 :var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
 that wrap models of those types.
 """
+
+
+@dataclass(frozen=True)
+class ModelConfig:
+    """ Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`. """
+
+    model: Union[tf.Module, TrainableProbabilisticModel]
+    """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
+
+    optimizer: Optimizer = field(default_factory=lambda: gpflow.optimizers.Scipy())
+    """ The optimizer with which to train the model (by minimizing its loss function). """
+
+    optimizer_args: Dict[str, Any] = field(default_factory=lambda: {})
+    """ The keyword arguments to pass to the optimizer when training the model. """
+
+    def __post_init__(self) -> None:
+        self._check_model_type()
+
+    @staticmethod
+    def create_from_dict(d: Dict[str, Any]) -> ModelConfig:
+        """
+        :param d: A dictionary from which to construct this :class:`ModelConfig`.
+        :return: A :class:`ModelConfig` built from ``d``.
+        :raise TypeError: If the keys in ``d`` do not correspond to the parameters of
+            :class:`ModelConfig`.
+        """
+        return ModelConfig(**d)
+
+    def _check_model_type(self) -> None:
+        if isinstance(self.model, TrainableProbabilisticModel):
+            return
+
+        for model_type in supported_models:
+            if isinstance(self.model, model_type):
+                return
+
+        raise NotImplementedError(f"Not supported type {type(self.model)}")
+
+    def create_model_interface(self) -> TrainableProbabilisticModel:
+        """
+        :return: A model built from this model configuration.
+        """
+        if isinstance(self.model, TrainableProbabilisticModel):
+            return self.model
+
+        for model_type, model_interface in supported_models.items():
+            if isinstance(self.model, model_type):
+                mi = model_interface(self.model)
+                mi.set_optimizer(self.optimizer)
+                mi.set_optimizer_args(self.optimizer_args)
+                return mi
+
+        raise NotImplementedError(f"Not supported type {type(self.model)}")
+
+
+ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
+""" Type alias for any type that can be used to fully specify a model. """
+
+
+def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
+    """
+    :param config: A :class:`TrainableProbabilisticModel` or configuration of a model.
+    :return: A :class:`~trieste.models.TrainableProbabilisticModel` build according to ``config``.
+    """
+    if isinstance(config, ModelConfig):
+        return config.create_model_interface()
+    elif isinstance(config, dict):
+        return ModelConfig(**config).create_model_interface()
+    elif isinstance(config, TrainableProbabilisticModel):
+        return config
+    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel.")

@@ -31,7 +31,7 @@ import numpy as np
 import numpy.testing as npt
 
 from trieste.data import Dataset
-from trieste.models.model_interfaces import (
+from trieste.models.gpflow import (
     CustomTrainable,
     Batcher,
     GaussianProcessRegression,
