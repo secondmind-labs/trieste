@@ -41,7 +41,7 @@ BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 Type alias for batch acquisition functions. 
 
 A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
-value that describes how useful it would be evaluate all those points together, to our goal of
+value that describes how useful it would be evaluate all these points together, to our goal of
 optimizing the objective function. Thus, with leading dimensions, a `BatchAcquisitionFunction` takes
 input shape `[..., B, D]` and returns shape `[..., 1]`.
 """
