@@ -40,7 +40,7 @@ from trieste.models.model_interfaces import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
-from trieste.type import ObserverEvaluations, QueryPoints, TensorType
+from trieste.type import TensorType
 
 
 class _MinimalTrainable(ProbabilisticModel):
@@ -56,10 +56,10 @@ class _MinimalTrainable(ProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         raise NotImplementedError
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         raise NotImplementedError
 
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError
 
 

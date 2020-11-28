@@ -19,12 +19,3 @@ import tensorflow as tf
 
 TensorType = Union[np.ndarray, tf.Tensor]
 """Type alias for tensor-like types."""
-
-QueryPoints = TensorType
-"""Type alias for points at which to query the observer."""
-
-ObserverEvaluations = TensorType
-"""Type alias for observed evaluations of the observer."""
-
-AcquisitionEvaluations = TensorType
-"""Type alias for evaluations of acquisition functions."""

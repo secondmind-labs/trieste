@@ -18,7 +18,7 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..type import QueryPoints
+from ..type import TensorType
 from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
@@ -65,7 +65,7 @@ class Reducer(AcquisitionFunctionBuilder):
             acq.prepare_acquisition_function(datasets, models) for acq in self.acquisitions
         )
 
-        def evaluate_acquisition_function_fn(at: QueryPoints) -> tf.Tensor:
+        def evaluate_acquisition_function_fn(at: TensorType) -> tf.Tensor:
             return self._reduce_acquisition_functions(at, functions)
 
         return evaluate_acquisition_function_fn
@@ -76,7 +76,7 @@ class Reducer(AcquisitionFunctionBuilder):
         return self._acquisitions
 
     def _reduce_acquisition_functions(
-        self, at: QueryPoints, acquisition_functions: Sequence[AcquisitionFunction]
+        self, at: TensorType, acquisition_functions: Sequence[AcquisitionFunction]
     ) -> tf.Tensor:
         return self._reduce([fn(at) for fn in acquisition_functions])
 

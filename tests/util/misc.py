@@ -33,7 +33,7 @@ from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
-from trieste.type import QueryPoints
+from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
 C = TypeVar("C", bound=Callable)
@@ -85,7 +85,7 @@ def raise_(*_: object, **__: object) -> NoReturn:
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
-    def __init__(self, query_points: QueryPoints):
+    def __init__(self, query_points: TensorType):
         """
         :param query_points: The value to return on each step.
         """
@@ -100,7 +100,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         :param search_space: Unused.
         :param datasets: Unused.
