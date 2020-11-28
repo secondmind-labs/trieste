@@ -13,14 +13,14 @@
 # limitations under the License.
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
-from typing import Callable, Dict
+from typing import Callable, Mapping
 
 import tensorflow as tf
 
 from .data import Dataset
 
 
-Observer = Callable[[tf.Tensor], Dict[str, Dataset]]
+Observer = Callable[[tf.Tensor], Mapping[str, Dataset]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
 datasets).
