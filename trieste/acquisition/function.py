@@ -56,6 +56,7 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
+
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
@@ -91,6 +92,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -108,7 +110,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, eta, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(
+        model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
@@ -151,32 +155,28 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
     Builder for the max-value entropy search acquisition function (for function minimisation)
     """
 
-    def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
         :param search_space: The global search space over which the Bayesian optimisation problem is defined.
         :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution 
+        :param grid_size: Size of random grid used to fit the gumbel distribution
             (recommend scaling with search space dimension).
         """
         self._search_space = search_space
 
         if num_samples <= 0:
-            raise ValueError(
-                f"num_samples must be positive, got {num_samples}"
-            )
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
 
         if grid_size <= 0:
-            raise ValueError(
-                f"grid_size must be positive, got {grid_size}"
-            )
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        Need to sample possible min-values from our posterior. 
+        Need to sample possible min-values from our posterior.
         To do this we implement a Gumbel sampler.
         We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
 
@@ -185,13 +185,13 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         :return: The MES function.
         """
         query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points,query_points],0)
+        query_points = tf.concat([dataset.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
-        def probf(x: tf.Tensor) -> tf.Tensor :  # Build empirical CDF
+        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
             unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(- (x - fmean) / fsd)
+            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
             return tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
         left = tf.reduce_min(fmean - 5 * fsd)
@@ -199,23 +199,29 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
         def binary_search(val: float) -> float:  # Fit Gumbel quantiles
             return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
-        
+
         q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
 
-        b = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
-        a = med + b * tf.math.log(tf.math.log(2.))
+        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
+        a = med + b * tf.math.log(tf.math.log(2.0))
 
-        uniform_samples = tf.random.uniform([self._num_samples],dtype=fmean.dtype)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
+            b, fmean.dtype
+        ) + tf.cast(a, fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
-    
+
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
 
 
-def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(
+    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+) -> tf.Tensor:
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
     minimal value of the objective function) if we would evaluate x.
@@ -238,15 +244,17 @@ def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: 
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max) # clip below to improve numerical stability
-    
-    normal = tfp.distributions.Normal(tf.cast(0,fmean.dtype), tf.cast(1,fmean.dtype))
+    fsd = tf.clip_by_value(
+        fsd, 1.0e-8, fmean.dtype.max
+    )  # clip below to improve numerical stability
+
+    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
     gamma = (samples - fmean) / fsd
 
     minus_cdf = 1 - normal.cdf(gamma)
-    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1) # clip below to improve numerical stability
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
     f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-        
+
     return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 

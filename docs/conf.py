@@ -30,7 +30,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'trieste'
+project = "trieste"
 # fmt: off
 copyright = (
     'Copyright 2020 The Trieste Contributors\n'
@@ -48,10 +48,10 @@ copyright = (
     'limitations under the License."\n'
 )
 # fmt: on
-author = 'The Trieste Contributors'
+author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = "0.2.0"
 
 # -- General configuration ---------------------------------------------------
 
@@ -61,37 +61,37 @@ extensions = [
 add_module_names = False
 
 # sphinx-autoapi
-extensions.append('autoapi.extension')
-autoapi_dirs = ['../trieste']
+extensions.append("autoapi.extension")
+autoapi_dirs = ["../trieste"]
 autoapi_add_toctree_entry = False
 autoapi_python_class_content = "both"
 autoapi_options = [
-    'members',
-    'private-members',
-    'special-members',
-    'imported-members',
-    'show-inheritance',
+    "members",
+    "private-members",
+    "special-members",
+    "imported-members",
+    "show-inheritance",
 ]
 
 # intersphinx
-extensions.append('sphinx.ext.intersphinx')
+extensions.append("sphinx.ext.intersphinx")
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
+    "python": ("https://docs.python.org/3/", None),
 }
 
 # nbsphinx
-extensions.append('nbsphinx')
+extensions.append("nbsphinx")
 nbsphinx_custom_formats = {
-    '.pct.py': ['jupytext.reads', {'fmt': 'py:percent'}],
+    ".pct.py": ["jupytext.reads", {"fmt": "py:percent"}],
 }
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -102,7 +102,7 @@ html_theme = "pydata_sphinx_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # library logo location
 html_logo = "_static/logo.png"
