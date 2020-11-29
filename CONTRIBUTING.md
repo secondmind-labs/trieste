@@ -58,7 +58,7 @@ We use [type hints](https://docs.python.org/3/library/typing.html) for documenta
 
 Run the type checker with
 ```bash
-$ tox -e common
+$ tox -e types
 ```
 
 #### Tests
@@ -68,6 +68,13 @@ We write and run tests with [pytest](https://pytest.org). We aim for all public-
 Run tests with
 ```bash
 $ tox -e tests
+```
+
+#### Code formatting
+
+We format all Python code, other than the notebooks, with [black](https://black.readthedocs.io/en/stable/). Black automates a rough approximation of everyone's favourite code formatting style. You may need to run black before pushing changes, with
+```bash
+$ tox -e format
 ```
 
 #### Continuous integration

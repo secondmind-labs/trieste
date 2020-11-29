@@ -12,16 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[tool.pytest.ini_options]
-addopts = "--doctest-modules"
-testpaths = [
-    "trieste",
-    "tests/unit",
-    "tests/integration",
-]
-
-[tool.black]
-line-length = 100
-target-version = ['py37']
-include = '\.py$'
-exclude = '\.pct.py$'
+black
