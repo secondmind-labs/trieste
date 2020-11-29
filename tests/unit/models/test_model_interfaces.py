@@ -124,10 +124,14 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
         (VariationalGaussianProcess, _vgp),
     ],
 )
-def _gpr_interface_factory(request) -> Callable[[tf.Tensor, tf.Tensor], GaussianProcessRegression]:
-    def model_interface_factory(x, y, optimizer: Optional[Optimizer] = None) -> ProbabilisticModel:
-        model_interface: Type[ProbabilisticModel] = request.param[0]
-        base_model: ProbabilisticModel = request.param[1](x, y)
+def _gpr_interface_factory(
+    request,
+) -> Callable[[TensorType, TensorType, Optional[Optimizer]], GaussianProcessRegression]:
+    def model_interface_factory(
+        x: TensorType, y: TensorType, optimizer: Optional[Optimizer] = None
+    ) -> GaussianProcessRegression:
+        model_interface: Type[GaussianProcessRegression] = request.param[0]
+        base_model: GaussianProcessRegression = request.param[1](x, y)
         return model_interface(base_model, optimizer=optimizer)  # type: ignore
 
     return model_interface_factory
