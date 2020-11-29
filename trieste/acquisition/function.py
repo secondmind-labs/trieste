@@ -27,12 +27,12 @@ from scipy.optimize import bisect
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """
-Type alias for acquisition functions. 
+Type alias for acquisition functions.
 
 
 An `AcquisitionFunction` maps a single query point (of dimension `D`) to a single value that
-describes how useful it would be evaluate that point, to our goal of optimizing the objective
-function. Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
+describes how useful it would be evaluate that point (to our goal of optimizing the objective
+function). Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
 `[..., D]` and returns shape `[..., 1]`.
 """
 
@@ -41,9 +41,9 @@ BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 Type alias for batch acquisition functions. 
 
 A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
-value that describes how useful it would be evaluate all these points together, to our goal of
-optimizing the objective function. Thus, with leading dimensions, a `BatchAcquisitionFunction` takes
-input shape `[..., B, D]` and returns shape `[..., 1]`.
+value that describes how useful it would be evaluate all these points together, (to our goal of
+optimizing the objective function). Thus, with leading dimensions, a `BatchAcquisitionFunction`
+takes input shape `[..., B, D]` and returns shape `[..., 1]`.
 """
 
 
