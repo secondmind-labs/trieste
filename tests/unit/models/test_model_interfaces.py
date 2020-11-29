@@ -21,7 +21,7 @@ encapsulation. For example, we should *not* test that methods on the GPflow mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 trieste model).
 """
-from typing import Tuple, Callable, Union, Iterable
+from typing import Tuple, Callable, Union, Iterable, Type, Optional
 
 import gpflow
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
@@ -49,12 +49,12 @@ class _MinimalTrainable(ProbabilisticModel):
     def __init__(self, optimizer: Optimizer):
         self.optimizer = optimizer
 
-    def optimize(self, dataset: Dataset):
-        self.optimizer.optimize(None, None)
+    def optimize(self, dataset: Dataset) -> None:
+        self.optimizer.optimize(None, dataset)
 
     def loss(self) -> tf.Tensor:
         raise NotImplementedError
- 
+
     def update(self, dataset: Dataset) -> None:
         raise NotImplementedError
 
@@ -70,12 +70,12 @@ def test_trainable_model_interface_set_optimize() -> None:
         def __init__(self):
             self.call_count = 0
 
-        def optimize(self, model: None, dataset: None):
+        def optimize(self, model: tf.Module, dataset: Dataset):
             self.call_count += 1
 
     optimizer = _OptimizerMock()
     model = _MinimalTrainable(optimizer)
-    model.optimize(None)
+    model.optimize(Dataset(np.eye(1), np.eye(1)))
     assert optimizer.call_count == 1
 
 
@@ -125,9 +125,12 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
     ],
 )
 def _gpr_interface_factory(request) -> Callable[[tf.Tensor, tf.Tensor], GaussianProcessRegression]:
-    return lambda x, y, optimizer=None: request.param[0](
-        request.param[1](x, y), optimizer=optimizer
-    )
+    def model_interface_factory(x, y, optimizer: Optional[Optimizer] = None) -> ProbabilisticModel:
+        model_interface: Type[ProbabilisticModel] = request.param[0]
+        base_model: ProbabilisticModel = request.param[1](x, y)
+        return model_interface(base_model, optimizer=optimizer)  # type: ignore
+
+    return model_interface_factory
 
 
 def _reference_gpr(x: tf.Tensor, y: tf.Tensor) -> gpflow.models.GPR:
@@ -139,7 +142,7 @@ def _3x_plus_10(x: tf.Tensor) -> tf.Tensor:
 
 
 def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
-    return 2.0 * tf.math.sin(x/3.)
+    return 2.0 * tf.math.sin(x / 3.0)
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
@@ -257,7 +260,7 @@ class _QuadraticPredictor(GPflowPredictor):
     @property
     def model(self) -> GPModel:
         return _QuadraticGPModel()
-    
+
     def update(self, dataset: Dataset) -> None:
         pass
 
@@ -309,7 +312,7 @@ def test_gpflow_predictor_sample() -> None:
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
-    samples = _QuadraticPredictor().sample(tf.constant([[50.]], gpflow.default_float()), 0)
+    samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
 
 
