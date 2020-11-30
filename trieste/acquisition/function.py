@@ -19,11 +19,13 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..type import QueryPoints
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, GPflowPredictor
 from ..space import SearchSpace
 
 from scipy.optimize import bisect
+
 from gpflow.config import default_float, default_jitter
+from gpflow.utilities.ops import leading_transpose
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """ Type alias for acquisition functions. 
@@ -57,6 +59,7 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
+
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
@@ -92,6 +95,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -109,7 +113,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, eta, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(
+        model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
@@ -156,28 +162,24 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         """
         :param search_space: The global search space over which the Bayesian optimisation problem is defined.
         :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution 
+        :param grid_size: Size of random grid used to fit the gumbel distribution
             (recommend scaling with search space dimension).
         """
         self._search_space = search_space
 
         if num_samples <= 0:
-            raise ValueError(
-                f"num_samples must be positive, got {num_samples}"
-            )
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
 
         if grid_size <= 0:
-            raise ValueError(
-                f"grid_size must be positive, got {grid_size}"
-            )
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        Need to sample possible min-values from our posterior. 
+        Need to sample possible min-values from our posterior.
         To do this we implement a Gumbel sampler.
         We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
 
@@ -192,7 +194,7 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
         def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
             unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(- (x - fmean) / fsd)
+            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
             return tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
         left = tf.reduce_min(fmean - 5 * fsd)
@@ -203,20 +205,26 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
 
         q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
 
-        b = (q1 - q2) / (tf.math.log(tf.math.log(4. / 3.)) - tf.math.log(tf.math.log(4.)))
-        a = med + b * tf.math.log(tf.math.log(2.))
+        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
+        a = med + b * tf.math.log(tf.math.log(2.0))
 
         uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a, fmean.dtype)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
+            b, fmean.dtype
+        ) + tf.cast(a, fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
         return max_value_entropy_search(model, samples, at)
 
 
-def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(
+    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+) -> tf.Tensor:
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
     minimal value of the objective function) if we would evaluate x.
@@ -239,7 +247,9 @@ def max_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: 
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max)  # clip below to improve numerical stability
+    fsd = tf.clip_by_value(
+        fsd, 1.0e-8, fmean.dtype.max
+    )  # clip below to improve numerical stability
 
     normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
     gamma = (samples - fmean) / fsd
@@ -505,97 +515,6 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
 
 
-class MonteCarloAcquisition(SingleModelAcquisitionBuilder):
-    """
-    Builder for the expected improvement function where the "best" value is taken to be the minimum
-    of the posterior mean at observed points.
-    """
-
-    def __init__(self, eps_shape: [int]):
-
-        super().__init__()
-        assert len(eps_shape) == 3
-        self.eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, B, L]
-
-    def predict_f_samples_with_reparametrisation_trick(self, model: ProbabilisticModel, at: QueryPoints) -> tf.Tensor:
-        """
-        Returns samples according to the reparametrization trick. The sample size S is determined by eps,
-        the batch size B must be compatible between eps and at, N is the number of batches of query points
-        and L is the number of latent processes.
-        :param model:
-        :param at: batch of query points [N, D] or [N, B, D]
-        :return: a [S, N, B, L] tensor
-        """
-        # mean, cov = model.predict_f(at, full_cov=True, full_output_cov=True)
-
-        if len(at.shape) == 2:
-            mean, cov = model.predict(at)
-            # mean: [N, L]
-            # cov: [N, L]
-            samples = mean[None, :, None, :] + \
-                      tf.math.sqrt(cov)[None, :, None, :] * self.eps[:, None, ...]  # [S, N, B, L]
-        else:
-            assert at.shape[1] == self.eps.shape[1]
-
-            mean, cov = model.predict(at, full_cov=True)
-            # mean: [N, B, L]
-            # cov: [N, L, B, B]
-            mean_for_sample = tf.linalg.adjoint(mean)  # [N, L, B]
-            mean_shape = tf.shape(mean_for_sample)
-            B = mean_shape[-1]
-
-            jittermat = (
-                    tf.eye(B, batch_shape=mean_shape[:-1], dtype=cov.dtype) * default_jitter()
-            )  # [N, L, B, B]
-
-            eps = tf.transpose(self.eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
-
-            chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
-            samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
-            samples = tf.transpose(samples, [3, 0, 2, 1])
-
-        return samples
-
-    @abstractmethod
-    def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
-        :return: An acquisition function.
-        """
-
-
-class MonteCarloExpectedImprovement(MonteCarloAcquisition):
-    """
-    Builder for the Monte_carlo based expected improvement.
-    """
-
-    def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
-        :return: The expected improvement function.
-        """
-        mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
-        return lambda at: self._acquisition_function(self, model, eta, at)
-
-    @staticmethod
-    def _acquisition_function(
-            self, model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
-    ) -> tf.Tensor:
-        samples = self.predict_f_samples_with_reparametrisation_trick(model, at)  # [S, N, B, L]
-        samples = samples[..., 0]
-        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N, B]
-        batch_improvement = tf.math.reduce_mean(improvement, axis=-1)  # [S, N]
-        ei = tf.math.reduce_mean(batch_improvement, axis=0)[:, None]
-        return ei
-
-
 class BatchAcquisitionFunctionBuilder(ABC):
     """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
 
@@ -608,3 +527,159 @@ class BatchAcquisitionFunctionBuilder(ABC):
         :param models: The models over each dataset in ``datasets``.
         :return: A batch acquisition function.
         """
+
+
+class SingleModelBatchAcquisitionBuilder(BatchAcquisitionFunctionBuilder):
+    """
+    Convenience acquisition function builder for an acquisition function (or component of a
+    composite acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(BatchAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :return: An acquisition function.
+        """
+
+
+def predict_independent_f_samples_with_reparametrisation_trick(
+        model: ProbabilisticModel, at: QueryPoints, eps: tf.Tensor
+) -> tf.Tensor:
+    """
+    Returns independent samples according to the reparametrization trick.
+    The sample size S is determined by eps,
+    N is the number of query points and L is the number of latent processes.
+    :param model:
+    :param at: N query points [N, D]
+    :return: a [S, N, L] tensor
+    """
+    assert len(at.shape) == 2
+    mean, cov = model.predict(at)   # both [N, L]
+    return mean[None, ...] + tf.math.sqrt(cov)[None, ...] * eps[:, None, :]  # [S, N, L]
+
+
+def predict_batch_f_samples_with_reparametrisation_trick(
+        model: ProbabilisticModel, at: QueryPoints, eps: tf.Tensor
+) -> tf.Tensor:
+    """
+    Returns batch-correlated samples according to the reparametrization trick.
+    The sample size S is determined by eps,
+    the batch size B must be compatible between eps and at,
+    N is the number of batches of query points
+    and L is the number of latent processes.
+    :param model:
+    :param at: N batches of query points [N, B, D]
+    :return: a [S, N, B, L] tensor
+    """
+
+    assert at.shape[1] == eps.shape[1]
+
+    mean, cov = model.predict(at, full_cov=True)
+    # mean: [N, B, L]
+    # cov: [N, L, B, B]
+    mean_for_sample = tf.linalg.adjoint(mean)  # [N, L, B]
+    mean_shape = tf.shape(mean_for_sample)
+    B = mean_shape[-1]
+
+    jittermat = (
+            tf.eye(B, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+    )  # [N, L, B, B]
+
+    eps = tf.transpose(eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
+
+    chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
+    samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
+    return tf.transpose(samples, [3, 0, 2, 1])
+
+
+class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the Monte_carlo based expected improvement.
+    """
+
+    def __init__(self, num_samples: [int]):
+        super().__init__()
+        self.num_samples = num_samples
+
+    def prepare_acquisition_function(
+            self, dataset: Dataset, model: GPflowPredictor
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected improvement function.
+        """
+        eps_shape = [self.num_samples, model.model.num_latent_gps]
+        eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, L]
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        return lambda at: self._acquisition_function(model, eta, at, eps)
+
+    # @staticmethod
+    def _acquisition_function(
+            self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor
+    ) -> tf.Tensor:
+        samples = predict_independent_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, L]
+        samples = samples[..., 0]
+        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
+        ei = tf.math.reduce_mean(improvement, axis=0)[:, None]
+        return ei
+
+
+class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
+    """
+    Builder for the Monte_carlo based expected improvement.
+    """
+
+    def __init__(self, num_samples: int, num_query_points: int):
+        super().__init__()
+        self.num_samples = num_samples
+        self.num_query_points = num_query_points
+
+    def prepare_acquisition_function(
+            self, dataset: Dataset, model: GPflowPredictor
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected improvement function.
+        """
+        eps_shape = [self.num_samples, self.num_query_points, model.model.num_latent_gps]  # [S, B, L]
+        eps = tf.random.normal(eps_shape, dtype=default_float())
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        return lambda at: self._acquisition_function(model, eta, at, eps)
+
+    # @staticmethod
+    def _acquisition_function(
+            self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor,
+    ) -> tf.Tensor:
+        samples = predict_batch_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, B, L]
+        samples = samples[..., 0]  # [S, N, B]
+        improvement = tf.math.maximum(eta - samples, 0.)  # [S, N, B]
+        batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [S, N]
+        ei = tf.math.reduce_mean(batch_improvement, axis=0)[:, None]  # [N, 1]
+        return ei

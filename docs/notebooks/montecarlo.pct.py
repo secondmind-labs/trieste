@@ -84,7 +84,7 @@ def build_model(data):
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
 
-    return {OBJECTIVE: trieste.models.create_model_interface({
+    return {OBJECTIVE: trieste.models.create_model({
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
@@ -96,18 +96,15 @@ model = build_model(initial_data[OBJECTIVE])
 # # Try an alternative acquisition function
 
 # %% [markdown]
-# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization.
-# We try here a MC implementation.
+# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Max-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
 
 # %% [markdown]
-# We plot these two acquisition functions across our search space. Both acquisitions are equal up to MC numerical error.
+# We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
 
 # %%
 ei = trieste.acquisition.ExpectedImprovement()
 ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
-mcei = trieste.acquisition.MonteCarloExpectedImprovement(
-    eps_shape=[1000, 1, 1]  # [S, B, L]
-)
+mcei = trieste.acquisition.MonteCarloExpectedImprovement(num_samples=100)
 mcei_acq_function = mcei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 
 fig, ax = plot_function_2d(mcei_acq_function, mins, maxs, grid_density=40, contour=True)
@@ -124,17 +121,15 @@ plot_bo_points(
 )
 fig.suptitle("Expected Improvement Acquisition Function")
 
-# %%
-model = build_model(initial_data[OBJECTIVE])
-acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
 
 # %% [markdown]
-# We now run the whole BO loop for 20 steps.
-#
-# # %%
+# We now define a new acquisition rule and run the whole BO loop for 15 steps.
+
+# %%
+acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(20, initial_data, model, acquisition_rule=acq_rule)
+result = bo.optimize(15, initial_data, model, acquisition_rule=acq_rule)
 
 if result.error is not None: raise result.error
 
@@ -150,21 +145,22 @@ plot_bo_points(
     idx_best=arg_min_idx,
 )
 
-
 # %% [markdown]
-# # Batch acquisition function
+# We now re-initialize the model, define a new batch acquisition rule and run the whole BO loop for 10 steps.
 
-batch_mcei = trieste.acquisition.MonteCarloExpectedImprovement(
-    eps_shape=[200, 2, 1]  # [S, B, L]
-)
-batch_acq_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=2,
-                                                               builder=batch_mcei.using(OBJECTIVE))
+# %%
+model = build_model(initial_data[OBJECTIVE])
+batch_size = 3
+bmcei = trieste.acquisition.BatchMonteCarloExpectedImprovement(num_samples=100, num_query_points=batch_size)
+batch_acq_rule = trieste.acquisition.rule.BatchAcquisitionRule(builder=bmcei.using(OBJECTIVE),
+                                                               num_query_points=batch_size)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_acq_rule)
+result = bo.optimize(15, initial_data, model, acquisition_rule=batch_acq_rule)
 
-if batch_result.error is not None: raise batch_result.error
+if result.error is not None: raise result.error
 
-dataset = batch_result.datasets[OBJECTIVE]
+dataset = result.datasets[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)

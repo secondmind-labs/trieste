@@ -48,7 +48,8 @@ from .function import (
     lower_confidence_bound,
     ProbabilityOfFeasibility,
     probability_of_feasibility,
-    ExpectedConstrainedImprovement,
     MonteCarloExpectedImprovement,
+    ExpectedConstrainedImprovement,
+    BatchMonteCarloExpectedImprovement,
 )
 from .combination import Reducer, Product, Sum

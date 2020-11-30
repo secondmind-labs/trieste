@@ -48,7 +48,7 @@ class SearchSpace(ABC):
 
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
-        """        
+        """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with ``other``.
         """
@@ -56,7 +56,7 @@ class SearchSpace(ABC):
     def __pow__(self: SP, other: int) -> SP:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to `s * s * s`.
-        
+
         :param other: The number of instances of this search space to multiply. Must be strictly positive.
         :return: The Cartesian product of ``other`` instances of this search space.
         :raise ValueError: If the exponent ``other`` is less than 1.
@@ -65,7 +65,7 @@ class SearchSpace(ABC):
             raise ValueError("The exponent ``other`` can only be a strictly positive integer")
 
         space = self
-        for _ in range(other-1):
+        for _ in range(other - 1):
             space *= self
         return space
 
@@ -89,7 +89,7 @@ class DiscreteSearchSpace(SearchSpace):
         :param points: The points that define the discrete space, with shape ('N', 'D').
         :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
         """
-        tf.debugging.assert_shapes([(points, ('N', 'D'))])
+        tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
 
     @property
@@ -119,7 +119,7 @@ class DiscreteSearchSpace(SearchSpace):
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         """
         Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
-        
+
             >>> sa = DiscreteSearchSpace(tf.constant([[0, 1], [2, 3]]))
             >>> sb = DiscreteSearchSpace(tf.constant([[4, 5, 6], [7, 8, 9]]))
             >>> (sa * sb).points.numpy()

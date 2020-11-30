@@ -18,7 +18,7 @@ the Bayesian optimization process.
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, TypeVar, Generic, Optional, Tuple, Mapping, Union
+from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -27,25 +27,21 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-
-from .function import (AcquisitionFunctionBuilder,
-                       ExpectedImprovement,
-                       BatchAcquisitionFunctionBuilder,
-                       BatchAcquisitionFunction,
-                       AcquisitionFunction,
-                       MonteCarloExpectedImprovement)
-
+from .function import (
+    AcquisitionFunctionBuilder,
+    ExpectedImprovement,
+    BatchAcquisitionFunctionBuilder,
+    BatchAcquisitionFunction,
+    AcquisitionFunction,
+)
 from . import _optimizer
-from ..space import Box
+
 
 S = TypeVar("S")
 """ Unbound type variable. """
 
 SP = TypeVar("SP", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`SearchSpace`. """
-
-AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. """
 
 
 class AcquisitionRule(ABC, Generic[S, SP]):
@@ -300,7 +296,6 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             )
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-
         point = _optimizer.optimize(acquisition_space, acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
@@ -308,15 +303,13 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
 
 class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
-    """ Implements a acquisition rule for a batch of query points """
+    """ Implements an acquisition rule for a batch of query points. """
 
-    def __init__(self, num_query_points: int,
-                 builder: BatchAcquisitionFunctionBuilder):
+    def __init__(self, num_query_points: int, builder: BatchAcquisitionFunctionBuilder):
         """
         :param num_query_points: The number of points to acquire.
-        :param builder: The acquisition function builder to use.
-            :class:`BatchAcquisitionRule` will attempt to **maximise** the corresponding
-            acquisition function.
+        :param builder: The acquisition function builder to use. :class:`BatchAcquisitionRule` will
+            attempt to **maximise** the corresponding acquisition function.
         """
 
         if not num_query_points > 0:
@@ -327,8 +320,12 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
         self._builder = builder
 
-    def _vectorize_batch_acquisition(self, acquisition_function: BatchAcquisitionFunction) -> AcquisitionFunction:
-        return lambda at: acquisition_function(tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1]))
+    def _vectorize_batch_acquisition(
+        self, acquisition_function: BatchAcquisitionFunction
+    ) -> AcquisitionFunction:
+        return lambda at: acquisition_function(
+            tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1])
+        )
 
     def acquire(
         self,
@@ -338,10 +335,10 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
-        Return the batch of query points that optimizes the acquisition function produced by `builder` (see
-        :meth:`__init__`).
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        Return the batch of query points that optimizes the acquisition function produced by
+        `builder` (see :meth:`__init__`).
+
+        :param search_space: The global search space over which the optimization problem is defined.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.

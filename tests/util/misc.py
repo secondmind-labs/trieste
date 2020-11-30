@@ -25,7 +25,7 @@ from trieste.space import Box, SearchSpace
 from trieste.type import QueryPoints
 from trieste.utils import shapes_equal
 
-C = TypeVar('C', bound=Callable)
+C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
 
 
@@ -34,6 +34,7 @@ def random_seed(f: C) -> C:
     :param f: A function.
     :return: The function ``f``, but with the TensorFlow randomness seed fixed to a hardcoded value.
     """
+
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         tf.random.set_seed(0)
@@ -46,7 +47,7 @@ def zero_dataset() -> Dataset:
     """
     :return: A 1D input, 1D output dataset with a single entry of zeroes.
     """
-    return Dataset(tf.constant([[0.]]), tf.constant([[0.]]))
+    return Dataset(tf.constant([[0.0]]), tf.constant([[0.0]]))
 
 
 def one_dimensional_range(lower: float, upper: float) -> Box:
@@ -62,6 +63,7 @@ def one_dimensional_range(lower: float, upper: float) -> Box:
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
+
     def __init__(self, query_points: QueryPoints):
         """
         :param query_points: The value to return on each step.
@@ -69,11 +71,11 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._qp = query_points
 
     def acquire(
-            self,
-            search_space: SearchSpace,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
-            state: None = None
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
         :param search_space: Unused.
@@ -96,7 +98,9 @@ def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[i
         in ``excluding_ranks``.
     """
     shapes = {
-        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6)
+        # fmt: off
+        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6),
+        # fmt: on
     }
     return frozenset(s for s in shapes if len(s) not in excluding_ranks)
 
