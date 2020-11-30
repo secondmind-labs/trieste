@@ -126,24 +126,24 @@ fig.suptitle("Expected Improvement Acquisition Function")
 # We now define a new acquisition rule and run the whole BO loop for 15 steps.
 
 # %%
-# acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
-# bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-#
-# result = bo.optimize(15, initial_data, model, acquisition_rule=acq_rule)
-#
-# if result.error is not None: raise result.error
-#
-# dataset = result.datasets[OBJECTIVE]
-#
-# arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-# fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
-#
-# plot_bo_points(
-#     dataset.query_points.numpy(),
-#     ax=ax[0, 0],
-#     num_init=len(initial_query_points),
-#     idx_best=arg_min_idx,
-# )
+acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+result = bo.optimize(15, initial_data, model, acquisition_rule=acq_rule)
+
+if result.error is not None: raise result.error
+
+dataset = result.datasets[OBJECTIVE]
+
+arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
+
+plot_bo_points(
+    dataset.query_points.numpy(),
+    ax=ax[0, 0],
+    num_init=len(initial_query_points),
+    idx_best=arg_min_idx,
+)
 
 # %% [markdown]
 # We now re-initialize the model, define a new batch acquisition rule and run the whole BO loop for 10 steps.
