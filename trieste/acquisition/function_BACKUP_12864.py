@@ -177,7 +177,11 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
+<<<<<<< HEAD
         Need to sample possible min-values y* from our posterior. 
+=======
+        Need to sample possible min-values from our posterior.
+>>>>>>> original/develop
         To do this we implement a Gumbel sampler.
         We approximate :math:`Pr(y*<y) by Gumbel(a,b)` then sample from this Gumbel.
 
@@ -201,14 +205,22 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
+<<<<<<< HEAD
         def probf(y: tf.Tensor) -> tf.Tensor :  # Build empirical CDF for Pr(y*^hat<y)
             unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
             log_cdf = unit_normal.log_cdf(- (y - fmean) / fsd)
             return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
+=======
+        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
+            return tf.exp(tf.reduce_sum(log_cdf, axis=0))
+>>>>>>> original/develop
 
         left = tf.reduce_min(fmean - 5 * fsd)
         right = tf.reduce_max(fmean + 5 * fsd)
 
+<<<<<<< HEAD
         def binary_search(val: float) -> float:  # Find empirical interquartile range
             return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
         
@@ -222,15 +234,41 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         uniform_samples = tf.random.uniform([self._num_samples],dtype=fmean.dtype)
         gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
+=======
+        def binary_search(val: float) -> float:  # Fit Gumbel quantiles
+            return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
+
+        q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
+
+        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
+        a = med + b * tf.math.log(tf.math.log(2.0))
+
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
+            b, fmean.dtype
+        ) + tf.cast(a, fmean.dtype)
+>>>>>>> original/develop
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
 
     @staticmethod
+<<<<<<< HEAD
     def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return min_value_entropy_search(model, samples, at)
 
 
 def min_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+=======
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
+        return max_value_entropy_search(model, samples, at)
+
+
+def max_value_entropy_search(
+    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+) -> tf.Tensor:
+>>>>>>> original/develop
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distribution of the
     minimal value of the objective function) if we would evaluate x.

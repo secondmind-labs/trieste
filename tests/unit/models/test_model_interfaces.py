@@ -153,7 +153,7 @@ def _3x_plus_10(x: tf.Tensor) -> tf.Tensor:
 
 
 def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
-    return 2.0 * tf.math.sin(x/3.)
+    return 2.0 * tf.math.sin(x / 3.0)
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
@@ -241,14 +241,16 @@ def test_variational_gaussian_process_predict() -> None:
     model = VariationalGaussianProcess(_vgp(x_observed, y_observed))
 
     gpflow.optimizers.Scipy().minimize(
-        model.loss, model.trainable_variables,
+        model.loss,
+        model.trainable_variables,
     )
     x_predict = tf.constant([[50.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
 
     reference_model = _reference_gpr(x_observed, y_observed)
     gpflow.optimizers.Scipy().minimize(
-        reference_model.training_loss_closure(), reference_model.trainable_variables,
+        reference_model.training_loss_closure(),
+        reference_model.trainable_variables,
     )
     reference_mean, reference_variance = reference_model.predict_f(x_predict)
 
@@ -266,7 +268,8 @@ class _QuadraticGPModel(GPModel):
     def __init__(self):
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used
-            gpflow.likelihoods.Gaussian(), num_latent_gps=1
+            gpflow.likelihoods.Gaussian(),
+            num_latent_gps=1,
         )
 
     def predict_f(
@@ -308,7 +311,7 @@ def test_gpflow_predictor_sample() -> None:
 
 
 def test_gpflow_predictor_sample_no_samples() -> None:
-    samples = _QuadraticPredictor().sample(tf.constant([[50.]], gpflow.default_float()), 0)
+    samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
 
 
@@ -318,15 +321,16 @@ def test_sparse_variational_model_attribute() -> None:
     assert sv.model is model
 
 
-@pytest.mark.parametrize('new_data', [
-    Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))
-])
+@pytest.mark.parametrize(
+    "new_data",
+    [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
+)
 def test_sparse_variational_update_raises_for_invalid_shapes(new_data: Dataset) -> None:
     model = SparseVariational(
         _svgp(tf.zeros([1, 4])),
         Dataset(tf.zeros([3, 4]), tf.zeros([3, 1])),
         tf.optimizers.Adam(),
-        iterations=10
+        iterations=10,
     )
     with pytest.raises(ValueError):
         model.update(new_data)
@@ -339,18 +343,23 @@ def test_sparse_variational_optimize_with_defaults() -> None:
         _svgp(x_observed[:10]),
         Dataset(tf.constant(x_observed), tf.constant(y_observed)),
         tf.optimizers.Adam(),
-        iterations=20
+        iterations=20,
     )
     loss = model.model.training_loss((x_observed, y_observed))
     model.optimize()
     assert model.model.training_loss((x_observed, y_observed)) < loss
 
 
-@pytest.mark.parametrize('apply_jit', [True, False])
-@pytest.mark.parametrize('batcher', [
-    lambda ds: tf.data.Dataset.from_tensors((ds.query_points, ds.observations)).shuffle(100).batch(10),
-    lambda ds: [(ds.query_points, ds.observations)]
-])
+@pytest.mark.parametrize("apply_jit", [True, False])
+@pytest.mark.parametrize(
+    "batcher",
+    [
+        lambda ds: tf.data.Dataset.from_tensors((ds.query_points, ds.observations))
+        .shuffle(100)
+        .batch(10),
+        lambda ds: [(ds.query_points, ds.observations)],
+    ],
+)
 def test_sparse_variational_optimize(batcher: Batcher, apply_jit: bool) -> None:
     x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -361,7 +370,7 @@ def test_sparse_variational_optimize(batcher: Batcher, apply_jit: bool) -> None:
         tf.optimizers.Adam(),
         iterations=20,
         batcher=batcher,
-        apply_jit=apply_jit
+        apply_jit=apply_jit,
     )
     loss = model.model.training_loss((x_observed, y_observed))
     model.optimize()

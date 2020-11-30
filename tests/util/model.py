@@ -27,6 +27,7 @@ from tests.util.misc import random_seed
 
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
     """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
+
     def update(self, dataset: Dataset) -> None:
         pass
 
@@ -36,6 +37,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
 
 class GaussianMarginal(ProbabilisticModel, ABC):
     """ A probabilistic model with a Gaussian marginal distribution at each point. """
+
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
@@ -55,9 +57,10 @@ class QuadraticWithUnitVariance(GaussianMarginal):
     A probabilistic model with mean :math:`x \mapsto \sum x^2`, unit variance, and Gaussian
     marginal distribution.
     """
+
     def __init__(self):
         self._model = CustomMeanWithUnitVariance(
-            lambda x: tf.reduce_sum(x ** 2, axis=1, keepdims=True)
+            lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
         )
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
@@ -66,9 +69,9 @@ class QuadraticWithUnitVariance(GaussianMarginal):
 
 def test_quadratic_with_unit_variance() -> None:
     model = QuadraticWithUnitVariance()
-    mean, var = model.predict(tf.constant([[0., 1.], [2., 3.], [4., 5.]]))
-    npt.assert_array_almost_equal(mean, tf.constant([[1.], [13.], [41.]]))
-    npt.assert_array_almost_equal(var, tf.constant([[1.], [1.], [1.]]))
+    mean, var = model.predict(tf.constant([[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]))
+    npt.assert_array_almost_equal(mean, tf.constant([[1.0], [13.0], [41.0]]))
+    npt.assert_array_almost_equal(var, tf.constant([[1.0], [1.0], [1.0]]))
 
 
 @random_seed
@@ -78,11 +81,11 @@ def test_gaussian_marginal_sample() -> None:
             mean = tf.reduce_sum(query_points, axis=1, keepdims=True)
             return mean, tf.ones_like(mean)
 
-    samples = _Sum().sample(tf.constant([[0., 1.], [2., 3.], [4., 5.]]), 100_000)
+    samples = _Sum().sample(tf.constant([[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]), 100_000)
 
     samples_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.sqrt(tf.reduce_mean((samples - samples_mean) ** 2, axis=0))
 
     assert samples.shape == [100_000, 3, 1]
-    npt.assert_allclose(samples_mean, [[1.], [5.], [9.]], rtol=1e-2)
-    npt.assert_allclose(sample_variance, [[1.], [1.], [1.]], rtol=1e-2)
+    npt.assert_allclose(samples_mean, [[1.0], [5.0], [9.0]], rtol=1e-2)
+    npt.assert_allclose(sample_variance, [[1.0], [1.0], [1.0]], rtol=1e-2)

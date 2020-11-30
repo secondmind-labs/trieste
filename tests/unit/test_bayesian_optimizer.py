@@ -33,7 +33,7 @@ class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoTrainableProbMo
     pass
 
 
-@pytest.mark.parametrize('steps', [0, 1, 2, 5])
+@pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
     class _CountingObserver:
         call_count = 0
@@ -56,21 +56,25 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-@pytest.mark.parametrize('datasets, model_specs', [
-    ({}, {}),
-    ({'foo': zero_dataset()}, {}),
-    ({'foo': zero_dataset()}, {'bar': _PseudoTrainableQuadratic()}),
-    ({'foo': zero_dataset()}, {
-        'foo': _PseudoTrainableQuadratic(),
-        'bar': _PseudoTrainableQuadratic()
-    }),
-])
+@pytest.mark.parametrize(
+    "datasets, model_specs",
+    [
+        ({}, {}),
+        ({"foo": zero_dataset()}, {}),
+        ({"foo": zero_dataset()}, {"bar": _PseudoTrainableQuadratic()}),
+        (
+            {"foo": zero_dataset()},
+            {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()},
+        ),
+    ],
+)
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
-        datasets: Dict[str, Dataset],
-        model_specs: Dict[str, TrainableProbabilisticModel]
+    datasets: Dict[str, Dataset], model_specs: Dict[str, TrainableProbabilisticModel]
 ) -> None:
-    optimizer = BayesianOptimizer(lambda x: {'foo': Dataset(x, x[:1])}, one_dimensional_range(-1, 1))
-    rule = FixedAcquisitionRule(tf.constant([[0.]]))
+    optimizer = BayesianOptimizer(
+        lambda x: {"foo": Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
+    )
+    rule = FixedAcquisitionRule(tf.constant([[0.0]]))
     with pytest.raises(ValueError):
         optimizer.optimize(10, datasets, model_specs, rule)
 
@@ -78,10 +82,10 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
     optimizer = BayesianOptimizer(lambda x: x[:1], one_dimensional_range(-1, 1))
     with pytest.raises(ValueError):
-        optimizer.optimize(3, {'foo': zero_dataset()}, {'foo': _PseudoTrainableQuadratic()})
+        optimizer.optimize(3, {"foo": zero_dataset()}, {"foo": _PseudoTrainableQuadratic()})
 
 
-@pytest.mark.parametrize('starting_state, expected_states', [(None, [None, 1, 2]), (3, [3, 4, 5])])
+@pytest.mark.parametrize("starting_state, expected_states", [(None, [None, 1, 2]), (3, [3, 4, 5])])
 def test_bayesian_optimizer_uses_specified_acquisition_state(
     starting_state: Optional[int], expected_states: List[Optional[int]]
 ) -> None:
@@ -107,9 +111,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     res = BayesianOptimizer(
         lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1)
-    ).optimize(
-        3, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()}, rule, starting_state
-    )
+    ).optimize(3, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()}, rule, starting_state)
 
     if res.error is not None:
         raise res.error
@@ -135,7 +137,7 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
     class ExponentialWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-            return tf.exp(- query_points), tf.ones_like(query_points)
+            return tf.exp(-query_points), tf.ones_like(query_points)
 
     class LinearWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
@@ -146,11 +148,11 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
     class AdditionRule(AcquisitionRule[int, Box]):
         def acquire(
-                self,
-                search_space: Box,
-                datasets: Mapping[str, Dataset],
-                models: Mapping[str, ProbabilisticModel],
-                previous_state: Optional[int]
+            self,
+            search_space: Box,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            previous_state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             if previous_state is None:
                 previous_state = 1
@@ -169,21 +171,21 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     def linear_and_exponential(query_points: tf.Tensor) -> Dict[str, Dataset]:
         return {
             LINEAR: Dataset(query_points, 2 * query_points),
-            EXPONENTIAL: Dataset(query_points, tf.exp(- query_points))
+            EXPONENTIAL: Dataset(query_points, tf.exp(-query_points)),
         }
 
     data = {
         LINEAR: Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
-        EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]]))
+        EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]])),
     }
 
     models: Dict[str, TrainableProbabilisticModel] = {  # mypy can't infer this type
-        LINEAR: LinearWithUnitVariance(), EXPONENTIAL: ExponentialWithUnitVariance()
+        LINEAR: LinearWithUnitVariance(),
+        EXPONENTIAL: ExponentialWithUnitVariance(),
     }
 
     res = BayesianOptimizer(
-        linear_and_exponential,
-        Box(tf.constant([-2.0]), tf.constant([2.0]))
+        linear_and_exponential, Box(tf.constant([-2.0]), tf.constant([2.0]))
     ).optimize(20, data, models, AdditionRule())
 
     if res.error is not None:
@@ -191,4 +193,4 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
     objective_values = res.datasets[LINEAR].observations + res.datasets[EXPONENTIAL].observations
     min_idx = tf.argmin(objective_values, axis=0)[0]
-    npt.assert_allclose(res.datasets[LINEAR].query_points[min_idx], - tf.math.log(2.0), rtol=0.01)
+    npt.assert_allclose(res.datasets[LINEAR].query_points[min_idx], -tf.math.log(2.0), rtol=0.01)

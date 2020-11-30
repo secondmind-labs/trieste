@@ -25,16 +25,7 @@ from ..space import SearchSpace
 from scipy.optimize import bisect
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. 
-
-AcquisitionFunction handles query points of shape [..., D] and returns [..., 1] values.
-"""
-BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" 
-Type alias for batch acquisition functions. 
-
-BatchAcquisitionFunction handles batches of query points of shape [..., B, D] and returns [..., 1] values.
-"""
+""" Type alias for acquisition functions. """
 
 
 class AcquisitionFunctionBuilder(ABC):
@@ -56,7 +47,6 @@ class SingleModelAcquisitionBuilder(ABC):
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
-
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
@@ -92,7 +82,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
-
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -110,9 +99,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, eta, at)
 
     @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
-    ) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
@@ -156,21 +143,25 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     max-value entropy search adapted for function minimisation tasks)
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+    def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
         :param search_space: The global search space over which the Bayesian optimisation problem is defined.
         :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution
+        :param grid_size: Size of random grid used to fit the gumbel distribution 
             (recommend scaling with search space dimension).
         """
         self._search_space = search_space
 
         if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
+            raise ValueError(
+                f"num_samples must be positive, got {num_samples}"
+            )
         self._num_samples = num_samples
 
         if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
+            raise ValueError(
+                f"grid_size must be positive, got {grid_size}"
+            )
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
@@ -197,7 +188,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :return: The MES function.
         """
         query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points, query_points], 0)
+        query_points = tf.concat([dataset.query_points,query_points],0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
@@ -224,7 +215,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
-
+    
     @staticmethod
     def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
         return min_value_entropy_search(model, samples, at)
@@ -253,17 +244,15 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: 
     """
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(
-        fsd, 1.0e-8, fmean.dtype.max
-    )  # clip below to improve numerical stability
-
-    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+    fsd = tf.clip_by_value(fsd, 1.0e-8, fmean.dtype.max) # clip below to improve numerical stability
+    
+    normal = tfp.distributions.Normal(tf.cast(0,fmean.dtype), tf.cast(1,fmean.dtype))
     gamma = (samples - fmean) / fsd
 
     minus_cdf = 1 - normal.cdf(gamma)
-    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1) # clip below to improve numerical stability
     f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-
+        
     return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
@@ -519,17 +508,3 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
-
-
-class BatchAcquisitionFunctionBuilder(ABC):
-    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
-
-    @abstractmethod
-    def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> BatchAcquisitionFunction:
-        """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        :return: A batch acquisition function.
-        """

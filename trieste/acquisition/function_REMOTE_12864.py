@@ -150,10 +150,9 @@ def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoi
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
     """
-    Builder for the min-value entropy search acquisition function (i.e. a version of
-    max-value entropy search adapted for function minimisation tasks)
+    Builder for the max-value entropy search acquisition function (for function minimisation)
     """
 
     def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
@@ -177,20 +176,9 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        Need to sample possible min-values y* from our posterior. 
+        Need to sample possible min-values from our posterior.
         To do this we implement a Gumbel sampler.
-        We approximate :math:`Pr(y*<y) by Gumbel(a,b)` then sample from this Gumbel.
-
-        The Gumbel distribution for minima has a cumulative density function
-        of :math:`f(y)= 1 - exp(-exp((y - a) / b))`, i.e. the q\ :sup:`th` quantile is given by
-        Q(q) = a + b * log( -1 * log(1 - q)). We choose values for a and b that
-        match the Gumbel's interquartile range with that of the observed 
-        empirical cumulative density function of Pr(y*<y).
-
-        We then sample this Gumbel distribution by sampling from a uniform random variable
-        and applying the inverse probability integral transform, i.e. given a sample 
-        r ~ Unif[0,1] then g = a + b * log( -1 * log(1 - r)) follows g ~ Gumbel(a,b).
-        
+        We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
 
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
@@ -201,38 +189,41 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
-        def probf(y: tf.Tensor) -> tf.Tensor :  # Build empirical CDF for Pr(y*^hat<y)
+        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
             unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(- (y - fmean) / fsd)
-            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
+            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
+            return tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
         left = tf.reduce_min(fmean - 5 * fsd)
         right = tf.reduce_max(fmean + 5 * fsd)
 
-        def binary_search(val: float) -> float:  # Find empirical interquartile range
-            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
-        
-        q1, q2 = map(binary_search, [0.25, 0.75])
+        def binary_search(val: float) -> float:  # Fit Gumbel quantiles
+            return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
 
-        log = tf.math.log
-        l1 = log(log(4.0 / 3.0))
-        l2 = log(log(4.0))
-        b = (q1 - q2) / (l1 - l2)
-        a = (q2 * l1 - q1 * l2)/(l1 - l2)
+        q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
 
-        uniform_samples = tf.random.uniform([self._num_samples],dtype=fmean.dtype)
-        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(a,fmean.dtype)
+        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
+        a = med + b * tf.math.log(tf.math.log(2.0))
+
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
+            b, fmean.dtype
+        ) + tf.cast(a, fmean.dtype)
 
         return lambda at: self._acquisition_function(model, gumbel_samples, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
-        return min_value_entropy_search(model, samples, at)
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+    ) -> tf.Tensor:
+        return max_value_entropy_search(model, samples, at)
 
 
-def min_value_entropy_search(model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def max_value_entropy_search(
+    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
+) -> tf.Tensor:
     r"""
-    Computes the information gain, i.e the change in entropy of p_min (the distribution of the
+    Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
     minimal value of the objective function) if we would evaluate x.
 
     See the following for details:
