@@ -32,7 +32,7 @@ from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace, DiscreteSearchSpace, Box
 from trieste.acquisition.function import AcquisitionFunction, BatchAcquisitionFunctionBuilder
 
-from tests.util.misc import one_dimensional_range, zero_dataset
+from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
 
 
@@ -198,25 +198,11 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
         return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
 
 
-def test_batch_acquisition_returns_batches_of_right_size() -> None:
-    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    num_query_points = 3
-    ego = BatchAcquisitionRule(
-        num_query_points,
-        _BatchModelMinusMeanMaximumSingleBuilder())
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
-    )
-    assert query_point.shape == [num_query_points, 2]
-
-
-def test_batch_acquisition_finds_minimum() -> None:
+@random_seed
+def test_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
-    ego = BatchAcquisitionRule(
-        num_query_points,
-        _BatchModelMinusMeanMaximumSingleBuilder())
+    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder())
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
