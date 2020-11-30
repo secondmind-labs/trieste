@@ -35,7 +35,7 @@ describes how useful it would be evaluate that point (to our goal of optimizing 
 function). Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
 `[..., D]` and returns shape `[..., 1]`.
 
-**Note:** Type checkers will not be able to distinguish between an `AcquisitionFunction` and a
+**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
 `BatchAcquisitionFunction`.
 """
 
@@ -48,7 +48,7 @@ value that describes how useful it would be evaluate all these points together, 
 optimizing the objective function). Thus, with leading dimensions, a `BatchAcquisitionFunction`
 takes input shape `[..., B, D]` and returns shape `[..., 1]`.
 
-**Note:** Type checkers will not be able to distinguish between an `AcquisitionFunction` and a
+**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
 `BatchAcquisitionFunction`.
 """
 
