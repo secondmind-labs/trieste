@@ -50,5 +50,6 @@ from .function import (
     probability_of_feasibility,
     MonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
+    BatchMonteCarloExpectedImprovement,
 )
 from .combination import Reducer, Product, Sum

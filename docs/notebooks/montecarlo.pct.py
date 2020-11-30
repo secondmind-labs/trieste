@@ -84,7 +84,7 @@ def build_model(data):
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
 
-    return {OBJECTIVE: trieste.models.create_model_interface({
+    return {OBJECTIVE: trieste.models.create_model({
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {"options": dict(maxiter=100)},
@@ -104,9 +104,7 @@ model = build_model(initial_data[OBJECTIVE])
 # %%
 ei = trieste.acquisition.ExpectedImprovement()
 ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
-mcei = trieste.acquisition.MonteCarloExpectedImprovement(
-    eps_shape=[100, 1, 1]  # [S, B, L]
-)
+mcei = trieste.acquisition.MonteCarloExpectedImprovement(num_samples=100)
 mcei_acq_function = mcei.using(OBJECTIVE).prepare_acquisition_function(initial_data, model)
 
 fig, ax = plot_function_2d(mcei_acq_function, mins, maxs, grid_density=40, contour=True)
@@ -123,23 +121,42 @@ plot_bo_points(
 )
 fig.suptitle("Expected Improvement Acquisition Function")
 
-# %% [markdown]
-# To compare the performance of the optimization achieved by these two different acquisition functions, we re-run the above BO loop using MES.
 
 # %% [markdown]
-# We re-initialize the model and define a new acquisiton rule.
+# We now define a new acquisition rule and run the whole BO loop for 15 steps.
+
+# %%
+# acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
+# bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+#
+# result = bo.optimize(15, initial_data, model, acquisition_rule=acq_rule)
+#
+# if result.error is not None: raise result.error
+#
+# dataset = result.datasets[OBJECTIVE]
+#
+# arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+# fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
+#
+# plot_bo_points(
+#     dataset.query_points.numpy(),
+#     ax=ax[0, 0],
+#     num_init=len(initial_query_points),
+#     idx_best=arg_min_idx,
+# )
+
+# %% [markdown]
+# We now re-initialize the model, define a new batch acquisition rule and run the whole BO loop for 10 steps.
 
 # %%
 model = build_model(initial_data[OBJECTIVE])
-acq_rule = trieste.acquisition.rule.EfficientGlobalOptimization(mcei.using(OBJECTIVE))
-
-# %% [markdown]
-# All that remains is to run the whole BO loop for 15 steps.
-
-# %%
+batch_size = 3
+bmcei = trieste.acquisition.BatchMonteCarloExpectedImprovement(num_samples=100, num_query_points=batch_size)
+batch_acq_rule = trieste.acquisition.rule.BatchAcquisitionRule(builder=bmcei.using(OBJECTIVE),
+                                                               num_query_points=batch_size)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(15, initial_data, model)
+result = bo.optimize(15, initial_data, model, acquisition_rule=batch_acq_rule)
 
 if result.error is not None: raise result.error
 
