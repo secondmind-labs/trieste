@@ -34,6 +34,9 @@ An `AcquisitionFunction` maps a single query point (of dimension `D`) to a singl
 describes how useful it would be evaluate that point (to our goal of optimizing the objective
 function). Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
 `[..., D]` and returns shape `[..., 1]`.
+
+**Note:** Type checkers will not be able to distinguish between an `AcquisitionFunction` and a
+`BatchAcquisitionFunction`.
 """
 
 BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
@@ -44,6 +47,9 @@ A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `
 value that describes how useful it would be evaluate all these points together, (to our goal of
 optimizing the objective function). Thus, with leading dimensions, a `BatchAcquisitionFunction`
 takes input shape `[..., B, D]` and returns shape `[..., 1]`.
+
+**Note:** Type checkers will not be able to distinguish between an `AcquisitionFunction` and a
+`BatchAcquisitionFunction`.
 """
 
 
