@@ -565,43 +565,54 @@ class SingleModelBatchAcquisitionBuilder(BatchAcquisitionFunctionBuilder):
         """
 
 
-def predict_f_samples_with_reparametrisation_trick(model: ProbabilisticModel, at: QueryPoints, eps: tf.Tensor) -> tf.Tensor:
+def predict_independent_f_samples_with_reparametrisation_trick(
+        model: ProbabilisticModel, at: QueryPoints, eps: tf.Tensor
+) -> tf.Tensor:
     """
-    Returns samples according to the reparametrization trick. The sample size S is determined by eps,
-    the batch size B must be compatible between eps and at, N is the number of batches of query points
+    Returns independent samples according to the reparametrization trick.
+    The sample size S is determined by eps,
+    N is the number of query points and L is the number of latent processes.
+    :param model:
+    :param at: N query points [N, D]
+    :return: a [S, N, L] tensor
+    """
+    assert len(at.shape) == 2
+    mean, cov = model.predict(at)   # both [N, L]
+    return mean[None, ...] + tf.math.sqrt(cov)[None, ...] * eps[:, None, :]  # [S, N, L]
+
+
+def predict_batch_f_samples_with_reparametrisation_trick(
+        model: ProbabilisticModel, at: QueryPoints, eps: tf.Tensor
+) -> tf.Tensor:
+    """
+    Returns batch-correlated samples according to the reparametrization trick.
+    The sample size S is determined by eps,
+    the batch size B must be compatible between eps and at,
+    N is the number of batches of query points
     and L is the number of latent processes.
     :param model:
-    :param at: batch of query points [N, D] or [N, B, D]
+    :param at: N batches of query points [N, B, D]
     :return: a [S, N, B, L] tensor
     """
 
-    if len(at.shape) == 2:
-        mean, cov = model.predict(at)
-        # mean: [N, L]
-        # cov: [N, L]
-        samples = mean[None, ...] + \
-                  tf.math.sqrt(cov)[None, ...] * eps[:, None, :]  # [S, N, L]
-    else:
-        assert at.shape[1] == eps.shape[1]
+    assert at.shape[1] == eps.shape[1]
 
-        mean, cov = model.predict(at, full_cov=True)
-        # mean: [N, B, L]
-        # cov: [N, L, B, B]
-        mean_for_sample = tf.linalg.adjoint(mean)  # [N, L, B]
-        mean_shape = tf.shape(mean_for_sample)
-        B = mean_shape[-1]
+    mean, cov = model.predict(at, full_cov=True)
+    # mean: [N, B, L]
+    # cov: [N, L, B, B]
+    mean_for_sample = tf.linalg.adjoint(mean)  # [N, L, B]
+    mean_shape = tf.shape(mean_for_sample)
+    B = mean_shape[-1]
 
-        jittermat = (
-                tf.eye(B, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
-        )  # [N, L, B, B]
+    jittermat = (
+            tf.eye(B, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+    )  # [N, L, B, B]
 
-        eps = tf.transpose(eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
+    eps = tf.transpose(eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
 
-        chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
-        samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
-        samples = tf.transpose(samples, [3, 0, 2, 1])
-
-    return samples
+    chol = tf.linalg.cholesky(cov + jittermat)  # [N, L, B, B]
+    samples = mean_for_sample[..., None] + tf.linalg.matmul(chol, eps)  # [N, L, B, S]
+    return tf.transpose(samples, [3, 0, 2, 1])
 
 
 class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -631,7 +642,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     def _acquisition_function(
             self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor
     ) -> tf.Tensor:
-        samples = predict_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, L]
+        samples = predict_independent_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, L]
         samples = samples[..., 0]
         improvement = tf.math.maximum(eta - samples, 0.)  # [S, N]
         ei = tf.math.reduce_mean(improvement, axis=0)[:, None]
@@ -666,7 +677,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
     def _acquisition_function(
             self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor,
     ) -> tf.Tensor:
-        samples = predict_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, B, L]
+        samples = predict_batch_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, B, L]
         samples = samples[..., 0]  # [S, N, B]
         improvement = tf.math.maximum(eta - samples, 0.)  # [S, N, B]
         batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [S, N]
