@@ -52,7 +52,7 @@ def map_is_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
     :param observations: A tensor.
     :return: A :class:`~trieste.data.Dataset` containing all the rows in ``query_points``,
         along with the tensor result of mapping the elements of ``observations`` to: `1` if they are
-        a finite number, else `0`.
+        a finite number, else `0`, with dtype `tf.uint8`.
     :raise ValueError or InvalidArgumentError: If ``query_points`` and ``observations`` do not
         satisfy the shape constraints of :class:`~trieste.data.Dataset`.
     """

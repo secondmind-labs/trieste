@@ -53,7 +53,9 @@ def plot_objective_and_constraints(search_space, simulation):
     return fig
 
 
-def plot_init_query_points(search_space, simulation, objective_data, constraint_data, new_constraint_data=None):
+def plot_init_query_points(
+    search_space, simulation, objective_data, constraint_data, new_constraint_data=None
+):
     objective_fn = simulation.objective
     constraint_fn = simulation.constraint
     lower_bound = search_space.lower
