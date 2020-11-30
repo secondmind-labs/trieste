@@ -36,13 +36,12 @@ from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
 
 
-@pytest.mark.parametrize('datasets', [{}, {"foo": zero_dataset()}])
+@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
 @pytest.mark.parametrize(
-    'models', [{}, {"foo": QuadraticWithUnitVariance()}, {OBJECTIVE: QuadraticWithUnitVariance()}]
+    "models", [{}, {"foo": QuadraticWithUnitVariance()}, {OBJECTIVE: QuadraticWithUnitVariance()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
-        datasets: Dict[str, Dataset],
-        models: Dict[str, ProbabilisticModel]
+    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = TrustRegion()
@@ -50,12 +49,15 @@ def test_trust_region_raises_for_missing_datasets_key(
         rule.acquire(search_space, datasets, models, None)
 
 
-@pytest.mark.parametrize('models', [
-    {},
-    {"foo": QuadraticWithUnitVariance()},
-    {"foo": QuadraticWithUnitVariance(), OBJECTIVE: QuadraticWithUnitVariance()}
-])
-@pytest.mark.parametrize('datasets', [{}, {OBJECTIVE: zero_dataset()}])
+@pytest.mark.parametrize(
+    "models",
+    [
+        {},
+        {"foo": QuadraticWithUnitVariance()},
+        {"foo": QuadraticWithUnitVariance(), OBJECTIVE: QuadraticWithUnitVariance()},
+    ],
+)
+@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
     datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
@@ -65,13 +67,16 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
         rule.acquire(search_space, datasets, models)
 
 
-@pytest.mark.parametrize('search_space, expected_minimum', [
-    (
-        DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
-        tf.constant([[0.1, -0.1]])
-    ),
-    (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
-])
+@pytest.mark.parametrize(
+    "search_space, expected_minimum",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
+            tf.constant([[0.1, -0.1]]),
+        ),
+        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
+    ],
+)
 def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
     ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
@@ -208,4 +213,4 @@ def test_batch_acquisition_rule_acquire() -> None:
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
     )
 
-    npt.assert_allclose(query_point, [[0., 0.]] * num_query_points, atol=1e-3)
+    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)

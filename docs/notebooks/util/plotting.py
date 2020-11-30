@@ -259,16 +259,16 @@ def plot_gp_2d(
     figsize=None,
     predict_y=False,
 ):
-    """	
-    2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs	
-    :param mdodel: a gpflow model	
-    :param mins: list of 2 lower bounds	
-    :param maxs: list of 2 upper bounds	
-    :param grid_density: positive integer for the grid size	
-    :param contour: Boolean. If False, a 3d plot is produced	
-    :param xlabel: optional string	
-    :param ylabel: optional string	
-    :param figsize:	
+    """
+    2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
+    :param model: a gpflow model
+    :param mins: list of 2 lower bounds
+    :param maxs: list of 2 upper bounds
+    :param grid_density: positive integer for the grid size
+    :param contour: Boolean. If False, a 3d plot is produced
+    :param xlabel: optional string
+    :param ylabel: optional string
+    :param figsize:
     """
 
     # Create a regular grid on the parameter space

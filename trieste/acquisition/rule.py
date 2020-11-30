@@ -27,11 +27,13 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace, Box
 from ..type import QueryPoints
-from .function import (AcquisitionFunctionBuilder,
-                       ExpectedImprovement,
-                       BatchAcquisitionFunctionBuilder,
-                       BatchAcquisitionFunction,
-                       AcquisitionFunction)
+from .function import (
+    AcquisitionFunctionBuilder,
+    ExpectedImprovement,
+    BatchAcquisitionFunctionBuilder,
+    BatchAcquisitionFunction,
+    AcquisitionFunction,
+)
 from . import _optimizer
 
 

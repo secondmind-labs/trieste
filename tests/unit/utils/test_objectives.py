@@ -15,12 +15,15 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    branin, BRANIN_GLOBAL_ARGMIN, BRANIN_GLOBAL_MINIMUM, mk_observer,
+    branin,
+    BRANIN_GLOBAL_ARGMIN,
+    BRANIN_GLOBAL_MINIMUM,
+    mk_observer,
 )
 
 
 def test_branin_no_points_are_less_than_global_minimum() -> None:
-    search_values_1d = tf.range(1001.) / 1000
+    search_values_1d = tf.range(1001.0) / 1000
     x0, x1 = (tf.reshape(t, [-1, 1]) for t in tf.meshgrid(search_values_1d, search_values_1d))
     x = tf.squeeze(tf.stack([x0, x1], axis=-1))
     assert tf.reduce_all(branin(x) > BRANIN_GLOBAL_MINIMUM)
@@ -35,7 +38,7 @@ def test_mk_observer() -> None:
     def foo(x: tf.Tensor) -> tf.Tensor:
         return x + 1
 
-    x_ = tf.constant([[3.]])
+    x_ = tf.constant([[3.0]])
     ys = mk_observer(foo, "bar")(x_)
 
     assert ys.keys() == {"bar"}
