@@ -139,7 +139,8 @@ def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoi
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     """
-    Builder for the min-value entropy search acquisition function (for function minimisation)
+    Builder for the min-value entropy search acquisition function (i.e. a version of
+    max-value entropy search adapted for function minimisation tasks)
     """
 
     def __init__(self,search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
