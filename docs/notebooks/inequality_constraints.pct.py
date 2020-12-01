@@ -25,6 +25,13 @@ import numpy as np
 import tensorflow as tf
 
 import trieste
+from trieste.acquisition import AcquisitionFunctionBuilder, AcquisitionFunction
+from trieste.acquisition.function import (
+    predict_batch_f_samples_with_reparametrisation_trick, BatchAcquisitionFunctionBuilder,
+)
+from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
+from typing import Union, Mapping
 
 from util import inequality_constraints_utils as util
 
@@ -166,26 +173,23 @@ plt.show()
 # Now, we will show how to solve the same problem, but when point are queried in (synchronous) batches instead of one at a time.
 
 # %%
-class BatchExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+
+
+class BatchExpectedConstrainedImprovement(BatchAcquisitionFunctionBuilder):
     """
     Builder for the _expected constrained improvement_ acquisition function defined in
     Gardner, 2014, in a batch form, relying on Monte-Carlo.
     """
-
     def __init__(
         self,
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
+        num_samples,
+        num_query_points,
+        threshold,
         min_feasibility_probability: Union[float, tf.Tensor] = 0.5,
     ):
-        """
-        :param objective_tag: The tag for the objective data and model.
-        :param constraint_builder: The builder for the constraint function.
-        :param min_feasibility_probability: The minimum probability of feasibility for a
-            "best point" to be considered feasible.
-        :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
-            scalar in the unit interval :math:`[0, 1]`.
-        """
+
         tf.debugging.assert_scalar(min_feasibility_probability)
 
         if not 0 <= min_feasibility_probability <= 1:
@@ -197,17 +201,13 @@ class BatchExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
+        self.num_samples = num_samples
+        self.num_query_points = num_query_points
+        self.threshold = threshold
 
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
-        """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained improvement acquisition function.
-        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
-        :raise ValueError: If the objective data is empty.
-        """
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
@@ -227,9 +227,68 @@ class BatchExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
-        return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+        eps = {tag:
+        tf.random.normal([self.num_samples, self.num_query_points, model.model.num_latent_gps], dtype=default_float())
+               for tag, model in models.items()}  # M tensors of size [S, B, L]
+
+        return lambda at: batch_feasible_expected_improvement(models, eta, at, eps, self.threshold)
 
 
+def batch_feasible_expected_improvement(models, eta, at, eps, threshold):
+
+    objective_model = models["OBJECTIVE"]
+    objective_samples = predict_batch_f_samples_with_reparametrisation_trick(objective_model, at, eps["OBJECTIVE"])  # [S, N, B, L]
+    objective_samples = objective_samples[..., 0]  # [S, N, B]
+
+    constraint_model = models["CONSTRAINT"]
+    constraint_samples = predict_batch_f_samples_with_reparametrisation_trick(constraint_model, at, eps["CONSTRAINT"])  # [S, N, B, L]
+    constraint_samples = constraint_samples[..., 0]  # [S, N, B]
+
+    feasible_mask = constraint_samples < threshold
+    improvement = tf.where(feasible_mask, tf.math.maximum(eta - objective_samples, 0.), 0.)  # [S, N, B]
+
+    batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [S, N]
+    return tf.math.reduce_mean(batch_improvement, axis=0)[:, None]  # [N, 1]
+
+
+batch_size = 2
+pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
+eci = BatchExpectedConstrainedImprovement(OBJECTIVE, pof.using(CONSTRAINT), 100, batch_size, Sim.threshold)
+batch_acq_rule = trieste.acquisition.rule.BatchAcquisitionRule(builder=eci, num_query_points=batch_size)
+
+# %% [markdown]
+# We can now run the optimization loop
+
+models = {
+    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
+}
+
+# %%
+num_steps = 10
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=batch_acq_rule)
+
+if result.error is not None: raise result.error
+
+# %% [markdown]
+# Finally, we visualise the resulting data. Orange dots show the new points queried during optimization.
+
+# %%
+constraint_data = result.datasets[CONSTRAINT]
+new_data = (
+    constraint_data.query_points[-num_steps*batch_size:], constraint_data.observations[-num_steps*batch_size:]
+)
+
+util.plot_init_query_points(
+    search_space,
+    Sim,
+    astuple(initial_data[OBJECTIVE]),
+    astuple(initial_data[CONSTRAINT]),
+    new_data
+)
+plt.show()
 
 # %% [markdown]
 # ## References

@@ -96,7 +96,7 @@ model = build_model(initial_data[OBJECTIVE])
 # # Try an alternative acquisition function
 
 # %% [markdown]
-# By default, Trieste uses Expected Improvement (EI) as its acqusition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Max-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
+# By default, Trieste uses Expected Improvement (EI) as its acquisition function when performing Bayesian optimization. However, many alternative acqusition functions have been developed. One such alternative is Max-value Entropy Search (MES), which approximates the distribution of current estimate of the global minimum and tries to decrease its entropy with each optimization step.
 
 # %% [markdown]
 # We plot these two acquisition functions across our search space. Areas with high acquisition function scores (i.e bright regions) are those rated as promising locations for the next evaluation of our objective function. We see that EI wishes to continue exploring the search space, whereas MES wants to focus resources on evaluating a specific region.
