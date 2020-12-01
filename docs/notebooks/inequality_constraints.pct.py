@@ -124,7 +124,8 @@ models = {
 # ## Define the acquisition process
 #
 # We can construct the _expected constrained improvement_ acquisition function defined in Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
-
+#
+# The previous criterion cannot be computed in closed form, so we'll use a Monte-Carlo estimate.
 # %%
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof.using(CONSTRAINT))
@@ -144,7 +145,7 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 if result.error is not None: raise result.error
 
 # %% [markdown]
-# To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
+# Finally, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
 constraint_data = result.datasets[CONSTRAINT]
@@ -160,6 +161,75 @@ util.plot_init_query_points(
     new_data
 )
 plt.show()
+
+# %% [markdown]
+# Now, we will show how to solve the same problem, but when point are queried in (synchronous) batches instead of one at a time.
+
+# %%
+class BatchExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+    """
+    Builder for the _expected constrained improvement_ acquisition function defined in
+    Gardner, 2014, in a batch form, relying on Monte-Carlo.
+    """
+
+    def __init__(
+        self,
+        objective_tag: str,
+        constraint_builder: AcquisitionFunctionBuilder,
+        min_feasibility_probability: Union[float, tf.Tensor] = 0.5,
+    ):
+        """
+        :param objective_tag: The tag for the objective data and model.
+        :param constraint_builder: The builder for the constraint function.
+        :param min_feasibility_probability: The minimum probability of feasibility for a
+            "best point" to be considered feasible.
+        :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
+            scalar in the unit interval :math:`[0, 1]`.
+        """
+        tf.debugging.assert_scalar(min_feasibility_probability)
+
+        if not 0 <= min_feasibility_probability <= 1:
+            raise ValueError(
+                f"Minimum feasibility probability must be between 0 and 1 inclusive,"
+                f" got {min_feasibility_probability}"
+            )
+
+        self._objective_tag = objective_tag
+        self._constraint_builder = constraint_builder
+        self._min_feasibility_probability = min_feasibility_probability
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The expected constrained improvement acquisition function.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise ValueError: If the objective data is empty.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        if len(objective_dataset) == 0:
+            raise ValueError(
+                "Expected improvement is defined with respect to existing points in the objective"
+                " data, but the objective data is empty."
+            )
+
+        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        pof = constraint_fn(objective_dataset.query_points)
+        is_feasible = pof >= self._min_feasibility_probability
+
+        if not tf.reduce_any(is_feasible):
+            return constraint_fn
+
+        mean, _ = objective_model.predict(objective_dataset.query_points)
+        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+
+        return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
 
 # %% [markdown]
 # ## References

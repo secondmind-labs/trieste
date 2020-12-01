@@ -574,6 +574,7 @@ def predict_independent_f_samples_with_reparametrisation_trick(
     N is the number of query points and L is the number of latent processes.
     :param model:
     :param at: N query points [N, D]
+    :param eps: a [S, L] tensor of N(0, 1) i.i.d. samples
     :return: a [S, N, L] tensor
     """
     assert len(at.shape) == 2
@@ -592,6 +593,7 @@ def predict_batch_f_samples_with_reparametrisation_trick(
     and L is the number of latent processes.
     :param model:
     :param at: N batches of query points [N, B, D]
+    :param eps: a [S, B, L] tensor of N(0, 1) i.i.d. samples
     :return: a [S, N, B, L] tensor
     """
 
@@ -620,7 +622,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the Monte_carlo based expected improvement.
     """
 
-    def __init__(self, num_samples: [int]):
+    def __init__(self, num_samples: int):
         super().__init__()
         self.num_samples = num_samples
 
@@ -638,9 +640,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at, eps)
 
-    # @staticmethod
+    @staticmethod
     def _acquisition_function(
-            self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor
+            model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor
     ) -> tf.Tensor:
         samples = predict_independent_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, L]
         samples = samples[..., 0]
@@ -673,9 +675,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at, eps)
 
-    # @staticmethod
+    @staticmethod
     def _acquisition_function(
-            self, model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor,
+            model: GPflowPredictor, eta: tf.Tensor, at: QueryPoints, eps: tf.Tensor,
     ) -> tf.Tensor:
         samples = predict_batch_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, B, L]
         samples = samples[..., 0]  # [S, N, B]
@@ -683,3 +685,36 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [S, N]
         ei = tf.math.reduce_mean(batch_improvement, axis=0)[:, None]  # [N, 1]
         return ei
+
+
+class MonteCarloNegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
+    """
+    Builder for the Monte_carlo based (negative) lower confidence bound. The lower confidence bound is typically
+    minimised, so the negative is suitable for maximisation.
+    """
+
+    def __init__(self, num_samples: int, percentile: float = 5.):
+        super().__init__()
+        self.num_samples = num_samples
+        self._percentile = percentile
+
+    def prepare_acquisition_function(
+            self, dataset: Dataset, model: GPflowPredictor
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        :return: The negative of the lower confidence bound function. This function will raise
+            `ValueError` if ``beta`` is negative.
+        """
+        eps_shape = [self.num_samples, model.model.num_latent_gps]
+        eps = tf.random.normal(eps_shape, dtype=default_float())  # [S, L]
+        return lambda at: self._acquisition_function(model, self._percentile, at, eps)
+
+    @staticmethod
+    def _acquisition_function(
+            model: GPflowPredictor, percentile: float, at: QueryPoints, eps: tf.Tensor
+    ) -> tf.Tensor:
+
+        samples = predict_independent_f_samples_with_reparametrisation_trick(model, at, eps)  # [S, N, L]
+        return -tfp.stats.percentile(samples, percentile, axis=0)[..., 0:1]
