@@ -28,5 +28,5 @@ from .gpflow import (
     supported_models,
     ModelConfig,
     ModelSpec,
-    create_model
+    create_model,
 )

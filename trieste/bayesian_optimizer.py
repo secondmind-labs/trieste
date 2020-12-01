@@ -177,9 +177,13 @@ class BayesianOptimizer(Generic[SP]):
         for step in range(num_steps):
             try:
                 if track_state:
-                    history.append(LoggingState(
-                        copy.copy(datasets), copy.deepcopy(models), copy.deepcopy(acquisition_state)
-                    ))
+                    history.append(
+                        LoggingState(
+                            copy.copy(datasets),
+                            copy.deepcopy(models),
+                            copy.deepcopy(acquisition_state),
+                        )
+                    )
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state

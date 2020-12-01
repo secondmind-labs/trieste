@@ -244,7 +244,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
             copy.deepcopy(self._optimizer, memo),
             self._iterations,
             cast(Batcher, copy.deepcopy(self._batcher, memo)),
-            self._apply_jit
+            self._apply_jit,
         )
         memo[id(self)] = deepcopied
         return deepcopied
