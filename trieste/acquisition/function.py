@@ -607,7 +607,7 @@ def predict_batch_f_samples_with_reparametrisation_trick(
     B = mean_shape[-1]
 
     jittermat = (
-            tf.eye(B, batch_shape=mean_shape[:-1], dtype=default_float()) * default_jitter()
+            tf.eye(B, batch_shape=mean_shape[:-1], dtype=cov.dtype) * default_jitter()
     )  # [N, L, B, B]
 
     eps = tf.transpose(eps, [2, 1, 0])  # [S, B, L] -> [L, B, S]
