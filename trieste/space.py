@@ -63,7 +63,7 @@ class DiscreteSearchSpace(SearchSpace):
         :param points: The points that define the discrete space, with shape ('N', 'D').
         :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
         """
-        tf.debugging.assert_shapes([(points, ('N', 'D'))])
+        tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
 
     @property

@@ -19,3 +19,9 @@ testpaths = [
     "tests/unit",
     "tests/integration",
 ]
+
+[tool.black]
+line-length = 100
+target-version = ['py37']
+include = '\.py$'
+exclude = '\.pct.py$'

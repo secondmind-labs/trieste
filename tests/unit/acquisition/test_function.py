@@ -84,8 +84,8 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
     )
     model = QuadraticWithUnitVariance()
     acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
-    xs = tf.linspace([-10.], [10.], 100)
-    expected = expected_improvement(model, tf.constant([0.]), xs)
+    xs = tf.linspace([-10.0], [10.0], 100)
+    expected = expected_improvement(model, tf.constant([0.0]), xs)
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -97,15 +97,18 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
 
 
 @random_seed
-@pytest.mark.parametrize('best', [
-    tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01
-])
-@pytest.mark.parametrize('variance_scale, num_samples_per_point, rtol, atol', [
-    (0.1, 1000, 0.01, 1e-9),
-    (1.0, 50_000, 0.01, 1e-3),
-    (10.0, 100_000, 0.01, 1e-2),
-    (100.0, 150_000, 0.01, 1e-1),
-])
+@pytest.mark.parametrize(
+    "best", [tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01]
+)
+@pytest.mark.parametrize(
+    "variance_scale, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 1000, 0.01, 1e-9),
+        (1.0, 50_000, 0.01, 1e-3),
+        (10.0, 100_000, 0.01, 1e-2),
+        (100.0, 150_000, 0.01, 1e-1),
+    ],
+)
 def test_expected_improvement(
     variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
 ) -> None:
@@ -114,7 +117,7 @@ def test_expected_improvement(
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing='ij'), axis=-1), (-1, 2))
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     class _Model(GaussianMarginal):
         kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25).apply
@@ -139,36 +142,39 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
         Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
     )
     query_at = tf.linspace([-10], [10], 100)
-    expected = - lower_confidence_bound(model, beta, query_at)
+    expected = -lower_confidence_bound(model, beta, query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-@pytest.mark.parametrize('beta', [-0.1, -2.0])
+@pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(ValueError):
         lower_confidence_bound(QuadraticWithUnitVariance(), beta, tf.constant([[]]))
 
 
-@pytest.mark.parametrize('beta', [0.0, 0.1, 7.8])
+@pytest.mark.parametrize("beta", [0.0, 0.1, 7.8])
 def test_lower_confidence_bound(beta: float) -> None:
-    query_at = tf.constant([[-3.], [-2.], [-1.], [0.], [1.], [2.], [3.]])
+    query_at = tf.constant([[-3.0], [-2.0], [-1.0], [0.0], [1.0], [2.0], [3.0]])
     actual = lower_confidence_bound(QuadraticWithUnitVariance(), beta, query_at)
     npt.assert_array_almost_equal(actual, query_at ** 2 - beta)
 
 
-@pytest.mark.parametrize('threshold, at, expected', [
-    (0.0, tf.constant([[0.0]]), 0.5),
-    # values looked up on a standard normal table
-    (2.0, tf.constant([[1.0]]), 0.5 + 0.34134),
-    (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
-])
+@pytest.mark.parametrize(
+    "threshold, at, expected",
+    [
+        (0.0, tf.constant([[0.0]]), 0.5),
+        # values looked up on a standard normal table
+        (2.0, tf.constant([[1.0]]), 0.5 + 0.34134),
+        (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
+    ],
+)
 def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
     actual = probability_of_feasibility(QuadraticWithUnitVariance(), threshold, at)
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
 
-@pytest.mark.parametrize('at', [tf.constant([[0.0]]), tf.constant([[-3.4]]), tf.constant([[0.2]])])
-@pytest.mark.parametrize('threshold', [-2.3, 0.2])
+@pytest.mark.parametrize("at", [tf.constant([[0.0]]), tf.constant([[-3.4]]), tf.constant([[0.2]])])
+@pytest.mark.parametrize("threshold", [-2.3, 0.2])
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
     acq = builder.prepare_acquisition_function(zero_dataset(), QuadraticWithUnitVariance())
@@ -176,23 +182,23 @@ def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.
     npt.assert_allclose(acq(at), expected)
 
 
-@pytest.mark.parametrize('shape', various_shapes() - {()})
+@pytest.mark.parametrize("shape", various_shapes() - {()})
 def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
     threshold = tf.ones(shape)
     with pytest.raises(ValueError):
         probability_of_feasibility(QuadraticWithUnitVariance(), threshold, tf.constant([[0.0]]))
 
 
-@pytest.mark.parametrize('shape', [[], [0], [2]])
+@pytest.mark.parametrize("shape", [[], [0], [2]])
 def test_probability_of_feasibility_raises_on_incorrect_at_shape(shape: ShapeLike) -> None:
     at = tf.ones(shape)
     with pytest.raises(ValueError):
         probability_of_feasibility(QuadraticWithUnitVariance(), 0.0, at)
 
 
-@pytest.mark.parametrize('shape', various_shapes() - {()})
+@pytest.mark.parametrize("shape", various_shapes() - {()})
 def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
-    shape: ShapeLike
+    shape: ShapeLike,
 ) -> None:
     threshold = tf.ones(shape)
     with pytest.raises(ValueError):
@@ -215,9 +221,9 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
     data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
 
-    eci = ExpectedConstrainedImprovement(
-        "foo", _Certainty(), 0
-    ).prepare_acquisition_function(data, models_)
+    eci = ExpectedConstrainedImprovement("foo", _Certainty(), 0).prepare_acquisition_function(
+        data, models_
+    )
 
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
 
@@ -235,9 +241,9 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
     models_ = {"foo": QuadraticWithUnitVariance()}
 
     eci_data = {"foo": Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
-    eci = ExpectedConstrainedImprovement(
-        "foo", _Constraint()
-    ).prepare_acquisition_function(eci_data, models_)
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+        eci_data, models_
+    )
 
     ei_data = {"foo": Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))}
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(ei_data, models_)
@@ -255,15 +261,15 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
     def two_global_minima(x: tf.Tensor) -> tf.Tensor:
         return x ** 4 / 4 - x ** 2 / 2
 
-    initial_query_points = tf.constant([[- 2.0], [0.0], [1.2]])
+    initial_query_points = tf.constant([[-2.0], [0.0], [1.2]])
     data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
     models_ = {"foo": CustomMeanWithUnitVariance(two_global_minima)}
 
-    eci = ExpectedConstrainedImprovement(
-        "foo", _Constraint()
-    ).prepare_acquisition_function(data, models_)
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+        data, models_
+    )
 
-    npt.assert_array_less(eci(tf.constant(- 1.0)), eci(tf.constant(1.0)))
+    npt.assert_array_less(eci(tf.constant(-1.0)), eci(tf.constant(1.0)))
 
 
 def test_expected_constrained_improvement_raises_for_empty_data() -> None:
@@ -290,9 +296,9 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
     data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
-    eci = ExpectedConstrainedImprovement(
-        "foo", _Constraint()
-    ).prepare_acquisition_function(data, models_)
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+        data, models_
+    )
 
     constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
 

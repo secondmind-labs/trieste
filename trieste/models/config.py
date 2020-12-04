@@ -33,7 +33,9 @@ class ModelConfig:
     model: Union[tf.Module, ProbabilisticModel]
     """ The :class:`~trieste.models.ProbabilisticModel`, or the model to wrap in one. """
 
-    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer] = field(default_factory=_default_optimizer)
+    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer] = field(
+        default_factory=_default_optimizer
+    )
     """ The optimizer with which to train the model (by minimizing its loss function). """
 
     optimizer_args: Dict[str, Any] = field(default_factory=lambda: {})
@@ -74,7 +76,7 @@ class ModelConfig:
 
         for model_type, model_interface in supported_models.items():
             if isinstance(self.model, model_type):
-                mi = model_interface(self.model, optimizer=optimizer) # type: ignore
+                mi = model_interface(self.model, optimizer=optimizer)  # type: ignore
                 return mi
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")

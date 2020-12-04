@@ -63,12 +63,14 @@ class TFOptimizer(Optimizer):
         elif self.dataset_builder is None:
             d = tf.data.Dataset.from_tensor_slices((dataset.query_points, dataset.observations))
             size = len(dataset)
-            return creator_fn(iter(
-                d.shuffle(size)
-                .batch(self.batch_size)
-                .prefetch(tf.data.experimental.AUTOTUNE)
-                .repeat()
-            ))
+            return creator_fn(
+                iter(
+                    d.shuffle(size)
+                    .batch(self.batch_size)
+                    .prefetch(tf.data.experimental.AUTOTUNE)
+                    .repeat()
+                )
+            )
 
         data = self.dataset_builder(dataset, self.batch_size)
         return creator_fn(data)
