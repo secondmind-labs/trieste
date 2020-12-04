@@ -60,7 +60,7 @@ class QuadraticWithUnitVariance(GaussianMarginal):
 
     def __init__(self):
         self._model = CustomMeanWithUnitVariance(
-            lambda x: tf.reduce_sum(x ** 2, axis=1, keepdims=True)
+            lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
         )
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:

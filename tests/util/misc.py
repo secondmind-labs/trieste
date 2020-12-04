@@ -98,16 +98,9 @@ def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[i
         in ``excluding_ranks``.
     """
     shapes = {
-        (),
-        (0,),
-        (1,),
-        (0, 0),
-        (1, 0),
-        (0, 1),
-        (3, 4),
-        (1, 0, 3),
-        (1, 2, 3),
-        (1, 2, 3, 4, 5, 6),
+        # fmt: off
+        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6),
+        # fmt: on
     }
     return frozenset(s for s in shapes if len(s) not in excluding_ranks)
 

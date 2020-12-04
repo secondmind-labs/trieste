@@ -31,6 +31,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "trieste"
+# fmt: off
 copyright = (
     "Copyright 2020 The Trieste Contributors\n"
     "\n"
@@ -46,6 +47,7 @@ copyright = (
     "See the License for the specific language governing permissions and\n"
     'limitations under the License."\n'
 )
+# fmt: on
 author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags

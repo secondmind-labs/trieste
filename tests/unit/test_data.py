@@ -117,15 +117,10 @@ def test_dataset_getters() -> None:
             Dataset(tf.constant([[1.2, 3.4], [5.6, 7.8]]), tf.constant([[1.1], [2.2]])),
             Dataset(tf.constant([[5.0, 6.0], [7.0, 8.0]]), tf.constant([[-1.0], [-2.0]])),
             Dataset(
-                tf.constant(
-                    [
-                        [1.2, 3.4],
-                        [5.6, 7.8],
-                        [5.0, 6.0],
-                        [7.0, 8.0],
-                    ]
-                ),
+                # fmt: off
+                tf.constant([[1.2, 3.4], [5.6, 7.8], [5.0, 6.0], [7.0, 8.0]]),
                 tf.constant([[1.1], [2.2], [-1.0], [-2.0]]),
+                # fmt: on
             ),
         ),
         (  # lhs populated

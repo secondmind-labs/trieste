@@ -56,10 +56,10 @@ def _sum_with_nan_at_origin(t: tf.Tensor) -> tf.Tensor:
                 tf.constant([[-1.0], [1.0], [2.0], [4.0]]),
             ),
         ),
-        (
+        (  # only failure points
             tf.constant([[0.0, 0.0]]),
             Dataset(tf.zeros([0, 2]), tf.zeros([0, 1])),
-        ),  # only failure points
+        ),
         (tf.zeros([0, 2]), Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))),  # empty data
     ],
 )

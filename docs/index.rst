@@ -34,6 +34,11 @@ higher-dimensional case. It also supports optimization over constrained spaces, 
 constraints alongside the objective.
 
 .. toctree::
+   :hidden:
+
+   Trieste <self>
+
+.. toctree::
    :maxdepth: 1
    :titlesonly:
    :hidden:

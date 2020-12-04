@@ -24,8 +24,33 @@ from ..space import SearchSpace
 
 from scipy.optimize import bisect
 
+
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" Type alias for acquisition functions. """
+"""
+Type alias for acquisition functions.
+
+
+An `AcquisitionFunction` maps a single query point (of dimension `D`) to a single value that
+describes how useful it would be evaluate that point (to our goal of optimizing the objective
+function). Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
+`[..., D]` and returns shape `[..., 1]`.
+
+**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
+`BatchAcquisitionFunction`.
+"""
+
+BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+""" 
+Type alias for batch acquisition functions. 
+
+A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
+value that describes how useful it would be evaluate all these points together (to our goal of
+optimizing the objective function). Thus, with leading dimensions, a `BatchAcquisitionFunction`
+takes input shape `[..., B, D]` and returns shape `[..., 1]`.
+
+**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
+`BatchAcquisitionFunction`.
+"""
 
 
 class AcquisitionFunctionBuilder(ABC):
@@ -501,3 +526,17 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
+class BatchAcquisitionFunctionBuilder(ABC):
+    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> BatchAcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: A batch acquisition function.
+        """
