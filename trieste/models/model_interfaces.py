@@ -310,7 +310,7 @@ def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> Non
             f" dimensions must match."
         )
 
-    if new_data.observations.shape[-1] != y.shape[-1]:
+    if new_data.observations.shape[-1] != existing_data.observations.shape[-1]:
         raise ValueError(
             f"Shape {new_data.observations.shape} of new observations is incompatible with"
             f" shape {existing_data.observations.shape} of existing observations. Trailing"

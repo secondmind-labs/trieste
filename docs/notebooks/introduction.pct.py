@@ -274,7 +274,7 @@ result_mes: OptimizationResult = bo.optimize(15, initial_data, model, acq_rule)
 
 if result_mes.error is not None: raise result_mes.error
 
-dataset_mes = result_mes.datasets[OBJECTIVE]
+dataset_mes = result_mes.data[OBJECTIVE]
 mes_optimization_progress = np.minimum.accumulate(dataset_mes.observations)[5:]
 ei_optimization_progress = np.minimum.accumulate(dataset.observations)[5:]
 
