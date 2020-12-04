@@ -25,7 +25,7 @@ from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
 
-class ProbabilisticModel(ABC):
+class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod

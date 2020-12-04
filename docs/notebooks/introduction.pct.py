@@ -86,8 +86,11 @@ def build_model(data):
 
     return {OBJECTIVE: trieste.models.create_model({
         "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
+        "optimizer": {
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+        }
     })}
 
 model = build_model(initial_data[OBJECTIVE])

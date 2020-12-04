@@ -60,11 +60,15 @@ kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.
 gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = {OBJECTIVE: {
-    "model": gpr,
-    "optimizer": gpflow.optimizers.Scipy(),
-    "optimizer_args": {"options": dict(maxiter=100)},
-}}
+model_config = {
+    OBJECTIVE: {
+        "model": gpr,
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
+    }
+}
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
@@ -85,7 +89,8 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(5, initial_data, model_config, acq_rule)
 
-if result.error is not None: raise result.error
+if result.error is not None:
+    raise result.error
 
 dataset = result.datasets[OBJECTIVE]
 

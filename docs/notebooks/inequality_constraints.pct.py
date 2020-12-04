@@ -53,6 +53,7 @@ class Sim:
         z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
         return z[:, None]
 
+
 search_space = trieste.space.Box(
     tf.cast([0.0, 0.0], default_float()), tf.cast([6.0, 6.0], default_float())
 )
@@ -71,11 +72,13 @@ plt.show()
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
+
 def observer(query_points):
     return {
         OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points))
+        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -88,10 +91,7 @@ initial_data = observer(search_space.sample(5))
 
 # %%
 util.plot_init_query_points(
-    search_space,
-    Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT])
+    search_space, Sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT])
 )
 plt.show()
 
@@ -111,13 +111,16 @@ def create_bo_model(data):
         {
             "model": gpr,
             "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {"options": dict(maxiter=100)},
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
         }
     )
 
+
 models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
 }
 
 # %% [markdown]
@@ -141,23 +144,18 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
-if result.error is not None: raise result.error
+if result.error is not None:
+    raise result.error
 
 # %% [markdown]
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
 constraint_data = result.datasets[CONSTRAINT]
-new_data = (
-    constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:]
-)
+new_data = (constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:])
 
 util.plot_init_query_points(
-    search_space,
-    Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT]),
-    new_data
+    search_space, Sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT]), new_data
 )
 plt.show()
 

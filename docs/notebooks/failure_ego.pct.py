@@ -148,7 +148,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 class NatGradTrainedVGP(VariationalGaussianProcess):
-    def optimize(self):
+    def optimize(self, dataset: trieste.data.Dataset):
         set_trainable(self.model.q_mu, False)
         set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
@@ -168,7 +168,9 @@ models: Dict[str, ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
     },
     FAILURE: NatGradTrainedVGP(classification_model),
 }
