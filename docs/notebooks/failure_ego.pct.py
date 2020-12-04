@@ -192,7 +192,7 @@ result = bo.optimize(20, initial_data, models, acquisition_rule=rule)
 
 if result.error is not None: raise result.error
 
-final_data = result.datasets
+final_data = result.data
 
 arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
 print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")

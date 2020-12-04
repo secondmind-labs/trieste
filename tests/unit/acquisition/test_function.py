@@ -43,7 +43,7 @@ from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVarian
 
 class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         return lambda at: at
 
@@ -64,26 +64,26 @@ def test_single_builder_repr_includes_class_name() -> None:
 def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
     class _Mock(SingleModelAcquisitionBuilder):
         def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+            self, data: Dataset, model: ProbabilisticModel
         ) -> AcquisitionFunction:
-            assert dataset is data["foo"]
+            assert data is all_data["foo"]
             assert model is models["foo"]
             return lambda at: at
 
     builder = _Mock().using("foo")
 
-    data = {"foo": zero_dataset(), "bar": zero_dataset()}
+    all_data = {"foo": zero_dataset(), "bar": zero_dataset()}
     models = {"foo": QuadraticWithUnitVariance(), "bar": QuadraticWithUnitVariance()}
-    builder.prepare_acquisition_function(data, models)
+    builder.prepare_acquisition_function(all_data, models)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
-    dataset = Dataset(
+    data = Dataset(
         tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
         tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
     )
     model = QuadraticWithUnitVariance()
-    acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(data, model)
     xs = tf.linspace([-10.0], [10.0], 100)
     expected = expected_improvement(model, tf.constant([0.0]), xs)
     npt.assert_allclose(acq_fn(xs), expected)
@@ -91,7 +91,6 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
 
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
-
     with pytest.raises(ValueError):
         ExpectedImprovement().prepare_acquisition_function(data, QuadraticWithUnitVariance())
 

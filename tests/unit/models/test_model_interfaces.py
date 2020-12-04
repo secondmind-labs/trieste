@@ -48,7 +48,7 @@ class _MinimalTrainable(CustomTrainable):
     def loss(self) -> tf.Tensor:
         raise NotImplementedError
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, data: Dataset) -> None:
         raise NotImplementedError
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:

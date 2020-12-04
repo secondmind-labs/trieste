@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import abstractmethod, ABC
+from dataclasses import astuple
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
@@ -54,11 +55,11 @@ class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
 
     @abstractmethod
-    def update(self, dataset: Dataset) -> None:
+    def update(self, data: Dataset) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
 
-        :param dataset: The data with which to update the model.
+        :param data: The data with which to update the model.
         """
         raise NotImplementedError
 
@@ -193,16 +194,10 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
     def loss(self) -> tf.Tensor:
         return self._model.training_loss()
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, data: Dataset) -> None:
         x, y = self.model.data
-
-        if dataset.query_points.shape[-1] != x.shape[-1]:
-            raise ValueError
-
-        if dataset.observations.shape[-1] != y.shape[-1]:
-            raise ValueError
-
-        self.model.data = dataset.query_points, dataset.observations
+        _assert_data_is_compatible(data, Dataset(x, y))
+        self.model.data = data.query_points, data.observations
 
 
 Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
@@ -239,16 +234,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> SVGP:
         return self._model
 
-    def update(self, dataset: Dataset) -> None:
-        if dataset.query_points.shape[-1] != self._data.query_points.shape[-1]:
-            raise ValueError
+    def update(self, data: Dataset) -> None:
+        _assert_data_is_compatible(data, self._data)
 
-        if dataset.observations.shape[-1] != self._data.observations.shape[-1]:
-            raise ValueError
+        self._data = data
 
-        self._data = dataset
-
-        num_data = dataset.query_points.shape[0]
+        num_data = data.query_points.shape[0]
         self.model.num_data = num_data
 
     def optimize(self) -> None:
@@ -269,22 +260,21 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GaussianProcessRegression):
-    def update(self, dataset: Dataset):
+    def update(self, data: Dataset):
         model = self.model
         x, y = model.data
-        assert dataset.query_points.shape[-1] == x.shape[-1]
-        assert dataset.observations.shape[-1] == y.shape[-1]
-        data = (dataset.query_points, dataset.observations)
-        num_data = data[0].shape[0]
+        _assert_data_is_compatible(data, Dataset(x, y))
 
-        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
+        num_data = data.query_points.shape[0]
+
+        f_mu, f_cov = self.model.predict_f(data.query_points, full_cov=True)  # [N, L], [L, N, N]
         assert self.model.q_sqrt.shape.ndims == 3
 
         # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
         # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
         # Hence we need to backtransform from f_mu and f_cov to obtain the updated
         # new_q_mu and new_q_sqrt:
-        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
+        Knn = model.kernel(data.query_points, full_cov=True)  # [N, N]
         jitter_mat = gpflow.config.default_jitter() * tf.eye(num_data, dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
@@ -292,7 +282,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
         new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
-        model.data = data
+        model.data = astuple(data)
         model.num_data = num_data
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
@@ -310,3 +300,19 @@ supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
 :var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
 that wrap models of those types.
 """
+
+
+def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
+    if new_data.query_points.shape[-1] != existing_data.query_points.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.query_points.shape} of new query points is incompatible with"
+            f" shape {existing_data.query_points.shape} of existing query points. Trailing"
+            f" dimensions must match."
+        )
+
+    if new_data.observations.shape[-1] != y.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.observations.shape} of new observations is incompatible with"
+            f" shape {existing_data.observations.shape} of existing observations. Trailing"
+            f" dimensions must match."
+        )

@@ -91,7 +91,7 @@ class _InputIdentity(AcquisitionFunctionBuilder):
         self._result = result
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self, data: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         return lambda _: self._result
 

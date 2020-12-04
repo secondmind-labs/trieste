@@ -28,7 +28,7 @@ from tests.util.misc import random_seed
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
     """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, data: Dataset) -> None:
         pass
 
     def optimize(self) -> None:

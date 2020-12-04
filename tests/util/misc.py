@@ -73,13 +73,13 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
         """
         :param search_space: Unused.
-        :param datasets: Unused.
+        :param data: Unused.
         :param models: Unused.
         :param state: Unused.
         :return: The fixed value specified on initialisation, and `None`.

@@ -112,7 +112,7 @@ result: OptimizationResult = bo.optimize(15, initial_data, model)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.data[OBJECTIVE]
 
 # %% [markdown]
 # ## Explore the results
@@ -204,11 +204,11 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.datasets, model)
+result = bo.optimize(5, result.data, model)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.data[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)

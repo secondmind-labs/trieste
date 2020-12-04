@@ -87,7 +87,7 @@ result = bo.optimize(5, initial_data, model_config, acq_rule)
 
 if result.error is not None: raise result.error
 
-dataset = result.datasets[OBJECTIVE]
+dataset = result.data[OBJECTIVE]
 
 # %% [markdown]
 # ## Visualising the result

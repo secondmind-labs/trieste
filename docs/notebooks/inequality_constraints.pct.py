@@ -147,7 +147,7 @@ if result.error is not None: raise result.error
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
-constraint_data = result.datasets[CONSTRAINT]
+constraint_data = result.data[CONSTRAINT]
 new_data = (
     constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:]
 )

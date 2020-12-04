@@ -58,11 +58,11 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self, data: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param data: The data from the observer.
+        :param models: The models over each :class:`~trieste.data.Dataset` in ``data``.
         :return: An acquisition function.
         """
 
@@ -76,16 +76,16 @@ class SingleModelAcquisitionBuilder(ABC):
     def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
-        :return: An acquisition function builder that selects the model and dataset specified by
+        :return: An acquisition function builder that selects the model and data specified by
             ``tag``, as defined in :meth:`prepare_acquisition_function`.
         """
         single_builder = self
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+                self, data: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
             ) -> AcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+                return single_builder.prepare_acquisition_function(data[tag], models[tag])
 
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
@@ -94,11 +94,11 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
+        :param data: The data to use to build the acquisition function.
+        :param model: The model over the specified ``data``.
         :return: An acquisition function.
         """
 
@@ -110,18 +110,18 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     """
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer. Must be populated.
+        :param data: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
         :return: The expected improvement function.
         :raise ValueError: If ``dataset`` is empty.
         """
-        if len(dataset.query_points) == 0:
+        if len(data.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
-        mean, _ = model.predict(dataset.query_points)
+        mean, _ = model.predict(data.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at)
 
@@ -189,19 +189,19 @@ class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         Need to sample possible min-values from our posterior.
         To do this we implement a Gumbel sampler.
         We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
 
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param data: The data from the observer.
+        :param model: The model over the specified ``data``.
         :return: The MES function.
         """
         query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points, query_points], 0)
+        query_points = tf.concat([data.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
 
@@ -288,11 +288,11 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
+        :param data: Unused.
+        :param model: The model over the specified ``data``.
         :return: The negative of the lower confidence bound function. This function will raise
             `ValueError` if ``beta`` is negative.
         """
@@ -402,11 +402,11 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, data: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
+        :param data: Unused.
+        :param model: The model over the specified ``data``.
         :return: The probability of feasibility acquisition function.
         """
         return lambda at: self._acquisition_function(model, self.threshold, at)

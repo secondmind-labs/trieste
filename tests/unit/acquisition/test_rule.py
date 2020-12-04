@@ -36,17 +36,17 @@ from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
+@pytest.mark.parametrize("data", [{}, {"foo": zero_dataset()}])
 @pytest.mark.parametrize(
     "models", [{}, {"foo": QuadraticWithUnitVariance()}, {OBJECTIVE: QuadraticWithUnitVariance()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+    data: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = TrustRegion()
     with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+        rule.acquire(search_space, data, models, None)
 
 
 @pytest.mark.parametrize(
@@ -57,14 +57,14 @@ def test_trust_region_raises_for_missing_datasets_key(
         {"foo": QuadraticWithUnitVariance(), OBJECTIVE: QuadraticWithUnitVariance()},
     ],
 )
-@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
+@pytest.mark.parametrize("data", [{}, {OBJECTIVE: zero_dataset()}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+    data: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(search_space, data, models)
 
 
 @pytest.mark.parametrize(

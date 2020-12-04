@@ -71,7 +71,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
     if res.error is not None:
         raise res.error
 
-    dataset = res.datasets[OBJECTIVE]
+    dataset = res.data[OBJECTIVE]
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 

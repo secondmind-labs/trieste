@@ -51,7 +51,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
     def acquire(
         self,
         search_space: SP,
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
     ) -> Tuple[QueryPoints, S]:
@@ -69,8 +69,8 @@ class AcquisitionRule(ABC, Generic[S, SP]):
 
         :param search_space: The global search space over which the optimization problem
             is defined.
-        :param datasets: The known observer query points and observations for each tag.
-        :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
+        :param data: The known observer query points and observations for each tag.
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in ``data``
             (matched by tag).
         :param state: The acquisition state from the previous step, if there was a previous step,
             else `None`.
@@ -103,7 +103,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
@@ -113,12 +113,12 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
 
         :param search_space: The global search space over which the optimization problem
             is defined.
-        :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
+        :param data: The known observer query points and observations.
+        :param models: The models of the specified ``data``.
         :param state: Unused.
         :return: The single point to query, and `None`.
         """
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        acquisition_function = self._builder.prepare_acquisition_function(data, models)
         point = _optimizer.optimize(search_space, acquisition_function)
         return point, None
 
@@ -145,7 +145,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
     ) -> Tuple[QueryPoints, None]:
@@ -156,7 +156,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
         :param search_space: The global search space over which the optimization problem
             is defined.
-        :param datasets: Unused.
+        :param data: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param state: Unused.
         :return: The `num_query_points` points to query, and `None`.
@@ -223,7 +223,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
     def acquire(
         self,
         search_space: Box,
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
     ) -> Tuple[QueryPoints, State]:
@@ -252,20 +252,20 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         intersection of the trust region and ``search_space``.
 
         :param search_space: The global search space for the optimization problem.
-        :param datasets: The known observer query points and observations. Uses the data for key
+        :param data: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
-        :param models: The models of the specified ``datasets``.
+        :param models: The models of the specified ``data``.
         :param state: The acquisition state from the previous step, if there was a previous step,
             else `None`.
         :return: A 2-tuple of the query point and the acquisition state for this step.
-        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
+        :raise KeyError: If ``data`` does not contain the key `OBJECTIVE`.
         """
-        dataset = datasets[OBJECTIVE]
+        objective_data = data[OBJECTIVE]
 
         global_lower = search_space.lower
         global_upper = search_space.upper
 
-        y_min = tf.reduce_min(dataset.observations, axis=0)
+        y_min = tf.reduce_min(objective_data.observations, axis=0)
 
         if state is None:
             eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
@@ -289,13 +289,13 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         if is_global:
             acquisition_space = search_space
         else:
-            xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
+            xmin = objective_data.query_points[tf.argmin(objective_data.observations)[0], :]
             acquisition_space = Box(
                 tf.reduce_max([global_lower, xmin - eps], axis=0),
                 tf.reduce_min([global_upper, xmin + eps], axis=0),
             )
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        acquisition_function = self._builder.prepare_acquisition_function(data, models)
         point = _optimizer.optimize(acquisition_space, acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 

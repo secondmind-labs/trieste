@@ -45,7 +45,7 @@ class Reducer(AcquisitionFunctionBuilder):
         self._acquisitions = builders
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self, data: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         Return an acquisition function. This acquisition function is defined by first building
@@ -54,12 +54,12 @@ class Reducer(AcquisitionFunctionBuilder):
         :meth:`__init__`, then reducing, with :meth:`_reduce`, the output of each of those
         acquisition functions.
 
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param data: The data from the observer.
+        :param models: The models over each :class:`~trieste.data.Dataset` in ``data``.
         :return: The reduced acquisition function.
         """
         functions = tuple(
-            acq.prepare_acquisition_function(datasets, models) for acq in self.acquisitions
+            acq.prepare_acquisition_function(data, models) for acq in self.acquisitions
         )
 
         def evaluate_acquisition_function_fn(at: QueryPoints) -> tf.Tensor:

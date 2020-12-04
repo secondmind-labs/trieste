@@ -57,7 +57,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
 
 
 @pytest.mark.parametrize(
-    "datasets, model_specs",
+    "data, model_specs",
     [
         ({}, {}),
         ({"foo": zero_dataset()}, {}),
@@ -69,14 +69,14 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     ],
 )
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
-    datasets: Dict[str, Dataset], model_specs: Dict[str, TrainableProbabilisticModel]
+    data: Dict[str, Dataset], model_specs: Dict[str, TrainableProbabilisticModel]
 ) -> None:
     optimizer = BayesianOptimizer(
         lambda x: {"foo": Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
     )
     rule = FixedAcquisitionRule(tf.constant([[0.0]]))
     with pytest.raises(ValueError):
-        optimizer.optimize(10, datasets, model_specs, rule)
+        optimizer.optimize(10, data, model_specs, rule)
 
 
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
@@ -96,7 +96,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         def acquire(
             self,
             search_space: Box,
-            datasets: Mapping[str, Dataset],
+            data: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
@@ -150,7 +150,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         def acquire(
             self,
             search_space: Box,
-            datasets: Mapping[str, Dataset],
+            data: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             previous_state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
@@ -191,6 +191,6 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     if res.error is not None:
         raise res.error
 
-    objective_values = res.datasets[LINEAR].observations + res.datasets[EXPONENTIAL].observations
+    objective_values = res.data[LINEAR].observations + res.data[EXPONENTIAL].observations
     min_idx = tf.argmin(objective_values, axis=0)[0]
-    npt.assert_allclose(res.datasets[LINEAR].query_points[min_idx], -tf.math.log(2.0), rtol=0.01)
+    npt.assert_allclose(res.data[LINEAR].query_points[min_idx], -tf.math.log(2.0), rtol=0.01)

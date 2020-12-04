@@ -45,7 +45,7 @@ class LoggingState(Generic[S]):
     optimization step.
     """
 
-    datasets: Mapping[str, Dataset]
+    data: Mapping[str, Dataset]
     """ All observer data at this optimization step. """
 
     models: Mapping[str, TrainableProbabilisticModel]
@@ -59,7 +59,7 @@ class LoggingState(Generic[S]):
 class OptimizationResult(Generic[S]):
     """ Container for the final result of the optimization process. """
 
-    datasets: Mapping[str, Dataset]
+    data: Mapping[str, Dataset]
     """
     All data from the observer (unless :attr:`error` is populated, in which case this is the data
     from the point at which the process was interrupted).
@@ -96,10 +96,7 @@ class BayesianOptimizer(Generic[SP]):
     def optimize(
         self,
         num_steps: int,
-        # note the transforms, datasets and model_specs are kept as separate dicts rather than
-        # merged into one dict as that was the style strongly preferred by the researcher we
-        # asked at the time
-        datasets: Mapping[str, Dataset],
+        data: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
         acquisition_state: Optional[S] = None,
@@ -112,9 +109,9 @@ class BayesianOptimizer(Generic[SP]):
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
-              ``datasets`` and models built from the ``model_specs``.
+              ``data`` and models built from the ``model_specs``.
             - Queries the ``observer`` *once* at those points.
-            - Updates the datasets and models with the data from the ``observer``.
+            - Updates the data and models with the data from the ``observer``.
 
         Within the optimization loop, this method will catch any errors raised and return them
         instead, along with the latest data, models, and the history of the optimization process.
@@ -132,9 +129,9 @@ class BayesianOptimizer(Generic[SP]):
               by the ``acquisition_rule``.
 
         :param num_steps: The number of optimization steps to run.
-        :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` (matched
-            by tag).
+        :param data: The known observer query points and observations for each tag.
+        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in ``data``
+            (matched by tag).
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
@@ -150,24 +147,24 @@ class BayesianOptimizer(Generic[SP]):
             step (see ``track_state``), and the error if any error was encountered during
             optimization.
         :raise ValueError: If any of the following are true:
-            - the keys in ``datasets`` and ``model_specs`` do not match
-            - ``datasets`` or ``model_specs`` are empty
+            - the keys in ``data`` and ``model_specs`` do not match
+            - ``data`` or ``model_specs`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
-        if datasets.keys() != model_specs.keys():
+        if data.keys() != model_specs.keys():
             raise ValueError(
-                f"datasets and model_specs should contain the same keys. Got {datasets.keys()} and"
+                f"data and model_specs should contain the same keys. Got {data.keys()} and"
                 f" {model_specs.keys()} respectively."
             )
 
-        if not datasets:
-            raise ValueError("dicts of datasets and model_specs must be populated.")
+        if not data:
+            raise ValueError("dicts of data and model_specs must be populated.")
 
         if acquisition_rule is None:
-            if datasets.keys() != {OBJECTIVE}:
+            if data.keys() != {OBJECTIVE}:
                 raise ValueError(
                     f"Default acquisition rule EfficientGlobalOptimization requires tag"
-                    f" {OBJECTIVE!r}, got keys {datasets.keys()}"
+                    f" {OBJECTIVE!r}, got keys {data.keys()}"
                 )
 
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
@@ -178,18 +175,18 @@ class BayesianOptimizer(Generic[SP]):
         for step in range(num_steps):
             try:
                 if track_state:
-                    _save_to_history(history, datasets, models, acquisition_state)
+                    _save_to_history(history, data, models, acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
-                    self._search_space, datasets, models, acquisition_state
+                    self._search_space, data, models, acquisition_state
                 )
 
                 observer_output = self._observer(query_points)
 
-                datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
+                data = {tag: data[tag] + observer_output[tag] for tag in observer_output}
 
                 for tag, model in models.items():
-                    model.update(datasets[tag])
+                    model.update(data[tag])
                     model.optimize()
 
             except Exception as error:
@@ -200,18 +197,18 @@ class BayesianOptimizer(Generic[SP]):
                     output_stream=logging.ERROR,
                 )
 
-                return OptimizationResult(datasets, models, history, error)
+                return OptimizationResult(data, models, history, error)
 
-        return OptimizationResult(datasets, models, history, None)
+        return OptimizationResult(data, models, history, None)
 
 
 def _save_to_history(
     history: List[LoggingState[S]],
-    datasets: Mapping[str, Dataset],
+    data: Mapping[str, Dataset],
     models: Mapping[str, TrainableProbabilisticModel],
     acquisition_state: Optional[S],
 ) -> None:
     models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
-    datasets_copy = {tag: ds for tag, ds in datasets.items()}
-    logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
+    data_copy = {tag: ds for tag, ds in data.items()}
+    logging_state = LoggingState(data_copy, models_copy, copy.deepcopy(acquisition_state))
     history.append(logging_state)
