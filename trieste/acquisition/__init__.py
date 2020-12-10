@@ -49,5 +49,6 @@ from .function import (
     ProbabilityOfFeasibility,
     probability_of_feasibility,
     ExpectedConstrainedImprovement,
+    IndependentReparametrizationSampler,
 )
 from .combination import Reducer, Product, Sum
