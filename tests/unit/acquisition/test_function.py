@@ -27,6 +27,7 @@ from trieste.acquisition.function import (
     AcquisitionFunctionBuilder,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    IndependentReparametrizationSampler,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     expected_improvement,
@@ -326,3 +327,58 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
+
+
+@pytest.mark.parametrize("sample_size", [-5, -1])
+def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        IndependentReparametrizationSampler(sample_size, QuadraticWithUnitVariance())
+
+
+def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
+    sampler = IndependentReparametrizationSampler(1, QuadraticWithUnitVariance())
+    with pytest.raises(ValueError):
+        sampler.sample(tf.constant(0))
+
+
+# todo need tests for higher-dimensional input and output. This would be possible with
+#  a tests function that supports broadcasting, which the scipy functions doesn't.
+#  Make your own to support the above? This would also remove the need for parametrize
+@random_seed
+@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 100))
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
+    x: tf.Tensor,
+) -> None:
+    model = QuadraticWithUnitVariance()
+    sample_size = 10_000
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
+    statistic, _pvalue = stats.kstest(
+        tf.squeeze(samples).numpy(),
+        lambda arr: tfp.distributions.Normal(*model.predict(x)).cdf(arr).numpy(),
+    )
+    assert statistic < 1.36 / tf.sqrt(float(sample_size))
+
+
+@random_seed
+def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
+    npt.assert_array_less(diff, 1e-9)
+
+
+@random_seed
+def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
+    sampler1 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    sampler2 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
