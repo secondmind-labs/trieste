@@ -356,11 +356,11 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
     assert samples.shape == [len(x), sample_size, 1]
 
     samples_sorted = tf.sort(samples, axis=-2)
-    edf = tf.range(1.0, sample_size + 1)[:, None] / sample_size
+    edf = tf.range(1.0, sample_size + 1)[:, None, None] / sample_size
 
     mean, var = model.predict(x)
     expected_dist = tfp.distributions.Normal(mean, tf.sqrt(var))
-    expected_cdf = tf.transpose(expected_dist.cdf(tf.transpose(samples_sorted, [1, 0, 2])), [1, 0, 2])
+    expected_cdf = expected_dist.cdf(tf.transpose(samples_sorted, [1, 0, 2]))
 
     _95_percent_bound = 1.36 / math.sqrt(sample_size)
     assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
