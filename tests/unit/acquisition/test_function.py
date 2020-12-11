@@ -342,7 +342,7 @@ def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
 
 def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticWithUnitVariance())
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
         sampler.sample(tf.constant(0))
 
 
