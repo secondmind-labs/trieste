@@ -346,11 +346,6 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
         sampler.sample(tf.constant(0))
 
 
-def _compiled_id_sampler(at: tf.Tensor) -> tf.Tensor:
-    sampler = IndependentReparametrizationSampler(10_000, QuadraticWithUnitVariance())
-    return tf.function(sampler.sample)(at)
-
-
 @random_seed
 @pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 1))
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
