@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import functools
-from typing import Container, FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
+from typing import (
+    Container, FrozenSet, List, NoReturn, Tuple, Mapping, TypeVar, Callable, Union,
+    cast,
+)
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -59,6 +62,15 @@ def one_dimensional_range(lower: float, upper: float) -> Box:
     :raise ValueError: If ``lower`` is not less than ``upper``.
     """
     return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
+
+
+def raise_(*args: object, **kwargs: object) -> NoReturn:
+    """
+    :param args: Unused.
+    :param kwargs: Unused.
+    :raise Exception: Always.
+    """
+    raise Exception
 
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):

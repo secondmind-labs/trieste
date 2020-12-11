@@ -625,6 +625,10 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
     estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
     estimation via the reparameterization trick. This class is essentially a convenience
     :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+
+    Subclasses implement :meth:`_build_with_samples` which, in addition to the arguments `dataset`
+    and `model`, provides a :class:`IndependentReparametrizationSampler` which can be used to
+    approximate continuous samples from the model.
     """
 
     def __init__(self, sample_size: int):
@@ -647,12 +651,12 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
         self,
         dataset: Dataset,
         model: ProbabilisticModel,
-        samplers: IndependentReparametrizationSampler,
+        sampler: IndependentReparametrizationSampler,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
         :param model: The model over the specified ``dataset``.
-        :param samplers: A sampler for ``model``.
+        :param sampler: A sampler for ``model``.
         :return: An acquisition function.
         """
 

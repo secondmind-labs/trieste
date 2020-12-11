@@ -29,8 +29,10 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     IndependentReparametrizationSampler,
+    MCIndAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
@@ -39,7 +41,7 @@ from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
 
-from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
+from tests.util.misc import ShapeLike, raise_, various_shapes, zero_dataset, random_seed
 from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVariance, GaussianMarginal
 
 
@@ -344,19 +346,20 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
         sampler.sample(tf.constant(0))
 
 
+class _ArbitraryDimTwoOutputModel(GaussianMarginal):
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
+        latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
+        mean_ = tf.concat([latent1, latent2], axis=-1)
+        return mean_, tf.sin(mean_)
+
+
 @random_seed
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
-    class ArbitraryButNonTrivialModel(GaussianMarginal):
-        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-            latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
-            latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
-            mean_ = tf.concat([latent1, latent2], axis=-1)
-            return mean_, tf.sin(mean_)
-
     sample_size = 100
     x = tf.linspace([-10.0], [10.0], 20)
 
-    model = ArbitraryButNonTrivialModel()
+    model = _ArbitraryDimTwoOutputModel()
     samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
 
     assert samples.shape == [len(x), sample_size, 2]
@@ -374,14 +377,14 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
 
 @random_seed
 def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
-    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    sampler = IndependentReparametrizationSampler(100, _ArbitraryDimTwoOutputModel())
     xs = tf.linspace([-10.0], [10.0], 100)
     diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
     npt.assert_array_less(diff, 1e-9)
 
 
 def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
-    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    sampler = IndependentReparametrizationSampler(100, _ArbitraryDimTwoOutputModel())
     xs = tf.linspace([-10.0], [10.0], 100)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
@@ -392,3 +395,47 @@ def test_independent_reparametrization_sampler_samples_are_distinct_for_new_inst
     sampler2 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
     xs = tf.linspace([-10.0], [10.0], 100)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
+
+
+def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        MCIndAcquisitionFunctionBuilder(-1)
+
+
+def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        SingleModelMCIndAcquisitionFunctionBuilder(-1)
+
+
+@random_seed
+def test_single_model_mc_ind_acquisition_function_builder_builds_continuous_samples() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            xs = tf.linspace([-10.0], [10.0], 100)
+            diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
+            npt.assert_array_less(diff, 1e-9)
+            return raise_
+
+    data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
+    _Acq(100).prepare_acquisition_function(data, _ArbitraryDimTwoOutputModel())
+
+
+def test_single_model_mc_ind_acquisition_function_builder_builds_repeatable_samples() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            xs = tf.linspace([-10.0], [10.0], 100)
+            npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+            return raise_
+
+    data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
+    _Acq(100).prepare_acquisition_function(data, _ArbitraryDimTwoOutputModel())
