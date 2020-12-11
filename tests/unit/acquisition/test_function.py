@@ -347,21 +347,23 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 
 
 @random_seed
-@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 100))
-def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
-    x: tf.Tensor,
-) -> None:
-    model = QuadraticWithUnitVariance()
-    sample_size = 10_000
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+    sample_size = 100
+    x = tf.linspace([-10.0], [10.0], 20)
+    model = QuadraticWithUnitVariance()  # todo should really use model with >1 latents and var != 1
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
+
+    assert samples.shape == [len(x), sample_size, 1]
+
+    samples_sorted = tf.sort(samples, axis=-2)
+    edf = tf.range(1.0, sample_size + 1)[:, None] / sample_size
+
     mean, var = model.predict(x)
-    expected_distribution = tfp.distributions.Normal(mean, tf.sqrt(var))
-    sampler = IndependentReparametrizationSampler(sample_size, model)
-    statistic, _pvalue = scipy.stats.kstest(
-        tf.squeeze(sampler.sample(x)).numpy(),
-        lambda arr: expected_distribution.cdf(arr).numpy(),
-    )
+    expected_dist = tfp.distributions.Normal(mean, tf.sqrt(var))
+    expected_cdf = tf.transpose(expected_dist.cdf(tf.transpose(samples_sorted, [1, 0, 2])), [1, 0, 2])
+
     _95_percent_bound = 1.36 / math.sqrt(sample_size)
-    assert statistic < _95_percent_bound
+    assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
 
 
 @random_seed

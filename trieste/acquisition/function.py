@@ -560,7 +560,8 @@ class IndependentReparametrizationSampler:
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`IndependentReparametrizationSampler` instances will produce different samples.
 
-        :param at: Where to sample the predictive distribution, with shape `[..., _]`.
+        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
+            of dimension `D`.
         :return: The samples, of shape `[..., S, L]`, where `S` is the `sample_size` and `L` is the
             number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
