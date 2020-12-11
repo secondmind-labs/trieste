@@ -347,7 +347,7 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 
 
 @random_seed
-@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 1))
+@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 100))
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
     x: tf.Tensor,
 ) -> None:
