@@ -650,8 +650,8 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
         samplers: IndependentReparametrizationSampler,
     ) -> AcquisitionFunction:
         """
-        :param dataset:
-        :param model:
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
         :param samplers: A sampler for ``model``.
         :return: An acquisition function.
         """
