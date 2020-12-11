@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import math
 from typing import Mapping, Tuple
 
 import pytest
@@ -27,6 +28,7 @@ from trieste.acquisition.function import (
     AcquisitionFunctionBuilder,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    IndependentReparametrizationSampler,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     expected_improvement,
@@ -326,3 +328,67 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
+
+
+@pytest.mark.parametrize("sample_size", [-5, -1])
+def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        IndependentReparametrizationSampler(sample_size, QuadraticWithUnitVariance())
+
+
+def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
+    sampler = IndependentReparametrizationSampler(1, QuadraticWithUnitVariance())
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        sampler.sample(tf.constant(0))
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+    class ArbitraryButNonTrivialModel(GaussianMarginal):
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+            latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
+            latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
+            mean_ = tf.concat([latent1, latent2], axis=-1)
+            return mean_, tf.sin(mean_)
+
+    sample_size = 100
+    x = tf.linspace([-10.0], [10.0], 20)
+
+    model = ArbitraryButNonTrivialModel()
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
+
+    assert samples.shape == [len(x), sample_size, 2]
+
+    samples_sorted = tf.sort(samples, axis=-2)
+    edf = tf.range(1.0, sample_size + 1)[:, None, None] / sample_size
+
+    mean, var = model.predict(x)
+    expected_dist = tfp.distributions.Normal(mean, tf.sqrt(var))
+    expected_cdf = expected_dist.cdf(tf.transpose(samples_sorted, [1, 0, 2]))
+
+    _95_percent_bound = 1.36 / math.sqrt(sample_size)
+    assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
+
+
+@random_seed
+def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
+    npt.assert_array_less(diff, 1e-9)
+
+
+def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
+    sampler1 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    sampler2 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))

@@ -528,6 +528,55 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
 
 
+class IndependentReparametrizationSampler:
+    r"""
+    This sampler employs the *reparameterization trick* to approximate samples from a
+    :class:`ProbabilisticModel`\ 's predictive distribution as
+
+    .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+    where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+    samples form a continuous curve.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+        self._eps = tf.Variable(
+            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
+        )  # [S, 0]
+        self._model = model
+
+    def sample(self, at: QueryPoints) -> tf.Tensor:
+        """
+        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+        :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+        produce the exact same samples. Calls to :meth:`sample` on *different*
+        :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
+            of dimension `D`.
+        :return: The samples, of shape `[..., S, L]`, where `S` is the `sample_size` and `L` is the
+            number of latent model dimensions.
+        :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
+        """
+        tf.debugging.assert_rank_at_least(at, 1)
+        mean, cov = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
+
+        if tf.size(self._eps) == 0:
+            self._eps.assign(
+                tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
+            )  # [S, L]
+
+        return mean + tf.sqrt(cov) * tf.cast(self._eps, cov.dtype)  # [..., S, L]
+
+
 class BatchAcquisitionFunctionBuilder(ABC):
     """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
 
