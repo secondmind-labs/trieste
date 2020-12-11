@@ -354,7 +354,7 @@ def _compiled_id_sampler(at: tf.Tensor) -> tf.Tensor:
 @random_seed
 @pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 1))
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
-    x: tf.Tensor
+    x: tf.Tensor,
 ) -> None:
     model = QuadraticWithUnitVariance()
     sample_size = 10_000
