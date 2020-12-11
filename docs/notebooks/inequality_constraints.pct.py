@@ -72,7 +72,6 @@ plt.show()
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
-
 def observer(query_points):
     return {
         OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
@@ -91,7 +90,10 @@ initial_data = observer(search_space.sample(5))
 
 # %%
 util.plot_init_query_points(
-    search_space, Sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT])
+    search_space,
+    Sim,
+    astuple(initial_data[OBJECTIVE]),
+    astuple(initial_data[CONSTRAINT]),
 )
 plt.show()
 
@@ -144,8 +146,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
-if result.error is not None:
-    raise result.error
+if result.error is not None: raise result.error
 
 # %% [markdown]
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
