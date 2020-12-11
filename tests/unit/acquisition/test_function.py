@@ -372,7 +372,6 @@ def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
     npt.assert_array_less(diff, 1e-9)
 
 
-@random_seed
 def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
     sampler = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
     xs = tf.linspace([-10.0], [10.0], 100)
