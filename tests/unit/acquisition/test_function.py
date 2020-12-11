@@ -13,10 +13,12 @@
 # limitations under the License.
 from __future__ import annotations
 
+import math
 from typing import Mapping, Tuple
 
 import pytest
 import numpy.testing as npt
+import scipy
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy import stats
@@ -344,22 +346,27 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
         sampler.sample(tf.constant(0))
 
 
-# todo need tests for higher-dimensional input and output. This would be possible with
-#  a tests function that supports broadcasting, which the scipy functions doesn't.
-#  Make your own to support the above? This would also remove the need for parametrize
+def _compiled_id_sampler(at: tf.Tensor) -> tf.Tensor:
+    sampler = IndependentReparametrizationSampler(10_000, QuadraticWithUnitVariance())
+    return tf.function(sampler.sample)(at)
+
+
 @random_seed
-@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 100))
+@pytest.mark.parametrize("x", tf.linspace([-10.0], [10.0], 1))
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
-    x: tf.Tensor,
+    x: tf.Tensor
 ) -> None:
     model = QuadraticWithUnitVariance()
     sample_size = 10_000
-    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
-    statistic, _pvalue = stats.kstest(
-        tf.squeeze(samples).numpy(),
-        lambda arr: tfp.distributions.Normal(*model.predict(x)).cdf(arr).numpy(),
+    mean, var = model.predict(x)
+    expected_distribution = tfp.distributions.Normal(mean, tf.sqrt(var))
+    sampler = IndependentReparametrizationSampler(sample_size, model)
+    statistic, _pvalue = scipy.stats.kstest(
+        tf.squeeze(sampler.sample(x)).numpy(),
+        lambda arr: expected_distribution.cdf(arr).numpy(),
     )
-    assert statistic < 1.36 / tf.sqrt(float(sample_size))
+    _95_percent_bound = 1.36 / math.sqrt(sample_size)
+    assert statistic < _95_percent_bound
 
 
 @random_seed
