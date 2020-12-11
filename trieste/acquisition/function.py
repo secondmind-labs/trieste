@@ -16,6 +16,7 @@ from typing import Callable, Mapping, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import final
 
 from ..data import Dataset
 from ..type import QueryPoints
@@ -575,6 +576,85 @@ class IndependentReparametrizationSampler:
             )  # [S, L]
 
         return mean + tf.sqrt(cov) * tf.cast(self._eps, cov.dtype)  # [..., S, L]
+
+
+class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
+    """
+    A :class:`MCIndAcquisitionFunctionBuilder` builds an acquisition function that
+    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
+    estimation via the reparameterization trick. This class is essentially a convenience
+    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+    """
+
+    def __init__(self, sample_size: int):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+        self._sample_size = sample_size
+
+    @final
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        samplers = {
+            key: IndependentReparametrizationSampler(self._sample_size, model)
+            for key, model in models.items()
+        }
+        return self._build_with_sampler(datasets, models, samplers)
+
+    @abstractmethod
+    def _build_with_sampler(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        samplers: Mapping[str, IndependentReparametrizationSampler],
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :param samplers: A sampler for each model in ``models``.
+        :return: An acquisition function.
+        """
+
+
+class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
+    """
+    A :class:`SingleModelMCIndAcquisitionFunctionBuilder` builds an acquisition function that
+    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
+    estimation via the reparameterization trick. This class is essentially a convenience
+    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+    """
+
+    def __init__(self, sample_size: int):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+        self._sample_size = sample_size
+
+    @final
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        sampler = IndependentReparametrizationSampler(self._sample_size, model)
+        return self._build_with_sampler(dataset, model, sampler)
+
+    @abstractmethod
+    def _build_with_sampler(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        samplers: IndependentReparametrizationSampler,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset:
+        :param model:
+        :param samplers: A sampler for ``model``.
+        :return: An acquisition function.
+        """
 
 
 class BatchAcquisitionFunctionBuilder(ABC):
