@@ -18,10 +18,8 @@ from typing import Mapping, Tuple
 
 import pytest
 import numpy.testing as npt
-import scipy
 import tensorflow as tf
 import tensorflow_probability as tfp
-from scipy import stats
 
 from trieste.acquisition import SingleModelAcquisitionBuilder
 from trieste.data import Dataset
