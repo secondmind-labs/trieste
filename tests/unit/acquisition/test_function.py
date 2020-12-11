@@ -348,12 +348,21 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 
 @random_seed
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+    class Model(GaussianMarginal):
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+            # two arbitrary but non-trivial functions
+            latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
+            latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
+            mean = tf.concat([latent1, latent2], axis=-1)
+            return mean, tf.sin(mean)
+
     sample_size = 100
     x = tf.linspace([-10.0], [10.0], 20)
-    model = QuadraticWithUnitVariance()  # todo should really use model with >1 latents and var != 1
+
+    model = Model()
     samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
 
-    assert samples.shape == [len(x), sample_size, 1]
+    assert samples.shape == [len(x), sample_size, 2]
 
     samples_sorted = tf.sort(samples, axis=-2)
     edf = tf.range(1.0, sample_size + 1)[:, None, None] / sample_size
