@@ -50,11 +50,10 @@ tf.random.set_seed(1234)
 
 # %%
 def masked_branin(x):
-    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
+    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
     y = np.array(objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
-
 
 # %% [markdown]
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
@@ -93,15 +92,13 @@ fig.show()
 OBJECTIVE = "OBJECTIVE"
 FAILURE = "FAILURE"
 
-
 def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
     return {
         OBJECTIVE: trieste.data.Dataset(x[mask], y[mask]),
-        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64)),
+        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
     }
-
 
 # %% [markdown]
 # We can evaluate the observer at points sampled from the search space.
@@ -119,20 +116,14 @@ initial_data = observer(search_space.sample(num_init_points))
 # %%
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(
-        variance=variance,
-        lengthscales=0.2 * np.ones(2),
-    )
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
     return gpr
 
 
 def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(
-        variance=100.0,
-        lengthscales=0.2 * np.ones(2),
-    )
+    kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=0.2 * np.ones(2))
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
     set_trainable(vgp.kernel.variance, False)
@@ -159,7 +150,6 @@ class NatGradTrainedVGP(VariationalGaussianProcess):
             natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
             adam_opt.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
 
-
 # %% [markdown]
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
@@ -185,7 +175,6 @@ class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
         return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
 
-
 ei = trieste.acquisition.ExpectedImprovement()
 pov = ProbabilityOfValidity()
 acq_fn = trieste.acquisition.Product(ei.using(OBJECTIVE), pov.using(FAILURE))
@@ -201,8 +190,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(20, initial_data, models, acquisition_rule=rule)
 
-if result.error is not None:
-    raise result.error
+if result.error is not None: raise result.error
 
 final_data = result.datasets
 
