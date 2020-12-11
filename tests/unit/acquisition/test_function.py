@@ -353,8 +353,8 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
             # two arbitrary but non-trivial functions
             latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
             latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
-            mean = tf.concat([latent1, latent2], axis=-1)
-            return mean, tf.sin(mean)
+            mean_ = tf.concat([latent1, latent2], axis=-1)
+            return mean_, tf.sin(mean_)
 
     sample_size = 100
     x = tf.linspace([-10.0], [10.0], 20)
