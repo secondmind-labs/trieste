@@ -354,25 +354,37 @@ class _ArbitraryDimTwoOutputModel(GaussianMarginal):
         return mean_, tf.sin(mean_)
 
 
-@random_seed
-def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
-    sample_size = 100
-    x = tf.linspace([-10.0], [10.0], 20)
+def _assert_kolmogorov_smirnov_95(
+    samples: tf.Tensor,  # [..., S]
+    distribution: tfp.distributions.Distribution
+) -> None:
+    assert distribution.event_shape == ()
+    tf.debugging.assert_shapes([(samples, [..., "S"])])
 
-    model = _ArbitraryDimTwoOutputModel()
-    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)
-
-    assert samples.shape == [len(x), sample_size, 2]
-
-    samples_sorted = tf.sort(samples, axis=-2)
-    edf = tf.range(1.0, sample_size + 1)[:, None, None] / sample_size
-
-    mean, var = model.predict(x)
-    expected_dist = tfp.distributions.Normal(mean, tf.sqrt(var))
-    expected_cdf = expected_dist.cdf(tf.transpose(samples_sorted, [1, 0, 2]))
+    sample_size = samples.shape[-1]
+    samples_sorted = tf.sort(samples, axis=-1)  # [..., S]
+    edf = tf.range(1.0, sample_size + 1) / sample_size   # [S]
+    expected_cdf = distribution.cdf(samples_sorted)  # [..., S]
 
     _95_percent_bound = 1.36 / math.sqrt(sample_size)
     assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+    sample_size = 100
+    x = tf.linspace([-10.0], [10.0], 20)  # [N, 1]
+
+    model = _ArbitraryDimTwoOutputModel()
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, L]
+
+    assert samples.shape == [len(x), sample_size, 2]
+
+    mean, var = model.predict(x)  # [N, L]
+    _assert_kolmogorov_smirnov_95(
+        tf.linalg.matrix_transpose(samples),
+        tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None]))
+    )
 
 
 @random_seed
@@ -398,13 +410,31 @@ def test_independent_reparametrization_sampler_samples_are_distinct_for_new_inst
 
 
 def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    class _Acq(MCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            samplers: Mapping[str, IndependentReparametrizationSampler],
+        ) -> AcquisitionFunction:
+            return raise_
+
     with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
-        MCIndAcquisitionFunctionBuilder(-1)
+        _Acq(-1)
 
 
 def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            return raise_
+
     with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
-        SingleModelMCIndAcquisitionFunctionBuilder(-1)
+        _Acq(-1)
 
 
 @random_seed
