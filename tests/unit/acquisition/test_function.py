@@ -348,10 +348,11 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 
 class _ArbitraryDimTwoOutputModel(GaussianMarginal):
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        tf.debugging.assert_shapes([(query_points, (..., 1))])
         latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
         latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
         mean_ = tf.concat([latent1, latent2], axis=-1)
-        return mean_, tf.sin(mean_)
+        return mean_, tf.sin(mean_) ** 2
 
 
 def _assert_kolmogorov_smirnov_95(

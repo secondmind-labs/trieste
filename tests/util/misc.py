@@ -64,10 +64,11 @@ def one_dimensional_range(lower: float, upper: float) -> Box:
     return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
 
 
-def raise_(*args: object, **kwargs: object) -> NoReturn:
+def raise_(*_: object, **__: object) -> NoReturn:
     """
-    :param args: Unused.
-    :param kwargs: Unused.
+    Raise an exception. This dummy function can be used wherever a function of any signature is
+    expected but isn't intended to be used.
+
     :raise Exception: Always.
     """
     raise Exception
