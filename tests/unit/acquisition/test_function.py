@@ -356,8 +356,10 @@ class _ArbitraryDimTwoOutputModel(GaussianMarginal):
 
 
 def _assert_kolmogorov_smirnov_95(
+    # fmt: off
     samples: tf.Tensor,  # [..., S]
     distribution: tfp.distributions.Distribution
+    # fmt: on
 ) -> None:
     assert distribution.event_shape == ()
     tf.debugging.assert_shapes([(samples, [..., "S"])])
