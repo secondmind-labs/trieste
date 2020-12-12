@@ -14,7 +14,15 @@
 
 import functools
 from typing import (
-    Container, FrozenSet, List, NoReturn, Tuple, Mapping, TypeVar, Callable, Union,
+    Container,
+    FrozenSet,
+    List,
+    NoReturn,
+    Tuple,
+    Mapping,
+    TypeVar,
+    Callable,
+    Union,
     cast,
 )
 

@@ -364,7 +364,7 @@ def _assert_kolmogorov_smirnov_95(
 
     sample_size = samples.shape[-1]
     samples_sorted = tf.sort(samples, axis=-1)  # [..., S]
-    edf = tf.range(1.0, sample_size + 1) / sample_size   # [S]
+    edf = tf.range(1.0, sample_size + 1) / sample_size  # [S]
     expected_cdf = distribution.cdf(samples_sorted)  # [..., S]
 
     _95_percent_bound = 1.36 / math.sqrt(sample_size)
@@ -384,7 +384,7 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
     mean, var = model.predict(x)  # [N, L]
     _assert_kolmogorov_smirnov_95(
         tf.linalg.matrix_transpose(samples),
-        tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None]))
+        tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
     )
 
 
