@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, TypeVar
+from typing import Callable, Mapping, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -55,3 +55,27 @@ def to_numpy(t: TensorType) -> np.ndarray:
         return t.numpy()
 
     return t
+
+
+K = TypeVar("K")
+""" A unbound type variable. """
+
+U = TypeVar("U")
+""" A unbound type variable. """
+
+V = TypeVar("V")
+""" A unbound type variable. """
+
+
+def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
+    """
+    Return the result of applying ``f`` to every value in ``m``. For example:
+
+    >>> map_values(lambda x: -x, {'a': 1, 'b': 2})
+    {'a': -1, 'b': -2}
+
+    :param f: A function to apply to each value in ``m``.
+    :param mapping: A mapping type to convert with ``f``.
+    :return: The result of applying ``f`` to every value in ``m``
+    """
+    return {k: f(u) for k, u in mapping.items()}

@@ -347,10 +347,14 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 
 
 class _ArbitraryDimTwoOutputModel(GaussianMarginal):
+    def __init__(self, factor: float = 1):
+        super().__init__()
+        self._factor = factor
+
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         tf.debugging.assert_shapes([(query_points, (..., 1))])
-        latent1 = tf.sin(query_points ** 2) + tf.cos(query_points)
-        latent2 = tf.sin(query_points) - tf.cos(query_points ** 2)
+        latent1 = tf.sin(query_points ** 2) + self._factor * tf.cos(query_points)
+        latent2 = tf.sin(query_points) - self._factor * tf.cos(query_points ** 2)
         mean_ = tf.concat([latent1, latent2], axis=-1)
         return mean_, tf.sin(mean_) ** 2
 
@@ -441,24 +445,41 @@ def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sam
 
 
 @random_seed
-def test_single_model_mc_ind_acquisition_function_builder_builds_continuous_samples() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
+    class _Acq(MCIndAcquisitionFunctionBuilder):
         def _build_with_sampler(
             self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            samplers: Mapping[str, IndependentReparametrizationSampler],
         ) -> AcquisitionFunction:
-            xs = tf.linspace([-10.0], [10.0], 100)
-            diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
-            npt.assert_array_less(diff, 1e-9)
+            assert samplers.keys() == {"foo", "bar", "baz"}
+
+            x = tf.linspace([-10.0], [10.0], 20)
+
+            for key in samplers:
+                samples = samplers[key].sample(x)
+                mean, var = models[key].predict(x)
+                _assert_kolmogorov_smirnov_95(
+                    tf.linalg.matrix_transpose(samples),
+                    tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
+                )
+
             return raise_
 
     data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
-    _Acq(100).prepare_acquisition_function(data, _ArbitraryDimTwoOutputModel())
+    _Acq(20_000).prepare_acquisition_function(
+        {"foo": data, "bar": data, "baz": data},
+        {
+            "foo": _ArbitraryDimTwoOutputModel(-1),
+            "bar": _ArbitraryDimTwoOutputModel(0),
+            "baz": _ArbitraryDimTwoOutputModel(1),
+        },
+    )
 
 
-def test_single_model_mc_ind_acquisition_function_builder_builds_repeatable_samples() -> None:
+@random_seed
+def test_single_model_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
     class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
         def _build_with_sampler(
             self,
@@ -466,8 +487,13 @@ def test_single_model_mc_ind_acquisition_function_builder_builds_repeatable_samp
             model: ProbabilisticModel,
             sampler: IndependentReparametrizationSampler,
         ) -> AcquisitionFunction:
-            xs = tf.linspace([-10.0], [10.0], 100)
-            npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+            x = tf.linspace([-10.0], [10.0], 20)
+            samples = sampler.sample(x)
+            mean, var = model.predict(x)
+            _assert_kolmogorov_smirnov_95(
+                tf.linalg.matrix_transpose(samples),
+                tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
+            )
             return raise_
 
     data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
