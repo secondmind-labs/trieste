@@ -45,15 +45,15 @@ from tests.util.misc import ShapeLike, raise_, various_shapes, zero_dataset, ran
 from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVariance, GaussianMarginal
 
 
-class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
+class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        return lambda at: at
+        return raise_
 
 
 def test_single_builder_raises_immediately_for_wrong_key() -> None:
-    builder = _IdentitySingleBuilder().using("foo")
+    builder = _ArbitrarySingleBuilder().using("foo")
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
@@ -62,7 +62,7 @@ def test_single_builder_raises_immediately_for_wrong_key() -> None:
 
 
 def test_single_builder_repr_includes_class_name() -> None:
-    assert "_IdentitySingleBuilder" in repr(_IdentitySingleBuilder())
+    assert "_ArbitrarySingleBuilder" in repr(_ArbitrarySingleBuilder())
 
 
 def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
@@ -72,7 +72,7 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
         ) -> AcquisitionFunction:
             assert dataset is data["foo"]
             assert model is models["foo"]
-            return lambda at: at
+            return raise_
 
     builder = _Mock().using("foo")
 
@@ -281,7 +281,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: x
+            return raise_
 
     data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
