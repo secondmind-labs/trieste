@@ -387,7 +387,7 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
 
     assert samples.shape == [len(x), sample_size, 2]
 
-    mean, var = model.predict(x)  # [N, L]
+    mean, var = model.predict(x)  # [N, L], [N, L]
     _assert_kolmogorov_smirnov_95(
         tf.linalg.matrix_transpose(samples),
         tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
