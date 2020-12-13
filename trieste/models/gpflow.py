@@ -167,12 +167,16 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
         self.model.data = dataset.query_points, dataset.observations
 
     def __deepcopy__(self: _M, memo: Dict[int, object]) -> _M:
-        deepcopy_method = self.__deepcopy__
-        delattr(self, "__deepcopy__")
-        cp = gpflow.utilities.deepcopy(self, memo)
-        setattr(self, "__deepcopy__", deepcopy_method)
-        setattr(cp, "__deepcopy__", deepcopy_method)
-        return cp
+        gpflow.utilities.reset_cache_bijectors(self)
+
+        cls = type(self)
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        for name, value in self.__dict__.items():
+            setattr(new, name, copy.deepcopy(value, memo))
+
+        return new
 
 
 Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
