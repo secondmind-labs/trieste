@@ -430,20 +430,6 @@ def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() ->
         _Acq(-1)
 
 
-def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
-        ) -> AcquisitionFunction:
-            return raise_
-
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
-        _Acq(-1)
-
-
 @random_seed
 def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
     class _Acq(MCIndAcquisitionFunctionBuilder):
@@ -476,6 +462,20 @@ def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> Non
             "baz": _ArbitraryDimTwoOutputModel(1),
         },
     )
+
+
+def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            return raise_
+
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        _Acq(-1)
 
 
 @random_seed
