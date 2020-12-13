@@ -168,10 +168,10 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
 
     def __deepcopy__(self: _M, memo: Dict[int, object]) -> _M:
         deepcopy_method = self.__deepcopy__
-        self.__deepcopy__ = None
+        delattr(self, "__deepcopy__")
         cp = gpflow.utilities.deepcopy(self, memo)
-        self.__deepcopy__ = deepcopy_method
-        cp.__deepcopy__ = deepcopy_method
+        setattr(self, "__deepcopy__", deepcopy_method)
+        setattr(cp, "__deepcopy__", deepcopy_method)
         return cp
 
 
