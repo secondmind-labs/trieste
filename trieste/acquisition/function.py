@@ -345,18 +345,18 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
     ::
 
-    @inproceedings{gardner14,
-        title={Bayesian Optimization with Inequality Constraints},
-        author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
-        booktitle={Proceedings of the 31st International Conference on Machine Learning},
-        year={2014},
-        volume={32},
-        number={2},
-        series={Proceedings of Machine Learning Research},
-        month={22--24 Jun},
-        publisher={PMLR},
-        url={http://proceedings.mlr.press/v32/gardner14.html},
-    }
+        @inproceedings{gardner14,
+            title={Bayesian Optimization with Inequality Constraints},
+            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+            booktitle={Proceedings of the 31st International Conference on Machine Learning},
+            year={2014},
+            volume={32},
+            number={2},
+            series={Proceedings of Machine Learning Research},
+            month={22--24 Jun},
+            publisher={PMLR},
+            url={http://proceedings.mlr.press/v32/gardner14.html},
+        }
 
     """
 
