@@ -13,7 +13,18 @@
 # limitations under the License.
 
 import functools
-from typing import Container, FrozenSet, List, Tuple, Mapping, TypeVar, Callable, Union, cast
+from typing import (
+    Container,
+    FrozenSet,
+    List,
+    NoReturn,
+    Tuple,
+    Mapping,
+    TypeVar,
+    Callable,
+    Union,
+    cast,
+)
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -59,6 +70,16 @@ def one_dimensional_range(lower: float, upper: float) -> Box:
     :raise ValueError: If ``lower`` is not less than ``upper``.
     """
     return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
+
+
+def raise_(*_: object, **__: object) -> NoReturn:
+    """
+    Raise an exception. This dummy function can be used wherever a function of any signature is
+    expected but isn't intended to be used.
+
+    :raise Exception: Always.
+    """
+    raise Exception
 
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
