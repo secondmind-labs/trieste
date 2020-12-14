@@ -21,9 +21,6 @@ from typing_extensions import final
 from ..data import Dataset
 from ..type import QueryPoints
 from ..models import ProbabilisticModel
-from ..space import SearchSpace
-
-from scipy.optimize import bisect
 
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
