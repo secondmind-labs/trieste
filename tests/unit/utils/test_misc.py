@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from tests.util.misc import ShapeLike, various_shapes
 from trieste.type import TensorType
-from trieste.utils.misc import jit, shapes_equal, to_numpy
+from trieste.utils.misc import Err, Ok, jit, shapes_equal, to_numpy
 
 
 @pytest.mark.parametrize("apply", [True, False])
@@ -67,3 +67,17 @@ def test_shapes_equal(this_shape: ShapeLike, that_shape: ShapeLike) -> None:
 )
 def test_to_numpy(t: TensorType, expected: np.ndarray) -> None:
     npt.assert_array_equal(to_numpy(t), expected)
+
+
+def test_ok() -> None:
+    assert Ok(1).unwrap() == 1
+    assert Ok(1).is_ok is True
+    assert Ok(1).is_err is False
+
+
+def test_err() -> None:
+    with pytest.raises(ValueError):
+        Err(ValueError()).unwrap()
+
+    assert Err(ValueError()).is_ok is False
+    assert Err(ValueError()).is_err is True

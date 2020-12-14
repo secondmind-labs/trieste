@@ -64,14 +64,11 @@ def test_optimizer_finds_minima_of_the_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
 
-    res = BayesianOptimizer(observer, search_space).optimize(
-        num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule
+    dataset = (
+        BayesianOptimizer(observer, search_space)
+        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .try_get_final_data()[OBJECTIVE]
     )
-
-    if res.error is not None:
-        raise res.error
-
-    dataset = res.datasets[OBJECTIVE]
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
