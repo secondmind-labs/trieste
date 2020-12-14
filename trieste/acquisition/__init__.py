@@ -41,8 +41,6 @@ from .function import (
     SingleModelAcquisitionBuilder,
     ExpectedImprovement,
     expected_improvement,
-    MaxValueEntropySearch,
-    max_value_entropy_search,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     lower_confidence_bound,

@@ -21,9 +21,6 @@ from typing_extensions import final
 from ..data import Dataset
 from ..type import QueryPoints
 from ..models import ProbabilisticModel
-from ..space import SearchSpace
-
-from scipy.optimize import bisect
 
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
@@ -165,114 +162,6 @@ def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoi
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
-
-
-class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
-    """
-    Builder for the max-value entropy search acquisition function (for function minimisation)
-    """
-
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
-        """
-        :param search_space: The global search space over which the Bayesian optimisation problem is defined.
-        :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution
-            (recommend scaling with search space dimension).
-        """
-        self._search_space = search_space
-
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
-        self._num_samples = num_samples
-
-        if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
-        self._grid_size = grid_size
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        Need to sample possible min-values from our posterior.
-        To do this we implement a Gumbel sampler.
-        We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
-
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
-        :return: The MES function.
-        """
-        query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points, query_points], 0)
-        fmean, fvar = model.predict(query_points)
-        fsd = tf.math.sqrt(fvar)
-
-        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
-            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
-            return tf.exp(tf.reduce_sum(log_cdf, axis=0))
-
-        left = tf.reduce_min(fmean - 5 * fsd)
-        right = tf.reduce_max(fmean + 5 * fsd)
-
-        def binary_search(val: float) -> float:  # Fit Gumbel quantiles
-            return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
-
-        q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
-
-        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
-        a = med + b * tf.math.log(tf.math.log(2.0))
-
-        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
-            b, fmean.dtype
-        ) + tf.cast(a, fmean.dtype)
-
-        return lambda at: self._acquisition_function(model, gumbel_samples, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
-    ) -> tf.Tensor:
-        return max_value_entropy_search(model, samples, at)
-
-
-def max_value_entropy_search(
-    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
-) -> tf.Tensor:
-    r"""
-    Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
-    minimal value of the objective function) if we would evaluate x.
-
-    See the following for details:
-
-    ::
-
-        @article{wang2017max,
-          title={Max-value entropy search for efficient Bayesian optimization},
-          author={Wang, Zi and Jegelka, Stefanie},
-          journal={arXiv preprint arXiv:1703.01968},
-          year={2017}
-        }
-
-    :param model: The model of the objective function.
-    :param samples: Samples from p_min
-    :param at: The points for which to calculate the expected improvement.
-    :return: The entropy reduction provided by an evaluation of ``at``.
-    """
-    fmean, fvar = model.predict(at)
-    fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(
-        fsd, 1.0e-8, fmean.dtype.max
-    )  # clip below to improve numerical stability
-
-    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-    gamma = (samples - fmean) / fsd
-
-    minus_cdf = 1 - normal.cdf(gamma)
-    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
-    f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-
-    return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
