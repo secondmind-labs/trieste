@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
 from .data import Dataset
-from .models import ProbabilisticModel, create_model, ModelSpec
+from .models import TrainableProbabilisticModel, create_model, ModelSpec
 from .observer import Observer
 from .space import SearchSpace
 
@@ -48,7 +48,7 @@ class LoggingState(Generic[S]):
     datasets: Mapping[str, Dataset]
     """ All observer data at this optimization step. """
 
-    models: Mapping[str, ProbabilisticModel]
+    models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
     acquisition_state: Optional[S]
@@ -65,7 +65,7 @@ class OptimizationResult(Generic[S]):
     from the point at which the process was interrupted).
     """
 
-    models: Mapping[str, ProbabilisticModel]
+    models: Mapping[str, TrainableProbabilisticModel]
     """
     The models over the :attr:`datasets` (unless :attr:`error` is populated, in which case this is
     the models from the point at which the process was interrupted). """
@@ -209,7 +209,7 @@ class BayesianOptimizer(Generic[SP]):
 def _save_to_history(
     history: List[LoggingState[S]],
     datasets: Mapping[str, Dataset],
-    models: Mapping[str, ProbabilisticModel],
+    models: Mapping[str, TrainableProbabilisticModel],
     acquisition_state: Optional[S],
 ) -> None:
     def _deepcopy(o):

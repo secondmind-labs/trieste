@@ -189,7 +189,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], ProbabilisticModel]] = {
+supported_models: Dict[Any, Callable[[Any], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,

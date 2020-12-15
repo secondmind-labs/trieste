@@ -21,7 +21,7 @@ import tensorflow as tf
 from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import TrainableProbabilisticModel
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
@@ -69,7 +69,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     ],
 )
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys(
-    datasets: Dict[str, Dataset], model_specs: Dict[str, ProbabilisticModel]
+    datasets: Dict[str, Dataset], model_specs: Dict[str, TrainableProbabilisticModel]
 ) -> None:
     optimizer = BayesianOptimizer(
         lambda x: {"foo": Dataset(x, x[:1])}, one_dimensional_range(-1, 1)
@@ -97,7 +97,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
+            models: Mapping[str, TrainableProbabilisticModel],
             state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             self.states_received.append(state)
@@ -151,7 +151,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
+            models: Mapping[str, TrainableProbabilisticModel],
             previous_state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             if previous_state is None:
@@ -179,7 +179,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]])),
     }
 
-    models: Dict[str, ProbabilisticModel] = {  # mypy can't infer this type
+    models: Dict[str, TrainableProbabilisticModel] = {  # mypy can't infer this type
         LINEAR: LinearWithUnitVariance(),
         EXPONENTIAL: ExponentialWithUnitVariance(),
     }
