@@ -29,22 +29,6 @@ class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
-    def optimize(self, dataset: Dataset) -> None:
-        """
-        Optimize the model.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update the model given the specified ``dataset``. Does not train the model.
-
-        :param dataset: The data with which to update the model.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
@@ -65,6 +49,23 @@ class ProbabilisticModel(tf.Module, ABC):
         :return: The samples. Has shape [S, Q, D], where S is the number of samples, Q is the number
             of query points, and D is the dimension of the predictive distribution.
         """
+        raise NotImplementedError
+
+
+class TrainableProbabilisticModel(ProbabilisticModel):
+    """ A trainable probabilistic model. """
+
+    @abstractmethod
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
+        :param dataset: The data with which to update the model.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def optimize(self, dataset: Dataset) -> None:
+        """ Optimize the model parameters. """
         raise NotImplementedError
 
 
@@ -95,7 +96,7 @@ class GPflowPredictor(ProbabilisticModel, ABC):
         self.optimizer.optimize(self.model, dataset)
 
 
-class GaussianProcessRegression(GPflowPredictor):
+class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow model to wrap.
@@ -106,6 +107,9 @@ class GaussianProcessRegression(GPflowPredictor):
     @property
     def model(self) -> Union[GPR, SGPR]:
         return self._model
+
+    def optimize(self, dataset: Dataset):
+        self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
@@ -119,7 +123,7 @@ class GaussianProcessRegression(GPflowPredictor):
         self.model.data = dataset.query_points, dataset.observations
 
 
-class SparseVariational(GPflowPredictor):
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
         :param optimizer: The optimizer to use for optimization.
@@ -135,6 +139,9 @@ class SparseVariational(GPflowPredictor):
     @property
     def model(self) -> SVGP:
         return self._model
+
+    def optimize(self, dataset: Dataset):
+        self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
         if dataset.query_points.shape[-1] != self._data.query_points.shape[-1]:

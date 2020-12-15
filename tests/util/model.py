@@ -20,12 +20,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import TrainableProbabilisticModel
 from trieste.type import QueryPoints, ObserverEvaluations, TensorType
 from tests.util.misc import random_seed
 
 
-class PseudoProbabilisticModel(ProbabilisticModel, ABC):
+class PseudoProbabilisticModel(TrainableProbabilisticModel, ABC):
     """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
 
     def update(self, dataset: Dataset) -> None:

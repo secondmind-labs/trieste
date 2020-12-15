@@ -20,6 +20,7 @@ wrappers for GPflow models, as well as tooling for creating
 from .config import ModelConfig, ModelSpec, create_model
 from .model_interfaces import (
     ProbabilisticModel,
+    TrainableProbabilisticModel,
     GPflowPredictor,
     GaussianProcessRegression,
     SparseVariational,
