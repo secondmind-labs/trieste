@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import math
 from typing import Mapping, Tuple
 
 import pytest
@@ -27,8 +28,11 @@ from trieste.acquisition.function import (
     AcquisitionFunctionBuilder,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    IndependentReparametrizationSampler,
+    MCIndAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
@@ -37,19 +41,19 @@ from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
 
-from tests.util.misc import ShapeLike, various_shapes, zero_dataset, random_seed
+from tests.util.misc import ShapeLike, raise_, various_shapes, zero_dataset, random_seed
 from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVariance, GaussianMarginal
 
 
-class _IdentitySingleBuilder(SingleModelAcquisitionBuilder):
+class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        return lambda at: at
+        return raise_
 
 
 def test_single_builder_raises_immediately_for_wrong_key() -> None:
-    builder = _IdentitySingleBuilder().using("foo")
+    builder = _ArbitrarySingleBuilder().using("foo")
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
@@ -58,7 +62,7 @@ def test_single_builder_raises_immediately_for_wrong_key() -> None:
 
 
 def test_single_builder_repr_includes_class_name() -> None:
-    assert "_IdentitySingleBuilder" in repr(_IdentitySingleBuilder())
+    assert "_ArbitrarySingleBuilder" in repr(_ArbitrarySingleBuilder())
 
 
 def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
@@ -68,7 +72,7 @@ def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
         ) -> AcquisitionFunction:
             assert dataset is data["foo"]
             assert model is models["foo"]
-            return lambda at: at
+            return raise_
 
     builder = _Mock().using("foo")
 
@@ -277,7 +281,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: x
+            return raise_
 
     data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticWithUnitVariance()}
@@ -326,3 +330,171 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
+
+
+@pytest.mark.parametrize("sample_size", [-5, -1])
+def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        IndependentReparametrizationSampler(sample_size, QuadraticWithUnitVariance())
+
+
+def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
+    sampler = IndependentReparametrizationSampler(1, QuadraticWithUnitVariance())
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        sampler.sample(tf.constant(0))
+
+
+class _ArbitraryDimTwoOutputModel(GaussianMarginal):
+    def __init__(self, factor: float = 1):
+        super().__init__()
+        self._factor = factor
+
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        tf.debugging.assert_shapes([(query_points, (..., 1))])
+        latent1 = tf.sin(query_points ** 2) + self._factor * tf.cos(query_points)
+        latent2 = tf.sin(query_points) - self._factor * tf.cos(query_points ** 2)
+        mean_ = tf.concat([latent1, latent2], axis=-1)
+        return mean_, tf.sin(mean_) ** 2
+
+
+def _assert_kolmogorov_smirnov_95(
+    # fmt: off
+    samples: tf.Tensor,  # [..., S]
+    distribution: tfp.distributions.Distribution
+    # fmt: on
+) -> None:
+    assert distribution.event_shape == ()
+    tf.debugging.assert_shapes([(samples, [..., "S"])])
+
+    sample_size = samples.shape[-1]
+    samples_sorted = tf.sort(samples, axis=-1)  # [..., S]
+    edf = tf.range(1.0, sample_size + 1) / sample_size  # [S]
+    expected_cdf = distribution.cdf(samples_sorted)  # [..., S]
+
+    _95_percent_bound = 1.36 / math.sqrt(sample_size)
+    assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+    sample_size = 100
+    x = tf.linspace([-10.0], [10.0], 20)  # [N, 1]
+
+    model = _ArbitraryDimTwoOutputModel()
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, L]
+
+    assert samples.shape == [len(x), sample_size, 2]
+
+    mean, var = model.predict(x)  # [N, L], [N, L]
+    _assert_kolmogorov_smirnov_95(
+        tf.linalg.matrix_transpose(samples),
+        tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
+    )
+
+
+@random_seed
+def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
+    sampler = IndependentReparametrizationSampler(100, _ArbitraryDimTwoOutputModel())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    diff = tf.abs(sampler.sample(xs + 1e-9) - sampler.sample(xs))
+    npt.assert_array_less(diff, 1e-9)
+
+
+def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
+    sampler = IndependentReparametrizationSampler(100, _ArbitraryDimTwoOutputModel())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+@random_seed
+def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
+    sampler1 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    sampler2 = IndependentReparametrizationSampler(100, QuadraticWithUnitVariance())
+    xs = tf.linspace([-10.0], [10.0], 100)
+    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
+
+
+def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    class _Acq(MCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            samplers: Mapping[str, IndependentReparametrizationSampler],
+        ) -> AcquisitionFunction:
+            return raise_
+
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        _Acq(-1)
+
+
+@random_seed
+def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
+    class _Acq(MCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            samplers: Mapping[str, IndependentReparametrizationSampler],
+        ) -> AcquisitionFunction:
+            assert samplers.keys() == {"foo", "bar", "baz"}
+
+            x = tf.linspace([-10.0], [10.0], 20)
+
+            for key in samplers:
+                samples = samplers[key].sample(x)
+                mean, var = models[key].predict(x)
+                _assert_kolmogorov_smirnov_95(
+                    tf.linalg.matrix_transpose(samples),
+                    tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
+                )
+
+            return raise_
+
+    data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
+    _Acq(20_000).prepare_acquisition_function(
+        {"foo": data, "bar": data, "baz": data},
+        {
+            "foo": _ArbitraryDimTwoOutputModel(-1),
+            "bar": _ArbitraryDimTwoOutputModel(0),
+            "baz": _ArbitraryDimTwoOutputModel(1),
+        },
+    )
+
+
+def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            return raise_
+
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        _Acq(-1)
+
+
+@random_seed
+def test_single_model_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
+    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
+        def _build_with_sampler(
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            sampler: IndependentReparametrizationSampler,
+        ) -> AcquisitionFunction:
+            x = tf.linspace([-10.0], [10.0], 20)
+            samples = sampler.sample(x)
+            mean, var = model.predict(x)
+            _assert_kolmogorov_smirnov_95(
+                tf.linalg.matrix_transpose(samples),
+                tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
+            )
+            return raise_
+
+    data = Dataset(tf.zeros([0, 1]), tf.zeros([0, 2]))
+    _Acq(100).prepare_acquisition_function(data, _ArbitraryDimTwoOutputModel())

@@ -16,13 +16,11 @@ from typing import Callable, Mapping, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import final
 
 from ..data import Dataset
 from ..type import QueryPoints
 from ..models import ProbabilisticModel
-from ..space import SearchSpace
-
-from scipy.optimize import bisect
 
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
@@ -164,114 +162,6 @@ def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoi
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
-
-
-class MaxValueEntropySearch(SingleModelAcquisitionBuilder):
-    """
-    Builder for the max-value entropy search acquisition function (for function minimisation)
-    """
-
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
-        """
-        :param search_space: The global search space over which the Bayesian optimisation problem is defined.
-        :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution
-            (recommend scaling with search space dimension).
-        """
-        self._search_space = search_space
-
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
-        self._num_samples = num_samples
-
-        if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
-        self._grid_size = grid_size
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        Need to sample possible min-values from our posterior.
-        To do this we implement a Gumbel sampler.
-        We approximate Pr(y*^hat<y) by Gumbel(a,b) then sample from Gumbel.
-
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
-        :return: The MES function.
-        """
-        query_points = self._search_space.sample(self._grid_size)
-        query_points = tf.concat([dataset.query_points, query_points], 0)
-        fmean, fvar = model.predict(query_points)
-        fsd = tf.math.sqrt(fvar)
-
-        def probf(x: tf.Tensor) -> tf.Tensor:  # Build empirical CDF
-            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(-(x - fmean) / fsd)
-            return tf.exp(tf.reduce_sum(log_cdf, axis=0))
-
-        left = tf.reduce_min(fmean - 5 * fsd)
-        right = tf.reduce_max(fmean + 5 * fsd)
-
-        def binary_search(val: float) -> float:  # Fit Gumbel quantiles
-            return bisect(lambda x: probf(x) - val, left, right, maxiter=10000, xtol=0.00001)
-
-        q1, med, q2 = map(binary_search, [0.25, 0.5, 0.75])
-
-        b = (q1 - q2) / (tf.math.log(tf.math.log(4.0 / 3.0)) - tf.math.log(tf.math.log(4.0)))
-        a = med + b * tf.math.log(tf.math.log(2.0))
-
-        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        gumbel_samples = -tf.math.log(-tf.math.log(uniform_samples)) * tf.cast(
-            b, fmean.dtype
-        ) + tf.cast(a, fmean.dtype)
-
-        return lambda at: self._acquisition_function(model, gumbel_samples, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
-    ) -> tf.Tensor:
-        return max_value_entropy_search(model, samples, at)
-
-
-def max_value_entropy_search(
-    model: ProbabilisticModel, samples: tf.Tensor, at: QueryPoints
-) -> tf.Tensor:
-    r"""
-    Computes the information gain, i.e the change in entropy of p_min (the distriubtion of the
-    minimal value of the objective function) if we would evaluate x.
-
-    See the following for details:
-
-    ::
-
-        @article{wang2017max,
-          title={Max-value entropy search for efficient Bayesian optimization},
-          author={Wang, Zi and Jegelka, Stefanie},
-          journal={arXiv preprint arXiv:1703.01968},
-          year={2017}
-        }
-
-    :param model: The model of the objective function.
-    :param samples: Samples from p_min
-    :param at: The points for which to calculate the expected improvement.
-    :return: The entropy reduction provided by an evaluation of ``at``.
-    """
-    fmean, fvar = model.predict(at)
-    fsd = tf.math.sqrt(fvar)
-    fsd = tf.clip_by_value(
-        fsd, 1.0e-8, fmean.dtype.max
-    )  # clip below to improve numerical stability
-
-    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-    gamma = (samples - fmean) / fsd
-
-    minus_cdf = 1 - normal.cdf(gamma)
-    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
-    f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
-
-    return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
@@ -455,18 +345,18 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
     ::
 
-    @inproceedings{gardner14,
-        title={Bayesian Optimization with Inequality Constraints},
-        author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
-        booktitle={Proceedings of the 31st International Conference on Machine Learning},
-        year={2014},
-        volume={32},
-        number={2},
-        series={Proceedings of Machine Learning Research},
-        month={22--24 Jun},
-        publisher={PMLR},
-        url={http://proceedings.mlr.press/v32/gardner14.html},
-    }
+        @inproceedings{gardner14,
+            title={Bayesian Optimization with Inequality Constraints},
+            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+            booktitle={Proceedings of the 31st International Conference on Machine Learning},
+            year={2014},
+            volume={32},
+            number={2},
+            series={Proceedings of Machine Learning Research},
+            month={22--24 Jun},
+            publisher={PMLR},
+            url={http://proceedings.mlr.press/v32/gardner14.html},
+        }
 
     """
 
@@ -526,6 +416,138 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
+class IndependentReparametrizationSampler:
+    r"""
+    This sampler employs the *reparameterization trick* to approximate samples from a
+    :class:`ProbabilisticModel`\ 's predictive distribution as
+
+    .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+    where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+    samples form a continuous curve.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+        self._eps = tf.Variable(
+            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
+        )  # [S, 0]
+        self._model = model
+
+    def sample(self, at: QueryPoints) -> tf.Tensor:
+        """
+        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+        :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+        produce the exact same samples. Calls to :meth:`sample` on *different*
+        :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
+            of dimension `D`.
+        :return: The samples, of shape `[..., S, L]`, where `S` is the `sample_size` and `L` is the
+            number of latent model dimensions.
+        :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
+        """
+        tf.debugging.assert_rank_at_least(at, 1)
+        mean, cov = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
+
+        if tf.size(self._eps) == 0:
+            self._eps.assign(
+                tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
+            )  # [S, L]
+
+        return mean + tf.sqrt(cov) * tf.cast(self._eps, cov.dtype)  # [..., S, L]
+
+
+class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
+    """
+    A :class:`MCIndAcquisitionFunctionBuilder` builds an acquisition function that
+    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
+    estimation via the reparameterization trick. This class is essentially a convenience
+    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+    """
+
+    def __init__(self, sample_size: int):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+        self._sample_size = sample_size
+
+    @final
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        samplers = {
+            key: IndependentReparametrizationSampler(self._sample_size, model)
+            for key, model in models.items()
+        }
+        return self._build_with_sampler(datasets, models, samplers)
+
+    @abstractmethod
+    def _build_with_sampler(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        samplers: Mapping[str, IndependentReparametrizationSampler],
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :param samplers: A sampler for each model in ``models``.
+        :return: An acquisition function.
+        """
+
+
+class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
+    """
+    A :class:`SingleModelMCIndAcquisitionFunctionBuilder` builds an acquisition function that
+    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
+    estimation via the reparameterization trick. This class is essentially a convenience
+    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+
+    Subclasses implement :meth:`_build_with_samples` which, in addition to the arguments `dataset`
+    and `model`, provides a :class:`IndependentReparametrizationSampler` which can be used to
+    approximate continuous samples from the model.
+    """
+
+    def __init__(self, sample_size: int):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+        self._sample_size = sample_size
+
+    @final
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        sampler = IndependentReparametrizationSampler(self._sample_size, model)
+        return self._build_with_sampler(dataset, model, sampler)
+
+    @abstractmethod
+    def _build_with_sampler(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        sampler: IndependentReparametrizationSampler,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :param sampler: A sampler for ``model``.
+        :return: An acquisition function.
+        """
 
 
 class BatchAcquisitionFunctionBuilder(ABC):

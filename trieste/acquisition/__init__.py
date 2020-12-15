@@ -37,17 +37,20 @@ UCB.
 from . import rule
 from .function import (
     AcquisitionFunction,
+    BatchAcquisitionFunction,
     AcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
+    BatchAcquisitionFunctionBuilder,
     ExpectedImprovement,
     expected_improvement,
-    MaxValueEntropySearch,
-    max_value_entropy_search,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     lower_confidence_bound,
     ProbabilityOfFeasibility,
     probability_of_feasibility,
     ExpectedConstrainedImprovement,
+    IndependentReparametrizationSampler,
+    MCIndAcquisitionFunctionBuilder,
+    SingleModelMCIndAcquisitionFunctionBuilder,
 )
 from .combination import Reducer, Product, Sum
