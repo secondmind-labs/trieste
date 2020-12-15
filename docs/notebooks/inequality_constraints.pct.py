@@ -153,10 +153,16 @@ if result.error is not None: raise result.error
 
 # %%
 constraint_data = result.datasets[CONSTRAINT]
-new_data = (constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:])
+new_query_points = constraint_data.query_points[-num_steps:]
+new_observations = constraint_data.observations[-num_steps:]
+new_data = (new_query_points, new_observations)
 
 util.plot_init_query_points(
-    search_space, Sim, astuple(initial_data[OBJECTIVE]), astuple(initial_data[CONSTRAINT]), new_data
+    search_space,
+    Sim,
+    astuple(initial_data[OBJECTIVE]),
+    astuple(initial_data[CONSTRAINT]),
+    new_data,
 )
 plt.show()
 

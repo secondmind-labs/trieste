@@ -139,7 +139,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 class NatGradTrainedVGP(VariationalGaussianProcess):
-    def optimize(self, dataset: trieste.data.Dataset):
+    def optimize(self, dataset):
         set_trainable(self.model.q_mu, False)
         set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
