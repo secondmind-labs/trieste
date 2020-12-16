@@ -70,7 +70,6 @@ def test_optimizer_finds_minima_of_the_branin_function(
         initial_data,
         {OBJECTIVE: model},
         acquisition_rule,
-        # TODO(awav): see HashableWeakRef error in GPflow
         track_state=False,
     )
 
