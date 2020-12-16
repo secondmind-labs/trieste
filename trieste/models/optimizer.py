@@ -113,7 +113,7 @@ Data = Union[Tuple[tf.Tensor, tf.Tensor], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
 
 @singledispatch
 def create_loss_function(model, dataset: Data, compile: Optional[bool] = False) -> LossClosure:
-    pass
+    raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
 
 
 @create_loss_function.register
