@@ -21,15 +21,15 @@ import tensorflow as tf
 from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 from trieste.data import Dataset
-from trieste.models import TrainableProbabilisticModel, ProbabilisticModel
+from trieste.models import TrainableProbabilisticModel
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance, PseudoTrainableProbModel, GaussianMarginal
+from tests.util.model import QuadraticWithUnitVariance, PseudoProbabilisticModel, GaussianMarginal
 
 
-class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoTrainableProbModel):
+class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoProbabilisticModel):
     pass
 
 
@@ -97,7 +97,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
+            models: Mapping[str, TrainableProbabilisticModel],
             state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             self.states_received.append(state)
@@ -135,11 +135,11 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
-    class ExponentialWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
+    class ExponentialWithUnitVariance(GaussianMarginal, PseudoProbabilisticModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return tf.exp(-query_points), tf.ones_like(query_points)
 
-    class LinearWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
+    class LinearWithUnitVariance(GaussianMarginal, PseudoProbabilisticModel):
         def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
             return 2 * query_points, tf.ones_like(query_points)
 
@@ -151,7 +151,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
+            models: Mapping[str, TrainableProbabilisticModel],
             previous_state: Optional[int],
         ) -> Tuple[QueryPoints, int]:
             if previous_state is None:

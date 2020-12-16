@@ -189,8 +189,9 @@ class BayesianOptimizer(Generic[SP]):
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
 
                 for tag, model in models.items():
-                    model.update(datasets[tag])
-                    model.optimize()
+                    dataset = datasets[tag]
+                    model.update(dataset)
+                    model.optimize(dataset)
 
             except Exception as error:
                 tf.print(
@@ -211,7 +212,10 @@ def _save_to_history(
     models: Mapping[str, TrainableProbabilisticModel],
     acquisition_state: Optional[S],
 ) -> None:
-    models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
+    def _deepcopy(o):
+        return gpflow.utilities.deepcopy(o)
+
+    models_copy = {tag: _deepcopy(m) for tag, m in models.items()}
     datasets_copy = {tag: ds for tag, ds in datasets.items()}
     logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
     history.append(logging_state)

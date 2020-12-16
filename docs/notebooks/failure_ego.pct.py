@@ -32,9 +32,7 @@ from trieste.models import ModelSpec
 from gpflow.models import VGP
 from gpflow.optimizers import NaturalGradient
 
-from util.plotting_plotly import (
-    plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
-)
+from util.plotting_plotly import plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 # %%
@@ -118,14 +116,14 @@ initial_data = observer(search_space.sample(num_init_points))
 # %%
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2, ))
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
     set_trainable(gpr.likelihood, False)
     return gpr
 
 
 def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(variance=100., lengthscales=0.2 * np.ones(2, ))
+    kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=0.2 * np.ones(2))
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
     set_trainable(vgp.kernel.variance, False)
@@ -141,7 +139,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 class NatGradTrainedVGP(VariationalGaussianProcess):
-    def optimize(self):
+    def optimize(self, dataset):
         set_trainable(self.model.q_mu, False)
         set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
@@ -160,9 +158,11 @@ models: Dict[str, ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {"options": dict(maxiter=100)},
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
     },
-    FAILURE: NatGradTrainedVGP(classification_model)
+    FAILURE: NatGradTrainedVGP(classification_model),
 }
 
 # %% [markdown]

@@ -16,6 +16,7 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import numpy as np
 
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -50,7 +51,7 @@ from tests.util.misc import random_seed
 def test_optimizer_finds_minima_of_the_branin_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
-    search_space = Box(tf.constant([0.0, 0.0], tf.float64), tf.constant([1.0, 1.0], tf.float64))
+    search_space = Box(np.array([0.0, 0.0]), np.array([1.0, 1.0]))
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
@@ -65,7 +66,11 @@ def test_optimizer_finds_minima_of_the_branin_function(
     model = build_model(initial_data[OBJECTIVE])
 
     res = BayesianOptimizer(observer, search_space).optimize(
-        num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule
+        num_steps,
+        initial_data,
+        {OBJECTIVE: model},
+        acquisition_rule,
+        track_state=False,
     )
 
     if res.error is not None:

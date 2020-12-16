@@ -53,6 +53,7 @@ class Sim:
         z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
         return z[:, None]
 
+
 search_space = trieste.space.Box(
     tf.cast([0.0, 0.0], default_float()), tf.cast([6.0, 6.0], default_float())
 )
@@ -74,8 +75,9 @@ CONSTRAINT = "CONSTRAINT"
 def observer(query_points):
     return {
         OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points))
+        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -91,7 +93,7 @@ util.plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT])
+    astuple(initial_data[CONSTRAINT]),
 )
 plt.show()
 
@@ -111,13 +113,16 @@ def create_bo_model(data):
         {
             "model": gpr,
             "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {"options": dict(maxiter=100)},
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
         }
     )
 
+
 models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
 }
 
 # %% [markdown]
@@ -148,16 +153,16 @@ if result.error is not None: raise result.error
 
 # %%
 constraint_data = result.datasets[CONSTRAINT]
-new_data = (
-    constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:]
-)
+new_query_points = constraint_data.query_points[-num_steps:]
+new_observations = constraint_data.observations[-num_steps:]
+new_data = (new_query_points, new_observations)
 
 util.plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),
     astuple(initial_data[CONSTRAINT]),
-    new_data
+    new_data,
 )
 plt.show()
 

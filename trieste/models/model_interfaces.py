@@ -15,15 +15,17 @@ from abc import abstractmethod, ABC
 from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
 
 import gpflow
+from dataclasses import dataclass
 from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
 import tensorflow as tf
 
+from .optimizer import Optimizer
 from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 
 
-class ProbabilisticModel(ABC):
+class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
@@ -57,114 +59,27 @@ class TrainableProbabilisticModel(ProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
-
         :param dataset: The data with which to update the model.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def optimize(self) -> None:
+    def optimize(self, dataset: Dataset) -> None:
         """ Optimize the model parameters. """
         raise NotImplementedError
 
 
-Optimizer = Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
+class GPflowPredictor(ProbabilisticModel, ABC):
+    """ A trainable wrapper for a GPflow Gaussian process model. """
 
-
-class CustomTrainable(tf.Module, TrainableProbabilisticModel, ABC):
-    """
-    A utility class that provides a default optimization strategy, as well as the ability to modify
-    various elements of this strategy.
-
-    :cvar maxiter_default: The default maximum number of iterations to optimize the model for, when
-        using a :class:`tf.optimizers.Optimizer`.
-    :cvar create_optimizer_default: Builder for the default optimizer.
-    :cvar apply_jit_function: If `True`, the default optimization procedure is compiled
-        with :func:`tf.function`.
-    """
-
-    maxiter_default = 1000
-    create_optimizer_default: Callable[[], Optimizer] = gpflow.optimizers.Scipy
-    apply_jit_function = False
-
-    @abstractmethod
-    def loss(self) -> tf.Tensor:
-        """ The training loss (to be minimized) on this model. """
-        raise NotImplementedError
-
-    @property
-    def optimizer(self) -> Optimizer:
-        """ The optimizer used to minimize the training loss. """
-        if not hasattr(self, "_optimizer") or self._optimizer is None:
-            self.set_optimizer(type(self).create_optimizer_default())
-        return self._optimizer
-
-    def set_optimizer(self, optimizer: Optimizer) -> None:
-        """
-        :param optimizer: The optimizer to use.
-        """
+    def __init__(self, optimizer: Optional[Optimizer] = None):
+        if optimizer is None:
+            optimizer = Optimizer(gpflow.optimizers.Scipy())
         self._optimizer = optimizer
 
     @property
-    def optimizer_args(self) -> Dict[str, Any]:
-        """ Keyword arguments passed to the optimizer during optimization. """
-        if not hasattr(self, "_optimizer_args") or self._optimizer_args is None:
-            self.set_optimizer_args(dict())
-        return self._optimizer_args
-
-    def set_optimizer_args(self, args: Dict[str, Any]) -> None:
-        """
-        :param args: The keyword arguments to use.
-        """
-        self._optimizer_args = args
-
-    def optimize(self) -> None:
-        if not hasattr(self, "_optimize_fn") or self._optimize_fn is None:
-            self.set_optimize()
-        return self._optimize_fn()
-
-    def set_optimize(self, optimize_fn: Optional[Callable[[], None]] = None) -> None:
-        """
-        :param optimize_fn: The function to call on `optimize`. By default, constructs an
-            optimization procedure from the current `loss`, `optimizer` and `optimizer_args`.
-        """
-        if optimize_fn is not None:
-            self._optimize_fn = optimize_fn
-            return
-
-        if isinstance(self.optimizer, gpflow.optimizers.Scipy):
-
-            def optimization_fn() -> None:
-                @utils.jit(apply=self.apply_jit_function, autograph=True)
-                def loss_fn() -> tf.Tensor:
-                    return self.loss()
-
-                trainables = self.model.trainable_variables
-                return self.optimizer.minimize(loss_fn, variables=trainables, **self.optimizer_args)
-
-        elif isinstance(self.optimizer, tf.optimizers.Optimizer):
-
-            def optimization_fn() -> None:
-                @utils.jit(apply=self.apply_jit_function, autograph=True)
-                def loss_fn() -> tf.Tensor:
-                    return self.loss()
-
-                trainables = self.model.trainable_variables
-                args = self.optimizer_args.copy()
-                maxiter = args.pop("maxiter", self.maxiter_default)
-                for _ in range(maxiter):
-                    self.optimizer.minimize(loss_fn, var_list=trainables, **args)
-
-        else:
-            raise RuntimeError(
-                f"Unknown type of optimizer ({type(self.optimizer)}) has been passed"
-            )
-
-        self._optimize_fn = optimization_fn
-
-
-class GPflowPredictor(ProbabilisticModel, ABC):
-    """ A wrapper for a GPflow Gaussian process model. """
+    def optimizer(self) -> Optimizer:
+        return self._optimizer
 
     @property
     @abstractmethod
@@ -177,21 +92,24 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         return self.model.predict_f_samples(query_points, num_samples)
 
+    def optimize(self, dataset: Dataset):
+        self.optimizer.optimize(self.model, dataset)
 
-class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
-    def __init__(self, model: Union[GPR, SGPR]):
+
+class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
+    def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow model to wrap.
         """
-        super().__init__()
+        super().__init__(optimizer)
         self._model = model
 
     @property
     def model(self) -> Union[GPR, SGPR]:
         return self._model
 
-    def loss(self) -> tf.Tensor:
-        return self._model.training_loss()
+    def optimize(self, dataset: Dataset):
+        self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
@@ -205,39 +123,25 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
         self.model.data = dataset.query_points, dataset.observations
 
 
-Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
-"""
-Type alias for a function that creates minibatches from a :class:`~trieste.data.Dataset`.
-"""
-
-
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(
-        self,
-        model: SVGP,
-        data: Dataset,
-        optimizer: tf.optimizers.Optimizer,
-        iterations: int,
-        batcher: Batcher = lambda ds: [(ds.query_points, ds.observations)],
-        apply_jit: bool = False,
-    ):
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
+        :param optimizer: The optimizer to use for optimization.
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
         :param iterations: The number of iterations for which to optimize the model.
-        :param optimizer: The optimizer to use for optimization.
         :param batcher: A function to convert training data into (mini)batches for optimization.
         """
-        self._optimizer = optimizer
-        self._iterations = iterations
-        self._batcher = batcher
+        super().__init__(optimizer)
         self._model = model
         self._data = data
-        self._apply_jit = apply_jit
 
     @property
     def model(self) -> SVGP:
         return self._model
+
+    def optimize(self, dataset: Dataset):
+        self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
         if dataset.query_points.shape[-1] != self._data.query_points.shape[-1]:
@@ -250,22 +154,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
-
-    def optimize(self) -> None:
-        """
-        Optimize the model in batches defined by the ``batcher`` argument to :meth:`__init__`.
-        """
-
-        @utils.jit(apply=self._apply_jit)
-        def _step(batch: Tuple[tf.Tensor, tf.Tensor]) -> None:
-            self._optimizer.minimize(
-                self._model.training_loss_closure(batch), self._model.trainable_variables
-            )
-
-        batch_iterator = self._batcher(self._data)
-        for i, batch in enumerate(batch_iterator):
-            if i < self._iterations:
-                _step(batch)
 
 
 class VariationalGaussianProcess(GaussianProcessRegression):
@@ -301,7 +189,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
+supported_models: Dict[Any, Callable[[Any], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,

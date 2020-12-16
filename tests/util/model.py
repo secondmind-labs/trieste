@@ -20,22 +20,22 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from trieste.data import Dataset
-from trieste.models import TrainableProbabilisticModel, ProbabilisticModel
+from trieste.models import TrainableProbabilisticModel
 from trieste.type import QueryPoints, ObserverEvaluations, TensorType
 from tests.util.misc import random_seed
 
 
-class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
+class PseudoProbabilisticModel(TrainableProbabilisticModel, ABC):
     """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
 
     def update(self, dataset: Dataset) -> None:
         pass
 
-    def optimize(self) -> None:
+    def optimize(self, dataset: Dataset) -> None:
         pass
 
 
-class GaussianMarginal(ProbabilisticModel, ABC):
+class GaussianMarginal(PseudoProbabilisticModel, ABC):
     """ A probabilistic model with a Gaussian marginal distribution at each point. """
 
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
