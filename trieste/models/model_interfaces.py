@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
 from .optimizer import Optimizer
@@ -104,6 +102,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._model!r}, {self.optimizer!r})"
+
     @property
     def model(self) -> Union[GPR, SGPR]:
         return self._model
@@ -137,6 +138,9 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
         self._data = data
+
+    def __repr__(self) -> str:
+        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:

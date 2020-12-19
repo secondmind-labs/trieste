@@ -91,6 +91,9 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         """
         self._qp = query_points
 
+    def __repr__(self) -> str:
+        return f"FixedAcquisitionRule({self._qp!r})"
+
     def acquire(
         self,
         search_space: SearchSpace,

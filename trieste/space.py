@@ -93,6 +93,9 @@ class DiscreteSearchSpace(SearchSpace):
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
 
+    def __repr__(self) -> str:
+        return f"DiscreteSearchSpace({self._points!r})"
+
     @property
     def points(self) -> TensorType:
         """ All the points in this space. """
@@ -181,6 +184,9 @@ class Box(SearchSpace):
 
         self._lower = lower
         self._upper = upper
+
+    def __repr__(self) -> str:
+        return f"Box({self._lower!r}, {self._upper!r})"
 
     @property
     def lower(self) -> TensorType:

@@ -92,6 +92,9 @@ class Sum(Reducer):
     outputs of constituent acquisition functions.
     """
 
+    def __repr__(self) -> str:
+        return "Sum()"
+
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """
         :param inputs: The outputs of each acquisition function.
@@ -105,6 +108,9 @@ class Product(Reducer):
     :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
     outputs of constituent acquisition functions.
     """
+
+    def __repr__(self) -> str:
+        return "Product()"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """
