@@ -400,7 +400,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     def __repr__(self) -> str:
         return (
             f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
-            f" {self._min_feasibility_probability})"
+            f" {self._min_feasibility_probability!r})"
         )
 
     def prepare_acquisition_function(

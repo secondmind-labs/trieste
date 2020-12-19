@@ -146,7 +146,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
-        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points})"
+        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
 
     def acquire(
         self,
