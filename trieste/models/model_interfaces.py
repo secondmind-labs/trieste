@@ -114,6 +114,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
 
+        _assert_data_is_compatible(dataset, Dataset(x, y))
+
         if dataset.query_points.shape[-1] != x.shape[-1]:
             raise ValueError
 
@@ -144,11 +146,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
-        if dataset.query_points.shape[-1] != self._data.query_points.shape[-1]:
-            raise ValueError
-
-        if dataset.observations.shape[-1] != self._data.observations.shape[-1]:
-            raise ValueError
+        _assert_data_is_compatible(dataset, self._data)
 
         self._data = dataset
 
@@ -157,11 +155,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GaussianProcessRegression):
-    def update(self, dataset: Dataset):
+    def update(self, dataset: Dataset) -> None:
         model = self.model
         x, y = model.data
-        assert dataset.query_points.shape[-1] == x.shape[-1]
-        assert dataset.observations.shape[-1] == y.shape[-1]
+
+        _assert_data_is_compatible(dataset, Dataset(x, y))
+
         data = (dataset.query_points, dataset.observations)
         num_data = data[0].shape[0]
 
@@ -198,3 +197,19 @@ supported_models: Dict[Any, Callable[[Any], TrainableProbabilisticModel]] = {
 :var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
 that wrap models of those types.
 """
+
+
+def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
+    if new_data.query_points.shape[-1] != existing_data.query_points.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.query_points.shape} of new query points is incompatible with"
+            f" shape {existing_data.query_points.shape} of existing query points. Trailing"
+            f" dimensions must match."
+        )
+
+    if new_data.observations.shape[-1] != existing_data.observations.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.observations.shape} of new observations is incompatible with"
+            f" shape {existing_data.observations.shape} of existing observations. Trailing"
+            f" dimensions must match."
+        )
