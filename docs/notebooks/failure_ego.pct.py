@@ -86,12 +86,10 @@ initial_data = observer(search_space.sample(num_init_points))
 # We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
 
 # %%
-from dataclasses import astuple
-
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
@@ -99,7 +97,7 @@ def create_regression_model(data):
 def create_classification_model(data):
     kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=0.2 * np.ones(2))
     likelihood = gpflow.likelihoods.Bernoulli()
-    vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
+    vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
     gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
 

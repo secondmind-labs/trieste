@@ -188,3 +188,10 @@ def test_dataset_length(data: Dataset, length: int) -> None:
 def test_dataset_deepcopy() -> None:
     data = Dataset(tf.constant([[0.0, 1.0]]), tf.constant([[2.0]]))
     assert_datasets_allclose(data, copy.deepcopy(data))
+
+
+def test_dataset_astuple() -> None:
+    qp, obs = tf.constant([[0.0]]), tf.constant([[1.0]])
+    qp_from_astuple, obs_from_astuple = Dataset(qp, obs).astuple()
+    assert qp_from_astuple is qp
+    assert obs_from_astuple is obs

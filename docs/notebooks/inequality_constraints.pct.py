@@ -70,14 +70,13 @@ initial_data = observer(search_space.sample(5))
 # ... and visualise those points on the constrained objective.
 
 # %%
-from dataclasses import astuple
 from util.inequality_constraints_utils import plot_init_query_points
 
 plot_init_query_points(
     search_space,
     Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT]),
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
 )
 plt.show()
 
@@ -91,7 +90,7 @@ def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.create_model(
         {
@@ -143,8 +142,8 @@ new_data = (new_query_points, new_observations)
 plot_init_query_points(
     search_space,
     Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT]),
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
     new_data,
 )
 plt.show()

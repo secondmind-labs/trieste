@@ -34,11 +34,9 @@ initial_data = observer(initial_query_points)
 # We'll use Gaussian process regression to model the function.
 
 # %%
-from dataclasses import astuple
-
 observations = initial_data[OBJECTIVE].observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
-gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5)
 gpflow.set_trainable(gpr.likelihood, False)
 
 model_config = {
