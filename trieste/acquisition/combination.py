@@ -23,7 +23,7 @@ from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
 class Reducer(AcquisitionFunctionBuilder):
-    """
+    r"""
     A :class:`Reducer` builds an :func:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
     :func:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is
