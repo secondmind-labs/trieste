@@ -172,15 +172,15 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
     minimised, so the negative is suitable for maximisation.
     """
 
-    def __repr__(self) -> str:
-        return "NegativeLowerConfidenceBound()"
-
     def __init__(self, beta: float = 1.96):
         """
         :param beta: Weighting given to the variance contribution to the lower confidence bound.
             Must not be negative.
         """
         self._beta = beta
+
+    def __repr__(self) -> str:
+        return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -204,11 +204,11 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
     the objective function. The negative predictive mean is therefore maximised.
     """
 
-    def __repr__(self) -> str:
-        return "NegativePredictiveMean()"
-
     def __init__(self):
         super().__init__(beta=0.0)
+
+    def __repr__(self) -> str:
+        return "NegativePredictiveMean()"
 
 
 def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
