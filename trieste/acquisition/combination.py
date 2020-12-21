@@ -44,6 +44,9 @@ class Reducer(AcquisitionFunctionBuilder):
             )
         self._acquisitions = builders
 
+    def _repr_builders(self) -> str:
+        return ", ".join(map(repr, self._acquisitions))
+
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
@@ -93,7 +96,7 @@ class Sum(Reducer):
     """
 
     def __repr__(self) -> str:
-        return "Sum()"
+        return f"Sum({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """
@@ -110,7 +113,7 @@ class Product(Reducer):
     """
 
     def __repr__(self) -> str:
-        return "Product()"
+        return f"Product({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """
