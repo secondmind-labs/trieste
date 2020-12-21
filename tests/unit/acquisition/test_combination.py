@@ -62,6 +62,7 @@ def test_reducer__repr_builders() -> None:
         def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
             return inputs[0]
 
+    assert repr(Foo(Acq1())) == "Foo(Acq1())"
     assert repr(Foo(Acq1(), Acq2())) == "Foo(Acq1(), Acq2())"
 
 
