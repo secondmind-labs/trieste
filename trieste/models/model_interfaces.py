@@ -63,7 +63,11 @@ class TrainableProbabilisticModel(ProbabilisticModel):
 
     @abstractmethod
     def optimize(self, dataset: Dataset) -> None:
-        """ Optimize the model parameters. """
+        """
+        Optimize the model parameters with respect to the specified ``dataset``.
+
+        :param dataset: The data with which to optimize the model.
+        """
         raise NotImplementedError
 
 
@@ -71,8 +75,14 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
     def __init__(self, optimizer: Optional[Optimizer] = None):
+        """
+        :param optimizer: The optimizer to use for optimization.
+        """
+        super().__init__()
+
         if optimizer is None:
             optimizer = Optimizer(gpflow.optimizers.Scipy())
+
         self._optimizer = optimizer
 
     @property
@@ -90,7 +100,7 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
         return self.model.predict_f_samples(query_points, num_samples)
 
-    def optimize(self, dataset: Dataset):
+    def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)
 
 
@@ -98,6 +108,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow model to wrap.
+        :param optimizer: The optimizer to use for optimization.
         """
         super().__init__(optimizer)
         self._model = model
@@ -109,7 +120,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> Union[GPR, SGPR]:
         return self._model
 
-    def optimize(self, dataset: Dataset):
+    def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
@@ -132,8 +143,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         :param optimizer: The optimizer to use for optimization.
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
-        :param iterations: The number of iterations for which to optimize the model.
-        :param batcher: A function to convert training data into (mini)batches for optimization.
         """
         super().__init__(optimizer)
         self._model = model
@@ -146,7 +155,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> SVGP:
         return self._model
 
-    def optimize(self, dataset: Dataset):
+    def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
@@ -195,7 +204,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], TrainableProbabilisticModel]] = {
+supported_models: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,

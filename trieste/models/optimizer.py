@@ -1,3 +1,16 @@
+# Copyright 2020 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from dataclasses import dataclass, field
 from functools import singledispatch
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
@@ -12,7 +25,7 @@ from ..utils import jit
 
 DatasetTransformer = Callable[[Dataset, Optional[int]], Union[Iterable, Tuple]]
 """
-Type alias for a function that maps a dataset from a :class:`~optiflow.datasets.Dataset`
+Type alias for a function that maps a dataset from a :class:`~optiflow.data.Dataset`
 and generates an iterator over the transformation.
 """
 
@@ -23,8 +36,8 @@ Type alias for a loss closure that is used generally for optimizing.
 
 OptimizeResult = Union[scipy.optimize.OptimizeResult, None]
 """
-Optimization result. For scipy optimizer it is :class:`~scipy.optimize.OptmizeResult`.
-TensorFlow opitimizer doesn't return any result.
+Optimization result. For scipy optimizer it is :class:`~scipy.optimize.OptimizeResult`.
+TensorFlow optimizer doesn't return any result.
 """
 
 

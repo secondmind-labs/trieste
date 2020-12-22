@@ -25,7 +25,7 @@ from trieste.models import TrainableProbabilisticModel
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 
-class PseudoProbabilisticModel(TrainableProbabilisticModel, ABC):
+class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
     """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
 
     def update(self, dataset: Dataset) -> None:
@@ -35,7 +35,7 @@ class PseudoProbabilisticModel(TrainableProbabilisticModel, ABC):
         pass
 
 
-class GaussianMarginal(PseudoProbabilisticModel, ABC):
+class GaussianMarginal(PseudoTrainableProbModel, ABC):
     """ A probabilistic model with a Gaussian marginal distribution at each point. """
 
     def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:

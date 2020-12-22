@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 r"""
-This package contains the primary interface for probabilistic models, based on
-:class:`ProbabilisticModel`. It contains a number of :class:`ProbabilisticModel`
-wrappers for GPflow models, as well as tooling for creating
-:class:`ProbabilisticModel`\ s from config.
+This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
+and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains a number of
+:class:`TrainableProbabilisticModel` wrappers for GPflow models, as well as tooling for creating
+:class:`TrainableProbabilisticModel`\ s from config.
 """
 from .config import ModelConfig, ModelSpec, create_model
 from .model_interfaces import (
