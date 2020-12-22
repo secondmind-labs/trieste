@@ -42,9 +42,9 @@ search_space = trieste.space.Box(
 
 # %%
 import matplotlib.pyplot as plt
-from util import inequality_constraints_utils as util
+from util.inequality_constraints_utils import plot_objective_and_constraints
 
-util.plot_objective_and_constraints(search_space, Sim)
+plot_objective_and_constraints(search_space, Sim)
 plt.show()
 
 # %% [markdown]
@@ -60,7 +60,6 @@ def observer(query_points):
         CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
 
-
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
 
@@ -72,8 +71,9 @@ initial_data = observer(search_space.sample(5))
 
 # %%
 from dataclasses import astuple
+from util.inequality_constraints_utils import plot_init_query_points
 
-util.plot_init_query_points(
+plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),
@@ -102,7 +102,6 @@ def create_bo_model(data):
             },
         }
     )
-
 
 models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
@@ -141,7 +140,7 @@ new_query_points = constraint_data.query_points[-num_steps:]
 new_observations = constraint_data.observations[-num_steps:]
 new_data = (new_query_points, new_observations)
 
-util.plot_init_query_points(
+plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),

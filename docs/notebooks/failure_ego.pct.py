@@ -81,7 +81,6 @@ def observer(x):
 num_init_points = 15
 initial_data = observer(search_space.sample(num_init_points))
 
-
 # %% [markdown]
 # ## Model the data
 #
