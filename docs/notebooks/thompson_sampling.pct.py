@@ -2,20 +2,9 @@
 # # Optimization with Thompson sampling
 
 # %%
-from dataclasses import astuple
-
-import numpy as np
-import tensorflow as tf
 import gpflow
+import tensorflow as tf
 
-import trieste
-from trieste.utils.objectives import branin, mk_observer
-from trieste.acquisition.rule import OBJECTIVE
-
-from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
-from util.plotting import plot_function_2d, plot_bo_points
-
-# %%
 gpflow.config.set_default_float(tf.float64)
 tf.random.set_seed(1793)
 
@@ -27,19 +16,25 @@ tf.random.set_seed(1793)
 # We'll use a continuous bounded search space, and evaluate the observer at ten random points.
 
 # %%
+import trieste
+from trieste.utils.objectives import branin
+from trieste.acquisition.rule import OBJECTIVE
+
 lower_bound = tf.constant([0.0, 0.0], gpflow.default_float())
 upper_bound = tf.constant([1.0, 1.0], gpflow.default_float())
 search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
-observer = mk_observer(branin, OBJECTIVE)
+observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # We'll use Gaussian process regression to model the function.
 
 # %%
+from dataclasses import astuple
+
 observations = initial_data[OBJECTIVE].observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
 gpr = gpflow.models.GPR(astuple(initial_data[OBJECTIVE]), kernel, noise_variance=1e-5)
@@ -85,6 +80,8 @@ dataset = result.datasets[OBJECTIVE]
 # We can take a look at where we queried the observer, both the original query points (crosses) and new query points (dots), and where they lie with respect to the contours of the Branin.
 
 # %%
+from util.plotting import plot_function_2d, plot_bo_points
+
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
@@ -98,6 +95,8 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # We can also visualise the observations on a three-dimensional plot of the Branin. We'll add the contours of the mean and variance of the model's predictive distribution as translucent surfaces.
 
 # %%
+from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+
 fig = plot_gp_plotly(gpr, lower_bound.numpy(), upper_bound.numpy(), grid_density=30)
 fig = add_bo_points_plotly(
     x=query_points[:, 0],

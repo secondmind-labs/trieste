@@ -2,25 +2,10 @@
 # # EGO with a failure region
 
 # %%
-from dataclasses import astuple
-
 import gpflow
-from gpflow import set_trainable
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from typing import Dict
-import trieste
-from trieste.utils import objectives
-from trieste.models.model_interfaces import VariationalGaussianProcess
-from trieste.models import ModelSpec
-from gpflow.models import VGP
-from gpflow.optimizers import NaturalGradient
 
-from util.plotting_plotly import plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
-from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
-
-# %%
 gpflow.config.set_default_jitter(1e-5)
 gpflow.config.set_default_float(np.float64)
 np.random.seed(1234)
@@ -34,9 +19,11 @@ tf.random.set_seed(1234)
 # We represent this setup with a function `masked_branin` that produces null values when evaluated in the disk with center $(0.5, 0.4)$ and radius $0.3$. It's important to remember that while _we_ know where this _failure region_ is, this function is a black box from the optimizer's point of view: the optimizer must learn it.
 
 # %%
+import trieste
+
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
-    y = np.array(objectives.branin(x))
+    y = np.array(trieste.utils.objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
@@ -56,6 +43,8 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 # region.
 
 # %%
+from util.plotting_plotly import plot_function_plotly
+
 fig = plot_function_plotly(masked_branin, mins, maxs, grid_density=70)
 fig.update_layout(height=400, width=400)
 fig.show()
@@ -99,11 +88,13 @@ initial_data = observer(search_space.sample(num_init_points))
 # We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
 
 # %%
+from dataclasses import astuple
+
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
-    set_trainable(gpr.likelihood, False)
+    gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
 
@@ -111,7 +102,7 @@ def create_classification_model(data):
     kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=0.2 * np.ones(2))
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(astuple(data), kernel, likelihood)
-    set_trainable(vgp.kernel.variance, False)
+    gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
 
 
@@ -123,10 +114,12 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
 
 # %%
-class NatGradTrainedVGP(VariationalGaussianProcess):
+from gpflow.optimizers import NaturalGradient
+
+class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
     def optimize(self, dataset):
-        set_trainable(self.model.q_mu, False)
-        set_trainable(self.model.q_sqrt, False)
+        gpflow.set_trainable(self.model.q_mu, False)
+        gpflow.set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
         adam_opt = tf.optimizers.Adam(1e-3)
         natgrad_opt = NaturalGradient(gamma=0.1)
@@ -139,7 +132,9 @@ class NatGradTrainedVGP(VariationalGaussianProcess):
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
-models: Dict[str, ModelSpec] = {
+from typing import Dict
+
+models: Dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
@@ -186,6 +181,9 @@ print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")
 # We can visualise where the optimizer queried on a contour plot of the Branin with the failure region. The minimum observation can be seen along the bottom axis towards the right, outside of the failure region.
 
 # %%
+import matplotlib.pyplot as plt
+from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
+
 mask_fail = final_data[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(masked_branin, mins, maxs, grid_density=50, contour=True)
 plot_bo_points(
@@ -200,6 +198,9 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
+
+from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+
 arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
 
 fig = plot_gp_plotly(regression_model, mins, maxs, grid_density=50)
