@@ -90,7 +90,7 @@ from trieste.bayesian_optimizer import OptimizationResult
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result: OptimizationResult = bo.optimize(15, initial_data, model)
+result: OptimizationResult = bo.optimize(15, initial_data, model, track_state=False)
 
 if result.error is not None: raise result.error
 
@@ -193,7 +193,7 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.datasets, model)
+result = bo.optimize(5, result.datasets, model, track_state=False)
 
 if result.error is not None: raise result.error
 

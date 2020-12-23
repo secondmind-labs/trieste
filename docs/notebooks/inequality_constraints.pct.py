@@ -127,7 +127,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule, track_state=False)
 
 if result.error is not None: raise result.error
 
