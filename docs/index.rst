@@ -19,7 +19,7 @@
 Trieste documentation
 =====================
 
-Trieste is a research toolbox, built on `TensorFlow <http://www.tensorflow.org/>`_, dedicated to Bayesian optimization, the process of finding the optimal values of an expensive, black-box objective function by employing probabilistic models over observations.
+Trieste is a research toolbox built on `TensorFlow <http://www.tensorflow.org/>`_, dedicated to Bayesian optimization, the process of finding the optimal values of an expensive, black-box objective function by employing probabilistic models over observations.
 
 Without loss of generality, Trieste only supports minimizing the
 objective function. In the simplest case of an objective function with one-dimensional real
