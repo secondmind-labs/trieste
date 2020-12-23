@@ -7,7 +7,6 @@ import numpy as np
 import tensorflow as tf
 
 gpflow.config.set_default_jitter(1e-5)
-gpflow.config.set_default_float(np.float64)
 np.random.seed(1234)
 tf.random.set_seed(1234)
 

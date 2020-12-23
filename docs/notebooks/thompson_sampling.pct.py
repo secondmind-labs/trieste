@@ -2,10 +2,10 @@
 # # Optimization with Thompson sampling
 
 # %%
-import gpflow
+import numpy as np
 import tensorflow as tf
 
-gpflow.config.set_default_float(tf.float64)
+np.random.seed(1793)
 tf.random.set_seed(1793)
 
 # %% [markdown]
@@ -19,6 +19,7 @@ tf.random.set_seed(1793)
 import trieste
 from trieste.utils.objectives import branin
 from trieste.acquisition.rule import OBJECTIVE
+import gpflow
 
 lower_bound = tf.constant([0.0, 0.0], gpflow.default_float())
 upper_bound = tf.constant([1.0, 1.0], gpflow.default_float())

@@ -2,11 +2,9 @@
 # # Introduction
 
 # %%
-import gpflow
 import numpy as np
 import tensorflow as tf
 
-gpflow.config.set_default_float(np.float64)
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -35,6 +33,7 @@ fig.show()
 # %%
 import trieste
 from trieste.acquisition.rule import OBJECTIVE
+import gpflow
 
 observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
 lower_bound = tf.cast(mins, gpflow.default_float())
