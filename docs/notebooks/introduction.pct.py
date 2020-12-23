@@ -90,7 +90,7 @@ from trieste.bayesian_optimizer import OptimizationResult
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result: OptimizationResult = bo.optimize(15, initial_data, model, track_state=False)
+result: OptimizationResult = bo.optimize(15, initial_data, model)
 
 if result.error is not None: raise result.error
 
