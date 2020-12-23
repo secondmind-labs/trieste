@@ -113,15 +113,13 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
 
 # %%
-from gpflow.optimizers import NaturalGradient
-
 class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
     def optimize(self, dataset):
         gpflow.set_trainable(self.model.q_mu, False)
         gpflow.set_trainable(self.model.q_sqrt, False)
         variational_params = [(self.model.q_mu, self.model.q_sqrt)]
         adam_opt = tf.optimizers.Adam(1e-3)
-        natgrad_opt = NaturalGradient(gamma=0.1)
+        natgrad_opt = gpflow.optimizers.NaturalGradient(gamma=0.1)
 
         for step in range(100):
             natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
