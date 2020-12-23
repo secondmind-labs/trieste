@@ -34,7 +34,7 @@ The following tutorials demonstrate how to use Trieste to solve various optimiza
 Run the tutorials interactively
 -------------------------------
 
-The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository, which can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies with (in the repository root)
+The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies with (in the repository root)
 
 .. code::
 
