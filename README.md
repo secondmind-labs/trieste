@@ -20,7 +20,7 @@ in the repository root.
 
 Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) with tutorials on how to use the library, and an API reference. You can also run the tutorials interactively. They can be found in the notebooks directory, and are written as Python scripts for running with Jupytext. To run them, first install trieste from sources as above, then install additional dependencies with
 ```bash
-$ pip install -r notebooks/requirements.txt -c notebooks/constraints.txt
+$ pip install -r notebooks/requirements.txt
 ```
 Finally, run the notebooks with
 ```bash
