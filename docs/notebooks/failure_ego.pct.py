@@ -2,11 +2,9 @@
 # # EGO with a failure region
 
 # %%
-import gpflow
 import numpy as np
 import tensorflow as tf
 
-gpflow.config.set_default_jitter(1e-5)
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
@@ -30,6 +28,8 @@ def masked_branin(x):
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
 
 # %%
+import gpflow
+
 mins = [0.0, 0.0]
 maxs = [1.0, 1.0]
 
