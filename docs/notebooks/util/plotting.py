@@ -16,10 +16,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 
+from trieste.type import TensorType
 from trieste.utils import to_numpy
 
 
-def create_grid(mins, maxs, grid_density=20):
+def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     """
     Creates a regular 2D grid of size grid_density*grid_density between mins and maxs.
     :param mins: list of 2 lower bounds
@@ -63,8 +64,8 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
 
 def plot_function_2d(
     obj_func,
-    mins,
-    maxs,
+    mins: TensorType,
+    maxs: TensorType,
     grid_density=20,
     contour=False,
     log=False,
@@ -86,6 +87,8 @@ def plot_function_2d(
     :param ylabel:
     :param figsize:
     """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
 
     # Create a regular grid on the parameter space
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
@@ -250,8 +253,8 @@ def plot_regret(
 
 def plot_gp_2d(
     model,
-    mins,
-    maxs,
+    mins: TensorType,
+    maxs: TensorType,
     grid_density=20,
     contour=False,
     xlabel=None,
@@ -270,6 +273,8 @@ def plot_gp_2d(
     :param ylabel: optional string
     :param figsize:
     """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
 
     # Create a regular grid on the parameter space
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, TypeVar, Union
+from typing import Dict, List, TypeVar, Union
 
 import tensorflow as tf
 
@@ -155,6 +155,10 @@ class DiscreteSearchSpace(SearchSpace):
         return self
 
 
+Vector = TypeVar("Vector", tf.Tensor, List[float])
+""" A type variable representing either a :class:`tf.Tensor` or `list`. """
+
+
 class Box(SearchSpace):
     r"""
     Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in
@@ -162,35 +166,47 @@ class Box(SearchSpace):
     closed bounded intervals in :math:`\mathbb{R}`.
     """
 
-    def __init__(self, lower: TensorType, upper: TensorType):
-        """
-        :param lower: The lower (inclusive) bounds of the box.
-        :param upper: The upper (inclusive) bounds of the box.
-        :raise ValueError: If ``lower`` and ``upper`` have different shapes. Or if ``upper`` is not
+    def __init__(self, lower: Vector, upper: Vector):
+        r"""
+        If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
+        `tf.float64`.
+
+        **Type hints:** If ``lower`` or ``upper`` is a `list`, they must both be `list`\ s.
+
+        :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :raise ValueError: If ``lower`` and ``upper`` have invalid shapes. Or if ``upper`` is not
             greater than ``lower`` across all dimensions.
         :raise TypeError: If ``lower`` and ``upper`` have different dtypes.
         """
+        tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
+        tf.assert_rank(lower, 1)
+        tf.assert_rank(upper, 1)
 
-        if not shapes_equal(lower, upper):
-            raise ValueError(
-                f"Lower and upper bounds must have the same shape, got {lower.shape} and"
-                f" {upper.shape}"
-            )
+        if len(lower) == 0:
+            raise ValueError(f"Bounds must have shape [D] for positive D, got {tf.shape(lower)}.")
 
-        if lower.dtype is not upper.dtype:
-            raise TypeError(
-                f"Lower and upper bounds must have the same dtype, got {lower.shape} and"
-                f" {upper.shape}"
-            )
+        if isinstance(lower, list):
+            self._lower = tf.cast(lower, dtype=tf.float64)
+            self._upper = tf.cast(upper, dtype=tf.float64)
+        else:
+            assert isinstance(lower, tf.Tensor) and isinstance(upper, tf.Tensor)  # to help mypy
 
-        if tf.reduce_any(lower >= upper):
-            raise ValueError(
-                f"Upper bound must be greater that lower for all dimensions, got lower bound"
-                f" {lower} and upper {upper}."
-            )
+            if lower.dtype != upper.dtype:
+                raise TypeError(
+                    f"Lower and upper bounds must have the same dtype, got {lower.dtype} and"
+                    f" {upper.dtype}"
+                )
 
-        self._lower = lower
-        self._upper = upper
+            if lower.dtype not in (tf.float16, tf.float32, tf.float64):
+                raise TypeError(f"Bounds must have float type, got type {lower.dtype}")
+
+            self._lower = lower
+            self._upper = upper
+
+        tf.debugging.assert_less(self._lower, self._upper)
 
     def __repr__(self) -> str:
         return f"Box({self._lower!r}, {self._upper!r})"

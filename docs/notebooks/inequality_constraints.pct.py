@@ -33,9 +33,7 @@ class Sim:
         return z[:, None]
 
 
-search_space = trieste.space.Box(
-    tf.cast([0.0, 0.0], gpflow.default_float()), tf.cast([6.0, 6.0], gpflow.default_float())
-)
+search_space = trieste.space.Box([0, 0], [6, 6])
 
 # %% [markdown]
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
