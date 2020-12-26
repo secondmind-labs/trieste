@@ -172,6 +172,6 @@ plt.show()
 # ```
 
 # %% [markdown]
-# LICENSE
+# ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
