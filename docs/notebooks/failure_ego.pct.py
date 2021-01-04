@@ -109,6 +109,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %% [markdown]
 # ## Create a custom optimize method
+#
 # The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
 
 # %%

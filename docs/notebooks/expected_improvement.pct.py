@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Introduction
+# # Two-dimensional optimization with Expected Improvement
 
 # %%
 import numpy as np
