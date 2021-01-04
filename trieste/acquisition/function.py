@@ -19,9 +19,8 @@ import tensorflow_probability as tfp
 from typing_extensions import final
 
 from ..data import Dataset
-from ..type import QueryPoints
 from ..models import ProbabilisticModel
-
+from ..type import QueryPoints
 
 AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
 """

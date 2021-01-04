@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import cm
 
 from trieste.utils import to_numpy

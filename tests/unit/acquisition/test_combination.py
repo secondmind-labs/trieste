@@ -14,13 +14,13 @@
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Mapping, Sequence, Union, Type
+from typing import Callable, Mapping, Sequence, Type, Union
 
 import numpy as np
 import pytest
 import tensorflow as tf
-from tests.util.model import QuadraticWithUnitVariance
 
+from tests.util.model import QuadraticWithUnitVariance
 from trieste.acquisition.combination import Product, Sum
 from trieste.acquisition.function import (
     AcquisitionFunction,

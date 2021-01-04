@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from abc import abstractmethod, ABC
-from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 
 import gpflow
-from dataclasses import dataclass
-from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
 import tensorflow as tf
+from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from .optimizer import Optimizer
 from .. import utils
 from ..data import Dataset
 from ..type import ObserverEvaluations, QueryPoints, TensorType
+from .optimizer import Optimizer
 
 
 class ProbabilisticModel(tf.Module, ABC):

@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Tuple, List
+from typing import List, Tuple
 
-import pytest
 import numpy.testing as npt
+import pytest
 import tensorflow as tf
 
 from tests.util.misc import ShapeLike, various_shapes
-from trieste.space import SearchSpace, DiscreteSearchSpace, Box
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 
 def _points_in_2D_search_space() -> tf.Tensor:

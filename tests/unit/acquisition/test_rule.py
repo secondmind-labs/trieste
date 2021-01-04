@@ -14,26 +14,28 @@
 
 from typing import Dict, Mapping
 
-import pytest
 import numpy.testing as npt
+import pytest
 import tensorflow as tf
-
-from trieste.acquisition.function import NegativeLowerConfidenceBound
-from trieste.acquisition.rule import (
-    EfficientGlobalOptimization,
-    ThompsonSampling,
-    TrustRegion,
-    OBJECTIVE,
-    BatchAcquisitionRule,
-    BatchAcquisitionFunction,
-)
-from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
-from trieste.space import SearchSpace, DiscreteSearchSpace, Box
-from trieste.acquisition.function import AcquisitionFunction, BatchAcquisitionFunctionBuilder
 
 from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
+from trieste.acquisition.function import (
+    AcquisitionFunction,
+    BatchAcquisitionFunctionBuilder,
+    NegativeLowerConfidenceBound,
+)
+from trieste.acquisition.rule import (
+    OBJECTIVE,
+    BatchAcquisitionFunction,
+    BatchAcquisitionRule,
+    EfficientGlobalOptimization,
+    ThompsonSampling,
+    TrustRegion,
+)
+from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])

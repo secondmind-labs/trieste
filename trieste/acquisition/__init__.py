@@ -35,22 +35,22 @@ are designed to minimize the objective function. For example, we do not provide 
 UCB.
 """
 from . import rule
+from .combination import Product, Reducer, Sum
 from .function import (
     AcquisitionFunction,
-    BatchAcquisitionFunction,
     AcquisitionFunctionBuilder,
-    SingleModelAcquisitionBuilder,
+    BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
-    ExpectedImprovement,
-    expected_improvement,
-    NegativeLowerConfidenceBound,
-    NegativePredictiveMean,
-    lower_confidence_bound,
-    ProbabilityOfFeasibility,
-    probability_of_feasibility,
     ExpectedConstrainedImprovement,
+    ExpectedImprovement,
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
+    NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
+    ProbabilityOfFeasibility,
+    SingleModelAcquisitionBuilder,
     SingleModelMCIndAcquisitionFunctionBuilder,
+    expected_improvement,
+    lower_confidence_bound,
+    probability_of_feasibility,
 )
-from .combination import Reducer, Product, Sum

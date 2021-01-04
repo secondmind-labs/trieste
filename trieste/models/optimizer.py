@@ -1,14 +1,14 @@
-from typing import Any, Dict, Optional, Callable, Union, Iterable, Tuple
-from functools import singledispatch
 from dataclasses import dataclass, field
-import tensorflow as tf
+from functools import singledispatch
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+
 import gpflow
 import scipy
-
+import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
-from ..utils import jit
-from ..data import Dataset
 
+from ..data import Dataset
+from ..utils import jit
 
 DatasetTransformer = Callable[[Dataset, Optional[int]], Union[Iterable, Tuple]]
 """

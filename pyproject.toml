@@ -25,3 +25,9 @@ line-length = 100
 target-version = ['py37']
 include = '\.py$'
 exclude = '\.pct.py$'
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+skip_glob = "docs/notebooks"
+line_length = 100

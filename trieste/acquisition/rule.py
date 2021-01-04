@@ -16,26 +16,26 @@ This module contains acquisition rules, which choose the optimal point(s) to que
 the Bayesian optimization process.
 """
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
+from typing import Generic, Mapping, Optional, Tuple, TypeVar, Union
 
 import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import SearchSpace, Box
+from ..space import Box, SearchSpace
 from ..type import QueryPoints
-from .function import (
-    AcquisitionFunctionBuilder,
-    ExpectedImprovement,
-    BatchAcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    AcquisitionFunction,
-)
 from . import _optimizer
-
+from .function import (
+    AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    BatchAcquisitionFunction,
+    BatchAcquisitionFunctionBuilder,
+    ExpectedImprovement,
+)
 
 S = TypeVar("S")
 """ Unbound type variable. """

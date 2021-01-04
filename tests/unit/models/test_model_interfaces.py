@@ -21,28 +21,27 @@ encapsulation. For example, we should *not* test that methods on the GPflow mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 trieste model).
 """
-from typing import Tuple, Callable, Union, Iterable, Type, Optional
+from dataclasses import astuple
+from typing import Callable, Iterable, Optional, Tuple, Type, Union
 
 import gpflow
-from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
-import pytest
-import tensorflow as tf
 import numpy as np
 import numpy.testing as npt
+import pytest
+import tensorflow as tf
+from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from dataclasses import astuple
+from tests.util.misc import random_seed
 from trieste.data import Dataset
-from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.models.model_interfaces import (
-    ProbabilisticModel,
     GaussianProcessRegression,
     GPflowPredictor,
+    ProbabilisticModel,
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.type import ObserverEvaluations, TensorType, QueryPoints
-
-from tests.util.misc import random_seed
+from trieste.models.optimizer import Optimizer, create_optimizer
+from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 
 class _MinimalTrainable(ProbabilisticModel):

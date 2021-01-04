@@ -13,12 +13,12 @@
 # limitations under the License.
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
+
 from typing import Callable, Dict
 
 import tensorflow as tf
 
 from .data import Dataset
-
 
 Observer = Callable[[tf.Tensor], Dict[str, Dataset]]
 """
