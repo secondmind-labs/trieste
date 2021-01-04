@@ -2,18 +2,9 @@
 # # Inequality constraints: constrained optimization
 
 # %%
-import gpflow
-from dataclasses import astuple
-from gpflow import set_trainable, default_float
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-import trieste
-
-from util import inequality_constraints_utils as util
-
-# %%
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -23,6 +14,9 @@ tf.random.set_seed(1793)
 # In this tutorial, we replicate one of the results of Gardner, 2014 [1], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
 
 # %%
+import gpflow
+import trieste
+
 class Sim:
     threshold = 0.5
 
@@ -40,14 +34,17 @@ class Sim:
 
 
 search_space = trieste.space.Box(
-    tf.cast([0.0, 0.0], default_float()), tf.cast([6.0, 6.0], default_float())
+    tf.cast([0.0, 0.0], gpflow.default_float()), tf.cast([6.0, 6.0], gpflow.default_float())
 )
 
 # %% [markdown]
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
 
 # %%
-util.plot_objective_and_constraints(search_space, Sim)
+import matplotlib.pyplot as plt
+from util.inequality_constraints_utils import plot_objective_and_constraints
+
+plot_objective_and_constraints(search_space, Sim)
 plt.show()
 
 # %% [markdown]
@@ -63,7 +60,6 @@ def observer(query_points):
         CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
 
-
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
 
@@ -74,7 +70,10 @@ initial_data = observer(search_space.sample(5))
 # ... and visualise those points on the constrained objective.
 
 # %%
-util.plot_init_query_points(
+from dataclasses import astuple
+from util.inequality_constraints_utils import plot_init_query_points
+
+plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),
@@ -90,10 +89,10 @@ plt.show()
 # %%
 def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
-    lengthscale = 1.0 * np.ones(2, dtype=default_float())
+    lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
-    set_trainable(gpr.likelihood, False)
+    gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.create_model(
         {
             "model": gpr,
@@ -103,7 +102,6 @@ def create_bo_model(data):
             },
         }
     )
-
 
 models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
@@ -142,7 +140,7 @@ new_query_points = constraint_data.query_points[-num_steps:]
 new_observations = constraint_data.observations[-num_steps:]
 new_data = (new_query_points, new_observations)
 
-util.plot_init_query_points(
+plot_init_query_points(
     search_space,
     Sim,
     astuple(initial_data[OBJECTIVE]),

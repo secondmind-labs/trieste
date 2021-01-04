@@ -2,25 +2,9 @@
 # # Introduction
 
 # %%
-from dataclasses import astuple
-
-import gpflow
-from gpflow.utilities import print_summary, set_trainable
 import numpy as np
 import tensorflow as tf
 
-import trieste
-from trieste.bayesian_optimizer import OptimizationResult
-from trieste.utils.objectives import branin, mk_observer
-from trieste.acquisition.rule import OBJECTIVE
-
-from util.plotting_plotly import (
-    plot_function_plotly, plot_gp_plotly, add_bo_points_plotly
-)
-from util.plotting import plot_function_2d, plot_bo_points, plot_regret
-
-# %%
-gpflow.config.set_default_float(np.float64)
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -29,6 +13,9 @@ tf.random.set_seed(1793)
 # In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can plot contours of the Branin over this space.
 
 # %%
+from trieste.utils.objectives import branin
+from util.plotting_plotly import plot_function_plotly
+
 mins = [0.0, 0.0]
 maxs = [1.0, 1.0]
 
@@ -44,7 +31,11 @@ fig.show()
 # The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer. We can represent the search space using a `Box`.
 
 # %%
-observer = mk_observer(branin, OBJECTIVE)
+import trieste
+from trieste.acquisition.rule import OBJECTIVE
+import gpflow
+
+observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
 lower_bound = tf.cast(mins, gpflow.default_float())
 upper_bound = tf.cast(maxs, gpflow.default_float())
 search_space = trieste.space.Box(lower_bound, upper_bound)
@@ -63,11 +54,13 @@ initial_data = observer(initial_query_points)
 # Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
 
 # %%
+from dataclasses import astuple
+
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
     gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
-    set_trainable(gpr.likelihood, False)
+    gpflow.set_trainable(gpr.likelihood, False)
 
     return {OBJECTIVE: trieste.models.create_model({
         "model": gpr,
@@ -93,6 +86,8 @@ model = build_model(initial_data[OBJECTIVE])
 # However, since the optimization loop catches errors so as not to lose progress, we must check if any errors occurred so we know the data is valid. We'll do that crudely here by re-raising any such errors. You may wish instead to use the history to restore the process from an earlier point.
 
 # %%
+from trieste.bayesian_optimizer import OptimizationResult
+
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result: OptimizationResult = bo.optimize(15, initial_data, model)
@@ -119,6 +114,8 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # We can visualise how the optimizer performed by plotting all the acquired observations, along with the true function values and optima, either in a two-dimensional contour plot ...
 
 # %%
+from util.plotting import plot_function_2d, plot_bo_points
+
 _, ax = plot_function_2d(branin, mins, maxs, grid_density=30, contour=True)
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 
@@ -126,6 +123,8 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 # ... or as a three-dimensional plot
 
 # %%
+from util.plotting_plotly import add_bo_points_plotly
+
 fig = plot_function_plotly(branin, mins, maxs, grid_density=20)
 fig.update_layout(height=500, width=500)
 
@@ -146,6 +145,7 @@ fig.show()
 
 # %%
 import matplotlib.pyplot as plt
+from util.plotting import plot_regret
 
 _, ax = plt.subplots(1, 2)
 plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
@@ -155,6 +155,8 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution.
 
 # %%
+from util.plotting_plotly import plot_gp_plotly
+
 fig = plot_gp_plotly(model[OBJECTIVE].model, mins, maxs, grid_density=30)
 
 fig = add_bo_points_plotly(
@@ -174,7 +176,7 @@ fig.show()
 # We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations
 
 # %%
-print_summary(model[OBJECTIVE].model)
+gpflow.utilities.print_summary(model[OBJECTIVE].model)
 
 ls_list = [
     step.models[OBJECTIVE].model.kernel.lengthscales.numpy()  # type: ignore
