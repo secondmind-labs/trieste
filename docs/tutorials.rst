@@ -15,6 +15,8 @@
 Tutorials
 =========
 
+The following tutorials demonstrate how to use Trieste to solve various optimization problems, and detail the functionality available in Trieste.
+
 .. toctree::
    :caption: Introductory
    :maxdepth: 1
@@ -28,3 +30,18 @@ Tutorials
 
    notebooks/inequality_constraints
    notebooks/failure_ego
+
+Run the tutorials interactively
+-------------------------------
+
+The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies with (in the repository root)
+
+.. code::
+
+   $ pip install . -r notebooks/requirements.txt
+
+then run
+
+.. code::
+
+   $ jupyter-notebook notebooks

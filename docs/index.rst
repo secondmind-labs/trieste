@@ -17,11 +17,11 @@
    contain the root `toctree` directive.
 
 Trieste documentation
-=========================
+=====================
 
-Trieste is a research toolbox dedicated to Bayesian optimization, the process of finding
-the optimal values of an expensive, black-box objective function by employing probabilistic
-models over observations. Without loss of generality, Trieste only supports *minimizing* the
+Trieste is a research toolbox built on `TensorFlow <http://www.tensorflow.org/>`_, dedicated to Bayesian optimization, the process of finding the optimal values of an expensive, black-box objective function by employing probabilistic models over observations.
+
+Without loss of generality, Trieste only supports minimizing the
 objective function. In the simplest case of an objective function with one-dimensional real
 output :math:`f: X \mapsto \mathbb R`, this is
 
@@ -32,6 +32,25 @@ though the optimal values will form a Pareto set rather than a single point. Tri
 functionality for optimization of single-valued objective functions, and supports extension to the
 higher-dimensional case. It also supports optimization over constrained spaces, learning the
 constraints alongside the objective.
+
+Trieste (pronounced *tree-est*) is named after the bathyscaphe `Trieste <https://en.wikipedia.org/wiki/Trieste_(bathyscaphe)>`_, the first vehicle to take a crew to Challenger Deep in the Mariana Trench, the lowest point on the Earth's surface: the literal global minimum.
+
+Installation
+------------
+
+To install Trieste, run
+
+.. code::
+
+   $ pip install trieste
+
+The library supports Python 3.7 onwards, and uses `semantic versioning <https://semver.org/>`_.
+
+Getting help
+------------
+
+- We welcome contributions. To submit a pull request, file a bug report, or make a feature request, see the `contribution guidelines <https://github.com/secondmind-labs/trieste/blob/develop/CONTRIBUTING.md>`_.
+- For more open-ended questions, or for anything else, join the community discussions on our `Slack workspace <https://join.slack.com/t/secondmind-labs/shared_invite/zt-jmac0bz5-A~WBezivf5uhP1JG9i30FA>`_.
 
 .. toctree::
    :hidden:
