@@ -50,7 +50,10 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> Q
     target_func_values = target_func(space.points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
-        message=f"The result of function target_func has an invalid shape.",
+        message=(
+            f"The result of function target_func has an invalid shape:"
+            f" {tf.shape(target_func_values)}."
+        ),
     )
     max_value_idx = tf.argmax(target_func_values, axis=0)[0]
     return space.points[max_value_idx : max_value_idx + 1]

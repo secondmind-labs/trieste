@@ -50,7 +50,7 @@ class Reducer(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
-        """
+        r"""
         Return an acquisition function. This acquisition function is defined by first building
         acquisition functions from each of the
         :class:`~trieste.acquisition.AcquisitionFunctionBuilder`\ s specified at

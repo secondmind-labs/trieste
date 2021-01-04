@@ -194,15 +194,17 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         """ The search space. """
 
         eps: tf.Tensor
-        """ The (maximum) vector from the current best point to each bound of the acquisition space. """
+        """
+        The (maximum) vector from the current best point to each bound of the acquisition space.
+        """
 
         y_min: tf.Tensor
         """ The minimum observed value. """
 
         is_global: Union[tf.Tensor, bool]
         """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean `tf.Tensor`
-        instead of a `bool`.
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+        `tf.Tensor` instead of a `bool`.
         """
 
     def __init__(

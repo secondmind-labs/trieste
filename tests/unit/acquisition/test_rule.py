@@ -21,7 +21,6 @@ import tensorflow as tf
 from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticWithUnitVariance
 from trieste.acquisition.function import (
-    AcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
 )
