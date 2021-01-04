@@ -16,13 +16,14 @@ from __future__ import annotations
 import math
 from typing import Mapping, Tuple
 
-import pytest
 import numpy.testing as npt
+import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from tests.util.misc import ShapeLike, raise_, random_seed, various_shapes, zero_dataset
+from tests.util.model import CustomMeanWithUnitVariance, GaussianMarginal, QuadraticWithUnitVariance
 from trieste.acquisition import SingleModelAcquisitionBuilder
-from trieste.data import Dataset
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -37,12 +38,10 @@ from trieste.acquisition.function import (
     lower_confidence_bound,
     probability_of_feasibility,
 )
+from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
-from trieste.utils.objectives import branin, BRANIN_GLOBAL_MINIMUM
-
-from tests.util.misc import ShapeLike, raise_, various_shapes, zero_dataset, random_seed
-from tests.util.model import CustomMeanWithUnitVariance, QuadraticWithUnitVariance, GaussianMarginal
+from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, branin
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):

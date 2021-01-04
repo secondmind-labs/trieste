@@ -16,10 +16,10 @@ from typing import Mapping, Sequence
 
 import tensorflow as tf
 
-from .function import AcquisitionFunctionBuilder, AcquisitionFunction
 from ..data import Dataset
-from ..type import QueryPoints
 from ..models import ProbabilisticModel
+from ..type import QueryPoints
+from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
 class Reducer(AcquisitionFunctionBuilder):

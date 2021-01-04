@@ -13,8 +13,9 @@
 # limitations under the License.
 """ This module contains implementations of various types of search space. """
 from __future__ import annotations
-from abc import abstractmethod, ABC
-from typing import Union, Type, TypeVar
+
+from abc import ABC, abstractmethod
+from typing import Type, TypeVar, Union
 
 import tensorflow as tf
 

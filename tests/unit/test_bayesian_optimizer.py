@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional, Tuple, Mapping
+from typing import Dict, List, Mapping, Optional, Tuple
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.acquisition.rule import AcquisitionRule, OBJECTIVE
+from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
+from tests.util.model import GaussianMarginal, PseudoProbabilisticModel, QuadraticWithUnitVariance
+from trieste.acquisition.rule import OBJECTIVE, AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.space import Box
 from trieste.type import ObserverEvaluations, QueryPoints, TensorType
-
-from tests.util.misc import FixedAcquisitionRule, one_dimensional_range, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance, PseudoProbabilisticModel, GaussianMarginal
 
 
 class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoProbabilisticModel):

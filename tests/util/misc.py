@@ -14,14 +14,14 @@
 
 import functools
 from typing import (
+    Callable,
     Container,
     FrozenSet,
     List,
+    Mapping,
     NoReturn,
     Tuple,
-    Mapping,
     TypeVar,
-    Callable,
     Union,
     cast,
 )

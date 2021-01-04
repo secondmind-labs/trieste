@@ -19,10 +19,10 @@ import numpy.testing as npt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
-from trieste.type import QueryPoints, ObserverEvaluations, TensorType
-from tests.util.misc import random_seed
+from trieste.type import ObserverEvaluations, QueryPoints, TensorType
 
 
 class PseudoProbabilisticModel(TrainableProbabilisticModel, ABC):

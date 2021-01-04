@@ -13,30 +13,29 @@
 # limitations under the License.
 
 import gpflow
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import numpy as np
 
+from tests.util.misc import random_seed
 from trieste.acquisition.rule import (
+    OBJECTIVE,
     AcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
-    OBJECTIVE,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
 from trieste.utils.objectives import (
-    branin,
-    BRANIN_GLOBAL_MINIMUM,
     BRANIN_GLOBAL_ARGMIN,
+    BRANIN_GLOBAL_MINIMUM,
+    branin,
     mk_observer,
 )
-
-from tests.util.misc import random_seed
 
 
 @random_seed

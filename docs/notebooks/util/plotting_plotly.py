@@ -17,8 +17,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from .plotting import create_grid
 from trieste.utils import to_numpy
+
+from .plotting import create_grid
 
 
 def format_point_markers(

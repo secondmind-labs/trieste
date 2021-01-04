@@ -19,15 +19,15 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, TypeVar, cast
+from typing import Generic, List, Mapping, Optional, TypeVar, cast
 
-from absl import logging
 import gpflow
 import tensorflow as tf
+from absl import logging
 
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
+from .acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import TrainableProbabilisticModel, create_model, ModelSpec
+from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import Observer
 from .space import SearchSpace
 

@@ -15,10 +15,9 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from trieste.data import Dataset
-from trieste.observer import map_is_finite, filter_finite
-
 from tests.util.misc import ShapeLike, assert_datasets_allclose
+from trieste.data import Dataset
+from trieste.observer import filter_finite, map_is_finite
 
 
 def _sum_with_nan_at_origin(t: tf.Tensor) -> tf.Tensor:

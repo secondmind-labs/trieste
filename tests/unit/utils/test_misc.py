@@ -13,14 +13,14 @@
 # limitations under the License.
 from typing import Any
 
-import pytest
 import numpy as np
 import numpy.testing as npt
+import pytest
 import tensorflow as tf
 
+from tests.util.misc import ShapeLike, various_shapes
 from trieste.type import TensorType
 from trieste.utils.misc import jit, shapes_equal, to_numpy
-from tests.util.misc import ShapeLike, various_shapes
 
 
 @pytest.mark.parametrize("apply", [True, False])

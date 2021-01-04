@@ -15,9 +15,9 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    branin,
     BRANIN_GLOBAL_ARGMIN,
     BRANIN_GLOBAL_MINIMUM,
+    branin,
     mk_observer,
 )
 
