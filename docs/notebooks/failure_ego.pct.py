@@ -164,7 +164,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(20, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(20, initial_data, models, acquisition_rule=rule)
 
 if result.error is not None: raise result.error
 

@@ -193,7 +193,7 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.datasets, model, track_state=False)
+result = bo.optimize(5, result.datasets, model)
 
 if result.error is not None: raise result.error
 
