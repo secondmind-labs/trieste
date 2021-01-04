@@ -15,37 +15,27 @@
 Tutorials
 =========
 
-The following tutorials demonstrate how to use Trieste to solve various optimization problems, and detail the functionality available in Trieste.
-
 Example optimization problems
 -----------------------------
 
-Introductory
-^^^^^^^^^^^^
+The following tutorials explore various optimization problems using Trieste.
 
 .. toctree::
    :maxdepth: 1
 
    notebooks/expected_improvement
    notebooks/thompson_sampling
-
-Advanced
-^^^^^^^^
-
-.. toctree::
-   :maxdepth: 1
-
    notebooks/inequality_constraints
    notebooks/failure_ego
 
 Trieste functionality in detail
 -------------------------------
 
-.. toctree::
-   :maxdepth: 1
+The following tutorials (or sections of tutorials) demonstrate how to use and extend specific Trieste functionality.
 
-   Create a custom acquisition function <notebooks/failure_ego>
-   Create a custom model optimization routine <notebooks/failure_ego>
+* :doc:`Set up a basic Bayesian optimization routine<notebooks/expected_improvement>`
+* :ref:`Customize the acquisition function<notebooks/failure_ego:Create a custom acquisition function>`
+* :ref:`Customize the model optimization routine<notebooks/failure_ego:Create a custom optimize method>`
 
 Run the tutorials interactively
 -------------------------------
