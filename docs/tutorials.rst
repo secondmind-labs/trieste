@@ -31,7 +31,7 @@ The following tutorials explore various optimization problems using Trieste.
 Trieste functionality in detail
 -------------------------------
 
-The following tutorials (or sections of tutorials) demonstrate how to use and extend specific Trieste functionality.
+The following tutorials (or sections thereof) demonstrate how to use and extend specific Trieste functionality.
 
 * :doc:`Set up a basic Bayesian optimization routine<notebooks/expected_improvement>`
 * :ref:`Customize the acquisition function<notebooks/failure_ego:Create a custom acquisition function>`
