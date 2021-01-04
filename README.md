@@ -27,6 +27,11 @@ Finally, run the notebooks with
 $ jupyter-notebook notebooks
 ```
 
+### Getting help
+
+- To submit a pull request, file a bug report, or make a feature request, see the [contribution guidelines](CONTRIBUTING.md).
+- For more open-ended questions, or for anything else, join the community discussions on our [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-jmac0bz5-A~WBezivf5uhP1JG9i30FA).
+
 # License
 
 [Apache License 2.0](LICENSE)
