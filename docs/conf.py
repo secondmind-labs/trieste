@@ -87,6 +87,10 @@ nbsphinx_custom_formats = {
     ".pct.py": ["jupytext.reads", {"fmt": "py:percent"}],
 }
 
+# sphinxcontrib-bibtex
+extensions.append("sphinxcontrib.bibtex")
+bibtex_bibfiles = ["refs.bib"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 

@@ -141,20 +141,7 @@ def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoi
 
     .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
 
-    This function was introduced by Mockus et al, 1975. See the following for details:
-
-    ::
-
-       @article{Jones:1998,
-            title={Efficient global optimization of expensive black-box functions},
-            author={Jones, Donald R and Schonlau, Matthias and Welch, William J},
-            journal={Journal of Global optimization},
-            volume={13},
-            number={4},
-            pages={455--492},
-            year={1998},
-            publisher={Springer}
-       }
+    This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
 
     :param model: The model of the objective function.
     :param eta: The "best" observation.
@@ -217,22 +204,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoin
 
     .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
 
-    See the following for details:
-
-    ::
-
-        @inproceedings{Srinivas:2010,
-            author = "{Srinivas, Niranjan and Krause, Andreas and Seeger, Matthias
-                and Kakade, Sham M.}",
-            booktitle = "{Proceedings of the 27th International Conference on Machine Learning
-                (ICML-10)}",
-            editor = "F{\"u}rnkranz, Johannes and Joachims, Thorsten",
-            pages = "1015--1022",
-            publisher = "Omnipress",
-            title = "{Gaussian Process Optimization in the Bandit Setting: No Regret and
-                Experimental Design}",
-            year = "2010"
-        }
+    See :cite:`Srinivas:2010` for details.
 
     :param model: The model of the objective function.
     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
@@ -253,7 +225,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoin
 class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     r"""
     Builder for the :func:`probability_of_feasibility` acquisition function, defined in
-    Garner, 2014 as
+    :cite:`gardner14` as
 
     .. math::
 
@@ -261,33 +233,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         \qquad ,
 
     where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
-    constraint function. See the following for details:
-
-    ::
-
-        @inproceedings{gardner14,
-            title={Bayesian Optimization with Inequality Constraints},
-            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger
-                and John Cunningham},
-            booktitle={Proceedings of the 31st International Conference on Machine Learning},
-            year={2014},
-            volume={32},
-            number={2},
-            series={Proceedings of Machine Learning Research},
-            month={22--24 Jun},
-            publisher={PMLR},
-            url={http://proceedings.mlr.press/v32/gardner14.html},
-        }
-
-        @article{schonlau1998global,
-            title={Global versus local search in constrained optimization of computer models},
-            author={Schonlau, Matthias and Welch, William J and Jones, Donald R},
-            journal={Lecture Notes-Monograph Series},
-            pages={11--25},
-            year={1998},
-            publisher={JSTOR}
-        }
-
+    constraint function. See also :cite:`schonlau1998global` for details.
     """
 
     def __init__(self, threshold: Union[float, tf.Tensor]):
@@ -330,7 +276,7 @@ def probability_of_feasibility(
     model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
 ) -> tf.Tensor:
     r"""
-    The probability of feasibility acquisition function defined in Garner, 2014 as
+    The probability of feasibility acquisition function defined in :cite:`gardner14` as
 
     .. math::
 
@@ -358,28 +304,9 @@ def probability_of_feasibility(
 class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
-    Gardner, 2014. The acquisition function computes the expected improvement from the best
+    :cite:`gardner14`. The acquisition function computes the expected improvement from the best
     feasible point, where feasible points are those that (probably) satisfy some constraint. Where
     there are no feasible points, this builder simply builds the constraint function.
-
-    See the following for details:
-
-    ::
-
-        @inproceedings{gardner14,
-            title={Bayesian Optimization with Inequality Constraints},
-            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger
-                and John Cunningham},
-            booktitle={Proceedings of the 31st International Conference on Machine Learning},
-            year={2014},
-            volume={32},
-            number={2},
-            series={Proceedings of Machine Learning Research},
-            month={22--24 Jun},
-            publisher={PMLR},
-            url={http://proceedings.mlr.press/v32/gardner14.html},
-        }
-
     """
 
     def __init__(
