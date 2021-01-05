@@ -17,9 +17,10 @@ the Bayesian optimization process.
 """
 from __future__ import annotations
 
+import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Mapping, Optional, Tuple, TypeVar, Union
+from typing import Dict, Generic, Mapping, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -206,6 +207,10 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         `True` if the search space was global, else `False` if it was local. May be a scalar boolean
         `tf.Tensor` instead of a `bool`.
         """
+
+        def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
+            box_copy = cast(Box, copy.deepcopy(self.acquisition_space, memo))
+            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
     def __init__(
         self,
