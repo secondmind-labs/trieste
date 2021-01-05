@@ -194,8 +194,8 @@ supported_models: Dict[Any, Callable[[Any], TrainableProbabilisticModel]] = {
     VGP: VariationalGaussianProcess,
 }
 """
-:var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
-that wrap models of those types.
+A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
+types.
 """
 
 

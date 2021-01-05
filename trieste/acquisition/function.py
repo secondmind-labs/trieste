@@ -335,7 +335,7 @@ def probability_of_feasibility(
 
 class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     """
-    Builder for the _expected constrained improvement_ acquisition function defined in
+    Builder for the *expected constrained improvement* acquisition function defined in
     Gardner, 2014. The acquisition function computes the expected improvement from the best
     feasible point, where feasible points are those that (probably) satisfy some constraint. Where
     there are no feasible points, this builder simply builds the constraint function.

@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Introduction
+# # Noise-free optimization with Expected Improvement
 
 # %%
 import numpy as np

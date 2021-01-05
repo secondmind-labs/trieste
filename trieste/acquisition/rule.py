@@ -80,8 +80,8 @@ class AcquisitionRule(ABC, Generic[S, SP]):
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
 """
-:var OBJECTIVE: A tag typically used by acquisition rules to denote the data sets and models
-corresponding to the optimization objective.
+A tag typically used by acquisition rules to denote the data sets and models corresponding to the
+optimization objective.
 """
 
 

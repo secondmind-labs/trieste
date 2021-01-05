@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Inequality constraints: constrained optimization
+# # Inequality constraints
 
 # %%
 import numpy as np

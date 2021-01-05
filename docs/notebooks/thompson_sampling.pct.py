@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Optimization with Thompson sampling
+# # Batch-sequential optimization with Thompson sampling
 
 # %%
 import numpy as np
