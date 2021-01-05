@@ -20,9 +20,9 @@ from __future__ import annotations
 from functools import singledispatch
 from typing import Callable, TypeVar
 
-import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from absl import logging
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
@@ -70,11 +70,21 @@ def _box(space: Box, target_func: AcquisitionFunction) -> TensorType:
     initial_point = optimize(trial_search_space, target_func)
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
-    variable = tf.Variable(bijector.inverse(initial_point))
 
-    def _objective() -> TensorType:
-        return -target_func(bijector.forward(variable))
+    def _objective(x: TensorType) -> TensorType:
+        return tf.squeeze(-target_func(bijector.forward(x)), axis=-1)
 
-    gpflow.optimizers.Scipy().minimize(_objective, (variable,))
+    lbfgs_result = tfp.optimizer.lbfgs_minimize(
+        lambda x: tfp.math.value_and_gradient(_objective, x),
+        # we copy the tensor to work around a bug in tensorflow_probability,
+        #   see https://github.com/tensorflow/probability/issues/1182
+        tf.identity(bijector.inverse(initial_point)),
+    )
 
-    return bijector.forward(variable)
+    if not lbfgs_result.converged:
+        tf.print(
+            "L-BFGS optimization produced result, but failed to converge.",
+            output_stream=logging.WARN,
+        )
+
+    return bijector.forward(lbfgs_result.position)
