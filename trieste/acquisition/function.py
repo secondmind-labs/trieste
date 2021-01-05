@@ -106,6 +106,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     of the posterior mean at observed points.
     """
 
+    def __repr__(self) -> str:
+        return "ExpectedImprovement()"
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -176,6 +179,9 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         """
         self._beta = beta
 
+    def __repr__(self) -> str:
+        return f"NegativeLowerConfidenceBound({self._beta!r})"
+
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -200,6 +206,9 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
 
     def __init__(self):
         super().__init__(beta=0.0)
+
+    def __repr__(self) -> str:
+        return "NegativePredictiveMean()"
 
 
 def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
@@ -284,6 +293,9 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         super().__init__()
 
         self._threshold = threshold
+
+    def __repr__(self) -> str:
+        return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
     def threshold(self) -> Union[float, tf.Tensor]:
@@ -385,6 +397,12 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
 
+    def __repr__(self) -> str:
+        return (
+            f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
+            f" {self._min_feasibility_probability!r})"
+        )
+
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
@@ -441,6 +459,9 @@ class IndependentReparametrizationSampler:
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
         self._model = model
+
+    def __repr__(self) -> str:
+        return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
     def sample(self, at: QueryPoints) -> tf.Tensor:
         """

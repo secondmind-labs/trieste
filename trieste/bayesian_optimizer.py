@@ -93,6 +93,9 @@ class BayesianOptimizer(Generic[SP]):
         self._observer = observer
         self._search_space = search_space
 
+    def __repr__(self) -> str:
+        return f"BayesianOptimizer({self._observer!r}, {self._search_space!r})"
+
     def optimize(
         self,
         num_steps: int,

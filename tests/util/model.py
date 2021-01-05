@@ -47,6 +47,9 @@ class CustomMeanWithUnitVariance(GaussianMarginal):
     def __init__(self, f: Callable[[tf.Tensor], tf.Tensor]):
         self._f = f
 
+    def __repr__(self) -> str:
+        return f"CustomMeanWithUnitVariance({self._f!r})"
+
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         mean = self._f(query_points)
         return mean, tf.ones_like(mean)
@@ -62,6 +65,9 @@ class QuadraticWithUnitVariance(GaussianMarginal):
         self._model = CustomMeanWithUnitVariance(
             lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
         )
+
+    def __repr__(self) -> str:
+        return "QuadraticWithUnitVariance()"
 
     def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
         return self._model.predict(query_points)

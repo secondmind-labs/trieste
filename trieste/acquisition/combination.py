@@ -23,7 +23,7 @@ from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
 class Reducer(AcquisitionFunctionBuilder):
-    """
+    r"""
     A :class:`Reducer` builds an :func:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
     :func:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is
@@ -43,6 +43,9 @@ class Reducer(AcquisitionFunctionBuilder):
                 f"{classname} expects `AcquisitionFunctionBuilder` instances as inputs."
             )
         self._acquisitions = builders
+
+    def _repr_builders(self) -> str:
+        return ", ".join(map(repr, self._acquisitions))
 
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -92,6 +95,9 @@ class Sum(Reducer):
     outputs of constituent acquisition functions.
     """
 
+    def __repr__(self) -> str:
+        return f"Sum({self._repr_builders()})"
+
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """
         :param inputs: The outputs of each acquisition function.
@@ -105,6 +111,9 @@ class Product(Reducer):
     :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
     outputs of constituent acquisition functions.
     """
+
+    def __repr__(self) -> str:
+        return f"Product({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
         """

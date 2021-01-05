@@ -20,7 +20,9 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
+from tests.util.misc import raise_
 from tests.util.model import QuadraticWithUnitVariance
+from trieste.acquisition import Reducer
 from trieste.acquisition.combination import Product, Sum
 from trieste.acquisition.function import (
     AcquisitionFunction,
@@ -32,6 +34,36 @@ from trieste.acquisition.function import (
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+
+
+def test_reducer__repr_builders() -> None:
+    class Acq1(AcquisitionFunctionBuilder):
+        def __repr__(self) -> str:
+            return "Acq1()"
+
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return raise_
+
+    class Acq2(AcquisitionFunctionBuilder):
+        def __repr__(self) -> str:
+            return "Acq2()"
+
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return raise_
+
+    class Foo(Reducer):
+        def __repr__(self) -> str:
+            return f"Foo({self._repr_builders()})"
+
+        def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
+            return inputs[0]
+
+    assert repr(Foo(Acq1())) == "Foo(Acq1())"
+    assert repr(Foo(Acq1(), Acq2())) == "Foo(Acq1(), Acq2())"
 
 
 @dataclass
