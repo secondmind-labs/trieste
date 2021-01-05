@@ -34,7 +34,7 @@ jobs:
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
     - run: |
-        (cd docs ; make html; make html)
+        (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
         mv docs/_build/html/* $TMP_DIR
         rm -rf docs
