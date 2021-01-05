@@ -28,14 +28,14 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/inequality_constraints
    notebooks/failure_ego
 
-Trieste functionality in detail
--------------------------------
+Frequently asked questions
+--------------------------
 
-The following tutorials (or sections thereof) demonstrate how to use and extend specific Trieste functionality.
+The following tutorials (or sections thereof) explain how to use and extend specific Trieste functionality.
 
-* :doc:`Set up a basic Bayesian optimization routine<notebooks/expected_improvement>`
-* :ref:`Customize the acquisition function<notebooks/failure_ego:Create a custom acquisition function>`
-* :ref:`Customize the model optimization routine<notebooks/failure_ego:Create a custom optimize method>`
+* :doc:`How do I set up a basic Bayesian optimization routine?<notebooks/expected_improvement>`
+* :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
+* :ref:`How do I customize the model optimization routine?<notebooks/failure_ego:Create a custom optimize method>`
 
 Run the tutorials interactively
 -------------------------------
