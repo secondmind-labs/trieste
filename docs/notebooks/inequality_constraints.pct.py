@@ -14,7 +14,6 @@ tf.random.set_seed(1793)
 # In this tutorial, we replicate one of the results of <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.  The constraint is satisfied when `constraint(input_data) <= threshold`.
 
 # %%
-import gpflow
 from trieste.space import Box
 
 class Sim:
@@ -88,6 +87,8 @@ plt.show()
 # We'll model the objective and constraint data with their own Gaussian process regression models.
 
 # %%
+import gpflow
+
 def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())

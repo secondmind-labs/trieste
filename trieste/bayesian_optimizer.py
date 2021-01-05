@@ -22,7 +22,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast, overload
 
-import gpflow
 import tensorflow as tf
 from absl import logging
 
@@ -240,7 +239,7 @@ class BayesianOptimizer(Generic[SP]):
 
             try:
                 if track_state:
-                    models = map_values(gpflow.utilities.deepcopy, models)
+                    models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
