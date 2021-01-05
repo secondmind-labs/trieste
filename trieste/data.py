@@ -14,7 +14,6 @@
 """ This module contains utilities for `~trieste.observer.Observer` data. """
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 from typing import Dict
 
