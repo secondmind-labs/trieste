@@ -36,7 +36,7 @@ parso==0.8.1
 pexpect==4.8.0
 pickleshare==0.7.5
 pkg-resources==0.0.0
-prompt-toolkit==3.0.8
+prompt-toolkit==3.0.9
 ptyprocess==0.7.0
 pydata-sphinx-theme==0.4.1
 Pygments==2.7.3

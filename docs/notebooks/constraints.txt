@@ -38,7 +38,7 @@ jsonschema==3.2.0
 jupyter-client==6.1.7
 jupyter-core==4.7.0
 jupyter-server==1.1.4
-jupyterlab==3.0.0
+jupyterlab==3.0.1
 jupyterlab-pygments==0.1.2
 jupyterlab-server==2.0.0
 jupytext==1.8.2
@@ -70,7 +70,7 @@ Pillow==8.1.0
 pkg-resources==0.0.0
 plotly==4.14.1
 prometheus-client==0.9.0
-prompt-toolkit==3.0.8
+prompt-toolkit==3.0.9
 protobuf==3.14.0
 ptyprocess==0.7.0
 pyasn1==0.4.8
