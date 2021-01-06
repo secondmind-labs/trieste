@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict
 
 import tensorflow as tf
 
@@ -90,3 +91,6 @@ class Dataset:
         :return: The number of query points, or equivalently the number of observations.
         """
         return tf.shape(self.observations)[0]
+
+    def __deepcopy__(self, memo: Dict[int, object]) -> Dataset:
+        return self

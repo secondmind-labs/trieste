@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Union
+from typing import Dict, TypeVar, Union
 
 import tensorflow as tf
 
@@ -151,6 +151,9 @@ class DiscreteSearchSpace(SearchSpace):
 
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [N * M, -1]))
 
+    def __deepcopy__(self, memo: Dict[int, object]) -> DiscreteSearchSpace:
+        return self
+
 
 class Box(SearchSpace):
     r"""
@@ -251,3 +254,6 @@ class Box(SearchSpace):
         expanded_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
         expanded_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
+
+    def __deepcopy__(self, memo: Dict[int, object]) -> Box:
+        return self

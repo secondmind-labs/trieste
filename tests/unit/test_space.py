@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 from typing import List, Tuple
 
 import numpy.testing as npt
@@ -97,6 +98,32 @@ def test_discrete_search_space_sampling_raises_when_too_many_samples_are_request
 
     with pytest.raises(ValueError, match="samples"):
         search_space.sample(num_samples)
+
+
+def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
+    dss1 = DiscreteSearchSpace(tf.constant([[-1.0, -1.4], [-1.5, -3.6], [-0.5, -0.6]]))
+    dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [1.5, 3.6]]))
+    [n1, d1] = dss1.points.shape
+    [n2, d2] = dss2.points.shape
+    res = dss1 * dss2
+
+    assert res.points.shape[0] == n1 * n2
+    assert res.points.shape[1] == d1 + d2
+    assert all(point in dss1 for point in res.points[:, :2])
+    assert all(point in dss2 for point in res.points[:, 2:])
+
+
+def test_discrete_search_space_product_raises_if_points_have_different_types() -> None:
+    dss1 = DiscreteSearchSpace(_points_in_2D_search_space())
+    dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [-1.5, 3.6]], tf.float64))
+
+    with pytest.raises(TypeError):
+        _ = dss1 * dss2
+
+
+def test_discrete_search_space_deepcopy() -> None:
+    dss = DiscreteSearchSpace(_points_in_2D_search_space())
+    npt.assert_allclose(copy.deepcopy(dss).points, _points_in_2D_search_space())
 
 
 def _pairs_of_different_shapes() -> List[Tuple[ShapeLike, ShapeLike]]:
@@ -257,22 +284,8 @@ def test_box_product_raises_if_bounds_have_different_types() -> None:
         _ = box1 * box2
 
 
-def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
-    dss1 = DiscreteSearchSpace(tf.constant([[-1.0, -1.4], [-1.5, -3.6], [-0.5, -0.6]]))
-    dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [1.5, 3.6]]))
-    [n1, d1] = dss1.points.shape
-    [n2, d2] = dss2.points.shape
-    res = dss1 * dss2
-
-    assert res.points.shape[0] == n1 * n2
-    assert res.points.shape[1] == d1 + d2
-    assert all(point in dss1 for point in res.points[:, :2])
-    assert all(point in dss2 for point in res.points[:, 2:])
-
-
-def test_discrete_search_space_product_raises_if_points_have_different_types() -> None:
-    dss1 = DiscreteSearchSpace(_points_in_2D_search_space())
-    dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [-1.5, 3.6]], tf.float64))
-
-    with pytest.raises(TypeError):
-        _ = dss1 * dss2
+def test_box_deepcopy() -> None:
+    box = Box(tf.constant([1.2, 3.4]), tf.constant([5.6, 7.8]))
+    box_copy = copy.deepcopy(box)
+    npt.assert_allclose(box.lower, box_copy.lower)
+    npt.assert_allclose(box.upper, box_copy.upper)

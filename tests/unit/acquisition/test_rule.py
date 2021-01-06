@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 from typing import Dict, Mapping
 
 import numpy.testing as npt
@@ -195,6 +195,18 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
+
+
+def test_trust_region_state_deepcopy() -> None:
+    tr_state = TrustRegion.State(
+        Box(tf.constant([1.2]), tf.constant([3.4])), tf.constant(5.6), tf.constant(7.8), False
+    )
+    tr_state_copy = copy.deepcopy(tr_state)
+    npt.assert_allclose(tr_state_copy.acquisition_space.lower, tr_state.acquisition_space.lower)
+    npt.assert_allclose(tr_state_copy.acquisition_space.upper, tr_state.acquisition_space.upper)
+    npt.assert_allclose(tr_state_copy.eps, tr_state.eps)
+    npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
+    assert tr_state_copy.is_global == tr_state.is_global
 
 
 class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
