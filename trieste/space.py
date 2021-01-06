@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Type, TypeVar, Union
+from typing import TypeVar, Union
 
 import tensorflow as tf
 
@@ -56,9 +56,12 @@ class SearchSpace(ABC):
 
     def __pow__(self: SP, other: int) -> SP:
         """
-        Return the Cartesian product of ``other`` instances of this search space. For example, for an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to `s * s * s`.
+        Return the Cartesian product of ``other`` instances of this search space. For example, for
+        an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
+        `s * s * s`.
 
-        :param other: The number of instances of this search space to multiply. Must be strictly positive.
+        :param other: The number of instances of this search space to multiply. Must be strictly
+            positive.
         :return: The Cartesian product of ``other`` instances of this search space.
         :raise ValueError: If the exponent ``other`` is less than 1.
         """
@@ -121,7 +124,7 @@ class DiscreteSearchSpace(SearchSpace):
         return tf.random.shuffle(self._points)[:num_samples, :]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
-        """
+        r"""
         Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
 
             >>> sa = DiscreteSearchSpace(tf.constant([[0, 1], [2, 3]]))
@@ -134,7 +137,8 @@ class DiscreteSearchSpace(SearchSpace):
 
         :param other: :class:`DiscreteSearchSpace`.
         :return: the new combined :class:`DiscreteSearchSpace`
-        :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different types.
+        :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different
+            types.
         """
         if self._points.dtype is not other._points.dtype:
             return NotImplemented
@@ -233,8 +237,10 @@ class Box(SearchSpace):
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
     def __mul__(self, other: Box) -> Box:
-        """
-        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective lower and upper bounds).
+        r"""
+        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
+        lower and upper bounds).
+
         :param box: :class:`Box`.
         :return: the new combined :class:`Box`
         :raise TypeError: If the lhs and rhs :class:`Box` bounds have different types.

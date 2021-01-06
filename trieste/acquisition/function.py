@@ -37,8 +37,8 @@ function). Thus, with leading dimensions, an `AcquisitionFunction` takes input s
 """
 
 BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
-""" 
-Type alias for batch acquisition functions. 
+"""
+Type alias for batch acquisition functions.
 
 A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
 value that describes how useful it would be evaluate all these points together (to our goal of
@@ -222,12 +222,15 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoin
     ::
 
         @inproceedings{Srinivas:2010,
-            author = "Srinivas, Niranjan and Krause, Andreas and Seeger, Matthias and Kakade, Sham M.",
-            booktitle = "{Proceedings of the 27th International Conference on Machine Learning (ICML-10)}",
+            author = "{Srinivas, Niranjan and Krause, Andreas and Seeger, Matthias
+                and Kakade, Sham M.}",
+            booktitle = "{Proceedings of the 27th International Conference on Machine Learning
+                (ICML-10)}",
             editor = "F{\"u}rnkranz, Johannes and Joachims, Thorsten",
             pages = "1015--1022",
             publisher = "Omnipress",
-            title = "{Gaussian Process Optimization in the Bandit Setting: No Regret and Experimental Design}",
+            title = "{Gaussian Process Optimization in the Bandit Setting: No Regret and
+                Experimental Design}",
             year = "2010"
         }
 
@@ -252,7 +255,10 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     Builder for the :func:`probability_of_feasibility` acquisition function, defined in
     Garner, 2014 as
 
-    .. math:: \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x}) \qquad ,
+    .. math::
+
+        \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+        \qquad ,
 
     where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
     constraint function. See the following for details:
@@ -261,7 +267,8 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
         @inproceedings{gardner14,
             title={Bayesian Optimization with Inequality Constraints},
-            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger
+                and John Cunningham},
             booktitle={Proceedings of the 31st International Conference on Machine Learning},
             year={2014},
             volume={32},
@@ -325,7 +332,10 @@ def probability_of_feasibility(
     r"""
     The probability of feasibility acquisition function defined in Garner, 2014 as
 
-    .. math:: \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d}c(\mathbf{x}) \qquad ,
+    .. math::
+
+        \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+        \qquad ,
 
     where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
     constraint function.
@@ -358,7 +368,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         @inproceedings{gardner14,
             title={Bayesian Optimization with Inequality Constraints},
-            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham},
+            author={Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger
+                and John Cunningham},
             booktitle={Proceedings of the 31st International Conference on Machine Learning},
             year={2014},
             volume={32},

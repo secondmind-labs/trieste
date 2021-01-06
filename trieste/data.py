@@ -53,7 +53,7 @@ class Dataset:
             )
 
     def __add__(self, rhs: Dataset) -> Dataset:
-        """
+        r"""
         Return the :class:`Dataset` whose query points are the result of concatenating the
         `query_points` in each :class:`Dataset` along the zeroth axis, and the same for the
         `observations`. For example:

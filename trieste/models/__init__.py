@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 This package contains the primary interface for probabilistic models, based on
 :class:`ProbabilisticModel`. It contains a number of :class:`ProbabilisticModel`
 wrappers for GPflow models, as well as tooling for creating

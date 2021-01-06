@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 The acquisition process aims to find the optimal point(s) at which to next evaluate the objective
 function, with the aim of minimising it. The functionality in this package implements that process.
 It typically uses the current observations of the objective function, or a posterior over those
