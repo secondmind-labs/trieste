@@ -21,17 +21,17 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import raise_
-from tests.util.model import QuadraticWithUnitVariance
-from trieste.acquisition import Reducer
-from trieste.acquisition.combination import Product, Sum
-from trieste.acquisition.function import (
+from tests.util.model import QuadraticMeanAndRBFKernel
+from trieste.acquisition import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
+    Reducer,
     expected_improvement,
     lower_confidence_bound,
 )
-from trieste.acquisition.rule import AcquisitionFunctionBuilder
+from trieste.acquisition.combination import Product, Sum
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 
@@ -85,7 +85,7 @@ _reducers = [ReducerTestData(Sum, _sum_fn), ReducerTestData(Product, _prod_fn)]
 def test_reducers_on_ei(reducer):
     m = 6
     zero = tf.convert_to_tensor([0.0], dtype=tf.float64)
-    model = QuadraticWithUnitVariance()
+    model = QuadraticMeanAndRBFKernel()
     acqs = [ExpectedImprovement().using("foo") for _ in range(m)]
     acq = reducer.type_class(*acqs)
     acq_fn = acq.prepare_acquisition_function({"foo": reducer.dataset}, {"foo": model})
@@ -99,7 +99,7 @@ def test_reducers_on_ei(reducer):
 def test_reducers_on_lcb(reducer):
     m = 6
     beta = tf.convert_to_tensor(1.96, dtype=tf.float64)
-    model = QuadraticWithUnitVariance()
+    model = QuadraticMeanAndRBFKernel()
     acqs = [NegativeLowerConfidenceBound(beta).using("foo") for _ in range(m)]
     acq = reducer.type_class(*acqs)
     acq_fn = acq.prepare_acquisition_function({"foo": reducer.dataset}, {"foo": model})
@@ -144,6 +144,6 @@ def test_product_reducer_multiplies_tensors(combination, inputs):
     builders = [_InputIdentity(i) for i in inputs]
     reducer = combination_builder(*builders)
     data = Dataset(tf.zeros((1, 1)), tf.zeros((1, 1)))
-    prepared_fn = reducer.prepare_acquisition_function(data, QuadraticWithUnitVariance())
+    prepared_fn = reducer.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
     result = prepared_fn(tf.zeros(1))
     np.testing.assert_allclose(result, expected)

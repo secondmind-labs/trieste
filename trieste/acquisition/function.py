@@ -21,6 +21,7 @@ from typing_extensions import final
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..type import TensorType
+from ..utils import DEFAULTS
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -392,12 +393,16 @@ class IndependentReparametrizationSampler:
         tf.debugging.assert_positive(sample_size)
 
         self._sample_size = sample_size
+
+        # _eps is essentially a lazy constant, declared here but initialised only on the first call
+        # to sample
         self._eps = tf.Variable(
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
         self._model = model
 
     def __repr__(self) -> str:
+        """"""
         return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
     def sample(self, at: TensorType) -> tf.Tensor:
@@ -430,6 +435,10 @@ class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
     estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
     estimation via the reparameterization trick. This class is essentially a convenience
     :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+
+    Subclasses implement :meth:`_build_with_sampler` which, in addition to the arguments `datasets`
+    and `models`, provides a :class:`IndependentReparametrizationSampler` for each model which can
+    be used to approximate continuous samples from the models.
     """
 
     def __init__(self, sample_size: int):
@@ -439,6 +448,10 @@ class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
         """
         tf.debugging.assert_positive(sample_size)
         self._sample_size = sample_size
+
+    def __repr__(self) -> str:
+        """"""
+        return f"MCIndAcquisitionFunctionBuilder({self._sample_size!r})"
 
     @final
     def prepare_acquisition_function(
@@ -470,9 +483,9 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
     A :class:`SingleModelMCIndAcquisitionFunctionBuilder` builds an acquisition function that
     estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
     estimation via the reparameterization trick. This class is essentially a convenience
-    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
+    :class:`SingleModelAcquisitionBuilder` using a :class:`IndependentReparametrizationSampler`.
 
-    Subclasses implement :meth:`_build_with_samples` which, in addition to the arguments `dataset`
+    Subclasses implement :meth:`_build_with_sampler` which, in addition to the arguments `dataset`
     and `model`, provides a :class:`IndependentReparametrizationSampler` which can be used to
     approximate continuous samples from the model.
     """
@@ -484,6 +497,10 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
         """
         tf.debugging.assert_positive(sample_size)
         self._sample_size = sample_size
+
+    def __repr__(self) -> str:
+        """"""
+        return f"SingleModelMCIndAcquisitionFunctionBuilder({self._sample_size!r})"
 
     @final
     def prepare_acquisition_function(
@@ -508,7 +525,10 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
 
 
 class BatchAcquisitionFunctionBuilder(ABC):
-    """ A :class:`BatchAcquisitionFunctionBuilder` builds a batch acquisition function. """
+    """
+    A :class:`BatchAcquisitionFunctionBuilder` builds an acquisition function for evaluating batches
+    of query points.
+    """
 
     @abstractmethod
     def prepare_acquisition_function(
@@ -519,3 +539,78 @@ class BatchAcquisitionFunctionBuilder(ABC):
         :param models: The models over each dataset in ``datasets``.
         :return: A batch acquisition function.
         """
+
+
+class BatchReparametrizationSampler:
+    r"""
+    This sampler employs the *reparameterization trick* to approximate batches of samples from a
+    :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
+    .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
+    where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
+    :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
+    form a continuous curve.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples for each batch of points. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+
+        # _eps is essentially a lazy constant, declared here but initialised only on the first call
+        # to sample
+        self._eps = tf.Variable(
+            tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
+        )  # [0, 0, S]
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BatchReparametrizationSampler({self._sample_size!r}, {self._model!r})"
+
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> tf.Tensor:
+        """
+        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+        :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
+        produce the exact same samples. Calls to :meth:`sample` on *different*
+        :class:`BatchReparametrizationSampler` instances will produce different samples.
+
+        :param at: Batches of query points at which to sample the predictive distribution, with
+            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
+            number of points per batch, and `L` the dimension of the model's predictive
+            distribution.
+        :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar, or ``jitter`` is
+            negative.
+        """
+        tf.debugging.assert_rank_at_least(at, 2)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
+
+        mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
+        batch_size = at.shape[-2]
+
+        if tf.size(self._eps) == 0:
+            self._eps.assign(
+                tf.random.normal(
+                    [mean.shape[-1], batch_size, self._sample_size], dtype=tf.float64
+                )  # [L, B, S]
+            )
+
+        identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
+        cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
+
+        variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]
+
+        leading_indices = tf.range(tf.rank(variance_contribution) - 3)
+        absolute_trailing_indices = [-1, -2, -3] + tf.rank(variance_contribution)
+        new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
+
+        return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
