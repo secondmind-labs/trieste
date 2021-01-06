@@ -11,7 +11,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## The problem
 #
-# In this tutorial, we replicate one of the results of Gardner, 2014 [1], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
+# In this tutorial, we replicate one of the results of <cite data-cite="gardner14"/>, specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
 
 # %%
 import gpflow
@@ -111,7 +111,7 @@ models = {
 # %% [markdown]
 # ## Define the acquisition process
 #
-# We can construct the _expected constrained improvement_ acquisition function defined in Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
+# We can construct the _expected constrained improvement_ acquisition function defined in <cite data-cite="gardner14"/>, where they use the probability of feasibility wrt the constraint model.
 
 # %%
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
@@ -148,26 +148,6 @@ plot_init_query_points(
     new_data,
 )
 plt.show()
-
-# %% [markdown]
-# ## References
-#
-# ```
-# [1] @inproceedings{gardner14,
-#       title={Bayesian Optimization with Inequality Constraints},
-#       author={
-#         Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham
-#       },
-#       booktitle={Proceedings of the 31st International Conference on Machine Learning},
-#       year={2014},
-#       volume={32},
-#       number={2},
-#       series={Proceedings of Machine Learning Research},
-#       month={22--24 Jun},
-#       publisher={PMLR},
-#       url={http://proceedings.mlr.press/v32/gardner14.html},
-#     }
-# ```
 
 # %% [markdown]
 # ## LICENSE

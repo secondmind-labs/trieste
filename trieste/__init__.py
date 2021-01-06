@@ -16,5 +16,10 @@ The library root. See :mod:`~trieste.bayesian_optimizer` for the core optimizer,
 models (see :mod:`~trieste.models`), and data sets (see :mod:`~trieste.data`). The
 :mod:`~trieste.acquisition` package provides a selection of acquisition algorithms and the
 functionality to define your own.
+
+Bibliography
+============
+
+.. bibliography::
 """
 from . import acquisition, bayesian_optimizer, data, models, observer, space, type, utils

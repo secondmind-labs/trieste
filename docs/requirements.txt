@@ -17,3 +17,4 @@ sphinx-autoapi
 pydata-sphinx-theme
 ipython
 nbsphinx
+sphinxcontrib-bibtex
