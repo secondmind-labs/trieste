@@ -165,7 +165,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
+    _, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
     )
 
@@ -188,7 +188,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
+    _, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
     )
 
