@@ -121,7 +121,7 @@ class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
         adam_opt = tf.optimizers.Adam(1e-3)
         natgrad_opt = gpflow.optimizers.NaturalGradient(gamma=0.1)
 
-        for step in range(100):
+        for step in range(50):
             natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
             adam_opt.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
 
