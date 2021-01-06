@@ -21,7 +21,6 @@ encapsulation. For example, we should *not* test that methods on the GPflow mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 trieste model).
 """
-from dataclasses import astuple
 from typing import Callable, Iterable, Optional, Tuple, Type, Union
 
 import gpflow
