@@ -23,6 +23,7 @@ from .type import TensorType
 from .utils import shapes_equal
 
 SP = TypeVar("SP", bound="SearchSpace")
+""" A type variable bound to :class:`SearchSpace`. """
 
 
 class SearchSpace(ABC):
@@ -51,7 +52,7 @@ class SearchSpace(ABC):
     def __mul__(self: SP, other: SP) -> SP:
         """
         :param other: A search space of the same type as this search space.
-        :return: The Cartesian product of this search space with ``other``.
+        :return: The Cartesian product of this search space with the ``other``.
         """
 
     def __pow__(self: SP, other: int) -> SP:
@@ -60,17 +61,19 @@ class SearchSpace(ABC):
         an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
         `s * s * s`.
 
-        :param other: The number of instances of this search space to multiply. Must be strictly
-            positive.
+        :param other: The exponent, or number of instances of this search space to multiply
+            together. Must be strictly positive.
         :return: The Cartesian product of ``other`` instances of this search space.
         :raise ValueError: If the exponent ``other`` is less than 1.
         """
         if other < 1:
-            raise ValueError("The exponent ``other`` can only be a strictly positive integer")
+            raise ValueError(f"Exponent must be strictly positive, got {other}")
 
         space = self
+
         for _ in range(other - 1):
             space *= self
+
         return space
 
 
@@ -97,6 +100,7 @@ class DiscreteSearchSpace(SearchSpace):
         self._points = points
 
     def __repr__(self) -> str:
+        """"""
         return f"DiscreteSearchSpace({self._points!r})"
 
     @property
@@ -135,21 +139,20 @@ class DiscreteSearchSpace(SearchSpace):
                    [2, 3, 4, 5, 6],
                    [2, 3, 7, 8, 9]], dtype=int32)
 
-        :param other: :class:`DiscreteSearchSpace`.
-        :return: the new combined :class:`DiscreteSearchSpace`
-        :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different
-            types.
+        :param other: A :class:`DiscreteSearchSpace` with :attr:`points` of the same dtype as this
+            search space.
+        :return: The Cartesian product of the two :class:`DiscreteSearchSpace`\ s.
+        :raise TypeError: If one :class:`DiscreteSearchSpace` has :attr:`points` of a different
+            dtype to the other.
         """
-        if self._points.dtype is not other._points.dtype:
+        if self.points.dtype is not other.points.dtype:
             return NotImplemented
 
-        N = self._points.shape[0]
-        M = other._points.shape[0]
-        tile_self = tf.tile(tf.expand_dims(self.points, 1), [1, M, 1])
-        tile_dss = tf.tile(tf.expand_dims(other.points, 0), [N, 1, 1])
-        cartesian_product = tf.concat([tile_self, tile_dss], axis=2)
-
-        return DiscreteSearchSpace(tf.reshape(cartesian_product, [N * M, -1]))
+        tile_self = tf.tile(self.points[:, None], [1, len(other.points), 1])
+        tile_other = tf.tile(other.points[None], [len(self.points), 1, 1])
+        cartesian_product = tf.concat([tile_self, tile_other], axis=2)
+        product_space_dimension = self.points.shape[-1] + other.points.shape[-1]
+        return DiscreteSearchSpace(tf.reshape(cartesian_product, [-1, product_space_dimension]))
 
     def __deepcopy__(self, memo: Dict[int, object]) -> DiscreteSearchSpace:
         return self
@@ -202,6 +205,7 @@ class Box(SearchSpace):
         tf.debugging.assert_less(self._lower, self._upper)
 
     def __repr__(self) -> str:
+        """"""
         return f"Box({self._lower!r}, {self._upper!r})"
 
     @property
@@ -251,18 +255,28 @@ class Box(SearchSpace):
     def __mul__(self, other: Box) -> Box:
         r"""
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
-        lower and upper bounds).
+        lower and upper bounds). For example:
 
-        :param box: :class:`Box`.
-        :return: the new combined :class:`Box`
-        :raise TypeError: If the lhs and rhs :class:`Box` bounds have different types.
+            >>> unit_interval = Box(tf.constant([0.0]), tf.constant([1.0]))
+            >>> square_at_origin = Box(tf.constant([-2.0, -2.0]), tf.constant([2.0, 2.0]))
+            >>> new_box = unit_interval * square_at_origin
+            >>> new_box.lower.numpy()
+            array([ 0., -2., -2.], dtype=float32)
+            >>> new_box.upper.numpy()
+            array([1., 2., 2.], dtype=float32)
+
+        :param other: A :class:`Box` with bounds of the same type as this :class:`Box`.
+        :return: The Cartesian product of the two :class:`Box`\ es.
+        :raise TypeError: If the bounds of one :class:`Box` have different dtypes to those of
+            the other :class:`Box`.
         """
         if self.lower.dtype is not other.lower.dtype:
             return NotImplemented
 
-        expanded_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
-        expanded_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
-        return Box(expanded_lower_bound, expanded_upper_bound)
+        product_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
+        product_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
+
+        return Box(product_lower_bound, product_upper_bound)
 
     def __deepcopy__(self, memo: Dict[int, object]) -> Box:
         return self
