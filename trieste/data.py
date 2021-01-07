@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Tuple
 
 import tensorflow as tf
 
@@ -94,3 +94,12 @@ class Dataset:
 
     def __deepcopy__(self, memo: Dict[int, object]) -> Dataset:
         return self
+
+    def astuple(self) -> Tuple[tf.Tensor, tf.Tensor]:
+        """
+        **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
+        **not** deepcopy the attributes.
+
+        :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
+        """
+        return self.query_points, self.observations

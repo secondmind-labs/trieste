@@ -21,7 +21,6 @@ encapsulation. For example, we should *not* test that methods on the GPflow mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 trieste model).
 """
-from dataclasses import astuple
 from typing import Callable, Iterable, Optional, Tuple, Type, Union
 
 import gpflow
@@ -351,7 +350,7 @@ def test_sparse_variational_optimize_with_defaults() -> None:
 
 
 def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable:
-    ds = tf.data.Dataset.from_tensor_slices(astuple(dataset))
+    ds = tf.data.Dataset.from_tensor_slices(dataset.astuple())
     ds = ds.shuffle(100)
     ds = ds.batch(batch_size)
     ds = ds.repeat()
@@ -359,7 +358,7 @@ def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable:
 
 
 def _batcher_2(dataset: Dataset, batch_size: int):
-    return astuple(dataset)
+    return dataset.astuple()
 
 
 @pytest.mark.parametrize("compile", [True, False])

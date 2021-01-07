@@ -54,12 +54,10 @@ initial_data = observer(initial_query_points)
 # Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
 
 # %%
-from dataclasses import astuple
-
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
     return {OBJECTIVE: trieste.models.create_model({
