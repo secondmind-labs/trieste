@@ -167,7 +167,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 class VariationalGaussianProcess(GaussianProcessRegression):
     def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
-        tf.debugging.assert_rank(self.model.q_sqrt, 3)
+        tf.debugging.assert_rank(model.q_sqrt, 3)
         super().__init__(model, optimizer)
 
     def __repr__(self) -> str:
