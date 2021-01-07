@@ -97,6 +97,9 @@ class Dataset:
 
     def astuple(self) -> Tuple[tf.Tensor, tf.Tensor]:
         """
+        **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
+        **not** deepcopy the attributes.
+
         :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
         """
         return self.query_points, self.observations
