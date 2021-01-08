@@ -17,6 +17,7 @@ and its trainable subclass :class:`TrainableProbabilisticModel`. It also contain
 :class:`TrainableProbabilisticModel` wrappers for GPflow models, as well as tooling for creating
 :class:`TrainableProbabilisticModel`\ s from config.
 """
+from . import optimizer
 from .config import ModelConfig, ModelSpec, create_model
 from .model_interfaces import (
     GaussianProcessRegression,
