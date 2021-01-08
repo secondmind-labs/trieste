@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r""" This module contains optimizers for :class:`trieste.models.GPflowPredictor`\ s. """
+r""" This module contains model optimizers. """
 from dataclasses import dataclass, field
 from functools import singledispatch
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
@@ -22,7 +22,6 @@ import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
-from ..type import TensorType
 from ..utils import jit
 
 Batches = Union[Tuple[tf.Tensor, tf.Tensor], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
@@ -46,7 +45,7 @@ TensorFlow optimizer doesn't return any result.
 
 @dataclass
 class Optimizer:
-    """ Optimizer for training with all the training data at once. """
+    """ Optimizer for training models with all the training data at once. """
 
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
     """ The underlying optimizer to use. """
@@ -78,7 +77,7 @@ class Optimizer:
 
 @dataclass
 class TFOptimizer(Optimizer):
-    """ Optimizer for training with mini-batches of training data. """
+    """ Optimizer for training models with mini-batches of training data. """
 
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """
@@ -90,7 +89,7 @@ class TFOptimizer(Optimizer):
     """ A mapping from `~trieste.observer.Observer` data to mini-batches. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
-        def creator_fn(data: Union[Tuple[TensorType, TensorType], Iterable]):
+        def creator_fn(data: Batches) -> LossClosure:
             return create_loss_function(model, data, self.compile)
 
         if self.dataset_builder is None and self.batch_size is None:
@@ -121,36 +120,39 @@ class TFOptimizer(Optimizer):
         variables = model.trainable_variables
 
         @jit(apply=self.compile)
-        def train_fn():
-            self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
+        def train_fn() -> None:
+            self.optimizer.minimize(loss_fn, variables, **self.minimize_kwargs)
 
         for _ in range(self.max_iter):
             train_fn()
 
 
 @singledispatch
-def create_optimizer(optimizer, optimizer_args: Dict[str, Any]) -> Optimizer:
+def create_optimizer(
+    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer],
+    optimizer_kwargs: Dict[str, Any]
+) -> Optimizer:
     pass
 
 
 @create_optimizer.register
 def _create_tf_optimizer(
     optimizer: tf.optimizers.Optimizer,
-    optimizer_args: Dict[str, Any],
+    optimizer_kwargs: Dict[str, Any],
 ) -> Optimizer:
-    return TFOptimizer(optimizer, **optimizer_args)
+    return TFOptimizer(optimizer, **optimizer_kwargs)
 
 
 @create_optimizer.register
 def _create_scipy_optimizer(
     optimizer: gpflow.optimizers.Scipy,
-    optimizer_args: Dict[str, Any],
+    optimizer_kwargs: Dict[str, Any],
 ) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_args)
+    return Optimizer(optimizer, **optimizer_kwargs)
 
 
 @singledispatch
-def create_loss_function(model, dataset: Batches, compile: Optional[bool] = False) -> LossClosure:
+def create_loss_function(model, dataset: Batches, compile: bool = False) -> LossClosure:
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
 
 
@@ -158,7 +160,7 @@ def create_loss_function(model, dataset: Batches, compile: Optional[bool] = Fals
 def _create_loss_function_internal(
     model: InternalDataTrainingLossMixin,
     data: Batches,
-    compile: Optional[bool] = False,
+    compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(compile=compile)
 
@@ -167,6 +169,6 @@ def _create_loss_function_internal(
 def _create_loss_function_external(
     model: ExternalDataTrainingLossMixin,
     data: Batches,
-    compile: Optional[bool] = False,
+    compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(data, compile=compile)
