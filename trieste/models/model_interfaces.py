@@ -76,7 +76,8 @@ class GPflowPredictor(ProbabilisticModel, ABC):
 
     def __init__(self, optimizer: Optional[Optimizer] = None):
         """
-        :param optimizer: The optimizer to use for optimization.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
         super().__init__()
 
@@ -108,7 +109,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow model to wrap.
-        :param optimizer: The optimizer to use for optimization.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
         super().__init__(optimizer)
         self._model = model
@@ -140,7 +142,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
-        :param optimizer: The optimizer to use for optimization.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
         """
