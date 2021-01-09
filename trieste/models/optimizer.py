@@ -50,7 +50,7 @@ class Optimizer:
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
     """ The underlying optimizer to use. """
 
-    minimize_kwargs: Dict[str, Any] = field(default_factory=lambda: {})
+    minimize_args: Dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the :meth:`minimize` method of the :attr:`optimizer`. """
 
     compile: bool = False
@@ -72,7 +72,7 @@ class Optimizer:
         """
         loss_fn = self.create_loss(model, dataset)
         variables = model.trainable_variables
-        return self.optimizer.minimize(loss_fn, variables, **self.minimize_kwargs)
+        return self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
 
 
 @dataclass
@@ -86,7 +86,7 @@ class TFOptimizer(Optimizer):
     """ The size of the mini-batches. """
 
     dataset_builder: Optional[DatasetTransformer] = None
-    """ A mapping from `~trieste.observer.Observer` data to mini-batches. """
+    """ A mapping from :class:`~trieste.observer.Observer` data to mini-batches. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
         def creator_fn(data: Batches) -> LossClosure:
@@ -121,7 +121,7 @@ class TFOptimizer(Optimizer):
 
         @jit(apply=self.compile)
         def train_fn() -> None:
-            self.optimizer.minimize(loss_fn, variables, **self.minimize_kwargs)
+            self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
 
         for _ in range(self.max_iter):
             train_fn()
@@ -130,7 +130,7 @@ class TFOptimizer(Optimizer):
 @singledispatch
 def create_optimizer(
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer],
-    optimizer_kwargs: Dict[str, Any]
+    optimizer_args: Dict[str, Any]
 ) -> Optimizer:
     pass
 
@@ -138,17 +138,17 @@ def create_optimizer(
 @create_optimizer.register
 def _create_tf_optimizer(
     optimizer: tf.optimizers.Optimizer,
-    optimizer_kwargs: Dict[str, Any],
+    optimizer_args: Dict[str, Any],
 ) -> Optimizer:
-    return TFOptimizer(optimizer, **optimizer_kwargs)
+    return TFOptimizer(optimizer, **optimizer_args)
 
 
 @create_optimizer.register
 def _create_scipy_optimizer(
     optimizer: gpflow.optimizers.Scipy,
-    optimizer_kwargs: Dict[str, Any],
+    optimizer_args: Dict[str, Any],
 ) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_kwargs)
+    return Optimizer(optimizer, **optimizer_args)
 
 
 @singledispatch

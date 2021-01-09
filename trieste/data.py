@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains utilities for `~trieste.observer.Observer` data. """
+""" This module contains utilities for :class:`~trieste.observer.Observer` data. """
 from __future__ import annotations
 
 from dataclasses import dataclass
