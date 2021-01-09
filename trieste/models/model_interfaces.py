@@ -122,9 +122,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> Union[GPR, SGPR]:
         return self._model
 
-    def optimize(self, dataset: Dataset) -> None:
-        self.optimizer.optimize(self.model, dataset)
-
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
 
@@ -157,9 +154,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     @property
     def model(self) -> SVGP:
         return self._model
-
-    def optimize(self, dataset: Dataset) -> None:
-        self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
         _assert_data_is_compatible(dataset, self._data)
