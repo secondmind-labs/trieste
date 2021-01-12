@@ -64,9 +64,10 @@ class TrainableProbabilisticModel(ProbabilisticModel):
     @abstractmethod
     def optimize(self, dataset: Dataset) -> None:
         """
-        Optimize the model parameters with respect to the specified ``dataset``.
+        Optimize the model objective with respect to (hyper)parameters given the specified
+        ``dataset``.
 
-        :param dataset: The data with which to optimize the model.
+        :param dataset: The data with which to train the model.
         """
         raise NotImplementedError
 
