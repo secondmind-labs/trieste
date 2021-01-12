@@ -24,10 +24,10 @@ from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLos
 from ..data import Dataset
 from ..utils import jit
 
-Batches = Union[Tuple[tf.Tensor, tf.Tensor], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
+TrainingData = Union[Tuple[tf.Tensor, tf.Tensor], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
 """ Type alias for a batch, or batches, of training data. """
 
-DatasetTransformer = Callable[[Dataset, Optional[int]], Batches]
+DatasetTransformer = Callable[[Dataset, Optional[int]], TrainingData]
 """
 Type alias for a function that converts a :class:`~trieste.data.Dataset` to batches of training
 data.
@@ -89,7 +89,7 @@ class TFOptimizer(Optimizer):
     """ A mapping from :class:`~trieste.observer.Observer` data to mini-batches. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
-        def creator_fn(data: Batches) -> LossClosure:
+        def creator_fn(data: TrainingData) -> LossClosure:
             return create_loss_function(model, data, self.compile)
 
         if self.dataset_builder is None and self.batch_size is None:
@@ -130,7 +130,7 @@ class TFOptimizer(Optimizer):
 @singledispatch
 def create_optimizer(
     optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer],
-    optimizer_args: Dict[str, Any]
+    optimizer_args: Dict[str, Any],
 ) -> Optimizer:
     pass
 
@@ -152,14 +152,14 @@ def _create_scipy_optimizer(
 
 
 @singledispatch
-def create_loss_function(model, dataset: Batches, compile: bool = False) -> LossClosure:
+def create_loss_function(model, dataset: TrainingData, compile: bool = False) -> LossClosure:
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
 
 
 @create_loss_function.register
 def _create_loss_function_internal(
     model: InternalDataTrainingLossMixin,
-    data: Batches,
+    data: TrainingData,
     compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(compile=compile)
@@ -168,7 +168,7 @@ def _create_loss_function_internal(
 @create_loss_function.register
 def _create_loss_function_external(
     model: ExternalDataTrainingLossMixin,
-    data: Batches,
+    data: TrainingData,
     compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(data, compile=compile)
