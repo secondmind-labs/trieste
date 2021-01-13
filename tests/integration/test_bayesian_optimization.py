@@ -65,11 +65,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
     model = build_model(initial_data[OBJECTIVE])
 
     res = BayesianOptimizer(observer, search_space).optimize(
-        num_steps,
-        initial_data,
-        {OBJECTIVE: model},
-        acquisition_rule,
-        track_state=False,
+        num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule
     )
 
     if res.error is not None:

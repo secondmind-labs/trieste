@@ -23,7 +23,7 @@ from .model_interfaces import TrainableProbabilisticModel, supported_models
 from .optimizer import create_optimizer
 
 
-def _default_optimizer():
+def _default_optimizer() -> gpflow.optimizers.Scipy:
     return gpflow.optimizers.Scipy()
 
 
@@ -72,13 +72,11 @@ class ModelConfig:
         if isinstance(self.model, TrainableProbabilisticModel):
             return self.model
 
-        optimizer = self.optimizer
         optimizer = create_optimizer(self.optimizer, self.optimizer_args)
 
         for model_type, model_interface in supported_models.items():
             if isinstance(self.model, model_type):
-                mi = model_interface(self.model, optimizer=optimizer)  # type: ignore
-                return mi
+                return model_interface(self.model, optimizer)
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
