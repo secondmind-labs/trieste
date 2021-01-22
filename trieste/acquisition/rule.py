@@ -28,7 +28,7 @@ from typing_extensions import Final
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
-from ..type import QueryPoints
+from ..type import TensorType
 from . import _optimizer
 from .function import (
     AcquisitionFunction,
@@ -55,7 +55,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
-    ) -> Tuple[QueryPoints, S]:
+    ) -> Tuple[TensorType, S]:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
@@ -110,7 +110,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Return the query point that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
@@ -155,7 +155,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
         ``search_space``. Of those points, return the `num_query_points` points at which
@@ -242,7 +242,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
-    ) -> Tuple[QueryPoints, State]:
+    ) -> Tuple[TensorType, State]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
@@ -352,7 +352,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Return the batch of query points that optimizes the acquisition function produced by
         `builder` (see :meth:`__init__`).

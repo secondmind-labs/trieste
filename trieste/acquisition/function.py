@@ -20,12 +20,11 @@ from typing_extensions import final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..type import QueryPoints
+from ..type import TensorType
 
-AcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+AcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for acquisition functions.
-
 
 An `AcquisitionFunction` maps a single query point (of dimension `D`) to a single value that
 describes how useful it would be evaluate that point (to our goal of optimizing the objective
@@ -36,7 +35,7 @@ function). Thus, with leading dimensions, an `AcquisitionFunction` takes input s
 `BatchAcquisitionFunction`.
 """
 
-BatchAcquisitionFunction = Callable[[QueryPoints], tf.Tensor]
+BatchAcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for batch acquisition functions.
 
@@ -127,12 +126,12 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints
+        model: ProbabilisticModel, eta: tf.Tensor, at: TensorType
     ) -> tf.Tensor:
         return expected_improvement(model, eta, at)
 
 
-def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: QueryPoints) -> tf.Tensor:
+def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: TensorType) -> tf.Tensor:
     r"""
     The Expected Improvement (EI) acquisition function for single-objective global optimization.
     Return the expectation of the improvement at ``at`` over the current "best" observation ``eta``,
@@ -181,7 +180,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, self._beta, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, beta: float, at: TensorType) -> tf.Tensor:
         return -lower_confidence_bound(model, beta, at)
 
 
@@ -198,7 +197,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         return "NegativePredictiveMean()"
 
 
-def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: QueryPoints) -> tf.Tensor:
+def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorType) -> tf.Tensor:
     r"""
     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
 
@@ -267,13 +266,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
+        model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: TensorType
     ) -> tf.Tensor:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: QueryPoints
+    model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: TensorType
 ) -> tf.Tensor:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
@@ -401,7 +400,7 @@ class IndependentReparametrizationSampler:
     def __repr__(self) -> str:
         return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
-    def sample(self, at: QueryPoints) -> tf.Tensor:
+    def sample(self, at: TensorType) -> tf.Tensor:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will

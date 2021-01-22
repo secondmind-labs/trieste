@@ -25,7 +25,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.space import Box
-from trieste.type import ObserverEvaluations, QueryPoints, TensorType
+from trieste.type import TensorType
 
 
 class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoTrainableProbModel):
@@ -98,7 +98,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             state: Optional[int],
-        ) -> Tuple[QueryPoints, int]:
+        ) -> Tuple[TensorType, int]:
             self.states_received.append(state)
 
             if state is None:
@@ -135,11 +135,11 @@ def test_bayesian_optimizer_optimize_returns_default_acquisition_state_of_correc
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
     class ExponentialWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
-        def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             return tf.exp(-query_points), tf.ones_like(query_points)
 
     class LinearWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
-        def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             return 2 * query_points, tf.ones_like(query_points)
 
     LINEAR = "linear"
@@ -152,7 +152,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             previous_state: Optional[int],
-        ) -> Tuple[QueryPoints, int]:
+        ) -> Tuple[TensorType, int]:
             if previous_state is None:
                 previous_state = 1
 

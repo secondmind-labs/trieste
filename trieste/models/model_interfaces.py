@@ -19,7 +19,7 @@ import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from ..data import Dataset
-from ..type import ObserverEvaluations, QueryPoints, TensorType
+from ..type import TensorType
 from .optimizer import Optimizer
 
 
@@ -27,7 +27,7 @@ class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """
         Return the predicted mean and variance of the latent function(s) at the specified
         ``query_points``.
@@ -38,7 +38,7 @@ class ProbabilisticModel(tf.Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples from the predictive distribution at ``query_points``.
 
@@ -96,10 +96,10 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     def model(self) -> GPModel:
         """ The underlying GPflow model. """
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
 
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
 
     def optimize(self, dataset: Dataset) -> None:
@@ -198,7 +198,7 @@ class VariationalGaussianProcess(GaussianProcessRegression):
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
 
 

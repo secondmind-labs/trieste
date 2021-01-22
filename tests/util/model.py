@@ -22,7 +22,7 @@ import tensorflow_probability as tfp
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
-from trieste.type import ObserverEvaluations, QueryPoints, TensorType
+from trieste.type import TensorType
 
 
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
@@ -38,7 +38,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
 class GaussianMarginal(PseudoTrainableProbModel, ABC):
     """ A probabilistic model with a Gaussian marginal distribution at each point. """
 
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
         return tfp.distributions.Normal(mean, var).sample(num_samples)
 
@@ -50,7 +50,7 @@ class CustomMeanWithUnitVariance(GaussianMarginal):
     def __repr__(self) -> str:
         return f"CustomMeanWithUnitVariance({self._f!r})"
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         mean = self._f(query_points)
         return mean, tf.ones_like(mean)
 
@@ -69,7 +69,7 @@ class QuadraticWithUnitVariance(GaussianMarginal):
     def __repr__(self) -> str:
         return "QuadraticWithUnitVariance()"
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self._model.predict(query_points)
 
 
@@ -83,7 +83,7 @@ def test_quadratic_with_unit_variance() -> None:
 @random_seed
 def test_gaussian_marginal_sample() -> None:
     class _Sum(GaussianMarginal):
-        def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
             mean = tf.reduce_sum(query_points, axis=1, keepdims=True)
             return mean, tf.ones_like(mean)
 

@@ -19,13 +19,13 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
-from ..type import QueryPoints
+from ..type import TensorType
 
 TensorMapping = Callable[[tf.Tensor], tf.Tensor]
 
 
 @singledispatch
-def optimize(space: SearchSpace, target_func: TensorMapping) -> QueryPoints:
+def optimize(space: SearchSpace, target_func: TensorMapping) -> TensorType:
     """
     Return the point in ``space`` (with shape S) that maximises the function ``target_func``, as the
     single entry in a 1 by S tensor.
@@ -46,7 +46,7 @@ def optimize(space: SearchSpace, target_func: TensorMapping) -> QueryPoints:
 
 
 @optimize.register
-def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> QueryPoints:
+def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> TensorType:
     target_func_values = target_func(space.points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
@@ -60,7 +60,7 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> Q
 
 
 @optimize.register
-def _box(space: Box, target_func: TensorMapping) -> QueryPoints:
+def _box(space: Box, target_func: TensorMapping) -> TensorType:
     trial_search_space = space.discretize(20 * tf.shape(space.lower)[-1])
     initial_point = optimize(trial_search_space, target_func)
 
