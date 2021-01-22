@@ -81,7 +81,7 @@ class OptimizationResult(Generic[S]):
         """
         return self.final_result, self.history
 
-    def try_get_final_data(self) -> Mapping[str, Dataset]:
+    def try_get_final_datasets(self) -> Mapping[str, Dataset]:
         """
         Convenience method to attempt to get the final data.
 

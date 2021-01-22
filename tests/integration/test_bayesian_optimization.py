@@ -67,7 +67,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
     dataset = (
         BayesianOptimizer(observer, search_space)
         .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_data()[OBJECTIVE]
+        .try_get_final_datasets()[OBJECTIVE]
     )
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))

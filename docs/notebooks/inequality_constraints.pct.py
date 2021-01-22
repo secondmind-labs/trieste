@@ -128,7 +128,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 data = bo.optimize(
     num_steps, initial_data, models, rule, track_state=False
-).try_get_final_data()
+).try_get_final_datasets()
 
 # %% [markdown]
 # To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.

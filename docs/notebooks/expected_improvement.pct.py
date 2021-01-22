@@ -77,13 +77,13 @@ model = build_model(initial_data[OBJECTIVE])
 #
 # We'll run the optimizer for fifteen steps.
 #
-# The optimization loop catches errors so as not to lose progress, which means the optimization loop might not complete and the data from the last step may not exist. Here we'll handle this crudely by asking for the data regardless, using `.try_get_final_data()`, which will re-raise the error if one did occur. For a review of how to handle errors systematically, there is a [dedicated tutorial](recovering_from_errors.ipynb). Finally, like the observer, the optimizer outputs labelled datasets, so we'll get the (only) dataset here by indexing with tag `OBJECTIVE`.
+# The optimization loop catches errors so as not to lose progress, which means the optimization loop might not complete and the data from the last step may not exist. Here we'll handle this crudely by asking for the data regardless, using `.try_get_final_datasets()`, which will re-raise the error if one did occur. For a review of how to handle errors systematically, there is a [dedicated tutorial](recovering_from_errors.ipynb). Finally, like the observer, the optimizer outputs labelled datasets, so we'll get the (only) dataset here by indexing with tag `OBJECTIVE`.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(15, initial_data, model)
-dataset = result.try_get_final_data()[OBJECTIVE]
+dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]
 # ## Explore the results
@@ -184,8 +184,8 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.try_get_final_data(), result.try_get_final_models())
-dataset = result.try_get_final_data()[OBJECTIVE]
+result = bo.optimize(5, result.try_get_final_datasets(), result.try_get_final_models())
+dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)

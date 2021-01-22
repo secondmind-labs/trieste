@@ -54,18 +54,18 @@ def test_optimization_result_astuple() -> None:
     assert history is opt_result.history
 
 
-def test_optimization_result_try_get_final_data_for_successful_optimization() -> None:
+def test_optimization_result_try_get_final_datasets_for_successful_optimization() -> None:
     data = {"foo": zero_dataset()}
     result: OptimizationResult[None] = OptimizationResult(
         Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
     )
-    assert result.try_get_final_data() is data
+    assert result.try_get_final_datasets() is data
 
 
-def test_optimization_result_try_get_final_data_for_failed_optimization() -> None:
+def test_optimization_result_try_get_final_datasets_for_failed_optimization() -> None:
     result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
-        result.try_get_final_data()
+        result.try_get_final_datasets()
 
 
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
@@ -336,7 +336,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     data = (
         BayesianOptimizer(linear_and_exponential, Box(tf.constant([-2.0]), tf.constant([2.0])))
         .optimize(20, data, models, AdditionRule())
-        .try_get_final_data()
+        .try_get_final_datasets()
     )
 
     objective_values = data[LINEAR].observations + data[EXPONENTIAL].observations
