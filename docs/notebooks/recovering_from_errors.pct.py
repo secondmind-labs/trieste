@@ -67,7 +67,7 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 #
 # In this tutorial we'll try to complete fifteen optimization loops, which, with the broken observer, may take more than one attempt. The optimizer returns an `OptimizationResult`, which is simply a container for both:
 #
-#   * the final result, which uses a `Result` type (not to be confused with `OptimizationResult`), to safely encapsulates the final data, models and acquisition state if the process completed successfully, or an error if one occurred
+#   * the final result, which uses a `Result` type (not to be confused with `OptimizationResult`) to safely encapsulate the final data, models and acquisition state if the process completed successfully, or an error if one occurred
 #   * the history of the successful optimization steps.
 #
 # We can access these with the `astuple` method.
