@@ -163,14 +163,10 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(20, initial_data, models, acquisition_rule=rule)
+result = bo.optimize(20, initial_data, models, rule).final_result.unwrap()
 
-if result.error is not None: raise result.error
-
-final_data = result.datasets
-
-arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
-print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")
+arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
+print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %% [markdown]
 # We can visualise where the optimizer queried on a contour plot of the Branin with the failure region. The minimum observation can be seen along the bottom axis towards the right, outside of the failure region.
@@ -179,10 +175,10 @@ print(f"query point: {final_data[OBJECTIVE].query_points[arg_min_idx, :]}")
 import matplotlib.pyplot as plt
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
-mask_fail = final_data[FAILURE].observations.numpy().flatten().astype(int) == 0
+mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(masked_branin, mins, maxs, grid_density=50, contour=True)
 plot_bo_points(
-    final_data[FAILURE].query_points.numpy(),
+    result.datasets[FAILURE].query_points.numpy(),
     ax=ax[0, 0],
     num_init=num_init_points,
     mask_fail=mask_fail,
@@ -195,13 +191,13 @@ plt.show()
 # %%
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
-arg_min_idx = tf.squeeze(tf.argmin(final_data[OBJECTIVE].observations, axis=0))
+arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 
-fig = plot_gp_plotly(regression_model, mins, maxs, grid_density=50)
+fig = plot_gp_plotly(result.models[OBJECTIVE].model, mins, maxs, grid_density=50)
 fig = add_bo_points_plotly(
-    x=final_data[OBJECTIVE].query_points[:, 0].numpy(),
-    y=final_data[OBJECTIVE].query_points[:, 1].numpy(),
-    z=final_data[OBJECTIVE].observations.numpy().flatten(),
+    x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),
+    y=result.datasets[OBJECTIVE].query_points[:, 1].numpy(),
+    z=result.datasets[OBJECTIVE].observations.numpy().flatten(),
     num_init=num_init_points,
     idx_best=arg_min_idx,
     fig=fig,
@@ -216,7 +212,7 @@ fig.show()
 
 # %%
 fig, ax = plot_gp_2d(
-    classification_model,
+    result.models[FAILURE].model,
     mins,
     maxs,
     grid_density=50,
@@ -226,14 +222,14 @@ fig, ax = plot_gp_2d(
 )
 
 plot_bo_points(
-    final_data[FAILURE].query_points.numpy(),
+    result.datasets[FAILURE].query_points.numpy(),
     num_init=num_init_points,
     ax=ax[0, 0],
     mask_fail=mask_fail,
 )
 
 plot_bo_points(
-    final_data[FAILURE].query_points.numpy(),
+    result.datasets[FAILURE].query_points.numpy(),
     num_init=num_init_points,
     ax=ax[0, 1],
     mask_fail=mask_fail,

@@ -66,12 +66,9 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(5, initial_data, model_config, acq_rule)
 
-if result.error is not None:
-    raise result.error
-
-dataset = result.datasets[OBJECTIVE]
+result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
+dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]
 # ## Visualising the result
@@ -96,7 +93,12 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # %%
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
-fig = plot_gp_plotly(gpr, lower_bound.numpy(), upper_bound.numpy(), grid_density=30)
+fig = plot_gp_plotly(
+    result.try_get_final_models()[OBJECTIVE].model,
+    lower_bound.numpy(),
+    upper_bound.numpy(),
+    grid_density=30
+)
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
     y=query_points[:, 1],
