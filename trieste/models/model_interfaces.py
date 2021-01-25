@@ -117,6 +117,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
 
     def __repr__(self) -> str:
+        """"""
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
 
     @property
@@ -154,6 +155,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     @property
     def model(self) -> SVGP:
+        """"""
         return self._model
 
     def update(self, dataset: Dataset) -> None:
