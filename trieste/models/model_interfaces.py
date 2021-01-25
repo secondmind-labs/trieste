@@ -165,13 +165,18 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self.model.num_data = num_data
 
 
-class VariationalGaussianProcess(GaussianProcessRegression):
+class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
         tf.debugging.assert_rank(model.q_sqrt, 3)
-        super().__init__(model, optimizer)
+        super().__init__(optimizer)
+        self._model = model
 
     def __repr__(self) -> str:
         return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
+
+    @property
+    def model(self) -> VGP:
+        return self._model
 
     def update(self, dataset: Dataset) -> None:
         model = self.model
