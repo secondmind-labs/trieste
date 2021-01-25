@@ -172,6 +172,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
 
     def __repr__(self) -> str:
+        """"""
         return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
 
     @property
