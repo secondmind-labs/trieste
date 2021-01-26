@@ -151,11 +151,11 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self._data = data
 
     def __repr__(self) -> str:
+        """"""
         return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
-        """"""
         return self._model
 
     def update(self, dataset: Dataset) -> None:
