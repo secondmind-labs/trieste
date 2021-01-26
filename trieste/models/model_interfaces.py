@@ -174,6 +174,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer to use to train the model.
+        :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
         super().__init__(optimizer)
