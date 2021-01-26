@@ -168,7 +168,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
+    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
     def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
+        """
+        :param model: The GPflow :class:`~gpflow.models.VGP`.
+        :param optimizer: The optimizer to use to train the model.
+        """
         tf.debugging.assert_rank(model.q_sqrt, 3)
         super().__init__(optimizer)
         self._model = model
@@ -206,6 +211,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points``.
+        """
         return self.model.predict_y(query_points)
 
 
