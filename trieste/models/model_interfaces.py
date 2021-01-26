@@ -169,6 +169,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+
     def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
