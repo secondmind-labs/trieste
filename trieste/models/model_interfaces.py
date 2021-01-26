@@ -117,6 +117,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
 
     def __repr__(self) -> str:
+        """"""
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
 
     @property
@@ -140,16 +141,17 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
         super().__init__(optimizer)
         self._model = model
         self._data = data
 
     def __repr__(self) -> str:
+        """"""
         return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
 
     @property
@@ -165,40 +167,58 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self.model.num_data = num_data
 
 
-class VariationalGaussianProcess(GaussianProcessRegression):
+class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
+    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+
+    def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
+        """
+        :param model: The GPflow :class:`~gpflow.models.VGP`.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
+        """
+        tf.debugging.assert_rank(model.q_sqrt, 3)
+        super().__init__(optimizer)
+        self._model = model
+
     def __repr__(self) -> str:
+        """"""
         return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
+
+    @property
+    def model(self) -> VGP:
+        return self._model
 
     def update(self, dataset: Dataset) -> None:
         model = self.model
-        x, y = model.data
 
-        _assert_data_is_compatible(dataset, Dataset(x, y))
-
-        data = (dataset.query_points, dataset.observations)
-        num_data = data[0].shape[0]
+        _assert_data_is_compatible(dataset, Dataset(*model.data))
 
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
-        assert self.model.q_sqrt.shape.ndims == 3
 
         # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
         # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
         # Hence we need to backtransform from f_mu and f_cov to obtain the updated
         # new_q_mu and new_q_sqrt:
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
-        jitter_mat = gpflow.config.default_jitter() * tf.eye(num_data, dtype=Knn.dtype)
+        jitter_mat = gpflow.config.default_jitter() * tf.eye(len(dataset), dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
         tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
         new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
-        model.data = data
-        model.num_data = num_data
+        model.data = dataset.astuple()
+        model.num_data = len(dataset)
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points``.
+        """
         return self.model.predict_y(query_points)
 
 
