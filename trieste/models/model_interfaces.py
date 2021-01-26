@@ -141,10 +141,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
         super().__init__(optimizer)
         self._model = model
@@ -173,7 +173,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
-        :param optimizer: The optimizer to use to train the model.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
