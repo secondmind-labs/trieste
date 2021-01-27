@@ -44,7 +44,11 @@ def non_dominated_sort(datasets: Mapping[str, Dataset]) -> [TensorType, TensorTy
     :return: tuple of the non-dominated set and the degree of dominance,
         dominances gives the number of dominating points for each data point
     """
-    dataset = to_Dataset(datasets)
+    if type(datasets) is not Dataset :
+        dataset = to_Dataset(datasets)
+    else:
+        dataset = datasets
+        
     observations = dataset.observations
     extended = tf.tile(tf.expand_dims(observations, 0), [observations.shape[0], 1, 1])
     swapped_ext = tf.einsum("ij...->ji...", extended)
@@ -158,8 +162,8 @@ class Pareto:
             (default False)
         """
 
-        data = to_Dataset(datasets)
-        self.data = data if data is not None else self.data
+        if datasets is not None : data = to_Dataset(datasets) 
+        self.data = data if datasets is not None else self.data
 
         # Find (new) set of non-dominated points
         changed = self._update_front()
