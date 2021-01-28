@@ -20,13 +20,10 @@ def to_Dataset(datasets: Mapping[str, Dataset]) -> Dataset:
 
     data_query_points = []
     data_observations = []
-    [
-        (
-            data_query_points.append(datasets[tag].query_points),
-            data_observations.append(datasets[tag].observations),
-        )
-        for tag in datasets
-    ]
+
+    for tag in datasets:
+        data_query_points.append(datasets[tag].query_points)
+        data_observations.append(datasets[tag].observations)
 
     assert tf.math.reduce_all(
         [tf.math.equal(input_data, data_query_points[0]) for input_data in data_query_points]
@@ -37,19 +34,14 @@ def to_Dataset(datasets: Mapping[str, Dataset]) -> Dataset:
     return mo_dataset
 
 
-def non_dominated_sort(datasets: Mapping[str, Dataset]) -> [TensorType, TensorType]:
+def non_dominated_sort(datasets: Dataset) -> TensorType:
     """
     Computes the non-dominated set for a set of data points
     :param dataset: data points
     :return: tuple of the non-dominated set and the degree of dominance,
         dominances gives the number of dominating points for each data point
     """
-    if type(datasets) is not Dataset:
-        dataset = to_Dataset(datasets)
-    else:
-        dataset = datasets
-
-    observations = dataset.observations
+    observations = datasets.observations
     extended = tf.tile(tf.expand_dims(observations, 0), [observations.shape[0], 1, 1])
     swapped_ext = tf.einsum("ij...->ji...", extended)
     dominance = tf.reduce_sum(
