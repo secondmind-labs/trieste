@@ -16,11 +16,9 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from trieste.data import Dataset
-from trieste.utils.pareto import non_dominated_sort
-from trieste.utils.pareto import Pareto
+from trieste.utils.pareto import Pareto, non_dominated_sort
 
 
 @pytest.mark.parametrize(
@@ -176,7 +174,7 @@ class TestPareto:
             err_msg="hypervolume incorrect.",
         )
 
-        # note: in original gpflowopt decimal=20 were used 
+        # note: in original gpflowopt decimal=20 were used
         np.testing.assert_almost_equal(
             self.p_2d.hypervolume([1.0, 1.0]),
             self.p_generic.hypervolume([1.0, 1.0]),

@@ -44,11 +44,11 @@ def non_dominated_sort(datasets: Mapping[str, Dataset]) -> [TensorType, TensorTy
     :return: tuple of the non-dominated set and the degree of dominance,
         dominances gives the number of dominating points for each data point
     """
-    if type(datasets) is not Dataset :
+    if type(datasets) is not Dataset:
         dataset = to_Dataset(datasets)
     else:
         dataset = datasets
-        
+
     observations = dataset.observations
     extended = tf.tile(tf.expand_dims(observations, 0), [observations.shape[0], 1, 1])
     swapped_ext = tf.einsum("ij...->ji...", extended)
@@ -134,7 +134,8 @@ class Pareto:
         :param smaller: a boolean ndarray storing test point < Pareto front
         :return: True if the test point dominates or augments the Pareto front (boolean)
         """
-        # if and only if the test point is at least in one dimension smaller for every point in the Pareto set
+        # if and only if the test point is at least in one dimension smaller
+        # for every point in the Pareto set
         idx_dom_augm = tf.reduce_any(smaller, axis=1)
         is_dom_augm = tf.reduce_all(idx_dom_augm)
 
@@ -151,25 +152,28 @@ class Pareto:
         self.front = tf.gather_nd(pf, tf.expand_dims(tf.argsort(pf[:, 0]), axis=1))
         return not np.array_equal(current.numpy(), self.front.numpy())
 
-    def update(self, datasets: Mapping[str, Dataset]=None, generic_strategy=False):
+    def update(self, datasets: Mapping[str, Dataset] = None, generic_strategy=False):
         """
         Update with new output data.
-        Computes the Pareto set and if it has changed recalculates the cell bounds covering the non-dominated region.
+        Computes the Pareto set and if it has changed recalculates
+        the cell bounds covering the non-dominated region.
         For the latter, a direct algorithm is used for two objectives, otherwise a
         generic divide and conquer strategy is employed.
         :param y: output data points
-        :param generic_strategy: Force the generic divide and conquer strategy regardless of the number of objectives
-            (default False)
+        :param generic_strategy: Force the generic divide and conquer strategy
+            regardless of the number of objectives (default False)
         """
 
-        if datasets is not None : data = to_Dataset(datasets) 
+        if datasets is not None:
+            data = to_Dataset(datasets)
         self.data = data if datasets is not None else self.data
 
         # Find (new) set of non-dominated points
         changed = self._update_front()
 
         # Recompute cell bounds if required
-        # Note: if the Pareto set is based on model predictions it will almost always change in between optimizations
+        # Note: if the Pareto set is based on model predictions
+        # it will almost always change in between optimizations
         if changed:
             # Clear data container
             self.bounds.clear()
@@ -238,7 +242,8 @@ class Pareto:
                 dc_dist = cell[1] - cell[0]
                 hc = BoundedVolumes(lb, ub)
 
-                # Only divide when it is not an unit cell and the volume is above the approx. threshold
+                # Only divide when it is not an unit cell
+                # and the volume is above the approx. threshold
                 if tf.reduce_any(dc_dist > 1) and tf.reduce_all(
                     (hc.size()[0] / total_size) > self.threshold
                 ):
@@ -264,7 +269,8 @@ class Pareto:
 
     def bounds_2d(self):
         """
-        Computes the cells covering the non-dominated region for the specific case of only two objectives.
+        Computes the cells covering the non-dominated region
+        for the specific case of only two objectives.
         Assumes the Pareto set has been sorted in ascending order on the first objective.
         This implies the second objective is sorted in descending order.
         """
