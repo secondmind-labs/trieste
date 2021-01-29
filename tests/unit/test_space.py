@@ -129,8 +129,8 @@ def test_discrete_search_space_deepcopy() -> None:
 
 def test_box_converts_lists_to_float64_tensors() -> None:
     box = Box([0.0], [1.0])
-    assert box.lower.dtype is tf.float64
-    assert box.upper.dtype is tf.float64
+    assert tf.as_dtype(box.lower.dtype) is tf.float64
+    assert tf.as_dtype(box.upper.dtype) is tf.float64
     npt.assert_array_equal(box.lower, [0.0])
     npt.assert_array_equal(box.upper, [1.0])
 
