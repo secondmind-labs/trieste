@@ -31,14 +31,14 @@ class SearchSpace(ABC):
     """
 
     @abstractmethod
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
         """
 
     @abstractmethod
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         """
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
@@ -104,11 +104,11 @@ class DiscreteSearchSpace(SearchSpace):
         """ All the points in this space. """
         return self._points
 
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
         return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
@@ -155,8 +155,8 @@ class DiscreteSearchSpace(SearchSpace):
         return self
 
 
-Vector = TypeVar("Vector", tf.Tensor, List[float])
-""" A type variable representing either a :class:`tf.Tensor` or `list`. """
+Vector = TypeVar("Vector", TensorType, List[float])
+r""" A type variable representing either a `TensorType` or `list` of `float`\ s. """
 
 
 class Box(SearchSpace):
@@ -177,9 +177,11 @@ class Box(SearchSpace):
             and if a tensor, must have float type.
         :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
-        :raise ValueError: If ``lower`` and ``upper`` have invalid shapes. Or if ``upper`` is not
-            greater than ``lower`` across all dimensions.
-        :raise TypeError: If ``lower`` and ``upper`` have different dtypes.
+        :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+            - ``lower`` and ``upper`` have invalid shapes.
+            - ``lower`` and ``upper`` do not have the same floating point type.
+            - ``upper`` is not greater than ``lower`` across all dimensions.
         """
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
@@ -192,19 +194,10 @@ class Box(SearchSpace):
             self._lower = tf.cast(lower, dtype=tf.float64)
             self._upper = tf.cast(upper, dtype=tf.float64)
         else:
-            assert isinstance(lower, tf.Tensor) and isinstance(upper, tf.Tensor)  # to help mypy
+            self._lower = tf.convert_to_tensor(lower)
+            self._upper = tf.convert_to_tensor(upper)
 
-            if lower.dtype != upper.dtype:
-                raise TypeError(
-                    f"Lower and upper bounds must have the same dtype, got {lower.dtype} and"
-                    f" {upper.dtype}"
-                )
-
-            if lower.dtype not in (tf.float16, tf.float32, tf.float64):
-                raise TypeError(f"Bounds must have float type, got type {lower.dtype}")
-
-            self._lower = lower
-            self._upper = upper
+            tf.debugging.assert_same_float_dtype([self._lower, self._upper])
 
         tf.debugging.assert_less(self._lower, self._upper)
 
@@ -221,7 +214,7 @@ class Box(SearchSpace):
         """ The upper bounds of the box. """
         return self._upper
 
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if all of its coordinates lie in the closed intervals bounded by the lower and upper
@@ -241,7 +234,7 @@ class Box(SearchSpace):
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
