@@ -169,7 +169,7 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 ) -> None:
     lower, upper = tf.zeros([3], dtype=lower_dtype), tf.ones([3], dtype=upper_dtype)
 
-    with pytest.raises(TypeError, match="dtype"):
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
         Box(lower, upper)
 
 
