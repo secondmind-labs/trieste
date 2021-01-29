@@ -336,15 +336,6 @@ def test_box___mul___bounds_are_the_concatenation_of_original_bounds() -> None:
     npt.assert_allclose(product.upper, [2, 3, 7.2, 8.2, 9.2])
 
 
-def test_box___mul___for_zero_dimensional_box() -> None:
-    box = Box(tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]))
-    identity = Box(tf.constant([]), tf.constant([]))
-    npt.assert_array_equal((box * identity).lower, box.lower)
-    npt.assert_array_equal((box * identity).upper, box.upper)
-    npt.assert_array_equal((identity * box).lower, box.lower)
-    npt.assert_array_equal((identity * box).upper, box.upper)
-
-
 def test_box___mul___raises_if_bounds_have_different_types() -> None:
     box1 = Box(tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]))
     box2 = Box(tf.constant([4.0, 5.0], tf.float64), tf.constant([6.0, 7.0], tf.float64))
