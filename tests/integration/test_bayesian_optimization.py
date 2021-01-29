@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import gpflow
-import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -50,7 +48,7 @@ from trieste.utils.objectives import (
 def test_optimizer_finds_minima_of_the_branin_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
-    search_space = Box(np.array([0.0, 0.0]), np.array([1.0, 1.0]))
+    search_space = Box([0, 0], [1, 1])
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)

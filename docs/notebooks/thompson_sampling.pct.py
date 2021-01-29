@@ -19,11 +19,8 @@ tf.random.set_seed(1793)
 import trieste
 from trieste.utils.objectives import branin
 from trieste.acquisition.rule import OBJECTIVE
-import gpflow
 
-lower_bound = tf.constant([0.0, 0.0], gpflow.default_float())
-upper_bound = tf.constant([1.0, 1.0], gpflow.default_float())
-search_space = trieste.space.Box(lower_bound, upper_bound)
+search_space = trieste.space.Box([0, 0], [1, 1])
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
@@ -34,6 +31,8 @@ initial_data = observer(initial_query_points)
 # We'll use Gaussian process regression to model the function.
 
 # %%
+import gpflow
+
 observations = initial_data[OBJECTIVE].observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
 gpr = gpflow.models.GPR(initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5)
@@ -82,7 +81,7 @@ arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 _, ax = plot_function_2d(
-    branin, lower_bound.numpy(), upper_bound.numpy(), grid_density=30, contour=True
+    branin, search_space.lower, search_space.upper, grid_density=30, contour=True
 )
 
 plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
@@ -95,8 +94,8 @@ from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
     result.try_get_final_models()[OBJECTIVE].model,
-    lower_bound.numpy(),
-    upper_bound.numpy(),
+    search_space.lower,
+    search_space.upper,
     grid_density=30
 )
 fig = add_bo_points_plotly(

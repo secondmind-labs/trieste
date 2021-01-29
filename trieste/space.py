@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, TypeVar, Union
+from typing import Dict, List, TypeVar, Union
 
 import tensorflow as tf
 
@@ -31,14 +31,14 @@ class SearchSpace(ABC):
     """
 
     @abstractmethod
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
         """
 
     @abstractmethod
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         """
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
@@ -104,11 +104,11 @@ class DiscreteSearchSpace(SearchSpace):
         """ All the points in this space. """
         return self._points
 
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
         return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
@@ -155,6 +155,10 @@ class DiscreteSearchSpace(SearchSpace):
         return self
 
 
+Vector = TypeVar("Vector", TensorType, List[float])
+r""" A type variable representing either a `TensorType` or `list` of `float`\ s. """
+
+
 class Box(SearchSpace):
     r"""
     Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in
@@ -162,35 +166,40 @@ class Box(SearchSpace):
     closed bounded intervals in :math:`\mathbb{R}`.
     """
 
-    def __init__(self, lower: TensorType, upper: TensorType):
+    def __init__(self, lower: Vector, upper: Vector):
+        r"""
+        If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
+        `tf.float64`.
+
+        **Type hints:** If ``lower`` or ``upper`` is a `list`, they must both be `list`\ s.
+
+        :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+            - ``lower`` and ``upper`` have invalid shapes.
+            - ``lower`` and ``upper`` do not have the same floating point type.
+            - ``upper`` is not greater than ``lower`` across all dimensions.
         """
-        :param lower: The lower (inclusive) bounds of the box.
-        :param upper: The upper (inclusive) bounds of the box.
-        :raise ValueError: If ``lower`` and ``upper`` have different shapes. Or if ``upper`` is not
-            greater than ``lower`` across all dimensions.
-        :raise TypeError: If ``lower`` and ``upper`` have different dtypes.
-        """
+        tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
+        tf.assert_rank(lower, 1)
+        tf.assert_rank(upper, 1)
 
-        if not shapes_equal(lower, upper):
-            raise ValueError(
-                f"Lower and upper bounds must have the same shape, got {lower.shape} and"
-                f" {upper.shape}"
-            )
+        if len(lower) == 0:
+            raise ValueError(f"Bounds must have shape [D] for positive D, got {tf.shape(lower)}.")
 
-        if lower.dtype is not upper.dtype:
-            raise TypeError(
-                f"Lower and upper bounds must have the same dtype, got {lower.shape} and"
-                f" {upper.shape}"
-            )
+        if isinstance(lower, list):
+            self._lower = tf.cast(lower, dtype=tf.float64)
+            self._upper = tf.cast(upper, dtype=tf.float64)
+        else:
+            self._lower = tf.convert_to_tensor(lower)
+            self._upper = tf.convert_to_tensor(upper)
 
-        if tf.reduce_any(lower >= upper):
-            raise ValueError(
-                f"Upper bound must be greater that lower for all dimensions, got lower bound"
-                f" {lower} and upper {upper}."
-            )
+            tf.debugging.assert_same_float_dtype([self._lower, self._upper])
 
-        self._lower = lower
-        self._upper = upper
+        tf.debugging.assert_less(self._lower, self._upper)
 
     def __repr__(self) -> str:
         return f"Box({self._lower!r}, {self._upper!r})"
@@ -205,7 +214,7 @@ class Box(SearchSpace):
         """ The upper bounds of the box. """
         return self._upper
 
-    def __contains__(self, value: TensorType) -> Union[bool, tf.Tensor]:
+    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if all of its coordinates lie in the closed intervals bounded by the lower and upper
@@ -225,7 +234,7 @@ class Box(SearchSpace):
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
-    def sample(self, num_samples: int) -> tf.Tensor:
+    def sample(self, num_samples: int) -> TensorType:
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype

@@ -137,11 +137,13 @@ def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[i
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank
         in ``excluding_ranks``.
     """
-    shapes = {
-        # fmt: off
-        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6),
-        # fmt: on
-    }
+    shapes = (
+        {()}
+        | {(0,), (1,), (3,)}
+        | {(0, 0), (1, 0), (0, 1), (3, 4)}
+        | {(1, 0, 3), (1, 2, 3)}
+        | {(1, 2, 3, 4, 5, 6)}
+    )
     return frozenset(s for s in shapes if len(s) not in excluding_ranks)
 
 
