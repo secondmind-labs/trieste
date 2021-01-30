@@ -63,7 +63,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         self._kernels = kernels
 
     def __repr__(self) -> str:
-        return f"GaussianProcess({self._mean_function!r}, {self._kernel!r})"
+        return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         mean, cov = self.predict_joint(query_points[..., None, :])
