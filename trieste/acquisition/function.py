@@ -449,10 +449,6 @@ class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
         tf.debugging.assert_positive(sample_size)
         self._sample_size = sample_size
 
-    def __repr__(self) -> str:
-        """"""
-        return f"MCIndAcquisitionFunctionBuilder({self._sample_size!r})"
-
     @final
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -497,10 +493,6 @@ class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
         """
         tf.debugging.assert_positive(sample_size)
         self._sample_size = sample_size
-
-    def __repr__(self) -> str:
-        """"""
-        return f"SingleModelMCIndAcquisitionFunctionBuilder({self._sample_size!r})"
 
     @final
     def prepare_acquisition_function(
