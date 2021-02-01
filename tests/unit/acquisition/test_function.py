@@ -542,7 +542,7 @@ def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
-@pytest.mark.parametrize("at", [tf.constant([0.0]), tf.constant(0.0)])
+@pytest.mark.parametrize("at", [tf.constant([0.0]), tf.constant(0.0), tf.ones([0, 1])])
 def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(at: tf.Tensor) -> None:
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
 
@@ -555,3 +555,11 @@ def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter() -> 
 
     with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
+
+
+def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_size() -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+    sampler.sample(tf.constant([[0.0], [1.0], [2.0]]))
+
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+        sampler.sample(tf.constant([[0.0], [1.0]]))

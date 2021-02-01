@@ -394,8 +394,8 @@ class IndependentReparametrizationSampler:
 
         self._sample_size = sample_size
 
-        # _eps is essentially a lazy constant, declared here but initialised only on the first call
-        # to sample
+        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
+        # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
@@ -563,8 +563,8 @@ class BatchReparametrizationSampler:
 
         self._sample_size = sample_size
 
-        # _eps is essentially a lazy constant, declared here but initialised only on the first call
-        # to sample
+        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
+        # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
@@ -582,22 +582,41 @@ class BatchReparametrizationSampler:
         :class:`BatchReparametrizationSampler` instances will produce different samples.
 
         :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`.
+            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+            consistent batch size across all calls to :meth:`sample` for any given
+            :class:`BatchReparametrizationSampler`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
-        :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar, or ``jitter`` is
-            negative.
+        :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+            - ``at`` is a scalar.
+            - The batch size `B` of ``at`` is not positive.
+            - The batch size `B` of ``at`` differs from that of previous calls.
+            - ``jitter`` is negative.
         """
         tf.debugging.assert_rank_at_least(at, 2)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
         batch_size = at.shape[-2]
 
-        if tf.size(self._eps) == 0:
+        tf.debugging.assert_positive(batch_size)
+
+        eps_is_populated = tf.size(self._eps) != 0
+
+        if eps_is_populated:
+            tf.debugging.assert_equal(
+                batch_size,
+                tf.shape(self._eps)[-2],
+                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
+                f" but previous batch size was {tf.shape(self._eps)[-2]}."
+            )
+
+        mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
+
+        if not eps_is_populated:
             self._eps.assign(
                 tf.random.normal(
                     [mean.shape[-1], batch_size, self._sample_size], dtype=tf.float64
