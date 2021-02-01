@@ -611,7 +611,7 @@ class BatchReparametrizationSampler:
                 batch_size,
                 tf.shape(self._eps)[-2],
                 f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
-                f" but previous batch size was {tf.shape(self._eps)[-2]}."
+                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
             )
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
