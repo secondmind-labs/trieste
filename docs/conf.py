@@ -121,3 +121,5 @@ html_theme_options = {
     "show_prev_next": False,
     "github_url": "https://github.com/secondmind-labs/trieste",
 }
+
+default_role = "any"  # turn all ` ` into links when possible
