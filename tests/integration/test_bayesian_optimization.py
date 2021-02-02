@@ -13,17 +13,10 @@
 # limitations under the License.
 import gpflow
 import numpy.testing as npt
-import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.rule import (
-    OBJECTIVE,
-    AcquisitionRule,
-    EfficientGlobalOptimization,
-    ThompsonSampling,
-    TrustRegion,
-)
+from trieste.acquisition.rule import OBJECTIVE, TrustRegion
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
@@ -32,17 +25,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 
 
 @random_seed
-@pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
-    [
-        (30, EfficientGlobalOptimization()),
-        (22, TrustRegion()),
-        (17, ThompsonSampling(500, 3)),
-    ],
-)
-def test_optimizer_finds_minima_of_the_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
-) -> None:
+def test_optimizer_finds_minima_of_the_branin_function() -> None:
     search_space = Box([0, 0], [1, 1])
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
@@ -59,7 +42,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .optimize(22, initial_data, {OBJECTIVE: model}, TrustRegion())
         .try_get_final_datasets()[OBJECTIVE]
     )
 

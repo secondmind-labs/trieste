@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import singledispatch
-from typing import Callable
+from typing import Callable, Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..space import Box, DiscreteSearchSpace, SearchSpace
+from ..space import Box, DiscreteSearchSpace
 from ..type import TensorType
 
 TensorMapping = Callable[[TensorType], TensorType]
 
 
 @singledispatch
-def optimize(space: SearchSpace, target_func: TensorMapping) -> TensorType:
+def optimize(space: Union[Box, DiscreteSearchSpace], target_func: TensorMapping) -> TensorType:
     """
     Return the point in ``space`` (with shape S) that maximises the function ``target_func``, as the
     single entry in a 1 by S tensor.
@@ -42,7 +42,6 @@ def optimize(space: SearchSpace, target_func: TensorMapping) -> TensorType:
     :param target_func: The function to maximise.
     :return: The point in ``space`` that maximises ``target_func``.
     """
-    raise TypeError(f"No optimize implementation found for space of type {type(space)}")
 
 
 @optimize.register
@@ -61,7 +60,7 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> T
 
 @optimize.register
 def _box(space: Box, target_func: TensorMapping) -> TensorType:
-    trial_search_space = space.discretize(20 * tf.shape(space.lower)[-1])
+    trial_search_space = space.discretize(20 * tf.size(space.lower))
     initial_point = optimize(trial_search_space, target_func)
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)

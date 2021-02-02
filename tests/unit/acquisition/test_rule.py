@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Dict, Mapping
+from typing import Dict, List, Mapping, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
 from tests.util.model import QuadraticMeanAndRBFKernel
+from tests.util.misc import mk_dataset, random_seed, zero_dataset
 from trieste.acquisition.function import (
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
@@ -34,26 +34,26 @@ from trieste.acquisition.rule import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.space import Box, DiscreteSearchSpace
 
 
 @pytest.mark.parametrize(
     "search_space, expected_minimum",
     [
         (
-            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
-            tf.constant([[0.1, -0.1]]),
+            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]], tf.float64)),
+            [[0.1, -0.1]],
         ),
-        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
+        (Box([-2.2, -1.0], [1.3, 3.3]), [[0.0, 0.0]]),
     ],
 )
-def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )
-    npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
+def test_efficient_global_optimization(
+    search_space: Union[Box, DiscreteSearchSpace], expected_minimum: List[List[float]]
+) -> None:
+    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(""))
+    dataset = Dataset(tf.zeros([0, 2], tf.float64), tf.zeros([0, 1], tf.float64))
+    query_point, _ = ego.acquire(search_space, {"": dataset}, {"": QuadraticMeanAndRBFKernel()})
+    npt.assert_allclose(query_point, expected_minimum, atol=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -68,7 +68,7 @@ def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
 def test_thompson_sampling_raises_for_invalid_models_keys(
     datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
+    search_space = Box([-1], [1])
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
@@ -81,125 +81,126 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
 def test_trust_region_raises_for_missing_datasets_key(
     datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
+    search_space = Box([-1], [1])
     rule = TrustRegion()
     with pytest.raises(KeyError):
         rule.acquire(search_space, datasets, models, None)
 
 
-def test_trust_region_for_default_state() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
-    lower_bound = tf.constant([-2.2, -1.0])
-    upper_bound = tf.constant([1.3, 3.3])
-    search_space = Box(lower_bound, upper_bound)
+# todo test trust region __init__ parameters
 
-    query_point, state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, None
+
+@random_seed
+def test_trust_region_for_initial_state() -> None:
+    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    dataset = mk_dataset([[0.1, 0.2]], [[0.012]])
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+
+    query_points, state = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
 
-    npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
-    npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(state.acquisition_space.upper, upper_bound)
-    npt.assert_array_almost_equal(state.y_min, [0.012])
+    npt.assert_allclose(query_points, [[0.0, 0.0]], atol=1e-5)
+    npt.assert_allclose(state.acquisition_space.lower, search_space.lower)
+    npt.assert_allclose(state.acquisition_space.upper, search_space.upper)
+    npt.assert_allclose(state.eps, [1.75, 2.15] / tf.sqrt(5.0))
+    npt.assert_allclose(state.y_min, [0.012])
     assert state.is_global
 
 
-def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:
+@random_seed
+def test_trust_region_for_successful_global_step() -> None:
     tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
-    lower_bound = tf.constant([-2.2, -1.0])
-    upper_bound = tf.constant([1.3, 3.3])
-    search_space = Box(lower_bound, upper_bound)
+    dataset = mk_dataset([[0.1, 0.2], [-0.1, -0.2]], [[0.4], [0.3]])
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
-    previous_y_min = dataset.observations[0]
-    is_global = True
-    previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
+    previous_state = TrustRegion.State(search_space, eps, dataset.observations[0], True)
 
-    query_point, current_state = tr.acquire(
+    query_points, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
-    npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
+    npt.assert_allclose(query_points, [[0.0, 0.0]], atol=1e-6)
+    npt.assert_allclose(current_state.acquisition_space.lower, search_space.lower)
+    npt.assert_allclose(current_state.acquisition_space.upper, search_space.upper)
+    npt.assert_allclose(current_state.eps, previous_state.eps)
+    npt.assert_allclose(current_state.y_min, [0.3])
     assert current_state.is_global
-    npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
 
 
-def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() -> None:
+@random_seed
+def test_trust_region_for_unsuccessful_global_step() -> None:
     tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
-    lower_bound = tf.constant([-2.2, -1.0])
-    upper_bound = tf.constant([1.3, 3.3])
-    search_space = Box(lower_bound, upper_bound)
+    dataset = mk_dataset([[0.2, 0.3], [-0.2, -0.3]], [[1.6], [2.0]])
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
-    previous_y_min = dataset.observations[0]
-    is_global = True
-    acquisition_space = search_space
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = TrustRegion.State(search_space, eps, dataset.observations[0], True)
 
-    query_point, current_state = tr.acquire(
+    query_points, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
-    npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
+    npt.assert_allclose(query_points, [[0.025, 0.085]], atol=2e-4)
+    npt.assert_allclose(
+        current_state.acquisition_space.lower + current_state.acquisition_space.upper, [0.4, 0.6]
+    )
+    npt.assert_allclose(
+        current_state.acquisition_space.upper - current_state.acquisition_space.lower, [0.35, 0.43]
+    )
+    npt.assert_allclose(current_state.eps, previous_state.eps)
+    npt.assert_allclose(current_state.y_min, [1.6])
     assert not current_state.is_global
-    npt.assert_array_less(lower_bound, current_state.acquisition_space.lower)
-    npt.assert_array_less(current_state.acquisition_space.upper, upper_bound)
-    assert query_point[0] in current_state.acquisition_space
 
 
-def test_trust_region_for_successful_local_to_global_trust_region_increased() -> None:
+@random_seed
+def test_trust_region_for_successful_local_step() -> None:
     tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
-    lower_bound = tf.constant([-2.2, -1.0])
-    upper_bound = tf.constant([1.3, 3.3])
-    search_space = Box(lower_bound, upper_bound)
+    dataset = mk_dataset([[0.1, 0.2], [-0.1, -0.2]], [[0.4], [0.3]])
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
-    previous_y_min = dataset.observations[0]
-    is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = TrustRegion.State(acquisition_space, eps, dataset.observations[0], False)
 
-    _, current_state = tr.acquire(
+    query_points, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
-    npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
+    npt.assert_allclose(query_points, [[0.0, 0.0]], atol=1e-5)
+    npt.assert_allclose(current_state.acquisition_space.lower, search_space.lower)
+    npt.assert_allclose(current_state.acquisition_space.upper, search_space.upper)
+    npt.assert_allclose(current_state.eps, previous_state.eps / 0.7)
+    npt.assert_allclose(current_state.y_min, [0.3])
     assert current_state.is_global
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
 
 
-def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() -> None:
+@random_seed
+def test_trust_region_for_unsuccessful_local_step() -> None:
     tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
-    lower_bound = tf.constant([-2.2, -1.0])
-    upper_bound = tf.constant([1.3, 3.3])
-    search_space = Box(lower_bound, upper_bound)
+    dataset = mk_dataset([[0.1, 0.2], [-0.1, -0.2]], [[0.4], [0.5]])
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
-    previous_y_min = dataset.observations[0]
-    is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = TrustRegion.State(acquisition_space, eps, dataset.observations[0], False)
 
-    _, current_state = tr.acquire(
+    query_points, current_state = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
-    npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
+    npt.assert_allclose(query_points, [[0.0, 0.0]], atol=1e-5)
+    npt.assert_allclose(current_state.acquisition_space.lower, search_space.lower)
+    npt.assert_allclose(current_state.acquisition_space.upper, search_space.upper)
+    npt.assert_allclose(current_state.eps, previous_state.eps * 0.7)
+    npt.assert_allclose(current_state.y_min, [0.4])
     assert current_state.is_global
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
 
 
 def test_trust_region_state_deepcopy() -> None:
     tr_state = TrustRegion.State(
-        Box(tf.constant([1.2]), tf.constant([3.4])), tf.constant(5.6), tf.constant(7.8), False
+        Box([1.2], [3.4]), tf.cast(5.6, tf.float64), tf.constant(7.8, tf.float64), False
     )
     tr_state_copy = copy.deepcopy(tr_state)
     npt.assert_allclose(tr_state_copy.acquisition_space.lower, tr_state.acquisition_space.lower)
@@ -218,10 +219,10 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
 
 @random_seed
 def test_batch_acquisition_rule_acquire() -> None:
-    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
     num_query_points = 4
     ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder())
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    dataset = Dataset(tf.zeros([0, 2], tf.float64), tf.zeros([0, 1], tf.float64))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
