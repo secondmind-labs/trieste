@@ -107,6 +107,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     """
 
     def __repr__(self) -> str:
+        """"""
         return "ExpectedImprovement()"
 
     def prepare_acquisition_function(
@@ -167,6 +168,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def __repr__(self) -> str:
+        """"""
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
@@ -195,6 +197,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         super().__init__(beta=0.0)
 
     def __repr__(self) -> str:
+        """"""
         return "NegativePredictiveMean()"
 
 
@@ -248,6 +251,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         self._threshold = threshold
 
     def __repr__(self) -> str:
+        """"""
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
@@ -336,6 +340,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._min_feasibility_probability = min_feasibility_probability
 
     def __repr__(self) -> str:
+        """"""
         return (
             f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
             f" {self._min_feasibility_probability!r})"
@@ -663,8 +668,8 @@ class BatchReparametrizationSampler:
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
-    """ todo """
+class BatchExpectedImprovement(SingleModelBatchAcquisitionBuilder):
+    """ :cite:`Ginsbourger2010` """
 
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
@@ -683,6 +688,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         self._jitter = jitter
 
     def __repr__(self) -> str:
+        """"""
         return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(

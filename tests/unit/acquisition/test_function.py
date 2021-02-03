@@ -14,14 +14,22 @@
 from __future__ import annotations
 
 import math
-from typing import Mapping, Tuple, Union
+from typing import Callable, Mapping, Tuple, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import ShapeLike, quadratic, raise_, random_seed, various_shapes, zero_dataset
+from tests.util.misc import (
+    ShapeLike,
+    mk_dataset,
+    quadratic,
+    raise_,
+    random_seed,
+    various_shapes,
+    zero_dataset,
+)
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition import SingleModelBatchAcquisitionBuilder
 from trieste.acquisition.function import (
@@ -42,6 +50,7 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, branin
 
 
@@ -59,11 +68,13 @@ class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
         return raise_
 
 
-@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+@pytest.mark.parametrize(
+    "single_builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()]
+)
 def test_single_builder_raises_immediately_for_wrong_key(
-    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
 ) -> None:
-    builder = _ArbitrarySingleBuilder().using("foo")
+    builder = single_builder.using("foo")
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
@@ -75,25 +86,33 @@ def test_single_builder_raises_immediately_for_wrong_key(
 def test_single_builder_repr_includes_class_name(
     builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
 ) -> None:
-    assert "_ArbitrarySingleBuilder" in repr(_ArbitrarySingleBuilder())
+    assert type(builder).__name__ in repr(builder)
 
 
-@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+def _prepare_acquisition_function_assert(
+    _: object, dataset: Dataset, model: ProbabilisticModel
+) -> Callable[[TensorType], TensorType]:
+    npt.assert_allclose(dataset.query_points, 0.0)
+    _, var = model.predict(tf.constant([0.0]))
+    npt.assert_allclose(var, 0.0)
+    return raise_
+
+
+class _MockIndBuilder(SingleModelAcquisitionBuilder):
+    prepare_acquisition_function = _prepare_acquisition_function_assert
+
+
+class _MockBatchBuilder(SingleModelBatchAcquisitionBuilder):
+    prepare_acquisition_function = _prepare_acquisition_function_assert
+
+
+@pytest.mark.parametrize("single_builder", [_MockIndBuilder(), _MockBatchBuilder()])
 def test_single_builder_using_passes_on_correct_dataset_and_model(
-    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
 ) -> None:
-    class _Mock(SingleModelAcquisitionBuilder):
-        def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
-        ) -> AcquisitionFunction:
-            assert dataset is data["foo"]
-            assert model is models["foo"]
-            return raise_
-
-    builder = _Mock().using("foo")
-
-    data = {"foo": zero_dataset(), "bar": zero_dataset()}
-    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
+    builder = single_builder.using("foo")
+    data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
+    models = {"foo": QuadraticMeanAndRBFKernel(0.0), "bar": QuadraticMeanAndRBFKernel(1.0)}
     builder.prepare_acquisition_function(data, models)
 
 

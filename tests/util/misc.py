@@ -54,6 +54,10 @@ def random_seed(f: C) -> C:
     return cast(C, decorated)
 
 
+def mk_dataset(qp, obs) -> Dataset:
+    return Dataset(tf.cast(qp, tf.float64), tf.cast(obs, tf.float64))
+
+
 def zero_dataset() -> Dataset:
     """
     :return: A 1D input, 1D output dataset with a single entry of zeroes.

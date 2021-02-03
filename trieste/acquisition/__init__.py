@@ -41,6 +41,7 @@ from .function import (
     AcquisitionFunctionBuilder,
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
+    BatchExpectedImprovement,
     BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,

@@ -96,6 +96,7 @@ class Sum(Reducer):
     """
 
     def __repr__(self) -> str:
+        """"""
         return f"Sum({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
@@ -113,6 +114,7 @@ class Product(Reducer):
     """
 
     def __repr__(self) -> str:
+        """"""
         return f"Product({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
