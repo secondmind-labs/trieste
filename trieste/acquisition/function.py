@@ -566,7 +566,7 @@ class BatchReparametrizationSampler:
         """"""
         return f"BatchReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> tf.Tensor:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
@@ -625,3 +625,48 @@ class BatchReparametrizationSampler:
         new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
+
+
+class BatchMonteCarloExpectedImprovement(BatchAcquisitionFunctionBuilder):
+    """ todo """
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
+        """
+        :param sample_size: The number of samples for each batch of points.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
+            ``jitter`` is negative.
+        """
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
+
+        super().__init__()
+
+        self._sample_size = sample_size
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The batch *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated.
+        """
+        tf.debugging.assert_positive(len(dataset.query_points), "Dataset must be populated.")
+
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        sampler = BatchReparametrizationSampler(self._sample_size, model)
+
+        def batch_ei(at: TensorType) -> TensorType:
+            samples = tf.squeeze(sampler.sample(at, jitter=self._jitter), axis=-1)  # [..., S, B]
+            improvement = tf.maximum(eta - samples, 0.0)  # [..., S, B]
+            batch_improvement = tf.reduce_max(improvement, axis=-1)  # [..., S]
+            return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
+
+        return batch_ei
