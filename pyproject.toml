@@ -16,6 +16,7 @@
 addopts = "--doctest-modules"
 testpaths = [
     "trieste",
+    "tests/util",
     "tests/unit",
     "tests/integration",
 ]

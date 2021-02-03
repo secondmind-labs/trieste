@@ -19,14 +19,14 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
-from tests.util.model import QuadraticWithUnitVariance
+from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition.function import (
+    BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
 )
 from trieste.acquisition.rule import (
     OBJECTIVE,
-    BatchAcquisitionFunction,
     BatchAcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
@@ -39,7 +39,7 @@ from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
 @pytest.mark.parametrize(
-    "models", [{}, {"foo": QuadraticWithUnitVariance()}, {OBJECTIVE: QuadraticWithUnitVariance()}]
+    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
     datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
@@ -54,8 +54,8 @@ def test_trust_region_raises_for_missing_datasets_key(
     "models",
     [
         {},
-        {"foo": QuadraticWithUnitVariance()},
-        {"foo": QuadraticWithUnitVariance(), OBJECTIVE: QuadraticWithUnitVariance()},
+        {"foo": QuadraticMeanAndRBFKernel()},
+        {"foo": QuadraticMeanAndRBFKernel(), OBJECTIVE: QuadraticMeanAndRBFKernel()},
     ],
 )
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
@@ -82,7 +82,7 @@ def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
     ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
     npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
 
@@ -95,7 +95,7 @@ def test_trust_region_for_default_state() -> None:
     search_space = Box(lower_bound, upper_bound)
 
     query_point, state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, None
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, None
     )
 
     npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
@@ -118,7 +118,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -142,7 +142,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -166,7 +166,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
     npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
@@ -189,7 +189,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}, previous_state
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
@@ -223,7 +223,7 @@ def test_batch_acquisition_rule_acquire() -> None:
     ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder())
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticWithUnitVariance()}
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
 
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
