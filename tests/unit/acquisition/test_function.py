@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import Mapping, Tuple
+from typing import Mapping, Tuple, Union
 
 import numpy.testing as npt
 import pytest
@@ -23,6 +23,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import ShapeLike, quadratic, raise_, random_seed, various_shapes, zero_dataset
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from trieste.acquisition import SingleModelBatchAcquisitionBuilder
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -51,7 +52,17 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
         return raise_
 
 
-def test_single_builder_raises_immediately_for_wrong_key() -> None:
+class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        return raise_
+
+
+@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+def test_single_builder_raises_immediately_for_wrong_key(
+    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
     builder = _ArbitrarySingleBuilder().using("foo")
 
     with pytest.raises(KeyError):
@@ -60,11 +71,17 @@ def test_single_builder_raises_immediately_for_wrong_key() -> None:
         )
 
 
-def test_single_builder_repr_includes_class_name() -> None:
+@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+def test_single_builder_repr_includes_class_name(
+    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
     assert "_ArbitrarySingleBuilder" in repr(_ArbitrarySingleBuilder())
 
 
-def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
+@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+def test_single_builder_using_passes_on_correct_dataset_and_model(
+    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
     class _Mock(SingleModelAcquisitionBuilder):
         def prepare_acquisition_function(
             self, dataset: Dataset, model: ProbabilisticModel
