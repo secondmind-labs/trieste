@@ -697,6 +697,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset.query_points), "Dataset must be populated.")
 
         mean, _ = model.predict(dataset.query_points)
+
+        tf.debugging.assert_shapes([(mean, [..., "_", 1])])
+
         eta = tf.reduce_min(mean, axis=0)
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
