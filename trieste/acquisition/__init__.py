@@ -50,6 +50,7 @@ from .function import (
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
+    SingleModelBatchAcquisitionBuilder,
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,

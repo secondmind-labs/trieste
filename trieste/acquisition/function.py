@@ -533,6 +533,42 @@ class BatchAcquisitionFunctionBuilder(ABC):
         """
 
 
+class SingleModelBatchAcquisitionBuilder(ABC):
+    """
+    Convenience acquisition function builder for a batch acquisition function (or component of a
+    composite batch acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: A batch acquisition function builder that selects the model and dataset specified
+            by ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(BatchAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :return: A batch acquisition function.
+        """
+
+
 class BatchReparametrizationSampler:
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
@@ -627,7 +663,7 @@ class BatchReparametrizationSampler:
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class BatchMonteCarloExpectedImprovement(BatchAcquisitionFunctionBuilder):
+class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
     """ todo """
 
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
