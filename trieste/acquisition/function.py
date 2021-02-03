@@ -629,6 +629,7 @@ class BatchReparametrizationSampler:
 
 class BatchMonteCarloExpectedImprovement(BatchAcquisitionFunctionBuilder):
     """ todo """
+
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
