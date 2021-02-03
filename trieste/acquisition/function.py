@@ -696,9 +696,10 @@ class BatchExpectedImprovement(SingleModelBatchAcquisitionBuilder):
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
         :return: The batch *expected improvement* acquisition function.
-        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+            does not have an event shape of [1].
         """
         tf.debugging.assert_positive(len(dataset.query_points), "Dataset must be populated.")
 
