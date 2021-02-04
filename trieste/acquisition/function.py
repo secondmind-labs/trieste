@@ -424,14 +424,14 @@ class IndependentReparametrizationSampler:
         :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
         """
         tf.debugging.assert_rank_at_least(at, 1)
-        mean, cov = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
+        mean, var = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
 
         if tf.size(self._eps) == 0:
             self._eps.assign(
                 tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
             )  # [S, L]
 
-        return mean + tf.sqrt(cov) * tf.cast(self._eps, cov.dtype)  # [..., S, L]
+        return mean + tf.sqrt(var) * tf.cast(self._eps, var.dtype)  # [..., S, L]
 
 
 class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
