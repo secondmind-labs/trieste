@@ -169,7 +169,7 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 ) -> None:
     lower, upper = tf.zeros([3], dtype=lower_dtype), tf.ones([3], dtype=upper_dtype)
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 
@@ -188,7 +188,7 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
     lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 

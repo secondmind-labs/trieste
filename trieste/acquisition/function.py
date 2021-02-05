@@ -668,8 +668,11 @@ class BatchReparametrizationSampler:
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class BatchExpectedImprovement(SingleModelBatchAcquisitionBuilder):
-    """ :cite:`Ginsbourger2010` """
+class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
+    """
+    Expected improvement for batches of points, approximated using Monte Carlo estimation with the
+    reparametrization trick. See :cite:`Ginsbourger2010` for details.
+    """
 
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
@@ -705,7 +708,10 @@ class BatchExpectedImprovement(SingleModelBatchAcquisitionBuilder):
 
         mean, _ = model.predict(dataset.query_points)
 
-        tf.debugging.assert_shapes([(mean, [..., "_", 1])])
+        tf.debugging.assert_shapes(
+            [(mean, [..., "_", 1])],
+            message="Expected model with predictive distribution of shape [1]."
+        )
 
         eta = tf.reduce_min(mean, axis=0)
         sampler = BatchReparametrizationSampler(self._sample_size, model)

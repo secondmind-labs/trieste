@@ -29,6 +29,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
     zero_dataset,
+    TF_DEBUGGING_ERROR_TYPES,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition import SingleModelBatchAcquisitionBuilder
@@ -47,6 +48,7 @@ from trieste.acquisition.function import (
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
+    BatchMonteCarloExpectedImprovement,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -368,14 +370,14 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
     sample_size: int,
 ) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel())
 
 
 def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant(0))
 
 
@@ -455,7 +457,7 @@ def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() ->
         ) -> AcquisitionFunction:
             return raise_
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _Acq(-1)
 
 
@@ -503,7 +505,7 @@ def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sam
         ) -> AcquisitionFunction:
             return raise_
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _Acq(-1)
 
 
@@ -531,7 +533,7 @@ def test_single_model_mc_ind_acquisition_function_builder_approximates_model_sam
 
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchReparametrizationSampler(sample_size, _dim_two_gp())
 
 
@@ -582,14 +584,14 @@ def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(
 def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(at: tf.Tensor) -> None:
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(at)
 
 
 def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
 
 
@@ -597,5 +599,45 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
     sampler.sample(tf.constant([[0.0], [1.0], [2.0]]))
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0], [1.0]]))
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedImprovement(sample_size)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedImprovement(100, jitter=-1.0)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
+    builder = BatchMonteCarloExpectedImprovement(100)
+    data = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    model = QuadraticMeanAndRBFKernel()
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, model)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
+    builder = BatchMonteCarloExpectedImprovement(100)
+    data = mk_dataset([[0.0, 0.0]], [[0.0, 0.0]])
+    model = _dim_two_gp()
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, model)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+    known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    model = QuadraticMeanAndRBFKernel()
+    batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
+    ei = ExpectedImprovement().prepare_acquisition_function(data, model)
+    xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
+    npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)  # todo a little high

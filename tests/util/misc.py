@@ -24,7 +24,9 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    Type,
 )
+from typing_extensions import Final
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -35,6 +37,12 @@ from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
+
+TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
+    ValueError,
+    tf.errors.InvalidArgumentError,
+)
+""" Error types thrown by TensorFlow's debugging functionality. """
 
 C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
