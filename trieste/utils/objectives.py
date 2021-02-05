@@ -43,7 +43,7 @@ def branin(x: TensorType) -> TensorType:
     s = 10
     t = 1 / (8 * math.pi)
 
-    return (a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s) / 100.
+    return (a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s) / 100
 
 
 _ORIGINAL_BRANIN_ARGMIN = tf.constant([[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]])
