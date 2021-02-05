@@ -712,7 +712,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
             [(mean, [..., "_", 1])], message="Expected model with event shape [1]."
         )
 
-        eta = tf.reduce_min(mean, axis=0)  # todo wrong axis
+        eta = tf.reduce_min(mean, axis=0)
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
         def batch_ei(at: TensorType) -> TensorType:
