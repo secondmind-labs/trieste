@@ -709,7 +709,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         mean, _ = model.predict(dataset.query_points)
 
         tf.debugging.assert_shapes(
-            [(mean, [..., "_", 1])], message="Expected model with event shape [1]."
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
         )
 
         eta = tf.reduce_min(mean, axis=0)
