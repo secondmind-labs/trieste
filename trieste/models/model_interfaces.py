@@ -13,10 +13,12 @@
 # limitations under the License.
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional, Tuple, Union
-
+import numpy as np
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
+from gpflux.models import BayesianModel
+from gpflow.conditionals.util import sample_mvn
 
 from ..data import Dataset
 from ..type import TensorType
@@ -222,10 +224,65 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         return self.model.predict_y(query_points)
 
 
+class GPFluxModel(TrainableProbabilisticModel):
+
+    def __init__(self,
+                 model: BayesianModel,
+                 data: Dataset,
+                 num_epochs: int = 100,
+                 batch_size: int = 128):
+        super().__init__()
+        self._model = model
+        self._data = data
+        self.num_epochs = num_epochs
+        self._batch_size = batch_size
+
+    @property
+    def model(self) -> BayesianModel:
+        return self._model
+
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        pred = self.model(query_points)
+        return pred.f_mu, pred.f_var
+
+    def predict_f(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        pred = self.model(query_points)
+        return pred.f_mu, pred.f_var
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """ Latent function samples """
+        fs_mean, fs_var = self.predict(query_points)
+        samples = sample_mvn(fs_mean, fs_var, False, num_samples=num_samples)  # [..., (S), N, P]
+        return samples  # [..., (S), N, P]
+
+    def update(self, dataset: Dataset) -> None:
+        _assert_data_is_compatible(dataset, self._data)
+
+        self._data = dataset
+
+        num_data = dataset.query_points.shape[0]
+        self.model.num_data = num_data
+
+    def sample_trajectory(self) -> Callable:
+        return self._model.sample()
+
+    def optimize(self, dataset: Dataset) -> None:
+        callbacks = [
+            tf.keras.callbacks.ReduceLROnPlateau(
+                monitor="loss", patience=5, factor=0.95, verbose=0, min_lr=1e-6,
+            )
+        ]
+
+        self._model.fit(x=dataset.query_points, y=dataset.observations,
+                        batch_size=self._batch_size, epochs=self.num_epochs,
+                        callbacks=callbacks)
+
+
 supported_models: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
+    BayesianModel: GPFluxModel,
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those

@@ -27,4 +27,5 @@ from .model_interfaces import (
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
     supported_models,
+    GPFluxModel,
 )

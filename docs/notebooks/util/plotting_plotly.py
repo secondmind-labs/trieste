@@ -195,3 +195,30 @@ def plot_function_plotly(
         fig.update_yaxes(title_text=ylabel, row=1, col=k + 1)
 
     return fig
+
+
+def add_gp_trajectories(fig, model, mins: TensorType, maxs: TensorType, grid_density=20,
+                        ntraj=1):
+    """
+
+    :param fig:
+    :param model: a gpflow model
+    :param mins: list of 2 lower bounds
+    :param maxs: list of 2 upper bounds
+    :param grid_density: integer (grid size)
+    :param ntraj: number of trajectories to plot
+    :return: a plotly figure
+    """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
+
+    # Create a regular grid on the parameter space
+    Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
+
+    # Evaluate objective function
+    for i in range(ntraj):
+        trajectory = model.sample_trajectory()
+        traj = trajectory(Xplot).numpy()
+        fig = add_surface_plotly(xx, yy, traj, fig, alpha=.1)
+
+    return fig

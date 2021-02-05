@@ -372,3 +372,54 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         points = tf.reshape(vectorized_points, [self._num_query_points, -1])
 
         return points, None
+
+
+class BatchByMultipleFunctions(AcquisitionRule[None, SearchSpace]):
+    """ Implements Thompson sampling for choosing optimal points. """
+
+    def __init__(self, builder: AcquisitionFunctionBuilder, num_query_points: int):
+        """
+        :param builder: The acquisition function builder to use.
+        :param num_query_points: The number of points to acquire.
+        """
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+        self._builder = builder
+        self._num_query_points = num_query_points
+
+    def __repr__(self) -> str:
+        return f"BatchByMultipleFunctions({self._builder!r}, {self._num_query_points!r})"
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: None = None,
+    ) -> Tuple[TensorType, None]:
+        """
+        Return the `num_query_points` points at which
+        random samples yield the **minima** of the model posterior.
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The `num_query_points` points to query, and `None`.
+        :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
+            other key.
+        """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        query_points = search_space.sample(0)
+        for i in range(self._num_query_points):
+            acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+            point = _optimizer.optimize(search_space, acquisition_function)
+            query_points = tf.concat([query_points, point], axis=0)
+        return query_points, None
