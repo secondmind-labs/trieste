@@ -704,7 +704,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
         """
-        tf.debugging.assert_positive(len(dataset.query_points))
+        tf.debugging.assert_positive(len(dataset))
 
         mean, _ = model.predict(dataset.query_points)
 
