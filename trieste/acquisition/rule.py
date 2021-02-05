@@ -244,8 +244,8 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         state: Optional[State],
     ) -> Tuple[TensorType, State]:
         """
-        Acquire one new query point according to the trust region algorithm. Return the new query
-        point along with the final acquisition state from this step.
+        Acquire one new query point according the trust region algorithm. Return the new query point
+        along with the final acquisition state from this step.
 
         If no ``state`` is specified (it is `None`), ``search_space`` is used as
         the search space for this step.
