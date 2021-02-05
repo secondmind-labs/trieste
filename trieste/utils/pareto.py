@@ -101,8 +101,7 @@ class Pareto:
         Construct a Pareto set.
         Stores a Pareto set and calculates the cell bounds covering the non-dominated region.
         The latter is needed for certain multiobjective acquisition functions.
-        E.g., the :class:`~.acquisition.HVProbabilityOfImprovement`.
-        :param y: output data points, size N x R
+        :param datasets: Mapping of Dataset and its coresponding string key(s)
         :param threshold: approximation threshold for the generic divide and conquer strategy
             (default 0: exact calculation)
         """
@@ -123,7 +122,7 @@ class Pareto:
     def _is_test_required(smaller: tf.Tensor) -> tf.Tensor:
         """
         Tests if a point augments or dominates the Pareto set.
-        :param smaller: a boolean ndarray storing test point < Pareto front
+        :param smaller: a boolean tf.Tensor storing test point < Pareto front
         :return: True if the test point dominates or augments the Pareto front (boolean)
         """
         # if and only if the test point is at least in one dimension smaller
@@ -151,7 +150,7 @@ class Pareto:
         the cell bounds covering the non-dominated region.
         For the latter, a direct algorithm is used for two objectives, otherwise a
         generic divide and conquer strategy is employed.
-        :param y: output data points
+        :param datasets: Mapping of Dataset and its coresponding string key(s)
         :param generic_strategy: Force the generic divide and conquer strategy
             regardless of the number of objectives (default False)
         """
@@ -285,7 +284,7 @@ class Pareto:
                 atleast2d(tf.constant([i + 1, pf_ext_idx[-i - 1, 1].numpy()], dtype=tf.int32)),
             )
 
-    def hypervolume(self, reference):
+    def hypervolume(self, reference: tf.Tensor) -> tf.Tensor:
         """
         Autoflow method to calculate the hypervolume indicator
         The hypervolume indicator is the volume of the dominated region.
