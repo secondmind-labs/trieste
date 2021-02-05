@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import (
+    TF_DEBUGGING_ERROR_TYPES,
     ShapeLike,
     mk_dataset,
     quadratic,
@@ -29,13 +30,13 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
     zero_dataset,
-    TF_DEBUGGING_ERROR_TYPES,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition import SingleModelBatchAcquisitionBuilder
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedImprovement,
     BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -48,7 +49,6 @@ from trieste.acquisition.function import (
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
-    BatchMonteCarloExpectedImprovement,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel

@@ -21,15 +21,15 @@ from typing import (
     Mapping,
     NoReturn,
     Tuple,
+    Type,
     TypeVar,
     Union,
     cast,
-    Type,
 )
-from typing_extensions import Final
 
 import numpy.testing as npt
 import tensorflow as tf
+from typing_extensions import Final
 
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset

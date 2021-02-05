@@ -19,7 +19,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import ShapeLike, various_shapes
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 
