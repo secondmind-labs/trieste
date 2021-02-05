@@ -82,20 +82,18 @@ def raise_(*_: object, **__: object) -> NoReturn:
     raise Exception
 
 
-def quadratic(x: tf.Tensor) -> Mapping[str, Dataset]:
+def quadratic(x: tf.Tensor) -> tf.Tensor:
     r"""
-    A multi-dimensional quadratic :class:`Observer`.
+    The multi-dimensional quadratic function.
 
     :param x: A tensor whose last dimension is of length greater than zero.
-    :return: A single :class:`Dataset` with key `""`, whose :attr:`query_points` are ``x``, and
-        ``observations`` are the sum :math:`\Sigma x^2` of the squares of ``x`` (the Euclidean
-        norm).
+    :return: The sum :math:`\Sigma x^2` of the squares of ``x``.
     :raise ValueError: If ``x`` is a scalar or has empty trailing dimension.
     """
     if x.shape == [] or x.shape[-1] == 0:
         raise ValueError(f"x must have non-empty trailing dimension, got shape {x.shape}")
 
-    return {"": Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
+    return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
@@ -137,11 +135,13 @@ def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[i
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank
         in ``excluding_ranks``.
     """
-    shapes = {
-        # fmt: off
-        (), (0,), (1,), (0, 0), (1, 0), (0, 1), (3, 4), (1, 0, 3), (1, 2, 3), (1, 2, 3, 4, 5, 6),
-        # fmt: on
-    }
+    shapes = (
+        {()}
+        | {(0,), (1,), (3,)}
+        | {(0, 0), (1, 0), (0, 1), (3, 4)}
+        | {(1, 0, 3), (1, 2, 3)}
+        | {(1, 2, 3, 4, 5, 6)}
+    )
     return frozenset(s for s in shapes if len(s) not in excluding_ranks)
 
 

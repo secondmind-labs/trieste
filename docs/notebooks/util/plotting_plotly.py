@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from trieste.type import TensorType
 from trieste.utils import to_numpy
 
 from .plotting import create_grid
@@ -114,7 +115,7 @@ def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, 
     return fig
 
 
-def plot_gp_plotly(model, mins, maxs, grid_density=20):
+def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
     """
 
     :param model: a gpflow model
@@ -123,6 +124,8 @@ def plot_gp_plotly(model, mins, maxs, grid_density=20):
     :param grid_density: integer (grid size)
     :return: a plotly figure
     """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
 
     # Create a regular grid on the parameter space
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
@@ -151,7 +154,14 @@ def plot_gp_plotly(model, mins, maxs, grid_density=20):
 
 
 def plot_function_plotly(
-    obj_func, mins, maxs, grid_density=20, title=None, xlabel=None, ylabel=None, alpha=1.0
+    obj_func,
+    mins: TensorType,
+    maxs: TensorType,
+    grid_density=20,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    alpha=1.0,
 ):
     """
     Draws an objective function.

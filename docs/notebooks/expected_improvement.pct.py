@@ -10,16 +10,16 @@ tf.random.set_seed(1793)
 
 # %% [markdown]
 # ## Describe the problem
-# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can plot contours of the Branin over this space.
+# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
 
 # %%
+import trieste
 from trieste.utils.objectives import branin
 from util.plotting_plotly import plot_function_plotly
 
-mins = [0.0, 0.0]
-maxs = [1.0, 1.0]
+search_space = trieste.space.Box([0, 0], [1, 1])
 
-fig = plot_function_plotly(branin, mins, maxs, grid_density=20)
+fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -28,17 +28,12 @@ fig.show()
 #
 # Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, the observer outputs a number of datasets, each of which must be labelled so the optimization process knows which is which. In our case, we only have one dataset, the objective. We'll use _Trieste_'s default label for single-model setups, `OBJECTIVE`. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
 #
-# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer. We can represent the search space using a `Box`.
+# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
 
 # %%
-import trieste
 from trieste.acquisition.rule import OBJECTIVE
-import gpflow
 
 observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
-lower_bound = tf.cast(mins, gpflow.default_float())
-upper_bound = tf.cast(maxs, gpflow.default_float())
-search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
@@ -52,6 +47,8 @@ initial_data = observer(initial_query_points)
 # Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
 
 # %%
+import gpflow
+
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2,))
@@ -105,7 +102,9 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # %%
 from util.plotting import plot_function_2d, plot_bo_points
 
-_, ax = plot_function_2d(branin, mins, maxs, grid_density=30, contour=True)
+_, ax = plot_function_2d(
+    branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+)
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 
 # %% [markdown]
@@ -114,7 +113,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(branin, mins, maxs, grid_density=20)
+fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=500, width=500)
 
 fig = add_bo_points_plotly(
@@ -147,7 +146,10 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_models()[OBJECTIVE].model, mins, maxs, grid_density=30
+    result.try_get_final_models()[OBJECTIVE].model,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30
 )
 
 fig = add_bo_points_plotly(
@@ -188,7 +190,9 @@ result = bo.optimize(5, result.try_get_final_datasets(), result.try_get_final_mo
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-fig, ax = plot_function_2d(branin, mins, maxs, grid_density=40, contour=True)
+_, ax = plot_function_2d(
+    branin, search_space.lower, search_space.upper, grid_density=40, contour=True
+)
 
 plot_bo_points(
     dataset.query_points.numpy(),

@@ -28,14 +28,7 @@ def masked_branin(x):
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
 
 # %%
-import gpflow
-
-mins = [0.0, 0.0]
-maxs = [1.0, 1.0]
-
-lower_bound = tf.constant(mins, gpflow.default_float())
-upper_bound = tf.constant(maxs, gpflow.default_float())
-search_space = trieste.space.Box(lower_bound, upper_bound)
+search_space = trieste.space.Box([0, 0], [1, 1])
 
 # %% [markdown]
 # ... where the `masked_branin` now looks as follows. The white area in the centre shows the failure
@@ -44,7 +37,7 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 # %%
 from util.plotting_plotly import plot_function_plotly
 
-fig = plot_function_plotly(masked_branin, mins, maxs, grid_density=70)
+fig = plot_function_plotly(masked_branin, search_space.lower, search_space.upper, grid_density=70)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -86,6 +79,9 @@ initial_data = observer(search_space.sample(num_init_points))
 # We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
 
 # %%
+import gpflow
+
+
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
@@ -176,7 +172,9 @@ import matplotlib.pyplot as plt
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
-fig, ax = plot_function_2d(masked_branin, mins, maxs, grid_density=50, contour=True)
+fig, ax = plot_function_2d(
+    masked_branin, search_space.lower, search_space.upper, grid_density=50, contour=True
+)
 plot_bo_points(
     result.datasets[FAILURE].query_points.numpy(),
     ax=ax[0, 0],
@@ -193,7 +191,9 @@ from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 
-fig = plot_gp_plotly(result.models[OBJECTIVE].model, mins, maxs, grid_density=50)
+fig = plot_gp_plotly(
+    result.models[OBJECTIVE].model, search_space.lower, search_space.upper, grid_density=50
+)
 fig = add_bo_points_plotly(
     x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),
     y=result.datasets[OBJECTIVE].query_points[:, 1].numpy(),
@@ -213,8 +213,8 @@ fig.show()
 # %%
 fig, ax = plot_gp_2d(
     result.models[FAILURE].model,
-    mins,
-    maxs,
+    search_space.lower,
+    search_space.upper,
     grid_density=50,
     contour=True,
     figsize=(12, 5),

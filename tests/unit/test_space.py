@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import List, Tuple
+import itertools
+from typing import Container, FrozenSet, Tuple
 
 import numpy.testing as npt
 import pytest
@@ -126,39 +127,49 @@ def test_discrete_search_space_deepcopy() -> None:
     npt.assert_allclose(copy.deepcopy(dss).points, _points_in_2D_search_space())
 
 
-def _pairs_of_different_shapes() -> List[Tuple[ShapeLike, ShapeLike]]:
-    return [
-        ((), (1,)),
-        ((1,), (1, 2)),
-        ((1, 2), (1, 2, 3)),
-    ]
+def test_box_converts_lists_to_float64_tensors() -> None:
+    box = Box([0.0], [1.0])
+    assert tf.as_dtype(box.lower.dtype) is tf.float64
+    assert tf.as_dtype(box.upper.dtype) is tf.float64
+    npt.assert_array_equal(box.lower, [0.0])
+    npt.assert_array_equal(box.upper, [1.0])
 
 
-@pytest.mark.parametrize("lower_shape, upper_shape", _pairs_of_different_shapes())
-def test_box_raises_if_bounds_have_different_shape(
+def _pairs_of_shapes(
+    *, excluding_ranks: Container[int] = ()
+) -> FrozenSet[Tuple[ShapeLike, ShapeLike]]:
+    shapes = various_shapes(excluding_ranks=excluding_ranks)
+    return frozenset(itertools.product(shapes, shapes))
+
+
+@pytest.mark.parametrize(
+    "lower_shape, upper_shape", _pairs_of_shapes(excluding_ranks={1}) | {((1,), (2,)), ((0,), (0,))}
+)
+def test_box_raises_if_bounds_have_invalid_shape(
     lower_shape: ShapeLike, upper_shape: ShapeLike
 ) -> None:
     lower, upper = tf.zeros(lower_shape), tf.ones(upper_shape)
 
-    with pytest.raises(ValueError, match="bound"):
+    with pytest.raises(ValueError):
         Box(lower, upper)
 
 
 @pytest.mark.parametrize(
     "lower_dtype, upper_dtype",
     [
-        (tf.int8, tf.uint16),
+        (tf.uint32, tf.uint32),  # same dtypes
+        (tf.int8, tf.uint16),  # different dtypes ...
         (tf.uint32, tf.float32),
         (tf.float32, tf.float64),
         (tf.float64, tf.bfloat16),
     ],
 )
-def test_box_raises_if_bounds_have_different_dtypes(
-    lower_dtype: Tuple[tf.DType, tf.DType], upper_dtype: Tuple[tf.DType, tf.DType]
+def test_box_raises_if_bounds_have_invalid_dtypes(
+    lower_dtype: tf.DType, upper_dtype: tf.DType
 ) -> None:
-    lower, upper = tf.zeros((1, 2), dtype=lower_dtype), tf.ones((1, 2), dtype=upper_dtype)
+    lower, upper = tf.zeros([3], dtype=lower_dtype), tf.ones([3], dtype=upper_dtype)
 
-    with pytest.raises(TypeError, match="dtype"):
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
         Box(lower, upper)
 
 
@@ -177,7 +188,7 @@ def test_box_raises_if_bounds_have_different_dtypes(
 def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
     lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
         Box(lower, upper)
 
 
@@ -213,7 +224,10 @@ def test_box_does_not_contain_point(point: tf.Tensor) -> None:
     assert point not in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
 
 
-@pytest.mark.parametrize("bound_shape, point_shape", _pairs_of_different_shapes())
+@pytest.mark.parametrize(
+    "bound_shape, point_shape",
+    ((bs, ps) for bs, ps in _pairs_of_shapes() if bs != ps and len(bs) == 1 and bs != (0,)),
+)
 def test_box_contains_raises_on_point_of_different_shape(
     bound_shape: ShapeLike,
     point_shape: ShapeLike,
