@@ -14,6 +14,7 @@
 
 import functools
 from typing import (
+    Any,
     Callable,
     Container,
     FrozenSet,
@@ -62,8 +63,26 @@ def random_seed(f: C) -> C:
     return cast(C, decorated)
 
 
-def mk_dataset(qp, obs) -> Dataset:
-    return Dataset(tf.cast(qp, tf.float64), tf.cast(obs, tf.float64))
+T = TypeVar("T")
+""" Unbound type variable. """
+
+NList = Union[
+    List[T],
+    List[List[T]],
+    List[List[List[T]]],
+    List[List[List[List[Any]]]],
+]
+""" Type alias for a nested list with array shape. """
+
+
+def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]]) -> Dataset:
+    """
+    :param query_points: The query points.
+    :param observations: The observations.
+    :return: A :class:`Dataset` containing the specified ``query_points`` and ``observations`` with
+        dtype `tf.float64`.
+    """
+    return Dataset(tf.cast(query_points, tf.float64), tf.cast(observations, tf.float64))
 
 
 def zero_dataset() -> Dataset:
