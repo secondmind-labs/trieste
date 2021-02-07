@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, TypeVar, Union
+from typing import Dict, List, TypeVar, Union, overload
 
 import tensorflow as tf
 
@@ -158,18 +158,23 @@ class DiscreteSearchSpace(SearchSpace):
         return self
 
 
-Vector = TypeVar("Vector", TensorType, List[float])
-r""" A type variable representing either a `TensorType` or `list` of `float`\ s. """
-
-
 class Box(SearchSpace):
     r"""
     Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in
     :math:`\mathbb{R}^D`. Mathematically it is equivalent to the Cartesian product of :math:`D`
     closed bounded intervals in :math:`\mathbb{R}`.
     """
+    @overload
+    def __init__(self, lower: List[float], upper: List[float]):
+        ...
 
-    def __init__(self, lower: Vector, upper: Vector):
+    @overload
+    def __init__(self, lower: TensorType, upper: TensorType):
+        ...
+
+    def __init__(
+        self, lower: Union[List[float], TensorType], upper: Union[List[float], TensorType]
+    ):
         r"""
         If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
         `tf.float64`.
