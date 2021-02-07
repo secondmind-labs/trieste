@@ -164,6 +164,7 @@ class Box(SearchSpace):
     :math:`\mathbb{R}^D`. Mathematically it is equivalent to the Cartesian product of :math:`D`
     closed bounded intervals in :math:`\mathbb{R}`.
     """
+
     @overload
     def __init__(self, lower: List[float], upper: List[float]):
         ...
