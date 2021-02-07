@@ -179,8 +179,6 @@ class Box(SearchSpace):
         If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
         `tf.float64`.
 
-        **Type hints:** If ``lower`` or ``upper`` is a `list`, they must both be `list`\ s.
-
         :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
         :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
