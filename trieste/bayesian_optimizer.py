@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import copy
 import traceback
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload
+from typing import Generic, TypeVar, cast, overload
 
 import gpflow
 import tensorflow as tf
@@ -49,7 +50,7 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    acquisition_state: Optional[S]
+    acquisition_state: S | None
     """ The acquisition state. """
 
 
@@ -65,14 +66,14 @@ class OptimizationResult(Generic[S]):
     exception.
     """
 
-    history: List[Record[S]]
+    history: list[Record[S]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
     :attr:`final_result`.
     """
 
-    def astuple(self) -> Tuple[Result[Record[S]], List[Record[S]]]:
+    def astuple(self) -> tuple[Result[Record[S]], list[Record[S]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -138,7 +139,7 @@ class BayesianOptimizer(Generic[SP]):
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[S, SP],
-        acquisition_state: Optional[S] = None,
+        acquisition_state: S | None = None,
         *,
         track_state: bool = True,
     ) -> OptimizationResult[S]:
@@ -149,8 +150,8 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
-        acquisition_state: Optional[S] = None,
+        acquisition_rule: AcquisitionRule[S, SP] | None = None,
+        acquisition_state: S | None = None,
         *,
         track_state: bool = True,
     ) -> OptimizationResult[S]:
@@ -231,7 +232,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
         models = {tag: create_model(spec) for tag, spec in model_specs.items()}
-        history: List[Record[S]] = []
+        history: list[Record[S]] = []
 
         for step in range(num_steps):
             if track_state:
