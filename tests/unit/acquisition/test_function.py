@@ -640,7 +640,7 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
     ei = ExpectedImprovement().prepare_acquisition_function(data, model)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
-    npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)  # todo a little high
+    npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)
 
 
 @random_seed
@@ -651,9 +651,12 @@ def test_batch_monte_carlo_expected_improvement() -> None:
     mean, cov = model.predict_joint(xs)
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10_000)
-    expected = tf.reduce_mean(tf.reduce_max(tf.maximum(0.09 - mvn_samples, 0.0), axis=-1), axis=0)
+    min_predictive_mean_at_known_points = 0.09
+    expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
+        min_predictive_mean_at_known_points - mvn_samples, 0.0
+    ), axis=-1), axis=0)
 
     builder = BatchMonteCarloExpectedImprovement(10_000)
     acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
 
-    npt.assert_allclose(acq(xs), expected, rtol=0.05)  # todo quite high?
+    npt.assert_allclose(acq(xs), expected, rtol=0.05)
