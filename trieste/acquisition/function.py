@@ -717,9 +717,8 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
 
         def batch_ei(at: TensorType) -> TensorType:
             samples = tf.squeeze(sampler.sample(at, jitter=self._jitter), axis=-1)  # [..., S, B]
-            # todo why is this not the same as reduce_max then maximum?
-            improvement = tf.maximum(eta - samples, 0.0)  # [..., S, B]
-            batch_improvement = tf.reduce_max(improvement, axis=-1)  # [..., S]
+            min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
+            batch_improvement = tf.maximum(eta - min_sample_per_batch, 0.0)  # [..., S]
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
         return batch_ei
