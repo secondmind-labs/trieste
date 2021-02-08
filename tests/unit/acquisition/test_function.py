@@ -652,9 +652,11 @@ def test_batch_monte_carlo_expected_improvement() -> None:
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10_000)
     min_predictive_mean_at_known_points = 0.09
+    # fmt: off
     expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
         min_predictive_mean_at_known_points - mvn_samples, 0.0
     ), axis=-1), axis=0)
+    # fmt: on
 
     builder = BatchMonteCarloExpectedImprovement(10_000)
     acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
