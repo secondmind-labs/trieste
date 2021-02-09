@@ -35,7 +35,7 @@ from trieste.acquisition.rule import OBJECTIVE
 
 observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
 
-num_initial_points = 10
+num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -65,10 +65,10 @@ def build_rff_model(data):
     eigenvalues = np.ones((num_rff, 1), dtype=default_float())
     kernel2 = KernelWithMercerDecomposition(None, eigenfunctions, eigenvalues)
 
-    Z = search_space.sample(50)
+    Z = search_space.sample(20)
     # Z = data.query_points
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
-    gpflow.utilities.set_trainable(inducing_variable, False)
+    gpflow.utilities.set_trainable(inducing_variable, True)
 
     layer = gpflux.layers.GPLayer(
         kernel=kernel2,
@@ -80,7 +80,9 @@ def build_rff_model(data):
         mean_function=gpflow.mean_functions.Zero(),
     )
     layer._initialized = True
-    likelihood_layer = gpflux.layers.LikelihoodLayer(gpflow.likelihoods.Gaussian(variance=1e-5))
+    lik = gpflow.likelihoods.Gaussian(variance=1e-5)
+    gpflow.utilities.set_trainable(lik, False)
+    likelihood_layer = gpflux.layers.LikelihoodLayer(lik)
     mod = gpflux.models.DeepGP([layer], likelihood_layer)
     mod.compile(tf.optimizers.Adam(learning_rate=0.1))
 
@@ -91,7 +93,7 @@ def build_rff_model(data):
 from trieste.models.model_interfaces import GPFluxModel
 
 model = build_rff_model(initial_data[OBJECTIVE])
-model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=500, batch_size=128)
+model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=1000, batch_size=128)
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
 
@@ -100,9 +102,9 @@ models = {OBJECTIVE: model}
 
 # %%
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), 5)
+rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), 4)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(10, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]
@@ -176,6 +178,7 @@ fig = add_gp_trajectories(fig=fig,
                           grid_density=40,
                           ntraj=10)
 fig.update_layout(scene_aspectmode='cube')
+fig.write_html("trajectories.html")
 fig.show()
 
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
@@ -212,6 +215,7 @@ fig, ax = plt.subplots(1, 2)
 plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
 plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
 fig.show()
+
 # %% [markdown]
 # ## LICENSE
 #
