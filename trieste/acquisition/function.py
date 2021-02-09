@@ -670,8 +670,8 @@ class BatchReparametrizationSampler:
 
 class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
     """
-    Expected improvement for batches of points, approximated using Monte Carlo estimation with the
-    reparametrization trick. See :cite:`Ginsbourger2010` for details.
+    Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
+    estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
 
     Improvement is measured with respect to the minimum predictive mean at observed query points.
     This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
