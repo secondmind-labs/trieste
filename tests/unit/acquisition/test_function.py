@@ -32,7 +32,6 @@ from tests.util.misc import (
     zero_dataset,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from trieste.acquisition import SingleModelBatchAcquisitionBuilder
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -45,6 +44,7 @@ from trieste.acquisition.function import (
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
+    SingleModelBatchAcquisitionBuilder,
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
