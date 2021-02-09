@@ -20,13 +20,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import (
-    empty_dataset,
-    one_dimensional_range,
-    quadratic,
-    random_seed,
-    zero_dataset,
-)
+from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
@@ -77,24 +71,24 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
         {"foo": QuadraticMeanAndRBFKernel(), OBJECTIVE: QuadraticMeanAndRBFKernel()},
     ],
 )
-@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
+@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
+    search_space = Box([-1], [1])
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
+@pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
 @pytest.mark.parametrize(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
+    search_space = Box([-1], [1])
     rule = TrustRegion()
     with pytest.raises(KeyError):
         rule.acquire(search_space, datasets, models, None)
