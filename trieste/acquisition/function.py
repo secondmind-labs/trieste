@@ -107,6 +107,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     """
 
     def __repr__(self) -> str:
+        """"""
         return "ExpectedImprovement()"
 
     def prepare_acquisition_function(
@@ -167,6 +168,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         self._beta = beta
 
     def __repr__(self) -> str:
+        """"""
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
@@ -195,6 +197,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         super().__init__(beta=0.0)
 
     def __repr__(self) -> str:
+        """"""
         return "NegativePredictiveMean()"
 
 
@@ -248,6 +251,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         self._threshold = threshold
 
     def __repr__(self) -> str:
+        """"""
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
@@ -336,6 +340,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._min_feasibility_probability = min_feasibility_probability
 
     def __repr__(self) -> str:
+        """"""
         return (
             f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
             f" {self._min_feasibility_probability!r})"
@@ -419,14 +424,14 @@ class IndependentReparametrizationSampler:
         :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
         """
         tf.debugging.assert_rank_at_least(at, 1)
-        mean, cov = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
+        mean, var = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
 
         if tf.size(self._eps) == 0:
             self._eps.assign(
                 tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
             )  # [S, L]
 
-        return mean + tf.sqrt(cov) * tf.cast(self._eps, cov.dtype)  # [..., S, L]
+        return mean + tf.sqrt(var) * tf.cast(self._eps, var.dtype)  # [..., S, L]
 
 
 class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
@@ -533,6 +538,42 @@ class BatchAcquisitionFunctionBuilder(ABC):
         """
 
 
+class SingleModelBatchAcquisitionBuilder(ABC):
+    """
+    Convenience acquisition function builder for a batch acquisition function (or component of a
+    composite batch acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: A batch acquisition function builder that selects the model and dataset specified
+            by ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(BatchAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :return: A batch acquisition function.
+        """
+
+
 class BatchReparametrizationSampler:
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
@@ -566,7 +607,7 @@ class BatchReparametrizationSampler:
         """"""
         return f"BatchReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> tf.Tensor:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
@@ -625,3 +666,64 @@ class BatchReparametrizationSampler:
         new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
+
+
+class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
+    """
+    Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
+    estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
+
+    Improvement is measured with respect to the minimum predictive mean at observed query points.
+    This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
+    at new points are independent from those at known query points. This is faster, but is an
+    approximation for noisy observers.
+    """
+
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
+        """
+        :param sample_size: The number of samples for each batch of points.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
+            ``jitter`` is negative.
+        """
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
+
+        super().__init__()
+
+        self._sample_size = sample_size
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :return: The batch *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+            does not have an event shape of [1].
+        """
+        tf.debugging.assert_positive(len(dataset))
+
+        mean, _ = model.predict(dataset.query_points)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        sampler = BatchReparametrizationSampler(self._sample_size, model)
+
+        def batch_ei(at: TensorType) -> TensorType:
+            samples = tf.squeeze(sampler.sample(at, jitter=self._jitter), axis=-1)  # [..., S, B]
+            min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
+            batch_improvement = tf.maximum(eta - min_sample_per_batch, 0.0)  # [..., S]
+            return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
+
+        return batch_ei
