@@ -44,13 +44,10 @@ def non_dominated_sort(datasets: Dataset) -> TensorType:
     observations = datasets.observations
     extended = tf.tile(tf.expand_dims(observations, 0), [observations.shape[0], 1, 1])
     swapped_ext = tf.einsum("ij...->ji...", extended)
-    dominance = tf.reduce_sum(
-        tf.cast(
-            tf.logical_and(
-                tf.reduce_all(extended <= swapped_ext, axis=2),
-                tf.reduce_any(extended < swapped_ext, axis=2),
-            ),
-            tf.float32,
+    dominance = tf.math.count_nonzero(
+        tf.logical_and(
+            tf.reduce_all(extended <= swapped_ext, axis=2),
+            tf.reduce_any(extended < swapped_ext, axis=2),
         ),
         axis=1,
     )
