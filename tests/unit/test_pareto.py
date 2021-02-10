@@ -45,6 +45,6 @@ from trieste.utils.pareto import non_dominated_sort
     ],
 )
 def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.Tensor) -> None:
-    d1, d2 = non_dominated_sort(scores)
+    d1, d2 = non_dominated_sort(scores.observations)
     npt.assert_array_almost_equal(d1, pareto_set)
     npt.assert_array_almost_equal(d2, dominance)
