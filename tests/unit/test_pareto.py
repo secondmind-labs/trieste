@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from trieste.data import Dataset
-from trieste.utils.pareto import Pareto, non_dominated_sort
+from trieste.utils.pareto import non_dominated_sort
 
 
 @pytest.mark.parametrize(
