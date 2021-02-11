@@ -45,6 +45,6 @@ from trieste.utils.pareto import non_dominated_sort
     ],
 )
 def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.Tensor) -> None:
-    d1, d2 = non_dominated_sort(scores.observations)
-    npt.assert_allclose(d1, pareto_set)
-    npt.assert_allclose(d2, dominance)
+    ret_pareto_set, ret_dominance = non_dominated_sort(scores.observations)
+    npt.assert_allclose(ret_pareto_set, pareto_set)
+    npt.assert_allclose(ret_dominance, dominance)
