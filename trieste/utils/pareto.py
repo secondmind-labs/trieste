@@ -25,7 +25,7 @@ def non_dominated_sort(observations: TensorType) -> TensorType:
     :return: tuple of the non-dominated set and the degree of dominance,
         dominances gives the number of dominating points for each data point
     """
-    extended = tf.tile(tf.expand_dims(observations, 0), [observations.shape[0], 1, 1])
+    extended = tf.tile(observations[None], [len(observations), 1, 1])
     swapped_ext = tf.transpose(extended, [1, 0, 2])
     dominance = tf.math.count_nonzero(
         tf.logical_and(
