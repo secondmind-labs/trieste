@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains functions and classes for doing pareto based multi-objective optimization """
+""" This module contains functions and classes for pareto based multi-objective optimization """
 import tensorflow as tf
 
 from trieste.type import TensorType
