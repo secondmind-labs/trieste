@@ -17,12 +17,12 @@ import tensorflow as tf
 from trieste.type import TensorType
 
 
-def non_dominated_sort(observations: TensorType) -> TensorType:
+def non_dominated(observations: TensorType) -> TensorType:
     """
     Computes the non-dominated set for a set of data points
 
-    :param dataset: A :class:`~trieste.data.Dataset` of observed points
-    :return: tuple of the non-dominated set and the degree of dominance,
+    :param observations: set of points with shape [N,D]
+    :return: tf.Tensor of the non-dominated set and the degree of dominance,
         dominances gives the number of dominating points for each data point
     """
     extended = tf.tile(observations[None], [len(observations), 1, 1])
