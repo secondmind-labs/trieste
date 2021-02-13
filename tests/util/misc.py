@@ -22,7 +22,6 @@ from typing import (
     Mapping,
     NoReturn,
     Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
