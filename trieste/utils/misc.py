@@ -16,7 +16,7 @@ from typing import Callable, Generic, NoReturn, TypeVar
 
 import numpy as np
 import tensorflow as tf
-from typing_extensions import final, Final
+from typing_extensions import Final, final
 
 from ..type import TensorType
 

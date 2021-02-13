@@ -16,7 +16,7 @@ from typing import Callable, Mapping, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing_extensions import final, Final
+from typing_extensions import Final, final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
