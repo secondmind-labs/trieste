@@ -39,10 +39,7 @@ from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
-TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
-    ValueError,
-    tf.errors.InvalidArgumentError,
-)
+TF_DEBUGGING_ERROR_TYPES: Final = (ValueError, tf.errors.InvalidArgumentError)
 """ Error types thrown by TensorFlow's debugging functionality. """
 
 C = TypeVar("C", bound=Callable)

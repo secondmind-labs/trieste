@@ -15,6 +15,7 @@ from abc import abstractmethod
 from typing import Mapping, Sequence
 
 import tensorflow as tf
+from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -42,10 +43,12 @@ class Reducer(AcquisitionFunctionBuilder):
             raise TypeError(
                 f"{classname} expects `AcquisitionFunctionBuilder` instances as inputs."
             )
-        self._acquisitions = builders
+
+        self.acquisitions: Final[Sequence[AcquisitionFunctionBuilder]] = builders
+        """ The acquisition function builders specified at class initialisation. """
 
     def _repr_builders(self) -> str:
-        return ", ".join(map(repr, self._acquisitions))
+        return ", ".join(map(repr, self.acquisitions))
 
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -69,11 +72,6 @@ class Reducer(AcquisitionFunctionBuilder):
             return self._reduce_acquisition_functions(at, functions)
 
         return evaluate_acquisition_function_fn
-
-    @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:
-        """ The acquisition function builders specified at class initialisation. """
-        return self._acquisitions
 
     def _reduce_acquisition_functions(
         self, at: TensorType, acquisition_functions: Sequence[AcquisitionFunction]

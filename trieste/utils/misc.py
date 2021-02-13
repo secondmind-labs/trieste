@@ -16,7 +16,7 @@ from typing import Callable, Generic, NoReturn, TypeVar
 
 import numpy as np
 import tensorflow as tf
-from typing_extensions import final
+from typing_extensions import final, Final
 
 from ..type import TensorType
 
@@ -132,10 +132,8 @@ class Ok(Result[T_co]):
         """"""
         return f"Ok({self._value!r})"
 
-    @property
-    def is_ok(self) -> bool:
-        """ `True` always. """
-        return True
+    is_ok: Final[bool] = True
+    """ `True` always. """
 
     def unwrap(self) -> T_co:
         """
@@ -158,10 +156,8 @@ class Err(Result[NoReturn]):
         """"""
         return f"Err({self._exc!r})"
 
-    @property
-    def is_ok(self) -> bool:
-        """ `False` always. """
-        return False
+    is_ok: Final[bool] = False
+    """ `False` always. """
 
     def unwrap(self) -> NoReturn:
         """

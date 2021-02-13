@@ -16,7 +16,7 @@ from typing import Callable, Mapping, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing_extensions import final
+from typing_extensions import final, Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -248,16 +248,12 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
         super().__init__()
 
-        self._threshold = threshold
+        self.threshold: Final[Union[float, TensorType]] = threshold
+        """ The probability of feasibility threshold. """
 
     def __repr__(self) -> str:
         """"""
-        return f"ProbabilityOfFeasibility({self._threshold!r})"
-
-    @property
-    def threshold(self) -> Union[float, tf.Tensor]:
-        """ The probability of feasibility threshold. """
-        return self._threshold
+        return f"ProbabilityOfFeasibility({self.threshold!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel

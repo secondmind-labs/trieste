@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
+from typing_extensions import Final
 
 from ..data import Dataset
 from ..type import TensorType
@@ -104,11 +105,7 @@ class GPflowPredictor(ProbabilisticModel, ABC):
         if optimizer is None:
             optimizer = Optimizer(gpflow.optimizers.Scipy())
 
-        self._optimizer = optimizer
-
-    @property
-    def optimizer(self) -> Optimizer:
-        return self._optimizer
+        self.optimizer: Final[Optimizer] = optimizer
 
     @property
     @abstractmethod

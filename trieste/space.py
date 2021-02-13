@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, TypeVar, Union
 
 import tensorflow as tf
+from typing_extensions import Final
 
 from .type import TensorType
 from .utils import shapes_equal
@@ -94,19 +95,16 @@ class DiscreteSearchSpace(SearchSpace):
         :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
         """
         tf.debugging.assert_shapes([(points, ("N", "D"))])
-        self._points = points
+
+        self.points: Final[TensorType] = points
+        """ All the points in this space. """
 
     def __repr__(self) -> str:
-        return f"DiscreteSearchSpace({self._points!r})"
-
-    @property
-    def points(self) -> TensorType:
-        """ All the points in this space. """
-        return self._points
+        return f"DiscreteSearchSpace({self.points!r})"
 
     def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
-        return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
+        return tf.reduce_any(tf.reduce_all(value == self.points, axis=1))
 
     def sample(self, num_samples: int) -> TensorType:
         """
@@ -114,14 +112,14 @@ class DiscreteSearchSpace(SearchSpace):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space.
         """
-        num_points = self._points.shape[0]
+        num_points = self.points.shape[0]
         if num_samples > num_points:
             raise ValueError(
                 "Number of samples cannot be greater than the number of points"
                 f" {num_points} in discrete search space, got {num_samples}"
             )
 
-        return tf.random.shuffle(self._points)[:num_samples, :]
+        return tf.random.shuffle(self.points)[:num_samples, :]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
@@ -140,11 +138,11 @@ class DiscreteSearchSpace(SearchSpace):
         :raise TypeError: If the lhs and rhs :class:`DiscreteSearchSpace` points have different
             types.
         """
-        if self._points.dtype is not other._points.dtype:
+        if self.points.dtype is not other.points.dtype:
             return NotImplemented
 
-        N = self._points.shape[0]
-        M = other._points.shape[0]
+        N = self.points.shape[0]
+        M = other.points.shape[0]
         tile_self = tf.tile(tf.expand_dims(self.points, 1), [1, M, 1])
         tile_dss = tf.tile(tf.expand_dims(other.points, 0), [N, 1, 1])
         cartesian_product = tf.concat([tile_self, tile_dss], axis=2)
@@ -191,28 +189,24 @@ class Box(SearchSpace):
             raise ValueError(f"Bounds must have shape [D] for positive D, got {tf.shape(lower)}.")
 
         if isinstance(lower, list):
-            self._lower = tf.cast(lower, dtype=tf.float64)
-            self._upper = tf.cast(upper, dtype=tf.float64)
+            lower_as_tensor = tf.cast(lower, dtype=tf.float64)
+            upper_as_tensor = tf.cast(upper, dtype=tf.float64)
         else:
-            self._lower = tf.convert_to_tensor(lower)
-            self._upper = tf.convert_to_tensor(upper)
+            lower_as_tensor = tf.convert_to_tensor(lower)
+            upper_as_tensor = tf.convert_to_tensor(upper)
 
-            tf.debugging.assert_same_float_dtype([self._lower, self._upper])
+            tf.debugging.assert_same_float_dtype([lower_as_tensor, upper_as_tensor])
 
-        tf.debugging.assert_less(self._lower, self._upper)
+        tf.debugging.assert_less(lower_as_tensor, upper_as_tensor)
+
+        self.lower: Final[TensorType] = lower_as_tensor
+        """ The lower bounds of the box. """
+
+        self.upper: Final[TensorType] = upper_as_tensor
+        """ The upper bounds of the box. """
 
     def __repr__(self) -> str:
-        return f"Box({self._lower!r}, {self._upper!r})"
-
-    @property
-    def lower(self) -> TensorType:
-        """ The lower bounds of the box. """
-        return self._lower
-
-    @property
-    def upper(self) -> TensorType:
-        """ The upper bounds of the box. """
-        return self._upper
+        return f"Box({self.lower!r}, {self.upper!r})"
 
     def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
         """
@@ -226,18 +220,18 @@ class Box(SearchSpace):
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from the search space.
         """
-        if not shapes_equal(value, self._lower):
+        if not shapes_equal(value, self.lower):
             raise ValueError(
-                f"value must have same dimensionality as search space: {self._lower.shape},"
+                f"value must have same dimensionality as search space: {self.lower.shape},"
                 f" got shape {value.shape}"
             )
 
-        return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
+        return tf.reduce_all(value >= self.lower) and tf.reduce_all(value <= self.upper)
 
     def sample(self, num_samples: int) -> TensorType:
-        dim = tf.shape(self._lower)[-1]
+        dim = tf.shape(self.lower)[-1]
         return tf.random.uniform(
-            (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
+            (num_samples, dim), minval=self.lower, maxval=self.upper, dtype=self.lower.dtype
         )
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
@@ -260,8 +254,8 @@ class Box(SearchSpace):
         if self.lower.dtype is not other.lower.dtype:
             return NotImplemented
 
-        expanded_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
-        expanded_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
+        expanded_lower_bound = tf.concat([self.lower, other.lower], axis=-1)
+        expanded_upper_bound = tf.concat([self.upper, other.upper], axis=-1)
         return Box(expanded_lower_bound, expanded_upper_bound)
 
     def __deepcopy__(self, memo: Dict[int, object]) -> Box:
