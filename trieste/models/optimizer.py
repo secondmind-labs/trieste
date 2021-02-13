@@ -22,9 +22,10 @@ import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
+from ..type import TensorType
 from ..utils import jit
 
-TrainingData = Union[Tuple[tf.Tensor, tf.Tensor], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
+TrainingData = Union[Tuple[TensorType, TensorType], Iterable[Tuple[TensorType, TensorType]]]
 """ Type alias for a batch, or batches, of training data. """
 
 DatasetTransformer = Callable[[Dataset, Optional[int]], TrainingData]
@@ -33,7 +34,7 @@ Type alias for a function that converts a :class:`~trieste.data.Dataset` to batc
 data.
 """
 
-LossClosure = Callable[[], tf.Tensor]
+LossClosure = Callable[[], TensorType]
 """ Type alias for a loss closure, typically used in optimization. """
 
 OptimizeResult = Union[scipy.optimize.OptimizeResult, None]

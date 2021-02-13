@@ -42,7 +42,7 @@ class SearchSpace(ABC):
         """
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `tf.Tensor` instead of the `bool` itself.
+            scalar boolean `TensorType` instead of the `bool` itself.
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from this :class:`SearchSpace`.
         """
@@ -222,7 +222,7 @@ class Box(SearchSpace):
 
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `tf.Tensor` instead of the `bool` itself.
+            scalar boolean `TensorType` instead of the `bool` itself.
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from the search space.
         """

@@ -128,12 +128,12 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, eta: tf.Tensor, at: TensorType
-    ) -> tf.Tensor:
+        model: ProbabilisticModel, eta: TensorType, at: TensorType
+    ) -> TensorType:
         return expected_improvement(model, eta, at)
 
 
-def expected_improvement(model: ProbabilisticModel, eta: tf.Tensor, at: TensorType) -> tf.Tensor:
+def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorType) -> TensorType:
     r"""
     The Expected Improvement (EI) acquisition function for single-objective global optimization.
     Return the expectation of the improvement at ``at`` over the current "best" observation ``eta``,
@@ -183,7 +183,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return lambda at: self._acquisition_function(model, self._beta, at)
 
     @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, beta: float, at: TensorType) -> tf.Tensor:
+    def _acquisition_function(model: ProbabilisticModel, beta: float, at: TensorType) -> TensorType:
         return -lower_confidence_bound(model, beta, at)
 
 
@@ -201,7 +201,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         return "NegativePredictiveMean()"
 
 
-def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorType) -> tf.Tensor:
+def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorType) -> TensorType:
     r"""
     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
 
@@ -239,7 +239,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     constraint function. See also :cite:`schonlau1998global` for details.
     """
 
-    def __init__(self, threshold: Union[float, tf.Tensor]):
+    def __init__(self, threshold: Union[float, TensorType]):
         """
         :param threshold: The (scalar) probability of feasibility threshold.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
@@ -255,7 +255,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
-    def threshold(self) -> Union[float, tf.Tensor]:
+    def threshold(self) -> Union[float, TensorType]:
         """ The probability of feasibility threshold. """
         return self._threshold
 
@@ -271,14 +271,14 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: TensorType
-    ) -> tf.Tensor:
+        model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+    ) -> TensorType:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: Union[float, tf.Tensor], at: TensorType
-) -> tf.Tensor:
+    model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+) -> TensorType:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
 
@@ -317,7 +317,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self,
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
-        min_feasibility_probability: Union[float, tf.Tensor] = 0.5,
+        min_feasibility_probability: Union[float, TensorType] = 0.5,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -410,7 +410,7 @@ class IndependentReparametrizationSampler:
         """"""
         return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
-    def sample(self, at: TensorType) -> tf.Tensor:
+    def sample(self, at: TensorType) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will

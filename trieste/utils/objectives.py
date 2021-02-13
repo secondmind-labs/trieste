@@ -55,7 +55,7 @@ BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887])
 """ The global miminum of the :func:`branin` function, with shape [1]. """
 
 
-def mk_observer(objective: Callable[[tf.Tensor], tf.Tensor], key: str) -> Observer:
+def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:
     """
     :param objective: An objective function designed to be used with a single data set and model.
     :param key: The key to use to access the data from the observer result.
