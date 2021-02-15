@@ -58,15 +58,15 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return {OBJECTIVE: {
+    return {
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
             "minimize_args": {"options": dict(maxiter=100)},
         },
-    }}
+    }
 
-model = build_model(initial_data[OBJECTIVE])
+model = trieste.utils.map_values(build_model, initial_data)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -224,7 +224,8 @@ batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
     num_query_points=3, builder=qei.using(OBJECTIVE)
 )
 
-model = build_model(initial_data[OBJECTIVE])
+
+model = trieste.utils.map_values(build_model, initial_data)
 batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
 
 # %% [markdown]

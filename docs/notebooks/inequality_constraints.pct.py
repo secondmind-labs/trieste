@@ -103,11 +103,7 @@ def create_bo_model(data):
         },
     })
 
-
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
 # ## Define the acquisition process
@@ -217,10 +213,7 @@ batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
 # We can now run the BO loop as before; note that here we also query twenty points, but in five batches of four points.
 
 # %%
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 num_steps = 5
 batch_data = bo.optimize(
