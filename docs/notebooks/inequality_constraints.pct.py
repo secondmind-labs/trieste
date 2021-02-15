@@ -154,10 +154,7 @@ plt.show()
 # It is sometimes beneficial to query several points at a time instead of one. We show here how to create ad-hoc extensions of the previous acquistion function and rule.
 
 # %%
-from trieste.acquisition.function import BatchAcquisitionFunctionBuilder, BatchReparametrizationSampler
-
-
-class BatchExpectedConstrainedImprovement(BatchAcquisitionFunctionBuilder):
+class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFunctionBuilder):
     def __init__(
         self,
         objective_tag,
