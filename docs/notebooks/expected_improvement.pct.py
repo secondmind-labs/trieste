@@ -204,7 +204,7 @@ plot_bo_points(
 # %% [markdown]
 # ## Batch-sequential strategy
 #
-# Sometimes it is practically more efficient to query several points at a time. We can do this in `trieste` using `BatchMonteCarloExpectedImprovement`. Note that this acquisition is computed using a Monte-Carlo method, but with a reparametrisation trick, which makes it deterministic. To use, it we change the acquisition rule:
+# Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using `BatchMonteCarloExpectedImprovement`. Note that this acquisition is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic. To use it, we change the acquisition rule and specify the number of query points (`num_query_points`) to be chosen, then observed simultaneously:
 
 # %%
 qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=100)
@@ -218,7 +218,7 @@ batch_query_points = batch_dataset.query_points.numpy()
 batch_observations = batch_dataset.observations.numpy()
 
 # %% [markdown]
-# We can visualise again the model and query points.
+# We can visualise again the GP model and query points.
 
 # %%
 fig = plot_gp_plotly(
