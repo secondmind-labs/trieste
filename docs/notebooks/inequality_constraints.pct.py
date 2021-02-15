@@ -17,7 +17,6 @@ tf.random.set_seed(1793)
 import gpflow
 import trieste
 
-
 class Sim:
     threshold = 0.5
 
@@ -53,13 +52,11 @@ plt.show()
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
-
 def observer(query_points):
     return {
         OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
-
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -81,7 +78,6 @@ plot_init_query_points(
     initial_data[CONSTRAINT].astuple(),
 )
 plt.show()
-
 
 # %% [markdown]
 # ## Modelling the two functions
