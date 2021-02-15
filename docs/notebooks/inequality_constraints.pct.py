@@ -171,7 +171,7 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
         samplers = {tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, model)
                     for tag, model in models.items()}
 
-        pf = trieste.acquisition.function.probability_of_feasibility(models[CONSTRAINT],
+        pf = trieste.acquisition.probability_of_feasibility(models[CONSTRAINT],
                                                                      self.threshold,
                                                                      objective_dataset.query_points)
         is_feasible = pf >= 0.5
