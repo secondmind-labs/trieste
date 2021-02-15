@@ -230,7 +230,7 @@ from util.plotting import plot_regret
 mask_fail = constraint_data.observations.numpy() >= Sim.threshold
 batch_mask_fail = batch_constraint_data.observations.numpy() >= Sim.threshold
 
-fig, ax = plt.subplots(1, 2, sharey="True")
+fig, ax = plt.subplots(1, 2, sharey="all")
 plot_regret(data[OBJECTIVE].observations.numpy(), ax[0], num_init=num_initial_points, mask_fail=mask_fail.flatten())
 plot_regret(batch_data[OBJECTIVE].observations.numpy(), ax[1], num_init=num_initial_points,
             mask_fail=batch_mask_fail.flatten())
