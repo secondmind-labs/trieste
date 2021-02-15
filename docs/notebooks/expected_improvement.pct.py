@@ -218,7 +218,7 @@ batch_query_points = batch_dataset.query_points.numpy()
 batch_observations = batch_dataset.observations.numpy()
 
 # %% [markdown]
-# We can visualise again the GP model and query points.
+# We can again visualise the GP model and query points.
 
 # %%
 fig = plot_gp_plotly(
