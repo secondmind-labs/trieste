@@ -207,7 +207,7 @@ plot_bo_points(
 # Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using `BatchMonteCarloExpectedImprovement`. Note that this acquisition is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic. To use it, we change the acquisition rule and specify the number of query points (`num_query_points`) to be chosen, then observed simultaneously:
 
 # %%
-qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=100)
+qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
 batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, builder=qei.using(OBJECTIVE))
 
 batch_bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
