@@ -204,15 +204,15 @@ plot_bo_points(
 # %% [markdown]
 # ## Batch-sequential strategy
 #
-# Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using `BatchMonteCarloExpectedImprovement`. Note that this acquisition is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic. To use it, we change the acquisition rule and specify the number of query points (`num_query_points`) to be chosen, then observed simultaneously:
+# Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using a `BatchAcquisitionRule` and a `BatchAcquisitionFunctionBuilder`, that together recommend a number of query points `num_query_points` (instead of one as previously). The optimizer then queries the observer at all these points simultaneously.
+# Here we use the `BatchMonteCarloExpectedImprovement` function. Note that this acquisition function is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic.
 
 # %%
 qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
 batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, builder=qei.using(OBJECTIVE))
 
-batch_bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
-batch_result = batch_bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
+model = build_model(initial_data[OBJECTIVE])
+batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
 batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
 batch_query_points = batch_dataset.query_points.numpy()
 batch_observations = batch_dataset.observations.numpy()
