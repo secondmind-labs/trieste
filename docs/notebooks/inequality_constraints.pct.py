@@ -171,15 +171,16 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
         samplers = {tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, model)
                     for tag, model in models.items()}
 
-        constraint_samples = tf.squeeze(samplers[CONSTRAINT].sample(at=objective_dataset.query_points), axis=-1)
-        is_feasible = tf.reduce_mean(tf.cast(constraint_samples < self.threshold,
-                                             dtype=constraint_samples.dtype), axis=0) >= 0.5
+        pf = trieste.acquisition.function.probability_of_feasibility(models[CONSTRAINT],
+                                                                     self.threshold,
+                                                                     objective_dataset.query_points)
+        is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         def batch_efi(at):
-            samples = {tag: tf.squeeze(sampler.sample(at), -1) for sampler, tag in samplers.items()}
+            samples = {tag: tf.squeeze(sampler.sample(at), -1) for tag, sampler in samplers.items()}
             feasible_mask = samples[CONSTRAINT] < self.threshold  # [N, S, B]
             improvement = tf.where(feasible_mask, tf.math.maximum(eta - samples[OBJECTIVE], 0.), 0.)  # [N, S, B]
             batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [N, S]
@@ -189,7 +190,6 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
 
 
 num_query_points = 4
-pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
 batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points, batch_eci)
 
