@@ -183,12 +183,12 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
-        samplers = {tag: BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models}
+        samplers = {tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models}
 
         def batch_efi(at):
             samples = {tag: samplers[tag].sample(at, jitter=self._jitter) for tag in models}
-            objective_samples = tf.squeeze(samples["OBJECTIVE"], axis=-1)  # [N, S, B]
-            constraint_samples = tf.squeeze(samples["CONSTRAINT"], axis=-1)  # [N, S, B]
+            objective_samples = tf.squeeze(samples[OBJECTIVE], axis=-1)  # [N, S, B]
+            constraint_samples = tf.squeeze(samples[CONSTRAINT], axis=-1)  # [N, S, B]
             feasible_mask = constraint_samples < self.threshold
             improvement = tf.where(feasible_mask, tf.math.maximum(eta - objective_samples, 0.), 0.)
             batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [N, S]
