@@ -182,8 +182,8 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
         def batch_efi(at):
             samples = {tag: tf.squeeze(sampler.sample(at), -1) for tag, sampler in samplers.items()}
             feasible_mask = samples[CONSTRAINT] < self.threshold  # [N, S, B]
-            improvement = tf.where(feasible_mask, tf.math.maximum(eta - samples[OBJECTIVE], 0.), 0.)  # [N, S, B]
-            batch_improvement = tf.math.reduce_max(improvement, axis=-1)  # [N, S]
+            improvement = tf.where(feasible_mask, tf.maximum(eta - samples[OBJECTIVE], 0.), 0.)  # [N, S, B]
+            batch_improvement = tf.reduce_max(improvement, axis=-1)  # [N, S]
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [N, 1]
 
         return batch_efi
