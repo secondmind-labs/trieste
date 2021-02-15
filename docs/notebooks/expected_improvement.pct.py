@@ -242,7 +242,7 @@ fig = add_bo_points_plotly(
 fig.show()
 
 # %% [markdown]
-# We can also compare the regrets between the purely sequential approach and the batch one. 
+# We can also compare the regret between the purely sequential approach and the batch one. 
 
 # %%
 _, ax = plt.subplots(1, 2)
