@@ -156,11 +156,7 @@ plt.show()
 
 # %%
 class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFunctionBuilder):
-    def __init__(
-            self,
-            sample_size,
-            threshold,
-    ):
+    def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
         self.threshold = threshold
 
@@ -171,9 +167,9 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFu
         samplers = {tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, model)
                     for tag, model in models.items()}
 
-        pf = trieste.acquisition.probability_of_feasibility(models[CONSTRAINT],
-                                                                     self.threshold,
-                                                                     objective_dataset.query_points)
+        pf = trieste.acquisition.probability_of_feasibility(
+            models[CONSTRAINT], self.threshold, objective_dataset.query_points
+        )
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
