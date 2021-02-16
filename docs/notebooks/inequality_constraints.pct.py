@@ -150,9 +150,9 @@ plt.show()
 
 
 # %% [markdown]
-# ## Define a batch acquisition rule
+# ## Batch-sequential strategy
 #
-# It is sometimes beneficial to query several points at a time instead of one. We show here how to create ad-hoc extensions of the previous acquistion function and rule.
+# It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
 
 # %%
 class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFunctionBuilder):
