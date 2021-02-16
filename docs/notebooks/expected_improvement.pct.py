@@ -202,6 +202,54 @@ plot_bo_points(
 )
 
 # %% [markdown]
+# ## Batch-sequential strategy
+#
+# Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using a `BatchAcquisitionRule` and a `BatchAcquisitionFunctionBuilder`, that together recommend a number of query points `num_query_points` (instead of one as previously). The optimizer then queries the observer at all these points simultaneously.
+# Here we use the `BatchMonteCarloExpectedImprovement` function. Note that this acquisition function is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic.
+
+# %%
+qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
+batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, builder=qei.using(OBJECTIVE))
+
+model = build_model(initial_data[OBJECTIVE])
+batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
+
+# %% [markdown]
+# We can again visualise the GP model and query points.
+
+# %%
+batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
+batch_query_points = batch_dataset.query_points.numpy()
+batch_observations = batch_dataset.observations.numpy()
+fig = plot_gp_plotly(
+    batch_result.try_get_final_models()[OBJECTIVE].model,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30
+)
+
+fig = add_bo_points_plotly(
+    x=batch_query_points[:, 0],
+    y=batch_query_points[:, 1],
+    z=batch_observations[:, 0],
+    num_init=num_initial_points,
+    idx_best=arg_min_idx,
+    fig=fig,
+    figrow=1,
+    figcol=1,
+)
+
+fig.show()
+
+# %% [markdown]
+# We can also compare the regret between the purely sequential approach and the batch one. 
+
+# %%
+_, ax = plt.subplots(1, 2)
+plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+plot_regret(batch_observations, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
