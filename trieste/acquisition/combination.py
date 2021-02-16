@@ -65,7 +65,7 @@ class Reducer(AcquisitionFunctionBuilder):
             acq.prepare_acquisition_function(datasets, models) for acq in self.acquisitions
         )
 
-        def evaluate_acquisition_function_fn(at: TensorType) -> tf.Tensor:
+        def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
             return self._reduce_acquisition_functions(at, functions)
 
         return evaluate_acquisition_function_fn
@@ -77,11 +77,11 @@ class Reducer(AcquisitionFunctionBuilder):
 
     def _reduce_acquisition_functions(
         self, at: TensorType, acquisition_functions: Sequence[AcquisitionFunction]
-    ) -> tf.Tensor:
+    ) -> TensorType:
         return self._reduce([fn(at) for fn in acquisition_functions])
 
     @abstractmethod
-    def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
+    def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
         """
         :param inputs: The output of each constituent acquisition function.
         :return: The output of the reduced acquisition function.
@@ -98,7 +98,7 @@ class Sum(Reducer):
     def __repr__(self) -> str:
         return f"Sum({self._repr_builders()})"
 
-    def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
+    def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
         """
         :param inputs: The outputs of each acquisition function.
         :return: The element-wise sum of the ``inputs``.
@@ -115,7 +115,7 @@ class Product(Reducer):
     def __repr__(self) -> str:
         return f"Product({self._repr_builders()})"
 
-    def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
+    def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
         """
         :param inputs: The outputs of each acquisition function.
         :return: The element-wise product of the ``inputs``.

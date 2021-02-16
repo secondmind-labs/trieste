@@ -194,18 +194,18 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         acquisition_space: Box
         """ The search space. """
 
-        eps: tf.Tensor
+        eps: TensorType
         """
         The (maximum) vector from the current best point to each bound of the acquisition space.
         """
 
-        y_min: tf.Tensor
+        y_min: TensorType
         """ The minimum observed value. """
 
-        is_global: Union[tf.Tensor, bool]
+        is_global: Union[TensorType, bool]
         """
         `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `tf.Tensor` instead of a `bool`.
+        `TensorType` instead of a `bool`.
         """
 
         def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
