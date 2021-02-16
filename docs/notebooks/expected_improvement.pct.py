@@ -213,14 +213,14 @@ batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, b
 
 model = build_model(initial_data[OBJECTIVE])
 batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
-batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
-batch_query_points = batch_dataset.query_points.numpy()
-batch_observations = batch_dataset.observations.numpy()
 
 # %% [markdown]
 # We can again visualise the GP model and query points.
 
 # %%
+batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
+batch_query_points = batch_dataset.query_points.numpy()
+batch_observations = batch_dataset.observations.numpy()
 fig = plot_gp_plotly(
     batch_result.try_get_final_models()[OBJECTIVE].model,
     search_space.lower,
