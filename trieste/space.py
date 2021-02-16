@@ -261,13 +261,13 @@ class Box(SearchSpace):
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
         lower and upper bounds). For example:
 
-            >>> unit_interval = Box(tf.constant([0.0]), tf.constant([1.0]))
-            >>> square_at_origin = Box(tf.constant([-2.0, -2.0]), tf.constant([2.0, 2.0]))
+            >>> unit_interval = Box([0.0], [1.0])
+            >>> square_at_origin = Box([-2.0, -2.0], [2.0, 2.0])
             >>> new_box = unit_interval * square_at_origin
             >>> new_box.lower.numpy()
-            array([ 0., -2., -2.], dtype=float32)
+            array([ 0., -2., -2.])
             >>> new_box.upper.numpy()
-            array([1., 2., 2.], dtype=float32)
+            array([1., 2., 2.])
 
         :param other: A :class:`Box` with bounds of the same type as this :class:`Box`.
         :return: The Cartesian product of the two :class:`Box`\ es.
