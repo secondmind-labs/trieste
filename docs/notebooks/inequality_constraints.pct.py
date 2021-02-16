@@ -62,7 +62,8 @@ def observer(query_points):
 # Let's randomly sample some initial data from the observer ...
 
 # %%
-initial_data = observer(search_space.sample(5))
+num_initial_points = 5
+initial_data = observer(search_space.sample(num_initial_points))
 
 # %% [markdown]
 # ... and visualise those points on the constrained objective.
@@ -100,7 +101,8 @@ def create_bo_model(data):
         }
     )
 
-models = {
+
+initial_models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
     CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
 }
@@ -125,11 +127,11 @@ num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 data = bo.optimize(
-    num_steps, initial_data, models, rule, track_state=False
+    num_steps, initial_data, initial_models, rule, track_state=False
 ).try_get_final_datasets()
 
 # %% [markdown]
-# To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
+# To conclude this section, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
 constraint_data = data[CONSTRAINT]
@@ -145,6 +147,90 @@ plot_init_query_points(
     new_data,
 )
 plt.show()
+
+
+# %% [markdown]
+# ## Batch-sequential strategy
+#
+# It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
+
+# %%
+class BatchExpectedConstrainedImprovement(trieste.acquisition.BatchAcquisitionFunctionBuilder):
+    def __init__(self, sample_size, threshold):
+        self._sample_size = sample_size
+        self.threshold = threshold
+
+    def prepare_acquisition_function(self, datasets, models):
+        objective_model = models[OBJECTIVE]
+        objective_dataset = datasets[OBJECTIVE]
+
+        samplers = {tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, model)
+                    for tag, model in models.items()}
+
+        pf = trieste.acquisition.probability_of_feasibility(
+            models[CONSTRAINT], self.threshold, objective_dataset.query_points
+        )
+        is_feasible = pf >= 0.5
+
+        mean, _ = objective_model.predict(objective_dataset.query_points)
+        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+
+        def batch_efi(at):
+            samples = {tag: tf.squeeze(sampler.sample(at), -1) for tag, sampler in samplers.items()}
+            feasible_mask = samples[CONSTRAINT] < self.threshold  # [N, S, B]
+            improvement = tf.where(feasible_mask, tf.maximum(eta - samples[OBJECTIVE], 0.), 0.)  # [N, S, B]
+            batch_improvement = tf.reduce_max(improvement, axis=-1)  # [N, S]
+            return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [N, 1]
+
+        return batch_efi
+
+
+num_query_points = 4
+batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
+batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points, batch_eci)
+
+# %% [markdown]
+# We can now run the BO loop as before; note that we here also query 20 points, but in 5 batches of 4 points.
+
+initial_models = {
+    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
+}
+
+num_steps = 5
+batch_data = bo.optimize(
+    num_steps, initial_data, initial_models, batch_rule, track_state=False
+).try_get_final_datasets()
+
+# %% [markdown]
+# We visualise the resulting data as before.
+batch_constraint_data = batch_data[CONSTRAINT]
+new_batch_query_points = batch_constraint_data.query_points[-num_query_points * num_steps:]
+new_batch_observations = batch_constraint_data.observations[-num_query_points * num_steps:]
+new_batch_data = (new_batch_query_points, new_batch_observations)
+
+plot_init_query_points(
+    search_space,
+    Sim,
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
+    new_batch_data,
+)
+plt.show()
+
+# %% [markdown]
+# Finally, we compare the resulting regret with a non-batch strategy.
+
+from util.plotting import plot_regret
+
+mask_fail = constraint_data.observations.numpy() >= Sim.threshold
+batch_mask_fail = batch_constraint_data.observations.numpy() >= Sim.threshold
+
+fig, ax = plt.subplots(1, 2, sharey="all")
+plot_regret(data[OBJECTIVE].observations.numpy(), ax[0], num_init=num_initial_points, mask_fail=mask_fail.flatten())
+plot_regret(batch_data[OBJECTIVE].observations.numpy(), ax[1], num_init=num_initial_points,
+            mask_fail=batch_mask_fail.flatten())
+fig.show()
 
 # %% [markdown]
 # ## LICENSE
