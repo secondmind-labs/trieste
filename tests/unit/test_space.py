@@ -32,9 +32,11 @@ class Integers(SearchSpace):
         self.limit: Final[int] = exclusive_limit
 
     def sample(self, num_samples: int) -> tf.Tensor:
-        return tf.random.shuffle(tf.range(self.limit))[0]
+        return tf.random.shuffle(tf.range(self.limit))[:num_samples]
 
     def __contains__(self, point: tf.Tensor) -> tf.Tensor:
+        tf.debugging.assert_scalar(point)
+        tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
     def __mul__(self, other: Integers) -> Integers:
