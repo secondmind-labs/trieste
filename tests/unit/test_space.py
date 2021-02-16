@@ -35,7 +35,6 @@ class Integers(SearchSpace):
         return tf.random.shuffle(tf.range(self.limit))[:num_samples]
 
     def __contains__(self, point: tf.Tensor) -> tf.Tensor:
-        tf.debugging.assert_scalar(point)
         tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
