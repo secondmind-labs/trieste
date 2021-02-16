@@ -35,7 +35,9 @@ import gpflow
 
 observations = initial_data[OBJECTIVE].observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
-gpr = gpflow.models.GPR(initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(
+    initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5
+)
 gpflow.set_trainable(gpr.likelihood, False)
 
 model_config = {
