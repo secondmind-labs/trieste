@@ -102,6 +102,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         self._builder = builder
 
     def __repr__(self) -> str:
+        """"""
         return f"EfficientGlobalOptimization({self._builder!r})"
 
     def acquire(
@@ -147,6 +148,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
+        """"""
         return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
 
     def acquire(
@@ -234,6 +236,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self._kappa = kappa
 
     def __repr__(self) -> str:
+        """"""
         return f"TrustRegion({self._builder!r}, {self._beta!r}, {self._kappa!r})"
 
     def acquire(
@@ -337,6 +340,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._builder = builder
 
     def __repr__(self) -> str:
+        """"""
         return f"BatchAcquisitionRule({self._num_query_points!r}, {self._builder!r})"
 
     def _vectorize_batch_acquisition(
