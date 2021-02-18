@@ -50,7 +50,7 @@ Getting help
 ------------
 
 - We welcome contributions. To submit a pull request, file a bug report, or make a feature request, see the `contribution guidelines <https://github.com/secondmind-labs/trieste/blob/develop/CONTRIBUTING.md>`_.
-- For more open-ended questions, or for anything else, join the community discussions on our `Slack workspace <https://join.slack.com/t/secondmind-labs/shared_invite/zt-jmac0bz5-A~WBezivf5uhP1JG9i30FA>`_.
+- For more open-ended questions, or for anything else, join the community discussions on our `Slack workspace <https://join.slack.com/t/secondmind-labs/shared_invite/zt-mjkavx5e-LfePbVegb9lXRA_ZUqTyMA>`_.
 
 .. toctree::
    :hidden:
