@@ -27,7 +27,7 @@ from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import Box, DiscreteSearchSpace, SearchSpace
+from ..space import Box, SearchSpace, DiscreteSearchSpace
 from ..type import TensorType
 from . import _optimizer
 from .function import (
@@ -135,11 +135,14 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :raise ValueError (or InvalidArgumentError): If either ``num_search_space_samples`` or
-            ``num_query_points`` is not positive.
         """
-        tf.debugging.assert_positive(num_search_space_samples)
-        tf.debugging.assert_positive(num_query_points)
+        if not num_search_space_samples > 0:
+            raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
 
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
@@ -204,7 +207,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         is_global: Union[TensorType, bool]
         """
         `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `~trieste.type.TensorType` instead of a `bool`.
+        `TensorType` instead of a `bool`.
         """
 
         def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
@@ -241,11 +244,11 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: Optional[State] = None,
+        state: Optional[State],
     ) -> Tuple[TensorType, State]:
         """
-        Acquire one new query point according to the trust region algorithm. Return the new query
-        point along with the final acquisition state from this step.
+        Acquire one new query point according the trust region algorithm. Return the new query point
+        along with the final acquisition state from this step.
 
         If no ``state`` is specified (it is `None`), ``search_space`` is used as
         the search space for this step.
@@ -327,7 +330,11 @@ class BatchAcquisitionRule(AcquisitionRule[None, Union[Box, DiscreteSearchSpace]
         :param builder: The acquisition function builder to use. :class:`BatchAcquisitionRule` will
             attempt to **maximise** the corresponding acquisition function.
         """
-        tf.debugging.assert_positive(num_query_points)
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
 
         self._num_query_points = num_query_points
         self._builder = builder
