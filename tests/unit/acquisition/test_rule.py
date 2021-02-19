@@ -37,17 +37,23 @@ from trieste.models import ProbabilisticModel
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
 @pytest.mark.parametrize(
-    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
+    "search_space, expected_minimum",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
+            tf.constant([[0.1, -0.1]]),
+        ),
+        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
+    ],
 )
-def test_trust_region_raises_for_missing_datasets_key(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
-) -> None:
-    search_space = one_dimensional_range(-1, 1)
-    rule = TrustRegion()
-    with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
+    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    query_point, _ = ego.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )
+    npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
 
 
 @pytest.mark.parametrize(
@@ -68,23 +74,17 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
         rule.acquire(search_space, datasets, models)
 
 
+@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
 @pytest.mark.parametrize(
-    "search_space, expected_minimum",
-    [
-        (
-            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
-            tf.constant([[0.1, -0.1]]),
-        ),
-        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
-    ],
+    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
-def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )
-    npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
+def test_trust_region_raises_for_missing_datasets_key(
+    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+) -> None:
+    search_space = one_dimensional_range(-1, 1)
+    rule = TrustRegion()
+    with pytest.raises(KeyError):
+        rule.acquire(search_space, datasets, models, None)
 
 
 def test_trust_region_for_default_state() -> None:
