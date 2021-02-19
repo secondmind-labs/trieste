@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload
+from typing import Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload, Generator
 
 import gpflow
 import tensorflow as tf
@@ -30,6 +30,7 @@ from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import Observer
 from .space import SearchSpace
+from .type import TensorType
 from .utils import Err, Ok, Result
 
 S = TypeVar("S")
@@ -270,3 +271,28 @@ class BayesianOptimizer(Generic[SP]):
 
         record = Record(datasets, models, acquisition_state)
         return OptimizationResult(Ok(record), history)
+
+
+def optimize(
+    search_space: SP,
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, TrainableProbabilisticModel],
+    acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
+    acquisition_state: Optional[S] = None,
+) -> Generator[Result[TensorType], Mapping[str, Dataset], None]:
+    while True:
+        try:
+            query_points, acquisition_state = acquisition_rule.acquire(
+                search_space, datasets, models, acquisition_state
+            )
+
+            observer_output = yield Ok(query_points)
+
+            datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
+
+            for tag, model in models.items():
+                dataset = datasets[tag]
+                model.update(dataset)
+                model.optimize(dataset)
+        except Exception as e:
+            yield Err(e)  # todo is this right?
