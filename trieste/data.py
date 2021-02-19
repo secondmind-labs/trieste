@@ -19,6 +19,8 @@ from typing import Dict, Tuple
 
 import tensorflow as tf
 
+from trieste.type import TensorType
+
 
 @dataclass(frozen=True)
 class Dataset:
@@ -27,10 +29,10 @@ class Dataset:
     :class:`~trieste.observer.Observer`.
     """
 
-    query_points: tf.Tensor
+    query_points: TensorType
     """ The points at which the :class:`~trieste.observer.Observer` was queried. """
 
-    observations: tf.Tensor
+    observations: TensorType
     """ The observed output of the :class:`~trieste.observer.Observer` for each query point. """
 
     def __post_init__(self) -> None:
@@ -86,7 +88,7 @@ class Dataset:
             tf.concat([self.observations, rhs.observations], axis=0),
         )
 
-    def __len__(self) -> tf.Tensor:
+    def __len__(self) -> TensorType:
         """
         :return: The number of query points, or equivalently the number of observations.
         """
@@ -95,7 +97,7 @@ class Dataset:
     def __deepcopy__(self, memo: Dict[int, object]) -> Dataset:
         return self
 
-    def astuple(self) -> Tuple[tf.Tensor, tf.Tensor]:
+    def astuple(self) -> Tuple[TensorType, TensorType]:
         """
         **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
         **not** deepcopy the attributes.

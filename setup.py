@@ -19,7 +19,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="trieste",
-    version="0.3.1",
+    version="0.4.0",
     author="The Trieste contributors",
     author_email="labs@secondmind.ai",
     description="A Bayesian optimization research toolbox built on TensorFlow",
@@ -27,6 +27,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/secondmind-labs/trieste",
     packages=find_packages(include=("trieste*",)),
+    package_data={
+        "trieste": ["py.typed"],
+    },
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",

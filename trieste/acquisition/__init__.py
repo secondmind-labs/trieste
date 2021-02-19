@@ -25,8 +25,8 @@ Optimization (EGO) for the acquisition rule.
 
 This package contains acquisition rules, as implementations of
 :class:`~trieste.acquisition.rule.AcquisitionRule`, and acquisition functions. It also contains
-:class:`AcquisitionBuilder`\ s which provide a common interface for the rules to build acquisition
-functions.
+:class:`AcquisitionFunctionBuilder`\ s which provide a common interface for the rules to build
+acquisition functions.
 
 Acquisition rules in this library that use acquisition functions, such as
 :class:`EfficientGlobalOptimization`, *maximize* these functions. This defines the sign the
@@ -41,6 +41,8 @@ from .function import (
     AcquisitionFunctionBuilder,
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedImprovement,
+    BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     IndependentReparametrizationSampler,
@@ -49,6 +51,7 @@ from .function import (
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
+    SingleModelBatchAcquisitionBuilder,
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,

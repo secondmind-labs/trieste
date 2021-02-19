@@ -37,7 +37,9 @@ search_space = trieste.space.Box([0, 0], [1, 1])
 # %%
 from util.plotting_plotly import plot_function_plotly
 
-fig = plot_function_plotly(masked_branin, search_space.lower, search_space.upper, grid_density=70)
+fig = plot_function_plotly(
+    masked_branin, search_space.lower, search_space.upper, grid_density=70
+)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -84,14 +86,16 @@ import gpflow
 
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=0.2 * np.ones(2))
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
 
 def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=0.2 * np.ones(2))
+    kernel = gpflow.kernels.SquaredExponential(
+        variance=100.0, lengthscales=[0.2, 0.2]
+    )
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
     gpflow.set_trainable(vgp.kernel.variance, False)
@@ -116,8 +120,9 @@ class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
         natgrad_opt = gpflow.optimizers.NaturalGradient(gamma=0.1)
 
         for step in range(50):
-            natgrad_opt.minimize(self.model.training_loss, var_list=variational_params)
-            adam_opt.minimize(self.model.training_loss, var_list=self.model.trainable_variables)
+            loss = self.model.training_loss
+            natgrad_opt.minimize(loss, variational_params)
+            adam_opt.minimize(loss, self.model.trainable_variables)
 
 # %% [markdown]
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
@@ -173,7 +178,11 @@ from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(
-    masked_branin, search_space.lower, search_space.upper, grid_density=50, contour=True
+    masked_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=50,
+    contour=True
 )
 plot_bo_points(
     result.datasets[FAILURE].query_points.numpy(),
@@ -192,7 +201,10 @@ from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 
 fig = plot_gp_plotly(
-    result.models[OBJECTIVE].model, search_space.lower, search_space.upper, grid_density=50
+    result.models[OBJECTIVE].model,
+    search_space.lower,
+    search_space.upper,
+    grid_density=50
 )
 fig = add_bo_points_plotly(
     x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),

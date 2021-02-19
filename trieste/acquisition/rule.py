@@ -102,6 +102,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         self._builder = builder
 
     def __repr__(self) -> str:
+        """"""
         return f"EfficientGlobalOptimization({self._builder!r})"
 
     def acquire(
@@ -147,6 +148,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
+        """"""
         return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
 
     def acquire(
@@ -194,18 +196,18 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         acquisition_space: Box
         """ The search space. """
 
-        eps: tf.Tensor
+        eps: TensorType
         """
         The (maximum) vector from the current best point to each bound of the acquisition space.
         """
 
-        y_min: tf.Tensor
+        y_min: TensorType
         """ The minimum observed value. """
 
-        is_global: Union[tf.Tensor, bool]
+        is_global: Union[TensorType, bool]
         """
         `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `tf.Tensor` instead of a `bool`.
+        `TensorType` instead of a `bool`.
         """
 
         def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
@@ -234,6 +236,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self._kappa = kappa
 
     def __repr__(self) -> str:
+        """"""
         return f"TrustRegion({self._builder!r}, {self._beta!r}, {self._kappa!r})"
 
     def acquire(
@@ -337,6 +340,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._builder = builder
 
     def __repr__(self) -> str:
+        """"""
         return f"BatchAcquisitionRule({self._num_query_points!r}, {self._builder!r})"
 
     def _vectorize_batch_acquisition(

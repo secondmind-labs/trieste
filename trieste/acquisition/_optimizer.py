@@ -21,7 +21,7 @@ import tensorflow_probability as tfp
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
 
-TensorMapping = Callable[[tf.Tensor], tf.Tensor]
+TensorMapping = Callable[[TensorType], TensorType]
 
 
 @singledispatch
@@ -67,7 +67,7 @@ def _box(space: Box, target_func: TensorMapping) -> TensorType:
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
     variable = tf.Variable(bijector.inverse(initial_point))
 
-    def _objective() -> tf.Tensor:
+    def _objective() -> TensorType:
         return -target_func(bijector.forward(variable))
 
     gpflow.optimizers.Scipy().minimize(_objective, (variable,))

@@ -22,6 +22,7 @@ from gpflow.conditionals.util import sample_mvn
 
 from ..data import Dataset
 from ..type import TensorType
+from ..utils import DEFAULTS
 from .optimizer import Optimizer
 
 
@@ -31,23 +32,40 @@ class ProbabilisticModel(tf.Module, ABC):
     @abstractmethod
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """
-        Return the predicted mean and variance of the latent function(s) at the specified
+        Return the mean and variance of the independent marginal distributions at each point in
         ``query_points``.
 
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance.
+        This is essentially a convenience method for :meth:`predict_joint`, where non-event
+        dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+        batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions, of shape [..., B, D].
+        :return: The mean and covariance of the joint marginal distribution at each batch of points
+            in ``query_points``. For a predictive distribution with event shape E, the mean will
+            have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
         """
         raise NotImplementedError
 
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
-        Return ``num_samples`` samples from the predictive distribution at ``query_points``.
+        Return ``num_samples`` samples from the independent marginal distributions at
+        ``query_points``.
 
-        :param query_points: The points at which to sample.
+        :param query_points: The points at which to sample, with shape [..., D].
         :param num_samples: The number of samples at each point.
-        :return: The samples. Has shape [S, Q, D], where S is the number of samples, Q is the number
-            of query points, and D is the dimension of the predictive distribution.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -59,6 +77,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
+
         :param dataset: The data with which to update the model.
         """
         raise NotImplementedError
@@ -100,6 +119,9 @@ class GPflowPredictor(ProbabilisticModel, ABC):
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        return self.model.predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
@@ -191,7 +213,14 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> VGP:
         return self._model
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
+
+        :param dataset: The data with which to update the model.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        """
         model = self.model
 
         _assert_data_is_compatible(dataset, Dataset(*model.data))
@@ -200,10 +229,10 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
         # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to backtransform from f_mu and f_cov to obtain the updated
+        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
         # new_q_mu and new_q_sqrt:
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
-        jitter_mat = gpflow.config.default_jitter() * tf.eye(len(dataset), dtype=Knn.dtype)
+        jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
         tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov

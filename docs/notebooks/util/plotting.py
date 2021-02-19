@@ -98,7 +98,7 @@ def plot_function_2d(
 
     # Evaluate objective function
     F = to_numpy(obj_func(Xplot))
-    if len(F.shape) is 1:
+    if len(F.shape) == 1:
         F = F.reshape(-1, 1)
 
     n_output = F.shape[1]

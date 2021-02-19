@@ -14,6 +14,7 @@
 
 import functools
 from typing import (
+    Any,
     Callable,
     Container,
     FrozenSet,
@@ -21,6 +22,7 @@ from typing import (
     Mapping,
     NoReturn,
     Tuple,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -28,6 +30,7 @@ from typing import (
 
 import numpy.testing as npt
 import tensorflow as tf
+from typing_extensions import Final
 
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
@@ -35,6 +38,12 @@ from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
+
+TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
+    ValueError,
+    tf.errors.InvalidArgumentError,
+)
+""" Error types thrown by TensorFlow's debugging functionality. """
 
 C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
@@ -52,6 +61,28 @@ def random_seed(f: C) -> C:
         return f(*args, **kwargs)
 
     return cast(C, decorated)
+
+
+T = TypeVar("T")
+""" Unbound type variable. """
+
+NList = Union[
+    List[T],
+    List[List[T]],
+    List[List[List[T]]],
+    List[List[List[List[Any]]]],
+]
+""" Type alias for a nested list with array shape. """
+
+
+def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]]) -> Dataset:
+    """
+    :param query_points: The query points.
+    :param observations: The observations.
+    :return: A :class:`Dataset` containing the specified ``query_points`` and ``observations`` with
+        dtype `tf.float64`.
+    """
+    return Dataset(tf.cast(query_points, tf.float64), tf.cast(observations, tf.float64))
 
 
 def zero_dataset() -> Dataset:
@@ -82,20 +113,18 @@ def raise_(*_: object, **__: object) -> NoReturn:
     raise Exception
 
 
-def quadratic(x: tf.Tensor) -> Mapping[str, Dataset]:
+def quadratic(x: tf.Tensor) -> tf.Tensor:
     r"""
-    A multi-dimensional quadratic :class:`Observer`.
+    The multi-dimensional quadratic function.
 
     :param x: A tensor whose last dimension is of length greater than zero.
-    :return: A single :class:`Dataset` with key `""`, whose :attr:`query_points` are ``x``, and
-        ``observations`` are the sum :math:`\Sigma x^2` of the squares of ``x`` (the Euclidean
-        norm).
+    :return: The sum :math:`\Sigma x^2` of the squares of ``x``.
     :raise ValueError: If ``x`` is a scalar or has empty trailing dimension.
     """
     if x.shape == [] or x.shape[-1] == 0:
         raise ValueError(f"x must have non-empty trailing dimension, got shape {x.shape}")
 
-    return {"": Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
+    return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):

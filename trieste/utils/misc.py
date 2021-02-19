@@ -40,7 +40,7 @@ def jit(apply: bool = True, **optimize_kwargs) -> Callable[[C], C]:
     return decorator
 
 
-def shapes_equal(this: tf.Tensor, that: tf.Tensor) -> tf.Tensor:
+def shapes_equal(this: TensorType, that: TensorType) -> TensorType:
     """
     Return a scalar tensor containing: `True` if ``this`` and ``that`` have equal runtime shapes,
     else `False`.

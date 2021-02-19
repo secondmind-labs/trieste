@@ -35,46 +35,11 @@ from trieste.data import Dataset
 from trieste.models.model_interfaces import (
     GaussianProcessRegression,
     GPflowPredictor,
-    ProbabilisticModel,
     SparseVariational,
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
-
-
-class _MinimalTrainable(ProbabilisticModel):
-    def __init__(self, optimizer: Optimizer):
-        self.optimizer = optimizer
-
-    def optimize(self, dataset: Dataset) -> None:
-        self.optimizer.optimize(None, dataset)
-
-    def loss(self) -> tf.Tensor:
-        raise NotImplementedError
-
-    def update(self, dataset: Dataset) -> None:
-        raise NotImplementedError
-
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        raise NotImplementedError
-
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        raise NotImplementedError
-
-
-def test_trainable_model_interface_set_optimize() -> None:
-    class _OptimizerMock(Optimizer):
-        def __init__(self):
-            self.call_count = 0
-
-        def optimize(self, model: tf.Module, dataset: Dataset):
-            self.call_count += 1
-
-    optimizer = _OptimizerMock()
-    model = _MinimalTrainable(optimizer)
-    model.optimize(Dataset(np.eye(1), np.eye(1)))
-    assert optimizer.call_count == 1
 
 
 def _mock_data() -> Tuple[tf.Tensor, tf.Tensor]:

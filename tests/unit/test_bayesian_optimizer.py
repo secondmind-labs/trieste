@@ -26,7 +26,12 @@ from tests.util.misc import (
     quadratic,
     zero_dataset,
 )
-from tests.util.model import GaussianMarginal, PseudoTrainableProbModel, QuadraticWithUnitVariance
+from tests.util.model import (
+    GaussianProcess,
+    PseudoTrainableProbModel,
+    QuadraticMeanAndRBFKernel,
+    rbf,
+)
 from trieste.acquisition.rule import OBJECTIVE, AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
@@ -37,7 +42,11 @@ from trieste.type import TensorType
 from trieste.utils import Err, Ok
 
 
-class _PseudoTrainableQuadratic(QuadraticWithUnitVariance, PseudoTrainableProbModel):
+def _quadratic_observer(x: tf.Tensor) -> Mapping[str, Dataset]:
+    return {"": Dataset(x, quadratic(x))}
+
+
+class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
     pass
 
 
@@ -185,7 +194,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
 
     rule = FixedAcquisitionRule(tf.constant([[0.0]]))
     result, history = (
-        BayesianOptimizer(quadratic, one_dimensional_range(0, 1))
+        BayesianOptimizer(_quadratic_observer, one_dimensional_range(0, 1))
         .optimize(10, {"": zero_dataset()}, {"": _UncopyableModel()}, rule)
         .astuple()
     )
@@ -220,8 +229,8 @@ class _BrokenRule(AcquisitionRule[None, SearchSpace]):
     "observer, model, rule",
     [
         (_broken_observer, _PseudoTrainableQuadratic(), FixedAcquisitionRule(tf.constant([[0.0]]))),
-        (quadratic, _BrokenModel(), FixedAcquisitionRule(tf.constant([[0.0]]))),
-        (quadratic, _PseudoTrainableQuadratic(), _BrokenRule()),
+        (_quadratic_observer, _BrokenModel(), FixedAcquisitionRule(tf.constant([[0.0]]))),
+        (_quadratic_observer, _PseudoTrainableQuadratic(), _BrokenRule()),
     ],
 )
 def test_bayesian_optimizer_optimize_for_failed_step(
@@ -238,7 +247,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 
 @pytest.mark.parametrize("num_steps", [-3, -1])
 def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -> None:
-    optimizer = BayesianOptimizer(quadratic, one_dimensional_range(-1, 1))
+    optimizer = BayesianOptimizer(_quadratic_observer, one_dimensional_range(-1, 1))
 
     with pytest.raises(ValueError, match="num_steps"):
         optimizer.optimize(num_steps, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()})
@@ -247,6 +256,9 @@ def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -
 def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     class _UnusableModel(TrainableProbabilisticModel):
         def predict(self, query_points: TensorType) -> NoReturn:
+            assert False
+
+        def predict_joint(self, query_points: TensorType) -> NoReturn:
             assert False
 
         def sample(self, query_points: TensorType, num_samples: int) -> NoReturn:
@@ -284,13 +296,13 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
-    class ExponentialWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
-        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-            return tf.exp(-query_points), tf.ones_like(query_points)
+    class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self):
+            super().__init__([lambda x: tf.exp(-x)], [rbf()])
 
-    class LinearWithUnitVariance(GaussianMarginal, PseudoTrainableProbModel):
-        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-            return 2 * query_points, tf.ones_like(query_points)
+    class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self):
+            super().__init__([lambda x: 2 * x], [rbf()])
 
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
@@ -350,7 +362,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
             assert False
 
     history = (
-        BayesianOptimizer(quadratic, one_dimensional_range(-1, 1))
+        BayesianOptimizer(_quadratic_observer, one_dimensional_range(-1, 1))
         .optimize(
             5, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: _UncopyableModel()}, track_state=False
         )
@@ -371,7 +383,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             new_state = 0 if state is None else state + 1
             return tf.constant([[10.0]]) + new_state, new_state
 
-    class _DecreasingVarianceModel(QuadraticWithUnitVariance, TrainableProbabilisticModel):
+    class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
         def __init__(self, data: Dataset):
             super().__init__()
             self._data = data
@@ -387,7 +399,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             pass
 
     _, history = (
-        BayesianOptimizer(quadratic, one_dimensional_range(0, 1))
+        BayesianOptimizer(_quadratic_observer, one_dimensional_range(0, 1))
         .optimize(
             3, {"": zero_dataset()}, {"": _DecreasingVarianceModel(zero_dataset())}, _CountingRule()
         )
