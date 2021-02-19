@@ -17,12 +17,14 @@ from typing import Dict, List, Mapping, Union
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
-from tests.util.model import QuadraticMeanAndRBFKernel
-from tests.util.misc import mk_dataset, random_seed, zero_dataset
-from trieste.acquisition.function import (
+from tests.util.model import QuadraticMeanAndRBFKernel, GaussianProcess
+from tests.util.misc import random_seed, zero_dataset, one_dimensional_range
+from trieste.acquisition import (
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
+    NegativePredictiveMean,
     NegativeLowerConfidenceBound,
 )
 from trieste.acquisition.rule import (
@@ -35,25 +37,29 @@ from trieste.acquisition.rule import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, DiscreteSearchSpace
+from trieste.utils.objectives import branin, BRANIN_GLOBAL_ARGMIN
 
 
 @pytest.mark.parametrize(
-    "search_space, expected_minimum",
+    "search_space, candidate_query_points",
     [
         (
             DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]], tf.float64)),
             [[0.1, -0.1]],
         ),
-        (Box([-2.2, -1.0], [1.3, 3.3]), [[0.0, 0.0]]),
+        (Box([0, 0], [1, 1]), tf.cast(BRANIN_GLOBAL_ARGMIN, tf.float64)),
+        # todo test with a function with a local minimum
+        # todo test doesn't choose a point outside search space
     ],
 )
 def test_efficient_global_optimization(
-    search_space: Union[Box, DiscreteSearchSpace], expected_minimum: List[List[float]]
+    search_space: Union[Box, DiscreteSearchSpace], candidate_query_points: List[List[float]]
 ) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(""))
+    model = GaussianProcess([branin], [tfp.math.psd_kernels.ExponentiatedQuadratic()])
+    ego = EfficientGlobalOptimization(NegativePredictiveMean().using(""))
     dataset = Dataset(tf.zeros([0, 2], tf.float64), tf.zeros([0, 1], tf.float64))
-    query_point, _ = ego.acquire(search_space, {"": dataset}, {"": QuadraticMeanAndRBFKernel()})
-    npt.assert_allclose(query_point, expected_minimum, atol=1e-5)
+    query_point, _ = ego.acquire(search_space, {"": dataset}, {"": model})
+    assert tf.reduce_any(tf.reduce_all(tf.abs(query_point - candidate_query_points), axis=-1))
 
 
 @pytest.mark.parametrize(
