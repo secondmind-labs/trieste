@@ -19,7 +19,7 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload, Generator
+from typing import Generator, Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload
 
 import gpflow
 import tensorflow as tf
@@ -277,7 +277,7 @@ def optimize(
     search_space: SP,
     datasets: Mapping[str, Dataset],
     models: Mapping[str, TrainableProbabilisticModel],
-    acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
+    acquisition_rule: AcquisitionRule[S, SP],
     acquisition_state: Optional[S] = None,
 ) -> Generator[Result[TensorType], Mapping[str, Dataset], None]:
     while True:
