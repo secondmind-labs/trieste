@@ -14,18 +14,28 @@
 from __future__ import annotations
 
 import math
-from typing import Mapping, Tuple
+from typing import Callable, Mapping, Tuple, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import ShapeLike, quadratic, raise_, random_seed, various_shapes, zero_dataset
+from tests.util.misc import (
+    TF_DEBUGGING_ERROR_TYPES,
+    ShapeLike,
+    mk_dataset,
+    quadratic,
+    raise_,
+    random_seed,
+    various_shapes,
+    zero_dataset,
+)
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedImprovement,
     BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -34,6 +44,7 @@ from trieste.acquisition.function import (
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
+    SingleModelBatchAcquisitionBuilder,
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
@@ -41,6 +52,7 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, branin
 
 
@@ -51,8 +63,20 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
         return raise_
 
 
-def test_single_builder_raises_immediately_for_wrong_key() -> None:
-    builder = _ArbitrarySingleBuilder().using("foo")
+class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        return raise_
+
+
+@pytest.mark.parametrize(
+    "single_builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()]
+)
+def test_single_builder_raises_immediately_for_wrong_key(
+    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
+    builder = single_builder.using("foo")
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
@@ -60,23 +84,37 @@ def test_single_builder_raises_immediately_for_wrong_key() -> None:
         )
 
 
-def test_single_builder_repr_includes_class_name() -> None:
-    assert "_ArbitrarySingleBuilder" in repr(_ArbitrarySingleBuilder())
+@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
+def test_single_builder_repr_includes_class_name(
+    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
+    assert type(builder).__name__ in repr(builder)
 
 
-def test_single_builder_using_passes_on_correct_dataset_and_model() -> None:
-    class _Mock(SingleModelAcquisitionBuilder):
-        def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
-        ) -> AcquisitionFunction:
-            assert dataset is data["foo"]
-            assert model is models["foo"]
-            return raise_
+def _prepare_acquisition_function_assert(
+    _: object, dataset: Dataset, model: ProbabilisticModel
+) -> Callable[[TensorType], TensorType]:
+    npt.assert_allclose(dataset.query_points, 0.0)
+    _, var = model.predict(tf.constant([0.0]))
+    npt.assert_allclose(var, 0.0)
+    return raise_
 
-    builder = _Mock().using("foo")
 
-    data = {"foo": zero_dataset(), "bar": zero_dataset()}
-    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
+class _MockIndBuilder(SingleModelAcquisitionBuilder):
+    prepare_acquisition_function = _prepare_acquisition_function_assert
+
+
+class _MockBatchBuilder(SingleModelBatchAcquisitionBuilder):
+    prepare_acquisition_function = _prepare_acquisition_function_assert
+
+
+@pytest.mark.parametrize("single_builder", [_MockIndBuilder(), _MockBatchBuilder()])
+def test_single_builder_using_passes_on_correct_dataset_and_model(
+    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+) -> None:
+    builder = single_builder.using("foo")
+    data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
+    models = {"foo": QuadraticMeanAndRBFKernel(0.0), "bar": QuadraticMeanAndRBFKernel(1.0)}
     builder.prepare_acquisition_function(data, models)
 
 
@@ -332,14 +370,14 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
     sample_size: int,
 ) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel())
 
 
 def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant(0))
 
 
@@ -419,7 +457,7 @@ def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() ->
         ) -> AcquisitionFunction:
             return raise_
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _Acq(-1)
 
 
@@ -467,7 +505,7 @@ def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sam
         ) -> AcquisitionFunction:
             return raise_
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _Acq(-1)
 
 
@@ -495,7 +533,7 @@ def test_single_model_mc_ind_acquisition_function_builder_approximates_model_sam
 
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchReparametrizationSampler(sample_size, _dim_two_gp())
 
 
@@ -546,14 +584,14 @@ def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(
 def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(at: tf.Tensor) -> None:
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(at)
 
 
 def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
 
 
@@ -561,5 +599,66 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
     sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
     sampler.sample(tf.constant([[0.0], [1.0], [2.0]]))
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0], [1.0]]))
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedImprovement(sample_size)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedImprovement(100, jitter=-1.0)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
+    builder = BatchMonteCarloExpectedImprovement(100)
+    data = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    model = QuadraticMeanAndRBFKernel()
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, model)
+
+
+def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
+    builder = BatchMonteCarloExpectedImprovement(100)
+    data = mk_dataset([[0.0, 0.0]], [[0.0, 0.0]])
+    model = _dim_two_gp()
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, model)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+    known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    model = QuadraticMeanAndRBFKernel()
+    batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
+    ei = ExpectedImprovement().prepare_acquisition_function(data, model)
+    xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
+    npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement() -> None:
+    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
+    model = QuadraticMeanAndRBFKernel()
+
+    mean, cov = model.predict_joint(xs)
+    mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
+    mvn_samples = mvn.sample(10_000)
+    min_predictive_mean_at_known_points = 0.09
+    # fmt: off
+    expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
+        min_predictive_mean_at_known_points - mvn_samples, 0.0
+    ), axis=-1), axis=0)
+    # fmt: on
+
+    builder = BatchMonteCarloExpectedImprovement(10_000)
+    acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
+
+    npt.assert_allclose(acq(xs), expected, rtol=0.05)

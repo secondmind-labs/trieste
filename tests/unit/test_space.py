@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
 import itertools
 from typing import Container, FrozenSet, Tuple
@@ -18,9 +20,37 @@ from typing import Container, FrozenSet, Tuple
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from typing_extensions import Final
 
-from tests.util.misc import ShapeLike, various_shapes
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+
+
+class Integers(SearchSpace):
+    def __init__(self, exclusive_limit: int):
+        assert exclusive_limit > 0
+        self.limit: Final[int] = exclusive_limit
+
+    def sample(self, num_samples: int) -> tf.Tensor:
+        return tf.random.shuffle(tf.range(self.limit))[:num_samples]
+
+    def __contains__(self, point: tf.Tensor) -> tf.Tensor:
+        tf.debugging.assert_integer(point)
+        return 0 <= point < self.limit
+
+    def __mul__(self, other: Integers) -> Integers:
+        return Integers(self.limit * other.limit)
+
+
+@pytest.mark.parametrize("exponent", [0, -2])
+def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
+    space = Integers(3)
+    with pytest.raises(ValueError):
+        space ** exponent
+
+
+def test_search_space___pow___multiplies_correct_number_of_search_spaces() -> None:
+    assert (Integers(5) ** 7).limit == 5 ** 7
 
 
 def _points_in_2D_search_space() -> tf.Tensor:
@@ -101,20 +131,44 @@ def test_discrete_search_space_sampling_raises_when_too_many_samples_are_request
         search_space.sample(num_samples)
 
 
-def test_discrete_search_space_product_points_is_the_concatenation_of_original_points() -> None:
+def test_discrete_search_space___mul___points_is_the_concatenation_of_original_points() -> None:
     dss1 = DiscreteSearchSpace(tf.constant([[-1.0, -1.4], [-1.5, -3.6], [-0.5, -0.6]]))
     dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [1.5, 3.6]]))
-    [n1, d1] = dss1.points.shape
-    [n2, d2] = dss2.points.shape
-    res = dss1 * dss2
 
-    assert res.points.shape[0] == n1 * n2
-    assert res.points.shape[1] == d1 + d2
-    assert all(point in dss1 for point in res.points[:, :2])
-    assert all(point in dss2 for point in res.points[:, 2:])
+    product = dss1 * dss2
+
+    all_expected_points = tf.constant(
+        [
+            [-1.0, -1.4, 1.0, 1.4],
+            [-1.0, -1.4, 1.5, 3.6],
+            [-1.5, -3.6, 1.0, 1.4],
+            [-1.5, -3.6, 1.5, 3.6],
+            [-0.5, -0.6, 1.0, 1.4],
+            [-0.5, -0.6, 1.5, 3.6],
+        ]
+    )
+
+    assert len(product.points) == len(all_expected_points)
+    assert all(point in product for point in all_expected_points)
 
 
-def test_discrete_search_space_product_raises_if_points_have_different_types() -> None:
+def test_discrete_search_space___mul___for_empty_search_space() -> None:
+    dss = DiscreteSearchSpace(tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))
+    empty = DiscreteSearchSpace(tf.zeros([0, 1]))
+
+    npt.assert_array_equal((empty * dss).points, tf.zeros([0, 3]))
+    npt.assert_array_equal((dss * empty).points, tf.zeros([0, 3]))
+
+
+def test_discrete_search_space___mul___for_identity_space() -> None:
+    dss = DiscreteSearchSpace(tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))
+    identity = DiscreteSearchSpace(tf.zeros([1, 0]))
+
+    npt.assert_array_equal((dss * identity).points, dss.points)
+    npt.assert_array_equal((identity * dss).points, dss.points)
+
+
+def test_discrete_search_space___mul___raises_if_points_have_different_types() -> None:
     dss1 = DiscreteSearchSpace(_points_in_2D_search_space())
     dss2 = DiscreteSearchSpace(tf.constant([[1.0, 1.4], [-1.5, 3.6]], tf.float64))
 
@@ -169,7 +223,7 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 ) -> None:
     lower, upper = tf.zeros([3], dtype=lower_dtype), tf.ones([3], dtype=upper_dtype)
 
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 
@@ -188,7 +242,7 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
     lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
-    with pytest.raises((ValueError, tf.errors.InvalidArgumentError)):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 
@@ -273,24 +327,17 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
         dss.sample(num_samples + 1)
 
 
-def test_box_combined_with_itself_returns_new_box_with_bounds_twice_as_large() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    new_box = box * box
-
-    assert len(new_box.lower) == 6
-    assert len(new_box.upper) == 6
-
-
-def test_box_product_bounds_are_the_concatenation_of_original_bounds() -> None:
+def test_box___mul___bounds_are_the_concatenation_of_original_bounds() -> None:
     box1 = Box(tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]))
-    box2 = Box(tf.constant([4.0, 5.0, 6.0]), tf.constant([7.0, 8.0, 9.0]))
+    box2 = Box(tf.constant([4.1, 5.1, 6.1]), tf.constant([7.2, 8.2, 9.2]))
 
-    res = box1 * box2
-    npt.assert_allclose(res.lower, [0, 1, 4, 5, 6])
-    npt.assert_allclose(res.upper, [2, 3, 7, 8, 9])
+    product = box1 * box2
+
+    npt.assert_allclose(product.lower, [0, 1, 4.1, 5.1, 6.1])
+    npt.assert_allclose(product.upper, [2, 3, 7.2, 8.2, 9.2])
 
 
-def test_box_product_raises_if_bounds_have_different_types() -> None:
+def test_box___mul___raises_if_bounds_have_different_types() -> None:
     box1 = Box(tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]))
     box2 = Box(tf.constant([4.0, 5.0], tf.float64), tf.constant([6.0, 7.0], tf.float64))
 
