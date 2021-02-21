@@ -59,7 +59,8 @@ def test_efficient_global_optimization(
     ego = EfficientGlobalOptimization(NegativePredictiveMean().using(""))
     dataset = Dataset(tf.zeros([0, 2], tf.float64), tf.zeros([0, 1], tf.float64))
     query_point, _ = ego.acquire(search_space, {"": dataset}, {"": model})
-    assert tf.reduce_any(tf.reduce_all(tf.abs(query_point - candidate_query_points), axis=-1))
+    query_point_is_within_tolerance = tf.abs(candidate_query_points - query_point) < 1e-7
+    assert tf.reduce_any(tf.reduce_all(query_point_is_within_tolerance, axis=-1))
 
 
 @pytest.mark.parametrize(
