@@ -53,7 +53,7 @@ def _unit_grid_2d() -> TensorType:
 def test_objective_maps_minimizers_to_minimum(
     objective: Callable[[TensorType], TensorType], minimizers: TensorType, minimum: TensorType
 ) -> None:
-    npt.assert_allclose(objective(minimizers), tf.squeeze(minimum))
+    npt.assert_allclose(objective(minimizers), tf.squeeze(minimum), rtol=1e-5)
 
 
 def test_branin_no_function_values_are_less_than_global_minimum() -> None:
