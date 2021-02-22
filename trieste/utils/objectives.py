@@ -92,7 +92,7 @@ dtype float64.
 
 def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     """
-    A logarithmic form of the Goldstein-Price function, with mean zero mean and unit variance over
+    A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
     :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
 
     :param x: The points at which to evaluate the function, with shape [..., 2].
