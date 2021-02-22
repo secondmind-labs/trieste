@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains toy objective functions, useful for experimentation. """
+"""
+This module contains toy objective functions, useful for experimentation. A number of them have been
+taken from `this Virtual Library of Simulation Experiments
+<https://www.sfu.ca/~ssurjano/optimization.html>`_.
+"""
 import math
 from typing import Callable
 
