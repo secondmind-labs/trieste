@@ -14,7 +14,7 @@
 """ This package contains library utilities. """
 from typing_extensions import Final
 
-from . import objectives
+from . import objectives, pareto
 from .misc import Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
 
 
