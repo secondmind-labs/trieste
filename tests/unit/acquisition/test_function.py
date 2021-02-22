@@ -138,9 +138,7 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
 
 
 @random_seed
-@pytest.mark.parametrize(
-    "best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01]
-)
+@pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
