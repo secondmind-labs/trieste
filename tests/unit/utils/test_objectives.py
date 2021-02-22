@@ -23,12 +23,12 @@ from trieste.utils.objectives import (
     BRANIN_MINIMUM,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
+    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
+    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     branin,
     gramacy_lee,
-    mk_observer,
     logarithmic_goldstein_price,
-    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
-    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
+    mk_observer,
 )
 
 
@@ -38,15 +38,18 @@ def _unit_grid_2d() -> TensorType:
     return tf.squeeze(tf.stack([x0, x1], axis=-1))
 
 
-@pytest.mark.parametrize("objective, minimizers, minimum", [
-    (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
-    (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
-    (
-        logarithmic_goldstein_price,
-        LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
-        LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM
-    ),
-])
+@pytest.mark.parametrize(
+    "objective, minimizers, minimum",
+    [
+        (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
+        (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
+        (
+            logarithmic_goldstein_price,
+            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
+            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+        ),
+    ],
+)
 def test_objective_maps_minimizers_to_minimum(
     objective: Callable[[TensorType], TensorType], minimizers: TensorType, minimum: TensorType
 ) -> None:
@@ -65,7 +68,7 @@ def test_gramacy_lee_no_points_are_less_than_global_minimum() -> None:
 def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_minimum() -> None:
     npt.assert_array_less(
         tf.squeeze(LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM) - 1e-6,
-        logarithmic_goldstein_price(_unit_grid_2d())
+        logarithmic_goldstein_price(_unit_grid_2d()),
     )
 
 
