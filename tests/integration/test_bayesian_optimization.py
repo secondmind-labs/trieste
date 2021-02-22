@@ -68,9 +68,8 @@ def test_optimizer_finds_minima_of_the_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    minimizers = tf.cast(BRANIN_MINIMIZERS, tf.float64)
-    relative_argmin_err = tf.abs((best_x - minimizers) / minimizers)
+    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
-    assert tf.reduce_any(tf.reduce_all(relative_argmin_err < 0.03, axis=-1), axis=0)
+    assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
     npt.assert_allclose(best_y, BRANIN_GLOBAL_MINIMUM, rtol=0.03)
