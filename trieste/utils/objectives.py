@@ -28,14 +28,14 @@ from ..type import TensorType
 
 def branin(x: TensorType) -> TensorType:
     """
-    The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`, see
-    `here <https://www.sfu.ca/~ssurjano/branin.html>`_ for details.
+    The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
+    :cite:`Picheny2013` for details.
 
-    :param x: Array of two-dimensional points at which to evaluate the function. Shape (..., N, 2).
-    :return: The values of the rescaled Branin-Hoo at points in ``x``. Shape (..., N, 1).
-    :raise ValueError (or InvalidArgumentError): If the points in ``x`` are not two-dimensional.
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., "N", 2))])
+    tf.debugging.assert_shapes([(x, (..., 2))])
 
     x0 = x[..., :1] * 15.0 - 5.0
     x1 = x[..., 1:] * 15.0
@@ -79,13 +79,47 @@ def gramacy_lee(x: TensorType) -> TensorType:
 
 GRAMACY_LEE_MINIMIZER = tf.constant([[0.548562]], tf.float64)
 """
-The minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1] and
-dtype float64.
+The global minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1]
+and dtype float64.
 """
 
 GRAMACY_LEE_MINIMUM = tf.constant([-0.869011], tf.float64)
 """
-The minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and dtype
+The global minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and
+dtype float64.
+"""
+
+
+def logarithmic_goldstein_price(x: TensorType) -> TensorType:
+    """
+    A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+    :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
+
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+
+    x0, x1 = tf.split(4 * x - 2, 2, axis=-1)
+
+    a = (x0 + x1 + 1) ** 2
+    b = 19 - 14 * x0 + 3 * x0 ** 2 - 14 * x1 + 6 * x0 * x1 + 3 * x1 ** 2
+    c = (2 * x0 - 3 * x1) ** 2
+    d = 18 - 32 * x0 + 12 * x0 ** 2 + 48 * x1 - 36 * x0 * x1 + 27 * x1 ** 2
+
+    return (1 / 2.427) * (tf.math.log((1 + a * b) * (30 + c * d)) - 8.693)
+
+
+LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER = tf.constant([[0.5, 0.25]], tf.float64)
+"""
+The global minimizer for the :func:`logarithmic_goldstein_price` function, with shape [1, 2] and
+dtype float64.
+"""
+
+LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM = tf.constant([-3.12913], tf.float64)
+"""
+The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
 float64.
 """
 
