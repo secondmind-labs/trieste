@@ -17,7 +17,7 @@ taken from `this Virtual Library of Simulation Experiments
 <https://www.sfu.ca/~ssurjano/optimization.html>`_.
 """
 import math
-from typing import Callable, Final
+from typing import Callable
 
 import tensorflow as tf
 
