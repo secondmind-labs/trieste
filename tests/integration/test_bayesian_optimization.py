@@ -28,7 +28,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
-from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, BRANIN_MINIMIZERS, branin, mk_observer
+from trieste.utils.objectives import BRANIN_MINIMUM, BRANIN_MINIMIZERS, branin, mk_observer
 
 
 @random_seed
@@ -72,4 +72,4 @@ def test_optimizer_finds_minima_of_the_branin_function(
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
-    npt.assert_allclose(best_y, BRANIN_GLOBAL_MINIMUM, rtol=0.03)
+    npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)

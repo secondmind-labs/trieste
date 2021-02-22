@@ -56,7 +56,7 @@ The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`
 and dtype float64.
 """
 
-BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887], tf.float64)
+BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 

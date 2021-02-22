@@ -15,7 +15,7 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    BRANIN_GLOBAL_MINIMUM,
+    BRANIN_MINIMUM,
     BRANIN_MINIMIZERS,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
@@ -29,11 +29,11 @@ def test_branin_no_points_are_less_than_global_minimum() -> None:
     search_values_1d = tf.range(1001.0) / 1000
     x0, x1 = (tf.reshape(t, [-1, 1]) for t in tf.meshgrid(search_values_1d, search_values_1d))
     x = tf.squeeze(tf.stack([x0, x1], axis=-1))
-    npt.assert_array_less(tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [1001 ** 2, 1]), branin(x))
+    npt.assert_array_less(tf.broadcast_to(BRANIN_MINIMUM, [1001 ** 2, 1]), branin(x))
 
 
 def test_branin_maps_argmin_values_to_global_minima() -> None:
-    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [len(BRANIN_MINIMIZERS), 1])
+    expected = tf.broadcast_to(BRANIN_MINIMUM, [len(BRANIN_MINIMIZERS), 1])
     npt.assert_allclose(branin(BRANIN_MINIMIZERS), expected, atol=1e-6)
 
 
