@@ -46,13 +46,37 @@ def branin(x: TensorType) -> TensorType:
     return a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s
 
 
-_ORIGINAL_BRANIN_ARGMIN = tf.constant([[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]])
+_ORIGINAL_BRANIN_MINIMIZERS = tf.constant([[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]])
 
-BRANIN_GLOBAL_ARGMIN = (_ORIGINAL_BRANIN_ARGMIN + [5.0, 0.0]) / 15.0
-""" The three global minimizers of the :func:`branin` function. """
+BRANIN_MINIMIZERS = (_ORIGINAL_BRANIN_MINIMIZERS + [5.0, 0.0]) / 15.0
+"""
+The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`, with shape [3, 2].
+"""
 
 BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887])
-""" The global miminum of the :func:`branin` function, with shape [1]. """
+""" The global minimum of the :func:`branin` function, with shape [1]. """
+
+
+def gramacy_lee(x: TensorType) -> TensorType:
+    """
+    The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
+    :cite:`gramacy2010cases` and :cite:`Ranjan2013` for details.
+
+    :param x: Where to evaluate the function, with shape [..., 1].
+    :return: The function values, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 1))])
+    return tf.sin(10 * math.pi * x) / (2 * x) + (x - 1) ** 4
+
+
+GRAMACY_LEE_MINIMIZER = tf.constant([[0.5485622]])
+"""
+The minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1].
+"""
+
+GRAMACY_LEE_MINIMUM = tf.constant([-0.8690112])
+""" The minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1]."""
 
 
 def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:

@@ -15,10 +15,10 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    BRANIN_GLOBAL_ARGMIN,
+    BRANIN_MINIMIZER,
     BRANIN_GLOBAL_MINIMUM,
     branin,
-    mk_observer,
+    mk_observer, GRAMACY_LEE_MINIMUM, gramacy_lee, GRAMACY_LEE_MINIMIZER,
 )
 
 
@@ -26,12 +26,22 @@ def test_branin_no_points_are_less_than_global_minimum() -> None:
     search_values_1d = tf.range(1001.0) / 1000
     x0, x1 = (tf.reshape(t, [-1, 1]) for t in tf.meshgrid(search_values_1d, search_values_1d))
     x = tf.squeeze(tf.stack([x0, x1], axis=-1))
-    assert tf.reduce_all(branin(x) > BRANIN_GLOBAL_MINIMUM)
+    npt.assert_array_less(tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [1001 ** 2, 1]), branin(x))
 
 
 def test_branin_maps_argmin_values_to_global_minima() -> None:
-    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [3, 1])
-    npt.assert_allclose(branin(BRANIN_GLOBAL_ARGMIN), expected, atol=1e-6)
+    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [len(BRANIN_MINIMIZER), 1])
+    npt.assert_allclose(branin(BRANIN_MINIMIZER), expected, atol=1e-6)
+
+
+def test_gramacy_lee_no_points_are_less_than_global_minimum() -> None:
+    xs = tf.linspace([0.5], [2.5], 1_000_000)
+    npt.assert_array_less(tf.broadcast_to(GRAMACY_LEE_MINIMUM, xs.shape), gramacy_lee(xs))
+
+
+def test_gramacy_lee_maps_argmin_values_to_global_minima() -> None:
+    expected = tf.broadcast_to(GRAMACY_LEE_MINIMUM, [1, 1])
+    npt.assert_allclose(gramacy_lee(GRAMACY_LEE_MINIMIZER), expected, atol=1e-6)
 
 
 def test_mk_observer() -> None:

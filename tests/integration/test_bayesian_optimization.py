@@ -29,7 +29,7 @@ from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
 from trieste.utils.objectives import (
-    BRANIN_GLOBAL_ARGMIN,
+    BRANIN_MINIMIZER,
     BRANIN_GLOBAL_MINIMUM,
     branin,
     mk_observer,
@@ -73,7 +73,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    argmin = tf.cast(BRANIN_GLOBAL_ARGMIN, tf.float64)
+    argmin = tf.cast(BRANIN_MINIMIZER, tf.float64)
     relative_argmin_err = tf.abs((best_x - argmin) / argmin)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
