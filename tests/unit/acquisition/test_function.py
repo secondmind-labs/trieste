@@ -53,7 +53,7 @@ from trieste.acquisition.function import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
-from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, branin
+from trieste.utils.objectives import BRANIN_MINIMUM, branin
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
@@ -138,9 +138,7 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
 
 
 @random_seed
-@pytest.mark.parametrize(
-    "best", [tf.constant([50.0]), BRANIN_GLOBAL_MINIMUM, BRANIN_GLOBAL_MINIMUM * 1.01]
-)
+@pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
