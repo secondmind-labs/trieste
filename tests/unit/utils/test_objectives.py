@@ -15,8 +15,8 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    BRANIN_MINIMUM,
     BRANIN_MINIMIZERS,
+    BRANIN_MINIMUM,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
     branin,

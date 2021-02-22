@@ -28,7 +28,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
-from trieste.utils.objectives import BRANIN_MINIMUM, BRANIN_MINIMIZERS, branin, mk_observer
+from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
 
 @random_seed
