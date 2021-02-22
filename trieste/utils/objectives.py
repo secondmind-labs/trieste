@@ -73,13 +73,13 @@ def gramacy_lee(x: TensorType) -> TensorType:
     return tf.sin(10 * math.pi * x) / (2 * x) + (x - 1) ** 4
 
 
-GRAMACY_LEE_MINIMIZER = tf.constant([[0.5485622]], tf.float64)
+GRAMACY_LEE_MINIMIZER = tf.constant([[0.548562]], tf.float64)
 """
 The minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1] and
 dtype float64.
 """
 
-GRAMACY_LEE_MINIMUM = tf.constant([-0.8690112], tf.float64)
+GRAMACY_LEE_MINIMUM = tf.constant([-0.869011], tf.float64)
 """
 The minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and dtype
 float64.
