@@ -46,15 +46,18 @@ def branin(x: TensorType) -> TensorType:
     return a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s
 
 
-_ORIGINAL_BRANIN_MINIMIZERS = tf.constant([[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]])
+_ORIGINAL_BRANIN_MINIMIZERS = tf.constant(
+    [[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]], tf.float64
+)
 
 BRANIN_MINIMIZERS = (_ORIGINAL_BRANIN_MINIMIZERS + [5.0, 0.0]) / 15.0
 """
-The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`, with shape [3, 2].
+The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`, with shape [3, 2]
+and dtype float64.
 """
 
-BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887])
-""" The global minimum of the :func:`branin` function, with shape [1]. """
+BRANIN_GLOBAL_MINIMUM = tf.constant([0.397887], tf.float64)
+""" The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
 def gramacy_lee(x: TensorType) -> TensorType:
@@ -70,13 +73,17 @@ def gramacy_lee(x: TensorType) -> TensorType:
     return tf.sin(10 * math.pi * x) / (2 * x) + (x - 1) ** 4
 
 
-GRAMACY_LEE_MINIMIZER = tf.constant([[0.5485622]])
+GRAMACY_LEE_MINIMIZER = tf.constant([[0.5485622]], tf.float64)
 """
-The minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1].
+The minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1] and
+dtype float64.
 """
 
-GRAMACY_LEE_MINIMUM = tf.constant([-0.8690112])
-""" The minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1]."""
+GRAMACY_LEE_MINIMUM = tf.constant([-0.8690112], tf.float64)
+"""
+The minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and dtype
+float64.
+"""
 
 
 def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:

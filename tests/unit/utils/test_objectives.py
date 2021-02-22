@@ -15,10 +15,13 @@ import numpy.testing as npt
 import tensorflow as tf
 
 from trieste.utils.objectives import (
-    BRANIN_MINIMIZER,
     BRANIN_GLOBAL_MINIMUM,
+    BRANIN_MINIMIZERS,
+    GRAMACY_LEE_MINIMIZER,
+    GRAMACY_LEE_MINIMUM,
     branin,
-    mk_observer, GRAMACY_LEE_MINIMUM, gramacy_lee, GRAMACY_LEE_MINIMIZER,
+    gramacy_lee,
+    mk_observer,
 )
 
 
@@ -30,8 +33,8 @@ def test_branin_no_points_are_less_than_global_minimum() -> None:
 
 
 def test_branin_maps_argmin_values_to_global_minima() -> None:
-    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [len(BRANIN_MINIMIZER), 1])
-    npt.assert_allclose(branin(BRANIN_MINIMIZER), expected, atol=1e-6)
+    expected = tf.broadcast_to(BRANIN_GLOBAL_MINIMUM, [len(BRANIN_MINIMIZERS), 1])
+    npt.assert_allclose(branin(BRANIN_MINIMIZERS), expected, atol=1e-6)
 
 
 def test_gramacy_lee_no_points_are_less_than_global_minimum() -> None:
