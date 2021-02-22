@@ -111,7 +111,7 @@ def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     return (1 / 2.427) * (tf.math.log((1 + a * b) * (30 + c * d)) - 8.693)
 
 
-LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS = tf.constant([[0.5, 0.25]], tf.float64)
+LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER = tf.constant([[0.5, 0.25]], tf.float64)
 """
 The global minimizer for the :func:`logarithmic_goldstein_price` function, with shape [1, 2] and
 dtype float64.

@@ -23,7 +23,7 @@ from trieste.utils.objectives import (
     BRANIN_MINIMUM,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
-    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
+    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     branin,
     gramacy_lee,
@@ -45,7 +45,7 @@ def _unit_grid_2d() -> TensorType:
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
         (
             logarithmic_goldstein_price,
-            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZERS,
+            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
         ),
     ],
