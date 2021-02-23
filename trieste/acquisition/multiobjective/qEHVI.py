@@ -17,7 +17,7 @@ class MultiModelBatchAcquisitionBuilder(ABC):
 
     def using(self, tags: [str]) -> BatchAcquisitionFunctionBuilder:
         """
-        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :param tags: NOT IN USE ATM
         :return: A batch acquisition function builder that selects the model and dataset specified
             by ``tag``, as defined in :meth:`prepare_acquisition_function`.
         """
@@ -47,125 +47,6 @@ class MultiModelBatchAcquisitionBuilder(ABC):
         """
 
 
-class BatchMultiModelReparametrizationSampler:
-    r"""
-    FIXME: Note this currently assume each model has only ONE output dim!
-     otherwise the output dim will get concatenated with different model output
-
-    This sampler employs the *reparameterization trick* to approximate batches of samples from a
-    :class:`ProbabilisticModel`\ 's predictive joint distribution as
-    .. math:: x \mapsto \mu(x) + \epsilon L(x)
-    where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
-    :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
-    form a continuous curve.
-    """
-
-    def __init__(self, sample_size: int, models: Mapping[str, ProbabilisticModel]):
-        """
-        :param sample_size: The number of samples for each batch of points. Must be positive.
-        :param model: The model to sample from.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        tf.debugging.assert_positive(sample_size)
-
-        self._sample_size = sample_size
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample,
-
-        self._eps = tf.Variable(
-            tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
-            # shape: [predictive dimension, Batchsize, Samplesize]
-        )  # [0, 0, S]
-        self._models = models
-
-    def __repr__(self) -> str:
-        """"""
-        return f"BatchReparametrizationSampler({self._sample_size!r}, {self._models!r})"
-
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
-        """
-        math:
-        ζ~f
-        f~N(μ, Cov)
-        ζ = μ + L*Ɛ
-
-
-        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
-        :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
-        produce the exact same samples. Calls to :meth:`sample` on *different*
-        :class:`BatchReparametrizationSampler` instances will produce different samples.
-        :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, num_query_points, D]`, for batches of size `B` of points of dimension `D`. Must have a
-            consistent batch size across all calls to :meth:`sample` for any given
-            :class:`BatchReparametrizationSampler`.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
-            number of points per batch, and `L` the dimension of the model's predictive
-            distribution.
-        :raise ValueError (or InvalidArgumentError): If any of the following are true:
-            - ``at`` is a scalar.
-            - The batch size `B` of ``at`` is not positive.
-            - The batch size `B` of ``at`` differs from that of previous calls.
-            - ``jitter`` is negative.
-        """
-
-        tf.debugging.assert_rank_at_least(at, 2)
-        tf.debugging.assert_greater_equal(jitter, 0.0)
-
-        batch_size = at.shape[-2]
-
-        tf.debugging.assert_positive(batch_size)
-
-        eps_is_populated = tf.size(self._eps) != 0
-
-        # eps shape:
-        if eps_is_populated:
-            tf.debugging.assert_equal(
-                batch_size,
-                tf.shape(self._eps)[-2],
-                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
-                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
-            )
-        # mean, cov = [self._model.predict_joint(at)]  # [..., B, L], [..., L, B, B]
-        predicts = [self._models[model_tag].predict_joint(at) for model_tag in self._models]
-        means, covs = list(zip(*predicts))
-        means = tf.concat(means, axis=-1)  # [..., B, num_obj]
-        # 2021/2/22 12:55 fixed axi
-        # covs = tf.concat(covs, axis=1)  # [num_obj, B, B]
-        covs = tf.concat(covs, axis=-3)  # [num_obj, B, B]
-        # candidate_mean, candidate_var = (tf.concat(moment, 1) for moment in zip(*predicts))
-
-        # Consider wether this need to be done through different obj: yes, refer independent_reparameterization sampler in trieste
-        if not eps_is_populated:
-            self._eps.assign(
-                tf.random.normal(
-                    # [mean.shape[-1], batch_size, self._sample_size], dtype=tf.float64
-                    [means.shape[-1], batch_size, self._sample_size], dtype=tf.float64
-                )  # Note: Current shape: [num_obj, B, S] instead of [num_obj, L, B, S]
-            )
-
-        # Cov+jitter * identity = LL^T
-        identity = tf.eye(batch_size, dtype=covs.dtype)  # [B, B]
-        covs_cholesky = tf.linalg.cholesky(covs + jitter * identity)  # [..., num_obj, B, B]
-
-        # matrix multiplication
-
-        # # [120, 2, 3, 3] @ [2, 3, 1000] = [120, 2, 3, 1000],
-        #  这个乘法的进行为 (120, 2)[3, 3] @ (2) [3, 1000], 真正的单元乘法就是[3, 3]@[3, 1000]
-        variances_contribution = covs_cholesky @ tf.cast(self._eps, covs.dtype)  # [..., num_obj, B, S]
-
-        # shape transform: [..., num_obj, B, S] -> [..., B, S, num_obj]
-        leading_indices = tf.range(tf.rank(variances_contribution) - 3)
-        absolute_trailing_indices = [-1, -2, -3] + tf.rank(variances_contribution)
-        new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
-        #
-        return means[..., None, :, :] + tf.transpose(variances_contribution, new_order)
-
-
-#  TODO: Testing
-# FIXME: Not working properly when use small traning data to init
 class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBuilder):
     """
     Use of the inclusion-exclusion method
@@ -193,7 +74,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
 
         self._sample_size = sample_size
         self._jitter = jitter
-        # self.q = -1
         self.q = q
 
     def __repr__(self) -> str:
@@ -233,6 +113,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
         }
         return self.q_subset_indices
 
+    # TODO: Use of state?
     def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: [str, ProbabilisticModel]
     ) -> AcquisitionFunction:
@@ -247,8 +128,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
         for _, data in datasets.items():
             tf.debugging.assert_positive(len(data))
 
-        # datasets_mean = tf.concat([models[model_tag].predict(datasets[data_tag].query_points)[0]
-        #                            for model_tag, data_tag in zip(models, datasets)], axis=1)
         means = [models[model_tag].predict(datasets[data_tag].query_points)[0] for
                  model_tag, data_tag in zip(models, datasets)]
         for mean in means:
@@ -259,11 +138,14 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
         pareto = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
         nadir_point = get_nadir_point(pareto.front)
 
-        sampler = BatchMultiModelReparametrizationSampler(self._sample_size, models)
+        # sampler = BatchMultiModelReparametrizationSampler(self._sample_size, models)
+        samplers = [BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models]
         q_choose_j_dict = self._get_q_dicts()
 
         def batch_hvei(at: TensorType) -> TensorType:
-            samples = sampler.sample(at, jitter=self._jitter)  # [..., S, B, num_obj]
+            # samples = sampler.sample(at, jitter=self._jitter)  # [..., S, B, num_obj]
+            samples = tf.concat([sampler.sample(at, jitter=self._jitter) for sampler in samplers], axis=-1)
+
             q = at.shape[-2]  # parallel point, aka, B
             # FIXME: For debugging, we manually specify q at the beginning of acq, this should be extracted from
             #  somewhere else later
@@ -281,14 +163,14 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
                 ],
                 0,
             )
+
             col_idx = tf.tile(tf.range(outdim), (num_cells,))
-            ub_idx = tf.stack((tf.reshape(pareto.bounds.ub, [-1]), col_idx), axis=1)  # 上界索引
-            lb_idx = tf.stack((tf.reshape(pareto.bounds.lb, [-1]), col_idx), axis=1)  # 下界索引
+            ub_idx = tf.stack((tf.reshape(pareto.bounds.ub, [-1]), col_idx), axis=1)
+            lb_idx = tf.stack((tf.reshape(pareto.bounds.lb, [-1]), col_idx), axis=1)
 
             ub_points = tf.reshape(tf.gather_nd(pf_ext, ub_idx), [num_cells, outdim])
             lb_points = tf.reshape(tf.gather_nd(pf_ext, lb_idx), [num_cells, outdim])
-            #
-            # areas_per_segment = tf.zeros(shape=(*tf.shape(samples)[:2], num_cells), dtype=samples.dtype)
+
             areas_per_segment = None
             for j in range(1, q + 1):
                 # 选择combination
@@ -327,8 +209,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             areas_in_total = tf.reduce_sum(areas_per_segment, axis=-1)
             return tf.reduce_mean(areas_in_total, axis=-1, keepdims=True)
 
-        # debug use
-        # return lambda at: batch_hvei(at)
         return batch_hvei
 
 

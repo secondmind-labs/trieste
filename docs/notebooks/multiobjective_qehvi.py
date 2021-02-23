@@ -49,7 +49,7 @@ def observer(query_points):
 
 # Let's randomly sample some initial data from the observer ...
 
-num_initial_points = 20
+num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -90,20 +90,17 @@ def create_bo_model(data, input_dim=2):
 models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]]) for i in range(num_objective)}
 
 # ## Define the acquisition process
-#
-# Here we utilize the `HVProbabilityOfImprovement` acquisition function proposed in
-# Ivo, 2014 [1]:
 
-qhvei = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=10000, q=1)
+qhvei = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=10000, q=3)
 batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
-    num_query_points=1, builder=qhvei.using(OBJECTIVES)
+    num_query_points=3, builder=qhvei.using(OBJECTIVES)
 )
 
 # ## Run the optimization loop
 #
 # We can now run the optimization loop
 
-num_steps = 20
+num_steps = 6
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=batch_rule)
 

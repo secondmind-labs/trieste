@@ -49,7 +49,7 @@ def observer(query_points):
 
 # Let's randomly sample some initial data from the observer ...
 
-num_initial_points = 11
+num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
