@@ -142,7 +142,7 @@ def _dim_one_gp_invbranin(mean_shift: float = 0.0) -> GaussianProcess:
 @random_seed
 def test_batch_monte_carlo_expected_hypervolume_improvement_on_single_point() -> None:
     num_objective = 2
-    xs = tf.random.uniform([5, 1, 2], minval=-2, maxval=2, dtype=tf.float64)  # [..., , B, out_dim]
+    xs = tf.random.uniform([20, 1, 2], minval=-2, maxval=2, dtype=tf.float64)  # [..., , B, out_dim]
 
     # models = {f'OBJECTIVE{i}': _dim_one_gp(i) for i in range(num_objective)}
     models = {'OBJECTIVE0': _dim_one_gp_branin(), 'OBJECTIVE1': _dim_one_gp_invbranin()}
@@ -151,10 +151,10 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_on_single_point() ->
     datasets = {f'OBJECTIVE{i}': mk_dataset(_tr_xs, tf.random.normal(shape=(10, 1), dtype=tf.float64))
                 for i in range(num_objective)}
 
-    builder = BatchMonteCarloHypervolumeExpectedImprovement(200000, q=1)
+    builder = BatchMonteCarloHypervolumeExpectedImprovement(10000)
     acq = builder.prepare_acquisition_function(datasets, models)
 
-    builder2 = MonteCarloHypervolumeExpectedImprovement(200000)
+    builder2 = MonteCarloHypervolumeExpectedImprovement(10000)
     acq2 = builder2.prepare_acquisition_function(datasets, models)
 
     npt.assert_allclose(acq(xs), acq2(tf.squeeze(xs)), rtol=0.05)

@@ -23,7 +23,6 @@ class MultiModelBatchAcquisitionBuilder(ABC):
         """
         multi_builder = self
 
-        # 这个一点用都没有: 我们本来就是要使用multi-model的
         class _Anon(BatchAcquisitionFunctionBuilder):
             def prepare_acquisition_function(
                     self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -59,7 +58,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
     }
     """
 
-    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER, q=1):
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
@@ -74,13 +73,11 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
 
         self._sample_size = sample_size
         self._jitter = jitter
-        self.q = q
+        self.q = -1
 
     def __repr__(self) -> str:
         """"""
         return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
-
-        # here
 
     def _cache_q_subset_indices(self, q: int) -> None:
         r"""Cache indices corresponding to all subsets of `q`.
@@ -102,16 +99,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
                 for i in range(1, q + 1)
             }
             self.q = q
-
-    def _get_q_dicts(self) -> dict:
-        # 2020/2/22 New Ver:
-
-        indices = list(range(self.q))
-        self.q_subset_indices = {
-            f"q_choose_{i}": tf.constant(list(combinations(indices, i)))
-            for i in range(1, self.q + 1)
-        }
-        return self.q_subset_indices
 
     # TODO: Use of state?
     def prepare_acquisition_function(
@@ -138,32 +125,31 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
         pareto = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
         nadir_point = get_nadir_point(pareto.front)
 
-        # sampler = BatchMultiModelReparametrizationSampler(self._sample_size, models)
         samplers = [BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models]
-        q_choose_j_dict = self._get_q_dicts()
 
         def batch_hvei(at: TensorType) -> TensorType:
-            # samples = sampler.sample(at, jitter=self._jitter)  # [..., S, B, num_obj]
+            """
+            :param at: Batches of query points at which to sample the predictive distribution, with
+            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+            consistent batch size across all calls to :meth:`sample` for any given
+            """
+            # [..., S, B, num_obj]
             samples = tf.concat([sampler.sample(at, jitter=self._jitter) for sampler in samplers], axis=-1)
 
-            q = at.shape[-2]  # parallel point, aka, B
-            # FIXME: For debugging, we manually specify q at the beginning of acq, this should be extracted from
-            #  somewhere else later
-            # self._cache_q_subset_indices(q)
-            # N = tf.shape(samples)[0]
-            # num_samples = tf.shape(samples)[1]
+            q = at.shape[-2]  # B
+            self._cache_q_subset_indices(q)
             outdim = tf.shape(samples)[-1]
             num_cells = tf.shape(pareto.bounds.lb)[0]
-            # Inclusion Exclusion Principle (i.e., Eq. 5)
+
             pf_ext = tf.concat(
                 [
                     -inf * tf.ones([1, outdim], dtype=pareto.front.dtype),
                     pareto.front,
                     nadir_point,
                 ],
-                0,
+                axis=0,
             )
-
+            # get lower and upper vertices point for each cell
             col_idx = tf.tile(tf.range(outdim), (num_cells,))
             ub_idx = tf.stack((tf.reshape(pareto.bounds.ub, [-1]), col_idx), axis=1)
             lb_idx = tf.stack((tf.reshape(pareto.bounds.lb, [-1]), col_idx), axis=1)
@@ -172,35 +158,26 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             lb_points = tf.reshape(tf.gather_nd(pf_ext, lb_idx), [num_cells, outdim])
 
             areas_per_segment = None
+            # Inclusion-Exclusion loop
             for j in range(1, q + 1):
                 # 选择combination
-                # 2020/2/22 为debug，把这里移出去
-                # q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
-                q_choose_j = q_choose_j_dict[f"q_choose_{j}"]
-                # 根据combination索引, shape是对的，element是对的
-                # samples: [120, 1000, 3, 2] -> [120, 1000, Cn_j, j, 2]
+                q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
+                # get combination of subsets: [..., S, B, num_obj] -> [..., S, Cq_j, j, num_obj]
                 obj_subsets = tf.gather(samples, q_choose_j, axis=-2)
-                # samples: [120, 1000, Cn_j, j, 2] -> [120, 1000, Cn_j, 2]
-                # FIXME? Reduce max??
+                # get lower vertices of overlap: [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
                 overlap_vertices = tf.reduce_max(obj_subsets, axis=-2)
-                # overlap_vertices = tf.reduce_min(obj_subsets, axis=-2)
-                # overlap_vertices = obj_subsets.min(dim=-2).values
-                # add batch-dim to compute area for each segment (pseudo-pareto-vertex)
-                # this tensor is mc_samples x batch_shape x num_cells x q_choose_i x m
 
-                # 这个应该是对每个cell，比较upper bounds, 这两行其实是照搬botorch改的，理解不是很到位
-                # TODO: compare [120, 1000, Cn_j, 2] and [m, 2]
+                # compare overlap vertices and lower bound of each cell: -> [..., S, K, Cq_j, num_obj]
                 overlap_vertices = tf.maximum(tf.expand_dims(overlap_vertices, -3),
                                               lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :])
-                # tf.reshape(lb_points, [1, 1, lb_points.shape[0], 1, lb_points.shape[-1]]))
-                # substract cell lower bounds, clamp min at zero
-                # tf.reshape(ub_points, [1, 1, ub_points.shape[0], 1, ub_points.shape[-1]])
+
+                # get hvi length within each cell:-> [..., S, Cq_j, K, num_obj]
                 lengths_j = tf.maximum((ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :]
                                         - overlap_vertices), 0.0)
-                # take product over hyperrectangle side lengths to compute area
-                # sum over all subsets of size i # TODO:
+                # take product over hyperrectangle side lengths to compute area within each K
+                # sum over all subsets of size Cq_j #
                 areas_j = tf.reduce_sum(tf.reduce_prod(lengths_j, axis=-1), axis=-1)
-                # areas_j = areas_j, axis=-1)
+                # [..., S, K]
                 areas_per_segment = (-1) ** (j + 1) * areas_j if areas_per_segment is None \
                     else areas_per_segment + (-1) ** (j + 1) * areas_j
 

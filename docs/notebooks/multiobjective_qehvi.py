@@ -91,7 +91,7 @@ models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]]) for i in r
 
 # ## Define the acquisition process
 
-qhvei = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=10000, q=3)
+qhvei = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=10000)
 batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
     num_query_points=3, builder=qhvei.using(OBJECTIVES)
 )
