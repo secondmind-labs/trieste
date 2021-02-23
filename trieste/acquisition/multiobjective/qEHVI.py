@@ -1,11 +1,10 @@
-from trieste.acquisition.function import AcquisitionFunctionBuilder, SingleModelBatchAcquisitionBuilder, DEFAULTS, \
+from trieste.acquisition.function import DEFAULTS, \
     Dataset, ProbabilisticModel, AcquisitionFunction, TensorType, BatchReparametrizationSampler
 import tensorflow as tf
 from typing import Mapping
 from trieste.utils.pareto import Pareto
 from abc import ABC, abstractmethod
 from trieste.acquisition.function import BatchAcquisitionFunctionBuilder
-from math import inf
 from itertools import combinations
 
 
@@ -58,7 +57,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
     }
     """
 
-    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
@@ -100,7 +99,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             }
             self.q = q
 
-    # TODO: Use of state?
+    # TODO: Use of state for pareto update?
     def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: [str, ProbabilisticModel]
     ) -> AcquisitionFunction:
@@ -124,7 +123,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
         datasets_mean = tf.concat(means, axis=1)
         pareto = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
         nadir_point = get_nadir_point(pareto.front)
-
+        lb_points, ub_points = pareto.get_partitioned_cell_bounds(nadir_point)
         samplers = [BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models]
 
         def batch_hvei(at: TensorType) -> TensorType:
@@ -132,30 +131,13 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             :param at: Batches of query points at which to sample the predictive distribution, with
             shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
             consistent batch size across all calls to :meth:`sample` for any given
+            Complexity: O(num_obj * SK(2^q - 1))
             """
             # [..., S, B, num_obj]
             samples = tf.concat([sampler.sample(at, jitter=self._jitter) for sampler in samplers], axis=-1)
 
             q = at.shape[-2]  # B
             self._cache_q_subset_indices(q)
-            outdim = tf.shape(samples)[-1]
-            num_cells = tf.shape(pareto.bounds.lb)[0]
-
-            pf_ext = tf.concat(
-                [
-                    -inf * tf.ones([1, outdim], dtype=pareto.front.dtype),
-                    pareto.front,
-                    nadir_point,
-                ],
-                axis=0,
-            )
-            # get lower and upper vertices point for each cell
-            col_idx = tf.tile(tf.range(outdim), (num_cells,))
-            ub_idx = tf.stack((tf.reshape(pareto.bounds.ub, [-1]), col_idx), axis=1)
-            lb_idx = tf.stack((tf.reshape(pareto.bounds.lb, [-1]), col_idx), axis=1)
-
-            ub_points = tf.reshape(tf.gather_nd(pf_ext, ub_idx), [num_cells, outdim])
-            lb_points = tf.reshape(tf.gather_nd(pf_ext, lb_idx), [num_cells, outdim])
 
             areas_per_segment = None
             # Inclusion-Exclusion loop

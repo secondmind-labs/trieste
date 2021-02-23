@@ -3,6 +3,7 @@ from typing import Mapping
 import gpflow
 import numpy as np
 import tensorflow as tf
+from math import inf
 
 from trieste.data import Dataset
 from trieste.type import TensorType
@@ -17,7 +18,6 @@ def atleast2d(tensor: tf.Tensor) -> tf.Tensor:
 
 
 def to_Dataset(datasets: Mapping[str, Dataset]) -> Dataset:
-
     data_query_points = []
     data_observations = []
 
@@ -177,8 +177,8 @@ class Pareto:
                 self.divide_conquer_nd()
             else:
                 self.bounds_2d() if self.data.observations.shape[
-                    1
-                ] == 2 else self.divide_conquer_nd()
+                                        1
+                                    ] == 2 else self.divide_conquer_nd()
 
     def divide_conquer_nd(self):
         """
@@ -190,7 +190,7 @@ class Pareto:
         # The divide and conquer algorithm operates on a pseudo Pareto set
         # that is a mapping of the real Pareto set to discrete values
         pseudo_pf = (
-            tf.argsort(self.front, axis=0) + 1
+                tf.argsort(self.front, axis=0) + 1
         )  # +1 as index zero is reserved for the ideal point
 
         # Extend front with the ideal and anti-ideal point
@@ -241,7 +241,7 @@ class Pareto:
                 # Only divide when it is not an unit cell
                 # and the volume is above the approx. threshold
                 if tf.reduce_any(dc_dist > 1) and tf.reduce_all(
-                    (hc.size()[0] / total_size) > self.threshold
+                        (hc.size()[0] / total_size) > self.threshold
                 ):
                     # Divide the test cell over its largest dimension
                     edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
@@ -312,3 +312,24 @@ class Pareto:
         lb = tf.reshape(tf.gather_nd(pseudo_pf, lb_idx), [D, N])
         hv = tf.reduce_sum(tf.reduce_prod(ub - lb, 0))
         return tf.reduce_prod(R - min_pf) - hv
+
+    def get_partitioned_cell_bounds(self, nadir_point):
+        num_cells = tf.shape(self.bounds.lb)[0]
+        outdim = self.data.observations.shape[-1]
+        pf_ext = tf.concat(
+            [
+                -inf * tf.ones([1, outdim], dtype=self.front.dtype),
+                self.front,
+                nadir_point,
+            ],
+            axis=0,
+        )
+
+        # get lower and upper vertices point for each cell
+        col_idx = tf.tile(tf.range(outdim), (num_cells,))
+        ub_idx = tf.stack((tf.reshape(self.bounds.ub, [-1]), col_idx), axis=1)
+        lb_idx = tf.stack((tf.reshape(self.bounds.lb, [-1]), col_idx), axis=1)
+
+        ub_points = tf.reshape(tf.gather_nd(pf_ext, ub_idx), [num_cells, outdim])
+        lb_points = tf.reshape(tf.gather_nd(pf_ext, lb_idx), [num_cells, outdim])
+        return lb_points, ub_points
