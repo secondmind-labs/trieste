@@ -15,15 +15,16 @@ from __future__ import annotations
 
 import copy
 import itertools
-from typing import Container, FrozenSet, Tuple
+from typing import Container, FrozenSet, Tuple, List, Sequence
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from typing_extensions import Final
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes, SequenceN
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace, grid
+from trieste.type import TensorType
 
 
 class Integers(SearchSpace):
@@ -350,3 +351,23 @@ def test_box_deepcopy() -> None:
     box_copy = copy.deepcopy(box)
     npt.assert_allclose(box.lower, box_copy.lower)
     npt.assert_allclose(box.upper, box_copy.upper)
+
+
+@pytest.mark.parametrize("lower, upper, density, expected", [
+    ((0,), (1,), 6, [[0.0], [0.2], [0.4], [0.6], [0.8], [1.0]]),
+    ((-1.5, 0), (3, 1), 3, itertools.product((-1.5, 0.75, 3.0), (0.0, 0.5, 1.0))),
+    ((0, 0, 0), (2, 2, 2), 3, itertools.product((0, 1, 2), repeat=3))
+])
+def test_grid(
+    lower: Tuple[int, ...], upper: Tuple[int, ...], density: int, expected: SequenceN[float]
+) -> None:
+    def sort(x: TensorType) -> TensorType:
+        def go(x_: TensorType, axis: int) -> TensorType:
+            sorted_ = tf.sort(x_, axis)
+            return go(sorted_, axis - 1) if axis > 0 else sorted_
+
+        return go(x, tf.rank(x) - 1)
+
+    npt.assert_allclose(
+        sort(grid(lower, upper, density)), sort(tf.constant(list(expected))), atol=1e-3
+    )

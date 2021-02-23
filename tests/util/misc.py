@@ -25,7 +25,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
+    cast, Sequence,
 )
 
 import numpy.testing as npt
@@ -66,7 +66,7 @@ def random_seed(f: C) -> C:
 T = TypeVar("T")
 """ Unbound type variable. """
 
-NList = Union[
+ListN = Union[
     List[T],
     List[List[T]],
     List[List[List[T]]],
@@ -75,7 +75,16 @@ NList = Union[
 """ Type alias for a nested list with array shape. """
 
 
-def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]]) -> Dataset:
+SequenceN = Union[
+    Sequence[T],
+    Sequence[Sequence[T]],
+    Sequence[Sequence[Sequence[T]]],
+    Sequence[Sequence[Sequence[Sequence[Any]]]],
+]
+""" Type alias for a nested sequence with array shape. """
+
+
+def mk_dataset(query_points: ListN[List[float]], observations: ListN[List[float]]) -> Dataset:
     """
     :param query_points: The query points.
     :param observations: The observations.

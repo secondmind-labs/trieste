@@ -14,8 +14,10 @@
 """ This module contains implementations of various types of search space. """
 from __future__ import annotations
 
+import operator
 from abc import ABC, abstractmethod
-from typing import Dict, List, TypeVar, Union, overload
+from functools import reduce
+from typing import Dict, List, TypeVar, Union, overload, Tuple
 
 import tensorflow as tf
 
@@ -284,3 +286,19 @@ class Box(SearchSpace):
 
     def __deepcopy__(self, memo: Dict[int, object]) -> Box:
         return self
+
+
+def grid(
+    from_: Union[TensorType, Tuple[int, ...]], to: Union[TensorType, Tuple[int, ...]], density: int
+) -> TensorType:
+    """
+    :param from_: The lower bounds of the grid, with shape [D].
+    :param to: The upper bounds of the grid, with shape [D].
+    :param density: The number of grid points along each axis.
+    :return: A uniform grid of points over ``space``, with shape :math:`[N^D, D]`. Ordering is not
+        guaranteed.
+    """
+    tf.debugging.assert_shapes([(from_, ["D"]), (to, ["D"])])
+    xs = tf.unstack(tf.linspace(from_, to, density), axis=-1)
+    grid_ = tf.stack([tf.reshape(t, [-1, 1]) for t in tf.meshgrid(*xs)], axis=-1)
+    return tf.squeeze(grid_, axis=-2)

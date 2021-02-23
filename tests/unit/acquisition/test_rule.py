@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Dict, List, Mapping, Union
+from typing import Dict, List, Mapping, Union, Callable
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.experimental.auto_batching import TensorType
 
 from tests.util.model import QuadraticMeanAndRBFKernel, GaussianProcess
 from tests.util.misc import random_seed, zero_dataset, one_dimensional_range
@@ -37,29 +38,41 @@ from trieste.acquisition.rule import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, DiscreteSearchSpace
-from trieste.utils.objectives import branin, BRANIN_GLOBAL_ARGMIN
+from trieste.utils.objectives import branin, BRANIN_MINIMIZERS, gramacy_lee, GRAMACY_LEE_MINIMIZER
 
 
+@random_seed
 @pytest.mark.parametrize(
-    "search_space, candidate_query_points",
+    "gp_mean, domain_dimension, search_space, candidate_minimizers",
     [
         (
+            branin,
+            2,
             DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]], tf.float64)),
-            [[0.1, -0.1]],
+            tf.constant([[0.1, -0.1]], tf.float64),
         ),
-        (Box([0, 0], [1, 1]), tf.cast(BRANIN_GLOBAL_ARGMIN, tf.float64)),
-        # todo test with a function with a local minimum
-        # todo test doesn't choose a point outside search space
+        (branin, 2, Box([0, 0], [1, 1]), BRANIN_MINIMIZERS),
+        (branin, 2, Box([0.2, 0.2], [1, 1]), BRANIN_MINIMIZERS),
+        (gramacy_lee, 1, Box([0.5], [2.5]), GRAMACY_LEE_MINIMIZER),
     ],
 )
 def test_efficient_global_optimization(
-    search_space: Union[Box, DiscreteSearchSpace], candidate_query_points: List[List[float]]
+    gp_mean: Callable[[TensorType], TensorType],
+    domain_dimension: int,
+    search_space: Union[Box, DiscreteSearchSpace],
+    candidate_minimizers: TensorType
 ) -> None:
-    model = GaussianProcess([branin], [tfp.math.psd_kernels.ExponentiatedQuadratic()])
+    model = GaussianProcess([gp_mean], [tfp.math.psd_kernels.ExponentiatedQuadratic()])
     ego = EfficientGlobalOptimization(NegativePredictiveMean().using(""))
-    dataset = Dataset(tf.zeros([0, 2], tf.float64), tf.zeros([0, 1], tf.float64))
+    dataset = Dataset(tf.zeros([0, domain_dimension], tf.float64), tf.zeros([0, 1], tf.float64))
     query_point, _ = ego.acquire(search_space, {"": dataset}, {"": model})
-    query_point_is_within_tolerance = tf.abs(candidate_query_points - query_point) < 1e-7
+    print()
+    print()
+    print()
+    print()
+    print(query_point)
+    print(candidate_minimizers)
+    query_point_is_within_tolerance = tf.abs(candidate_minimizers - query_point) < 1e-5
     assert tf.reduce_any(tf.reduce_all(query_point_is_within_tolerance, axis=-1))
 
 
