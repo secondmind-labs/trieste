@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 import tensorflow as tf
+from trieste.utils.pareto import non_dominated_sort, to_Dataset
 
 from trieste.type import TensorType
 from trieste.utils import to_numpy
@@ -206,6 +207,70 @@ def plot_bo_points(
     else:
         for i in range(pts.shape[0]):
             ax.scatter(pts[i, 0], pts[i, 1], obs_values[i], c=col_pts[i], marker=mark_pts[i])
+
+
+def plot_bo_points_in_obj_space(
+        data_set,
+        num_init=None,
+        mask_fail=None,
+        figsize=None,
+        xlabel='Obj 1',
+        ylabel='Obj 2',
+        zlabel='Obj 3',
+        title=None,
+        m_init="x",
+        m_add="o",
+        c_pass="tab:green",
+        c_fail="tab:red",
+        c_pareto="tab:purple",
+        maximize=False,
+        only_plot_pareto=False
+):
+    """
+    Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
+    Markers and colors are chosen according to BO factors.
+    :param data_set:
+    :param num_init: initial number of BO points
+    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param title:
+    :param xlabel:
+    :param ylabel:
+    :param figsize:
+    :param maximize: if maximize, assume a negative objective function has been use for BO, hence plot the minus of points
+    :param only_plot_pareto: if set true, only plot the pareto points
+    """
+    obj_num = len(data_set.values())
+    assert obj_num == 2 or obj_num == 3, NotImplementedError('Only support 2/3-objective'
+                                                             ' function plot but found: {}'.format(obj_num))
+
+    _, dom = non_dominated_sort(to_Dataset(data_set))
+    idx_pareto = np.where(dom == 0)
+
+    data_observations = np.hstack([data.observations for data in data_set.values()])
+    pts = data_observations if maximize is False else -data_observations
+    num_pts = pts.shape[0]
+
+    col_pts, mark_pts = format_point_markers(
+        num_pts, num_init, idx_pareto, mask_fail, m_init, m_add, c_pass, c_fail, c_pareto
+    )
+    if only_plot_pareto:
+        col_pts = col_pts[idx_pareto]
+        mark_pts = mark_pts[idx_pareto]
+        pts = pts[idx_pareto]
+
+    if obj_num == 2:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+    for i in range(pts.shape[0]):
+        ax.scatter(*pts[i], c=col_pts[i], marker=mark_pts[i])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if obj_num == 3:
+        ax.set_zlabel(zlabel)
+    if title is not None:
+        ax.set_title(title)
 
 
 def plot_regret(
