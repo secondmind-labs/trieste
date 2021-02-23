@@ -289,16 +289,20 @@ class Box(SearchSpace):
 
 
 def grid(
-    from_: Union[TensorType, Tuple[int, ...]], to: Union[TensorType, Tuple[int, ...]], density: int
+    from_: Union[TensorType, List[int]], to: Union[TensorType, List[int]], density: int
 ) -> TensorType:
     """
     :param from_: The lower bounds of the grid, with shape [D].
     :param to: The upper bounds of the grid, with shape [D].
-    :param density: The number of grid points along each axis.
+    :param density: The number N of grid points along each axis. Must be at least 2.
     :return: A uniform grid of points over ``space``, with shape :math:`[N^D, D]`. Ordering is not
         guaranteed.
+    :raise ValueError (or InvalidArgumentError): If ``from`` and ``to`` have invalid shapes or
+        different dtypes, or ``density`` is less than 2.
     """
+    tf.debugging.assert_greater_equal(density, 2)
     tf.debugging.assert_shapes([(from_, ["D"]), (to, ["D"])])
-    xs = tf.unstack(tf.linspace(from_, to, density), axis=-1)
-    grid_ = tf.stack([tf.reshape(t, [-1, 1]) for t in tf.meshgrid(*xs)], axis=-1)
-    return tf.squeeze(grid_, axis=-2)
+    axes = tf.linspace(from_, to, density)
+    axes_as_grids = tf.meshgrid(*tf.unstack(axes, axis=-1))
+    grid_with_all_axes = tf.stack([tf.reshape(t, [-1, 1]) for t in axes_as_grids], axis=-1)
+    return tf.squeeze(grid_with_all_axes, axis=-2)

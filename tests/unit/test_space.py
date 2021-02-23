@@ -354,12 +354,12 @@ def test_box_deepcopy() -> None:
 
 
 @pytest.mark.parametrize("lower, upper, density, expected", [
-    ((0,), (1,), 6, [[0.0], [0.2], [0.4], [0.6], [0.8], [1.0]]),
-    ((-1.5, 0), (3, 1), 3, itertools.product((-1.5, 0.75, 3.0), (0.0, 0.5, 1.0))),
-    ((0, 0, 0), (2, 2, 2), 3, itertools.product((0, 1, 2), repeat=3))
+    ([0], [1], 6, [[0.0], [0.2], [0.4], [0.6], [0.8], [1.0]]),
+    ([-1.5, 0], [3, 1], 3, itertools.product([-1.5, 0.75, 3.0], [0.0, 0.5, 1.0])),
+    ([0, 0, 0], [2, 2, 2], 3, itertools.product([0, 1, 2], repeat=3))
 ])
 def test_grid(
-    lower: Tuple[int, ...], upper: Tuple[int, ...], density: int, expected: SequenceN[float]
+    lower: List[int], upper: List[int], density: int, expected: SequenceN[float]
 ) -> None:
     def sort(x: TensorType) -> TensorType:
         def go(x_: TensorType, axis: int) -> TensorType:
@@ -368,6 +368,6 @@ def test_grid(
 
         return go(x, tf.rank(x) - 1)
 
-    npt.assert_allclose(
-        sort(grid(lower, upper, density)), sort(tf.constant(list(expected))), atol=1e-3
-    )
+    grid_ = grid(lower, upper, density)
+    assert grid_.shape == [density ** len(lower), len(lower)]
+    npt.assert_allclose(sort(grid_), sort(tf.constant(list(expected))), atol=1e-3)

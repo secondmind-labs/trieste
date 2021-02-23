@@ -37,7 +37,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, DiscreteSearchSpace
+from trieste.space import Box, DiscreteSearchSpace, grid
 from trieste.utils.objectives import branin, BRANIN_MINIMIZERS, gramacy_lee, GRAMACY_LEE_MINIMIZER
 
 
@@ -52,7 +52,7 @@ from trieste.utils.objectives import branin, BRANIN_MINIMIZERS, gramacy_lee, GRA
             tf.constant([[0.1, -0.1]], tf.float64),
         ),
         (branin, 2, Box([0, 0], [1, 1]), BRANIN_MINIMIZERS),
-        (branin, 2, Box([0.2, 0.2], [1, 1]), BRANIN_MINIMIZERS),
+        (branin, 2, Box([0.2, 0.2], [1, 1]), ...),
         (gramacy_lee, 1, Box([0.5], [2.5]), GRAMACY_LEE_MINIMIZER),
     ],
 )
