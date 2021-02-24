@@ -238,12 +238,14 @@ fig = plot_gp_plotly(
     grid_density=30
 )
 
+batch_arg_min_idx = tf.squeeze(tf.argmin(batch_dataset.observations, axis=0))
+
 fig = add_bo_points_plotly(
     x=batch_query_points[:, 0],
     y=batch_query_points[:, 1],
     z=batch_observations[:, 0],
     num_init=num_initial_points,
-    idx_best=arg_min_idx,
+    idx_best=batch_arg_min_idx,
     fig=fig,
     figrow=1,
     figcol=1,
@@ -258,7 +260,7 @@ fig.show()
 _, ax = plt.subplots(1, 2)
 plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
 plot_regret(
-    batch_observations, ax[1], num_init=num_initial_points, idx_best=arg_min_idx
+    batch_observations, ax[1], num_init=num_initial_points, idx_best=batch_arg_min_idx
 )
 
 # %% [markdown]
