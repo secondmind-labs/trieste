@@ -173,7 +173,7 @@ num_objective = 3
 OBJECTIVES = ["OBJECTIVE{}".format(i + 1) for i in range(num_objective)]
 
 
-num_initial_points = 10
+num_initial_points = 15
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 

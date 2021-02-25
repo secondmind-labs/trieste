@@ -1,48 +1,10 @@
-from trieste.acquisition.function import DEFAULTS, \
-    Dataset, ProbabilisticModel, AcquisitionFunction, TensorType, BatchReparametrizationSampler
 import tensorflow as tf
-from typing import Mapping
-from trieste.utils.pareto import Pareto
-from abc import ABC, abstractmethod
-from trieste.acquisition.function import BatchAcquisitionFunctionBuilder
 from itertools import combinations
-
-
-class MultiModelBatchAcquisitionBuilder(ABC):
-    """
-    Convenience acquisition function builder for a batch acquisition function (or component of a
-    composite batch acquisition function) that requires only one model, dataset pair.
-    """
-
-    def using(self, tags: [str]) -> BatchAcquisitionFunctionBuilder:
-        """
-        :param tags: NOT IN USE ATM
-        :return: A batch acquisition function builder that selects the model and dataset specified
-            by ``tag``, as defined in :meth:`prepare_acquisition_function`.
-        """
-        multi_builder = self
-
-        class _Anon(BatchAcquisitionFunctionBuilder):
-            def prepare_acquisition_function(
-                    self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-            ) -> AcquisitionFunction:
-                # TODO: seems can create subdicts instead of using the original one
-                return multi_builder.prepare_acquisition_function(datasets, models)
-
-            def __repr__(self) -> str:
-                return f"{multi_builder!r} using tag {tags!r}"
-
-        return _Anon()
-
-    @abstractmethod
-    def prepare_acquisition_function(
-            self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
-        :return: An acquisition function.
-        """
+from typing import Mapping
+from ...utils.pareto import Pareto
+from .function import MultiModelBatchAcquisitionBuilder, get_nadir_point
+from ..function import DEFAULTS, Dataset, ProbabilisticModel, \
+    AcquisitionFunction, TensorType, BatchReparametrizationSampler
 
 
 class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBuilder):
@@ -169,13 +131,3 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             return tf.reduce_mean(areas_in_total, axis=-1, keepdims=True)
 
         return batch_hvei
-
-
-def get_nadir_point(front: tf.Tensor) -> tf.Tensor:
-    """
-    nadir point calculation method
-    """
-    f = tf.math.reduce_max(front, axis=0, keepdims=True) - tf.math.reduce_min(
-        front, axis=0, keepdims=True
-    )
-    return tf.math.reduce_max(front, axis=0, keepdims=True) + 2 * f / front.shape[0]
