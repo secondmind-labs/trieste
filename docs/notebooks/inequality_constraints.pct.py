@@ -11,7 +11,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## The problem
 #
-# In this tutorial, we replicate one of the results of [[GKZ+14](https://secondmind-labs.github.io/trieste/autoapi/trieste/index.html#id4)], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
+# In this tutorial, we replicate one of the results of [[GKZ+14](https://secondmind-labs.github.io/trieste/autoapi/trieste/index.html#id4)], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.  The constraint is satisfied when `constraint(input_data) <= threshold`.
 
 # %%
 import gpflow
@@ -36,7 +36,7 @@ class Sim:
 search_space = trieste.space.Box([0, 0], [6, 6])
 
 # %% [markdown]
-# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
+# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
 import matplotlib.pyplot as plt
@@ -239,7 +239,8 @@ plot_init_query_points(
 plt.show()
 
 # %% [markdown]
-# Finally, we compare the resulting regret with a non-batch strategy.
+# Finally, we compare the regret from the non-batch strategy (left panel) to the regret from the batch strategy (right panel).
+# In the following plots each marker represents a query point. The x-axis is the index of the query point (where the first queried point has index 0), and the y-axis is the observed value. The vertical blue line denotes the end of initialisation/start of optimisation. Green points satisfy the constraint, red points do not.
 
 # %%
 from util.plotting import plot_regret
