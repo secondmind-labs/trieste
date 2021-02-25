@@ -245,8 +245,8 @@ plt.show()
 # %%
 from util.plotting import plot_regret
 
-mask_fail = constraint_data.observations.numpy() >= Sim.threshold
-batch_mask_fail = batch_constraint_data.observations.numpy() >= Sim.threshold
+mask_fail = constraint_data.observations.numpy() > Sim.threshold
+batch_mask_fail = batch_constraint_data.observations.numpy() > Sim.threshold
 
 fig, ax = plt.subplots(1, 2, sharey="all")
 plot_regret(
