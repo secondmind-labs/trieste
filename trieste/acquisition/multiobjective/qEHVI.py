@@ -2,12 +2,12 @@ import tensorflow as tf
 from itertools import combinations
 from typing import Mapping
 from ...utils.pareto import Pareto
-from .function import MultiModelBatchAcquisitionBuilder, get_nadir_point
+from .function import HypervolumeBatchAcquisitionBuilder, get_nadir_point
 from ..function import DEFAULTS, Dataset, ProbabilisticModel, \
     AcquisitionFunction, TensorType, BatchReparametrizationSampler
 
 
-class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBuilder):
+class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionBuilder):
     """
     Use of the inclusion-exclusion method
     refer
@@ -84,8 +84,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(MultiModelBatchAcquisitionBu
             )
         datasets_mean = tf.concat(means, axis=1)
         pareto = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
-        nadir_point = get_nadir_point(pareto.front)
-        lb_points, ub_points = pareto.get_partitioned_cell_bounds(nadir_point)
+        lb_points, ub_points = pareto.get_partitioned_cell_bounds(get_nadir_point(pareto.front))
         samplers = [BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models]
 
         def batch_hvei(at: TensorType) -> TensorType:

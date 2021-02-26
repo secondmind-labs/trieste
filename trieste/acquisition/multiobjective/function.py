@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Mapping
 import tensorflow as tf
-from ..function import BatchAcquisitionFunctionBuilder, Dataset, ProbabilisticModel, AcquisitionFunction,\
-    AcquisitionFunctionBuilder
 from ...utils.pareto import Pareto
+from ..function import BatchAcquisitionFunctionBuilder, Dataset, \
+    ProbabilisticModel, AcquisitionFunction, AcquisitionFunctionBuilder
 
 
+# TODO: This is still awaiting the multi-model design decision from trieste
 class MultiModelBatchAcquisitionBuilder(ABC):
     """
     Convenience acquisition function builder for a batch acquisition function (or component of a
@@ -81,6 +82,16 @@ class MultiModelAcquisitionBuilder(ABC):
 
 
 class HypervolumeAcquisitionBuilder(MultiModelAcquisitionBuilder):
+    @abstractmethod
+    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
+        """
+        calculate the reference point for hypervolme calculation
+        :param pareto: Pareto class
+        :param nadir_setting
+        """
+
+        
+class HypervolumeBatchAcquisitionBuilder(MultiModelBatchAcquisitionBuilder):
     @abstractmethod
     def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
         """

@@ -1,6 +1,6 @@
 """
 Analytic version of EHVI
-main reference
+main reference:
 
 @article{yang2019efficient,
   title={Efficient computation of expected hypervolume improvement using box decomposition algorithms},
@@ -14,7 +14,6 @@ main reference
 }
 """
 import tensorflow as tf
-from tensorflow_probability import distributions as tfd
 from itertools import product
 from typing import Mapping, Union
 
@@ -24,6 +23,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...type import TensorType
 
+from tensorflow_probability import distributions as tfd
 from .function import HypervolumeAcquisitionBuilder, get_nadir_point
 
 
@@ -60,11 +60,20 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer. Must be populated.
-        :param models: The model over the specified ``dataset``.
+        :param models: The model over the specified ``dataset``. Must have event shape [1].
+                       TODO: The shape is still awaiting for trieste multi-model design decision
         :return: The hv_probability_of_improvement function.
         """
-
-        _PF = Pareto(datasets)
+        for _, data in datasets.items():
+            tf.debugging.assert_positive(len(data), message='Dataset must be populated.')
+        means = [models[model_tag].predict(datasets[data_tag].query_points)[0] for
+                 model_tag, data_tag in zip(models, datasets)]
+        for mean in means:
+            tf.debugging.assert_shapes(
+                [(mean, ["_", 1])], message="Expected model with event shape [1].")
+        datasets_mean = tf.concat(means, axis=1)
+        _PF = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
+        # _PF = Pareto(datasets)
         _nadir_pt = self._calculate_nadir(_PF, nadir_setting=self._nadir_setting)
         return lambda at: self._acquisition_function(models, at, _PF, _nadir_pt)
 
@@ -83,7 +92,7 @@ def expected_hv_improvement(
         at: TensorType,
         pareto: Pareto,
         nadir_point: tf.Tensor,
-) -> tf.Tensor:
+) -> TensorType:
     r"""
     HV calculation using Eq. 44 of original paper
     Note:
@@ -105,7 +114,7 @@ def expected_hv_improvement(
 
     normal = tfd.Normal(loc=tf.zeros(shape=1, dtype=at.dtype), scale=tf.ones(shape=1, dtype=at.dtype))
 
-    def Psi(a, b, mean, std):
+    def Psi(a, b, mean, std) -> TensorType:
         """
         Generic Expected Improvement o reference a, defined at Eq. 19 of [yang2019]
         param: a: [num_cells, out_dim] lower bounds
@@ -116,7 +125,7 @@ def expected_hv_improvement(
         return std * normal.prob((b - mean) / std) + \
                (mean - a) * (1 - normal.cdf((b - mean) / std))
 
-    def nu(l, u, mean, std):
+    def nu(l, u, mean, std) -> TensorType:
         """
         Eq. 25 of [yang2019]
         Note: as we deal with minimization, we use negative version of our problem
@@ -126,17 +135,17 @@ def expected_hv_improvement(
 
     predicts = [models[model_tag].predict(at) for model_tag in models]
     candidate_mean, candidate_var = (tf.concat(moment, 1) for moment in zip(*predicts))
-    candidate_std = tf.clip_by_value(tf.sqrt(candidate_var), 1.0e-8, candidate_mean.dtype.max)
+    candidate_std = tf.sqrt(candidate_var)
 
-    neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
+    # calc ehvi assuming maximization
+    neg_candidate_mean = - tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
     candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
     lb_points, ub_points = pareto.get_partitioned_cell_bounds(nadir_point)
 
-    # calc ehvi assuming maximization
-    neg_lb_points, neg_ub_points = - ub_points, - lb_points # ref Note. 3
+    neg_lb_points, neg_ub_points = - ub_points, - lb_points  # ref Note. 3
 
-    neg_ub_points = tf.minimum(neg_ub_points, 1e10) # this maximum: 1e10 is heuristically chosen
+    neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # this maximum: 1e10 is heuristically chosen
 
     psi_ub = Psi(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)  # [..., num_cells, out_dim]
     psi_lb = Psi(neg_lb_points, neg_lb_points, neg_candidate_mean, candidate_std)  # [..., num_cells, out_dim]

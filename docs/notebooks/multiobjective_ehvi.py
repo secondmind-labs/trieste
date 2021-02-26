@@ -72,9 +72,9 @@ plt.show()
 #
 # We'll model the different objective functions with their own Gaussian process regression models.
 
-def create_bo_model(data, input_dim=2):
+def create_bo_model(data, input_dim=2, l=1.0):
     variance = tf.math.reduce_variance(data.observations)
-    lengthscale = 0.5 * np.ones(input_dim, dtype=gpflow.default_float())
+    lengthscale = l * np.ones(input_dim, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
@@ -122,7 +122,7 @@ plt.show()
 plot_bo_points_in_obj_space(result.try_get_final_datasets(), num_init=num_initial_points)
 plt.show()
 
-# ## Advanced: Problem with 3 Objective Function
+## Advanced: Problem with 3 Objective Function
 
 # Now we demonstrate an optimization for DTLZ2 function with 3 objectives in 4 dimension:
 
@@ -177,7 +177,7 @@ num_initial_points = 15
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
-models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]], 4) for i in range(num_objective)}
+models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]], 4, .8) for i in range(num_objective)}
 
 hvei = Expected_Hypervolume_Improvement().using(OBJECTIVES)
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)

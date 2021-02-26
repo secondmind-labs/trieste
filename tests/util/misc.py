@@ -127,6 +127,19 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
+def linear(x: tf.Tensor) -> tf.Tensor:
+    r"""
+    The multi-dimensional quadratic function.
+
+    :param x: A tensor whose last dimension is of length greater than zero.
+    :return: The sum :math:`\Sigma x^2` of the squares of ``x``.
+    :raise ValueError: If ``x`` is a scalar or has empty trailing dimension.
+    """
+    if x.shape == [] or x.shape[-1] == 0:
+        raise ValueError(f"x must have non-empty trailing dimension, got shape {x.shape}")
+
+    return tf.reduce_sum(x, axis=-1, keepdims=True)
+
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
