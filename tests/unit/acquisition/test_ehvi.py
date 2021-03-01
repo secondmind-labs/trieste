@@ -18,7 +18,7 @@ import itertools
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
@@ -36,19 +36,19 @@ test_models = (QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel, QuadraticMeanA
 def test_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
     num_obj = 3
     datasets = {f'OBJECTIVE{i + 1}': Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]),
-    ) for i in range(num_obj)}
+                                             ) for i in range(num_obj)}
     models = {f'OBJECTIVE{i + 1}': QuadraticMeanAndRBFKernel() for i in range(num_obj)}
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Expected_Hypervolume_Improvement().prepare_acquisition_function(datasets, models)
 
 
-def test_expected_hypervolume_improvement_builder_builds_expected_hypervolume_improvement_using_pareto_from_model() -> None:
+def test_expected_hv_improvement_builder_builds_expected_hv_improvement_using_pareto_from_model() -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
     datasets = {f'OBJECTIVE{i + 1}': Dataset(
         train_x,
-        tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8],  [1.1], [2.1], [3.9]]),
+        tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8], [1.1], [2.1], [3.9]]),
     ) for i in range(num_obj)}
     models = {f'OBJECTIVE{i + 1}': test_models[i]() for i in range(num_obj)}
     acq_fn = Expected_Hypervolume_Improvement().prepare_acquisition_function(datasets, models)
@@ -61,32 +61,34 @@ def test_expected_hypervolume_improvement_builder_builds_expected_hypervolume_im
     npt.assert_allclose(acq_fn(xs), expected)
 
 
-
 @random_seed
 @pytest.mark.parametrize(
-    "input_dim, num_samples_per_point, training_observations, obj_num, rtol, atol",
+    "input_dim, num_samples_per_point, training_observations, obj_num, variance_scale ,rtol, atol",
     [
-        (1, 50_000, tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]), 2, 0.01, 1e-2),
-        (2, 50_000, tf.constant([[0.0, 0.0]]), 2, 0.01, 1e-2),
-        (1, 100_000, tf.constant([[0.0, 0.0, 0.5], [0.4, -0.1, 0.2], [0.1, 0.1, 0.1], [0.3, 0.5, 0.0]]), 3, 0.01, 1e-2),
+        (1, 50_000, tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]), 2, 1.0, 0.01, 1e-2),
+        (1, 200_000, tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]), 2, 2.0, 0.01, 1e-2),
+        (2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, 0.01, 1e-2),
+        (1, 100_000, tf.constant([[0.0, 0.0, 0.5], [0.4, -0.1, 0.2], [0.1, 0.1, 0.1], [0.3, 0.5, 0.0]]), 3,
+         1.0, 0.01, 1e-2),
     ],
 )
 def test_expected_hypervolume_improvement(
-    input_dim: int, num_samples_per_point: int, training_observations: tf.Tensor, obj_num: int, rtol: float, atol: float
-) -> None:
-    # Note: this exponentially with num of obj
-    data_num_seg_per_dim = 10 # test data number per input dim
+        input_dim: int, num_samples_per_point: int, training_observations: tf.Tensor, obj_num: int,
+        variance_scale: float,
+        rtol: float, atol: float) -> None:
+    # Note: the test data number grows exponentially with num of obj
+    data_num_seg_per_dim = 10  # test data number per input dim
     N = data_num_seg_per_dim ** input_dim
     xs = tf.constant(list(itertools.product(*[list(np.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)))
 
     xs = tf.cast(xs, dtype=training_observations.dtype)
-    models = {f'OBJECTIVE{i}': test_models[i]() for i in range(obj_num)}
+    models = {f'OBJECTIVE{i}': test_models[i](variance_scale) for i in range(obj_num)}
 
     predicts = [models[model_tag].predict(xs) for model_tag in models]
     mean, variance = (tf.concat(moment, 1) for moment in zip(*predicts))
 
     # [f_samples, B, L]
-    predict_samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+    predict_samples = tfd.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
     _pareto = Pareto(Dataset(tf.zeros_like(training_observations), training_observations))
     nadir = get_nadir_point(_pareto.front)
     lb_points, ub_points = _pareto.get_partitioned_cell_bounds(nadir)
@@ -98,7 +100,7 @@ def test_expected_hypervolume_improvement(
     splus_idx = tf.expand_dims(tf.cast(splus_valid, dtype=ub_points.dtype), -1)
     splus_lb = tf.tile(lb_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
     splus_lb = tf.maximum(splus_lb, tf.expand_dims(predict_samples, 1))
-    splus_ub = tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])  # 上界维持不变
+    splus_ub = tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
     splus = tf.concat([splus_idx, splus_ub - splus_lb], axis=-1)
 
     ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))  #

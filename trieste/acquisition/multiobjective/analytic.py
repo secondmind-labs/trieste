@@ -72,10 +72,9 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
             tf.debugging.assert_shapes(
                 [(mean, ["_", 1])], message="Expected model with event shape [1].")
         datasets_mean = tf.concat(means, axis=1)
-        _PF = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
-        # _PF = Pareto(datasets)
-        _nadir_pt = self._calculate_nadir(_PF, nadir_setting=self._nadir_setting)
-        return lambda at: self._acquisition_function(models, at, _PF, _nadir_pt)
+        _pf = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
+        _nadir_pt = self._calculate_nadir(_pf, nadir_setting=self._nadir_setting)
+        return lambda at: self._acquisition_function(models, at, _pf, _nadir_pt)
 
     @staticmethod
     def _acquisition_function(

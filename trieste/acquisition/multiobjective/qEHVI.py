@@ -1,6 +1,6 @@
 import tensorflow as tf
 from itertools import combinations
-from typing import Mapping
+from typing import Mapping, Union
 from ...utils.pareto import Pareto
 from .function import HypervolumeBatchAcquisitionBuilder, get_nadir_point
 from ..function import DEFAULTS, Dataset, ProbabilisticModel, \
@@ -19,7 +19,8 @@ class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionB
     }
     """
 
-    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER,
+                 nadir_setting: Union[str, callable] = "default"):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
@@ -35,6 +36,21 @@ class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionB
         self._sample_size = sample_size
         self._jitter = jitter
         self.q = -1
+        self._nadir_setting = nadir_setting
+
+    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
+        """
+        calculate the reference point for hypervolme calculation
+        :param pareto: Pareto class
+        :param nadir_setting
+        """
+        if nadir_setting == "default":
+            return get_nadir_point(pareto.front)
+        else:
+            assert callable(nadir_setting), ValueError(
+                "nadir_setting: {} do not understood".format(nadir_setting)
+            )
+            return nadir_setting(pareto.front)
 
     def __repr__(self) -> str:
         """"""
@@ -83,8 +99,9 @@ class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionB
                 [(mean, ["_", 1])], message="Expected model with event shape [1]."
             )
         datasets_mean = tf.concat(means, axis=1)
-        pareto = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
-        lb_points, ub_points = pareto.get_partitioned_cell_bounds(get_nadir_point(pareto.front))
+        _pf = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
+        _nadir_pt = self._calculate_nadir(_pf, nadir_setting=self._nadir_setting)
+        lb_points, ub_points = _pf.get_partitioned_cell_bounds(_nadir_pt)
         samplers = [BatchReparametrizationSampler(self._sample_size, models[tag]) for tag in models]
 
         def batch_hvei(at: TensorType) -> TensorType:

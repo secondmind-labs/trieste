@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from trieste.type import TensorType
 import matplotlib.pyplot as plt
-from trieste.acquisition.multiobjective.qEHVI import BatchMonteCarloHypervolumeExpectedImprovement
+from trieste.acquisition.multiobjective.qehvi import BatchMonteCarloHypervolumeExpectedImprovement
 
 from util.plotting import plot_function_2d, plot_bo_points
 
@@ -120,79 +120,3 @@ plt.show()
 
 plot_bo_points_in_obj_space(result.try_get_final_datasets(), num_init=num_initial_points)
 plt.show()
-
-# # ## Advanced: Problem with 3 Objective Function
-#
-# # Now we demonstrate an optimization for DTLZ2 function with 3 objectives in 4 dimension:
-#
-# # +
-# from tensorflow import sin, cos
-# from math import pi
-#
-#
-# def dtlz2(x: TensorType, M: int = 3) -> TensorType:
-#     """
-#     DTLZ test problem 2.
-#     """
-#
-#     def g(xm):
-#         z = xm - 0.5
-#         return tf.reduce_sum(z ** 2, axis=1, keepdims=True)
-#
-#     def problem2(x, M):
-#         f = None
-#
-#         for i in range(M):
-#             y = (1 + g(x[:, M - 1:]))
-#             for j in range(M - 1 - i):
-#                 y *= cos((pi * x[:, j, np.newaxis]) / 2)
-#             if i > 0:
-#                 y *= sin((pi * x[:, M - 1 - i, np.newaxis]) / 2)
-#             f = y if f is None else tf.concat([f, y], 1)
-#         return f
-#
-#     return problem2(x, M)
-#
-#
-# def observer(query_points):
-#     y = dtlz2(query_points)
-#     return {OBJECTIVES[i]: trieste.data.Dataset(query_points, y[:, i, np.newaxis]) for i in range(num_objective)}
-#
-#
-# # -
-#
-# # Now we can follow similar setup to optimize this problem, it may take a while waiting for the finish of the optimizer
-#
-# # +
-# mins = [0, 0, 0, 0]
-# maxs = [1, 1, 1, 1]
-# lower_bound = tf.cast(mins, gpflow.default_float())
-# upper_bound = tf.cast(maxs, gpflow.default_float())
-# search_space = trieste.space.Box(lower_bound, upper_bound)
-#
-# num_objective = 3
-# OBJECTIVES = ["OBJECTIVE{}".format(i + 1) for i in range(num_objective)]
-#
-# num_initial_points = 10
-# initial_query_points = search_space.sample(num_initial_points)
-# initial_data = observer(initial_query_points)
-#
-# models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]], 4) for i in range(num_objective)}
-#
-# qhvei = BatchMonteCarloHypervolumeExpectedImprovement()
-# batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
-#     num_query_points=3, builder=qhvei.using(OBJECTIVES)
-# )
-#
-# num_steps = 10
-# bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-# result = bo.optimize(num_steps, initial_data, models, acquisition_rule=batch_rule)
-# # -
-#
-# plot_bo_points_in_obj_space(result.try_get_final_datasets(), num_init=num_initial_points)
-# plt.show()
-#
-# # ## LICENSE
-# #
-# # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
-#

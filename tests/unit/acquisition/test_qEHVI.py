@@ -13,40 +13,30 @@
 # limitations under the License.
 from __future__ import annotations
 
-import math
-from typing import Callable, Mapping, Tuple, Union
-
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
+import itertools
+import numpy as np
 
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     mk_dataset,
     random_seed,
 )
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from trieste.acquisition.multiobjective.qEHVI import BatchMonteCarloHypervolumeExpectedImprovement
+from tests.util.model import QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel
+from trieste.acquisition.multiobjective.qehvi import BatchMonteCarloHypervolumeExpectedImprovement
+from trieste.acquisition.multiobjective.analytic import expected_hv_improvement
 
 from trieste.data import Dataset
 
-from trieste.utils.objectives import branin
+from trieste.utils.pareto import Pareto
+from trieste.acquisition.multiobjective.function import get_nadir_point
+from tests.unit.acquisition.test_function import _dim_two_gp
+
+test_models = (QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel, QuadraticMeanAndRBFKernel)
 
 
-# ------------------------------------------------
-# Test Code for batch_multimodel_reparametrization_sampler
-def _dim_one_gp(mean_shift: float = 0.0) -> GaussianProcess:
-    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
-    )
-    return GaussianProcess(
-        [lambda x: mean_shift + branin(x)],
-        [matern52],
-    )
-
-
-# Test Code for batch_HEVI
 @pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_hypervolume_expected_improvement_raises_for_invalid_sample_size(
         sample_size: int,
@@ -68,9 +58,6 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_empty_dat
         builder.prepare_acquisition_function(datastes, model)
 
 
-from tests.unit.acquisition.test_function import _dim_two_gp
-
-
 def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_model_with_wrong_event_shape() -> None:
     builder = BatchMonteCarloHypervolumeExpectedImprovement(100)
     datastes = {f'OBJECTIVE_{i + 1}': mk_dataset([[0.0, 0.0]], [[0.0, 0.0]]) for i in range(2)}
@@ -79,82 +66,36 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_model_wit
         builder.prepare_acquisition_function(datastes, models)
 
 
-# TODO:
-# @random_seed
-# def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
-#     known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
-#     data = Dataset(known_query_points, quadratic(known_query_points))
-#     model = QuadraticMeanAndRBFKernel()
-#     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
-#     ei = ExpectedImprovement().prepare_acquisition_function(data, model)
-#     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
-#     npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)
-
-
-# # TODO:
-# @random_seed
-# def test_batch_monte_carlo_expected_hypervolume_improvement() -> None:
-#     num_objective = 2
-#     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)  # [..., , B, out_dim]
-#     models = {f'OBJECTIVE{i}': QuadraticMeanAndRBFKernel() for i in range(num_objective)}
-#     datasets = {f'OBJECTIVE{i}': mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]) for i in range(num_objective)}
-#
-#     predicts = [models[model_tag].predict_joint(xs) for model_tag in models]
-#     means, covs = list(zip(*predicts))
-#     mvs_samples = []
-#     for i in range(len(models)):
-#         mean = means[i]
-#         cov = covs[i]
-#         mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
-#         mvn_sample = mvn.sample(10_000)
-#         mvs_samples.append(mvn_sample)
-#     # TODO: Handwritten HVEI
-#     expected = None
-#
-#     builder = BatchMonteCarloHypervolumeExpectedImprovement(10_000, q=xs.shape[-2])
-#     acq = builder.prepare_acquisition_function(datasets, models)
-#
-#     npt.assert_allclose(acq(xs), expected, rtol=0.05)
-
-
-from trieste.acquisition.multiobjective.MC_EHVI import MonteCarloHypervolumeExpectedImprovement
-
-
-def _dim_one_gp_branin(mean_shift: float = 0.0) -> GaussianProcess:
-    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
-    )
-    return GaussianProcess(
-        [lambda x: mean_shift + branin(x)/10000],
-        [matern52],
-    )
-
-
-def _dim_one_gp_invbranin(mean_shift: float = 0.0) -> GaussianProcess:
-    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
-    )
-    return GaussianProcess(
-        [lambda x: mean_shift + 1/(branin(x)/10000)],
-        [matern52],
-    )
-
 @random_seed
-def test_batch_monte_carlo_expected_hypervolume_improvement_on_single_point() -> None:
-    num_objective = 2
-    xs = tf.random.uniform([20, 1, 2], minval=-2, maxval=2, dtype=tf.float64)  # [..., , B, out_dim]
+@pytest.mark.parametrize(
+    "input_dim, num_samples_per_point, training_input, obj_num, variance_scale ,rtol, atol",
+    [
+        (1, 50_000, tf.constant([[0.3], [0.22], [0.1], [0.35]]), 2, 1.0, 0.01, 1e-2),
+        (1, 50_000, tf.constant([[0.3], [0.22], [0.1], [0.35]]), 2, 2.0, 0.01, 1e-2),
+        (2, 50_000, tf.constant([[0.0, 0.0], [0.2, 0.5]]), 2, 1.0, 0.01, 1e-2),
+        (1, 100_000, tf.constant([[0.3], [0.22], [0.1], [0.35]]), 3, 1.0, 0.01, 1e-2),
+    ],
+)
+def test_batch_monte_carlo_expected_hv_improvement_can_approx_analutical_ehvi(
+        input_dim: int, num_samples_per_point: int, training_input: tf.Tensor, obj_num: int,
+        variance_scale: float, rtol: float, atol: float) -> None:
+    # Note: the test data number grows exponentially with num of obj
+    data_num_seg_per_dim = 10  # test data number per input dim
+    xs = tf.constant(list(itertools.product(*[list(np.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)))
+    xs = tf.cast(xs, dtype=training_input.dtype)
 
-    # models = {f'OBJECTIVE{i}': _dim_one_gp(i) for i in range(num_objective)}
-    models = {'OBJECTIVE0': _dim_one_gp_branin(), 'OBJECTIVE1': _dim_one_gp_invbranin()}
-    # models = {'OBJECTIVE0': QuadraticMeanAndRBFKernel(0.1), 'OBJECTIVE1': QuadraticMeanAndRBFKernel(101.0)}
-    _tr_xs = tf.random.normal(shape=(10, 2))
-    datasets = {f'OBJECTIVE{i}': mk_dataset(_tr_xs, tf.random.normal(shape=(10, 1), dtype=tf.float64))
-                for i in range(num_objective)}
+    models = {f'OBJECTIVE{i}': test_models[i](variance_scale) for i in range(obj_num)}
+    # gen prepare Pareto
+    predicts = [models[model_tag].predict(training_input) for model_tag in models]
+    mean, _ = (tf.concat(moment, 1) for moment in zip(*predicts))
+    _model_based_tr_dataset = {f'OBJECTIVE{i}': Dataset(training_input, mean[:, i, tf.newaxis])
+                               for i in range(obj_num)}
 
-    builder = BatchMonteCarloHypervolumeExpectedImprovement(10000)
-    acq = builder.prepare_acquisition_function(datasets, models)
+    _model_based_pareto = Pareto(Dataset(tf.zeros_like(mean), mean))
+    nadir = get_nadir_point(_model_based_pareto.front)
 
-    builder2 = MonteCarloHypervolumeExpectedImprovement(10000)
-    acq2 = builder2.prepare_acquisition_function(datasets, models)
+    qehvi_builder = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=num_samples_per_point)
+    qehvi = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, models)(xs[:, tf.newaxis, :])
+    ehvi = expected_hv_improvement(models, xs, _model_based_pareto, nadir)
 
-    npt.assert_allclose(acq(xs), acq2(tf.squeeze(xs)), rtol=0.05)
+    npt.assert_allclose(ehvi, qehvi, rtol=rtol, atol=atol)
