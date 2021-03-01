@@ -23,25 +23,137 @@ trieste model).
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 
 import gpflow
 import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from tests.util.misc import random_seed
+from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
+from tests.util.model import GaussianProcess, PseudoTrainableProbModel
 from trieste.data import Dataset
 from trieste.models.model_interfaces import (
     GaussianProcessRegression,
     GPflowPredictor,
+    ModelStack,
     SparseVariational,
+    TrainableProbabilisticModel,
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
+
+
+def _model_stack() -> tuple[ModelStack, tuple[TrainableProbabilisticModel, ...]]:
+    class Model(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self, mean_shifts: list[float], kernel_amplitudes: list[float]):
+            super().__init__(
+                [(lambda y: lambda x: quadratic(x) + y)(shift) for shift in mean_shifts],
+                [tfp.math.psd_kernels.ExponentiatedQuadratic(x) for x in kernel_amplitudes],
+            )
+
+    model01 = Model([0.0, 0.5], [1.0, 0.3])
+    model2 = Model([2.0], [2.0])
+    model3 = Model([-1.0], [0.1])
+
+    return ModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
+
+
+def test_model_stack_predict() -> None:
+    stack, (model01, model2, model3) = _model_stack()
+    query_points = tf.random.uniform([5, 7, 3])
+    mean, var = stack.predict(query_points)
+
+    assert mean.shape == [5, 7, 4]
+    assert var.shape == [5, 7, 4]
+
+    mean01, var01 = model01.predict(query_points)
+    mean2, var2 = model2.predict(query_points)
+    mean3, var3 = model3.predict(query_points)
+
+    npt.assert_allclose(mean[..., :2], mean01)
+    npt.assert_allclose(mean[..., 2:3], mean2)
+    npt.assert_allclose(mean[..., 3:], mean3)
+    npt.assert_allclose(var[..., :2], var01)
+    npt.assert_allclose(var[..., 2:3], var2)
+    npt.assert_allclose(var[..., 3:], var3)
+
+
+def test_model_stack_predict_joint() -> None:
+    stack, (model01, model2, model3) = _model_stack()
+    query_points = tf.random.uniform([5, 7, 3])
+    mean, cov = stack.predict_joint(query_points)
+
+    assert mean.shape == [5, 7, 4]
+    assert cov.shape == [5, 4, 7, 7]
+
+    mean01, cov01 = model01.predict_joint(query_points)
+    mean2, cov2 = model2.predict_joint(query_points)
+    mean3, cov3 = model3.predict_joint(query_points)
+
+    npt.assert_allclose(mean[..., :2], mean01)
+    npt.assert_allclose(mean[..., 2:3], mean2)
+    npt.assert_allclose(mean[..., 3:], mean3)
+    npt.assert_allclose(cov[..., :2, :, :], cov01)
+    npt.assert_allclose(cov[..., 2:3, :, :], cov2)
+    npt.assert_allclose(cov[..., 3:, :, :], cov3)
+
+
+@random_seed
+def test_model_stack_sample() -> None:
+    query_points = tf.random.uniform([5, 7, 3], maxval=10.0)
+    stack, (model01, model2, model3) = _model_stack()
+    samples = stack.sample(query_points, 10_000)
+
+    assert samples.shape == [5, 7, 10_000, 4]
+
+    mean = tf.reduce_mean(samples, axis=-2)
+    var = tf.math.reduce_variance(samples, axis=-2)
+
+    mean01, var01 = model01.predict(query_points)
+    mean2, var2 = model2.predict(query_points)
+    mean3, var3 = model3.predict(query_points)
+
+    npt.assert_allclose(mean[..., :2], mean01, rtol=0.01)
+    npt.assert_allclose(mean[..., 2:3], mean2, rtol=0.01)
+    npt.assert_allclose(mean[..., 3:], mean3, rtol=0.01)
+    npt.assert_allclose(var[..., :2], var01, rtol=0.04)
+    npt.assert_allclose(var[..., 2:3], var2, rtol=0.04)
+    npt.assert_allclose(var[..., 3:], var3, rtol=0.04)
+
+
+def test_model_stack_training() -> None:
+    class Model(GaussianProcess, TrainableProbabilisticModel):
+        def __init__(
+            self,
+            mean_functions: Sequence[Callable[[TensorType], TensorType]],
+            kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+            output_dims: slice,
+        ):
+            super().__init__(mean_functions, kernels)
+            self._output_dims = output_dims
+
+        def _assert_data(self, dataset: Dataset) -> None:
+            qp, obs = dataset.astuple()
+            expected_obs = data.observations[..., self._output_dims]
+            assert_datasets_allclose(dataset, Dataset(qp, expected_obs))
+
+        optimize = _assert_data
+        update = _assert_data
+
+    rbf = tfp.math.psd_kernels.ExponentiatedQuadratic()
+    model01 = Model([quadratic, quadratic], [rbf, rbf], slice(0, 2))
+    model2 = Model([quadratic], [rbf], slice(2, 3))
+    model3 = Model([quadratic], [rbf], slice(3, 4))
+
+    stack = ModelStack((model01, 2), (model2, 1), (model3, 1))
+    data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
+    stack.update(data)
+    stack.optimize(data)
 
 
 def _mock_data() -> tuple[tf.Tensor, tf.Tensor]:
