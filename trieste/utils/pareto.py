@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
+
+from typing import Tuple
+
 import tensorflow as tf
 
 from ..type import TensorType
 
 
-def non_dominated(observations: TensorType) -> TensorType:
+def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
     """
     Computes the non-dominated set for a set of data points.
     if there are duplicate point(s) in the non-dominated set, this function will return
