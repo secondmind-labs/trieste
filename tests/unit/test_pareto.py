@@ -16,7 +16,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.utils.pareto import non_dominated
+from trieste.pareto import non_dominated
 
 
 @pytest.mark.parametrize(

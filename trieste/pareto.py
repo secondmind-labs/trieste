@@ -17,7 +17,7 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from ..type import TensorType
+from .type import TensorType
 
 
 def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
