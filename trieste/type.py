@@ -17,5 +17,5 @@ from typing import Union
 import numpy as np
 import tensorflow as tf
 
-TensorType = Union[np.ndarray, tf.Tensor]
+TensorType = Union[np.ndarray, tf.Tensor, tf.Variable]
 """Type alias for tensor-like types."""

@@ -137,8 +137,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :raise TypeError: If either component of ``model.data`` is not a :class:`~tf.Variable`.
         """
         super().__init__(optimizer)
+
+        for data in model.data:
+            _assert_is_variable(data)
+
         self._model = model
 
     def __repr__(self) -> str:
@@ -154,26 +159,21 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         _assert_data_is_compatible(dataset, Dataset(x, y))
 
-        if dataset.query_points.shape[-1] != x.shape[-1]:
-            raise ValueError
-
-        if dataset.observations.shape[-1] != y.shape[-1]:
-            raise ValueError
-
-        self.model.data = dataset.query_points, dataset.observations
+        x.assign(dataset.query_points)
+        y.assign(dataset.observations)
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
+    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
-        :param data: The initial training data.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :raise TypeError: If ``model.num_data`` is not a :class:`~tf.Variable`.
         """
         super().__init__(optimizer)
+        _assert_is_variable(model.num_data)
         self._model = model
-        self._data = data
 
     def __repr__(self) -> str:
         """"""
@@ -185,25 +185,30 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     def update(self, dataset: Dataset) -> None:
         _assert_data_is_compatible(dataset, self._data)
-
-        self._data = dataset
-
-        num_data = dataset.query_points.shape[0]
-        self.model.num_data = num_data
+        self.model.num_data.assign(len(dataset))
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
 
     def __init__(self, model: VGP, optimizer: Optimizer | None = None):
-        """
+        r"""
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
+        :raise TypeError: If either component of ``model.data``, or ``model.num_data`` are not
+            :class:`~tf.Variable`\ s.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
+
         super().__init__(optimizer)
+
+        for data in model.data:
+            _assert_is_variable(data)
+
+        _assert_is_variable(model.num_data)
+
         self._model = model
 
     def __repr__(self) -> str:
@@ -240,10 +245,12 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
         new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
-        model.data = dataset.astuple()
-        model.num_data = len(dataset)
-        model.q_mu = gpflow.Parameter(new_q_mu)
-        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+        x, y = model.data
+        x.assign(dataset.query_points)
+        y.assign(dataset.observations)
+        model.num_data.assign(len(dataset))
+        model.q_mu.assign(new_q_mu)
+        model.q_sqrt.assign(new_q_sqrt)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -263,6 +270,11 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
 types.
 """
+
+
+def _assert_is_variable(x: object) -> None:
+    if not isinstance(x, tf.Variable):
+        raise TypeError(f"Expected TensorFlow Variable, got type {(type(x))}")
 
 
 def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
