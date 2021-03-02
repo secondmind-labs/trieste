@@ -14,7 +14,7 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 import tensorflow as tf
 
-from trieste.type import TensorType
+from ..type import TensorType
 
 
 def non_dominated(observations: TensorType) -> TensorType:
