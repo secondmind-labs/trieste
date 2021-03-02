@@ -25,39 +25,38 @@ from tests.util.misc import (
     random_seed,
 )
 from tests.util.model import QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel
-from trieste.acquisition.multiobjective.analytic import Expected_Hypervolume_Improvement, expected_hv_improvement
 from trieste.data import Dataset
 from trieste.utils.pareto import Pareto
 from trieste.acquisition.multiobjective.function import get_nadir_point
+from trieste.acquisition.multiobjective.analytic import Expected_Hypervolume_Improvement, expected_hv_improvement
+from trieste.models.model_interfaces import ModelStack
 
 test_models = (QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel, QuadraticMeanAndRBFKernel)
 
 
 def test_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
     num_obj = 3
-    datasets = {f'OBJECTIVE{i + 1}': Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]),
-                                             ) for i in range(num_obj)}
-    models = {f'OBJECTIVE{i + 1}': QuadraticMeanAndRBFKernel() for i in range(num_obj)}
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    model = ModelStack(*[(QuadraticMeanAndRBFKernel(), 1) for _ in range(num_obj)])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        Expected_Hypervolume_Improvement().prepare_acquisition_function(datasets, models)
+        Expected_Hypervolume_Improvement().prepare_acquisition_function(dataset, model)
 
 
 def test_expected_hv_improvement_builder_builds_expected_hv_improvement_using_pareto_from_model() -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
-    datasets = {f'OBJECTIVE{i + 1}': Dataset(
-        train_x,
-        tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8], [1.1], [2.1], [3.9]]),
-    ) for i in range(num_obj)}
-    models = {f'OBJECTIVE{i + 1}': test_models[i]() for i in range(num_obj)}
-    acq_fn = Expected_Hypervolume_Improvement().prepare_acquisition_function(datasets, models)
+    dataset = Dataset(
+        train_x, tf.tile(tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8], [1.1], [2.1],
+                                      [3.9]]), [1, num_obj]))
 
-    model_pred_observation = tf.concat([models[model_tag].predict(train_x)[0]
-                                        for model_tag in models], axis=-1)
+    model = ModelStack(*[(test_models[_](), 1) for _ in range(num_obj)])
+    acq_fn = Expected_Hypervolume_Improvement().prepare_acquisition_function(dataset, model)
+
+    model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(Dataset(tf.zeros_like(model_pred_observation), model_pred_observation))
     xs = tf.linspace([-10.0], [10.0], 100)
-    expected = expected_hv_improvement(models, xs, _prt, get_nadir_point(_prt.front))
+    expected = expected_hv_improvement(model, xs, _prt, get_nadir_point(_prt.front))
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -82,10 +81,9 @@ def test_expected_hypervolume_improvement(
     xs = tf.constant(list(itertools.product(*[list(np.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)))
 
     xs = tf.cast(xs, dtype=training_observations.dtype)
-    models = {f'OBJECTIVE{i}': test_models[i](variance_scale) for i in range(obj_num)}
+    model = ModelStack(*[(test_models[_](), 1) for _ in range(obj_num)])
 
-    predicts = [models[model_tag].predict(xs) for model_tag in models]
-    mean, variance = (tf.concat(moment, 1) for moment in zip(*predicts))
+    mean, variance = model.predict(xs)
 
     # [f_samples, B, L]
     predict_samples = tfd.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
@@ -106,6 +104,6 @@ def test_expected_hypervolume_improvement(
     ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))  #
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)
 
-    ehvi = expected_hv_improvement(models, xs, _pareto, nadir)
+    ehvi = expected_hv_improvement(model, xs, _pareto, nadir)
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=rtol, atol=atol)

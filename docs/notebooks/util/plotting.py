@@ -210,7 +210,7 @@ def plot_bo_points(
 
 
 def plot_bo_points_in_obj_space(
-        data_set,
+        dataset,
         num_init=None,
         mask_fail=None,
         figsize=None,
@@ -223,31 +223,29 @@ def plot_bo_points_in_obj_space(
         c_pass="tab:green",
         c_fail="tab:red",
         c_pareto="tab:purple",
-        maximize=False,
         only_plot_pareto=False
 ):
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
     Markers and colors are chosen according to BO factors.
-    :param data_set:
+    :param dataset:
     :param num_init: initial number of BO points
     :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
     :param title:
     :param xlabel:
     :param ylabel:
     :param figsize:
-    :param maximize: if maximize, assume a negative objective function has been use for BO, hence plot the minus of points
     :param only_plot_pareto: if set true, only plot the pareto points
     """
-    obj_num = len(data_set.values())
+    obj_num = dataset.observations.shape[-1]
     assert obj_num == 2 or obj_num == 3, NotImplementedError('Only support 2/3-objective'
                                                              ' function plot but found: {}'.format(obj_num))
 
-    _, dom = non_dominated_sort(to_Dataset(data_set))
+    _, dom = non_dominated_sort(dataset)
     idx_pareto = np.where(dom == 0)
 
-    data_observations = np.hstack([data.observations for data in data_set.values()])
-    pts = data_observations if maximize is False else -data_observations
+    data_observations = dataset.observations
+    pts = data_observations
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(

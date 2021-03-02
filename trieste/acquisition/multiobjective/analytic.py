@@ -15,7 +15,7 @@ main reference:
 """
 import tensorflow as tf
 from itertools import product
-from typing import Mapping, Union
+from typing import Union
 
 from ...utils.pareto import Pareto
 from ..function import AcquisitionFunction
@@ -56,38 +56,32 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
             return nadir_setting(pareto.front)
 
     def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        :param datasets: The data from the observer. Must be populated.
-        :param models: The model over the specified ``dataset``. Must have event shape [1].
-                       TODO: The shape is still awaiting for trieste multi-model design decision
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
         :return: The hv_probability_of_improvement function.
         """
-        for _, data in datasets.items():
-            tf.debugging.assert_positive(len(data), message='Dataset must be populated.')
-        means = [models[model_tag].predict(datasets[data_tag].query_points)[0] for
-                 model_tag, data_tag in zip(models, datasets)]
-        for mean in means:
-            tf.debugging.assert_shapes(
-                [(mean, ["_", 1])], message="Expected model with event shape [1].")
-        datasets_mean = tf.concat(means, axis=1)
-        _pf = Pareto(Dataset(query_points=tf.zeros_like(datasets_mean), observations=datasets_mean))
+        tf.debugging.assert_positive(len(dataset), message='Dataset must be populated.')
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(Dataset(query_points=tf.zeros_like(mean), observations=mean))
         _nadir_pt = self._calculate_nadir(_pf, nadir_setting=self._nadir_setting)
-        return lambda at: self._acquisition_function(models, at, _pf, _nadir_pt)
+        return lambda at: self._acquisition_function(model, at, _pf, _nadir_pt)
 
     @staticmethod
     def _acquisition_function(
-            models: Mapping[str, ProbabilisticModel],
+            model: ProbabilisticModel,
             at: TensorType,
             pareto: Pareto,
             nadir: tf.Tensor,
     ) -> tf.Tensor:
-        return expected_hv_improvement(models, at, pareto, nadir)
+        return expected_hv_improvement(model, at, pareto, nadir)
 
 
 def expected_hv_improvement(
-        models: Mapping[str, ProbabilisticModel],
+        model: ProbabilisticModel,
         at: TensorType,
         pareto: Pareto,
         nadir_point: tf.Tensor,
@@ -101,14 +95,14 @@ def expected_hv_improvement(
         non-dominated partition algorithm
     2. The Psi and nu function in the original paper is defined for a maximization, we inverse our
        problem to make use of the same equation
-    3. The calculation of EHVI based on Eq.44 is independent on the order of cells
+    3. The calculation of EHVI based on Eq.44 is independent on the order of each cell
 
-    :param models: The model of the objective function.
+    :param model: The model of the objective function.
     :param at: The points at which to evaluate the probability of feasibility.
                 Must have rank at least two
     :param pareto: Pareto class
     :param nadir_point The reference point for calculating hypervolume
-    :return: The hypervolume probability of improvement at ``at``.
+    :return: The hypervolume expected improvement at ``at``.
     """
 
     normal = tfd.Normal(loc=tf.zeros(shape=1, dtype=at.dtype), scale=tf.ones(shape=1, dtype=at.dtype))
@@ -132,8 +126,7 @@ def expected_hv_improvement(
         """
         return (u - l) * (1 - normal.cdf((u - mean) / std))
 
-    predicts = [models[model_tag].predict(at) for model_tag in models]
-    candidate_mean, candidate_var = (tf.concat(moment, 1) for moment in zip(*predicts))
+    candidate_mean, candidate_var = model.predict(at)
     candidate_std = tf.sqrt(candidate_var)
 
     # calc ehvi assuming maximization

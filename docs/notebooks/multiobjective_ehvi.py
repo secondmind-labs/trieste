@@ -1,4 +1,5 @@
-# # Multi-objective optimization: a HyperVolume Probability of Improvement based approach (HVPI)
+# -*- coding: utf-8 -*-
+# # Multi-objective optimization: an Expected HyperVolume Improvement Approach
 
 # +
 import trieste
@@ -6,6 +7,10 @@ import gpflow
 import numpy as np
 import tensorflow as tf
 from trieste.type import TensorType
+from trieste.data import Dataset
+from trieste.acquisition.rule import OBJECTIVE
+from trieste.models.model_interfaces import ModelStack
+from trieste.models import create_model
 import matplotlib.pyplot as plt
 from trieste.acquisition.multiobjective.analytic import Expected_Hypervolume_Improvement
 
@@ -39,12 +44,11 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 # We'll make an observer that outputs different objective function values, labelling each as shown.
 
 num_objective = 2
-OBJECTIVES = ["OBJECTIVE{}".format(i + 1) for i in range(num_objective)]
 
 
 def observer(query_points):
     y = vlmop2(query_points)
-    return {OBJECTIVES[i]: trieste.data.Dataset(query_points, y[:, i, np.newaxis]) for i in range(num_objective)}
+    return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
 
 
 # Let's randomly sample some initial data from the observer ...
@@ -64,7 +68,7 @@ plt.show()
 
 from util.plotting import plot_bo_points_in_obj_space
 
-plot_bo_points_in_obj_space(initial_data)
+plot_bo_points_in_obj_space(initial_data[OBJECTIVE])
 plt.show()
 
 
@@ -78,23 +82,27 @@ def create_bo_model(data, input_dim=2, l=1.0):
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return {
+    return create_model({
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
             "minimize_args": {"options": dict(maxiter=100)},
         },
-    }
+    })
 
 
-models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]]) for i in range(num_objective)}
+objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
+                                             tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1))), 1) \
+                    for i in range(num_objective)]
+
+models = {OBJECTIVE: ModelStack(*objective_models)}
 
 # ## Define the acquisition process
 #
-# Here we utilize the `HVProbabilityOfImprovement` acquisition function proposed in
-# Ivo, 2014 [1]:
+# Here we utilize the `HVExpectedImprovement` acquisition function proposed in
+# Yang 2019 [1]:
 
-hvei = Expected_Hypervolume_Improvement().using(OBJECTIVES)
+hvei = Expected_Hypervolume_Improvement().using(OBJECTIVE)
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
 
 # ## Run the optimization loop
@@ -109,7 +117,7 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # +
 datasets = result.try_get_final_datasets()
-data_query_points = datasets['OBJECTIVE1'].query_points
+data_query_points = datasets[OBJECTIVE].query_points
 
 _, ax = plot_function_2d(vlmop2, mins, maxs, grid_density=100, contour=True, title=['Obj 1', 'Obj 2'])
 plot_bo_points(data_query_points, ax=ax[0, 0], num_init=num_initial_points)
@@ -119,16 +127,17 @@ plt.show()
 
 # ... and visulize in the objective space, orange dots denotes the nondominated points.
 
-plot_bo_points_in_obj_space(result.try_get_final_datasets(), num_init=num_initial_points)
+plot_bo_points_in_obj_space(datasets[OBJECTIVE], num_init=num_initial_points)
 plt.show()
 
-## Advanced: Problem with 3 Objective Function
+# # Advanced: Problem with 3 Objective Function
 
 # Now we demonstrate an optimization for DTLZ2 function with 3 objectives in 4 dimension:
 
 # +
 from tensorflow import sin, cos
 from math import pi
+
 
 def dtlz2(x: TensorType, M: int = 3) -> TensorType:
     """
@@ -143,7 +152,7 @@ def dtlz2(x: TensorType, M: int = 3) -> TensorType:
         f = None
 
         for i in range(M):
-            y = (1 + g(x[:, M-1:]))
+            y = (1 + g(x[:, M - 1:]))
             for j in range(M - 1 - i):
                 y *= cos((pi * x[:, j, np.newaxis]) / 2)
             if i > 0:
@@ -153,14 +162,15 @@ def dtlz2(x: TensorType, M: int = 3) -> TensorType:
 
     return problem2(x, M)
 
+
 def observer(query_points):
     y = dtlz2(query_points)
-    return {OBJECTIVES[i]: trieste.data.Dataset(query_points, y[:, i, np.newaxis]) for i in range(num_objective)}
+    return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
 
 
 # -
 
-# Now we can follow similar setup to optimize this problem, it may take a while waiting for the finish of the optimizer
+# Now we can follow similar setup to optimize this problem, it will take a while waiting for the finish of the optimizer
 
 # +
 mins = [0, 0, 0, 0]
@@ -170,16 +180,18 @@ upper_bound = tf.cast(maxs, gpflow.default_float())
 search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_objective = 3
-OBJECTIVES = ["OBJECTIVE{}".format(i + 1) for i in range(num_objective)]
-
 
 num_initial_points = 15
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
-models = {OBJECTIVES[i]: create_bo_model(initial_data[OBJECTIVES[i]], 4, .8) for i in range(num_objective)}
+objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
+                                             tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1)),
+                                     4, 0.8), 1) for i in range(num_objective)]
 
-hvei = Expected_Hypervolume_Improvement().using(OBJECTIVES)
+models = {OBJECTIVE: ModelStack(*objective_models)}
+
+hvei = Expected_Hypervolume_Improvement().using(OBJECTIVE)
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
 
 num_steps = 30
@@ -187,8 +199,10 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 # -
 
-plot_bo_points_in_obj_space(result.try_get_final_datasets(), num_init=num_initial_points)
+plot_bo_points_in_obj_space(result.try_get_final_datasets()[OBJECTIVE], num_init=num_initial_points)
 plt.show()
+
+# [1] Yang, K., Emmerich, M., Deutz, A., & Bäck, T. (2019). Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1), 3-34.
 
 # ## LICENSE
 #
