@@ -1,10 +1,20 @@
 import tensorflow as tf
 from abc import abstractmethod
 from ...utils.pareto import Pareto
-from ..function import SingleModelAcquisitionBuilder
+from ..function import SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder
 
 
 class HypervolumeAcquisitionBuilder(SingleModelAcquisitionBuilder):
+    @abstractmethod
+    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
+        """
+        calculate the reference point for hypervolme calculation
+        :param pareto: Pareto class
+        :param nadir_setting
+        """
+
+
+class HypervolumeBatchAcquisitionBuilder(SingleModelBatchAcquisitionBuilder):
     @abstractmethod
     def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
         """
