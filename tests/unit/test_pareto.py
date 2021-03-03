@@ -16,7 +16,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.pareto import non_dominated
+from trieste.pareto import Pareto, non_dominated
 
 
 @pytest.mark.parametrize(
@@ -88,3 +88,26 @@ def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.
     ret_pareto_set, ret_dominance = non_dominated(scores)
     npt.assert_allclose(ret_pareto_set, pareto_set)
     npt.assert_allclose(ret_dominance, dominance)
+
+
+def test_pareto_2d_bounds() -> None:
+    objectives = tf.constant(
+        [
+            [0.9575, 0.4218],
+            [0.9649, 0.9157],
+            [0.1576, 0.7922],
+            [0.9706, 0.9595],
+            [0.9572, 0.6557],
+            [0.4854, 0.0357],
+            [0.8003, 0.8491],
+            [0.1419, 0.9340],
+        ]
+    )
+
+    pareto_2d = Pareto(objectives)
+
+    npt.assert_allclose(pareto_2d.bounds.lower_idx, tf.constant([[0, 0], [1, 0], [2, 0], [3, 0]]))
+    npt.assert_allclose(pareto_2d.bounds.upper_idx, tf.constant([[1, 4], [2, 1], [3, 2], [4, 3]]))
+    npt.assert_allclose(
+        pareto_2d.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
+    )
