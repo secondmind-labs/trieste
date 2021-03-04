@@ -61,7 +61,7 @@ class BoundedVolumes:
         :param upper_idx: the upperbounds index of the volumes
         """
 
-        assert tf.reduce_all(lower_idx.shape == upper_idx.shape)
+        tf.debugging.assert_shapes([(lower_idx, ["N","D"]), (upper_idx, ["N","D"])])
         self.lower_idx = lower_idx
         self.upper_idx = upper_idx
 
