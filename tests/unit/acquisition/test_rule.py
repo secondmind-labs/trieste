@@ -20,13 +20,16 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
+from tests.util.misc import one_dimensional_range, random_seed, zero_dataset, quadratic
 from tests.util.model import QuadraticMeanAndRBFKernel
-from trieste.acquisition.function import (
+from trieste.acquisition import (
+    AcquisitionFunctionBuilder,
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
+    AcquisitionFunction,
 )
+from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     OBJECTIVE,
     BatchAcquisitionRule,
@@ -36,26 +39,29 @@ from trieste.acquisition.rule import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.space import Box
+from trieste.type import TensorType
 
 
-@pytest.mark.parametrize(
-    "search_space, expected_minimum",
-    [
-        (
-            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
-            tf.constant([[0.1, -0.1]]),
-        ),
-        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
-    ],
-)
-def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+def _line_search_minimize(search_space: Box, f: AcquisitionFunction) -> TensorType:
+    xs = tf.linspace(search_space.lower, search_space.upper, 10 ** 6)
+    return xs[tf.squeeze(tf.argmax(f(xs))), None]
+
+
+@pytest.mark.parametrize("optimizer", [_line_search_minimize, None])
+def test_ego(optimizer: AcquisitionOptimizer[Box]) -> None:
+    class NegQuadratic(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: - quadratic(x - 1)
+
+    search_space = Box([-10], [10])
+    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
     query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
-    npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
+    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -222,7 +228,8 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
 def test_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
-    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder())
+    acq = _BatchModelMinusMeanMaximumSingleBuilder()
+    ego: BatchAcquisitionRule[Box] = BatchAcquisitionRule(num_query_points, acq)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}

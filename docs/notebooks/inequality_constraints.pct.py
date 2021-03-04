@@ -15,7 +15,7 @@ tf.random.set_seed(1793)
 
 # %%
 import gpflow
-import trieste
+from trieste.space import Box
 
 class Sim:
     threshold = 0.5
@@ -33,12 +33,13 @@ class Sim:
         return z[:, None]
 
 
-search_space = trieste.space.Box([0, 0], [6, 6])
+search_space = Box([0, 0], [6, 6])
 
 # %% [markdown]
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
+import trieste
 import matplotlib.pyplot as plt
 from util.inequality_constraints_utils import plot_objective_and_constraints
 
@@ -49,13 +50,15 @@ plt.show()
 # We'll make an observer that outputs the objective and constraint data, labelling each as shown.
 
 # %%
+from trieste.data import Dataset
+
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
 def observer(query_points):
     return {
-        OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
+        OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
+        CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
 
 # %% [markdown]
@@ -112,11 +115,13 @@ initial_models = {
 # We can construct the _expected constrained improvement_ acquisition function defined in <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, where they use the probability of feasibility with respect to the constraint model.
 
 # %%
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -156,6 +161,8 @@ plt.show()
 # It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
 
 # %%
+from trieste.acquisition.rule import BatchAcquisitionRule
+
 class BatchExpectedConstrainedImprovement(
     trieste.acquisition.BatchAcquisitionFunctionBuilder
 ):
@@ -202,7 +209,7 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
+batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
     num_query_points, batch_eci
 )
 
