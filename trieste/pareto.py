@@ -86,9 +86,7 @@ class Pareto:
 
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
-        """
-        :param front: pareto front of current observations
-        """
+        
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
         len_front, number_of_objectives = front.shape
