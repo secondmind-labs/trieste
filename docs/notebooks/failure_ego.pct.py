@@ -150,11 +150,13 @@ models: dict[str, trieste.models.ModelSpec] = {
 
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition import SingleModelAcquisitionBuilder, ExpectedImprovement, Product
+from trieste.acquisition import (
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
+)
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
-        return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
+        return lambda at: lower_confidence_bound(model, 0.0, at)
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
