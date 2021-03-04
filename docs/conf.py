@@ -45,20 +45,22 @@ copyright = (
     'distributed under the License is distributed on an "AS IS" BASIS,\n'
     'WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n'
     'See the License for the specific language governing permissions and\n'
-    'limitations under the License."\n'
+    'limitations under the License.\n'
 )
 # fmt: on
 author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.2.0"
+release = "0.4.0"
 
 # -- General configuration ---------------------------------------------------
 
 extensions = [
     "sphinx.ext.viewcode",
+    "sphinx.ext.autosectionlabel",
 ]
 add_module_names = False
+autosectionlabel_prefix_document = True
 
 # sphinx-autoapi
 extensions.append("autoapi.extension")
@@ -84,6 +86,10 @@ extensions.append("nbsphinx")
 nbsphinx_custom_formats = {
     ".pct.py": ["jupytext.reads", {"fmt": "py:percent"}],
 }
+
+# sphinxcontrib-bibtex
+extensions.append("sphinxcontrib.bibtex")
+bibtex_bibfiles = ["refs.bib"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

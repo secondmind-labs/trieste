@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import cm
+import tensorflow as tf
 
+from trieste.type import TensorType
 from trieste.utils import to_numpy
 
 
-def create_grid(mins, maxs, grid_density=20):
+def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     """
-    Creates a regular 2D grid of size grid_density*grid_density between mins and maxs.
+    Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
     :param mins: list of 2 lower bounds
     :param maxs: list of 2 upper bounds
     :param grid_density: scalar
     :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of contour / surface plots
     """
+    tf.debugging.assert_shapes([(mins, [2]), (maxs, [2])])
+
     xspaced = np.linspace(mins[0], maxs[0], grid_density)
     yspaced = np.linspace(mins[1], maxs[1], grid_density)
     xx, yy = np.meshgrid(xspaced, yspaced)
@@ -63,8 +67,8 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
 
 def plot_function_2d(
     obj_func,
-    mins,
-    maxs,
+    mins: TensorType,
+    maxs: TensorType,
     grid_density=20,
     contour=False,
     log=False,
@@ -76,8 +80,8 @@ def plot_function_2d(
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
     :param obj_func: a function that returns a n-array given a [n, d] array
-    :param mins: list of 2 lower bounds
-    :param maxs: list of 2 upper bounds
+    :param mins: 2 lower bounds
+    :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
@@ -86,13 +90,15 @@ def plot_function_2d(
     :param ylabel:
     :param figsize:
     """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
 
     # Create a regular grid on the parameter space
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
 
     # Evaluate objective function
     F = to_numpy(obj_func(Xplot))
-    if len(F.shape) is 1:
+    if len(F.shape) == 1:
         F = F.reshape(-1, 1)
 
     n_output = F.shape[1]
@@ -250,8 +256,8 @@ def plot_regret(
 
 def plot_gp_2d(
     model,
-    mins,
-    maxs,
+    mins: TensorType,
+    maxs: TensorType,
     grid_density=20,
     contour=False,
     xlabel=None,
@@ -262,14 +268,16 @@ def plot_gp_2d(
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
     :param model: a gpflow model
-    :param mins: list of 2 lower bounds
-    :param maxs: list of 2 upper bounds
+    :param mins: 2 lower bounds
+    :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param xlabel: optional string
     :param ylabel: optional string
     :param figsize:
     """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
 
     # Create a regular grid on the parameter space
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)

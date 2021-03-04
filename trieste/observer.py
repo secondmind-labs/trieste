@@ -13,25 +13,26 @@
 # limitations under the License.
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
-from typing import Callable, Dict
+
+from typing import Callable, Mapping
 
 import tensorflow as tf
 
 from .data import Dataset
+from .type import TensorType
 
-
-Observer = Callable[[tf.Tensor], Dict[str, Dataset]]
+Observer = Callable[[TensorType], Mapping[str, Dataset]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
 datasets).
 """
 
 
-def _is_finite(t: tf.Tensor) -> tf.Tensor:
+def _is_finite(t: TensorType) -> TensorType:
     return tf.logical_and(tf.math.is_finite(t), tf.logical_not(tf.math.is_nan(t)))
 
 
-def filter_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
+def filter_finite(query_points: TensorType, observations: TensorType) -> Dataset:
     """
     :param query_points: A tensor of shape (N x M).
     :param observations: A tensor of shape (N x 1).
@@ -46,7 +47,7 @@ def filter_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
     return Dataset(tf.boolean_mask(query_points, mask), tf.boolean_mask(observations, mask))
 
 
-def map_is_finite(query_points: tf.Tensor, observations: tf.Tensor) -> Dataset:
+def map_is_finite(query_points: TensorType, observations: TensorType) -> Dataset:
     """
     :param query_points: A tensor.
     :param observations: A tensor.

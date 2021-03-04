@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains utilities for `Observer` data. """
+""" This module contains utilities for :class:`~trieste.observer.Observer` data. """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict, Tuple
 
 import tensorflow as tf
+
+from trieste.type import TensorType
 
 
 @dataclass(frozen=True)
@@ -26,10 +29,10 @@ class Dataset:
     :class:`~trieste.observer.Observer`.
     """
 
-    query_points: tf.Tensor
+    query_points: TensorType
     """ The points at which the :class:`~trieste.observer.Observer` was queried. """
 
-    observations: tf.Tensor
+    observations: TensorType
     """ The observed output of the :class:`~trieste.observer.Observer` for each query point. """
 
     def __post_init__(self) -> None:
@@ -53,7 +56,7 @@ class Dataset:
             )
 
     def __add__(self, rhs: Dataset) -> Dataset:
-        """
+        r"""
         Return the :class:`Dataset` whose query points are the result of concatenating the
         `query_points` in each :class:`Dataset` along the zeroth axis, and the same for the
         `observations`. For example:
@@ -85,8 +88,20 @@ class Dataset:
             tf.concat([self.observations, rhs.observations], axis=0),
         )
 
-    def __len__(self) -> tf.Tensor:
+    def __len__(self) -> TensorType:
         """
         :return: The number of query points, or equivalently the number of observations.
         """
         return tf.shape(self.observations)[0]
+
+    def __deepcopy__(self, memo: Dict[int, object]) -> Dataset:
+        return self
+
+    def astuple(self) -> Tuple[TensorType, TensorType]:
+        """
+        **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
+        **not** deepcopy the attributes.
+
+        :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
+        """
+        return self.query_points, self.observations

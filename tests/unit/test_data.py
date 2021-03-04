@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 from typing import Tuple
 
 import pytest
@@ -183,3 +183,15 @@ def test_dataset_concatentation_raises_for_incompatible_data(lhs: Dataset, rhs: 
 )
 def test_dataset_length(data: Dataset, length: int) -> None:
     assert len(data) == length
+
+
+def test_dataset_deepcopy() -> None:
+    data = Dataset(tf.constant([[0.0, 1.0]]), tf.constant([[2.0]]))
+    assert_datasets_allclose(data, copy.deepcopy(data))
+
+
+def test_dataset_astuple() -> None:
+    qp, obs = tf.constant([[0.0]]), tf.constant([[1.0]])
+    qp_from_astuple, obs_from_astuple = Dataset(qp, obs).astuple()
+    assert qp_from_astuple is qp
+    assert obs_from_astuple is obs

@@ -16,26 +16,27 @@ This module contains acquisition rules, which choose the optimal point(s) to que
 the Bayesian optimization process.
 """
 from __future__ import annotations
+
+import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TypeVar, Generic, Optional, Tuple, Mapping, Union
+from typing import Dict, Generic, Mapping, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import SearchSpace, Box
-from ..type import QueryPoints
-from .function import (
-    AcquisitionFunctionBuilder,
-    ExpectedImprovement,
-    BatchAcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    AcquisitionFunction,
-)
+from ..space import Box, SearchSpace
+from ..type import TensorType
 from . import _optimizer
-
+from .function import (
+    AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    BatchAcquisitionFunction,
+    BatchAcquisitionFunctionBuilder,
+    ExpectedImprovement,
+)
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -54,7 +55,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[S],
-    ) -> Tuple[QueryPoints, S]:
+    ) -> Tuple[TensorType, S]:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
@@ -80,8 +81,8 @@ class AcquisitionRule(ABC, Generic[S, SP]):
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
 """
-:var OBJECTIVE: A tag typically used by acquisition rules to denote the data sets and models
-corresponding to the optimization objective.
+A tag typically used by acquisition rules to denote the data sets and models corresponding to the
+optimization objective.
 """
 
 
@@ -100,13 +101,17 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
 
         self._builder = builder
 
+    def __repr__(self) -> str:
+        """"""
+        return f"EfficientGlobalOptimization({self._builder!r})"
+
     def acquire(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Return the query point that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
@@ -142,13 +147,17 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
 
+    def __repr__(self) -> str:
+        """"""
+        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
+
     def acquire(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
         ``search_space``. Of those points, return the `num_query_points` points at which
@@ -187,17 +196,23 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         acquisition_space: Box
         """ The search space. """
 
-        eps: tf.Tensor
-        """ The (maximum) vector from the current best point to each bound of the acquisition space. """
+        eps: TensorType
+        """
+        The (maximum) vector from the current best point to each bound of the acquisition space.
+        """
 
-        y_min: tf.Tensor
+        y_min: TensorType
         """ The minimum observed value. """
 
-        is_global: Union[tf.Tensor, bool]
+        is_global: Union[TensorType, bool]
         """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean `tf.Tensor`
-        instead of a `bool`.
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+        `TensorType` instead of a `bool`.
         """
+
+        def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
+            box_copy = cast(Box, copy.deepcopy(self.acquisition_space, memo))
+            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
     def __init__(
         self,
@@ -220,13 +235,17 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self._beta = beta
         self._kappa = kappa
 
+    def __repr__(self) -> str:
+        """"""
+        return f"TrustRegion({self._builder!r}, {self._beta!r}, {self._kappa!r})"
+
     def acquire(
         self,
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: Optional[State],
-    ) -> Tuple[QueryPoints, State]:
+    ) -> Tuple[TensorType, State]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
@@ -320,6 +339,10 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         self._num_query_points = num_query_points
         self._builder = builder
 
+    def __repr__(self) -> str:
+        """"""
+        return f"BatchAcquisitionRule({self._num_query_points!r}, {self._builder!r})"
+
     def _vectorize_batch_acquisition(
         self, acquisition_function: BatchAcquisitionFunction
     ) -> AcquisitionFunction:
@@ -333,7 +356,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[QueryPoints, None]:
+    ) -> Tuple[TensorType, None]:
         """
         Return the batch of query points that optimizes the acquisition function produced by
         `builder` (see :meth:`__init__`).

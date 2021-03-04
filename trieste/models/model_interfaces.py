@@ -11,41 +11,59 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from abc import abstractmethod, ABC
-from typing import Callable, Dict, Iterable, Optional, Tuple, Union, Any
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import gpflow
-from gpflow.models import GPModel, GPR, SGPR, VGP, SVGP
 import tensorflow as tf
+from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from .. import utils
 from ..data import Dataset
-from ..type import ObserverEvaluations, QueryPoints, TensorType
+from ..type import TensorType
+from ..utils import DEFAULTS
+from .optimizer import Optimizer
 
 
-class ProbabilisticModel(ABC):
+class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """
-        Return the predicted mean and variance of the latent function(s) at the specified
+        Return the mean and variance of the independent marginal distributions at each point in
         ``query_points``.
 
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance.
+        This is essentially a convenience method for :meth:`predict_joint`, where non-event
+        dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+        batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """
-        Return ``num_samples`` samples from the predictive distribution at ``query_points``.
+        :param query_points: The points at which to make predictions, of shape [..., B, D].
+        :return: The mean and covariance of the joint marginal distribution at each batch of points
+            in ``query_points``. For a predictive distribution with event shape E, the mean will
+            have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
+        """
+        raise NotImplementedError
 
-        :param query_points: The points at which to sample.
+    @abstractmethod
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples from the independent marginal distributions at
+        ``query_points``.
+
+        :param query_points: The points at which to sample, with shape [..., D].
         :param num_samples: The number of samples at each point.
-        :return: The samples. Has shape [S, Q, D], where S is the number of samples, Q is the number
-            of query points, and D is the dimension of the predictive distribution.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -63,138 +81,75 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         raise NotImplementedError
 
     @abstractmethod
-    def optimize(self) -> None:
-        """ Optimize the model parameters. """
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model objective with respect to (hyper)parameters given the specified
+        ``dataset``.
+
+        :param dataset: The data with which to train the model.
+        """
         raise NotImplementedError
-
-
-Optimizer = Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
-
-
-class CustomTrainable(tf.Module, TrainableProbabilisticModel, ABC):
-    """
-    A utility class that provides a default optimization strategy, as well as the ability to modify
-    various elements of this strategy.
-
-    :cvar maxiter_default: The default maximum number of iterations to optimize the model for, when
-        using a :class:`tf.optimizers.Optimizer`.
-    :cvar create_optimizer_default: Builder for the default optimizer.
-    :cvar apply_jit_function: If `True`, the default optimization procedure is compiled
-        with :func:`tf.function`.
-    """
-
-    maxiter_default = 1000
-    create_optimizer_default: Callable[[], Optimizer] = gpflow.optimizers.Scipy
-    apply_jit_function = False
-
-    @abstractmethod
-    def loss(self) -> tf.Tensor:
-        """ The training loss (to be minimized) on this model. """
-        raise NotImplementedError
-
-    @property
-    def optimizer(self) -> Optimizer:
-        """ The optimizer used to minimize the training loss. """
-        if not hasattr(self, "_optimizer") or self._optimizer is None:
-            self.set_optimizer(type(self).create_optimizer_default())
-        return self._optimizer
-
-    def set_optimizer(self, optimizer: Optimizer) -> None:
-        """
-        :param optimizer: The optimizer to use.
-        """
-        self._optimizer = optimizer
-
-    @property
-    def optimizer_args(self) -> Dict[str, Any]:
-        """ Keyword arguments passed to the optimizer during optimization. """
-        if not hasattr(self, "_optimizer_args") or self._optimizer_args is None:
-            self.set_optimizer_args(dict())
-        return self._optimizer_args
-
-    def set_optimizer_args(self, args: Dict[str, Any]) -> None:
-        """
-        :param args: The keyword arguments to use.
-        """
-        self._optimizer_args = args
-
-    def optimize(self) -> None:
-        if not hasattr(self, "_optimize_fn") or self._optimize_fn is None:
-            self.set_optimize()
-        return self._optimize_fn()
-
-    def set_optimize(self, optimize_fn: Optional[Callable[[], None]] = None) -> None:
-        """
-        :param optimize_fn: The function to call on `optimize`. By default, constructs an
-            optimization procedure from the current `loss`, `optimizer` and `optimizer_args`.
-        """
-        if optimize_fn is not None:
-            self._optimize_fn = optimize_fn
-            return
-
-        if isinstance(self.optimizer, gpflow.optimizers.Scipy):
-
-            def optimization_fn() -> None:
-                @utils.jit(apply=self.apply_jit_function, autograph=True)
-                def loss_fn() -> tf.Tensor:
-                    return self.loss()
-
-                trainables = self.model.trainable_variables
-                return self.optimizer.minimize(loss_fn, variables=trainables, **self.optimizer_args)
-
-        elif isinstance(self.optimizer, tf.optimizers.Optimizer):
-
-            def optimization_fn() -> None:
-                @utils.jit(apply=self.apply_jit_function, autograph=True)
-                def loss_fn() -> tf.Tensor:
-                    return self.loss()
-
-                trainables = self.model.trainable_variables
-                args = self.optimizer_args.copy()
-                maxiter = args.pop("maxiter", self.maxiter_default)
-                for _ in range(maxiter):
-                    self.optimizer.minimize(loss_fn, var_list=trainables, **args)
-
-        else:
-            raise RuntimeError(
-                f"Unknown type of optimizer ({type(self.optimizer)}) has been passed"
-            )
-
-        self._optimize_fn = optimization_fn
 
 
 class GPflowPredictor(ProbabilisticModel, ABC):
-    """ A wrapper for a GPflow Gaussian process model. """
+    """ A trainable wrapper for a GPflow Gaussian process model. """
+
+    def __init__(self, optimizer: Optional[Optimizer] = None):
+        """
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        """
+        super().__init__()
+
+        if optimizer is None:
+            optimizer = Optimizer(gpflow.optimizers.Scipy())
+
+        self._optimizer = optimizer
+
+    @property
+    def optimizer(self) -> Optimizer:
+        return self._optimizer
 
     @property
     @abstractmethod
     def model(self) -> GPModel:
         """ The underlying GPflow model. """
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
 
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        return self.model.predict_f(query_points, full_cov=True)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
 
+    def optimize(self, dataset: Dataset) -> None:
+        self.optimizer.optimize(self.model, dataset)
 
-class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
-    def __init__(self, model: Union[GPR, SGPR]):
+
+class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
+    def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
         """
         :param model: The GPflow model to wrap.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
-        super().__init__()
+        super().__init__(optimizer)
         self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> Union[GPR, SGPR]:
         return self._model
 
-    def loss(self) -> tf.Tensor:
-        return self._model.training_loss()
-
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
+
+        _assert_data_is_compatible(dataset, Dataset(x, y))
 
         if dataset.query_points.shape[-1] != x.shape[-1]:
             raise ValueError
@@ -205,108 +160,119 @@ class GaussianProcessRegression(GPflowPredictor, CustomTrainable):
         self.model.data = dataset.query_points, dataset.observations
 
 
-Batcher = Callable[[Dataset], Iterable[Tuple[tf.Tensor, tf.Tensor]]]
-"""
-Type alias for a function that creates minibatches from a :class:`~trieste.data.Dataset`.
-"""
-
-
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(
-        self,
-        model: SVGP,
-        data: Dataset,
-        optimizer: tf.optimizers.Optimizer,
-        iterations: int,
-        batcher: Batcher = lambda ds: [(ds.query_points, ds.observations)],
-        apply_jit: bool = False,
-    ):
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
-        :param iterations: The number of iterations for which to optimize the model.
-        :param optimizer: The optimizer to use for optimization.
-        :param batcher: A function to convert training data into (mini)batches for optimization.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
-        self._optimizer = optimizer
-        self._iterations = iterations
-        self._batcher = batcher
+        super().__init__(optimizer)
         self._model = model
         self._data = data
-        self._apply_jit = apply_jit
+
+    def __repr__(self) -> str:
+        """"""
+        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        if dataset.query_points.shape[-1] != self._data.query_points.shape[-1]:
-            raise ValueError
-
-        if dataset.observations.shape[-1] != self._data.observations.shape[-1]:
-            raise ValueError
+        _assert_data_is_compatible(dataset, self._data)
 
         self._data = dataset
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
 
-    def optimize(self) -> None:
+
+class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
+    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+
+    def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
         """
-        Optimize the model in batches defined by the ``batcher`` argument to :meth:`__init__`.
+        :param model: The GPflow :class:`~gpflow.models.VGP`.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
         """
+        tf.debugging.assert_rank(model.q_sqrt, 3)
+        super().__init__(optimizer)
+        self._model = model
 
-        @utils.jit(apply=self._apply_jit)
-        def _step(batch: Tuple[tf.Tensor, tf.Tensor]) -> None:
-            self._optimizer.minimize(
-                self._model.training_loss_closure(batch), self._model.trainable_variables
-            )
+    def __repr__(self) -> str:
+        """"""
+        return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
 
-        batch_iterator = self._batcher(self._data)
-        for i, batch in enumerate(batch_iterator):
-            if i < self._iterations:
-                _step(batch)
+    @property
+    def model(self) -> VGP:
+        return self._model
 
+    def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
 
-class VariationalGaussianProcess(GaussianProcessRegression):
-    def update(self, dataset: Dataset):
+        :param dataset: The data with which to update the model.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        """
         model = self.model
-        x, y = model.data
-        assert dataset.query_points.shape[-1] == x.shape[-1]
-        assert dataset.observations.shape[-1] == y.shape[-1]
-        data = (dataset.query_points, dataset.observations)
-        num_data = data[0].shape[0]
+
+        _assert_data_is_compatible(dataset, Dataset(*model.data))
 
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
-        assert self.model.q_sqrt.shape.ndims == 3
 
         # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
         # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to backtransform from f_mu and f_cov to obtain the updated
+        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
         # new_q_mu and new_q_sqrt:
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
-        jitter_mat = gpflow.config.default_jitter() * tf.eye(num_data, dtype=Knn.dtype)
+        jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
         tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
         new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
-        model.data = data
-        model.num_data = num_data
+        model.data = dataset.astuple()
+        model.num_data = len(dataset)
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points``.
+        """
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any], CustomTrainable]] = {
+supported_models: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
 }
 """
-:var supported_models: A mapping of third-party model types to :class:`CustomTrainable` classes
-that wrap models of those types.
+A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
+types.
 """
+
+
+def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
+    if new_data.query_points.shape[-1] != existing_data.query_points.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.query_points.shape} of new query points is incompatible with"
+            f" shape {existing_data.query_points.shape} of existing query points. Trailing"
+            f" dimensions must match."
+        )
+
+    if new_data.observations.shape[-1] != existing_data.observations.shape[-1]:
+        raise ValueError(
+            f"Shape {new_data.observations.shape} of new observations is incompatible with"
+            f" shape {existing_data.observations.shape} of existing observations. Trailing"
+            f" dimensions must match."
+        )

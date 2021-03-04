@@ -11,21 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable
 from functools import singledispatch
+from typing import Callable
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..type import QueryPoints
-from ..space import SearchSpace, DiscreteSearchSpace, Box
+from ..space import Box, DiscreteSearchSpace, SearchSpace
+from ..type import TensorType
 
-TensorMapping = Callable[[tf.Tensor], tf.Tensor]
+TensorMapping = Callable[[TensorType], TensorType]
 
 
 @singledispatch
-def optimize(space: SearchSpace, target_func: TensorMapping) -> QueryPoints:
+def optimize(space: SearchSpace, target_func: TensorMapping) -> TensorType:
     """
     Return the point in ``space`` (with shape S) that maximises the function ``target_func``, as the
     single entry in a 1 by S tensor.
@@ -46,25 +46,28 @@ def optimize(space: SearchSpace, target_func: TensorMapping) -> QueryPoints:
 
 
 @optimize.register
-def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> QueryPoints:
+def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> TensorType:
     target_func_values = target_func(space.points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
-        message=f"The result of function target_func has an invalid shape.",
+        message=(
+            f"The result of function target_func has an invalid shape:"
+            f" {tf.shape(target_func_values)}."
+        ),
     )
     max_value_idx = tf.argmax(target_func_values, axis=0)[0]
     return space.points[max_value_idx : max_value_idx + 1]
 
 
 @optimize.register
-def _box(space: Box, target_func: TensorMapping) -> QueryPoints:
+def _box(space: Box, target_func: TensorMapping) -> TensorType:
     trial_search_space = space.discretize(20 * tf.shape(space.lower)[-1])
     initial_point = optimize(trial_search_space, target_func)
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
     variable = tf.Variable(bijector.inverse(initial_point))
 
-    def _objective() -> tf.Tensor:
+    def _objective() -> TensorType:
         return -target_func(bijector.forward(variable))
 
     gpflow.optimizers.Scipy().minimize(_objective, (variable,))

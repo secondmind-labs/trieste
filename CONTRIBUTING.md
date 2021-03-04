@@ -72,9 +72,11 @@ $ tox -e tests
 
 #### Code formatting
 
-We format all Python code, other than the notebooks, with [black](https://black.readthedocs.io/en/stable/). Black automates a rough approximation of everyone's favourite code formatting style. You may need to run black before pushing changes, with
+We format all Python code, other than the notebooks, with [black](https://black.readthedocs.io/en/stable/), [flake8](https://flake8.pycqa.org/en/latest/), and [isort](https://pycqa.github.io/isort/). You may need to run these before pushing changes, with (in the repository root)
 ```bash
-$ tox -e format
+$ black .
+$ flake8 .
+$ isort .
 ```
 
 #### Continuous integration

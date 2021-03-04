@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 The acquisition process aims to find the optimal point(s) at which to next evaluate the objective
 function, with the aim of minimising it. The functionality in this package implements that process.
 It typically uses the current observations of the objective function, or a posterior over those
@@ -25,8 +25,8 @@ Optimization (EGO) for the acquisition rule.
 
 This package contains acquisition rules, as implementations of
 :class:`~trieste.acquisition.rule.AcquisitionRule`, and acquisition functions. It also contains
-:class:`AcquisitionBuilder`\ s which provide a common interface for the rules to build acquisition
-functions.
+:class:`AcquisitionFunctionBuilder`\ s which provide a common interface for the rules to build
+acquisition functions.
 
 Acquisition rules in this library that use acquisition functions, such as
 :class:`EfficientGlobalOptimization`, *maximize* these functions. This defines the sign the
@@ -35,19 +35,26 @@ are designed to minimize the objective function. For example, we do not provide 
 UCB.
 """
 from . import rule
+from .combination import Product, Reducer, Sum
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    SingleModelAcquisitionBuilder,
+    BatchAcquisitionFunction,
+    BatchAcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedImprovement,
+    BatchReparametrizationSampler,
+    ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    expected_improvement,
     MinValueEntropySearch,
-    min_value_entropy_search,
+    IndependentReparametrizationSampler,
+    MCIndAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
-    lower_confidence_bound,
     ProbabilityOfFeasibility,
+    SingleModelAcquisitionBuilder,
+    SingleModelBatchAcquisitionBuilder,
+    SingleModelMCIndAcquisitionFunctionBuilder,
+    expected_improvement,
+    lower_confidence_bound,
     probability_of_feasibility,
-    ExpectedConstrainedImprovement,
 )
-from .combination import Reducer, Product, Sum

@@ -1,43 +1,22 @@
 # %% [markdown]
-# Copyright 2020 The Trieste Contributors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# %% [markdown]
-# # Inequality constraints: constrained optimization
+# # Inequality constraints
 
 # %%
-import gpflow
-from dataclasses import astuple
-from gpflow import set_trainable, default_float
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-import trieste
-
-from util import inequality_constraints_utils as util
-
-# %%
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
 # %% [markdown]
 # ## The problem
 #
-# In this tutorial, we replicate one of the results of Gardner, 2014 [1], specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.
+# In this tutorial, we replicate one of the results of <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.  The constraint is satisfied when `constraint(input_data) <= threshold`.
 
 # %%
+import gpflow
+import trieste
+
 class Sim:
     threshold = 0.5
 
@@ -53,15 +32,17 @@ class Sim:
         z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
         return z[:, None]
 
-search_space = trieste.space.Box(
-    tf.cast([0.0, 0.0], default_float()), tf.cast([6.0, 6.0], default_float())
-)
+
+search_space = trieste.space.Box([0, 0], [6, 6])
 
 # %% [markdown]
-# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective formed by applying a mask to the objective over regions where the constraint function crosses the threshold.
+# The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
-util.plot_objective_and_constraints(search_space, Sim)
+import matplotlib.pyplot as plt
+from util.inequality_constraints_utils import plot_objective_and_constraints
+
+plot_objective_and_constraints(search_space, Sim)
 plt.show()
 
 # %% [markdown]
@@ -74,24 +55,27 @@ CONSTRAINT = "CONSTRAINT"
 def observer(query_points):
     return {
         OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points))
+        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
     }
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
 
 # %%
-initial_data = observer(search_space.sample(5))
+num_initial_points = 5
+initial_data = observer(search_space.sample(num_initial_points))
 
 # %% [markdown]
 # ... and visualise those points on the constrained objective.
 
 # %%
-util.plot_init_query_points(
+from util.inequality_constraints_utils import plot_init_query_points
+
+plot_init_query_points(
     search_space,
     Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT])
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
 )
 plt.show()
 
@@ -103,31 +87,34 @@ plt.show()
 # %%
 def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
-    lengthscale = 1.0 * np.ones(2, dtype=default_float())
+    lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    gpr = gpflow.models.GPR(astuple(data), kernel, noise_variance=1e-5)
-    set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(
-        {
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {"options": dict(maxiter=100)},
-        }
-    )
+    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
+    gpflow.set_trainable(gpr.likelihood, False)
+    return trieste.models.create_model({
+        "model": gpr,
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
+    })
 
-models = {
+
+initial_models = {
     OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT])
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
 }
 
 # %% [markdown]
 # ## Define the acquisition process
 #
-# We can construct the _expected constrained improvement_ acquisition function defined in Gardner, 2014 [1], where they use the probability of feasibility wrt the constraint model.
+# We can construct the _expected constrained improvement_ acquisition function defined in <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, where they use the probability of feasibility with respect to the constraint model.
 
 # %%
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
-eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof.using(CONSTRAINT))
+eci = trieste.acquisition.ExpectedConstrainedImprovement(
+    OBJECTIVE, pof.using(CONSTRAINT)
+)
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 
 # %% [markdown]
@@ -139,44 +126,143 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
-
-if result.error is not None: raise result.error
+data = bo.optimize(
+    num_steps, initial_data, initial_models, rule, track_state=False
+).try_get_final_datasets()
 
 # %% [markdown]
-# To conclude, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
+# To conclude this section, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
-constraint_data = result.datasets[CONSTRAINT]
-new_data = (
-    constraint_data.query_points[-num_steps:], constraint_data.observations[-num_steps:]
-)
+constraint_data = data[CONSTRAINT]
+new_query_points = constraint_data.query_points[-num_steps:]
+new_observations = constraint_data.observations[-num_steps:]
+new_data = (new_query_points, new_observations)
 
-util.plot_init_query_points(
+plot_init_query_points(
     search_space,
     Sim,
-    astuple(initial_data[OBJECTIVE]),
-    astuple(initial_data[CONSTRAINT]),
-    new_data
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
+    new_data,
+)
+plt.show()
+
+
+# %% [markdown]
+# ## Batch-sequential strategy
+#
+# It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
+
+# %%
+class BatchExpectedConstrainedImprovement(
+    trieste.acquisition.BatchAcquisitionFunctionBuilder
+):
+    def __init__(self, sample_size, threshold):
+        self._sample_size = sample_size
+        self._threshold = threshold
+
+    def prepare_acquisition_function(self, datasets, models):
+        objective_model = models[OBJECTIVE]
+        objective_dataset = datasets[OBJECTIVE]
+
+        samplers = {
+            tag: trieste.acquisition.BatchReparametrizationSampler(
+                self._sample_size, model
+            ) for tag, model in models.items()
+        }
+
+        pf = trieste.acquisition.probability_of_feasibility(
+            models[CONSTRAINT], self._threshold, objective_dataset.query_points
+        )
+        is_feasible = pf >= 0.5
+
+        mean, _ = objective_model.predict(objective_dataset.query_points)
+        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+
+        def batch_efi(at):
+            samples = {
+                tag: tf.squeeze(sampler.sample(at), -1)
+                for tag, sampler in samplers.items()
+            }
+            feasible_mask = samples[CONSTRAINT] < self._threshold  # [N, S, B]
+            improvement = tf.where(
+                feasible_mask,
+                tf.maximum(eta - samples[OBJECTIVE], 0.),
+                0.
+            )  # [N, S, B]
+            batch_improvement = tf.reduce_max(improvement, axis=-1)  # [N, S]
+            return tf.reduce_mean(
+                batch_improvement, axis=-1, keepdims=True
+            )  # [N, 1]
+
+        return batch_efi
+
+
+num_query_points = 4
+batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
+batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
+    num_query_points, batch_eci
+)
+
+# %% [markdown]
+# We can now run the BO loop as before; note that here we also query twenty points, but in five batches of four points.
+
+# %%
+initial_models = {
+    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
+    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
+}
+
+num_steps = 5
+batch_data = bo.optimize(
+    num_steps, initial_data, initial_models, batch_rule, track_state=False
+).try_get_final_datasets()
+
+# %% [markdown]
+# We visualise the resulting data as before.
+
+# %%
+batch_constraint_data = batch_data[CONSTRAINT]
+new_batch_data = (
+    batch_constraint_data.query_points[-num_query_points * num_steps:],
+    batch_constraint_data.observations[-num_query_points * num_steps:]
+)
+
+plot_init_query_points(
+    search_space,
+    Sim,
+    initial_data[OBJECTIVE].astuple(),
+    initial_data[CONSTRAINT].astuple(),
+    new_batch_data,
 )
 plt.show()
 
 # %% [markdown]
-# ## References
+# Finally, we compare the regret from the non-batch strategy (left panel) to the regret from the batch strategy (right panel).
+# In the following plots each marker represents a query point. The x-axis is the index of the query point (where the first queried point has index 0), and the y-axis is the observed value. The vertical blue line denotes the end of initialisation/start of optimisation. Green points satisfy the constraint, red points do not.
+
+# %%
+from util.plotting import plot_regret
+
+mask_fail = constraint_data.observations.numpy() > Sim.threshold
+batch_mask_fail = batch_constraint_data.observations.numpy() > Sim.threshold
+
+fig, ax = plt.subplots(1, 2, sharey="all")
+plot_regret(
+    data[OBJECTIVE].observations.numpy(),
+    ax[0],
+    num_init=num_initial_points,
+    mask_fail=mask_fail.flatten()
+)
+plot_regret(
+    batch_data[OBJECTIVE].observations.numpy(),
+    ax[1],
+    num_init=num_initial_points,
+    mask_fail=batch_mask_fail.flatten()
+)
+
+# %% [markdown]
+# ## LICENSE
 #
-# ```
-# [1] @inproceedings{gardner14,
-#       title={Bayesian Optimization with Inequality Constraints},
-#       author={
-#         Jacob Gardner and Matt Kusner and Zhixiang and Kilian Weinberger and John Cunningham
-#       },
-#       booktitle={Proceedings of the 31st International Conference on Machine Learning},
-#       year={2014},
-#       volume={32},
-#       number={2},
-#       series={Proceedings of Machine Learning Research},
-#       month={22--24 Jun},
-#       publisher={PMLR},
-#       url={http://proceedings.mlr.press/v32/gardner14.html},
-#     }
-# ```
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

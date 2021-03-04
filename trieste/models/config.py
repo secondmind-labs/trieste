@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, Union
 
 import gpflow
 import tensorflow as tf
 
-from .model_interfaces import TrainableProbabilisticModel, Optimizer, supported_models
+from .model_interfaces import TrainableProbabilisticModel, supported_models
+from .optimizer import create_optimizer
+
+
+def _default_optimizer() -> gpflow.optimizers.Scipy:
+    return gpflow.optimizers.Scipy()
 
 
 @dataclass(frozen=True)
@@ -28,11 +34,13 @@ class ModelConfig:
     model: Union[tf.Module, TrainableProbabilisticModel]
     """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
 
-    optimizer: Optimizer = field(default_factory=lambda: gpflow.optimizers.Scipy())
+    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer] = field(
+        default_factory=_default_optimizer
+    )
     """ The optimizer with which to train the model (by minimizing its loss function). """
 
     optimizer_args: Dict[str, Any] = field(default_factory=lambda: {})
-    """ The keyword arguments to pass to the optimizer when training the model. """
+    """ The keyword arguments to pass to the optimizer wrapper. """
 
     def __post_init__(self) -> None:
         self._check_model_type()
@@ -64,12 +72,11 @@ class ModelConfig:
         if isinstance(self.model, TrainableProbabilisticModel):
             return self.model
 
+        optimizer = create_optimizer(self.optimizer, self.optimizer_args)
+
         for model_type, model_interface in supported_models.items():
             if isinstance(self.model, model_type):
-                mi = model_interface(self.model)
-                mi.set_optimizer(self.optimizer)
-                mi.set_optimizer_args(self.optimizer_args)
-                return mi
+                return model_interface(self.model, optimizer)
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 

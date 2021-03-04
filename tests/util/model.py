@@ -11,18 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from abc import ABC
-from typing import Callable, Tuple
+from typing import Callable, Optional, Sequence, Tuple, Union
 
-import numpy.testing as npt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from tests.util.misc import quadratic
 from trieste.data import Dataset
-from trieste.models import TrainableProbabilisticModel, ProbabilisticModel
-from trieste.type import QueryPoints, ObserverEvaluations, TensorType
-from tests.util.misc import random_seed
+from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
+from trieste.type import TensorType
+
+
+def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
+    """
+    :return: A :class:`tfp.math.psd_kernels.ExponentiatedQuadratic` with default arguments.
+    """
+    return tfp.math.psd_kernels.ExponentiatedQuadratic()
 
 
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
@@ -31,61 +36,51 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
     def update(self, dataset: Dataset) -> None:
         pass
 
-    def optimize(self) -> None:
+    def optimize(self, dataset: Dataset) -> None:
         pass
 
 
 class GaussianMarginal(ProbabilisticModel, ABC):
-    """ A probabilistic model with a Gaussian marginal distribution at each point. """
+    """ A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]. """
 
-    def sample(self, query_points: QueryPoints, num_samples: int) -> ObserverEvaluations:
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
-        return tfp.distributions.Normal(mean, var).sample(num_samples)
+        samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
+        dim_order = tf.range(tf.rank(samples))
+        return tf.transpose(samples, tf.concat([dim_order[1:-1], [0], dim_order[-1:]], -1))
 
 
-class CustomMeanWithUnitVariance(GaussianMarginal):
-    def __init__(self, f: Callable[[tf.Tensor], tf.Tensor]):
-        self._f = f
+class GaussianProcess(GaussianMarginal, ProbabilisticModel):
+    """ A (static) Gaussian process over a vector random variable. """
 
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-        mean = self._f(query_points)
-        return mean, tf.ones_like(mean)
+    def __init__(
+        self,
+        mean_functions: Sequence[Callable[[TensorType], TensorType]],
+        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+    ):
+        super().__init__()
+        self._mean_functions = mean_functions
+        self._kernels = kernels
 
+    def __repr__(self) -> str:
+        return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
 
-class QuadraticWithUnitVariance(GaussianMarginal):
-    r"""
-    A probabilistic model with mean :math:`x \mapsto \sum x^2`, unit variance, and Gaussian
-    marginal distribution.
-    """
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        mean, cov = self.predict_joint(query_points[..., None, :])
+        return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
 
-    def __init__(self):
-        self._model = CustomMeanWithUnitVariance(
-            lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
-        )
-
-    def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-        return self._model.predict(query_points)
-
-
-def test_quadratic_with_unit_variance() -> None:
-    model = QuadraticWithUnitVariance()
-    mean, var = model.predict(tf.constant([[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]))
-    npt.assert_array_almost_equal(mean, tf.constant([[1.0], [13.0], [41.0]]))
-    npt.assert_array_almost_equal(var, tf.constant([[1.0], [1.0], [1.0]]))
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        means = [f(query_points) for f in self._mean_functions]
+        covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
+        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
 
-@random_seed
-def test_gaussian_marginal_sample() -> None:
-    class _Sum(GaussianMarginal):
-        def predict(self, query_points: QueryPoints) -> Tuple[ObserverEvaluations, TensorType]:
-            mean = tf.reduce_sum(query_points, axis=1, keepdims=True)
-            return mean, tf.ones_like(mean)
+class QuadraticMeanAndRBFKernel(GaussianProcess):
+    r""" A Gaussian process with scalar quadratic mean and RBF kernel. """
 
-    samples = _Sum().sample(tf.constant([[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]), 100_000)
+    def __init__(self, kernel_amplitude: Optional[Union[float, TensorType]] = None):
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
+        super().__init__([quadratic], [kernel])
 
-    samples_mean = tf.reduce_mean(samples, axis=0)
-    sample_variance = tf.sqrt(tf.reduce_mean((samples - samples_mean) ** 2, axis=0))
-
-    assert samples.shape == [100_000, 3, 1]
-    npt.assert_allclose(samples_mean, [[1.0], [5.0], [9.0]], rtol=1e-2)
-    npt.assert_allclose(sample_variance, [[1.0], [1.0], [1.0]], rtol=1e-2)
+    def __repr__(self) -> str:
+        return "QuadraticMeanAndRBFKernel()"

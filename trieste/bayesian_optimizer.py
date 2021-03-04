@@ -19,17 +19,18 @@ from __future__ import annotations
 import copy
 import traceback
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Generic, TypeVar, cast
+from typing import Generic, List, Mapping, Optional, Tuple, TypeVar, cast, overload
 
-from absl import logging
 import gpflow
 import tensorflow as tf
+from absl import logging
 
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, OBJECTIVE
+from .acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import TrainableProbabilisticModel, create_model, ModelSpec
+from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import Observer
 from .space import SearchSpace
+from .utils import Err, Ok, Result
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -39,47 +40,69 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 
 @dataclass(frozen=True)
-class LoggingState(Generic[S]):
-    """
-    Container for the state of the optimization process in :class:`BayesianOptimizer` at each
-    optimization step.
-    """
+class Record(Generic[S]):
+    """ Container to record the state of each step of the optimization process. """
 
     datasets: Mapping[str, Dataset]
-    """ All observer data at this optimization step. """
+    """ The known data from the observer. """
 
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
     acquisition_state: Optional[S]
-    """ The acquisition state after this optimization step. """
+    """ The acquisition state. """
 
 
+# this should be a generic NamedTuple, but mypy doesn't support them
+#  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
 class OptimizationResult(Generic[S]):
-    """ Container for the final result of the optimization process. """
+    """ The final result, and the historical data of the optimization process. """
 
-    datasets: Mapping[str, Dataset]
+    final_result: Result[Record[S]]
     """
-    All data from the observer (unless :attr:`error` is populated, in which case this is the data
-    from the point at which the process was interrupted).
+    The final result of the optimization process. This contains either a :class:`Record` or an
+    exception.
     """
 
-    models: Mapping[str, TrainableProbabilisticModel]
+    history: List[Record[S]]
+    r"""
+    The history of the :class:`Record`\ s from each step of the optimization process. These
+    :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
+    :attr:`final_result`.
     """
-    The models over the :attr:`datasets` (unless :attr:`error` is populated, in which case this is
-    the models from the point at which the process was interrupted). """
 
-    history: List[LoggingState[S]]
-    """ The data, models, and acquisition state at each completed optimization step. """
+    def astuple(self) -> Tuple[Result[Record[S]], List[Record[S]]]:
+        """
+        **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
+        method does *not* deepcopy instance attributes.
 
-    error: Optional[Exception]
-    """ The exception that occurred, if any. """
+        :return: The :attr:`final_result` and :attr:`history` as a 2-tuple.
+        """
+        return self.final_result, self.history
+
+    def try_get_final_datasets(self) -> Mapping[str, Dataset]:
+        """
+        Convenience method to attempt to get the final data.
+
+        :return: The final data, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        """
+        return self.final_result.unwrap().datasets
+
+    def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """
+        Convenience method to attempt to get the final models.
+
+        :return: The final models, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        """
+        return self.final_result.unwrap().models
 
 
 class BayesianOptimizer(Generic[SP]):
     """
-    This class performs Bayesian optimization, the data efficient optimization of an expensive
+    This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
@@ -93,16 +116,42 @@ class BayesianOptimizer(Generic[SP]):
         self._observer = observer
         self._search_space = search_space
 
+    def __repr__(self) -> str:
+        """"""
+        return f"BayesianOptimizer({self._observer!r}, {self._search_space!r})"
+
+    @overload
     def optimize(
         self,
         num_steps: int,
-        # note the transforms, datasets and model_specs are kept as separate dicts rather than
-        # merged into one dict as that was the style strongly preferred by the researcher we
-        # asked at the time
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_state: Optional[S] = None,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    def optimize(
+        self,
+        num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: Optional[AcquisitionRule[S, SP]] = None,
         acquisition_state: Optional[S] = None,
+        *,
         track_state: bool = True,
     ) -> OptimizationResult[S]:
         """
@@ -112,29 +161,30 @@ class BayesianOptimizer(Generic[SP]):
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
-              ``datasets`` and models built from the ``model_specs``.
+              ``datasets``, models built from the ``model_specs``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
 
-        Within the optimization loop, this method will catch any errors raised and return them
-        instead, along with the latest data, models, and the history of the optimization process.
-        This enables the caller to restart the optimization loop from the latest successful step.
-        **Note that if an error occurred, the latest data and models might not be from the
-        ``num_steps``-th optimization step, but from the step where the error occurred. It is up to
-        the caller to check if this has happened, by checking if the result's `error` attribute is
-        populated.** Any errors encountered within this method, but outside the optimization loop,
-        will be raised as normal. These are documented below.
+        If any errors are raised during the optimization loop, this method will catch and return
+        them instead, along with the history of the optimization process, and print a message (using
+        `absl` at level `logging.ERROR`).
+
+        **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
+        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will be
+        updated during the optimization process. For example, if ``track_state`` is `True`, a copied
+        model will be used on each optimization step. Use the models in the return value for
+        reliable access to the updated models.
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
               :class:`~trieste.space.SearchSpace` as specified in :meth:`__init__`.
-            - The history, if populated, will contain an acquisition state of the same type as used
-              by the ``acquisition_rule``.
+            - The ``acquisition_state`` must be of the type expected by the ``acquisition_rule``.
+              Any acquisition state in the optimization result will also be of this type.
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` (matched
-            by tag).
+        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
+            ``datasets``.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
@@ -142,18 +192,26 @@ class BayesianOptimizer(Generic[SP]):
             `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
         :param acquisition_state: The acquisition state to use on the first optimization step.
-            This argument allows the caller to restore the optimization process from a previous
-            :class:`LoggingState`.
+            This argument allows the caller to restore the optimization process from an existing
+            :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
-            step.
-        :return: The updated models, data, history containing information from every optimization
-            step (see ``track_state``), and the error if any error was encountered during
-            optimization.
+            step. Models and acquisition state are copied using `copy.deepcopy`.
+        :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
+            the final optimization data, models and acquisition state, or, if an exception was
+            raised while executing the optimization loop, it contains the exception raised. In
+            either case, the :attr:`history` element is the history of the data, models and
+            acquisition state at the *start* of each optimization step (up to and including any step
+            that fails to complete). The history will never include the final optimization result.
         :raise ValueError: If any of the following are true:
+
+            - ``num_steps`` is negative.
             - the keys in ``datasets`` and ``model_specs`` do not match
             - ``datasets`` or ``model_specs`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
+        if num_steps < 0:
+            raise ValueError(f"num_steps must be at least 0, got {num_steps}")
+
         if datasets.keys() != model_specs.keys():
             raise ValueError(
                 f"datasets and model_specs should contain the same keys. Got {datasets.keys()} and"
@@ -173,12 +231,16 @@ class BayesianOptimizer(Generic[SP]):
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
         models = {tag: create_model(spec) for tag, spec in model_specs.items()}
-        history: List[LoggingState[S]] = []
+        history: List[Record[S]] = []
 
         for step in range(num_steps):
+            if track_state:
+                history.append(Record(datasets, models, acquisition_state))
+
             try:
                 if track_state:
-                    _save_to_history(history, datasets, models, acquisition_state)
+                    models = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
+                    acquisition_state = copy.deepcopy(acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state
@@ -189,29 +251,22 @@ class BayesianOptimizer(Generic[SP]):
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
 
                 for tag, model in models.items():
-                    model.update(datasets[tag])
-                    model.optimize()
+                    dataset = datasets[tag]
+                    model.update(dataset)
+                    model.optimize(dataset)
 
             except Exception as error:
                 tf.print(
-                    f"Optimization failed at step {step}, encountered error with traceback:"
+                    f"\nOptimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"
-                    f"\nAborting process and returning results",
+                    f"\nTerminating optimization and returning the optimization history. You may "
+                    f"be able to use the history to restart the process from a previous successful "
+                    f"optimization step.\n",
                     output_stream=logging.ERROR,
                 )
+                return OptimizationResult(Err(error), history)
 
-                return OptimizationResult(datasets, models, history, error)
+        tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
-        return OptimizationResult(datasets, models, history, None)
-
-
-def _save_to_history(
-    history: List[LoggingState[S]],
-    datasets: Mapping[str, Dataset],
-    models: Mapping[str, TrainableProbabilisticModel],
-    acquisition_state: Optional[S],
-) -> None:
-    models_copy = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
-    datasets_copy = {tag: ds for tag, ds in datasets.items()}
-    logging_state = LoggingState(datasets_copy, models_copy, copy.deepcopy(acquisition_state))
-    history.append(logging_state)
+        record = Record(datasets, models, acquisition_state)
+        return OptimizationResult(Ok(record), history)

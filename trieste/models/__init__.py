@@ -11,21 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+r"""
+This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
+and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains a number of
+:class:`TrainableProbabilisticModel` wrappers for GPflow models, as well as tooling for creating
+:class:`TrainableProbabilisticModel`\ s from config.
 """
-This package contains the primary interface for probabilistic models,
-:class:`ProbabilisticModel`, and its trainable counterpart :class:`TrainableProbabilisticModel`. It
-also contains a number of :class:`TrainableProbabilisticModel` wrappers for GPflow models, as well
-as tooling for creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
+from . import optimizer
 from .config import ModelConfig, ModelSpec, create_model
 from .model_interfaces import (
-    ProbabilisticModel,
-    TrainableProbabilisticModel,
-    CustomTrainable,
-    GPflowPredictor,
     GaussianProcessRegression,
-    Batcher,
+    GPflowPredictor,
+    ProbabilisticModel,
     SparseVariational,
+    TrainableProbabilisticModel,
     VariationalGaussianProcess,
     supported_models,
 )
