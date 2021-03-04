@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 r""" This module contains model optimizers. """
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import singledispatch
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
@@ -48,10 +50,10 @@ TensorFlow optimizer doesn't return any result.
 class Optimizer:
     """ Optimizer for training models with all the training data at once. """
 
-    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer]
+    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer
     """ The underlying optimizer to use. """
 
-    minimize_args: Dict[str, Any] = field(default_factory=lambda: {})
+    minimize_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the :meth:`minimize` method of the :attr:`optimizer`. """
 
     compile: bool = False
@@ -83,10 +85,10 @@ class TFOptimizer(Optimizer):
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """
 
-    batch_size: Optional[int] = None
+    batch_size: int | None = None
     """ The size of the mini-batches. """
 
-    dataset_builder: Optional[DatasetTransformer] = None
+    dataset_builder: DatasetTransformer | None = None
     """ A mapping from :class:`~trieste.observer.Observer` data to mini-batches. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
@@ -130,7 +132,7 @@ class TFOptimizer(Optimizer):
 
 @singledispatch
 def create_optimizer(
-    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer],
+    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer,
     optimizer_args: Dict[str, Any],
 ) -> Optimizer:
     pass

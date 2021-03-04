@@ -16,8 +16,10 @@ This module contains toy objective functions, useful for experimentation. A numb
 taken from `this Virtual Library of Simulation Experiments
 <https://www.sfu.ca/~ssurjano/optimization.html>`_.
 """
+from __future__ import annotations
+
 import math
-from typing import Callable
+from collections.abc import Callable
 
 import tensorflow as tf
 

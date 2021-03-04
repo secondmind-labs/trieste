@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Mapping, Sequence, Type, Union
 
 import numpy as np
 import pytest
@@ -68,7 +69,7 @@ def test_reducer__repr_builders() -> None:
 
 @dataclass
 class ReducerTestData:
-    type_class: Type[Union[Sum, Product]]
+    type_class: type[Sum | Product]
     raw_reduce_op: Callable[[Sequence], float]
     dataset: Dataset = Dataset(
         np.arange(5, dtype=np.float64).reshape(-1, 1), np.zeros(5).reshape(-1, 1)

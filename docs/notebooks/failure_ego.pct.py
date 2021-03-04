@@ -2,6 +2,8 @@
 # # EGO with a failure region
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 import tensorflow as tf
 
@@ -128,9 +130,7 @@ class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
-from typing import Dict
-
-models: Dict[str, trieste.models.ModelSpec] = {
+models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
