@@ -128,8 +128,8 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         Return the query point that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
 
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
+            optimization problem is defined.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
@@ -174,8 +174,8 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         ``search_space``. Of those points, return the `num_query_points` points at which
         random samples yield the **minima** of the model posterior.
 
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
+            optimization problem is defined.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param state: Unused.
@@ -288,7 +288,8 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         ``search_space``. For a local search, the actual search space will be the
         intersection of the trust region and ``search_space``.
 
-        :param search_space: The global search space for the optimization problem.
+        :param search_space: The global  :class:`~trieste.space.SearchSpace` for the optimization
+            problem.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
@@ -397,7 +398,8 @@ class BatchAcquisitionRule(AcquisitionRule[None, SP_contra]):
         Return the batch of query points that optimizes the acquisition function produced by
         ``builder`` (see :meth:`__init__`).
 
-        :param search_space: The global search space over which the optimization problem is defined.
+        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
+            optimization problem is defined.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
