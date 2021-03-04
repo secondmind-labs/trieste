@@ -18,7 +18,7 @@ from typing import Tuple
 import tensorflow as tf
 from typing_extensions import Final
 
-from .type import TensorType
+from ..type import TensorType
 
 
 def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
@@ -61,7 +61,7 @@ class BoundedVolumes:
         :param upper_idx: the upperbounds index of the volumes
         """
 
-        tf.debugging.assert_shapes([(lower_idx, ["N","D"]), (upper_idx, ["N","D"])])
+        tf.debugging.assert_shapes([(lower_idx, ["N", "D"]), (upper_idx, ["N", "D"])])
         self.lower_idx = lower_idx
         self.upper_idx = upper_idx
 
@@ -86,7 +86,7 @@ class Pareto:
 
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
-        
+
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
         len_front, number_of_objectives = front.shape
