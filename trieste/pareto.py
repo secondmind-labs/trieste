@@ -65,29 +65,6 @@ class BoundedVolumes:
         self.lower_idx = lower_idx
         self.upper_idx = upper_idx
 
-    def append(self, lower_idx: tf.Tensor, upper_idx: tf.Tensor):
-        """
-        Add new bounded volumes.
-
-        :param lower_idx: the lowerbounds of the volumes
-        :param upper_idx: the upperbounds of the volumes
-        """
-        self.lower_idx = tf.concat([self.lower_idx, lower_idx], axis=0)
-        self.upper_idx = tf.concat([self.upper_idx, upper_idx], axis=0)
-
-    def clear(self):
-        # Clears all stored bounded volumes
-        dtype = self.lower_idx.dtype
-        outdim = self.lower_idx.shape[1]
-        self.lower_idx = tf.zeros([0, outdim], dtype=dtype)
-        self.upper_idx = tf.zeros([0, outdim], dtype=dtype)
-
-    def size(self) -> tf.Tensor:
-        """
-        :return: volume of each bounded volume
-        """
-        return tf.math.reduce_prod(self.upper_idx - self.lower_idx, axis=0, keepdims=True)
-
 
 class Pareto:
     """
