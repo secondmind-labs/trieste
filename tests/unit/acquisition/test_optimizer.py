@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List, Union
-
 import pytest
 
 from tests.util.misc import quadratic, random_seed
@@ -39,7 +37,9 @@ import tensorflow as tf
     ),
 ])
 def test_optimize(
-    search_space: Union[Box, DiscreteSearchSpace], shift: List[float], expected_maximizer: List[List[float]]
+    search_space: Box | DiscreteSearchSpace,
+    shift: list[float],
+    expected_maximizer: list[list[float]]
 ) -> None:
     maximizer = optimize(search_space, lambda x: 0.5 - quadratic(x - shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-5)
