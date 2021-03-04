@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from abc import ABC, abstractmethod
+from functools import partial
 
 import tensorflow as tf
 
@@ -124,6 +126,83 @@ LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM = tf.constant([-3.12913], tf.float64)
 The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
 float64.
 """
+
+
+class MultiObjectiveTestProblem(ABC):
+    r"""Base class for test multi-objective test functions.
+    between a provided point and the closest point on the true pareto front.
+    """
+    dim = None
+    bounds = None
+
+    @abstractmethod
+    def prepare_benchmark(self):
+        """
+        Evaluate Original problem
+        """
+
+
+class VLMOP2(MultiObjectiveTestProblem):
+    """
+    The VLMOP2n, typically evaluated over :math:`[-2, 2]^2`. See
+    :cite:`van1999multiobjective`  for details.
+
+    :param x: Where to evaluate the function, with shape [..., 1].
+    :return: The function values, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    bounds = [[-2.0, 2.0]] * 2
+    dim = 2
+
+    def prepare_benchmark(self):
+        return vlmop2
+
+
+def vlmop2(x: TensorType) -> TensorType:
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    transl = 1 / tf.sqrt(2)
+    y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
+    y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=1))
+    return tf.stack([y1, y2], axis=1)
+
+
+class DTLZ(MultiObjectiveTestProblem):
+    r"""DTLZ series multi-objective test functions.
+    refer deb2002scalable
+    """
+    def __init__(self, input_dim: int, num_objective: int):
+        k = input_dim - num_objective + 1
+        assert(k > 0), ValueError(f'functional g() require an effective index, but found {k}')
+        self.dim = input_dim
+        self.M = num_objective
+        self.bounds = [[0, 1]] * input_dim
+        super().__init__()
+
+    @abstractmethod
+    def gen_pareto_optimal_points(self, n: int):
+        """
+        Generate `n` pareto optimal points
+        """
+
+
+class DTLZ2(DTLZ):
+    def prepare_benchmark(self):
+        return partial(dtlz2, M=self.M)
+
+
+def dtlz2(x: TensorType, m: int) -> TensorType:
+    def g(xM):
+        z = (xM - 0.5) ** 2
+        return tf.reduce_sum(z, axis=1, keepdims=True)
+    f = None
+    for i in range(m):
+        y = (1 + g(x[:, m - 1:]))
+        for j in range(m - 1 - i):
+            y *= tf.cos(math.pi / 2 * x[:, j, tf.newaxis])
+        if i > 0:
+            y *= tf.sin(math.pi / 2 * x[:, m - 1 - i, tf.newaxis])
+        f = y if f is None else tf.concat([f, y], 1)
+    return f
 
 
 def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:
