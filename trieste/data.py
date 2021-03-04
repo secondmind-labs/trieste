@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 import tensorflow as tf
 
@@ -94,10 +93,10 @@ class Dataset:
         """
         return tf.shape(self.observations)[0]
 
-    def __deepcopy__(self, memo: Dict[int, object]) -> Dataset:
+    def __deepcopy__(self, memo: dict[int, object]) -> Dataset:
         return self
 
-    def astuple(self) -> Tuple[TensorType, TensorType]:
+    def astuple(self) -> tuple[TensorType, TensorType]:
         """
         **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
         **not** deepcopy the attributes.

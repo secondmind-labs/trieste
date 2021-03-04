@@ -11,22 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import functools
-from typing import (
-    Any,
-    Callable,
-    Container,
-    FrozenSet,
-    List,
-    Mapping,
-    NoReturn,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from collections.abc import Callable, Container, Mapping
+from typing import Any, List, NoReturn, Tuple, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -39,7 +28,7 @@ from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
-TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
+TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
     ValueError,
     tf.errors.InvalidArgumentError,
 )
@@ -145,7 +134,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         :param search_space: Unused.
         :param datasets: Unused.
@@ -160,7 +149,7 @@ ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
-def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[int, ...]]:
+def various_shapes(*, excluding_ranks: Container[int] = ()) -> frozenset[tuple[int, ...]]:
     """
     :param excluding_ranks: Ranks to exclude from the result.
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank

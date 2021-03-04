@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, Mapping, Tuple, Union
+from collections.abc import Callable, Mapping
 
 import numpy.testing as npt
 import pytest
@@ -74,7 +74,7 @@ class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
     "single_builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()]
 )
 def test_single_builder_raises_immediately_for_wrong_key(
-    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     builder = single_builder.using("foo")
 
@@ -86,7 +86,7 @@ def test_single_builder_raises_immediately_for_wrong_key(
 
 @pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
 def test_single_builder_repr_includes_class_name(
-    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     assert type(builder).__name__ in repr(builder)
 
@@ -110,7 +110,7 @@ class _MockBatchBuilder(SingleModelBatchAcquisitionBuilder):
 
 @pytest.mark.parametrize("single_builder", [_MockIndBuilder(), _MockBatchBuilder()])
 def test_single_builder_using_passes_on_correct_dataset_and_model(
-    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     builder = single_builder.using("foo")
     data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
@@ -397,7 +397,7 @@ def _assert_kolmogorov_smirnov_95(
     assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
 
 
-def _dim_two_gp(mean_shift: Tuple[float, float] = (0.0, 0.0)) -> GaussianProcess:
+def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess:
     matern52 = tfp.math.psd_kernels.MaternFiveHalves(
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
