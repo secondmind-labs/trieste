@@ -727,3 +727,29 @@ class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
         return batch_ei
+
+
+class PredictiveVariance(SingleModelBatchAcquisitionBuilder):
+    """
+    Builder for the determinant of the predictive covariance matrix over the batch points.
+    For a batch of size 1 it is the same as maximizing the predictive variance.
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return "PredictiveVariance()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        :return: The determinant of the predictive function.
+        """
+        return lambda at: self._acquisition_function(model, at)
+
+    @staticmethod
+    def _acquisition_function(model: ProbabilisticModel, at: TensorType) -> TensorType:
+        _, covariance = model.predict_joint(at)
+        return tf.linalg.det(covariance)
