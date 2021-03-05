@@ -18,6 +18,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.type import TensorType
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
@@ -29,6 +30,8 @@ from trieste.utils.objectives import (
     gramacy_lee,
     logarithmic_goldstein_price,
     mk_observer,
+    DTLZ1,
+    DTLZ2
 )
 
 
@@ -70,6 +73,35 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
         tf.squeeze(LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM) - 1e-6,
         logarithmic_goldstein_price(_unit_grid_2d()),
     )
+
+
+@pytest.mark.parametrize(
+    "obj_inst, input_dim, num_obj, gen_pf_num",
+    [
+        (DTLZ1(3, 2), 3, 2, 1000),
+        (DTLZ1(5, 3), 5, 3, 1000),
+        (DTLZ2(3, 2), 3, 2, 1000),
+        (DTLZ2(12, 6), 12, 6, 1000)
+    ],
+)
+def test_gen_pareto_front_is_equal_to_math_defined(obj_inst, input_dim, num_obj, gen_pf_num):
+    pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num)
+    if isinstance(obj_inst, DTLZ1):
+        tf.assert_equal(tf.reduce_sum(pfs, axis=1), 1.0)
+    elif isinstance(obj_inst, DTLZ2):
+        tf.debugging.assert_near(tf.norm(pfs, axis=1), 1.0, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "obj_inst, actual_x",
+    [
+        (DTLZ1(3, 2), tf.constant([[0.3, 0.1]])),
+        (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
+    ],
+)
+def test_func_raises_specified_input_dim_not_alin_with_actual_input_dim(obj_inst, actual_x):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        obj_inst.prepare_benchmark()(actual_x)
 
 
 def test_mk_observer() -> None:
