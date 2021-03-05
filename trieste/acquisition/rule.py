@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, Mapping, Optional, Tuple, TypeVar, Union, cast
+from typing import Generic, TypeVar
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -54,8 +55,8 @@ class AcquisitionRule(ABC, Generic[S, SP]):
         search_space: SP,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: Optional[S],
-    ) -> Tuple[TensorType, S]:
+        state: S | None,
+    ) -> tuple[TensorType, S]:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
@@ -89,7 +90,7 @@ optimization objective.
 class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
     """ Implements the Efficient Global Optimization, or EGO, algorithm. """
 
-    def __init__(self, builder: Optional[AcquisitionFunctionBuilder] = None):
+    def __init__(self, builder: AcquisitionFunctionBuilder | None = None):
         """
         :param builder: The acquisition function builder to use.
             :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
@@ -111,7 +112,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         Return the query point that optimizes the acquisition function produced by `builder` (see
         :meth:`__init__`).
@@ -157,7 +158,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
         ``search_space``. Of those points, return the `num_query_points` points at which
@@ -204,19 +205,19 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         y_min: TensorType
         """ The minimum observed value. """
 
-        is_global: Union[TensorType, bool]
+        is_global: bool | TensorType
         """
         `True` if the search space was global, else `False` if it was local. May be a scalar boolean
         `TensorType` instead of a `bool`.
         """
 
-        def __deepcopy__(self, memo: Dict[int, object]) -> TrustRegion.State:
-            box_copy = cast(Box, copy.deepcopy(self.acquisition_space, memo))
+        def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
+            box_copy = copy.deepcopy(self.acquisition_space, memo)
             return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
     def __init__(
         self,
-        builder: Optional[AcquisitionFunctionBuilder] = None,
+        builder: AcquisitionFunctionBuilder | None = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
     ):
@@ -244,8 +245,8 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: Optional[State],
-    ) -> Tuple[TensorType, State]:
+        state: State | None,
+    ) -> tuple[TensorType, State]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
@@ -356,7 +357,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         Return the batch of query points that optimizes the acquisition function produced by
         `builder` (see :meth:`__init__`).

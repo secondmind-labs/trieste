@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Any
 
 import gpflow
 import tensorflow as tf
@@ -28,7 +31,7 @@ class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
         ``query_points``.
@@ -45,7 +48,7 @@ class ProbabilisticModel(tf.Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions, of shape [..., B, D].
         :return: The mean and covariance of the joint marginal distribution at each batch of points
@@ -94,7 +97,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
 class GPflowPredictor(ProbabilisticModel, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
-    def __init__(self, optimizer: Optional[Optimizer] = None):
+    def __init__(self, optimizer: Optimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
@@ -115,10 +118,10 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     def model(self) -> GPModel:
         """ The underlying GPflow model. """
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
 
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -129,7 +132,7 @@ class GPflowPredictor(ProbabilisticModel, ABC):
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -143,7 +146,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
 
     @property
-    def model(self) -> Union[GPR, SGPR]:
+    def model(self) -> GPR | SGPR:
         return self._model
 
     def update(self, dataset: Dataset) -> None:
@@ -161,7 +164,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
@@ -192,7 +195,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
 
-    def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: VGP, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -242,7 +245,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified
@@ -251,7 +254,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
+supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,

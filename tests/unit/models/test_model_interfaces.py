@@ -21,7 +21,9 @@ encapsulation. For example, we should *not* test that methods on the GPflow mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 trieste model).
 """
-from typing import Callable, Iterable, Optional, Tuple, Type, Union
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
 
 import gpflow
 import numpy as np
@@ -42,7 +44,7 @@ from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
 
 
-def _mock_data() -> Tuple[tf.Tensor, tf.Tensor]:
+def _mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     return (
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
         tf.constant([[1.2], [3.4], [5.6], [7.8]], gpflow.default_float()),
@@ -89,11 +91,11 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
 )
 def _gpr_interface_factory(
     request,
-) -> Callable[[TensorType, TensorType, Optional[Optimizer]], GaussianProcessRegression]:
+) -> Callable[[TensorType, TensorType, Optimizer | None], GaussianProcessRegression]:
     def model_interface_factory(
-        x: TensorType, y: TensorType, optimizer: Optional[Optimizer] = None
+        x: TensorType, y: TensorType, optimizer: Optimizer | None = None
     ) -> GaussianProcessRegression:
-        model_interface: Type[GaussianProcessRegression] = request.param[0]
+        model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
         return model_interface(base_model, optimizer=optimizer)  # type: ignore
 
@@ -183,7 +185,7 @@ def test_gaussian_process_regression_default_optimize(gpr_interface_factory) -> 
 @random_seed
 @pytest.mark.parametrize("optimizer", [gpflow.optimizers.Scipy(), tf.optimizers.Adam(), None])
 def test_gaussian_process_regression_optimize(
-    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer, None], gpr_interface_factory
+    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer | None, gpr_interface_factory
 ) -> None:
     data = _mock_data()
     optimizer_wrapper = create_optimizer(optimizer, {})
@@ -242,7 +244,7 @@ class _QuadraticGPModel(GPModel):
 
     def predict_f(
         self, Xnew: tf.Tensor, full_cov: bool = False, full_output_cov: bool = False
-    ) -> Tuple[tf.Tensor, tf.Tensor]:
+    ) -> tuple[tf.Tensor, tf.Tensor]:
         assert not full_output_cov, "Test utility not implemented for full output covariance"
         mean = tf.reduce_sum(Xnew ** 2, axis=1, keepdims=True)
         *leading, x_samples, y_dims = mean.shape

@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
-from typing import Dict, Mapping
+from collections.abc import Mapping
 
 import numpy.testing as npt
 import pytest
@@ -66,7 +68,7 @@ def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
 )
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = ThompsonSampling(100, 10)
@@ -79,7 +81,7 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
     search_space = one_dimensional_range(-1, 1)
     rule = TrustRegion()

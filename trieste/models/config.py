@@ -31,22 +31,22 @@ def _default_optimizer() -> gpflow.optimizers.Scipy:
 class ModelConfig:
     """ Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`. """
 
-    model: Union[tf.Module, TrainableProbabilisticModel]
+    model: tf.Module | TrainableProbabilisticModel
     """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
 
-    optimizer: Union[gpflow.optimizers.Scipy, tf.optimizers.Optimizer] = field(
+    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer = field(
         default_factory=_default_optimizer
     )
     """ The optimizer with which to train the model (by minimizing its loss function). """
 
-    optimizer_args: Dict[str, Any] = field(default_factory=lambda: {})
+    optimizer_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the optimizer wrapper. """
 
     def __post_init__(self) -> None:
         self._check_model_type()
 
     @staticmethod
-    def create_from_dict(d: Dict[str, Any]) -> ModelConfig:
+    def create_from_dict(d: dict[str, Any]) -> ModelConfig:
         """
         :param d: A dictionary from which to construct this :class:`ModelConfig`.
         :return: A :class:`ModelConfig` built from ``d``.

@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Union
+from collections.abc import Mapping
+from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -367,7 +370,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     constraint function. See also :cite:`schonlau1998global` for details.
     """
 
-    def __init__(self, threshold: Union[float, TensorType]):
+    def __init__(self, threshold: float | TensorType):
         """
         :param threshold: The (scalar) probability of feasibility threshold.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
@@ -383,7 +386,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
-    def threshold(self) -> Union[float, TensorType]:
+    def threshold(self) -> float | TensorType:
         """ The probability of feasibility threshold. """
         return self._threshold
 
@@ -399,13 +402,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+        model: ProbabilisticModel, threshold: float | TensorType, at: TensorType
     ) -> TensorType:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+    model: ProbabilisticModel, threshold: float | TensorType, at: TensorType
 ) -> TensorType:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
@@ -445,7 +448,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self,
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
-        min_feasibility_probability: Union[float, TensorType] = 0.5,
+        min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
