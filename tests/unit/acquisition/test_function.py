@@ -41,6 +41,7 @@ from trieste.acquisition.function import (
     ExpectedImprovement,
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
+    MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
@@ -52,6 +53,7 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 
@@ -169,6 +171,37 @@ def test_expected_improvement(
     ei = expected_improvement(model, best, xs)
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space).prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel()
+        )
+
+
+def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, num_samples=-5).prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel()
+        )
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, grid_size=-5).prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel()
+        )
+
+
+def test_gumbel_sample_is_correct_shape() -> None:
+    data = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.ones([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel()
+    search_space = Box([0, 0], [1, 1])
+    acq = MinValueEntropySearch(search_space, num_samples=10, grid_size=10)
+    acq.prepare_acquisition_function(data, model)
+    npt.assert_array_equal(acq.gumbel_samples.shape, [10])
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
