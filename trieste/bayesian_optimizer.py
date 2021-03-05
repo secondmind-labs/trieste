@@ -249,11 +249,16 @@ class BayesianOptimizer(Generic[SP]):
                 observer_output = self._observer(query_points)
 
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
-
+                tf.print('START HYPER OPT')
                 for tag, model in models.items():
                     dataset = datasets[tag]
+                    tf.debugging.assert_all_finite(
+                        dataset.query_points, 'NaN encountered in dataset x')
+                    tf.debugging.assert_all_finite(
+                        dataset.observations, 'NaN encountered in dataset y')
                     model.update(dataset)
                     model.optimize(dataset)
+                tf.print('END HYPER OPT')
 
             except Exception as error:
                 tf.print(

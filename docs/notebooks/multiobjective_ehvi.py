@@ -163,8 +163,8 @@ def dtlz2(x: TensorType, M: int = 3) -> TensorType:
     return problem2(x, M)
 
 
-def observer(query_points):
-    y = dtlz2(query_points)
+def observer(query_points, M):
+    y = dtlz2(query_points, M)
     return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
 
 
@@ -173,21 +173,24 @@ def observer(query_points):
 # Now we can follow similar setup to optimize this problem, it will take a while waiting for the finish of the optimizer
 
 # +
-mins = [0, 0, 0, 0]
-maxs = [1, 1, 1, 1]
+from functools import partial
+input_dim = 4
+
+mins = [0] * input_dim
+maxs = [1] * input_dim
 lower_bound = tf.cast(mins, gpflow.default_float())
 upper_bound = tf.cast(maxs, gpflow.default_float())
 search_space = trieste.space.Box(lower_bound, upper_bound)
 
 num_objective = 3
-
+observer = partial(observer, M=num_objective)
 num_initial_points = 15
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
                                              tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1)),
-                                     4, 0.8), 1) for i in range(num_objective)]
+                                     input_dim, 0.8), 1) for i in range(num_objective)]
 
 models = {OBJECTIVE: ModelStack(*objective_models)}
 
