@@ -153,7 +153,7 @@ class VLMOP2(MultiObjectiveTestProblem):
     The VLMOP2n, typically evaluated over :math:`[-2, 2]^2`. See
     :cite:`van1999multiobjective`  for details.
     """
-    bounds = [[-2.0, 2.0]] * 2
+    bounds = [[-2.0] * 2, [2.0] * 2]
     dim = 2
 
     def prepare_benchmark(self):
@@ -170,7 +170,7 @@ class VLMOP2(MultiObjectiveTestProblem):
 
 
 def vlmop2(x: TensorType) -> TensorType:
-    tf.debugging.assert_shapes([(x, (..., 2))])
+    tf.debugging.assert_equal(x.shape[-1], 2, 'vlmop2 only allow 2d input')
     transl = 1 / tf.sqrt(2.0)
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
     y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=1))
@@ -192,7 +192,7 @@ class DTLZ(MultiObjectiveTestProblem):
         self.dim = input_dim
         self.M = num_objective
         self.k = self.dim - self.M + 1
-        self.bounds = [[0, 1]] * input_dim
+        self.bounds = [[0] * input_dim, [1] * input_dim]
         super().__init__()
 
 
@@ -222,7 +222,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     for i in range(m):
         xM = x[:, m - 1:]
         y = (1 + g(xM))
-        y *= 1 / 2 * tf.reduce_prod(x[:, :m - 1 - i])
+        y *= 1 / 2 * tf.reduce_prod(x[:, :m - 1 - i], axis=1, keepdims=True)
         if i > 0:
             y *= 1 - x[:, m - i - 1, tf.newaxis]
         f = y if f is None else tf.concat([f, y], 1)
