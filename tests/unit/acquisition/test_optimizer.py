@@ -11,35 +11,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy.testing as npt
 import pytest
+import tensorflow as tf
 
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition.optimizer import optimize
 from trieste.space import Box, DiscreteSearchSpace
 
-import numpy.testing as npt
-import tensorflow as tf
-
 
 @random_seed
-@pytest.mark.parametrize("search_space, shift, expected_maximizer", [
-    (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
-    (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
-    (Box([-1, -2], [1.5, 2.5]), [1.0, 4], [[1.0, 2.5]]),  # 2D with maximum outside search space
-    (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), [1.0], [[1.2]]),  # 1D
-    (  # 2D
-        DiscreteSearchSpace(tf.constant([
-            [-0.5, -0.3],
-            [-0.2, 0.3],
-            [0.2, -0.3],
-            [1.2, 0.4],
-        ])), [0.3, -0.4], [[0.2, -0.3]]
-    ),
-])
+@pytest.mark.parametrize(
+    "search_space, shift, expected_maximizer",
+    [
+        (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
+        (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
+        (Box([-1, -2], [1.5, 2.5]), [1.0, 4], [[1.0, 2.5]]),  # 2D with maximum outside search space
+        (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), [1.0], [[1.2]]),  # 1D
+        (  # 2D
+            DiscreteSearchSpace(
+                tf.constant(
+                    [
+                        [-0.5, -0.3],
+                        [-0.2, 0.3],
+                        [0.2, -0.3],
+                        [1.2, 0.4],
+                    ]
+                )
+            ),
+            [0.3, -0.4],
+            [[0.2, -0.3]],
+        ),
+    ],
+)
 def test_optimize(
     search_space: Box | DiscreteSearchSpace,
     shift: list[float],
-    expected_maximizer: list[list[float]]
+    expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize(search_space, lambda x: 0.5 - quadratic(x - shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-5)

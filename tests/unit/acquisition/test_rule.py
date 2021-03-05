@@ -20,14 +20,14 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, random_seed, zero_dataset, quadratic
+from tests.util.misc import one_dimensional_range, quadratic, random_seed, zero_dataset
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
+    AcquisitionFunction,
     AcquisitionFunctionBuilder,
     BatchAcquisitionFunction,
     BatchAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
-    AcquisitionFunction,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
@@ -54,7 +54,7 @@ def test_ego(optimizer: AcquisitionOptimizer[Box]) -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: - quadratic(x - 1)
+            return lambda x: -quadratic(x - 1)
 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
