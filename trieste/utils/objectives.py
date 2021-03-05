@@ -132,8 +132,6 @@ class MultiObjectiveTestProblem(ABC):
     r"""Base class for test multi-objective test functions.
     between a provided point and the closest point on the true pareto front.
     """
-    dim = None
-    bounds = None
 
     @abstractmethod
     def prepare_benchmark(self):
