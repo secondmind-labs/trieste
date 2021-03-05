@@ -17,21 +17,22 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.type import TensorType
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
+from trieste.type import TensorType
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
+    DTLZ1,
+    DTLZ2,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+    MultiObjectiveTestProblem,
     branin,
     gramacy_lee,
     logarithmic_goldstein_price,
     mk_observer,
-    DTLZ1,
-    DTLZ2
 )
 
 
@@ -81,13 +82,15 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
         (DTLZ1(3, 2), 3, 2, 1000),
         (DTLZ1(5, 3), 5, 3, 1000),
         (DTLZ2(3, 2), 3, 2, 1000),
-        (DTLZ2(12, 6), 12, 6, 1000)
+        (DTLZ2(12, 6), 12, 6, 1000),
     ],
 )
-def test_gen_pareto_front_is_equal_to_math_defined(obj_inst, input_dim, num_obj, gen_pf_num):
+def test_gen_pareto_front_is_equal_to_math_defined(
+    obj_inst: MultiObjectiveTestProblem, input_dim: int, num_obj: int, gen_pf_num: int
+):
     pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num)
     if isinstance(obj_inst, DTLZ1):
-        tf.assert_equal(tf.reduce_sum(pfs, axis=1), 1.0)
+        tf.assert_equal(tf.reduce_sum(pfs, axis=1), 0.5)
     elif isinstance(obj_inst, DTLZ2):
         tf.debugging.assert_near(tf.norm(pfs, axis=1), 1.0, rtol=1e-6)
 
@@ -99,7 +102,9 @@ def test_gen_pareto_front_is_equal_to_math_defined(obj_inst, input_dim, num_obj,
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
     ],
 )
-def test_func_raises_specified_input_dim_not_alin_with_actual_input_dim(obj_inst, actual_x):
+def test_func_raises_specified_input_dim_not_alin_with_actual_input_dim(
+    obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
+):
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         obj_inst.prepare_benchmark()(actual_x)
 

@@ -19,8 +19,8 @@ taken from `this Virtual Library of Simulation Experiments
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import partial
 
 import tensorflow as tf
@@ -150,9 +150,10 @@ class MultiObjectiveTestProblem(ABC):
 
 class VLMOP2(MultiObjectiveTestProblem):
     """
-    The VLMOP2n, typically evaluated over :math:`[-2, 2]^2`. See
+    The VLMOP2 function, typically evaluated over :math:`[-2, 2]^2`. See
     :cite:`van1999multiobjective`  for details.
     """
+
     bounds = [[-2.0] * 2, [2.0] * 2]
     dim = 2
 
@@ -170,7 +171,7 @@ class VLMOP2(MultiObjectiveTestProblem):
 
 
 def vlmop2(x: TensorType) -> TensorType:
-    tf.debugging.assert_equal(x.shape[-1], 2, 'vlmop2 only allow 2d input')
+    tf.debugging.assert_equal(x.shape[-1], 2, "vlmop2 only allow 2d input")
     transl = 1 / tf.sqrt(2.0)
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
     y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=1))
@@ -178,7 +179,8 @@ def vlmop2(x: TensorType) -> TensorType:
 
 
 class DTLZ(MultiObjectiveTestProblem):
-    r"""DTLZ series multi-objective test functions.
+    """
+    DTLZ series multi-objective test functions.
     :cite: deb2002scalable
     """
 
@@ -186,9 +188,11 @@ class DTLZ(MultiObjectiveTestProblem):
         tf.debugging.assert_greater(input_dim, 0)
         tf.debugging.assert_greater(num_objective, 0)
         tf.debugging.assert_greater(
-            input_dim, num_objective,
-            f'input dimension {input_dim}'
-            f'  must be greater than function objective numbers {num_objective}')
+            input_dim,
+            num_objective,
+            f"input dimension {input_dim}"
+            f"  must be greater than function objective numbers {num_objective}",
+        )
         self.dim = input_dim
         self.M = num_objective
         self.k = self.dim - self.M + 1
@@ -205,24 +209,27 @@ class DTLZ1(DTLZ):
         rnd = tf.random.uniform([n, self.M - 1], minval=0, maxval=1)
         strnd = tf.sort(rnd, axis=-1)
         strnd = tf.concat([tf.zeros([n, 1]), strnd, tf.ones([n, 1])], axis=-1)
-        return strnd[..., 1:] - strnd[..., :-1]
+        return 0.5 * (strnd[..., 1:] - strnd[..., :-1])
 
 
 def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
-    tf.debugging.assert_equal(x.shape[-1], d,
-                              f'input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}')
+    tf.debugging.assert_equal(
+        x.shape[-1], d, f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}"
+    )
 
     def g(xM):
-        return 100 * \
-               (k
-                + tf.reduce_sum((xM - 0.5) ** 2
-                - tf.cos(20 * math.pi * (xM - 0.5)), axis=-1, keepdims=True))
+        return 100 * (
+            k
+            + tf.reduce_sum(
+                (xM - 0.5) ** 2 - tf.cos(20 * math.pi * (xM - 0.5)), axis=-1, keepdims=True
+            )
+        )
 
     f = None
     for i in range(m):
-        xM = x[:, m - 1:]
-        y = (1 + g(xM))
-        y *= 1 / 2 * tf.reduce_prod(x[:, :m - 1 - i], axis=1, keepdims=True)
+        xM = x[:, m - 1 :]
+        y = 1 + g(xM)
+        y *= 1 / 2 * tf.reduce_prod(x[:, : m - 1 - i], axis=1, keepdims=True)
         if i > 0:
             y *= 1 - x[:, m - i - 1, tf.newaxis]
         f = y if f is None else tf.concat([f, y], 1)
@@ -241,8 +248,9 @@ class DTLZ2(DTLZ):
 
 
 def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
-    tf.debugging.assert_equal(x.shape[-1], d,
-                              f'input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}')
+    tf.debugging.assert_equal(
+        x.shape[-1], d, f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}"
+    )
 
     def g(xM):
         z = (xM - 0.5) ** 2
@@ -250,7 +258,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
 
     f = None
     for i in range(m):
-        y = (1 + g(x[:, m - 1:]))
+        y = 1 + g(x[:, m - 1 :])
         for j in range(m - 1 - i):
             y *= tf.cos(math.pi / 2 * x[:, j, tf.newaxis])
         if i > 0:
