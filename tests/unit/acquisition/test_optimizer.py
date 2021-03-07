@@ -29,18 +29,10 @@ from trieste.space import Box, DiscreteSearchSpace
         (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
         (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
         (Box([-1, -2], [1.5, 2.5]), [1.0, 4], [[1.0, 2.5]]),  # 2D with maximum outside search space
+        (Box([-1, -2, 1], [1.5, 2.5, 1.5]), [0.3, -0.4, 0.5], [[0.3, -0.4, 1.0]]),  # 3D
         (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), [1.0], [[1.2]]),  # 1D
         (  # 2D
-            DiscreteSearchSpace(
-                tf.constant(
-                    [
-                        [-0.5, -0.3],
-                        [-0.2, 0.3],
-                        [0.2, -0.3],
-                        [1.2, 0.4],
-                    ]
-                )
-            ),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [-0.2, 0.3], [0.2, -0.3], [1.2, 0.4]])),
             [0.3, -0.4],
             [[0.2, -0.3]],
         ),
@@ -52,4 +44,4 @@ def test_optimize(
     expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize(search_space, lambda x: 0.5 - quadratic(x - shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-5)
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)

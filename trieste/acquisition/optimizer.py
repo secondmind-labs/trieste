@@ -43,10 +43,10 @@ def optimize(
     space: Union[Box, DiscreteSearchSpace], target_func: AcquisitionFunction
 ) -> TensorType:
     """
-    :param space: The space of points over which to search, for points with shape S.
-    :param target_func: The function to maximise, with input shape [...] + S and output shape
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., D] and output shape
         [..., 1].
-    :return: The point in ``space`` that maximises ``target_func``, with shape [1] + S.
+    :return: The point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
 
