@@ -20,7 +20,8 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, quadratic, random_seed, zero_dataset
+from tests.util.misc import one_dimensional_range, quadratic, random_seed, zero_dataset, \
+    empty_dataset
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
@@ -49,7 +50,7 @@ def _line_search_minimize(search_space: Box, f: AcquisitionFunction) -> TensorTy
 
 
 @pytest.mark.parametrize("optimizer", [_line_search_minimize, None])
-def test_ego(optimizer: AcquisitionOptimizer[Box]) -> None:
+def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
     class NegQuadratic(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -58,9 +59,8 @@ def test_ego(optimizer: AcquisitionOptimizer[Box]) -> None:
 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )
+    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
+    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
