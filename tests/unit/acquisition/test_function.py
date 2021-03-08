@@ -117,7 +117,10 @@ def test_single_builder_using_passes_on_correct_dataset_and_model(
 ) -> None:
     builder = single_builder.using("foo")
     data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
-    models = {"foo": QuadraticMeanAndRBFKernel(0.0), "bar": QuadraticMeanAndRBFKernel(1.0)}
+    models = {
+        "foo": QuadraticMeanAndRBFKernel(kernel_amplitude=0.0),
+        "bar": QuadraticMeanAndRBFKernel(kernel_amplitude=1.0)
+    }
     builder.prepare_acquisition_function(data, models)
 
 
