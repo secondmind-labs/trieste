@@ -49,7 +49,7 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
 
 class BoundedVolumes:
     """
-    A :class:`BoundedVolumes store the index of the Pareto front to form lower and upper
+    A :class:`BoundedVolumes` store the index of the Pareto front to form lower and upper
     bounds of the pseudo cells decomposition.
     """
 
