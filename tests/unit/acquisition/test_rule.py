@@ -20,8 +20,13 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, quadratic, random_seed, zero_dataset, \
-    empty_dataset
+from tests.util.misc import (
+    empty_dataset,
+    one_dimensional_range,
+    quadratic,
+    random_seed,
+    zero_dataset,
+)
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
