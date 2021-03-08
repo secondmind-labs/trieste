@@ -33,8 +33,8 @@ SP = TypeVar("SP", bound=SearchSpace)
 AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
-a search space. For a search space with points of shape S, and acquisition function with shapes
-[...] + S to [..., 1], the return shape should be [1] + S.
+a search space. For a search space with points of shape S, and acquisition function with input shape
+[...] + S output shape [..., 1], the :data:`AcquisitionOptimizer` return shape should be [1] + S.
 """
 
 
