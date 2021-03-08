@@ -105,3 +105,32 @@ class Pareto:
         upper = tf.concat([range_ + 1, pf_ext_idx[::-1, 1:][: pf_ext_idx[-1, 0]]], axis=-1)
 
         return BoundedVolumes(lower, upper)
+
+    def hypervolume_indicator(self, reference: tf.Tensor) -> tf.Tensor:
+        """
+        Method to calculate the hypervolume indicator
+        The hypervolume indicator is the volume of the dominated region.
+
+        :param reference: a reference point to use, with shape [D].
+            Should be equal or bigger than the anti-ideal point of the Pareto set
+            for comparing results across runs, the same reference point must be used.
+        :return: hypervolume indicator (the higher the better)
+        """
+
+        min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
+        pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
+        D = tf.shape(pseudo_pfront)[1]
+        N = tf.shape(self.bounds.upper_idx)[0]
+
+        idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
+        upper_idx = tf.reshape(
+            tf.stack([tf.transpose(self.bounds.upper_idx), idx], axis=2), [N * D, 2]
+        )
+        lower_idx = tf.reshape(
+            tf.stack([tf.transpose(self.bounds.lower_idx), idx], axis=2), [N * D, 2]
+        )
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [D, N])
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [D, N])
+        hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
+
+        return tf.reduce_prod(reference[None] - min_pfront) - hypervolume

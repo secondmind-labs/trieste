@@ -111,3 +111,22 @@ def test_pareto_2d_bounds() -> None:
     npt.assert_allclose(
         pareto_2d.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
     )
+
+
+def test_hypervolume() -> None:
+    objectives = tf.constant(
+        [
+            [0.9575, 0.4218],
+            [0.9649, 0.9157],
+            [0.1576, 0.7922],
+            [0.9706, 0.9595],
+            [0.9572, 0.6557],
+            [0.4854, 0.0357],
+            [0.8003, 0.8491],
+            [0.1419, 0.9340],
+        ]
+    )
+
+    pareto_2d = Pareto(objectives)
+
+    npt.assert_allclose(pareto_2d.hypervolume_indicator(tf.constant([2.0, 2.0])), 3.3878, rtol=1e-2)
