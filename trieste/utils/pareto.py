@@ -62,8 +62,8 @@ class BoundedVolumes:
         """
 
         tf.debugging.assert_shapes([(lower_idx, ["N", "D"]), (upper_idx, ["N", "D"])])
-        self.lower_idx = lower_idx
-        self.upper_idx = upper_idx
+        self.lower_idx: Final[TensorType] = lower_idx
+        self.upper_idx: Final[TensorType] = upper_idx
 
 
 class Pareto:
