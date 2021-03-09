@@ -89,7 +89,8 @@ import gpflow
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
+    data_as_vars = tf.Variable(data.query_points), tf.Variable(data.observations)
+    gpr = gpflow.models.GPR(data_as_vars, kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
@@ -99,7 +100,9 @@ def create_classification_model(data):
         variance=100.0, lengthscales=[0.2, 0.2]
     )
     likelihood = gpflow.likelihoods.Bernoulli()
-    vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
+    data_as_vars = tf.Variable(data.query_points), tf.Variable(data.observations)
+    vgp = gpflow.models.VGP(data_as_vars, kernel, likelihood)
+    vgp.num_data = tf.Variable(vgp.num_data)
     gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
 

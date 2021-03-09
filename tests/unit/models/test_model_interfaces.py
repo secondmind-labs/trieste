@@ -287,8 +287,7 @@ def test_gpflow_predictor_sample_no_samples() -> None:
 
 def test_sparse_variational_model_attribute() -> None:
     model = _svgp(_mock_data()[0])
-    sv = SparseVariational(model, Dataset(*_mock_data()))
-    assert sv.model is model
+    assert SparseVariational(model).model is model
 
 
 @pytest.mark.parametrize(
@@ -296,10 +295,7 @@ def test_sparse_variational_model_attribute() -> None:
     [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
 )
 def test_sparse_variational_update_raises_for_invalid_shapes(new_data: Dataset) -> None:
-    model = SparseVariational(
-        _svgp(tf.zeros([1, 4])),
-        Dataset(tf.zeros([3, 4]), tf.zeros([3, 1])),
-    )
+    model = SparseVariational(_svgp(tf.zeros([1, 4])))
     with pytest.raises(ValueError):
         model.update(new_data)
 
@@ -308,11 +304,10 @@ def test_sparse_variational_optimize_with_defaults() -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
     data = x_observed, y_observed
-    dataset = Dataset(*data)
     optimizer = create_optimizer(tf.optimizers.Adam(), dict(max_iter=20))
-    model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
+    model = SparseVariational(_svgp(x_observed[:10]), optimizer=optimizer)
     loss = model.model.training_loss(data)
-    model.optimize(dataset)
+    model.optimize(Dataset(*data))
     assert model.model.training_loss(data) < loss
 
 
@@ -334,13 +329,12 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
     data = x_observed, y_observed
-    dataset = Dataset(*data)
 
     optimizer = create_optimizer(
         tf.optimizers.Adam(),
         dict(max_iter=20, batch_size=10, dataset_builder=batcher, compile=compile),
     )
-    model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
+    model = SparseVariational(_svgp(x_observed[:10]), optimizer=optimizer)
     loss = model.model.training_loss(data)
-    model.optimize(dataset)
+    model.optimize(Dataset(*data))
     assert model.model.training_loss(data) < loss

@@ -54,9 +54,8 @@ initial_data = observer(search_space.sample(5))
 
 variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
 kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(1e-12)
-gpr = gpflow.models.GPR(
-    initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5
-)
+data_as_vars = tuple(map(tf.Variable, initial_data[OBJECTIVE].astuple()))
+gpr = gpflow.models.GPR(data_as_vars, kernel, noise_variance=1e-5)  # type: ignore
 gpflow.set_trainable(gpr.likelihood, False)
 models = {OBJECTIVE: trieste.models.GaussianProcessRegression(gpr)}
 
