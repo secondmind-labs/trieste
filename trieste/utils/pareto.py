@@ -114,8 +114,16 @@ class Pareto:
         :param reference: a reference point to use, with shape [D].
             Should be equal or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
-        :return: hypervolume indicator 
+        :return: hypervolume indicator
         """
+        tf.debugging.assert_shapes(
+            [
+                (self.bounds.lower_idx, ["N", "D"]),
+                (self.bounds.upper_idx, ["N", "D"]),
+                (self.front, ["M", "D"]),
+                (reference, ["D"]),
+            ]
+        )
 
         min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
         pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
