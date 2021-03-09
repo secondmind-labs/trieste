@@ -15,8 +15,10 @@ r"""
 This module contains functionality for optimizing
 :data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
 """
+from __future__ import annotations
+
 from functools import singledispatch
-from typing import Callable, TypeVar, Union
+from typing import Callable, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -38,11 +40,8 @@ a search space. For a search space with points of shape S, and acquisition funct
 """
 
 
-# todo name this more precisely. This may mean making the dss and box variants their own functions.
 @singledispatch
-def optimize(
-    space: Union[Box, DiscreteSearchSpace], target_func: AcquisitionFunction
-) -> TensorType:
+def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., D] and output shape
