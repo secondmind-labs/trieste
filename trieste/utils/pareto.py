@@ -108,13 +108,13 @@ class Pareto:
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
-        Method to calculate the hypervolume indicator
+        Calculate the hypervolume indicator
         The hypervolume indicator is the volume of the dominated region.
 
         :param reference: a reference point to use, with shape [D].
-            Should be equal or bigger than the anti-ideal point of the Pareto set
-            for comparing results across runs, the same reference point must be used.
-        :return: hypervolume indicator (the higher the better)
+            Should be equal or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: hypervolume indicator 
         """
 
         min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
