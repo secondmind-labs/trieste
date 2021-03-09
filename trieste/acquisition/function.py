@@ -108,6 +108,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
     """
+
     def __init__(self):
         self._eta = tf.Variable(0.0)
 
