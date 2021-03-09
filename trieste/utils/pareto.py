@@ -106,7 +106,7 @@ class Pareto:
 
         return BoundedVolumes(lower, upper)
 
-    def hypervolume_indicator(self, reference: tf.Tensor) -> tf.Tensor:
+    def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
         Method to calculate the hypervolume indicator
         The hypervolume indicator is the volume of the dominated region.
