@@ -113,7 +113,7 @@ def test_pareto_2d_bounds() -> None:
     )
 
 
-def test_hypervolume() -> None:
+def test_pareto_hypervolume_indicator() -> None:
     objectives = tf.constant(
         [
             [0.9575, 0.4218],
