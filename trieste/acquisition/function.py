@@ -109,9 +109,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
     of the posterior mean at observed points.
     """
 
-    def __init__(self):
-        self._eta = tf.Variable(0.0)
-
     def __repr__(self) -> str:
         """"""
         return "ExpectedImprovement()"
@@ -129,8 +126,14 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
 
         mean, _ = model.predict(dataset.query_points)
-        self._eta.assign(tf.reduce_min(mean, axis=0))
-        return lambda at: expected_improvement(model, self._eta, at)
+        eta = tf.reduce_min(mean, axis=0)
+        return lambda at: self._acquisition_function(model, eta, at)
+
+    @staticmethod
+    def _acquisition_function(
+        model: ProbabilisticModel, eta: TensorType, at: TensorType
+    ) -> TensorType:
+        return expected_improvement(model, eta, at)
 
 
 def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorType) -> TensorType:
