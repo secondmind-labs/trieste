@@ -41,6 +41,7 @@ from trieste.acquisition.function import (
     ExpectedImprovement,
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
+    MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
@@ -48,10 +49,12 @@ from trieste.acquisition.function import (
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
+    min_value_entropy_search,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 
@@ -169,6 +172,61 @@ def test_expected_improvement(
     ei = expected_improvement(model, best, xs)
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    search_space = Box([0, 0], [1, 1])
+    builder = MinValueEntropySearch(search_space)
+    with pytest.raises(ValueError):
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+
+
+def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, num_samples=-5)
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, grid_size=-5)
+
+
+@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])
+def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
+    samples: TensorType,
+) -> None:
+    with pytest.raises(ValueError):
+        min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples, tf.constant([[]]))
+
+
+def test_min_value_entropy_search_returns_correct_shape() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    gumbel_samples = tf.constant([1.0])
+    query_at = tf.linspace([-10.0], [10.0], 5)
+    evals = min_value_entropy_search(model, gumbel_samples, query_at)
+    npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
+
+
+def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -> None:
+    """
+    When based on a single max-value sample, MES should choose the same point that probability of
+    improvement would when calcualted with the max-value as its threshold (See :cite:`wang2017max`).
+    """
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves()
+    model = GaussianProcess([branin], [kernel])
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    gumbel_sample = tf.constant([1.0], dtype=tf.float64)
+    mes_evals = min_value_entropy_search(model, gumbel_sample, xs)
+
+    mean, variance = model.predict(xs)
+    gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
+    norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
+    pi_evals = norm.cdf(gamma)
+    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
