@@ -81,7 +81,7 @@ def zero_dataset() -> Dataset:
     return Dataset(tf.constant([[0.0]]), tf.constant([[0.0]]))
 
 
-def empty_dataset(query_point_shape: list[int], observation_shape: list[int]) -> Dataset:
+def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
     """
     :param query_point_shape: The shape of a *single* query point.
     :param observation_shape: The shape of a *single* observation.
