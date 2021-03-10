@@ -42,7 +42,6 @@ from trieste.acquisition.function import (
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
     MinValueEntropySearch,
-    min_value_entropy_search,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
@@ -50,6 +49,7 @@ from trieste.acquisition.function import (
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
+    min_value_entropy_search,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
