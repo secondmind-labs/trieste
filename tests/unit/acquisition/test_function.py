@@ -179,9 +179,7 @@ def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space)
     with pytest.raises(ValueError):
-        builder.prepare_acquisition_function(
-            data, QuadraticMeanAndRBFKernel()
-        )
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
 def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
@@ -204,7 +202,7 @@ def test_min_value_entropy_search_raises_for_gumbel_sample_with_additional_dimen
 
 def test_min_value_entropy_search_returns_correct_shape() -> None:
     model = QuadraticMeanAndRBFKernel()
-    gumbel_samples = tf.constant([1.])
+    gumbel_samples = tf.constant([1.0])
     query_at = tf.linspace([-10.0], [10.0], 5)
     evals = min_value_entropy_search(model, gumbel_samples, query_at)
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
