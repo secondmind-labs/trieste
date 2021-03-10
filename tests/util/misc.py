@@ -87,8 +87,8 @@ def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) ->
     :param observation_shape: The shape of a *single* observation.
     :return: An empty dataset with points of the specified shapes, and dtype `tf.float64`.
     """
-    qp = tf.zeros([0] + query_point_shape, tf.float64)
-    obs = tf.zeros([0] + observation_shape, tf.float64)
+    qp = tf.zeros(tf.TensorShape([0]) + query_point_shape, tf.float64)
+    obs = tf.zeros(tf.TensorShape([0]) + observation_shape, tf.float64)
     return Dataset(qp, obs)
 
 
