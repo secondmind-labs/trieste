@@ -54,8 +54,10 @@ import gpflow
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    data_as_vars = tf.Variable(data.query_points), tf.Variable(data.observations)
-    gpr = gpflow.models.GPR(data_as_vars, kernel, noise_variance=1e-5)
+    # todo this doesn't work atm because tf.Variable doesn't maintain shape on deepcopy
+    query_points = tf.Variable(data.query_points, shape=[None, 2])
+    observations = tf.Variable(data.observations, shape=[None, 1])
+    gpr = gpflow.models.GPR((query_points, observations), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
     return {OBJECTIVE: {
