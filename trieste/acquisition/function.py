@@ -181,8 +181,6 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
 
-        self.gumbel_samples = None
-
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
@@ -208,6 +206,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
+
         query_points = self._search_space.sample(num_samples=self._grid_size)
         query_points = tf.concat([dataset.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
@@ -233,11 +232,11 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         a = (q2 * l1 - q1 * l2) / (l1 - l2)
 
         uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        self.gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
+        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
             a, fmean.dtype
         )
 
-        return lambda at: self._acquisition_function(model, self.gumbel_samples, at)
+        return lambda at: self._acquisition_function(model, gumbel_samples, at)
 
     @staticmethod
     def _acquisition_function(
@@ -253,22 +252,19 @@ def min_value_entropy_search(
     Computes the information gain, i.e the change in entropy of p_min (the distribution of the
     minimal value of the objective function) if we would evaluate x.
 
-    See the following for details:
-
-    ::
-
-        @article{wang2017max,
-          title={Max-value entropy search for efficient Bayesian optimization},
-          author={Wang, Zi and Jegelka, Stefanie},
-          journal={arXiv preprint arXiv:1703.01968},
-          year={2017}
-        }
+    See :cite:`wang2017max` for details.
 
     :param model: The model of the objective function.
     :param samples: Samples from p_min
     :param at: The points for which to calculate the expected improvement.
     :return: The entropy reduction provided by an evaluation of ``at``.
     """
+
+    if len(samples) == 0:
+        raise ValueError("Need at least one max-value sample.")
+    if len(samples.shape) != 1:
+        raise ValueError("Max-value samples must be 1-dimensional.")
+
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)
     fsd = tf.clip_by_value(
