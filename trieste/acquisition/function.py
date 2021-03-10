@@ -260,10 +260,10 @@ def min_value_entropy_search(
     :return: The entropy reduction provided by an evaluation of ``at``.
     """
 
+    tf.debugging.assert_rank(samples, 1)
+
     if len(samples) == 0:
-        raise ValueError("Need at least one max-value sample.")
-    if len(samples.shape) != 1:
-        raise ValueError("Max-value samples must be 1-dimensional.")
+        raise ValueError("Gumbel samples must be populated.")
 
     fmean, fvar = model.predict(at)
     fsd = tf.math.sqrt(fvar)

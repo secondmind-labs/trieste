@@ -190,14 +190,12 @@ def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes
         MinValueEntropySearch(search_space, grid_size=-5)
 
 
-def test_min_value_entropy_search_raises_for_empty_gumbel_sample() -> None:
+@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])
+def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
+    samples: TensorType,
+) -> None:
     with pytest.raises(ValueError):
-        min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([]), tf.constant([[]]))
-
-
-def test_min_value_entropy_search_raises_for_gumbel_sample_with_additional_dimensions() -> None:
-    with pytest.raises(ValueError):
-        min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([[]]), tf.constant([[]]))
+        min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples, tf.constant([[]]))
 
 
 def test_min_value_entropy_search_returns_correct_shape() -> None:
