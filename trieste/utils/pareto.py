@@ -117,6 +117,8 @@ class Pareto:
             For comparing results across runs, the same reference point must be used.
         :return: hypervolume indicator
         """
+        tf.debugging.assert_greater_equal(reference, self.front)
+
         tf.debugging.assert_shapes(
             [
                 (self.bounds.lower_idx, ["N", "D"]),
