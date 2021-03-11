@@ -117,7 +117,7 @@ def test_pareto_2d_bounds() -> None:
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypervolume_indicator_raises_for_reference_with_invalid_shape(
-    reference: NList[float]
+    reference: NList[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
@@ -127,7 +127,7 @@ def test_pareto_hypervolume_indicator_raises_for_reference_with_invalid_shape(
 
 @pytest.mark.parametrize("reference", [[0.1, -0.65], [-0.7, -0.1]])
 def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_point(
-    reference: list[float]
+    reference: list[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
@@ -135,13 +135,18 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
         pareto.hypervolume_indicator(tf.constant(reference))
 
 
-@pytest.mark.parametrize("objectives, reference, expected", [
-    ([[1.0, 0.5]], [2.3, 2.0], 1.95),
-    ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], [0.1, -0.1], 0.92),
-    (  # reference point is equal to one pareto point in one dimension
-        [[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], [0.1, -0.6], 0.37
-    ),
-])
+@pytest.mark.parametrize(
+    "objectives, reference, expected",
+    [
+        ([[1.0, 0.5]], [2.3, 2.0], 1.95),
+        ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], [0.1, -0.1], 0.92),
+        (  # reference point is equal to one pareto point in one dimension
+            [[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]],
+            [0.1, -0.6],
+            0.37,
+        ),
+    ],
+)
 def test_pareto_hypervolume_indicator(
     objectives: list[list[float]], reference: list[float], expected: float
 ) -> None:
