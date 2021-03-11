@@ -127,8 +127,7 @@ class Pareto:
 
         min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
         pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
-        D = tf.shape(pseudo_pfront)[1]
-        N = tf.shape(self.bounds.upper_idx)[0]
+        N, D = tf.shape(self.bounds.upper_idx)
 
         idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
         upper_idx = tf.reshape(
