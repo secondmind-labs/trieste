@@ -19,10 +19,12 @@ from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from scipy.optimize import bisect
 from typing_extensions import final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 
@@ -124,7 +126,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
-
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at)
@@ -155,6 +156,129 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorT
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+
+class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+    """
+    Builder for the min-value entropy search acquisition function (an adapted
+    version of max-value entropy search suitiable for function minimisation tasks).
+    """
+
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of sample draws of the minimal value.
+        :param grid_size: Size of random grid used to fit the gumbel distribution
+            (recommend scaling with search space dimension).
+        """
+        self._search_space = search_space
+
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        Need to sample  a set of min-values y* from our posterior.
+        To do this we implement a Gumbel sampler, where we approximate
+        :math:`Pr(y*<y) by Gumbel(a,b)`.
+
+        The Gumbel distribution for minima has a cumulative density function
+        of :math:`f(y)= 1 - exp(-exp((y - a) / b))`, i.e. the q :sup:`th` quantile is given by
+        Q(q) = a + b * log( -1 * log(1 - q)). We choose values for a and b that
+        match the Gumbel's interquartile range with that of the observed
+        empirical cumulative density function of Pr(y*<y).
+
+        We then sample this Gumbel distribution by sampling from a uniform random variable
+        and applying the inverse probability integral transform, i.e. given a sample
+        r ~ Unif[0,1] then g = a + b * log( -1 * log(1 - r)) follows g ~ Gumbel(a,b).
+
+
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The MES function.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        fmean, fvar = model.predict(query_points)
+        fsd = tf.math.sqrt(fvar)
+
+        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
+            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
+
+        left = tf.reduce_min(fmean - 5 * fsd)
+        right = tf.reduce_max(fmean + 5 * fsd)
+
+        def binary_search(val: float) -> float:  # Find empirical interquartile range
+            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
+
+        q1, q2 = map(binary_search, [0.25, 0.75])
+
+        log = tf.math.log
+        l1 = log(log(4.0 / 3.0))
+        l2 = log(log(4.0))
+        b = (q1 - q2) / (l1 - l2)
+        a = (q2 * l1 - q1 * l2) / (l1 - l2)
+
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
+            a, fmean.dtype
+        )
+
+        return lambda at: self._acquisition_function(model, gumbel_samples, at)
+
+    @staticmethod
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: TensorType, at: TensorType
+    ) -> TensorType:
+        return min_value_entropy_search(model, samples, at)
+
+
+def min_value_entropy_search(
+    model: ProbabilisticModel, samples: TensorType, at: TensorType
+) -> TensorType:
+    r"""
+    Computes the information gain, i.e the change in entropy of p_min (the distribution of the
+    minimal value of the objective function) if we would evaluate x.
+
+    See :cite:`wang2017max` for details.
+
+    :param model: The model of the objective function.
+    :param samples: Samples from p_min
+    :param at: The points for which to calculate the expected improvement.
+    :return: The entropy reduction provided by an evaluation of ``at``.
+    """
+
+    tf.debugging.assert_rank(samples, 1)
+
+    if len(samples) == 0:
+        raise ValueError("Gumbel samples must be populated.")
+
+    fmean, fvar = model.predict(at)
+    fsd = tf.math.sqrt(fvar)
+    fsd = tf.clip_by_value(
+        fsd, 1.0e-8, fmean.dtype.max
+    )  # clip below to improve numerical stability
+
+    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+    gamma = (samples - fmean) / fsd
+
+    minus_cdf = 1 - normal.cdf(gamma)
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
+    f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+
+    return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):

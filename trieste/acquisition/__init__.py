@@ -47,6 +47,7 @@ from .function import (
     ExpectedImprovement,
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
+    MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
