@@ -112,6 +112,7 @@ class Pareto:
         The hypervolume indicator is the volume of the dominated region.
 
         :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
             Should be equal or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
         :return: hypervolume indicator
