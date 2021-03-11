@@ -116,6 +116,10 @@ class Pareto:
             Should be equal or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
         :return: hypervolume indicator
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        :raise `tf.errors.InvalidArgumentError`: If ``reference`` is less than the anti-ideal point
+            in any dimension.
         """
         tf.debugging.assert_greater_equal(reference, self.front)
 
