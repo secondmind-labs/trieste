@@ -26,24 +26,21 @@ from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 class Reducer(AcquisitionFunctionBuilder):
     r"""
-    A :class:`Reducer` builds an :func:`~trieste.acquisition.AcquisitionFunction` whose output is
+    A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
-    :func:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is
-    defined by the method :meth:`_reduce`.
+    :const:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is defined
+    by the method :meth:`_reduce`.
     """
 
     def __init__(self, *builders: AcquisitionFunctionBuilder):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
-        :raise ValueError: If no builders are specified.
+        :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
         """
-        classname = self.__class__.__name__
-        if len(builders) < 1:
-            raise ValueError(f"{classname} expects at least one acquisition builder.")
-        if not all([isinstance(v, AcquisitionFunctionBuilder) for v in builders]):
-            raise TypeError(
-                f"{classname} expects `AcquisitionFunctionBuilder` instances as inputs."
-            )
+        tf.debugging.assert_positive(
+            len(builders), "At least one acquisition builder expected, got none."
+        )
+
         self._acquisitions = builders
 
     def _repr_builders(self) -> str:

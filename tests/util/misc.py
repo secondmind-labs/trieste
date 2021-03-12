@@ -32,7 +32,7 @@ TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
     ValueError,
     tf.errors.InvalidArgumentError,
 )
-""" Error types thrown by TensorFlow's debugging functionality. """
+""" Error types thrown by TensorFlow's debugging functionality for tensor shapes. """
 
 C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
