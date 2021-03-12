@@ -26,9 +26,9 @@ from .function import AcquisitionFunction, AcquisitionFunctionBuilder
 
 class Reducer(AcquisitionFunctionBuilder):
     r"""
-    A :class:`Reducer` builds an :data:`~trieste.acquisition.AcquisitionFunction` whose output is
+    A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
-    :data:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is defined
+    :const:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is defined
     by the method :meth:`_reduce`.
     """
 
