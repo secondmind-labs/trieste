@@ -49,12 +49,12 @@ from trieste.space import Box
 from trieste.type import TensorType
 
 
-def _line_search_minimize(search_space: Box, f: AcquisitionFunction) -> TensorType:
+def _line_search_maximize(search_space: Box, f: AcquisitionFunction) -> TensorType:
     xs = tf.linspace(search_space.lower, search_space.upper, 10 ** 6)
     return xs[tf.squeeze(tf.argmax(f(xs))), None]
 
 
-@pytest.mark.parametrize("optimizer", [_line_search_minimize, None])
+@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
     class NegQuadratic(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(

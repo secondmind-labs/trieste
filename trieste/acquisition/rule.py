@@ -96,12 +96,11 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
     ):
         """
-        :param builder: The acquisition function builder to use.
-            :class:`EfficientGlobalOptimization` will attempt to **maximise** the corresponding
-            acquisition function. Defaults to :class:`~trieste.acquisition.ExpectedImprovement`
-            with tag `OBJECTIVE`.
+        :param builder: The acquisition function builder to use. Defaults to
+            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
-            ``builder``. This must be compatible with the global search space. Defaults to
+            ``builder``. This should *maximize* the acquisition function, and must be compatible
+            with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.optimize`.
         """
         if builder is None:
@@ -125,7 +124,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         state: None = None,
     ) -> tuple[TensorType, None]:
         """
-        Return the query point that optimizes the acquisition function produced by `builder` (see
+        Return the query point that optimizes the acquisition function produced by ``builder`` (see
         :meth:`__init__`).
 
         :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
