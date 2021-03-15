@@ -102,7 +102,11 @@ class ModelStack(TrainableProbabilisticModel):
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
-    multi-output model may have dependence between its outputs.
+    multi-output model may have dependence between its outputs. When we speak of *event size* in
+    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,
+    whether that is the :class:`ModelStack` itself, or one of the subsidiary
+    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+    size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
     """
 
     def __init__(
