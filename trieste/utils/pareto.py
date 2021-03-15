@@ -53,10 +53,6 @@ class BoundedVolumes:
     def __init__(self, lower_idx: tf.Tensor, upper_idx: tf.Tensor):
         """
         Construct bounded volumes.
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
         :param lower_idx: the lowerbounds index of the volumes
         :param upper_idx: the upperbounds index of the volumes
         """
@@ -110,7 +106,6 @@ class Pareto:
         """
         Calculate the hypervolume indicator
         The hypervolume indicator is the volume of the dominated region.
-
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
             Should be equal or bigger than the anti-ideal point of the Pareto set.
@@ -148,4 +143,3 @@ class Pareto:
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
-
