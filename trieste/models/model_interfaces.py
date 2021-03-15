@@ -155,6 +155,7 @@ class ModelStack(TrainableProbabilisticModel):
         Update all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
@@ -167,6 +168,7 @@ class ModelStack(TrainableProbabilisticModel):
         Optimize all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+        
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
