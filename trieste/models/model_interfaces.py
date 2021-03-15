@@ -94,6 +94,99 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         raise NotImplementedError
 
 
+class ModelStack(TrainableProbabilisticModel):
+    r"""
+    A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
+    It combines the outputs of each model for predictions and sampling, and delegates training data
+    to each model for updates and optimization.
+
+    **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
+    are assumed independent. Each model may itself be single- or multi-output, and any one
+    multi-output model may have dependence between its outputs. When we speak of *event size* in
+    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,
+    whether that is the :class:`ModelStack` itself, or one of the subsidiary
+    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+    size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
+    """
+
+    def __init__(
+        self,
+        model_with_event_size: tuple[TrainableProbabilisticModel, int],
+        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
+    ):
+        r"""
+        The order of individual models specified at :meth:`__init__` determines the order of the
+        :class:`ModelStack` output dimensions.
+
+        :param model_with_event_size: The first model, and the size of its output events.
+            **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
+            method signature requires at least one model. It is not treated specially.
+        :param \*models_with_event_sizes: The other models, and sizes of their output events.
+        """
+        super().__init__()
+        self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean and variance will both have
+            shape [..., :math:`\sum_i E_i`].
+        """
+        means, vars_ = zip(*[model.predict(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., B, D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean will have shape
+            [..., B, :math:`\sum_i E_i`], and the covariance shape
+            [..., :math:`\sum_i E_i`, B, B].
+        """
+        means, covs = zip(*[model.predict_joint(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        r"""
+        :param query_points: The points at which to sample, with shape [..., D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples from all the wrapped models, concatenated along the event axis. For
+            wrapped models with predictive distributions with event shapes [:math:`E_i`], this has
+            shape [..., S, :math:`\sum_i E_i`], where S is the number of samples.
+        """
+        samples = [model.sample(query_points, num_samples) for model in self._models]
+        return tf.concat(samples, axis=-1)
+
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update all the wrapped models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` along the event axis according to the
+        event sizes specified at :meth:`__init__`.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
+
+        for model, obs in zip(self._models, observations):
+            model.update(Dataset(dataset.query_points, obs))
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize all the wrapped models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` along the event axis according to the
+        event sizes specified at :meth:`__init__`.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
+
+        for model, obs in zip(self._models, observations):
+            model.optimize(Dataset(dataset.query_points, obs))
+
+
 class GPflowPredictor(ProbabilisticModel, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
