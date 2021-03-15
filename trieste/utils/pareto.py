@@ -149,9 +149,7 @@ class Pareto:
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
 
-    def get_hyper_cell_bounds(
-        self, anti_reference: TensorType, reference: TensorType
-    ) -> Tuple:
+    def get_hyper_cell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
         """
         Get the partitioned hyper cells lower and upper bounds
 
