@@ -149,7 +149,9 @@ class Pareto:
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
 
-    def get_hyper_cell_bounds(self, anti_reference: TensorType, reference: TensorType) -> [TensorType]:
+    def get_hyper_cell_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> [TensorType]:
         """
         Get the partitioned hyper cells lower and upper bounds
 
@@ -188,4 +190,3 @@ class Pareto:
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
 
         return lower, upper
-

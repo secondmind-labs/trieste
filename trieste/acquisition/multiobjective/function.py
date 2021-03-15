@@ -19,6 +19,5 @@ def get_reference_point(front: TensorType) -> TensorType:
     """
     reference point calculation method
     """
-    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(
-        front, axis=0)
+    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
     return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
