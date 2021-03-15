@@ -1,24 +1,24 @@
 import tensorflow as tf
 from abc import abstractmethod
 from ...utils.pareto import Pareto
+from ...type import TensorType
 from ..function import SingleModelAcquisitionBuilder
 
 
 class HypervolumeAcquisitionBuilder(SingleModelAcquisitionBuilder):
     @abstractmethod
-    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
+    def _calculate_ref_pt(self, pareto: Pareto, ref_pt_calc_method="default"):
         """
         calculate the reference point for hypervolme calculation
         :param pareto: Pareto class
-        :param nadir_setting
+        :param ref_pt_calc_method
         """
 
 
-def get_nadir_point(front: tf.Tensor) -> tf.Tensor:
+def get_reference_point(front: TensorType) -> TensorType:
     """
-    nadir point calculation method
+    reference point calculation method
     """
-    f = tf.math.reduce_max(front, axis=0, keepdims=True) - tf.math.reduce_min(
-        front, axis=0, keepdims=True
-    )
-    return tf.math.reduce_max(front, axis=0, keepdims=True) + 2 * f / front.shape[0]
+    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(
+        front, axis=0)
+    return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]

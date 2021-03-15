@@ -28,7 +28,7 @@ from tests.util.misc import (
 from tests.util.model import QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel
 from trieste.data import Dataset
 from trieste.utils.pareto import Pareto
-from trieste.acquisition.multiobjective.function import get_nadir_point
+from trieste.acquisition.multiobjective.function import get_reference_point
 from trieste.acquisition.multiobjective.analytic import Expected_Hypervolume_Improvement, expected_hv_improvement
 from trieste.models.model_interfaces import ModelStack
 
@@ -57,7 +57,7 @@ def test_expected_hv_improvement_builder_builds_expected_hv_improvement_using_pa
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
     xs = tf.linspace([-10.0], [10.0], 100)
-    expected = expected_hv_improvement(model, xs, _prt, get_nadir_point(_prt.front))
+    expected = expected_hv_improvement(model, xs, _prt, get_reference_point(_prt.front))
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -88,8 +88,8 @@ def test_expected_hypervolume_improvement(
     # [f_samples, B, L]
     predict_samples = tfd.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
     _pareto = Pareto(existing_observations)
-    nadir = get_nadir_point(_pareto.front)
-    lb_points, ub_points = _pareto.get_hyper_cell_bounds(tf.constant([[-inf] * nadir.shape[-1]]), nadir)
+    ref_pt = get_reference_point(_pareto.front)
+    lb_points, ub_points = _pareto.get_hyper_cell_bounds(tf.constant([-inf] * ref_pt.shape[-1]), ref_pt)
 
     # calc MC approx EHVI
     splus_valid = tf.reduce_all(
@@ -104,6 +104,6 @@ def test_expected_hypervolume_improvement(
     ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))  #
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)
 
-    ehvi = expected_hv_improvement(model, xs, _pareto, nadir)
+    ehvi = expected_hv_improvement(model, xs, _pareto, ref_pt)
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=rtol, atol=atol)

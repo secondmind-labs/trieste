@@ -10,7 +10,7 @@ from ...type import TensorType
 from math import inf
 
 from tensorflow_probability import distributions as tfd
-from .function import HypervolumeAcquisitionBuilder, get_nadir_point
+from .function import HypervolumeAcquisitionBuilder, get_reference_point
 
 
 class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
@@ -19,28 +19,28 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
         refer yang2019efficient
         """
 
-    def __init__(self, nadir_setting: Union[str, callable] = "default"):
+    def __init__(self, ref_pt_calc_method: Union[str, callable] = "default"):
         """
-        :param nadir_setting the method of calculating the nadir point, either default or a callable
+        :param ref_pt_calc_method the method of calculating the reference point, either default or a callable
         """
-        self._nadir_setting = nadir_setting
+        self._ref_pt_calc_method = ref_pt_calc_method
 
     def __repr__(self) -> str:
-        return f"Expected Hypervolume Improvement({self._nadir_setting!r})"
+        return f"Expected Hypervolume Improvement({self._ref_pt_calc_method!r})"
 
-    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
+    def _calculate_ref_pt(self, pareto: Pareto, ref_pt_calc_method="default"):
         """
         calculate the reference point for hypervolme calculation
         :param pareto: Pareto class
-        :param nadir_setting
+        :param ref_pt_calc_method
         """
-        if nadir_setting == "default":
-            return get_nadir_point(pareto.front)
+        if ref_pt_calc_method == "default":
+            return get_reference_point(pareto.front)
         else:
-            assert callable(nadir_setting), ValueError(
-                "nadir_setting: {} do not understood".format(nadir_setting)
+            assert callable(ref_pt_calc_method), ValueError(
+                "ref_pt_calc_method: {} do not understood".format(ref_pt_calc_method)
             )
-            return nadir_setting(pareto.front)
+            return ref_pt_calc_method(pareto.front)
 
     def prepare_acquisition_function(
             self, dataset: Dataset, model: ProbabilisticModel
@@ -54,24 +54,24 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _nadir_pt = self._calculate_nadir(_pf, nadir_setting=self._nadir_setting)
-        return lambda at: self._acquisition_function(model, at, _pf, _nadir_pt)
+        _reference_pt = self._calculate_ref_pt(_pf, ref_pt_calc_method=self._ref_pt_calc_method)
+        return lambda at: self._acquisition_function(model, at, _pf, _reference_pt)
 
     @staticmethod
     def _acquisition_function(
             model: ProbabilisticModel,
             at: TensorType,
             pareto: Pareto,
-            nadir: tf.Tensor,
+            ref_pt: TensorType,
     ) -> tf.Tensor:
-        return expected_hv_improvement(model, at, pareto, nadir)
+        return expected_hv_improvement(model, at, pareto, ref_pt)
 
 
 def expected_hv_improvement(
         model: ProbabilisticModel,
         at: TensorType,
         pareto: Pareto,
-        nadir_point: tf.Tensor,
+        reference_point: TensorType,
 ) -> TensorType:
     r"""
     HV calculation using Eq. 44 of yang2019efficient paper
@@ -88,7 +88,7 @@ def expected_hv_improvement(
     :param at: The points at which to evaluate the probability of feasibility.
                 Must have rank at least two
     :param pareto: Pareto class
-    :param nadir_point The reference point for calculating hypervolume
+    :param reference_point The reference point for calculating hypervolume
     :return: The hypervolume expected improvement at ``at``.
     """
 
@@ -120,8 +120,8 @@ def expected_hv_improvement(
     neg_candidate_mean = - tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
     candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
-    lb_points, ub_points = pareto.get_hyper_cell_bounds(tf.constant([[-inf] * candidate_mean.shape[-1]], dtype=at.dtype),
-                                                        nadir_point)
+    lb_points, ub_points = pareto.get_hyper_cell_bounds(tf.constant([-inf] * candidate_mean.shape[-1], dtype=at.dtype),
+                                                        reference_point)
 
     neg_lb_points, neg_ub_points = - ub_points, - lb_points  # ref Note. 3
 
@@ -136,7 +136,7 @@ def expected_hv_improvement(
     # get stacked factors of Eq. 45
     # [2^m, dim_indices]
     cross_index = tf.constant(
-        list(product(*[[0, 1] for _ in range(nadir_point.shape[-1])])))
+        list(product(*[[0, 1] for _ in range(reference_point.shape[-1])])))
 
     # Take the cross product of psi_diff and nu across all outcomes
     # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
