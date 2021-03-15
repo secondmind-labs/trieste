@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 import itertools
-from typing import Container, FrozenSet, Tuple
+from collections.abc import Container
 
 import numpy.testing as npt
 import pytest
@@ -191,7 +191,7 @@ def test_box_converts_lists_to_float64_tensors() -> None:
 
 def _pairs_of_shapes(
     *, excluding_ranks: Container[int] = ()
-) -> FrozenSet[Tuple[ShapeLike, ShapeLike]]:
+) -> frozenset[tuple[ShapeLike, ShapeLike]]:
     shapes = various_shapes(excluding_ranks=excluding_ranks)
     return frozenset(itertools.product(shapes, shapes))
 

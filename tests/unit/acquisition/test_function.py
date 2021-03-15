@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, Mapping, Tuple, Union
+from collections.abc import Callable, Mapping
 
 import numpy.testing as npt
 import pytest
@@ -41,6 +41,7 @@ from trieste.acquisition.function import (
     ExpectedImprovement,
     IndependentReparametrizationSampler,
     MCIndAcquisitionFunctionBuilder,
+    MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
@@ -48,10 +49,12 @@ from trieste.acquisition.function import (
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
+    min_value_entropy_search,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 
@@ -74,7 +77,7 @@ class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
     "single_builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()]
 )
 def test_single_builder_raises_immediately_for_wrong_key(
-    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     builder = single_builder.using("foo")
 
@@ -86,7 +89,7 @@ def test_single_builder_raises_immediately_for_wrong_key(
 
 @pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
 def test_single_builder_repr_includes_class_name(
-    builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     assert type(builder).__name__ in repr(builder)
 
@@ -110,7 +113,7 @@ class _MockBatchBuilder(SingleModelBatchAcquisitionBuilder):
 
 @pytest.mark.parametrize("single_builder", [_MockIndBuilder(), _MockBatchBuilder()])
 def test_single_builder_using_passes_on_correct_dataset_and_model(
-    single_builder: Union[SingleModelAcquisitionBuilder, SingleModelBatchAcquisitionBuilder]
+    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
 ) -> None:
     builder = single_builder.using("foo")
     data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
@@ -169,6 +172,61 @@ def test_expected_improvement(
     ei = expected_improvement(model, best, xs)
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    search_space = Box([0, 0], [1, 1])
+    builder = MinValueEntropySearch(search_space)
+    with pytest.raises(ValueError):
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+
+
+def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, num_samples=-5)
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, grid_size=-5)
+
+
+@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])
+def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
+    samples: TensorType,
+) -> None:
+    with pytest.raises(ValueError):
+        min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples, tf.constant([[]]))
+
+
+def test_min_value_entropy_search_returns_correct_shape() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    gumbel_samples = tf.constant([1.0])
+    query_at = tf.linspace([-10.0], [10.0], 5)
+    evals = min_value_entropy_search(model, gumbel_samples, query_at)
+    npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
+
+
+def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -> None:
+    """
+    When based on a single max-value sample, MES should choose the same point that probability of
+    improvement would when calcualted with the max-value as its threshold (See :cite:`wang2017max`).
+    """
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves()
+    model = GaussianProcess([branin], [kernel])
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    gumbel_sample = tf.constant([1.0], dtype=tf.float64)
+    mes_evals = min_value_entropy_search(model, gumbel_sample, xs)
+
+    mean, variance = model.predict(xs)
+    gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
+    norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
+    pi_evals = norm.cdf(gamma)
+    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
@@ -397,7 +455,7 @@ def _assert_kolmogorov_smirnov_95(
     assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
 
 
-def _dim_two_gp(mean_shift: Tuple[float, float] = (0.0, 0.0)) -> GaussianProcess:
+def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess:
     matern52 = tfp.math.psd_kernels.MaternFiveHalves(
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )

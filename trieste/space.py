@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, TypeVar, Union, overload
+from typing import TypeVar, overload
 
 import tensorflow as tf
 
@@ -39,7 +39,7 @@ class SearchSpace(ABC):
         """
 
     @abstractmethod
-    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
+    def __contains__(self, value: TensorType) -> bool | TensorType:
         """
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
@@ -108,7 +108,7 @@ class DiscreteSearchSpace(SearchSpace):
         """ All the points in this space. """
         return self._points
 
-    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
+    def __contains__(self, value: TensorType) -> bool | TensorType:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
         return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
@@ -154,7 +154,7 @@ class DiscreteSearchSpace(SearchSpace):
         product_space_dimension = self.points.shape[-1] + other.points.shape[-1]
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [-1, product_space_dimension]))
 
-    def __deepcopy__(self, memo: Dict[int, object]) -> DiscreteSearchSpace:
+    def __deepcopy__(self, memo: dict[int, object]) -> DiscreteSearchSpace:
         return self
 
 
@@ -166,16 +166,14 @@ class Box(SearchSpace):
     """
 
     @overload
-    def __init__(self, lower: List[float], upper: List[float]):
+    def __init__(self, lower: list[float], upper: list[float]):
         ...
 
     @overload
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(
-        self, lower: Union[List[float], TensorType], upper: Union[List[float], TensorType]
-    ):
+    def __init__(self, lower: list[float] | TensorType, upper: list[float] | TensorType):
         r"""
         If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
         `tf.float64`.
@@ -222,7 +220,7 @@ class Box(SearchSpace):
         """ The upper bounds of the box. """
         return self._upper
 
-    def __contains__(self, value: TensorType) -> Union[bool, TensorType]:
+    def __contains__(self, value: TensorType) -> bool | TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if all of its coordinates lie in the closed intervals bounded by the lower and upper
@@ -282,5 +280,5 @@ class Box(SearchSpace):
 
         return Box(product_lower_bound, product_upper_bound)
 
-    def __deepcopy__(self, memo: Dict[int, object]) -> Box:
+    def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
