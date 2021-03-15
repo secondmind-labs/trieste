@@ -35,9 +35,11 @@ class ProbabilisticModel(tf.Module, ABC):
         """
         Return the mean and variance of the independent marginal distributions at each point in
         ``query_points``.
+
         This is essentially a convenience method for :meth:`predict_joint`, where non-event
         dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
         batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
         :param query_points: The points at which to make predictions, of shape [..., D].
         :return: The mean and variance of the independent marginal distributions at each point in
             ``query_points``. For a predictive distribution with event shape E, the mean and
@@ -60,6 +62,7 @@ class ProbabilisticModel(tf.Module, ABC):
         """
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
+
         :param query_points: The points at which to sample, with shape [..., D].
         :param num_samples: The number of samples at each point.
         :return: The samples. For a predictive distribution with event shape E, this has shape
@@ -75,6 +78,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
+
         :param dataset: The data with which to update the model.
         """
         raise NotImplementedError
@@ -84,6 +88,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         """
         Optimize the model objective with respect to (hyper)parameters given the specified
         ``dataset``.
+
         :param dataset: The data with which to train the model.
         """
         raise NotImplementedError
@@ -94,6 +99,7 @@ class ModelStack(TrainableProbabilisticModel):
     A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
     It combines the outputs of each model for predictions and sampling, and delegates training data
     to each model for updates and optimization.
+
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
     multi-output model may have dependence between its outputs. When we speak of *event size* in
@@ -111,6 +117,7 @@ class ModelStack(TrainableProbabilisticModel):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
         :class:`ModelStack` output dimensions.
+
         :param model_with_event_size: The first model, and the size of its output events.
             **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
             method signature requires at least one model. It is not treated specially.
@@ -158,6 +165,7 @@ class ModelStack(TrainableProbabilisticModel):
         Update all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
@@ -170,6 +178,7 @@ class ModelStack(TrainableProbabilisticModel):
         Optimize all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
@@ -301,6 +310,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
+
         :param dataset: The data with which to update the model.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.

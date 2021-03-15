@@ -77,6 +77,7 @@ class OptimizationResult(Generic[S]):
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
+
         :return: The :attr:`final_result` and :attr:`history` as a 2-tuple.
         """
         return self.final_result, self.history
@@ -84,6 +85,7 @@ class OptimizationResult(Generic[S]):
     def try_get_final_datasets(self) -> Mapping[str, Dataset]:
         """
         Convenience method to attempt to get the final data.
+
         :return: The final data, if the optimization completed successfully.
         :raise Exception: If an exception occurred during optimization.
         """
@@ -92,6 +94,7 @@ class OptimizationResult(Generic[S]):
     def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.
+
         :return: The final models, if the optimization completed successfully.
         :raise Exception: If an exception occurred during optimization.
         """
@@ -155,25 +158,30 @@ class BayesianOptimizer(Generic[SP]):
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
+
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
               ``datasets``, models built from the ``model_specs``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
+
         If any errors are raised during the optimization loop, this method will catch and return
         them instead, along with the history of the optimization process, and print a message (using
         `absl` at level `logging.ERROR`).
+
         **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
         mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will be
         updated during the optimization process. For example, if ``track_state`` is `True`, a copied
         model will be used on each optimization step. Use the models in the return value for
         reliable access to the updated models.
+
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
               :class:`~trieste.space.SearchSpace` as specified in :meth:`__init__`.
             - The ``acquisition_state`` must be of the type expected by the ``acquisition_rule``.
               Any acquisition state in the optimization result will also be of this type.
+
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
         :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
@@ -196,6 +204,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition state at the *start* of each optimization step (up to and including any step
             that fails to complete). The history will never include the final optimization result.
         :raise ValueError: If any of the following are true:
+
             - ``num_steps`` is negative.
             - the keys in ``datasets`` and ``model_specs`` do not match
             - ``datasets`` or ``model_specs`` are empty

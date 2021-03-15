@@ -26,10 +26,13 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
     Computes the non-dominated set for a set of data points.
     if there are duplicate point(s) in the non-dominated set, this function will return
     as it is without removing the duplicate.
+
     :param observations: set of points with shape [N,D]
     :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
         P is the number of points in pareto front
         dominances gives the number of dominating points for each data point
+
+
     """
     extended = tf.tile(observations[None], [len(observations), 1, 1])
     swapped_ext = tf.transpose(extended, [1, 0, 2])
@@ -53,6 +56,7 @@ class BoundedVolumes:
     def __init__(self, lower_idx: tf.Tensor, upper_idx: tf.Tensor):
         """
         Construct bounded volumes.
+
         :param lower_idx: the lowerbounds index of the volumes
         :param upper_idx: the upperbounds index of the volumes
         """
@@ -106,6 +110,7 @@ class Pareto:
         """
         Calculate the hypervolume indicator
         The hypervolume indicator is the volume of the dominated region.
+
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
             Should be equal or bigger than the anti-ideal point of the Pareto set.
