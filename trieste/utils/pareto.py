@@ -148,3 +148,18 @@ class Pareto:
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
+
+    def get_hyper_cell_bounds(self, anti_reference: TensorType, reference: TensorType) -> [TensorType]:
+        pseudo_pfront = tf.concat((anti_reference, self.front, reference), axis=0)
+        N = tf.shape(self.bounds.upper_idx)[0]
+        D = tf.shape(self.bounds.upper_idx)[1]
+        idx = tf.tile(tf.range(D), (N,))
+
+        lower_idx = tf.stack((tf.reshape(self.bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(self.bounds.upper_idx, [-1]), idx), axis=1)
+
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
+
+        return lower, upper
+

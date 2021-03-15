@@ -16,11 +16,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 import tensorflow as tf
-from trieste.utils.pareto import non_dominated_sort, to_Dataset
+
 
 from trieste.type import TensorType
 from trieste.utils import to_numpy
-
+from trieste.utils.pareto import non_dominated
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     """
@@ -210,7 +210,7 @@ def plot_bo_points(
 
 
 def plot_bo_points_in_obj_space(
-        dataset,
+        observations,
         num_init=None,
         mask_fail=None,
         figsize=None,
@@ -237,15 +237,14 @@ def plot_bo_points_in_obj_space(
     :param figsize:
     :param only_plot_pareto: if set true, only plot the pareto points
     """
-    obj_num = dataset.observations.shape[-1]
+    obj_num = observations.shape[-1]
     assert obj_num == 2 or obj_num == 3, NotImplementedError('Only support 2/3-objective'
                                                              ' function plot but found: {}'.format(obj_num))
 
-    _, dom = non_dominated_sort(dataset)
+    _, dom = non_dominated(observations)
     idx_pareto = np.where(dom == 0)
 
-    data_observations = dataset.observations
-    pts = data_observations
+    pts = observations
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(
