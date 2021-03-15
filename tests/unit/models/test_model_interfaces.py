@@ -23,8 +23,8 @@ trieste model).
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
 import copy
+from collections.abc import Callable, Iterable, Sequence
 
 import gpflow
 import numpy as np
