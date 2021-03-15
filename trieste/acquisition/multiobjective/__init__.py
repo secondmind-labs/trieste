@@ -34,5 +34,5 @@ acquisition function should take. Additionally, acquisition functions and builde
 are designed to minimize the objective function. For example, we do not provide an implementation of
 UCB.
 """
-from .function import get_reference_point
 from .analytic import Expected_Hypervolume_Improvement
+from .function import get_reference_point

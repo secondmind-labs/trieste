@@ -14,9 +14,8 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
 import tensorflow as tf
-
+from matplotlib import cm
 
 from trieste.type import TensorType
 from trieste.utils import to_numpy
