@@ -19,7 +19,7 @@ from collections.abc import Callable, Sequence
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import quadratic, linear
+from tests.util.misc import linear, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.type import TensorType

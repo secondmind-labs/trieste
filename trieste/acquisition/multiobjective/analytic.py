@@ -1,15 +1,15 @@
-import tensorflow as tf
 from itertools import product
-from typing import Union
+from math import inf
+from typing import Union, Callable
 
-from ...utils.pareto import Pareto
-from ..function import AcquisitionFunction
+import tensorflow as tf
+from tensorflow_probability import distributions as tfd
+
 from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...type import TensorType
-from math import inf
-
-from tensorflow_probability import distributions as tfd
+from ...utils.pareto import Pareto
+from ..function import AcquisitionFunction
 from .function import HypervolumeAcquisitionBuilder, get_reference_point
 
 
@@ -19,7 +19,7 @@ class Expected_Hypervolume_Improvement(HypervolumeAcquisitionBuilder):
     refer yang2019efficient
     """
 
-    def __init__(self, ref_pt_calc_method: Union[str, callable] = "default"):
+    def __init__(self, ref_pt_calc_method: Union[str, Callable] = "default"):
         """
         :param ref_pt_calc_method the method of calculating the reference point,
          either default or a callable

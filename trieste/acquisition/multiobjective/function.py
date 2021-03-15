@@ -1,7 +1,9 @@
-import tensorflow as tf
 from abc import abstractmethod
-from ...utils.pareto import Pareto
+
+import tensorflow as tf
+
 from ...type import TensorType
+from ...utils.pareto import Pareto
 from ..function import SingleModelAcquisitionBuilder
 
 

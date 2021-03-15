@@ -151,7 +151,7 @@ class Pareto:
 
     def get_hyper_cell_bounds(
         self, anti_reference: TensorType, reference: TensorType
-    ) -> [TensorType]:
+    ) -> Tuple:
         """
         Get the partitioned hyper cells lower and upper bounds
 
