@@ -105,3 +105,46 @@ class Pareto:
         upper = tf.concat([range_ + 1, pf_ext_idx[::-1, 1:][: pf_ext_idx[-1, 0]]], axis=-1)
 
         return BoundedVolumes(lower, upper)
+
+    def hypervolume_indicator(self, reference: TensorType) -> TensorType:
+        """
+        Calculate the hypervolume indicator
+        The hypervolume indicator is the volume of the dominated region.
+
+        :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
+            Should be equal or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: hypervolume indicator
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        :raise `tf.errors.InvalidArgumentError`: If ``reference`` is less than the anti-ideal point
+            in any dimension.
+        """
+        tf.debugging.assert_greater_equal(reference, self.front)
+
+        tf.debugging.assert_shapes(
+            [
+                (self.bounds.lower_idx, ["N", "D"]),
+                (self.bounds.upper_idx, ["N", "D"]),
+                (self.front, ["M", "D"]),
+                (reference, ["D"]),
+            ]
+        )
+
+        min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
+        pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
+        N, D = tf.shape(self.bounds.upper_idx)
+
+        idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
+        upper_idx = tf.reshape(
+            tf.stack([tf.transpose(self.bounds.upper_idx), idx], axis=2), [N * D, 2]
+        )
+        lower_idx = tf.reshape(
+            tf.stack([tf.transpose(self.bounds.lower_idx), idx], axis=2), [N * D, 2]
+        )
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [D, N])
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [D, N])
+        hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
+
+        return tf.reduce_prod(reference[None] - min_pfront) - hypervolume

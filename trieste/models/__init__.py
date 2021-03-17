@@ -22,6 +22,7 @@ from .config import ModelConfig, ModelSpec, create_model
 from .model_interfaces import (
     GaussianProcessRegression,
     GPflowPredictor,
+    ModelStack,
     ProbabilisticModel,
     SparseVariational,
     TrainableProbabilisticModel,
