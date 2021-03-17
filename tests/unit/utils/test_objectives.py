@@ -25,9 +25,15 @@ from trieste.utils.objectives import (
     GRAMACY_LEE_MINIMUM,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+    HARTMANN_3_MINIMIZER,
+    HARTMANN_3_MINIMUM,
+    HARTMANN_6_MINIMIZER,
+    HARTMANN_6_MINIMUM,
     branin,
     gramacy_lee,
     logarithmic_goldstein_price,
+    hartmann_3,
+    hartmann_6,
     mk_observer,
 )
 
@@ -48,6 +54,8 @@ def _unit_grid_2d() -> TensorType:
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
         ),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM),
     ],
 )
 def test_objective_maps_minimizers_to_minimum(
