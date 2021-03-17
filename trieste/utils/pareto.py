@@ -199,10 +199,7 @@ class Pareto:
             axis=0,
         )[None]
 
-        print("dc\n", dc)
-
         total_size = tf.reduce_prod(max_pf - min_pf)
-        # print("total_size\n",total_size)
         # Start divide and conquer until we processed all cells
         while dc.shape[0]:
             # Process test cell
@@ -219,7 +216,6 @@ class Pareto:
             idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
             lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
             ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
-            # print("lb\n",lb,"ub\n",ub)
 
             # Acceptance test:
             if self._is_test_required((ub - jitter) < front):
