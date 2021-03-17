@@ -357,8 +357,9 @@ class BatchAcquisitionRule(AcquisitionRule[None, SP_contra]):
             attempt to **maximise** the corresponding acquisition function.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. **Note:** This must be able to optimize its target function with respect to
-            a *single point*, not a batch of points. The acquisition rule will convert the batch
-            acquisition function to an independent acquisition function. Additionally, this
+            a *single point*, not a batch of points. The acquisition rule will convert the
+            :const:`~trieste.acquisition.BatchAcquisitionFunction` to an
+            :const:`~trieste.acquisition.AcquisitionFunction`. Additionally, this
             optimizer must be compatible with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.optimize`.
         """
