@@ -15,14 +15,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from itertools import product
+from math import inf
 from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
 from typing_extensions import final
-from itertools import product
-from math import inf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -30,7 +30,6 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto
-
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
