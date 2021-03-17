@@ -17,7 +17,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, NList
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ListN
 from trieste.utils.pareto import Pareto, non_dominated
 
 
@@ -117,7 +117,7 @@ def test_pareto_2d_bounds() -> None:
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypervolume_indicator_raises_for_reference_with_invalid_shape(
-    reference: NList[float],
+    reference: ListN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
