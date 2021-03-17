@@ -9,7 +9,7 @@ from util.plotting import plot_bo_points, plot_function_2d
 
 # +
 import trieste
-from trieste.acquisition.multiobjective.analytic import Expected_Hypervolume_Improvement
+from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import OBJECTIVE
 from trieste.data import Dataset
 from trieste.models import create_model
@@ -117,7 +117,7 @@ models = {OBJECTIVE: ModelStack(*objective_models)}
 # Here we utilize the `HVExpectedImprovement` acquisition function proposed in
 # Yang 2019 [1]:
 
-hvei = Expected_Hypervolume_Improvement().using(OBJECTIVE)
+hvei = ExpectedHypervolumeImprovement().using(OBJECTIVE)
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
 
 # ## Run the optimization loop

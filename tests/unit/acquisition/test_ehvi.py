@@ -20,20 +20,32 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
-from tests.util.model import LinearMeanAndRBFKernel, QuadraticMeanAndRBFKernel
-from trieste.acquisition.multiobjective.analytic import (
-    Expected_Hypervolume_Improvement,
+from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel
+from trieste.acquisition.function import (
+    ExpectedHypervolumeImprovement,
     expected_hv_improvement,
+    get_reference_point,
 )
-from trieste.acquisition.multiobjective.function import get_reference_point
 from trieste.data import Dataset
 from trieste.models.model_interfaces import ModelStack
+from trieste.type import TensorType
 from trieste.utils.pareto import Pareto
 
-test_models = (QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel, QuadraticMeanAndRBFKernel)
+
+def _linear_mean_gaussian_process(
+    kernel_amplitude: float | TensorType | None = None,
+) -> GaussianProcess:
+    return GaussianProcess(
+        [lambda x: tf.reduce_sum(x, axis=-1, keepdims=True)],
+        [tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)],
+    )
+
+
+test_models = (QuadraticMeanAndRBFKernel, _linear_mean_gaussian_process, QuadraticMeanAndRBFKernel)
 
 
 def test_ehvi_builder_raises_for_empty_data() -> None:
@@ -42,7 +54,7 @@ def test_ehvi_builder_raises_for_empty_data() -> None:
     model = ModelStack(*[(QuadraticMeanAndRBFKernel(), 1) for _ in range(num_obj)])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        Expected_Hypervolume_Improvement().prepare_acquisition_function(dataset, model)
+        ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
 
 
 def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -> None:
@@ -56,7 +68,7 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
     )
 
     model = ModelStack(*[(test_models[_](), 1) for _ in range(num_obj)])
-    acq_fn = Expected_Hypervolume_Improvement().prepare_acquisition_function(dataset, model)
+    acq_fn = ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
 
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
@@ -88,9 +100,6 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
             1e-2,
         ),
         (2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, 0.01, 1e-2),
-        # (1, 100_000, tf.constant([[0.0, 0.0, 0.5], [0.4, -0.1, 0.2],
-        # [0.1, 0.1, 0.1], [0.3, 0.5, 0.0]]), 3,
-        #  1.0, 0.01, 1e-2),
     ],
 )
 def test_expected_hypervolume_improvement(
@@ -110,7 +119,7 @@ def test_expected_hypervolume_improvement(
     )
 
     xs = tf.cast(xs, dtype=existing_observations.dtype)
-    model = ModelStack(*[(test_models[_](), 1) for _ in range(obj_num)])
+    model = ModelStack(*[(test_models[_](variance_scale), 1) for _ in range(obj_num)])
 
     mean, variance = model.predict(xs)
 
