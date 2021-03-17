@@ -16,9 +16,10 @@
 from typing import Tuple
 
 import tensorflow as tf
+import gpflow
 from typing_extensions import Final
 
-from ..type import TensorType
+from trieste.type import TensorType
 
 
 def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
@@ -148,3 +149,130 @@ class Pareto:
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
+
+
+    @staticmethod
+    def _is_test_required(smaller: TensorType) -> TensorType:
+        """
+        Tests if a point augments or dominates the Pareto set.
+        :param smaller: a boolean tf.Tensor storing test point < Pareto front
+        :return: True if the test point dominates or augments the Pareto front (boolean)
+        """
+        # if and only if the test point is at least in one dimension smaller
+        # for every point in the Pareto set
+        idx_dom_augm = tf.reduce_any(smaller, axis=1)
+        is_dom_augm = tf.reduce_all(idx_dom_augm)
+
+        return is_dom_augm
+
+
+    def divide_conquer_nd(self, front: TensorType, threshold: TensorType = 0) -> TensorType:
+        #Divide and conquer strategy to compute the cells covering the non-dominated region.
+        #Generic version: works for an arbitrary number of objectives.
+      
+        len_front, number_of_objectives = front.shape
+        jitter = gpflow.config.default_jitter()
+        lower = tf.zeros([0,number_of_objectives],dtype=tf.int32)
+        upper = tf.zeros([0,number_of_objectives],dtype=tf.int32)
+
+        # The divide and conquer algorithm operates on a pseudo Pareto set
+        # that is a mapping of the real Pareto set to discrete values
+        pseudo_pf = (
+            tf.argsort(front, axis=0) + 1
+        )  # +1 as index zero is reserved for the ideal point
+
+        # Extend front with the ideal and anti-ideal point
+        min_pf = tf.reduce_min(front, axis=0, keepdims= True) - 1
+        max_pf = tf.reduce_max(front, axis=0, keepdims= True) + 1
+        pf_ext = tf.concat(
+            [min_pf, front, max_pf], axis=0
+        )  # Needed for early stopping check (threshold)
+        
+        pf_ext_idx = tf.concat(
+            [
+                tf.zeros([1, number_of_objectives], dtype=tf.int32),
+                tf.argsort(front, axis=0) + 1,
+                tf.ones([1, number_of_objectives], dtype=tf.int32) * len_front + 1,
+            ],
+            axis=0,
+        )
+
+        # Start with one cell covering the whole front
+        # n x 2 x num_obj
+        dc = tf.stack([tf.zeros(number_of_objectives, dtype=tf.int32),(int(pf_ext_idx.shape[0]) - 1) * tf.ones(number_of_objectives, dtype=tf.int32)],axis=0)[None]
+            
+        
+        print("dc\n",dc)
+
+        total_size = tf.reduce_prod(max_pf - min_pf)
+        #print("total_size\n",total_size)
+        # Start divide and conquer until we processed all cells
+        while dc.shape[0]:
+            # Process test cell
+            dc = tf.unstack(dc,axis=0)
+            cell = dc[-1]
+            dc = tf.cond(tf.not_equal(tf.size(dc[:-1]), 0), lambda: tf.stack(dc[:-1]), lambda: tf.zeros([0,2,number_of_objectives],dtype=tf.int32) )
+
+            arr = tf.range(number_of_objectives)
+            idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
+            idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
+            lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
+            ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
+            #print("lb\n",lb,"ub\n",ub)
+
+            # Acceptance test:
+            if self._is_test_required((ub - jitter) < front):
+                # Cell is a valid integral bound: store
+                lower = tf.concat([lower,idx_lb[None]],axis=0)
+                upper = tf.concat([upper,idx_ub[None]],axis=0)
+                #self.bounds.append(atleast2d(idx_lb), atleast2d(idx_ub))
+            # Reject test:
+            elif self._is_test_required((lb + jitter) < front):
+                # Cell can not be discarded: calculate the size of the cell
+                dc_dist = cell[1] - cell[0]
+                hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
+
+                # Only divide when it is not an unit cell
+                # and the volume is above the approx. threshold
+                if tf.reduce_any(dc_dist > 1) and tf.reduce_all(
+                    (hc_size[0] / total_size) > threshold
+                ):
+                    # Divide the test cell over its largest dimension
+                    edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
+                    edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
+                    edge_size2 = edge_size - edge_size1
+
+                    # Store divided cells
+                    ub = tf.identity(cell[1])
+                    ub = tf.unstack(ub)
+                    ub[idx] = ub[idx] - edge_size1
+                    ub = tf.stack(ub)
+                    dc = tf.concat([dc,tf.stack([tf.identity(cell[0]), ub],axis=0)[None]],axis=0)
+                    lb = tf.identity(cell[0])
+                    lb = tf.unstack(lb)
+                    lb[idx] = lb[idx] + edge_size2
+                    lb = tf.stack(lb)
+                    dc = tf.concat([dc,tf.stack([lb, tf.identity(cell[1])],axis=0)[None]],axis=0)
+            # else: cell can be discarded
+        return BoundedVolumes(lower,upper)
+
+"""       
+objectives = tf.constant(
+    [
+        [0.9575, 0.4218],
+        [0.9649, 0.9157],
+        [0.1576, 0.7922],
+        [0.9706, 0.9595],
+        [0.9572, 0.6557],
+        [0.4854, 0.0357],
+        [0.8003, 0.8491],
+        [0.1419, 0.9340],
+    ]
+)
+
+pareto_2d = Pareto(objectives)
+print(pareto_2d.front)
+pareto_2d.divide_conquer_nd(pareto_2d.front)
+## TODO run and see whats error
+
+"""
