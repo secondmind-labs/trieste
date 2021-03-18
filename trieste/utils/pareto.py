@@ -152,11 +152,11 @@ class Pareto:
 
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
-        """
-        Tests if a point augments or dominates the Pareto set.
-        :param smaller: a boolean tf.Tensor storing test point < Pareto front
-        :return: True if the test point dominates or augments the Pareto front (boolean)
-        """
+        
+        #Tests if a point augments or dominates the Pareto set.
+        #:param smaller: a boolean tf.Tensor storing test point < Pareto front
+        #:return: True if the test point dominates or augments the Pareto front (boolean)
+        
         # if and only if the test point is at least in one dimension smaller
         # for every point in the Pareto set
         idx_dom_augm = tf.reduce_any(smaller, axis=1)
@@ -190,7 +190,6 @@ class Pareto:
         )
 
         # Start with one cell covering the whole front
-        # n x 2 x num_obj
         dc = tf.stack(
             [
                 tf.zeros(number_of_objectives, dtype=tf.int32),
@@ -202,6 +201,7 @@ class Pareto:
         total_size = tf.reduce_prod(max_pf - min_pf)
         # Start divide and conquer until we processed all cells
         while dc.shape[0]:
+            
             # Process test cell
             dc = tf.unstack(dc, axis=0)
             cell = dc[-1]
@@ -218,37 +218,74 @@ class Pareto:
             ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
 
             # Acceptance test:
-            if self._is_test_required((ub - jitter) < front):
-                # Cell is a valid integral bound: store
-                lower = tf.concat([lower, idx_lb[None]], axis=0)
-                upper = tf.concat([upper, idx_ub[None]], axis=0)
-                # self.bounds.append(atleast2d(idx_lb), atleast2d(idx_ub))
+            test_accepted = self._is_test_required((ub - jitter) < front)
+            lower, upper = tf.cond(test_accepted,lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub), lambda: (lower,upper))
+
             # Reject test:
-            elif self._is_test_required((lb + jitter) < front):
-                # Cell can not be discarded: calculate the size of the cell
-                dc_dist = cell[1] - cell[0]
-                hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
-
-                # Only divide when it is not an unit cell
-                # and the volume is above the approx. threshold
-                if tf.reduce_any(dc_dist > 1) and tf.reduce_all(
-                    (hc_size[0] / total_size) > threshold
-                ):
-                    # Divide the test cell over its largest dimension
-                    edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
-                    edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
-                    edge_size2 = edge_size - edge_size1
-
-                    # Store divided cells
-                    ub = tf.identity(cell[1])
-                    ub = tf.unstack(ub)
-                    ub[idx] = ub[idx] - edge_size1
-                    ub = tf.stack(ub)
-                    dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), ub], axis=0)[None]], axis=0)
-                    lb = tf.identity(cell[0])
-                    lb = tf.unstack(lb)
-                    lb[idx] = lb[idx] + edge_size2
-                    lb = tf.stack(lb)
-                    dc = tf.concat([dc, tf.stack([lb, tf.identity(cell[1])], axis=0)[None]], axis=0)
+            test_rejected = self._is_test_required((lb + jitter) < front)
+            dc = tf.cond(tf.logical_and(test_rejected,tf.logical_not(test_accepted)), lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold), lambda: dc)
             # else: cell can be discarded
         return BoundedVolumes(lower, upper)
+    
+    def _loop_body(self, dc, number_of_objectives, pf_ext_idx, pf_ext, front, jitter, lower, upper, total_size, threshold):
+        # Process test cell
+        dc = tf.unstack(dc, axis=0)
+        cell = dc[-1]
+        dc = tf.cond(
+            tf.not_equal(tf.size(dc[:-1]), 0),
+            lambda: tf.stack(dc[:-1]),
+            lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
+        )
+
+        arr = tf.range(number_of_objectives)
+        idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
+        idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
+        lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
+        ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
+
+        # Acceptance test:
+        test_accepted = self._is_test_required((ub - jitter) < front)
+        lower, upper = tf.cond(test_accepted,lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub), lambda: (lower,upper))
+
+        # Reject test:
+        test_rejected = self._is_test_required((lb + jitter) < front)
+        dc = tf.cond(tf.logical_and(test_rejected,tf.logical_not(test_accepted)), lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold), lambda: dc)
+
+        return lower, upper
+        # else: cell can be discarded    
+
+    def _accepted_test_body(self, lower, upper, idx_lb, idx_ub):
+        lower = tf.concat([lower, idx_lb[None]], axis=0)
+        upper = tf.concat([upper, idx_ub[None]], axis=0)
+        return lower, upper
+
+    def _rejected_test_body(self, cell, lb, ub, dc, total_size, threshold):
+
+        dc_dist = cell[1] - cell[0]
+        hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
+
+        # Only divide when it is not an unit cell
+        # and the volume is above the approx. threshold
+        not_unit_cell = tf.reduce_any(dc_dist > 1)
+        vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
+        dc = tf.cond(tf.logical_and(not_unit_cell,vol_above_thresh),lambda: self._divide_body(dc,dc_dist,cell),lambda: tf.identity(dc))
+        return dc
+
+    def _divide_body(self,dc,dc_dist,cell):
+        # Divide the test cell over its largest dimension
+        edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
+        edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
+        edge_size2 = edge_size - edge_size1
+
+        # Store divided cells
+        ub = tf.identity(cell[1])
+        ub = tf.unstack(ub)
+        ub[idx] = ub[idx] - edge_size1
+        ub = tf.stack(ub)
+        dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), ub], axis=0)[None]], axis=0)
+        lb = tf.identity(cell[0])
+        lb = tf.unstack(lb)
+        lb[idx] = lb[idx] + edge_size2
+        lb = tf.stack(lb)
+        dc = tf.concat([dc, tf.stack([lb, tf.identity(cell[1])], axis=0)[None]], axis=0)
+        return dc
