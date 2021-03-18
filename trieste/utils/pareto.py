@@ -83,11 +83,13 @@ class Pareto:
 
         pf, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pf, tf.argsort(pf[:, :1], axis=0))
+        self.bounds = self._get_bounds(self.front, generic_strategy)
 
-        if generic_strategy or pf.shape[-1] > 2:
-            self.bounds: Final[BoundedVolumes] = self.divide_conquer_nd(self.front)
+    def _get_bounds(self, front: TensorType, generic_strategy: bool = False) -> BoundedVolumes:
+        if generic_strategy or front.shape[-1] > 2:
+            return self.divide_conquer_nd(front)
         else:
-            self.bounds: Final[BoundedVolumes] = self._bounds_2d(self.front)
+            return self._bounds_2d(front)
 
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
