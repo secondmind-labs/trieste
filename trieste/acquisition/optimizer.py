@@ -11,8 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+r"""
+This module contains functionality for optimizing
+:data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
+"""
+from __future__ import annotations
+
 from functools import singledispatch
-from typing import Callable
+from typing import Callable, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -20,33 +26,32 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
+from .function import AcquisitionFunction
 
-TensorMapping = Callable[[TensorType], TensorType]
+SP = TypeVar("SP", bound=SearchSpace)
+""" Type variable bound to :class:`~trieste.space.SearchSpace`. """
+
+
+AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
+"""
+Type alias for a function that returns the single point that maximizes an acquisition function over
+a search space. For a search space with points of shape S, and acquisition function with input shape
+[...] + S output shape [..., 1], the :data:`AcquisitionOptimizer` return shape should be [1] + S.
+"""
 
 
 @singledispatch
-def optimize(space: SearchSpace, target_func: TensorMapping) -> TensorType:
+def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
-    Return the point in ``space`` (with shape S) that maximises the function ``target_func``, as the
-    single entry in a 1 by S tensor.
-
-    ``target_func`` must satisfy the following:
-
-      * indices in the leading dimension for both the argument and the result of ``target_func``
-        must run over points in the space. For example, the element at index 0 is the first point,
-        and the element at index 1 is the second.
-      * the result of ``target_func`` must have exactly one additional dimension of size 1. This is
-        needed to unambiguously define a maximum.
-
-    :param space: The space of points over which to search.
-    :param target_func: The function to maximise.
-    :return: The point in ``space`` that maximises ``target_func``.
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., D] and output shape
+        [..., 1].
+    :return: The point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    raise TypeError(f"No optimize implementation found for space of type {type(space)}")
 
 
 @optimize.register
-def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> TensorType:
+def _discrete_space(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     target_func_values = target_func(space.points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
@@ -60,7 +65,7 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: TensorMapping) -> T
 
 
 @optimize.register
-def _box(space: Box, target_func: TensorMapping) -> TensorType:
+def _box(space: Box, target_func: AcquisitionFunction) -> TensorType:
     trial_search_space = space.discretize(20 * tf.shape(space.lower)[-1])
     initial_point = optimize(trial_search_space, target_func)
 

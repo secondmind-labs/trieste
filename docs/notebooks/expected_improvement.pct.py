@@ -13,11 +13,11 @@ tf.random.set_seed(1793)
 # In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
 
 # %%
-import trieste
 from trieste.utils.objectives import branin
+from trieste.space import Box
 from util.plotting_plotly import plot_function_plotly
 
-search_space = trieste.space.Box([0, 0], [1, 1])
+search_space = Box([0, 0], [1, 1])
 
 fig = plot_function_plotly(
     branin, search_space.lower, search_space.upper, grid_density=20
@@ -33,6 +33,7 @@ fig.show()
 # The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
 
 # %%
+import trieste
 from trieste.acquisition.rule import OBJECTIVE
 
 observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
@@ -216,8 +217,10 @@ plot_bo_points(
 # Here we use the `BatchMonteCarloExpectedImprovement` function. Note that this acquisition function is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic.
 
 # %%
+from trieste.acquisition.rule import BatchAcquisitionRule
+
 qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
-batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
+batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
     num_query_points=3, builder=qei.using(OBJECTIVE)
 )
 
