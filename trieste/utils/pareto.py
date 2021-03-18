@@ -225,34 +225,7 @@ class Pareto:
             test_rejected = self._is_test_required((lb + jitter) < front)
             dc = tf.cond(tf.logical_and(test_rejected,tf.logical_not(test_accepted)), lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold), lambda: dc)
             # else: cell can be discarded
-        return BoundedVolumes(lower, upper)
-    
-    def _loop_body(self, dc, number_of_objectives, pf_ext_idx, pf_ext, front, jitter, lower, upper, total_size, threshold):
-        # Process test cell
-        dc = tf.unstack(dc, axis=0)
-        cell = dc[-1]
-        dc = tf.cond(
-            tf.not_equal(tf.size(dc[:-1]), 0),
-            lambda: tf.stack(dc[:-1]),
-            lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
-        )
-
-        arr = tf.range(number_of_objectives)
-        idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
-        idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
-        lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
-        ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
-
-        # Acceptance test:
-        test_accepted = self._is_test_required((ub - jitter) < front)
-        lower, upper = tf.cond(test_accepted,lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub), lambda: (lower,upper))
-
-        # Reject test:
-        test_rejected = self._is_test_required((lb + jitter) < front)
-        dc = tf.cond(tf.logical_and(test_rejected,tf.logical_not(test_accepted)), lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold), lambda: dc)
-
-        return lower, upper
-        # else: cell can be discarded    
+        return BoundedVolumes(lower, upper) 
 
     def _accepted_test_body(self, lower, upper, idx_lb, idx_ub):
         lower = tf.concat([lower, idx_lb[None]], axis=0)
@@ -278,13 +251,11 @@ class Pareto:
         edge_size2 = edge_size - edge_size1
 
         # Store divided cells
-        ub = tf.identity(cell[1])
-        ub = tf.unstack(ub)
+        ub = tf.unstack(tf.identity(cell[1]))
         ub[idx] = ub[idx] - edge_size1
         ub = tf.stack(ub)
         dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), ub], axis=0)[None]], axis=0)
-        lb = tf.identity(cell[0])
-        lb = tf.unstack(lb)
+        lb = tf.unstack(tf.identity(cell[0]))
         lb[idx] = lb[idx] + edge_size2
         lb = tf.stack(lb)
         dc = tf.concat([dc, tf.stack([lb, tf.identity(cell[1])], axis=0)[None]], axis=0)
