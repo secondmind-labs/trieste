@@ -17,7 +17,6 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from functools import singledispatch
 from typing import Callable, TypeVar
 
 import gpflow
@@ -35,23 +34,23 @@ SP = TypeVar("SP", bound=SearchSpace)
 AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
-a search space. For a search space with points of shape S, and acquisition function with input shape
-[...] + S output shape [..., 1], the :data:`AcquisitionOptimizer` return shape should be [1] + S.
+a search space. For a search space with points of shape [D], and acquisition function with input
+shape [..., B, D] output shape [..., 1], the :data:`AcquisitionOptimizer` return shape should be
+[1, D].
 """
 
 
-@singledispatch
 def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
     :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., D] and output shape
-        [..., 1].
-    :return: The point in ``space`` that maximises ``target_func``, with shape [1, D].
+    :param target_func: The :const:`AcquisitionFunction` to maximise, with input shape [..., 1, D]
+        and output shape [..., 1].
+    :return: The points in ``space`` that together maximize ``target_func``, with shape [1, D].
     """
+    ...
 
 
-@optimize.register
-def _discrete_space(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     target_func_values = target_func(space.points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
@@ -64,10 +63,9 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: AcquisitionFunction
     return space.points[max_value_idx : max_value_idx + 1]
 
 
-@optimize.register
-def _box(space: Box, target_func: AcquisitionFunction) -> TensorType:
+def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
-    initial_point = optimize(trial_search_space, target_func)
+    initial_point = optimize_discrete(trial_search_space, target_func)
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
     variable = tf.Variable(bijector.inverse(initial_point))
