@@ -168,7 +168,7 @@ def test_pareto_divide_conquer_nd_two_dimension_case() -> None:
         ]
     )
 
-    pareto = Pareto(objectives,generic_strategy=True)
+    pareto = Pareto(objectives, generic_strategy=True)
 
     npt.assert_allclose(
         pareto.bounds.lower_idx, tf.constant([[3, 0], [2, 0], [1, 2], [0, 2], [0, 0]])

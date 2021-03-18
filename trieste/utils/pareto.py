@@ -74,7 +74,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
     """
 
-    def __init__(self, observations: TensorType, generic_strategy: bool=False):
+    def __init__(self, observations: TensorType, generic_strategy: bool = False):
         """
         :param observations: The observations for all objectives, with shape [N, 2].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
