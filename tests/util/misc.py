@@ -55,7 +55,7 @@ def random_seed(f: C) -> C:
 T = TypeVar("T")
 """ Unbound type variable. """
 
-NList = Union[
+ListN = Union[
     List[T],
     List[List[T]],
     List[List[List[T]]],
@@ -64,7 +64,7 @@ NList = Union[
 """ Type alias for a nested list with array shape. """
 
 
-def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]]) -> Dataset:
+def mk_dataset(query_points: ListN[List[float]], observations: ListN[List[float]]) -> Dataset:
     """
     :param query_points: The query points.
     :param observations: The observations.
@@ -79,6 +79,17 @@ def zero_dataset() -> Dataset:
     :return: A 1D input, 1D output dataset with a single entry of zeroes.
     """
     return Dataset(tf.constant([[0.0]]), tf.constant([[0.0]]))
+
+
+def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
+    """
+    :param query_point_shape: The shape of a *single* query point.
+    :param observation_shape: The shape of a *single* observation.
+    :return: An empty dataset with points of the specified shapes, and dtype `tf.float64`.
+    """
+    qp = tf.zeros(tf.TensorShape([0]) + query_point_shape, tf.float64)
+    obs = tf.zeros(tf.TensorShape([0]) + observation_shape, tf.float64)
+    return Dataset(qp, obs)
 
 
 def one_dimensional_range(lower: float, upper: float) -> Box:
