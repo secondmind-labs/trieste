@@ -35,8 +35,8 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (30, EfficientGlobalOptimization()),
-        (22, TrustRegion()),
+        (20, EfficientGlobalOptimization()),
+        (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],
 )
