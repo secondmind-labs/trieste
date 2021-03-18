@@ -44,4 +44,4 @@ def test_optimize(
     expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize(search_space, lambda x: 0.5 - quadratic(x - shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
