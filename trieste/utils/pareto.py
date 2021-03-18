@@ -15,8 +15,8 @@
 
 from typing import Tuple
 
-import tensorflow as tf
 import gpflow
+import tensorflow as tf
 from typing_extensions import Final
 
 from ..type import TensorType
@@ -152,11 +152,11 @@ class Pareto:
 
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
-        
-        #Tests if a point augments or dominates the Pareto set.
-        #:param smaller: a boolean tf.Tensor storing test point < Pareto front
-        #:return: True if the test point dominates or augments the Pareto front (boolean)
-        
+
+        # Tests if a point augments or dominates the Pareto set.
+        # :param smaller: a boolean tf.Tensor storing test point < Pareto front
+        # :return: True if the test point dominates or augments the Pareto front (boolean)
+
         # if and only if the test point is at least in one dimension smaller
         # for every point in the Pareto set
         idx_dom_augm = tf.reduce_any(smaller, axis=1)
@@ -201,7 +201,7 @@ class Pareto:
         total_size = tf.reduce_prod(max_pf - min_pf)
         # Start divide and conquer until we processed all cells
         while dc.shape[0]:
-            
+
             # Process test cell
             dc = tf.unstack(dc, axis=0)
             cell = dc[-1]
@@ -219,13 +219,21 @@ class Pareto:
 
             # Acceptance test:
             test_accepted = self._is_test_required((ub - jitter) < front)
-            lower, upper = tf.cond(test_accepted,lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub), lambda: (lower,upper))
+            lower, upper = tf.cond(
+                test_accepted,
+                lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub),
+                lambda: (lower, upper),
+            )
 
             # Reject test:
             test_rejected = self._is_test_required((lb + jitter) < front)
-            dc = tf.cond(tf.logical_and(test_rejected,tf.logical_not(test_accepted)), lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold), lambda: dc)
+            dc = tf.cond(
+                tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
+                lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold),
+                lambda: dc,
+            )
             # else: cell can be discarded
-        return BoundedVolumes(lower, upper) 
+        return BoundedVolumes(lower, upper)
 
     def _accepted_test_body(self, lower, upper, idx_lb, idx_ub):
         lower = tf.concat([lower, idx_lb[None]], axis=0)
@@ -241,10 +249,14 @@ class Pareto:
         # and the volume is above the approx. threshold
         not_unit_cell = tf.reduce_any(dc_dist > 1)
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
-        dc = tf.cond(tf.logical_and(not_unit_cell,vol_above_thresh),lambda: self._divide_body(dc,dc_dist,cell),lambda: tf.identity(dc))
+        dc = tf.cond(
+            tf.logical_and(not_unit_cell, vol_above_thresh),
+            lambda: self._divide_body(dc, dc_dist, cell),
+            lambda: tf.identity(dc),
+        )
         return dc
 
-    def _divide_body(self,dc,dc_dist,cell):
+    def _divide_body(self, dc, dc_dist, cell):
         # Divide the test cell over its largest dimension
         edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
