@@ -66,7 +66,7 @@ def _discrete_space(space: DiscreteSearchSpace, target_func: AcquisitionFunction
 
 @optimize.register
 def _box(space: Box, target_func: AcquisitionFunction) -> TensorType:
-    trial_search_space = space.discretize(20 * tf.shape(space.lower)[-1])
+    trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
     initial_point = optimize(trial_search_space, target_func)
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
