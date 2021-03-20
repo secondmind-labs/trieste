@@ -52,4 +52,5 @@ from .function import (
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
+    min_value_entropy_search,
 )

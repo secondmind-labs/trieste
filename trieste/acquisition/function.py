@@ -150,17 +150,30 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> Acquisit
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
-    """
-    Builder for the min-value entropy search acquisition function (an adapted
-    version of max-value entropy search suitiable for function minimisation tasks).
+    r"""
+    Builder for the max-value entropy search acquisition function modified for objective
+    minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
+    of the objective minimum that would be gained by evaluating the objective at a given point.
+
+    This implementation largely follows :cite:`wang2017max` and samples the objective minimum
+    :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf is approximated
+    by a Gumbel distribution
+
+    .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+
+    where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+    Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+    :math:`[0, 1]` and applying the inverse probability integral transform
+    :math:`y = \mathcal G^{-1}(r; a, b)`.
     """
 
     def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
         :param search_space: The global search space over which the optimisation is defined.
-        :param num_samples: Number of sample draws of the minimal value.
-        :param grid_size: Size of random grid used to fit the gumbel distribution
-            (recommend scaling with search space dimension).
+        :param num_samples: Number of samples to draw from the distribution over the objective
+            minimum.
+        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+            scaling this with search space dimension.
         """
         self._search_space = search_space
 
@@ -176,24 +189,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
-        Need to sample  a set of min-values y* from our posterior.
-        To do this we implement a Gumbel sampler, where we approximate
-        :math:`Pr(y*<y) by Gumbel(a,b)`.
-
-        The Gumbel distribution for minima has a cumulative density function
-        of :math:`f(y)= 1 - exp(-exp((y - a) / b))`, i.e. the q :sup:`th` quantile is given by
-        Q(q) = a + b * log( -1 * log(1 - q)). We choose values for a and b that
-        match the Gumbel's interquartile range with that of the observed
-        empirical cumulative density function of Pr(y*<y).
-
-        We then sample this Gumbel distribution by sampling from a uniform random variable
-        and applying the inverse probability integral transform, i.e. given a sample
-        r ~ Unif[0,1] then g = a + b * log( -1 * log(1 - r)) follows g ~ Gumbel(a,b).
-
-
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
-        :return: The MES acquisition function. This function will raise :exc:`ValueError` or
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         """
         if len(dataset.query_points) == 0:
@@ -233,16 +232,16 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
 def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
     r"""
-    Computes the information gain, i.e the change in entropy of p_min (the distribution of the
-    minimal value of the objective function) if we would evaluate x.
-
-    See :cite:`wang2017max` for details.
+    Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+    modified for objective minimisation. This function calculates the information gain (or change in
+    entropy) in the distribution over the objective minimum :math:`y^*`, if we were to evaluate the
+    objective at a given point.
 
     :param model: The model of the objective function.
-    :param samples: Samples from p_min
-    :return: The min value entropy search function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :return: The max-value entropy search acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
     tf.debugging.assert_rank(samples, 1)
 
