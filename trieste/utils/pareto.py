@@ -79,7 +79,7 @@ class Pareto:
         :param observations: The observations for all objectives, with shape [N, 2].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
-        tf.debugging.assert_shapes([(observations, [None, 2])])
+        tf.debugging.assert_rank(observations,2)
 
         pf, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pf, tf.argsort(pf[:, :1], axis=0))
