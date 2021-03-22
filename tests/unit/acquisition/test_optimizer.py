@@ -43,7 +43,7 @@ def test_optimize_discrete(
 
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer",
+    "search_space, shifts, batch_size, expected_maximizer",
     [
         (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
         (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
@@ -51,8 +51,8 @@ def test_optimize_discrete(
         (Box([-1, -2, 1], [1.5, 2.5, 1.5]), [0.3, -0.4, 0.5], [[0.3, -0.4, 1.0]]),  # 3D
     ],
 )
-def test_optimize_continuous(
+def test_optimize_continuous_batch(
     search_space: Box, shift: list[float], expected_maximizer: list[list[float]],
 ) -> None:
-    maximizer = optimize_continuous(search_space, lambda x: 0.5 - quadratic(x - shift))
+    maximizer = optimize_continuous(search_space, lambda x: 0.5 - quadratic(x[0,:] - shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
