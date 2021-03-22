@@ -33,8 +33,6 @@ from ..type import TensorType
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    BatchAcquisitionFunctionBuilder,
     ExpectedImprovement,
 )
 from .optimizer import AcquisitionOptimizer, optimize
@@ -348,7 +346,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SP_contra]):
     def __init__(
         self,
         num_query_points: int,
-        builder: BatchAcquisitionFunctionBuilder,
+        builder: ...,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
     ):
         """
@@ -381,7 +379,7 @@ class BatchAcquisitionRule(AcquisitionRule[None, SP_contra]):
         return f"BatchAcquisitionRule({self._num_query_points!r}, {self._builder!r})"
 
     def _vectorize_batch_acquisition(
-        self, acquisition_function: BatchAcquisitionFunction
+        self, acquisition_function: ...
     ) -> AcquisitionFunction:
         return lambda at: acquisition_function(
             tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1])

@@ -31,8 +31,6 @@ from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    BatchAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
@@ -222,10 +220,10 @@ def test_trust_region_state_deepcopy() -> None:
     assert tr_state_copy.is_global == tr_state.is_global
 
 
-class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
+class _BatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
         self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
-    ) -> BatchAcquisitionFunction:
+    ) -> AcquisitionFunction:
         return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
 
 
