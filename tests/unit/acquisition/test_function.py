@@ -247,14 +247,6 @@ def test_lower_confidence_bound(beta: float) -> None:
     npt.assert_array_almost_equal(actual, tf.squeeze(query_at, -2) ** 2 - beta)
 
 
-@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_probability_of_feasibility_raises_for_invalid_batch_size(at: TensorType) -> None:
-    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), tf.constant(1.0))
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        pof(at)
-
-
 @pytest.mark.parametrize(
     "threshold, at, expected",
     [
@@ -285,8 +277,8 @@ def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeL
         probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
 
 
-@pytest.mark.parametrize("shape", [[], [0], [2]])
-def test_probability_of_feasibility_raises_on_incorrect_at_shape(shape: ShapeLike) -> None:
+@pytest.mark.parametrize("shape", [[], [0], [2], [2, 1], [1, 2, 1]])
+def test_probability_of_feasibility_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
     at = tf.ones(shape)
     pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
