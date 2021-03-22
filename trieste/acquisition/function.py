@@ -185,9 +185,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
-        :return: The MES function. This function will raise
-            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
+        :return: The MES acquisition function. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
@@ -235,8 +234,7 @@ def min_value_entropy_search(
 
     :param model: The model of the objective function.
     :param samples: Samples from p_min
-    :param at: The points for which to calculate the expected improvement.
-    :return: The entropy reduction provided by an evaluation of ``at``. This function will raise
+    :return: The min value entropy search acquisition function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     """
