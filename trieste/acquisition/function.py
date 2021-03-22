@@ -104,7 +104,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
-        :return: The expected improvement function.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         :raise ValueError: If ``dataset`` is empty.
         """
         if len(dataset.query_points) == 0:
@@ -127,7 +129,9 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> Acquisit
 
     :param model: The model of the objective function.
     :param eta: The "best" observation.
-    :return: The expected improvement acquisition function.
+    :return: The expected improvement acquisition function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     """
     def acquisition(x: TensorType) -> TensorType:
         mean, variance = model.predict(tf.squeeze(x, -2))
@@ -181,7 +185,9 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
-        :return: The MES function.
+        :return: The MES function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
@@ -230,7 +236,9 @@ def min_value_entropy_search(
     :param model: The model of the objective function.
     :param samples: Samples from p_min
     :param at: The points for which to calculate the expected improvement.
-    :return: The entropy reduction provided by an evaluation of ``at``.
+    :return: The entropy reduction provided by an evaluation of ``at``. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     """
     tf.debugging.assert_rank(samples, 1)
 
@@ -280,9 +288,12 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
         :return: The negative of the lower confidence bound function. This function will raise
-            `ValueError` if ``beta`` is negative.
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise ValueError: If ``beta`` is negative.
         """
-        return lambda at: -lower_confidence_bound(model, self._beta)(at)
+        lcb = lower_confidence_bound(model, self._beta)
+        return lambda at: -lcb(at)
 
 
 class NegativePredictiveMean(NegativeLowerConfidenceBound):
@@ -310,7 +321,9 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     :param model: The model of the objective function.
     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
         negative.
-    :return: The lower confidence bound acquisition function.
+    :return: The lower confidence bound acquisition function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     :raise ValueError: If ``beta`` is negative.
     """
     if beta < 0:
@@ -365,7 +378,9 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :return: The probability of feasibility acquisition function.
+        :return: The probability of feasibility acquisition function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         """
         return probability_of_feasibility(model, self.threshold)
 
@@ -386,7 +401,9 @@ def probability_of_feasibility(
 
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
-    :return: The probability of feasibility acquisition function.
+    :return: The probability of feasibility acquisition function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     :raise ValueError: If ``threshold`` is not a scalar.
     """
     tf.debugging.assert_scalar(threshold)
@@ -446,7 +463,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained improvement acquisition function.
+        :return: The expected constrained improvement acquisition function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
         :raise ValueError: If the objective data is empty.
         """

@@ -78,22 +78,17 @@ def test_single_model_acquisition_builder_repr_includes_class_name() -> None:
 
 
 def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_model() -> None:
-    class _Builder(SingleModelAcquisitionBuilder):
+    class Builder(SingleModelAcquisitionBuilder):
         def prepare_acquisition_function(
             self, dataset: Dataset, model: ProbabilisticModel
         ) -> AcquisitionFunction:
-            npt.assert_allclose(dataset.query_points, 0.0)
-            _, var = model.predict(tf.constant([0.0]))
-            npt.assert_allclose(var, 0.0)
+            assert dataset is data["foo"]
+            assert model is models["foo"]
             return raise_
 
-    builder = _Builder().using("foo")
-    data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
-    models = {
-        "foo": QuadraticMeanAndRBFKernel(kernel_amplitude=0.0),
-        "bar": QuadraticMeanAndRBFKernel(kernel_amplitude=1.0),
-    }
-    builder.prepare_acquisition_function(data, models)
+    data = {"foo": zero_dataset(), "bar": zero_dataset()}
+    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
+    Builder().using("foo").prepare_acquisition_function(data, models)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
@@ -113,6 +108,14 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
 
     with pytest.raises(ValueError):
         ExpectedImprovement().prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    ei = expected_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ei(at)
 
 
 @random_seed
@@ -173,6 +176,14 @@ def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
         min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples)
 
 
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_min_value_entropy_search_raises_for_invalid_batch_size(at: TensorType) -> None:
+    mes = min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mes(at)
+
+
 def test_min_value_entropy_search_returns_correct_shape() -> None:
     model = QuadraticMeanAndRBFKernel()
     gumbel_samples = tf.constant([1.0])
@@ -221,11 +232,27 @@ def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
         lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)
 
 
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_lower_confidence_bound_raises_for_invalid_batch_size(at: TensorType) -> None:
+    lcb = lower_confidence_bound(QuadraticMeanAndRBFKernel(), tf.constant(1.0))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        lcb(at)
+
+
 @pytest.mark.parametrize("beta", [0.0, 0.1, 7.8])
 def test_lower_confidence_bound(beta: float) -> None:
     query_at = tf.linspace([[-3]], [[3]], 10)
     actual = lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)(query_at)
     npt.assert_array_almost_equal(actual, tf.squeeze(query_at, -2) ** 2 - beta)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_probability_of_feasibility_raises_for_invalid_batch_size(at: TensorType) -> None:
+    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), tf.constant(1.0))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        pof(at)
 
 
 @pytest.mark.parametrize(
@@ -279,6 +306,18 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(ValueError):
         ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    builder = ExpectedConstrainedImprovement("", pof, tf.constant(0.0))
+    eci = builder.prepare_acquisition_function(
+        {"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()}
+    )
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        eci(at)
 
 
 def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
