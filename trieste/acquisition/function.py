@@ -31,9 +31,9 @@ AcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for acquisition functions.
 
-A `AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
+An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
 value that describes how useful it would be evaluate all these points together (to our goal of
-optimizing the objective function). Thus, with leading dimensions, a `AcquisitionFunction`
+optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
 takes input shape `[..., B, D]` and returns shape `[..., 1]`.
 """
 
