@@ -36,7 +36,6 @@ from trieste.acquisition import (
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     OBJECTIVE,
-    BatchAcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
@@ -47,9 +46,14 @@ from trieste.space import Box
 from trieste.type import TensorType
 
 
-def _line_search_maximize(search_space: Box, f: AcquisitionFunction) -> TensorType:
+def _line_search_maximize(
+    search_space: Box, f: AcquisitionFunction, num_query_points: int = 1
+) -> TensorType:
+    if num_query_points != 1:
+        raise ValueError("_line_search_maximizer only defined for batches of size 1")
     xs = tf.linspace(search_space.lower, search_space.upper, 10 ** 6)
-    return xs[tf.squeeze(tf.argmax(f(xs))), None]
+
+    return xs[tf.squeeze(tf.argmax(f(tf.expand_dims(xs, 1)))), None]
 
 
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
@@ -58,12 +62,14 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: -quadratic(x - 1)
+            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
     query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
+    print("HERREEEEE")
+    print(query_point)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
@@ -232,7 +238,9 @@ def test_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _BatchModelMinusMeanMaximumSingleBuilder()
-    ego: BatchAcquisitionRule[Box] = BatchAcquisitionRule(num_query_points, acq)
+    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}

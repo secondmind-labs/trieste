@@ -217,10 +217,10 @@ plot_bo_points(
 # Here we use the `BatchMonteCarloExpectedImprovement` function. Note that this acquisition function is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic.
 
 # %%
-from trieste.acquisition.rule import BatchAcquisitionRule
+from trieste.acquisition.rule import EfficientGlobalOptimization
 
 qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
-batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
+batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
     num_query_points=3, builder=qei.using(OBJECTIVE)
 )
 

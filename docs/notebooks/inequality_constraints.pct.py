@@ -161,10 +161,8 @@ plt.show()
 # It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
 
 # %%
-from trieste.acquisition.rule import BatchAcquisitionRule
-
 class BatchExpectedConstrainedImprovement(
-    trieste.acquisition.BatchAcquisitionFunctionBuilder
+    trieste.acquisition.AcquisitionFunctionBuilder
 ):
     def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
@@ -181,8 +179,8 @@ class BatchExpectedConstrainedImprovement(
         }
 
         pf = trieste.acquisition.probability_of_feasibility(
-            models[CONSTRAINT], self._threshold, objective_dataset.query_points
-        )
+            models[CONSTRAINT], self._threshold
+        )(tf.expand_dims(objective_dataset.query_points,1))
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
@@ -209,8 +207,8 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
-    num_query_points, batch_eci
+batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+    batch_eci, num_query_points= num_query_points
 )
 
 # %% [markdown]

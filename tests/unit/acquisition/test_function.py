@@ -443,7 +443,7 @@ def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3]])
 def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape(
-    shape: ShapeLike
+    shape: ShapeLike,
 ) -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
 

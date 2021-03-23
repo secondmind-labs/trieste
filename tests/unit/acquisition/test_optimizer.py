@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import quadratic, random_seed
-from trieste.acquisition.optimizer import optimize, optimize_continuous, optimize_discrete
+from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete
 from trieste.space import Box, DiscreteSearchSpace
 
 
@@ -35,7 +35,9 @@ from trieste.space import Box, DiscreteSearchSpace
     ],
 )
 def test_optimize_discrete(
-    search_space: DiscreteSearchSpace, shift: list[float], expected_maximizer: list[list[float]],
+    search_space: DiscreteSearchSpace,
+    shift: list[float],
+    expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize_discrete(search_space, lambda x: 0.5 - quadratic(x - shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
@@ -43,7 +45,7 @@ def test_optimize_discrete(
 
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shifts, batch_size, expected_maximizer",
+    "search_space, shift, expected_maximizer",
     [
         (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
         (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
@@ -51,8 +53,45 @@ def test_optimize_discrete(
         (Box([-1, -2, 1], [1.5, 2.5, 1.5]), [0.3, -0.4, 0.5], [[0.3, -0.4, 1.0]]),  # 3D
     ],
 )
-def test_optimize_continuous_batch(
-    search_space: Box, shift: list[float], expected_maximizer: list[list[float]],
+def test_optimize_continuous(
+    search_space: Box,
+    shift: list[float],
+    expected_maximizer: list[list[float]],
 ) -> None:
-    maximizer = optimize_continuous(search_space, lambda x: 0.5 - quadratic(x[0,:] - shift))
+    maximizer = optimize_continuous(search_space, lambda x: 0.5 - quadratic(x[0, :] - shift))
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "search_space, shifts, batch_size, expected_maximizer",
+    [
+        (Box([-1], [2]), [1.0, 1.5], 2, [[1.0], [1.5]]),  # 1D space with batch of size 2
+        (
+            Box([-1, -2], [1.5, 2.5]),
+            [[0.3, -0.4]] * 3,
+            3,
+            [[0.3, -0.4]] * 3,
+        ),  # 2D space with batch of size 3
+        (
+            Box([-1, -2, 1], [1.5, 2.5, 1.5]),
+            [[0.3, -0.4, 0.5]] * 5,
+            5,
+            [[0.3, -0.4, 1.0]] * 5,
+        ),  # 3D space with a batch of size 5
+    ],
+)
+def test_optimize_continuous_batch(
+    search_space: Box,
+    shifts: list[float],
+    batch_size: int,
+    expected_maximizer: list[list[float]],
+) -> None:
+    def batch_objective(x):
+        obj = 0.5 - quadratic(x[:, 0] - shifts[0])
+        for j in range(1, batch_size):
+            obj += -quadratic(x[:, j] - shifts[j])
+        return obj
+
+    maximizer = optimize_continuous(search_space, batch_objective, batch_size)
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)

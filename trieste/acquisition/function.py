@@ -130,10 +130,14 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> Acquisit
     :param model: The model of the objective function.
     :param eta: The "best" observation.
     :return: The expected improvement acquisition function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
+        :exc:`ValueError` if used with a batch size greater than one.
     """
+
     def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="Trying to use a non-batch acquisition function for batch BO",
+        )
         mean, variance = model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
         return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
@@ -223,9 +227,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         return min_value_entropy_search(model, gumbel_samples)
 
 
-def min_value_entropy_search(
-    model: ProbabilisticModel, samples: TensorType
-) -> AcquisitionFunction:
+def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
     r"""
     Computes the information gain, i.e the change in entropy of p_min (the distribution of the
     minimal value of the objective function) if we would evaluate x.
@@ -235,7 +237,7 @@ def min_value_entropy_search(
     :param model: The model of the objective function.
     :param samples: Samples from p_min
     :return: The min value entropy search acquisition function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        :exc:`ValueError` if used with a batch size
         greater than one.
     """
     tf.debugging.assert_rank(samples, 1)
@@ -244,6 +246,10 @@ def min_value_entropy_search(
         raise ValueError("Gumbel samples must be populated.")
 
     def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="Trying to use a non-batch acquisition function for batch BO",
+        )
         fmean, fvar = model.predict(tf.squeeze(x, -2))
         fsd = tf.math.sqrt(fvar)
         fsd = tf.clip_by_value(
@@ -254,7 +260,9 @@ def min_value_entropy_search(
         gamma = (samples - fmean) / fsd
 
         minus_cdf = 1 - normal.cdf(gamma)
-        minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
+        minus_cdf = tf.clip_by_value(
+            minus_cdf, 1.0e-8, 1
+        )  # clip below to improve numerical stability
         f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
@@ -286,8 +294,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
         :return: The negative of the lower confidence bound function. This function will raise
-            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
+            :exc:`ValueError` if used with a batch size greater than one.
         :raise ValueError: If ``beta`` is negative.
         """
         lcb = lower_confidence_bound(model, self._beta)
@@ -320,8 +327,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
         negative.
     :return: The lower confidence bound acquisition function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
+        :exc:`ValueError` if used with a batch size greater than one.
     :raise ValueError: If ``beta`` is negative.
     """
     if beta < 0:
@@ -330,6 +336,10 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
         )
 
     def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="Trying to use a non-batch acquisition function for batch BO",
+        )
         mean, variance = model.predict(tf.squeeze(x, -2))
         return mean - beta * tf.sqrt(variance)
 
@@ -377,8 +387,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
         :return: The probability of feasibility acquisition function. This function will raise
-            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
+            :exc:`ValueError` if used with a batch size greater than one.
         """
         return probability_of_feasibility(model, self.threshold)
 
@@ -400,13 +409,16 @@ def probability_of_feasibility(
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
     :return: The probability of feasibility acquisition function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
+        :exc:`ValueError` if used with a batch size greater than one.
     :raise ValueError: If ``threshold`` is not a scalar.
     """
     tf.debugging.assert_scalar(threshold)
 
     def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="Trying to use a non-batch acquisition function for batch BO",
+        )
         mean, var = model.predict(tf.squeeze(x, -2))
         distr = tfp.distributions.Normal(mean, tf.sqrt(var))
         return distr.cdf(tf.cast(threshold, x.dtype))
