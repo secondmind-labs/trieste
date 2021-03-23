@@ -31,7 +31,7 @@ from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
-from .optimizer import AcquisitionOptimizer, optimize
+from .optimizer import AcquisitionOptimizer
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -110,9 +110,6 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
                 builder = ExpectedImprovement().using(OBJECTIVE)
             else:
                 raise ValueError("Need to specify a batch acquisition function")
-
-        if optimizer is None:
-            optimizer = optimize
 
         self._builder = builder
         self._optimizer = optimizer
@@ -249,9 +246,6 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         """
         if builder is None:
             builder = ExpectedImprovement().using(OBJECTIVE)
-
-        if optimizer is None:
-            optimizer = optimize
 
         self._builder = builder
         self._beta = beta
