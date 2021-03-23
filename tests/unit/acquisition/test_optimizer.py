@@ -19,9 +19,10 @@ import tensorflow as tf
 
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete
+from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete, simultaneous_batch
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
+from trieste.utils.objectives import branin, BRANIN_MINIMIZERS
 
 
 def _inverted_quadratic(shift: list[float]) -> AcquisitionFunction:
@@ -62,3 +63,18 @@ def test_optimize_continuous(
 ) -> None:
     maximizer = optimize_continuous(search_space, _inverted_quadratic(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
+
+
+@random_seed
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
+def test_batchify(batch_size: int) -> None:
+    def acquisition(x: TensorType) -> TensorType:
+        return -tf.reduce_sum(branin(x), axis=-2)
+
+    batch_optimizer = simultaneous_batch(optimize_continuous, batch_size)
+    points = batch_optimizer(Box([0, 0], [1, 1]), acquisition)
+
+    assert points.shape == [batch_size, 2]
+
+    for point in points:
+        tf.reduce_any(point == BRANIN_MINIMIZERS, axis=0)

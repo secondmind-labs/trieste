@@ -17,7 +17,6 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from functools import singledispatch
 from typing import Callable, TypeVar
 
 import gpflow
@@ -41,21 +40,34 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 """
 
 
-def batchify(
-    batch_size: int, batch_size_one_optimizer: AcquisitionOptimizer[SP]
+def simultaneous_batch(
+    batch_size_one_optimizer: AcquisitionOptimizer[SP], batch_size: int,
 ) -> AcquisitionOptimizer[SP]:
-    def _optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+    """
+    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+        single point with shape [1, D].
+    :param batch_size: The number of points in the batch.
+    :return: An optimizer that returns the ``batch_size`` points that maximize the
+        :const:`~trieste.acquisition.AcquisitionFunction` it is passed. Points are collected
+        simultaneously.
+    """
+    tf.debugging.assert_positive(batch_size)
+
+    if batch_size == 1:
+        return batch_size_one_optimizer
+
+    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
         def vectorized_acquisition(x: TensorType) -> TensorType:  # [..., 1, B * D] -> [..., 1]
-            return f(tf.reshape(x, x.shape[:-2] + [batch_size, -1]))
+            return f(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
         vectorized_points = batch_size_one_optimizer(  # [1, B * D]
             expanded_search_space, vectorized_acquisition
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 
-    return _optimizer
+    return optimizer
 
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
@@ -100,4 +112,3 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
     gpflow.optimizers.Scipy().minimize(_objective, (variable,))
 
     return bijector.forward(variable)  # [1, D]
-
