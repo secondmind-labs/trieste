@@ -100,7 +100,6 @@ from trieste.utils.pareto import Pareto, non_dominated
                     [0.90234935, 0.02297473, 0.05389869],
                     [0.72582424, 0.55389977, 0.00330079],
                     [0.04540098, 0.22407162, 0.11227596],
-                    
                 ]
             ),
             tf.constant([0, 4, 1, 0, 1, 0]),
@@ -166,6 +165,7 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
             [0.1, -0.6],
             0.37,
         ),
+        ([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]], [4.0, 4.0, 4.0], 29.0),
     ],
 )
 def test_pareto_hypervolume_indicator(
