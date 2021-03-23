@@ -30,7 +30,7 @@ $ jupyter-notebook notebooks
 ### Getting help
 
 - To submit a pull request, file a bug report, or make a feature request, see the [contribution guidelines](CONTRIBUTING.md).
-- For more open-ended questions, or for anything else, join the community discussions on our [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-mjkavx5e-LfePbVegb9lXRA_ZUqTyMA).
+- For more open-ended questions, or for anything else, join the community discussions on our [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-oevvuosg-HMJeTtIIQUkNtpBu40wKvg).
 
 # License
 
