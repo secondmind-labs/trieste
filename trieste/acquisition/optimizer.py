@@ -17,6 +17,7 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
+from functools import singledispatch
 from typing import Callable, TypeVar
 
 import gpflow
@@ -58,6 +59,14 @@ def batchify(
 
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+    """
+    An :const:`AcquisitionOptimizer` for a batch size of 1.
+
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
+    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    """
     target_func_values = target_func(space.points[:, None, :])
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", 1))],
@@ -71,6 +80,14 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
+    """
+    An :const:`AcquisitionOptimizer` for a batch size of 1.
+
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
+    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    """
     trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
     initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
 
