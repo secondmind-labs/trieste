@@ -19,7 +19,7 @@ from collections.abc import Callable, Sequence
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import quadratic
+from tests.util.misc import ListN, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.type import TensorType
@@ -80,9 +80,14 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 class QuadraticMeanAndRBFKernel(GaussianProcess):
     r""" A Gaussian process with scalar quadratic mean and RBF kernel. """
 
-    def __init__(self, kernel_amplitude: float | TensorType | None = None):
+    def __init__(
+        self,
+        *,
+        x_shift: float | ListN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+    ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([quadratic], [kernel])
+        super().__init__([lambda x: quadratic(x - x_shift)], [kernel])
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
