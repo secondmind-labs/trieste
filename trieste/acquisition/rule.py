@@ -57,11 +57,11 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
 
         **Type hints:**
           - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
-                of :class:`~trieste.space.SearchSpace` depends on the specific
-                :class:`AcquisitionRule`.
+            of :class:`~trieste.space.SearchSpace` depends on the specific
+            :class:`AcquisitionRule`.
           - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
-                state (if the rule is stateless, this type can be `None`). The ``state`` passed
-                to this method, and the state returned, must both be of that type.
+            state (if the rule is stateless, this type can be `None`). The ``state`` passed
+            to this method, and the state returned, must both be of that type.
 
         :param search_space: The global search space over which the optimization problem
                 is defined.
@@ -95,8 +95,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
                 :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
                 ``builder``. This should *maximize* the acquisition function, and must be compatible
-                with the global search space. Defaults to
-                :func:`~trieste.acquisition.optimizer.optimize`.
+                with the global search space. Defaults to :func:`~trieste.acquisition.optimizer.optimize`.
         :param num_query_points: The number of points to acquire.
         """
 

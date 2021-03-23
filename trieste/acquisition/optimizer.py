@@ -41,6 +41,27 @@ shape [..., B, D] output shape [..., 1], the :data:`AcquisitionOptimizer` return
 """
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @singledispatch
 def optimize(
     space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction, num_query_points: int = 1
@@ -52,6 +73,19 @@ def optimize(
     :param num_query_points: The number of points to acquire.
     :return: The points in ``space`` that together maximize ``target_func``, with shape [B, D].
     """
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @optimize.register
@@ -79,12 +113,15 @@ def optimize_continuous(
     space: Box, target_func: AcquisitionFunction, num_query_points: int = 1
 ) -> TensorType:
     expanded_space = space ** num_query_points
+    
+    def vectorized_target_func(at):
+        return target_func(tf.reshape(at, at.shape[:-1].as_list() + [num_query_points, -1]))
+
+
+
     trial_search_space = expanded_space.discretize(
         tf.minimum(2000, 500 * tf.shape(expanded_space.lower)[-1])
     )
-
-    def vectorized_target_func(at):
-        return target_func(tf.reshape(at, at.shape[:-1].as_list() + [num_query_points, -1]))
 
     initial_point = optimize_discrete(trial_search_space, vectorized_target_func)
 

@@ -156,7 +156,7 @@ from trieste.acquisition import (
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
-        return lambda at: lower_confidence_bound(model, 0.0)(at)
+        return lower_confidence_bound(model, 0.0)
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
