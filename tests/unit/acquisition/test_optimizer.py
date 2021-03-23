@@ -25,8 +25,8 @@ from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_MINIMIZERS
 
 
-def _inverted_quadratic(shift: list[float]) -> AcquisitionFunction:
-    return lambda x: 0.5 - quadratic(tf.squeeze(x, -2) - shift)
+def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
+    return lambda x: tf.reduce_sum(0.5 - quadratic(x - shift), axis=-2)
 
 
 @random_seed
@@ -44,7 +44,7 @@ def _inverted_quadratic(shift: list[float]) -> AcquisitionFunction:
 def test_optimize_discrete(
     search_space: DiscreteSearchSpace, shift: list[float], expected_maximizer: list[list[float]],
 ) -> None:
-    maximizer = optimize_discrete(search_space, _inverted_quadratic(shift))
+    maximizer = optimize_discrete(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
 
 
@@ -61,20 +61,28 @@ def test_optimize_discrete(
 def test_optimize_continuous(
     search_space: Box, shift: list[float], expected_maximizer: list[list[float]],
 ) -> None:
-    maximizer = optimize_continuous(search_space, _inverted_quadratic(shift))
+    maximizer = optimize_continuous(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
+
+
+def _branin_sum(x: TensorType) -> TensorType:
+    return -tf.reduce_sum(branin(x), axis=-2)
 
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
-def test_batchify(batch_size: int) -> None:
-    def acquisition(x: TensorType) -> TensorType:
-        return -tf.reduce_sum(branin(x), axis=-2)
-
+@pytest.mark.parametrize("search_space, acquisition, maximizers", [
+    (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
+    (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
+    (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
+])
+def test_batchify(
+    search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
+) -> None:
     batch_optimizer = simultaneous_batch(optimize_continuous, batch_size)
-    points = batch_optimizer(Box([0, 0], [1, 1]), acquisition)
+    points = batch_optimizer(search_space, acquisition)
 
-    assert points.shape == [batch_size, 2]
+    assert points.shape == [batch_size] + search_space.lower.shape
 
     for point in points:
-        tf.reduce_any(point == BRANIN_MINIMIZERS, axis=0)
+        tf.reduce_any(point == maximizers, axis=0)
