@@ -179,3 +179,69 @@ def test_pareto_divide_conquer_nd_two_dimension_case() -> None:
     npt.assert_allclose(
         pareto.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
     )
+
+
+def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
+    objectives = tf.constant(
+        [
+            [0.90234935, 0.02297473, 0.05389869],
+            [0.98328614, 0.44182944, 0.6975261],
+            [0.39555323, 0.3040712, 0.3433497],
+            [0.72582424, 0.55389977, 0.00330079],
+            [0.9590585, 0.03233206, 0.2403127],
+            [0.04540098, 0.22407162, 0.11227596],
+        ]
+    )
+
+    pareto = Pareto(objectives, generic_strategy=True)
+
+    npt.assert_allclose(
+        pareto.bounds.lower_idx,
+        tf.constant(
+            [
+                [2, 1, 3],
+                [3, 2, 0],
+                [3, 1, 0],
+                [2, 2, 0],
+                [2, 1, 0],
+                [3, 0, 3],
+                [2, 0, 3],
+                [2, 0, 0],
+                [1, 2, 3],
+                [1, 1, 3],
+                [0, 1, 3],
+                [0, 1, 0],
+                [0, 0, 0],
+            ]
+        ),
+    )
+    npt.assert_allclose(
+        pareto.bounds.upper_idx,
+        tf.constant(
+            [
+                [3, 2, 1],
+                [4, 4, 2],
+                [4, 2, 3],
+                [3, 4, 2],
+                [3, 2, 3],
+                [4, 3, 4],
+                [3, 1, 4],
+                [4, 1, 3],
+                [2, 4, 1],
+                [2, 2, 1],
+                [1, 4, 4],
+                [2, 4, 3],
+                [2, 1, 4],
+            ]
+        ),
+    )
+    npt.assert_allclose(
+        pareto.front,
+        tf.constant(
+            [
+                [0.04540098, 0.22407162, 0.11227596],
+                [0.72582424, 0.55389977, 0.00330079],
+                [0.90234935, 0.02297473, 0.05389869],
+            ]
+        ),
+    )
