@@ -20,7 +20,6 @@ from typing import Callable
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
-from typing_extensions import final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
