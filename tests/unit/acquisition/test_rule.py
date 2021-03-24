@@ -68,8 +68,6 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
     query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
-    print("HERREEEEE")
-    print(query_point)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 

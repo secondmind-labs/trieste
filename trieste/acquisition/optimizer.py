@@ -40,10 +40,13 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 """
 
 
-def simultaneous_batch(
-    batch_size_one_optimizer: AcquisitionOptimizer[SP], batch_size: int,
+def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction, batch_size: int=1,
 ) -> AcquisitionOptimizer[SP]:
     """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class chooses an :const:`AcquisitionOptimizer`
+    appropriate for the problem's :class:`~trieste.space.SearchSpace` and wraps it to optimize batch
+    acquisition functions.
+
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
         single point with shape [1, D].
     :param batch_size: The number of points in the batch.
@@ -53,8 +56,13 @@ def simultaneous_batch(
     """
     tf.debugging.assert_positive(batch_size)
 
+    if isinstance(space, Box):
+        batch_size_one_optimizer = optimize_continuous
+    else:
+        batch_size_one_optimizer = optimize_discrete
+
     if batch_size == 1:
-        return batch_size_one_optimizer
+        return batch_size_one_optimizer(space, target_func)
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
@@ -67,6 +75,7 @@ def simultaneous_batch(
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 
+    return optimizer(space, target_func)
 
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:

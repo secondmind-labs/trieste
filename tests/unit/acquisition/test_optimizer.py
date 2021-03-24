@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete, simultaneous_batch
+from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete, optimize
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
 from trieste.utils.objectives import branin, BRANIN_MINIMIZERS
@@ -76,12 +76,10 @@ def _branin_sum(x: TensorType) -> TensorType:
     (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
     (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
 ])
-def test_batchify(
+def test_optimize(
     search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
 ) -> None:
-    batch_optimizer = simultaneous_batch(optimize_continuous, batch_size)
-    points = batch_optimizer(search_space, acquisition)
-
+    points = optimize(search_space, acquisition, batch_size)
     assert points.shape == [batch_size] + search_space.lower.shape
 
     for point in points:
