@@ -67,11 +67,11 @@ def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction,
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
-        def vectorized_acquisition(x: TensorType) -> TensorType:  # [..., 1, B * D] -> [..., 1]
+        def target_func_with_vectorized_inputs(x: TensorType) -> TensorType:  # [..., 1, B * D] -> [..., 1]
             return f(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
         vectorized_points = batch_size_one_optimizer(  # [1, B * D]
-            expanded_search_space, vectorized_acquisition
+            expanded_search_space, target_func_with_vectorized_inputs
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 

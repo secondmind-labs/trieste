@@ -56,20 +56,20 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         by the acquisition rule.
 
         **Type hints:**
-          - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
-            of :class:`~trieste.space.SearchSpace` depends on the specific
-            :class:`AcquisitionRule`.
-          - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
-            state (if the rule is stateless, this type can be `None`). The ``state`` passed
-            to this method, and the state returned, must both be of that type.
+        - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
+          of :class:`~trieste.space.SearchSpace` depends on the specific
+          :class:`AcquisitionRule`.
+        - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
+          state (if the rule is stateless, this type can be `None`). The ``state`` passed
+          to this method, and the state returned, must both be of that type.
 
         :param search_space: The global search space over which the optimization problem
-                is defined.
+            is defined.
         :param datasets: The known observer query points and observations for each tag.
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
-                (matched by tag).
+            (matched by tag).
         :param state: The acquisition state from the previous step, if there was a previous step,
-                else `None`.
+            else `None`.
         :return: The optimal points and the acquisition state for this step.
         """
 
@@ -92,10 +92,11 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
-                :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
+            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
-                ``builder``. This should *maximize* the acquisition function, and must be compatible
-                with the global search space. Defaults to :func:`~trieste.acquisition.optimizer.optimize`.
+            ``builder``. This should *maximize* the acquisition function, and must be compatible
+            with the global search space. Defaults to 
+            :func:`~trieste.acquisition.optimizer.optimize`.
         :param num_query_points: The number of points to acquire.
         """
 
@@ -119,7 +120,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __repr__(self) -> str:
         """"""
-        return f"EfficientGlobalOptimization({self._num_query_points!r}, {self._builder!r})"
+        return f"EfficientGlobalOptimization({self._builder!r}, {self._optimizer!r}, {self._num_query_points!r})"
 
     def acquire(
         self,
@@ -133,7 +134,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :meth:`__init__`).
 
         :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-                optimization problem is defined.
+            optimization problem is defined.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
@@ -179,13 +180,13 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         random samples yield the **minima** of the model posterior.
 
         :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-                optimization problem is defined.
+            optimization problem is defined.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param state: Unused.
         :return: The `num_query_points` points to query, and `None`.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
-                other key.
+            other key.
         """
         if models.keys() != {OBJECTIVE}:
             raise ValueError(
@@ -238,13 +239,13 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
     ):
         """
         :param builder: The acquisition function builder to use. :class:`TrustRegion` will attempt
-                to **maximise** the corresponding acquisition function. Defaults to
-                :class:`~trieste.acquisition.ExpectedImprovement` with tag `OBJECTIVE`.
+            to **maximise** the corresponding acquisition function. Defaults to
+            class:`~trieste.acquisition.ExpectedImprovement` with tag `OBJECTIVE`.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
-                considered a success.
+            considered a success.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
-                ``builder``. This must be able optimize over a :class:`Box`.
+            ``builder``. This must be able optimize over a :class:`Box`.
         """
         if builder is None:
             builder = ExpectedImprovement().using(OBJECTIVE)
@@ -293,12 +294,12 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         intersection of the trust region and ``search_space``.
 
         :param search_space: The global  :class:`~trieste.space.SearchSpace` for the optimization
-                problem.
+            problem.
         :param datasets: The known observer query points and observations. Uses the data for key
-                `OBJECTIVE` to calculate the new trust region.
+            `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
         :param state: The acquisition state from the previous step, if there was a previous step,
-                else `None`.
+            else `None`.
         :return: A 2-tuple of the query point and the acquisition state for this step.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """

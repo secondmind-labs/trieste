@@ -51,8 +51,9 @@ def _line_search_maximize(
 ) -> TensorType:
     if num_query_points != 1:
         raise ValueError("_line_search_maximizer only defined for batches of size 1")
+    if len(search_space.lower) !=1:
+        raise ValueError("_line_search_maximizer only defined for search spaces of dimension 1")
     xs = tf.linspace(search_space.lower, search_space.upper, 10 ** 6)
-
     return xs[tf.squeeze(tf.argmax(f(tf.expand_dims(xs, 1)))), None]
 
 
