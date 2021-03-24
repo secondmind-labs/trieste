@@ -163,40 +163,77 @@ class Pareto:
 
         total_size = tf.reduce_prod(max_pf - min_pf)
         # Start divide and conquer until we processed all cells
-        while dc.shape[0]:
 
-            # Process test cell
-            dc = tf.unstack(dc, axis=0)
-            cell = dc[-1]
-            dc = tf.cond(
-                tf.not_equal(tf.size(dc[:-1]), 0),
-                lambda: tf.stack(dc[:-1]),
-                lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
-            )
-
-            arr = tf.range(number_of_objectives)
-            idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
-            idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
-            lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
-            ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
-
-            # Acceptance test:
-            test_accepted = self._is_test_required((ub - jitter) < front)
-            lower, upper = tf.cond(
-                test_accepted,
-                lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub),
-                lambda: (lower, upper),
-            )
-
-            # Reject test:
-            test_rejected = self._is_test_required((lb + jitter) < front)
-            dc = tf.cond(
-                tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
-                lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold),
-                lambda: dc,
-            )
-            # else: cell can be discarded
+        loop_cond = lambda dc, lower, upper: dc.shape[0] > 0
+        loop_body = lambda dc, lower, upper: self._while_body(
+            dc,
+            lower,
+            upper,
+            number_of_objectives,
+            pf_ext,
+            pf_ext_idx,
+            jitter,
+            front,
+            total_size,
+            threshold,
+        )
+        _, lower, upper = tf.while_loop(
+            loop_cond,
+            loop_body,
+            loop_vars=[dc, lower, upper],
+            shape_invariants=[
+                tf.TensorShape([None, 2, number_of_objectives]),
+                tf.TensorShape([None, number_of_objectives]),
+                tf.TensorShape([None, number_of_objectives]),
+            ],
+        )
         return BoundedVolumes(lower, upper)
+
+    def _while_body(
+        self,
+        dc,
+        lower,
+        upper,
+        number_of_objectives,
+        pf_ext,
+        pf_ext_idx,
+        jitter,
+        front,
+        total_size,
+        threshold,
+    ):
+        # Process test cell
+        dc = tf.unstack(dc, axis=0)
+        cell = dc[-1]
+        dc = tf.cond(
+            tf.not_equal(tf.size(dc[:-1]), 0),
+            lambda: tf.stack(dc[:-1]),
+            lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
+        )
+
+        arr = tf.range(number_of_objectives)
+        idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
+        idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
+        lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
+        ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
+
+        # Acceptance test:
+        test_accepted = self._is_test_required((ub - jitter) < front)
+        lower, upper = tf.cond(
+            test_accepted,
+            lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub),
+            lambda: (lower, upper),
+        )
+
+        # Reject test:
+        test_rejected = self._is_test_required((lb + jitter) < front)
+        dc = tf.cond(
+            tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
+            lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold),
+            lambda: dc,
+        )
+
+        return dc, lower, upper
 
     def _accepted_test_body(self, lower, upper, idx_lb, idx_ub):
         lower = tf.concat([lower, idx_lb[None]], axis=0)
