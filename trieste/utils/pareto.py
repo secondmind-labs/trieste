@@ -164,22 +164,20 @@ class Pareto:
         total_size = tf.reduce_prod(max_pf - min_pf)
         # Start divide and conquer until we processed all cells
 
-        loop_cond = lambda dc, lower, upper: dc.shape[0] > 0
-        loop_body = lambda dc, lower, upper: self._while_body(
-            dc,
-            lower,
-            upper,
-            number_of_objectives,
-            pf_ext,
-            pf_ext_idx,
-            jitter,
-            front,
-            total_size,
-            threshold,
-        )
         _, lower, upper = tf.while_loop(
-            loop_cond,
-            loop_body,
+            lambda dc, lower, upper: dc.shape[0] > 0,
+            lambda dc, lower, upper: self._while_body(
+                dc,
+                lower,
+                upper,
+                number_of_objectives,
+                pf_ext,
+                pf_ext_idx,
+                jitter,
+                front,
+                total_size,
+                threshold,
+            ),
             loop_vars=[dc, lower, upper],
             shape_invariants=[
                 tf.TensorShape([None, 2, number_of_objectives]),
