@@ -31,7 +31,7 @@ from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
-from .optimizer import AcquisitionOptimizer, optimize
+from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, optimize_continuous
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -95,8 +95,8 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. This should *maximize* the acquisition function, and must be compatible
-            with the global search space. Defaults to 
-            :func:`~trieste.acquisition.optimizer.optimize`.
+            with the global search space. Defaults to
+            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
         :param num_query_points: The number of points to acquire.
         """
 
@@ -112,7 +112,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
                 raise ValueError("Need to specify a batch acquisition function")
 
         if optimizer is None:
-            optimizer = optimize
+            optimizer = automatic_optimizer_selector
 
         self._builder = builder
         self._optimizer = optimizer
@@ -120,7 +120,10 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __repr__(self) -> str:
         """"""
-        return f"EfficientGlobalOptimization({self._builder!r}, {self._optimizer!r}, {self._num_query_points!r})"
+        return f"""EfficientGlobalOptimization(
+        {self._builder!r},
+        {self._optimizer!r},
+        {self._num_query_points!r})"""
 
     def acquire(
         self,
@@ -251,7 +254,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             builder = ExpectedImprovement().using(OBJECTIVE)
 
         if optimizer is None:
-            optimizer = optimize
+            optimizer = optimize_continuous
 
         self._builder = builder
         self._beta = beta

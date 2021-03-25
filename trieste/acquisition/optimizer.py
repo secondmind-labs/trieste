@@ -40,34 +40,64 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 """
 
 
-def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction, batch_size: int=1,
+def automatic_optimizer_selector(
+    space: SearchSpace, target_func: AcquisitionFunction, batch_size: int
 ) -> AcquisitionOptimizer[SP]:
     """
-    A wrapper around our :const:`AcquisitionOptimizer`s. This class chooses an :const:`AcquisitionOptimizer`
-    appropriate for the problem's :class:`~trieste.space.SearchSpace` and wraps it to optimize batch
-    acquisition functions.
-
-    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
-        single point with shape [1, D].
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class chooses
+    an :const:`AcquisitionOptimizer` appropriate for the
+    problem's :class:`~trieste.space.SearchSpace` and desired batch size.
+    
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
     :param batch_size: The number of points in the batch.
-    :return: An optimizer that returns the ``batch_size`` points that maximize the
-        :const:`~trieste.acquisition.AcquisitionFunction` it is passed. Points are collected
-        simultaneously.
+    :return: The batch of points in ``space`` that maximises ``target_func``, with shape [B, D].
     """
+
     tf.debugging.assert_positive(batch_size)
 
     if isinstance(space, Box):
         batch_size_one_optimizer = optimize_continuous
-    else:
+    elif isinstance(space, DiscreteSearchSpace):
         batch_size_one_optimizer = optimize_discrete
+    else:
+        raise NotImplementedError(
+            """ No optimizer currentely supports acquisition function
+            maximisation over this search space"""
+        )
 
     if batch_size == 1:
         return batch_size_one_optimizer(space, target_func)
+    else:
+        return optimize_batch(batch_size_one_optimizer, space, target_func, batch_size)
+
+
+def optimize_batch(
+    batch_size_one_optimizer: AcquisitionOptimizer,
+    space: SearchSpace,
+    target_func: AcquisitionFunction,
+    batch_size: int,
+) -> AcquisitionOptimizer[SP]:
+    """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+    :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
+    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+        single point with shape [1, D].
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
+    :param batch_size: The number of points in the batch.
+    :return: The batch of points in ``space`` that maximises ``target_func``, with shape [B, D].
+    """
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
-        def target_func_with_vectorized_inputs(x: TensorType) -> TensorType:  # [..., 1, B * D] -> [..., 1]
+        def target_func_with_vectorized_inputs(
+            x: TensorType,
+        ) -> TensorType:  # [..., 1, B * D] -> [..., 1]
             return f(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
         vectorized_points = batch_size_one_optimizer(  # [1, B * D]
@@ -80,7 +110,8 @@ def optimize(space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction,
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for a batch size of 1.
+    An :const:`AcquisitionOptimizer` for :const:'DiscreteSearchSpace' spaces and
+    batches of size of 1.
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
@@ -101,7 +132,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for a batch size of 1.
+    An :const:`AcquisitionOptimizer` for :const:'Box' spaces and batches of size of 1.
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape

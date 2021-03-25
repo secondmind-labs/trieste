@@ -180,7 +180,7 @@ class BatchExpectedConstrainedImprovement(
 
         pf = trieste.acquisition.probability_of_feasibility(
             models[CONSTRAINT], self._threshold
-        )(tf.expand_dims(objective_dataset.query_points,1))
+        )(tf.expand_dims(objective_dataset.query_points, 1))
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
@@ -208,7 +208,7 @@ class BatchExpectedConstrainedImprovement(
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
 batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-    batch_eci, num_query_points= num_query_points
+    batch_eci, num_query_points=num_query_points
 )
 
 # %% [markdown]

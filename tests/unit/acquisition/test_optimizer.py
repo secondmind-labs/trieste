@@ -19,10 +19,15 @@ import tensorflow as tf
 
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.optimizer import optimize_continuous, optimize_discrete, optimize
+from trieste.acquisition.optimizer import (
+    automatic_optimizer_selector,
+    optimize_batch,
+    optimize_continuous,
+    optimize_discrete,
+)
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
-from trieste.utils.objectives import branin, BRANIN_MINIMIZERS
+from trieste.utils.objectives import BRANIN_MINIMIZERS, branin
 
 
 def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
@@ -42,7 +47,9 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
     ],
 )
 def test_optimize_discrete(
-    search_space: DiscreteSearchSpace, shift: list[float], expected_maximizer: list[list[float]],
+    search_space: DiscreteSearchSpace,
+    shift: list[float],
+    expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize_discrete(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
@@ -59,7 +66,9 @@ def test_optimize_discrete(
     ],
 )
 def test_optimize_continuous(
-    search_space: Box, shift: list[float], expected_maximizer: list[list[float]],
+    search_space: Box,
+    shift: list[float],
+    expected_maximizer: list[list[float]],
 ) -> None:
     maximizer = optimize_continuous(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
@@ -71,16 +80,42 @@ def _branin_sum(x: TensorType) -> TensorType:
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
-@pytest.mark.parametrize("search_space, acquisition, maximizers", [
-    (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
-    (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
-    (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
-])
-def test_optimize(
+@pytest.mark.parametrize(
+    "search_space, acquisition, maximizers",
+    [
+        (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
+        (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
+        (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
+    ],
+)
+def test_optimize_batch(
     search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
 ) -> None:
-    points = optimize(search_space, acquisition, batch_size)
+    batch_size_one_optimizer = optimize_continuous
+    points = optimize_batch(batch_size_one_optimizer, search_space, acquisition, batch_size)
     assert points.shape == [batch_size] + search_space.lower.shape
 
+    for point in points:
+        tf.reduce_any(point == maximizers, axis=0)
+
+
+@random_seed
+@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize(
+    "search_space, acquisition, maximizers",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
+            _quadratic_sum([1.0]),
+            [[1.2]],
+        ),
+        (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
+        (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
+    ],
+)
+def test_automatic_optimizer_selector(
+    search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
+) -> None:
+    points = automatic_optimizer_selector(search_space, acquisition, batch_size)
     for point in points:
         tf.reduce_any(point == maximizers, axis=0)
