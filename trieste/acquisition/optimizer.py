@@ -49,7 +49,7 @@ def automatic_optimizer_selector(
     problem's :class:`~trieste.space.SearchSpace` and desired batch size.
     
     :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+    :param target_func: The function to maximise, with input shape [..., B, D] and output shape
         [..., 1].
     :param batch_size: The number of points in the batch.
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [B, D].

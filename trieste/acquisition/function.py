@@ -240,7 +240,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
 
     :param model: The model of the objective function.
     :param samples: Samples from p_min
-    :return: The expected improvement function. This function will raise
+    :return: The min value entropy search function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     """
@@ -297,7 +297,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :return: The expected improvement function. This function will raise
+        :return: The negative lower confidence bound function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise ValueError: If ``beta`` is negative.
@@ -331,7 +331,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     :param model: The model of the objective function.
     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
         negative.
-    :return: The expected improvement function. This function will raise
+    :return: The lower confidence bound function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     :raise ValueError: If ``beta`` is negative.
@@ -392,7 +392,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :return: The expected improvement function. This function will raise
+        :return: The probability of feasibility function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         """
@@ -415,7 +415,7 @@ def probability_of_feasibility(
 
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
-    :return: The expected improvement function. This function will raise
+    :return: The probability of feasibility function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     :raise ValueError: If ``threshold`` is not a scalar.
