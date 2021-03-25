@@ -40,13 +40,11 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     IndependentReparametrizationSampler,
-    MCIndAcquisitionFunctionBuilder,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelBatchAcquisitionBuilder,
-    SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
     min_value_entropy_search,
@@ -504,90 +502,6 @@ def test_independent_reparametrization_sampler_samples_are_distinct_for_new_inst
     sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp())
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
-
-
-def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
-    class _Acq(MCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
-            samplers: Mapping[str, IndependentReparametrizationSampler],
-        ) -> AcquisitionFunction:
-            return raise_
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        _Acq(-1)
-
-
-@random_seed
-def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
-    class _Acq(MCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
-            samplers: Mapping[str, IndependentReparametrizationSampler],
-        ) -> AcquisitionFunction:
-            assert samplers.keys() == {"foo", "bar", "baz"}
-
-            x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-
-            for key in samplers:
-                samples = samplers[key].sample(x)
-                mean, var = models[key].predict(x)
-                _assert_kolmogorov_smirnov_95(
-                    tf.linalg.matrix_transpose(samples),
-                    tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
-                )
-
-            return raise_
-
-    data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.zeros([0, 2], dtype=tf.float64))
-    _Acq(20_000).prepare_acquisition_function(
-        {"foo": data, "bar": data, "baz": data},
-        {
-            "foo": _dim_two_gp((0.5, 0.5)),
-            "bar": _dim_two_gp((1.3, 1.3)),
-            "baz": _dim_two_gp((-0.7, -0.7)),
-        },
-    )
-
-
-def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
-        ) -> AcquisitionFunction:
-            return raise_
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        _Acq(-1)
-
-
-@random_seed
-def test_single_model_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
-        ) -> AcquisitionFunction:
-            x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-            samples = sampler.sample(x)
-            mean, var = model.predict(x)
-            _assert_kolmogorov_smirnov_95(
-                tf.linalg.matrix_transpose(samples),
-                tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
-            )
-            return raise_
-
-    data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.zeros([0, 2], dtype=tf.float64))
-    _Acq(1000).prepare_acquisition_function(data, _dim_two_gp())
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
