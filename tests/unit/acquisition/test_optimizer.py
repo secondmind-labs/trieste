@@ -21,7 +21,7 @@ from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
     automatic_optimizer_selector,
-    optimize_batch,
+    batchify,
     optimize_continuous,
     optimize_discrete,
 )
@@ -92,9 +92,9 @@ def test_optimize_batch(
     search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
 ) -> None:
     batch_size_one_optimizer = optimize_continuous
-    points = optimize_batch(batch_size_one_optimizer, search_space, acquisition, batch_size)
+    batch_optimizer = batchify(batch_size_one_optimizer, batch_size)
+    points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
-
     for point in points:
         tf.reduce_any(point == maximizers, axis=0)
 
@@ -116,6 +116,7 @@ def test_optimize_batch(
 def test_automatic_optimizer_selector(
     search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
 ) -> None:
-    points = automatic_optimizer_selector(search_space, acquisition, batch_size)
+    optimizer = automatic_optimizer_selector
+    points = optimizer(search_space, acquisition)
     for point in points:
         tf.reduce_any(point == maximizers, axis=0)

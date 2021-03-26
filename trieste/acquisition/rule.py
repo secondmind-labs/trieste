@@ -31,7 +31,12 @@ from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
-from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, optimize_continuous
+from .optimizer import (
+    AcquisitionOptimizer,
+    automatic_optimizer_selector,
+    batchify,
+    optimize_continuous,
+)
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -109,10 +114,13 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             if num_query_points == 1:
                 builder = ExpectedImprovement().using(OBJECTIVE)
             else:
-                raise ValueError("Need to specify a batch acquisition function")
+                raise ValueError(
+                    """Need to specify a batch acquisition function when number of query points
+                    is greater than 1"""
+                )
 
         if optimizer is None:
-            optimizer = automatic_optimizer_selector
+            optimizer = batchify(automatic_optimizer_selector, num_query_points)
 
         self._builder = builder
         self._optimizer = optimizer
@@ -144,7 +152,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :return: The single (or batch of) points to query, and `None`.
         """
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        return self._optimizer(search_space, acquisition_function, self._num_query_points), None
+        return self._optimizer(search_space, acquisition_function), None
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
