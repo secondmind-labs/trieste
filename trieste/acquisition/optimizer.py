@@ -81,8 +81,6 @@ def batchify(
     :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
     """
     tf.debugging.assert_positive(batch_size)
-    if batch_size == 1:
-        return batch_size_one_optimizer
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
@@ -139,8 +137,8 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
     variable = tf.Variable(bijector.inverse(initial_point))  # [1, D]
 
     def _objective() -> TensorType:
-        return -target_func(bijector.forward(variable))  # [1]
+        return -target_func(bijector.forward(variable[:, None, :]))  # [1]
 
     gpflow.optimizers.Scipy().minimize(_objective, (variable,))
 
-    return bijector.forward(variable)  # [1, D]
+    return bijector.forward(variable) # [1, D]
