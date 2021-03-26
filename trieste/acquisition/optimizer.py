@@ -51,7 +51,7 @@ def automatic_optimizer_selector(
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
-    :return: The batch of points in ``space`` that maximises ``target_func``, with shape [B, D].
+    :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
     if isinstance(space, Box):
@@ -78,7 +78,7 @@ def batchify(
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
         single point with shape [1, D].
     :param batch_size: The number of points in the batch.
-    :return: The batch of points in ``space`` that maximises ``target_func``, with shape [B, D].
+    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
     """
     tf.debugging.assert_positive(batch_size)
     if batch_size == 1:
