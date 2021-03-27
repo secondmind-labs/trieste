@@ -19,12 +19,12 @@ from trieste.utils import K, U, V, map_values
 
 
 @pytest.mark.parametrize(
-    "f, m, expected",
+    "f, mapping, expected",
     [
         (abs, {}, {}),
         (abs, {1: -1, -2: 2}, {1: 1, -2: 2}),
         (len, {"a": [1, 2, 3], "b": [4, 5]}, {"a": 3, "b": 2}),
     ],
 )
-def test_map_values(f: Callable[[U], V], m: Mapping[K, U], expected: Mapping[K, V]) -> None:
-    assert map_values(f, m) == expected
+def test_map_values(f: Callable[[U], V], mapping: Mapping[K, U], expected: Mapping[K, V]) -> None:
+    assert map_values(f, mapping) == expected
