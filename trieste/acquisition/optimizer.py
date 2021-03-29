@@ -100,7 +100,7 @@ def batchify(
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :const:'DiscreteSearchSpace' spaces and
+    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
     batches of size of 1.
 
     :param space: The space of points over which to search, for points with shape [D].
@@ -122,7 +122,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :const:'Box' spaces and batches of size of 1.
+    An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
@@ -141,4 +141,4 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
 
     gpflow.optimizers.Scipy().minimize(_objective, (variable,))
 
-    return bijector.forward(variable) # [1, D]
+    return bijector.forward(variable)  # [1, D]

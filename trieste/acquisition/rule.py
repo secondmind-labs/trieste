@@ -122,7 +122,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
                 )
 
         if optimizer is None:
-        	optimizer = automatic_optimizer_selector
+            optimizer = automatic_optimizer_selector
         optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder

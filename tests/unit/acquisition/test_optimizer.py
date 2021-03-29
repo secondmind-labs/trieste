@@ -27,7 +27,6 @@ from trieste.acquisition.optimizer import (
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
-from trieste.utils.objectives import BRANIN_MINIMIZERS, branin
 
 
 def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
@@ -74,49 +73,45 @@ def test_optimize_continuous(
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
 
 
-def _branin_sum(x: TensorType) -> TensorType:
-    return -tf.reduce_sum(branin(x), axis=-2)
-
-
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
 @pytest.mark.parametrize(
-    "search_space, acquisition, maximizers",
+    "search_space, acquisition, maximizer",
     [
-        (Box([-1], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
-        (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
+        (Box([-1], [1]), _quadratic_sum([0.5]), ([[0.5]])),
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
 def test_optimize_batch(
-    search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
+    search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
 ) -> None:
     batch_size_one_optimizer = optimize_continuous
     batch_optimizer = batchify(batch_size_one_optimizer, batch_size)
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
     for point in points:
-        npt.assert_allclose(point, maximizers, rtol=2e-4)
+        print(point)
+        npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
 
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize(
-    "search_space, acquisition, maximizers",
+    "search_space, acquisition, maximizer",
     [
         (
             DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
             _quadratic_sum([1.0]),
             [[1.2]],
         ),
-        (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
+        (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5]])),
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
 def test_automatic_optimizer_selector(
-    search_space: Box, acquisition: AcquisitionFunction, maximizers: TensorType, batch_size: int
+    search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
 ) -> None:
     optimizer = automatic_optimizer_selector
     points = optimizer(search_space, acquisition)
     for point in points:
-        tf.reduce_any(point == maximizers, axis=0)
+        npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
