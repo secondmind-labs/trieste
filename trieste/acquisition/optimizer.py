@@ -41,7 +41,7 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 
 
 def automatic_optimizer_selector(
-    space: DiscreteSearchSpace, target_func: AcquisitionFunction
+    space: SearchSpace, target_func: AcquisitionFunction
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -68,7 +68,7 @@ def automatic_optimizer_selector(
 
 
 def batchify(
-    batch_size_one_optimizer: AcquisitionOptimizer,
+    batch_size_one_optimizer: AcquisitionOptimizer[SP],
     batch_size: int,
 ) -> AcquisitionOptimizer[SP]:
     """

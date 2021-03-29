@@ -60,13 +60,15 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
 
+
         **Type hints:**
-        - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
-          of :class:`~trieste.space.SearchSpace` depends on the specific
-          :class:`AcquisitionRule`.
-        - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
-          state (if the rule is stateless, this type can be `None`). The ``state`` passed
-          to this method, and the state returned, must both be of that type.
+          - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
+            of :class:`~trieste.space.SearchSpace` depends on the specific
+            :class:`AcquisitionRule`.
+          - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
+            state (if the rule is stateless, this type can be `None`). The ``state`` passed
+            to this method, and the state returned, must both be of that type.
+
 
         :param search_space: The global search space over which the optimization problem
             is defined.
@@ -120,7 +122,8 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
                 )
 
         if optimizer is None:
-            optimizer = batchify(automatic_optimizer_selector, num_query_points)
+        	optimizer = automatic_optimizer_selector
+        optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder
         self._optimizer = optimizer
@@ -251,7 +254,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         """
         :param builder: The acquisition function builder to use. :class:`TrustRegion` will attempt
             to **maximise** the corresponding acquisition function. Defaults to
-            class:`~trieste.acquisition.ExpectedImprovement` with tag `OBJECTIVE`.
+            :class:`~trieste.acquisition.ExpectedImprovement` with tag `OBJECTIVE`.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.

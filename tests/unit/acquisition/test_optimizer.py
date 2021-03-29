@@ -83,9 +83,9 @@ def _branin_sum(x: TensorType) -> TensorType:
 @pytest.mark.parametrize(
     "search_space, acquisition, maximizers",
     [
-        (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
+        (Box([-1], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
         (Box([0, 0], [1, 1]), _branin_sum, BRANIN_MINIMIZERS),
-        (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
+        (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
 def test_optimize_batch(
@@ -96,7 +96,7 @@ def test_optimize_batch(
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
     for point in points:
-        tf.reduce_any(point == maximizers, axis=0)
+        npt.assert_allclose(point, maximizers, rtol=2e-4)
 
 
 @random_seed
@@ -110,7 +110,7 @@ def test_optimize_batch(
             [[1.2]],
         ),
         (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5, -0.5]])),
-        (Box([0, 0, 0], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
+        (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
 def test_automatic_optimizer_selector(
