@@ -43,7 +43,7 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 
 @singledispatch
 def automatic_optimizer_selector(
-    space: SearchSpace, target_func: AcquisitionFunction
+    space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
