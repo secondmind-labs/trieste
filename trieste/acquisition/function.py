@@ -127,13 +127,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        return lambda at: self._acquisition_function(model, eta, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, eta: TensorType, at: TensorType
-    ) -> TensorType:
-        return expected_improvement(model, eta, at)
+        return lambda at: expected_improvement(model, eta, at)
 
 
 def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorType) -> TensorType:
@@ -306,11 +300,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         :return: The negative of the lower confidence bound function. This function will raise
             `ValueError` if ``beta`` is negative.
         """
-        return lambda at: self._acquisition_function(model, self._beta, at)
-
-    @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, beta: float, at: TensorType) -> TensorType:
-        return -lower_confidence_bound(model, beta, at)
+        return lambda at: -lower_confidence_bound(model, self._beta, at)
 
 
 class NegativePredictiveMean(NegativeLowerConfidenceBound):
@@ -393,13 +383,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :return: The probability of feasibility acquisition function.
         """
-        return lambda at: self._acquisition_function(model, self.threshold, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, threshold: float | TensorType, at: TensorType
-    ) -> TensorType:
-        return probability_of_feasibility(model, threshold, at)
+        return lambda at: probability_of_feasibility(model, self.threshold, at)
 
 
 def probability_of_feasibility(
