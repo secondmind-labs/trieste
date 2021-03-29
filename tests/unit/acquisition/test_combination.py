@@ -19,7 +19,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import raise_, zero_dataset
+from tests.util.misc import empty_dataset, raise_exc
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.combination import Product, Reducer, Sum
@@ -42,7 +42,7 @@ def test_reducer__repr_builders() -> None:
         def __repr__(self):
             return f"Dummy({self._repr_builders()})"
 
-        _reduce = raise_
+        _reduce = raise_exc
 
     class Builder(AcquisitionFunctionBuilder):
         def __init__(self, name: str):
@@ -54,7 +54,7 @@ def test_reducer__repr_builders() -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return raise_
+            return raise_exc
 
     assert repr(Dummy(Builder("foo"))) == "Dummy(Builder('foo'))"
     assert repr(Dummy(Builder("foo"), Builder("bar"))) == "Dummy(Builder('foo'), Builder('bar'))"
@@ -76,28 +76,31 @@ def test_reducer__reduce() -> None:
             return tf.reduce_mean(inputs, axis=0)
 
     mean = Mean(_Static(lambda x: -2.0 * x), _Static(lambda x: 3.0 * x))
-    acq = mean.prepare_acquisition_function({"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()})
+    data, models = {"": empty_dataset([1], [1])}, {"": QuadraticMeanAndRBFKernel()}
+    acq = mean.prepare_acquisition_function(data, models)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
     npt.assert_allclose(acq(xs), 0.5 * xs)
 
 
 def test_sum() -> None:
     sum_ = Sum(_Static(lambda x: x), _Static(lambda x: x ** 2), _Static(lambda x: x ** 3))
-    acq = sum_.prepare_acquisition_function({"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()})
+    data, models = {"": empty_dataset([1], [1])}, {"": QuadraticMeanAndRBFKernel()}
+    acq = sum_.prepare_acquisition_function(data, models)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
     npt.assert_allclose(acq(xs), xs + xs ** 2 + xs ** 3)
 
 
 def test_product() -> None:
     prod = Product(_Static(lambda x: x + 1), _Static(lambda x: x + 2))
-    acq = prod.prepare_acquisition_function({"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()})
+    data, models = {"": empty_dataset([1], [1])}, {"": QuadraticMeanAndRBFKernel()}
+    acq = prod.prepare_acquisition_function(data, models)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0, dtype=tf.float64)
     npt.assert_allclose(acq(xs), (xs + 1) * (xs + 2))
 
 
 @pytest.mark.parametrize("reducer_class", [Sum, Product])
 def test_sum_and_product_for_single_builder(reducer_class: type[Sum | Product]) -> None:
-    data, models = {"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()}
+    data, models = {"": empty_dataset([1], [1])}, {"": QuadraticMeanAndRBFKernel()}
     acq = reducer_class(_Static(lambda x: x ** 2)).prepare_acquisition_function(data, models)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
     npt.assert_allclose(acq(xs), xs ** 2)

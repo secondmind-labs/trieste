@@ -24,12 +24,12 @@ import tensorflow_probability as tfp
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     ShapeLike,
+    empty_dataset,
     mk_dataset,
     quadratic,
-    raise_,
+    raise_exc,
     random_seed,
     various_shapes,
-    zero_dataset,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
@@ -60,7 +60,7 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        return raise_
+        return raise_exc
 
 
 def test_single_model_acquisition_builder_raises_immediately_for_wrong_key() -> None:
@@ -68,7 +68,7 @@ def test_single_model_acquisition_builder_raises_immediately_for_wrong_key() -> 
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
-            {"bar": zero_dataset()}, {"bar": QuadraticMeanAndRBFKernel()}
+            {"bar": empty_dataset([1], [1])}, {"bar": QuadraticMeanAndRBFKernel()}
         )
 
 
@@ -84,9 +84,9 @@ def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_mo
         ) -> AcquisitionFunction:
             assert dataset is data["foo"]
             assert model is models["foo"]
-            return raise_
+            return raise_exc
 
-    data = {"foo": zero_dataset(), "bar": zero_dataset()}
+    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([1], [1])}
     models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
     Builder().using("foo").prepare_acquisition_function(data, models)
 
@@ -261,12 +261,20 @@ def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: f
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
 
-@pytest.mark.parametrize("at", [tf.constant([[0.0]]), tf.constant([[-3.4]]), tf.constant([[0.2]])])
+@pytest.mark.parametrize(
+    "at",
+    [
+        tf.constant([[0.0]], tf.float64),
+        tf.constant([[-3.4]], tf.float64),
+        tf.constant([[0.2]], tf.float64),
+    ],
+)
 @pytest.mark.parametrize("threshold", [-2.3, 0.2])
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
-    acq = builder.prepare_acquisition_function(zero_dataset(), QuadraticMeanAndRBFKernel())
+    acq = builder.prepare_acquisition_function(empty_dataset([1], [1]), QuadraticMeanAndRBFKernel())
     expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+
     npt.assert_allclose(acq(at), expected)
 
 
@@ -304,9 +312,11 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
 def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     builder = ExpectedConstrainedImprovement("", pof, tf.constant(0.0))
-    eci = builder.prepare_acquisition_function(
-        {"": zero_dataset()}, {"": QuadraticMeanAndRBFKernel()}
-    )
+    initial_query_points = tf.constant([[-1.0]])
+    initial_objective_function_values = tf.constant([[1.0]])
+    data = {"": Dataset(initial_query_points, initial_objective_function_values)}
+
+    eci = builder.prepare_acquisition_function(data, {"": QuadraticMeanAndRBFKernel()})
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         eci(at)
@@ -378,7 +388,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return raise_
+            return raise_exc
 
     data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
