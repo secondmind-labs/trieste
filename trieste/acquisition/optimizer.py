@@ -61,13 +61,49 @@ def automatic_optimizer_selector(
 
 
 @automatic_optimizer_selector.register
-def _discrete_space(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
-    return optimize_discrete(space, target_func)
+def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+    """
+    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
+    batches of size of 1.
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
+    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    """
+    target_func_values = target_func(space.points[:, None, :])
+    tf.debugging.assert_shapes(
+        [(target_func_values, ("_", 1))],
+        message=(
+            f"The result of function target_func has an invalid shape:"
+            f" {tf.shape(target_func_values)}."
+        ),
+    )
+    max_value_idx = tf.argmax(target_func_values, axis=0)[0]
+    return space.points[max_value_idx : max_value_idx + 1]
 
 
 @automatic_optimizer_selector.register
-def _continuous_space(space: Box, target_func: AcquisitionFunction) -> TensorType:
-    return optimize_continuous(space, target_func)
+def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
+    """
+    An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
+    :param space: The space of points over which to search, for points with shape [D].
+    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+        [..., 1].
+    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    """
+    trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
+
+    initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
+
+    bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
+    variable = tf.Variable(bijector.inverse(initial_point))  # [1, D]
+
+    def _objective() -> TensorType:
+        return -target_func(bijector.forward(variable[:, None, :]))  # [1]
+
+    gpflow.optimizers.Scipy().minimize(_objective, (variable,))
+
+    return bijector.forward(variable)  # [1, D]
 
 
 def batchify(
@@ -98,47 +134,3 @@ def batchify(
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 
     return optimizer
-
-
-def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
-    """
-    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
-    batches of size of 1.
-    :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-        [..., 1].
-    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
-    """
-    target_func_values = target_func(space.points[:, None, :])
-    tf.debugging.assert_shapes(
-        [(target_func_values, ("_", 1))],
-        message=(
-            f"The result of function target_func has an invalid shape:"
-            f" {tf.shape(target_func_values)}."
-        ),
-    )
-    max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-    return space.points[max_value_idx : max_value_idx + 1]
-
-
-def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
-    """
-    An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
-    :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-        [..., 1].
-    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
-    """
-    trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
-
-    initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
-
-    bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
-    variable = tf.Variable(bijector.inverse(initial_point))  # [1, D]
-
-    def _objective() -> TensorType:
-        return -target_func(bijector.forward(variable[:, None, :]))  # [1]
-
-    gpflow.optimizers.Scipy().minimize(_objective, (variable,))
-
-    return bijector.forward(variable)  # [1, D]
