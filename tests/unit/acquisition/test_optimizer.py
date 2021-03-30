@@ -95,7 +95,6 @@ def test_optimize_batch(
 
 
 @random_seed
-@pytest.mark.parametrize("batch_size", [1, 5])
 @pytest.mark.parametrize(
     "search_space, acquisition, maximizer",
     [
@@ -109,9 +108,10 @@ def test_optimize_batch(
     ],
 )
 def test_automatic_optimizer_selector(
-    search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
+    search_space: Box,
+    acquisition: AcquisitionFunction,
+    maximizer: TensorType,
 ) -> None:
     optimizer = automatic_optimizer_selector
-    points = optimizer(search_space, acquisition)
-    for point in points:
-        npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
+    point = optimizer(search_space, acquisition)
+    npt.assert_allclose(point, maximizer, rtol=2e-4)

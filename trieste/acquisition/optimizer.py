@@ -17,7 +17,6 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from functools import singledispatch
 from typing import Callable, TypeVar
 
 import gpflow
@@ -41,9 +40,8 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 """
 
 
-@singledispatch
 def automatic_optimizer_selector(
-    space: Box | DiscreteSearchSpace, target_func: AcquisitionFunction
+    space: SearchSpace, target_func: AcquisitionFunction
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -54,13 +52,22 @@ def automatic_optimizer_selector(
         [..., 1].
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    raise NotImplementedError(
-        """ No optimizer currentely supports acquisition function
-                maximisation over this search space"""
-    )
+
+    optimizer: AcquisitionOptimizer[Box | DiscreteSearchSpace]
+
+    if isinstance(space, DiscreteSearchSpace):
+        return optimize_discrete(space, target_func)
+
+    elif isinstance(space, Box):
+        return optimize_continuous(space, target_func)
+
+    else:
+        raise NotImplementedError(
+            f""" No optimizer currentely supports acquisition function
+                    maximisation over search spaces of type {space}"""
+        )
 
 
-@automatic_optimizer_selector.register
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
@@ -82,7 +89,6 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     return space.points[max_value_idx : max_value_idx + 1]
 
 
-@automatic_optimizer_selector.register
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
