@@ -22,6 +22,7 @@ from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
     automatic_optimizer_selector,
     batchify,
+    batchify_greedy,
     optimize_continuous,
     optimize_discrete,
 )
@@ -74,6 +75,7 @@ def test_optimize_continuous(
 
 
 @random_seed
+@pytest.mark.parametrize("batchify_type", [batchify, batchify_greedy])
 @pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
 @pytest.mark.parametrize(
     "search_space, acquisition, maximizer",
@@ -82,11 +84,15 @@ def test_optimize_continuous(
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
-def test_optimize_batch(
-    search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
+def test_batchify(
+    search_space: Box,
+    acquisition: AcquisitionFunction,
+    maximizer: TensorType,
+    batch_size: int,
+    batchify_type,
 ) -> None:
     batch_size_one_optimizer = optimize_continuous
-    batch_optimizer = batchify(batch_size_one_optimizer, batch_size)
+    batch_optimizer = batchify_type(batch_size_one_optimizer, batch_size)
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
     for point in points:

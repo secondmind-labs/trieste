@@ -126,6 +126,9 @@ def batchify(
     """
     tf.debugging.assert_positive(batch_size)
 
+    if batch_size == 1:
+        return batch_size_one_optimizer
+
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
@@ -138,5 +141,45 @@ def batchify(
             expanded_search_space, target_func_with_vectorized_inputs
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
+
+    return optimizer
+
+
+def batchify_greedy(
+    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size: int,
+) -> AcquisitionOptimizer[SP]:
+    """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+    :const:`AcquisitionOptimizer` to allow it to approximately optimize batch acquisition functions
+        by greedily choosing each batch element in sequence.
+    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+        single point with shape [1, D].
+    :param batch_size: The number of points in the batch.
+    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
+    """
+    tf.debugging.assert_positive(batch_size)
+
+    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+
+        current_batch = batch_size_one_optimizer(search_space, f)  # [1, D]
+
+        for i in range(1, batch_size):
+
+            def target_func_with_fixed_partial_batch(
+                x: TensorType,
+            ) -> TensorType:  # [..., 1, D] -> [..., 1]
+
+                current_batch_tiled = tf.repeat(current_batch[None, :, :], x.shape[-3], axis=-3)
+                x_with_current_batch = tf.concat([current_batch_tiled, x], -2)
+                return f(x_with_current_batch)
+
+            next_batch_point = batch_size_one_optimizer(
+                search_space, target_func_with_fixed_partial_batch
+            )  # [1, D]
+
+            current_batch = tf.concat([current_batch, next_batch_point], axis=0)  # [i+1, D]
+
+        return current_batch  # [B, D]
 
     return optimizer
