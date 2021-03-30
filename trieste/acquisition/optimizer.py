@@ -152,7 +152,8 @@ def batchify_greedy(
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to approximately optimize batch acquisition functions
-        by greedily choosing each batch element in sequence.
+        by greedily choosing each batch point in sequence, i.e choosing the point that provides
+        the largest increase in the acquisiton function over the current (partial) batch.
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
         single point with shape [1, D].
     :param batch_size: The number of points in the batch.
