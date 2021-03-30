@@ -30,14 +30,13 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
-from .function import (
-    AcquisitionFunction,
-    AcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    BatchAcquisitionFunctionBuilder,
-    ExpectedImprovement,
+from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .optimizer import (
+    AcquisitionOptimizer,
+    automatic_optimizer_selector,
+    batchify,
+    optimize_continuous,
 )
-from .optimizer import AcquisitionOptimizer, optimize
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -61,6 +60,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
 
+
         **Type hints:**
           - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
             of :class:`~trieste.space.SearchSpace` depends on the specific
@@ -68,6 +68,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
           - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
             state (if the rule is stateless, this type can be `None`). The ``state`` passed
             to this method, and the state returned, must both be of that type.
+
 
         :param search_space: The global search space over which the optimization problem
             is defined.
@@ -94,6 +95,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         self,
         builder: AcquisitionFunctionBuilder | None = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -101,20 +103,38 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
-            :func:`~trieste.acquisition.optimizer.optimize`.
+            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        :param num_query_points: The number of points to acquire.
         """
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
         if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
+            if num_query_points == 1:
+                builder = ExpectedImprovement().using(OBJECTIVE)
+            else:
+                raise ValueError(
+                    """Need to specify a batch acquisition function when number of query points
+                    is greater than 1"""
+                )
 
         if optimizer is None:
-            optimizer = optimize
+            optimizer = automatic_optimizer_selector
+        optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder
         self._optimizer = optimizer
+        self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
         """"""
-        return f"EfficientGlobalOptimization({self._builder!r})"
+        return f"""EfficientGlobalOptimization(
+        {self._builder!r},
+        {self._optimizer!r},
+        {self._num_query_points!r})"""
 
     def acquire(
         self,
@@ -132,7 +152,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
-        :return: The single point to query, and `None`.
+        :return: The single (or batch of) points to query, and `None`.
         """
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
         return self._optimizer(search_space, acquisition_function), None
@@ -245,7 +265,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             builder = ExpectedImprovement().using(OBJECTIVE)
 
         if optimizer is None:
-            optimizer = optimize
+            optimizer = optimize_continuous
 
         self._builder = builder
         self._beta = beta
@@ -337,80 +357,3 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_
-
-
-class BatchAcquisitionRule(AcquisitionRule[None, SP_contra]):
-    """
-    Optimizes a batch acquisition function over a search space. It is similar to
-    :class:`EfficientGlobalOptimization`, but produces batches of query points instead of just one.
-    """
-
-    def __init__(
-        self,
-        num_query_points: int,
-        builder: BatchAcquisitionFunctionBuilder,
-        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
-    ):
-        """
-        :param num_query_points: The number of points to acquire.
-        :param builder: The acquisition function builder to use. :class:`BatchAcquisitionRule` will
-            attempt to **maximise** the corresponding acquisition function.
-        :param optimizer: The optimizer with which to optimize the acquisition function built by
-            ``builder``. **Note:** This must be able to optimize its target function with respect to
-            a *single point*, not a batch of points. The acquisition rule will convert the
-            :const:`~trieste.acquisition.BatchAcquisitionFunction` to an
-            :const:`~trieste.acquisition.AcquisitionFunction`. Additionally, this
-            optimizer must be compatible with the global search space. Defaults to
-            :func:`~trieste.acquisition.optimizer.optimize`.
-        """
-
-        if not num_query_points > 0:
-            raise ValueError(
-                f"Number of query points must be greater than 0, got {num_query_points}"
-            )
-
-        if optimizer is None:
-            optimizer = optimize
-
-        self._optimizer = optimizer
-        self._num_query_points = num_query_points
-        self._builder = builder
-
-    def __repr__(self) -> str:
-        """"""
-        return f"BatchAcquisitionRule({self._num_query_points!r}, {self._builder!r})"
-
-    def _vectorize_batch_acquisition(
-        self, acquisition_function: BatchAcquisitionFunction
-    ) -> AcquisitionFunction:
-        return lambda at: acquisition_function(
-            tf.reshape(at, at.shape[:-1].as_list() + [self._num_query_points, -1])
-        )
-
-    def acquire(
-        self,
-        search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-        state: None = None,
-    ) -> tuple[TensorType, None]:
-        """
-        Return the batch of query points that optimizes the acquisition function produced by
-        ``builder`` (see :meth:`__init__`).
-
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
-        :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
-        :param state: Unused.
-        :return: The batch of points to query, and `None`.
-        """
-        expanded_search_space = search_space ** self._num_query_points
-
-        batch_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        vectorized_batch_acquisition = self._vectorize_batch_acquisition(batch_acquisition_function)
-
-        vectorized_points = self._optimizer(expanded_search_space, vectorized_batch_acquisition)
-        points = tf.reshape(vectorized_points, [self._num_query_points, -1])
-
-        return points, None
