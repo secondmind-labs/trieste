@@ -131,9 +131,7 @@ class Pareto:
 
         min_pf = tf.reduce_min(front, axis=0, keepdims=True) - 1
         max_pf = tf.reduce_max(front, axis=0, keepdims=True) + 1
-        pf_ext = tf.concat(
-            [min_pf, front, max_pf], axis=0
-        )  
+        pf_ext = tf.concat([min_pf, front, max_pf], axis=0)
 
         pf_ext_idx = tf.concat(
             [
