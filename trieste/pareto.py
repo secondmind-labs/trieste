@@ -246,23 +246,30 @@ class Pareto:
         divide_conquer_cells_dist: TensorType,
         cell: TensorType,
     ) -> TensorType:
+
         edge_size = tf.reduce_max(divide_conquer_cells_dist)
         idx = tf.argmax(divide_conquer_cells_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
-        edge_size2 = edge_size - edge_size1
+        edge_size2 = int(edge_size - edge_size1)
 
-        upper = tf.unstack(tf.identity(cell[1]))
-        upper[idx] = upper[idx] - edge_size1
-        upper = tf.stack(upper)
+        sparse_edge_size1 = tf.concat(
+            [tf.zeros([idx]), edge_size1 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+        )
+        upper = tf.identity(cell[1]) - tf.cast(sparse_edge_size1, dtype=tf.int32)
+
         divide_conquer_cells = tf.concat(
             [divide_conquer_cells, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0
         )
-        lower = tf.unstack(tf.identity(cell[0]))
-        lower[idx] = lower[idx] + edge_size2
-        lower = tf.stack(lower)
+
+        sparse_edge_size2 = tf.concat(
+            [tf.zeros([idx]), edge_size2 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+        )
+        lower = tf.identity(cell[0]) + tf.cast(sparse_edge_size2, dtype=tf.int32)
+
         divide_conquer_cells = tf.concat(
             [divide_conquer_cells, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0
         )
+
         return divide_conquer_cells
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
