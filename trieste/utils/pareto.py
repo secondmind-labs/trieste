@@ -153,9 +153,9 @@ class Pareto:
         total_size = tf.reduce_prod(max_pf - min_pf)
 
         def while_body(
-            dc,
-            lower,
-            upper,
+            dc: TensorType,
+            lower: TensorType,
+            upper: TensorType,
         ):
             dc = tf.unstack(dc, axis=0)
             cell = dc[-1]
@@ -208,7 +208,15 @@ class Pareto:
         upper = tf.concat([upper, idx_ub[None]], axis=0)
         return lower, upper
 
-    def _rejected_test_body(self, cell, lb, ub, dc, total_size, threshold):
+    def _rejected_test_body(
+        self,
+        cell: TensorType,
+        lb: TensorType,
+        ub: TensorType,
+        dc: TensorType,
+        total_size: TensorType,
+        threshold: TensorType,
+    ):
 
         dc_dist = cell[1] - cell[0]
         hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
@@ -222,7 +230,7 @@ class Pareto:
         )
         return dc
 
-    def _divide_body(self, dc, dc_dist, cell):
+    def _divide_body(self, dc: TensorType, dc_dist: TensorType, cell: TensorType):
         edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
         edge_size2 = edge_size - edge_size1
