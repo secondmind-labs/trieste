@@ -192,7 +192,7 @@ def test_pareto_divide_conquer_nd_two_dimension_case() -> None:
     pareto = Pareto(objectives, generic_strategy=True)
 
     npt.assert_allclose(
-        pareto.bounds.lower_idx, tf.constant([[3, 0], [2, 0], [1, 2], [0, 2], [0, 0]])
+        pareto.bounds.lower_idx, [[3, 0], [2, 0], [1, 2], [0, 2], [0, 0]]
     )
     npt.assert_allclose(
         pareto.bounds.upper_idx, tf.constant([[4, 3], [3, 2], [2, 1], [1, 4], [2, 2]])
