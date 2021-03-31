@@ -19,7 +19,7 @@ from typing import Generic, NoReturn, TypeVar
 
 import numpy as np
 import tensorflow as tf
-from typing_extensions import final
+from typing_extensions import Final, final
 
 from ..type import TensorType
 
