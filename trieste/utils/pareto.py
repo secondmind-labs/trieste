@@ -122,7 +122,9 @@ class Pareto:
 
         return is_dom_augm
 
-    def _divide_conquer_nd(self, front: TensorType, threshold: TensorType | float = 0) -> TensorType:
+    def _divide_conquer_nd(
+        self, front: TensorType, threshold: TensorType | float = 0
+    ) -> TensorType:
         # Divide and conquer strategy to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
 
@@ -209,7 +211,7 @@ class Pareto:
         lower_result: TensorType,
         upper_result: TensorType,
         lower_idx: TensorType,
-        upper_idx: TensorType
+        upper_idx: TensorType,
     ) -> tuple[TensorType, TensorType]:
         lower_result = tf.concat([lower_result, lower_idx[None]], axis=0)
         upper_result = tf.concat([upper_result, upper_idx[None]], axis=0)
