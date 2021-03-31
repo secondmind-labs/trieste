@@ -222,7 +222,7 @@ class Pareto:
         divide_conquer_cells: TensorType,
         total_size: TensorType,
         threshold: TensorType,
-    ):
+    ) -> TensorType:
 
         divide_conquer_cells_dist = cell[1] - cell[0]
         hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
