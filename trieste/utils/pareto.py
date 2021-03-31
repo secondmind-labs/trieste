@@ -87,7 +87,7 @@ class Pareto:
 
     def _get_bounds(self, front: TensorType, generic_strategy: bool = False) -> BoundedVolumes:
         if generic_strategy or front.shape[-1] > 2:
-            return self.divide_conquer_nd(front)
+            return self._divide_conquer_nd(front)
         else:
             return self._bounds_2d(front)
 
@@ -120,7 +120,7 @@ class Pareto:
 
         return is_dom_augm
 
-    def divide_conquer_nd(self, front: TensorType, threshold: TensorType = 0) -> TensorType:
+    def _divide_conquer_nd(self, front: TensorType, threshold: TensorType = 0) -> TensorType:
         # Divide and conquer strategy to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
 
