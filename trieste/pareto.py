@@ -17,11 +17,11 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import gpflow
 import tensorflow as tf
 from typing_extensions import Final
 
 from .type import TensorType
+from .utils import DEFAULTS
 
 
 def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
@@ -76,7 +76,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
     """
 
-    def __init__(self, observations: TensorType):
+    def __init__(self, observations: TensorType, jitter: float = DEFAULTS.JITTER):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
@@ -85,11 +85,11 @@ class Pareto:
 
         pfront, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
-        self.bounds = self._get_bounds(self.front)
+        self.bounds = self._get_bounds(self.front, jitter)
 
-    def _get_bounds(self, front: TensorType) -> BoundedVolumes:
+    def _get_bounds(self, front: TensorType, jitter: float) -> BoundedVolumes:
         if front.shape[-1] > 2:
-            return self._divide_conquer_nd(front)
+            return self._divide_conquer_nd(front, jitter)
         else:
             return self._bounds_2d(front)
 
@@ -125,13 +125,12 @@ class Pareto:
         return is_dom_augm
 
     def _divide_conquer_nd(
-        self, front: TensorType, threshold: TensorType | float = 0
+        self, front: TensorType, jitter: float, threshold: TensorType | float = 0
     ) -> TensorType:
         # Divide and conquer strategy to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
 
         len_front, number_of_objectives = front.shape
-        jitter = gpflow.config.default_jitter()
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
 
