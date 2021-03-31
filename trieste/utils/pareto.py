@@ -108,10 +108,10 @@ class Pareto:
         )
 
         range_ = tf.range(len_front + 1)[:, None]
-        lower = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
-        upper = tf.concat([range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1)
+        lower_result = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
+        upper_result = tf.concat([range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1)
 
-        return BoundedVolumes(lower, upper)
+        return BoundedVolumes(lower_result, upper_result)
 
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
@@ -126,8 +126,8 @@ class Pareto:
 
         len_front, number_of_objectives = front.shape
         jitter = gpflow.config.default_jitter()
-        lower = tf.zeros([0, number_of_objectives], dtype=tf.int32)
-        upper = tf.zeros([0, number_of_objectives], dtype=tf.int32)
+        lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
+        upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
 
         min_front = tf.reduce_min(front, axis=0, keepdims=True) - 1
         max_front = tf.reduce_max(front, axis=0, keepdims=True) + 1
@@ -154,8 +154,8 @@ class Pareto:
 
         def while_body(
             dc: TensorType,
-            lower: TensorType,
-            upper: TensorType,
+            lower_result: TensorType,
+            upper_result: TensorType,
         ):
             dc = tf.unstack(dc, axis=0)
             cell = dc[-1]
@@ -172,10 +172,10 @@ class Pareto:
             ub = tf.gather_nd(pseudo_front, tf.stack((idx_ub, arr), -1))
 
             test_accepted = self._is_test_required((ub - jitter) < front)
-            lower, upper = tf.cond(
+            lower_result, upper_result = tf.cond(
                 test_accepted,
-                lambda: self._accepted_test_body(lower, upper, idx_lb, idx_ub),
-                lambda: (lower, upper),
+                lambda: self._accepted_test_body(lower_result, upper_result, idx_lb, idx_ub),
+                lambda: (lower_result, upper_result),
             )
 
             test_rejected = self._is_test_required((lb + jitter) < front)
@@ -185,28 +185,28 @@ class Pareto:
                 lambda: dc,
             )
 
-            return dc, lower, upper
+            return dc, lower_result, upper_result
 
-        _, lower, upper = tf.while_loop(
-            lambda dc, lower, upper: dc.shape[0] > 0,
-            lambda dc, lower, upper: while_body(
+        _, lower_result, upper_result = tf.while_loop(
+            lambda dc, lower_result, upper_result: dc.shape[0] > 0,
+            lambda dc, lower_result, upper_result: while_body(
                 dc,
-                lower,
-                upper,
+                lower_result,
+                upper_result,
             ),
-            loop_vars=[dc, lower, upper],
+            loop_vars=[dc, lower_result, upper_result],
             shape_invariants=[
                 tf.TensorShape([None, 2, number_of_objectives]),
                 tf.TensorShape([None, number_of_objectives]),
                 tf.TensorShape([None, number_of_objectives]),
             ],
         )
-        return BoundedVolumes(lower, upper)
+        return BoundedVolumes(lower_result, upper_result)
 
-    def _accepted_test_body(self, lower, upper, idx_lb, idx_ub):
-        lower = tf.concat([lower, idx_lb[None]], axis=0)
-        upper = tf.concat([upper, idx_ub[None]], axis=0)
-        return lower, upper
+    def _accepted_test_body(self, lower_result, upper_result, idx_lb, idx_ub):
+        lower_result = tf.concat([lower_result, idx_lb[None]], axis=0)
+        upper_result = tf.concat([upper_result, idx_ub[None]], axis=0)
+        return lower_result, upper_result
 
     def _rejected_test_body(
         self,
