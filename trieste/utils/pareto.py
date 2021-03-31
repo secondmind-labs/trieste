@@ -142,7 +142,7 @@ class Pareto:
             axis=0,
         )
 
-        dc = tf.stack(
+        divide_conquer_cells = tf.stack(
             [
                 tf.zeros(number_of_objectives, dtype=tf.int32),
                 (int(pseudo_front_idx.shape[0]) - 1) * tf.ones(number_of_objectives, dtype=tf.int32),
@@ -153,15 +153,15 @@ class Pareto:
         total_size = tf.reduce_prod(max_front - min_front)
 
         def while_body(
-            dc: TensorType,
+            divide_conquer_cells: TensorType,
             lower_result: TensorType,
             upper_result: TensorType,
         ):
-            dc = tf.unstack(dc, axis=0)
-            cell = dc[-1]
-            dc = tf.cond(
-                tf.not_equal(tf.size(dc[:-1]), 0),
-                lambda: tf.stack(dc[:-1]),
+            divide_conquer_cells = tf.unstack(divide_conquer_cells, axis=0)
+            cell = divide_conquer_cells[-1]
+            divide_conquer_cells = tf.cond(
+                tf.not_equal(tf.size(divide_conquer_cells[:-1]), 0),
+                lambda: tf.stack(divide_conquer_cells[:-1]),
                 lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
             )
 
@@ -179,22 +179,22 @@ class Pareto:
             )
 
             test_rejected = self._is_test_required((lower + jitter) < front)
-            dc = tf.cond(
+            divide_conquer_cells = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
-                lambda: self._rejected_test_body(cell, lower, upper, dc, total_size, threshold),
-                lambda: dc,
+                lambda: self._rejected_test_body(cell, lower, upper, divide_conquer_cells, total_size, threshold),
+                lambda: divide_conquer_cells,
             )
 
-            return dc, lower_result, upper_result
+            return divide_conquer_cells, lower_result, upper_result
 
         _, lower_result, upper_result = tf.while_loop(
-            lambda dc, lower_result, upper_result: dc.shape[0] > 0,
-            lambda dc, lower_result, upper_result: while_body(
-                dc,
+            lambda divide_conquer_cells, lower_result, upper_result: divide_conquer_cells.shape[0] > 0,
+            lambda divide_conquer_cells, lower_result, upper_result: while_body(
+                divide_conquer_cells,
                 lower_result,
                 upper_result,
             ),
-            loop_vars=[dc, lower_result, upper_result],
+            loop_vars=[divide_conquer_cells, lower_result, upper_result],
             shape_invariants=[
                 tf.TensorShape([None, 2, number_of_objectives]),
                 tf.TensorShape([None, number_of_objectives]),
@@ -213,37 +213,37 @@ class Pareto:
         cell: TensorType,
         lower: TensorType,
         upper: TensorType,
-        dc: TensorType,
+        divide_conquer_cells: TensorType,
         total_size: TensorType,
         threshold: TensorType,
     ):
 
-        dc_dist = cell[1] - cell[0]
+        divide_conquer_cells_dist = cell[1] - cell[0]
         hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
 
-        not_unit_cell = tf.reduce_any(dc_dist > 1)
+        not_unit_cell = tf.reduce_any(divide_conquer_cells_dist > 1)
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
-        dc = tf.cond(
+        divide_conquer_cells = tf.cond(
             tf.logical_and(not_unit_cell, vol_above_thresh),
-            lambda: self._divide_body(dc, dc_dist, cell),
-            lambda: tf.identity(dc),
+            lambda: self._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
+            lambda: tf.identity(divide_conquer_cells),
         )
-        return dc
+        return divide_conquer_cells
 
-    def _divide_body(self, dc: TensorType, dc_dist: TensorType, cell: TensorType):
-        edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
+    def _divide_body(self, divide_conquer_cells: TensorType, divide_conquer_cells_dist: TensorType, cell: TensorType):
+        edge_size, idx = tf.reduce_max(divide_conquer_cells_dist), tf.argmax(divide_conquer_cells_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
         edge_size2 = edge_size - edge_size1
 
         upper = tf.unstack(tf.identity(cell[1]))
         upper[idx] = upper[idx] - edge_size1
         upper = tf.stack(upper)
-        dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0)
+        divide_conquer_cells = tf.concat([divide_conquer_cells, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0)
         lower = tf.unstack(tf.identity(cell[0]))
         lower[idx] = lower[idx] + edge_size2
         lower = tf.stack(lower)
-        dc = tf.concat([dc, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0)
-        return dc
+        divide_conquer_cells = tf.concat([divide_conquer_cells, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0)
+        return divide_conquer_cells
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
