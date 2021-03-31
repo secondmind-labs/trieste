@@ -195,11 +195,7 @@ class Pareto:
         _, lower_result, upper_result = tf.while_loop(
             lambda divide_conquer_cells, lower_result, upper_result: divide_conquer_cells.shape[0]
             > 0,
-            lambda divide_conquer_cells, lower_result, upper_result: while_body(
-                divide_conquer_cells,
-                lower_result,
-                upper_result,
-            ),
+            while_body,
             loop_vars=[divide_conquer_cells, lower_result, upper_result],
             shape_invariants=[
                 tf.TensorShape([None, 2, number_of_objectives]),
