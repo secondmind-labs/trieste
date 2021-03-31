@@ -17,6 +17,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
+from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import (
     OBJECTIVE,
     AcquisitionRule,
@@ -36,6 +37,13 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
     "num_steps, acquisition_rule",
     [
         (20, EfficientGlobalOptimization()),
+        (
+            15,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                num_query_points=2,
+            ),
+        ),
         (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],

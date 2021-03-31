@@ -24,7 +24,7 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, SearchSpace
+from trieste.space import SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
@@ -74,13 +74,6 @@ def mk_dataset(query_points: ListN[List[float]], observations: ListN[List[float]
     return Dataset(tf.cast(query_points, tf.float64), tf.cast(observations, tf.float64))
 
 
-def zero_dataset() -> Dataset:
-    """
-    :return: A 1D input, 1D output dataset with a single entry of zeroes.
-    """
-    return Dataset(tf.constant([[0.0]]), tf.constant([[0.0]]))
-
-
 def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
     """
     :param query_point_shape: The shape of a *single* query point.
@@ -92,18 +85,7 @@ def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) ->
     return Dataset(qp, obs)
 
 
-def one_dimensional_range(lower: float, upper: float) -> Box:
-    """
-    :param lower: The box lower bound.
-    :param upper:  The box upper bound.
-    :return: A one-dimensional box with range given by ``lower`` and ``upper``, and bound dtype
-        `tf.float32`.
-    :raise ValueError: If ``lower`` is not less than ``upper``.
-    """
-    return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
-
-
-def raise_(*_: object, **__: object) -> NoReturn:
+def raise_exc(*_: object, **__: object) -> NoReturn:
     """
     Raise an exception. This dummy function can be used wherever a function of any signature is
     expected but isn't intended to be used.
@@ -130,11 +112,12 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
-    def __init__(self, query_points: TensorType):
+    def __init__(self, query_points: ListN[List[float]]):
         """
-        :param query_points: The value to return on each step.
+        :param query_points: The value to return on each step. Will be converted to a tensor with
+            dtype `tf.float64`.
         """
-        self._qp = query_points
+        self._qp = tf.cast(query_points, tf.float64)
 
     def __repr__(self) -> str:
         return f"FixedAcquisitionRule({self._qp!r})"
