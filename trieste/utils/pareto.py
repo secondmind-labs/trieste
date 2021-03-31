@@ -161,7 +161,7 @@ class Pareto:
             divide_conquer_cells: TensorType,
             lower_result: TensorType,
             upper_result: TensorType,
-        ) -> tuple[TensorType, TensorType, TensorType]:
+        ) -> Tuple[TensorType, TensorType, TensorType]:
             divide_conquer_cells = tf.unstack(divide_conquer_cells, axis=0)
             cell = divide_conquer_cells[-1]
             divide_conquer_cells = tf.cond(
@@ -212,7 +212,7 @@ class Pareto:
         upper_result: TensorType,
         lower_idx: TensorType,
         upper_idx: TensorType,
-    ) -> tuple[TensorType, TensorType]:
+    ) -> Tuple[TensorType, TensorType]:
         lower_result = tf.concat([lower_result, lower_idx[None]], axis=0)
         upper_result = tf.concat([upper_result, upper_idx[None]], axis=0)
         return lower_result, upper_result
