@@ -76,7 +76,7 @@ class Pareto:
 
     def __init__(self, observations: TensorType, generic_strategy: bool = False):
         """
-        :param observations: The observations for all objectives, with shape [N, 2].
+        :param observations: The observations for all objectives, with shape [N, D].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
         tf.debugging.assert_rank(observations, 2)
