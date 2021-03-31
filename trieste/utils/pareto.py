@@ -159,7 +159,7 @@ class Pareto:
             divide_conquer_cells: TensorType,
             lower_result: TensorType,
             upper_result: TensorType,
-        ):
+        ) -> tuple[TensorType, TensorType, TensorType]:
             divide_conquer_cells = tf.unstack(divide_conquer_cells, axis=0)
             cell = divide_conquer_cells[-1]
             divide_conquer_cells = tf.cond(
