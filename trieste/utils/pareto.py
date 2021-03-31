@@ -209,7 +209,13 @@ class Pareto:
         )
         return BoundedVolumes(lower_result, upper_result)
 
-    def _accepted_test_body(self, lower_result, upper_result, lower_idx, upper_idx):
+    def _accepted_test_body(
+        self,
+        lower_result: TensorType,
+        upper_result: TensorType,
+        lower_idx: TensorType,
+        upper_idx: TensorType
+    ) -> tuple[TensorType, TensorType]:
         lower_result = tf.concat([lower_result, lower_idx[None]], axis=0)
         upper_result = tf.concat([upper_result, upper_idx[None]], axis=0)
         return lower_result, upper_result
