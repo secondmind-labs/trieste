@@ -109,7 +109,7 @@ from trieste.utils.pareto import Pareto, non_dominated
 def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.Tensor) -> None:
     ret_pareto_set, ret_dominance = non_dominated(scores)
     npt.assert_allclose(ret_pareto_set, pareto_set)
-    npt.assert_allclose(ret_dominance, dominance)
+    npt.assert_array_equal(ret_dominance, dominance)
 
 
 def test_pareto_2d_bounds() -> None:
@@ -128,8 +128,8 @@ def test_pareto_2d_bounds() -> None:
 
     pareto_2d = Pareto(objectives)
 
-    npt.assert_allclose(pareto_2d.bounds.lower_idx, tf.constant([[0, 0], [1, 0], [2, 0], [3, 0]]))
-    npt.assert_allclose(pareto_2d.bounds.upper_idx, tf.constant([[1, 4], [2, 1], [3, 2], [4, 3]]))
+    npt.assert_array_equal(pareto_2d.bounds.lower_idx, tf.constant([[0, 0], [1, 0], [2, 0], [3, 0]]))
+    npt.assert_array_equal(pareto_2d.bounds.upper_idx, tf.constant([[1, 4], [2, 1], [3, 2], [4, 3]]))
     npt.assert_allclose(
         pareto_2d.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
     )
@@ -191,10 +191,10 @@ def test_pareto_divide_conquer_nd_two_dimension_case() -> None:
 
     pareto = Pareto(objectives, generic_strategy=True)
 
-    npt.assert_allclose(
+    npt.assert_array_equal(
         pareto.bounds.lower_idx, [[3, 0], [2, 0], [1, 2], [0, 2], [0, 0]]
     )
-    npt.assert_allclose(
+    npt.assert_array_equal(
         pareto.bounds.upper_idx, tf.constant([[4, 3], [3, 2], [2, 1], [1, 4], [2, 2]])
     )
     npt.assert_allclose(
@@ -216,7 +216,7 @@ def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
 
     pareto = Pareto(objectives, generic_strategy=True)
 
-    npt.assert_allclose(
+    npt.assert_array_equal(
         pareto.bounds.lower_idx,
         tf.constant(
             [
@@ -236,7 +236,7 @@ def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
             ]
         ),
     )
-    npt.assert_allclose(
+    npt.assert_array_equal(
         pareto.bounds.upper_idx,
         tf.constant(
             [
