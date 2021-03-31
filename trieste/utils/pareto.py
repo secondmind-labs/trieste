@@ -166,22 +166,22 @@ class Pareto:
             )
 
             arr = tf.range(number_of_objectives)
-            idx_lb = tf.gather_nd(pseudo_front_idx, tf.stack((cell[0], arr), -1))
-            idx_ub = tf.gather_nd(pseudo_front_idx, tf.stack((cell[1], arr), -1))
-            lb = tf.gather_nd(pseudo_front, tf.stack((idx_lb, arr), -1))
-            ub = tf.gather_nd(pseudo_front, tf.stack((idx_ub, arr), -1))
+            lower_idx = tf.gather_nd(pseudo_front_idx, tf.stack((cell[0], arr), -1))
+            upper_idx = tf.gather_nd(pseudo_front_idx, tf.stack((cell[1], arr), -1))
+            lower = tf.gather_nd(pseudo_front, tf.stack((lower_idx, arr), -1))
+            upper = tf.gather_nd(pseudo_front, tf.stack((upper_idx, arr), -1))
 
-            test_accepted = self._is_test_required((ub - jitter) < front)
+            test_accepted = self._is_test_required((upper - jitter) < front)
             lower_result, upper_result = tf.cond(
                 test_accepted,
-                lambda: self._accepted_test_body(lower_result, upper_result, idx_lb, idx_ub),
+                lambda: self._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
                 lambda: (lower_result, upper_result),
             )
 
-            test_rejected = self._is_test_required((lb + jitter) < front)
+            test_rejected = self._is_test_required((lower + jitter) < front)
             dc = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
-                lambda: self._rejected_test_body(cell, lb, ub, dc, total_size, threshold),
+                lambda: self._rejected_test_body(cell, lower, upper, dc, total_size, threshold),
                 lambda: dc,
             )
 
@@ -203,23 +203,23 @@ class Pareto:
         )
         return BoundedVolumes(lower_result, upper_result)
 
-    def _accepted_test_body(self, lower_result, upper_result, idx_lb, idx_ub):
-        lower_result = tf.concat([lower_result, idx_lb[None]], axis=0)
-        upper_result = tf.concat([upper_result, idx_ub[None]], axis=0)
+    def _accepted_test_body(self, lower_result, upper_result, lower_idx, upper_idx):
+        lower_result = tf.concat([lower_result, lower_idx[None]], axis=0)
+        upper_result = tf.concat([upper_result, upper_idx[None]], axis=0)
         return lower_result, upper_result
 
     def _rejected_test_body(
         self,
         cell: TensorType,
-        lb: TensorType,
-        ub: TensorType,
+        lower: TensorType,
+        upper: TensorType,
         dc: TensorType,
         total_size: TensorType,
         threshold: TensorType,
     ):
 
         dc_dist = cell[1] - cell[0]
-        hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
+        hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
 
         not_unit_cell = tf.reduce_any(dc_dist > 1)
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
@@ -235,14 +235,14 @@ class Pareto:
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
         edge_size2 = edge_size - edge_size1
 
-        ub = tf.unstack(tf.identity(cell[1]))
-        ub[idx] = ub[idx] - edge_size1
-        ub = tf.stack(ub)
-        dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), ub], axis=0)[None]], axis=0)
-        lb = tf.unstack(tf.identity(cell[0]))
-        lb[idx] = lb[idx] + edge_size2
-        lb = tf.stack(lb)
-        dc = tf.concat([dc, tf.stack([lb, tf.identity(cell[1])], axis=0)[None]], axis=0)
+        upper = tf.unstack(tf.identity(cell[1]))
+        upper[idx] = upper[idx] - edge_size1
+        upper = tf.stack(upper)
+        dc = tf.concat([dc, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0)
+        lower = tf.unstack(tf.identity(cell[0]))
+        lower[idx] = lower[idx] + edge_size2
+        lower = tf.stack(lower)
+        dc = tf.concat([dc, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0)
         return dc
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
