@@ -51,5 +51,6 @@ from .function import (
     SingleModelAcquisitionBuilder,
     expected_improvement,
     lower_confidence_bound,
+    min_value_entropy_search,
     probability_of_feasibility,
 )
