@@ -242,9 +242,8 @@ class Pareto:
         divide_conquer_cells_dist: TensorType,
         cell: TensorType,
     ):
-        edge_size, idx = tf.reduce_max(divide_conquer_cells_dist), tf.argmax(
-            divide_conquer_cells_dist
-        )
+        edge_size = tf.reduce_max(divide_conquer_cells_dist)
+        idx = tf.argmax(divide_conquer_cells_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
         edge_size2 = edge_size - edge_size1
 
