@@ -76,7 +76,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
     """
 
-    def __init__(self, observations: TensorType, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, observations: TensorType, *, jitter: float = DEFAULTS.JITTER):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
