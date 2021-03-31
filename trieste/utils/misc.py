@@ -171,3 +171,13 @@ class Err(Result[NoReturn]):
         :raise Exception: Always. Raises the wrapped exception.
         """
         raise self._exc
+
+
+class DEFAULTS:
+    """ Default constants used in Trieste. """
+
+    JITTER: Final[float] = 1e-6
+    """
+    The default jitter, typically used to stabilise computations near singular points, such as in
+    Cholesky decomposition.
+    """
