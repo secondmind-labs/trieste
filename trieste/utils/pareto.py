@@ -81,8 +81,8 @@ class Pareto:
         """
         tf.debugging.assert_rank(observations, 2)
 
-        pf, _ = non_dominated(observations)
-        self.front: Final[TensorType] = tf.gather_nd(pf, tf.argsort(pf[:, :1], axis=0))
+        pfront, _ = non_dominated(observations)
+        self.front: Final[TensorType] = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
         self.bounds = self._get_bounds(self.front, generic_strategy)
 
     def _get_bounds(self, front: TensorType, generic_strategy: bool = False) -> BoundedVolumes:
@@ -98,7 +98,7 @@ class Pareto:
         # objective, which implies the second objective is sorted in descending order
         len_front, number_of_objectives = front.shape
 
-        pf_ext_idx = tf.concat(
+        pseudo_front_idx = tf.concat(
             [
                 tf.zeros([1, number_of_objectives], dtype=tf.int32),
                 tf.argsort(front, axis=0) + 1,
@@ -109,7 +109,7 @@ class Pareto:
 
         range_ = tf.range(len_front + 1)[:, None]
         lower = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
-        upper = tf.concat([range_ + 1, pf_ext_idx[::-1, 1:][: pf_ext_idx[-1, 0]]], axis=-1)
+        upper = tf.concat([range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1)
 
         return BoundedVolumes(lower, upper)
 
@@ -129,11 +129,11 @@ class Pareto:
         lower = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper = tf.zeros([0, number_of_objectives], dtype=tf.int32)
 
-        min_pf = tf.reduce_min(front, axis=0, keepdims=True) - 1
-        max_pf = tf.reduce_max(front, axis=0, keepdims=True) + 1
-        pf_ext = tf.concat([min_pf, front, max_pf], axis=0)
+        min_front = tf.reduce_min(front, axis=0, keepdims=True) - 1
+        max_front = tf.reduce_max(front, axis=0, keepdims=True) + 1
+        pseudo_front = tf.concat([min_front, front, max_front], axis=0)
 
-        pf_ext_idx = tf.concat(
+        pseudo_front_idx = tf.concat(
             [
                 tf.zeros([1, number_of_objectives], dtype=tf.int32),
                 tf.argsort(front, axis=0) + 1,  # +1 as index zero is reserved for the ideal point
@@ -145,12 +145,12 @@ class Pareto:
         dc = tf.stack(
             [
                 tf.zeros(number_of_objectives, dtype=tf.int32),
-                (int(pf_ext_idx.shape[0]) - 1) * tf.ones(number_of_objectives, dtype=tf.int32),
+                (int(pseudo_front_idx.shape[0]) - 1) * tf.ones(number_of_objectives, dtype=tf.int32),
             ],
             axis=0,
         )[None]
 
-        total_size = tf.reduce_prod(max_pf - min_pf)
+        total_size = tf.reduce_prod(max_front - min_front)
 
         def while_body(
             dc: TensorType,
@@ -166,10 +166,10 @@ class Pareto:
             )
 
             arr = tf.range(number_of_objectives)
-            idx_lb = tf.gather_nd(pf_ext_idx, tf.stack((cell[0], arr), -1))
-            idx_ub = tf.gather_nd(pf_ext_idx, tf.stack((cell[1], arr), -1))
-            lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
-            ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
+            idx_lb = tf.gather_nd(pseudo_front_idx, tf.stack((cell[0], arr), -1))
+            idx_ub = tf.gather_nd(pseudo_front_idx, tf.stack((cell[1], arr), -1))
+            lb = tf.gather_nd(pseudo_front, tf.stack((idx_lb, arr), -1))
+            ub = tf.gather_nd(pseudo_front, tf.stack((idx_ub, arr), -1))
 
             test_accepted = self._is_test_required((ub - jitter) < front)
             lower, upper = tf.cond(
@@ -271,8 +271,8 @@ class Pareto:
             ]
         )
 
-        min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
-        pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
+        min_front = tf.reduce_min(self.front, 0, keepdims=True)
+        pseudo_front = tf.concat((min_front, self.front, reference[None]), 0)
         N, D = tf.shape(self.bounds.upper_idx)
 
         idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
@@ -282,8 +282,8 @@ class Pareto:
         lower_idx = tf.reshape(
             tf.stack([tf.transpose(self.bounds.lower_idx), idx], axis=2), [N * D, 2]
         )
-        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [D, N])
-        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [D, N])
+        upper = tf.reshape(tf.gather_nd(pseudo_front, upper_idx), [D, N])
+        lower = tf.reshape(tf.gather_nd(pseudo_front, lower_idx), [D, N])
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
-        return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
+        return tf.reduce_prod(reference[None] - min_front) - hypervolume
