@@ -148,3 +148,42 @@ class Pareto:
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
+
+    def get_hypercell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
+        """
+        Get the partitioned hypercells lower and upper bounds
+        :param anti_reference: a worst point to use with shape [D].
+            Defines the lower bound of the hypercell
+        :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
+            Should be equal or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: lower, upper bounds or the partitioned cell
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        """
+        tf.debugging.assert_greater_equal(reference, self.front)
+        tf.debugging.assert_greater_equal(self.front, anti_reference)
+
+        tf.debugging.assert_shapes(
+            [
+                (self.bounds.lower_idx, ["N", "D"]),
+                (self.bounds.upper_idx, ["N", "D"]),
+                (self.front, ["M", "D"]),
+                (reference, ["D"]),
+                (anti_reference, ["D"]),
+            ]
+        )
+
+        pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
+        N = tf.shape(self.bounds.upper_idx)[0]
+        D = tf.shape(self.bounds.upper_idx)[1]
+        idx = tf.tile(tf.range(D), (N,))
+
+        lower_idx = tf.stack((tf.reshape(self.bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(self.bounds.upper_idx, [-1]), idx), axis=1)
+
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
+
+        return lower, upper

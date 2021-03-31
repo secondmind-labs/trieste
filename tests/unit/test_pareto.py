@@ -152,3 +152,79 @@ def test_pareto_hypervolume_indicator(
 ) -> None:
     pareto = Pareto(tf.constant(objectives))
     npt.assert_allclose(pareto.hypervolume_indicator(tf.constant(reference)), expected)
+
+
+@pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
+def test_pareto_get_hypercell_bounds_raises_for_reference_with_invalid_shape(
+    reference: ListN[float],
+) -> None:
+    pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        pareto.get_hypercell_bounds(tf.constant([0.0, 0.0]), tf.constant(reference))
+
+
+@pytest.mark.parametrize("anti_reference", [0.0, [0.0], [[0.0]]])
+def test_pareto_get_hypercell_bounds_raises_for_anti_reference_with_invalid_shape(
+    anti_reference: ListN[float],
+) -> None:
+    pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant([0.0, 0.0]))
+
+
+@pytest.mark.parametrize("reference", [[0.1, -0.65], [-0.7, -0.1]])
+def test_pareto_get_hypercell_bounds_raises_for_reference_below_anti_ideal_point(
+    reference: list[float],
+) -> None:
+    pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        pareto.get_hypercell_bounds(tf.constant([-10.0, -10.0]), tf.constant(reference))
+
+
+@pytest.mark.parametrize("anti_reference", [[0.1, -0.65], [-0.7, -0.1]])
+def test_pareto_get_hypercell_bounds_raises_for_front_below_anti_reference_point(
+    anti_reference: list[float],
+) -> None:
+    pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant([10.0, 10.0]))
+
+
+@pytest.mark.parametrize(
+    "objectives, anti_reference, reference, expected",
+    [
+        (
+            [[1.0, 0.5]],
+            [-10.0, -8.0],
+            [2.3, 2.0],
+            ([[-10.0, -8.0], [1.0, -8.0]], [[1.0, 2.0], [2.3, 0.5]]),
+        ),
+        (
+            [[-1.0, -0.6], [-0.8, -0.7]],
+            [-2.0, -1.0],
+            [0.1, -0.1],
+            ([[-2.0, -1.0], [-1.0, -1.0], [-0.8, -1.0]], [[-1.0, -0.1], [-0.8, -0.6], [0.1, -0.7]]),
+        ),
+        (  # reference point is equal to one pareto point in one dimension
+            # anti idea point is equal to two pareto point in one dimension
+            [[-1.0, -0.6], [-0.8, -0.7]],
+            [-1.0, -0.7],
+            [0.1, -0.6],
+            ([[-1.0, -0.7], [-1.0, -0.7], [-0.8, -0.7]], [[-1.0, -0.6], [-0.8, -0.6], [0.1, -0.7]]),
+        ),
+    ],
+)
+def test_pareto_get_hypercell_bounds(objectives, anti_reference, reference, expected):
+    pareto = Pareto(tf.constant(objectives))
+    npt.assert_allclose(
+        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[0],
+        tf.constant(expected[0]),
+    )
+    npt.assert_allclose(
+        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[1],
+        tf.constant(expected[1]),
+    )
