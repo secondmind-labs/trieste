@@ -103,11 +103,7 @@ def create_bo_model(data):
         },
     })
 
-
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
 # ## Define the acquisition process
@@ -158,13 +154,11 @@ plt.show()
 # %% [markdown]
 # ## Batch-sequential strategy
 #
-# It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
+# We'll now look at a batch-sequential approach to the same problem. Sometimes it's beneficial to query several points at a time instead of one. The acquisition function we used earlier, built by `ExpectedConstrainedImprovement`, only supports a batch size of 1, so we'll need a new acquisition function builder for larger batch sizes. We can implement this using the reparametrization trick with the Monte-Carlo sampler `BatchReparametrizationSampler`. Note that when we do this, we must initialise the sampler *outside* the acquisition function (here `batch_efi`). This is crucial: a given instance of a sampler produces repeatable, continuous samples, and we can use this to create a repeatable continuous acquisition function. Using a new sampler on each call would not result in a repeatable continuous acquisition function.
 
 # %%
-from trieste.acquisition.rule import BatchAcquisitionRule
-
 class BatchExpectedConstrainedImprovement(
-    trieste.acquisition.BatchAcquisitionFunctionBuilder
+    trieste.acquisition.AcquisitionFunctionBuilder
 ):
     def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
@@ -181,8 +175,8 @@ class BatchExpectedConstrainedImprovement(
         }
 
         pf = trieste.acquisition.probability_of_feasibility(
-            models[CONSTRAINT], self._threshold, objective_dataset.query_points
-        )
+            models[CONSTRAINT], self._threshold
+        )(tf.expand_dims(objective_dataset.query_points, 1))
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
@@ -209,18 +203,15 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule: BatchAcquisitionRule[Box] = BatchAcquisitionRule(
-    num_query_points, batch_eci
+batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+    batch_eci, num_query_points=num_query_points
 )
 
 # %% [markdown]
 # We can now run the BO loop as before; note that here we also query twenty points, but in five batches of four points.
 
 # %%
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 num_steps = 5
 batch_data = bo.optimize(

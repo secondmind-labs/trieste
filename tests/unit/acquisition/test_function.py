@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 
 import numpy.testing as npt
 import pytest
@@ -24,12 +24,12 @@ import tensorflow_probability as tfp
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     ShapeLike,
+    empty_dataset,
     mk_dataset,
     quadratic,
-    raise_,
+    raise_exc,
     random_seed,
     various_shapes,
-    zero_dataset,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
@@ -40,13 +40,10 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     IndependentReparametrizationSampler,
-    MCIndAcquisitionFunctionBuilder,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
-    SingleModelBatchAcquisitionBuilder,
-    SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
     min_value_entropy_search,
@@ -63,65 +60,35 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        return raise_
+        return raise_exc
 
 
-class _ArbitraryBatchSingleBuilder(SingleModelBatchAcquisitionBuilder):
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        return raise_
-
-
-@pytest.mark.parametrize(
-    "single_builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()]
-)
-def test_single_builder_raises_immediately_for_wrong_key(
-    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
-) -> None:
-    builder = single_builder.using("foo")
+def test_single_model_acquisition_builder_raises_immediately_for_wrong_key() -> None:
+    builder = _ArbitrarySingleBuilder().using("foo")
 
     with pytest.raises(KeyError):
         builder.prepare_acquisition_function(
-            {"bar": zero_dataset()}, {"bar": QuadraticMeanAndRBFKernel()}
+            {"bar": empty_dataset([1], [1])}, {"bar": QuadraticMeanAndRBFKernel()}
         )
 
 
-@pytest.mark.parametrize("builder", [_ArbitrarySingleBuilder(), _ArbitraryBatchSingleBuilder()])
-def test_single_builder_repr_includes_class_name(
-    builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
-) -> None:
+def test_single_model_acquisition_builder_repr_includes_class_name() -> None:
+    builder = _ArbitrarySingleBuilder()
     assert type(builder).__name__ in repr(builder)
 
 
-def _prepare_acquisition_function_assert(
-    _: object, dataset: Dataset, model: ProbabilisticModel
-) -> Callable[[TensorType], TensorType]:
-    npt.assert_allclose(dataset.query_points, 0.0)
-    _, var = model.predict(tf.constant([0.0]))
-    npt.assert_allclose(var, 0.0)
-    return raise_
+def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_model() -> None:
+    class Builder(SingleModelAcquisitionBuilder):
+        def prepare_acquisition_function(
+            self, dataset: Dataset, model: ProbabilisticModel
+        ) -> AcquisitionFunction:
+            assert dataset is data["foo"]
+            assert model is models["foo"]
+            return raise_exc
 
-
-class _MockIndBuilder(SingleModelAcquisitionBuilder):
-    prepare_acquisition_function = _prepare_acquisition_function_assert
-
-
-class _MockBatchBuilder(SingleModelBatchAcquisitionBuilder):
-    prepare_acquisition_function = _prepare_acquisition_function_assert
-
-
-@pytest.mark.parametrize("single_builder", [_MockIndBuilder(), _MockBatchBuilder()])
-def test_single_builder_using_passes_on_correct_dataset_and_model(
-    single_builder: SingleModelAcquisitionBuilder | SingleModelBatchAcquisitionBuilder,
-) -> None:
-    builder = single_builder.using("foo")
-    data = {"foo": mk_dataset([[0.0]], [[0.0]]), "bar": mk_dataset([[1.0]], [[1.0]])}
-    models = {
-        "foo": QuadraticMeanAndRBFKernel(kernel_amplitude=0.0),
-        "bar": QuadraticMeanAndRBFKernel(kernel_amplitude=1.0),
-    }
-    builder.prepare_acquisition_function(data, models)
+    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([1], [1])}
+    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
+    Builder().using("foo").prepare_acquisition_function(data, models)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
@@ -131,8 +98,8 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
     )
     model = QuadraticMeanAndRBFKernel()
     acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
-    xs = tf.linspace([-10.0], [10.0], 100)
-    expected = expected_improvement(model, tf.constant([0.0]), xs)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -141,6 +108,14 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
 
     with pytest.raises(ValueError):
         ExpectedImprovement().prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    ei = expected_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ei(at)
 
 
 @random_seed
@@ -172,7 +147,7 @@ def test_expected_improvement(
     samples_improvement = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_mean(samples_improvement, axis=0)
 
-    ei = expected_improvement(model, best, xs)
+    ei = expected_improvement(model, best)(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -198,14 +173,22 @@ def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
     with pytest.raises(ValueError):
-        min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples, tf.constant([[]]))
+        min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_min_value_entropy_search_raises_for_invalid_batch_size(at: TensorType) -> None:
+    mes = min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mes(at)
 
 
 def test_min_value_entropy_search_returns_correct_shape() -> None:
     model = QuadraticMeanAndRBFKernel()
     gumbel_samples = tf.constant([1.0])
-    query_at = tf.linspace([-10.0], [10.0], 5)
-    evals = min_value_entropy_search(model, gumbel_samples, query_at)
+    query_at = tf.linspace([[-10.0]], [[10.0]], 5)
+    evals = min_value_entropy_search(model, gumbel_samples)(query_at)
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
@@ -223,7 +206,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     gumbel_sample = tf.constant([1.0], dtype=tf.float64)
-    mes_evals = min_value_entropy_search(model, gumbel_sample, xs)
+    mes_evals = min_value_entropy_search(model, gumbel_sample)(xs[..., None, :])
 
     mean, variance = model.predict(xs)
     gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
@@ -238,22 +221,30 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(
         Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
     )
-    query_at = tf.linspace([-10], [10], 100)
-    expected = -lower_confidence_bound(model, beta, query_at)
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = -lower_confidence_bound(model, beta)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
 @pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(ValueError):
-        lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta, tf.constant([[]]))
+        lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_lower_confidence_bound_raises_for_invalid_batch_size(at: TensorType) -> None:
+    lcb = lower_confidence_bound(QuadraticMeanAndRBFKernel(), tf.constant(1.0))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        lcb(at)
 
 
 @pytest.mark.parametrize("beta", [0.0, 0.1, 7.8])
 def test_lower_confidence_bound(beta: float) -> None:
-    query_at = tf.constant([[-3.0], [-2.0], [-1.0], [0.0], [1.0], [2.0], [3.0]])
-    actual = lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta, query_at)
-    npt.assert_array_almost_equal(actual, query_at ** 2 - beta)
+    query_at = tf.linspace([[-3]], [[3]], 10)
+    actual = lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)(query_at)
+    npt.assert_array_almost_equal(actual, tf.squeeze(query_at, -2) ** 2 - beta)
 
 
 @pytest.mark.parametrize(
@@ -266,16 +257,24 @@ def test_lower_confidence_bound(beta: float) -> None:
     ],
 )
 def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
-    actual = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold, at)
+    actual = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
 
-@pytest.mark.parametrize("at", [tf.constant([[0.0]]), tf.constant([[-3.4]]), tf.constant([[0.2]])])
+@pytest.mark.parametrize(
+    "at",
+    [
+        tf.constant([[0.0]], tf.float64),
+        tf.constant([[-3.4]], tf.float64),
+        tf.constant([[0.2]], tf.float64),
+    ],
+)
 @pytest.mark.parametrize("threshold", [-2.3, 0.2])
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
-    acq = builder.prepare_acquisition_function(zero_dataset(), QuadraticMeanAndRBFKernel())
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold, at)
+    acq = builder.prepare_acquisition_function(empty_dataset([1], [1]), QuadraticMeanAndRBFKernel())
+    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+
     npt.assert_allclose(acq(at), expected)
 
 
@@ -283,14 +282,15 @@ def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.
 def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
     threshold = tf.ones(shape)
     with pytest.raises(ValueError):
-        probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold, tf.constant([[0.0]]))
+        probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
 
 
-@pytest.mark.parametrize("shape", [[], [0], [2]])
-def test_probability_of_feasibility_raises_on_incorrect_at_shape(shape: ShapeLike) -> None:
+@pytest.mark.parametrize("shape", [[], [0], [2], [2, 1], [1, 2, 1]])
+def test_probability_of_feasibility_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
     at = tf.ones(shape)
-    with pytest.raises(ValueError):
-        probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0, at)
+    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        pof(at)
 
 
 @pytest.mark.parametrize("shape", various_shapes() - {()})
@@ -308,12 +308,26 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
         ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
 
 
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    builder = ExpectedConstrainedImprovement("", pof, tf.constant(0.0))
+    initial_query_points = tf.constant([[-1.0]])
+    initial_objective_function_values = tf.constant([[1.0]])
+    data = {"": Dataset(initial_query_points, initial_objective_function_values)}
+
+    eci = builder.prepare_acquisition_function(data, {"": QuadraticMeanAndRBFKernel()})
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        eci(at)
+
+
 def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
     class _Certainty(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return tf.ones_like
+            return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
     data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
@@ -324,7 +338,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
 
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
 
-    at = tf.constant([[-0.1], [1.23], [-6.78]])
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
     npt.assert_allclose(eci(at), ei(at))
 
 
@@ -333,7 +347,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: tf.cast(x >= 0, x.dtype)
+            return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
 
@@ -353,7 +367,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: tf.cast(x >= 0, x.dtype)
+            return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
     def two_global_minima(x: tf.Tensor) -> tf.Tensor:
         return x ** 4 / 4 - x ** 2 / 2
@@ -366,7 +380,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
         data, models_
     )
 
-    npt.assert_array_less(eci(tf.constant([-1.0])), eci(tf.constant([1.0])))
+    npt.assert_array_less(eci(tf.constant([[-1.0]])), eci(tf.constant([[1.0]])))
 
 
 def test_expected_constrained_improvement_raises_for_empty_data() -> None:
@@ -374,7 +388,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return raise_
+            return raise_exc
 
     data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
@@ -389,7 +403,11 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
         ) -> AcquisitionFunction:
-            return lambda x: tf.cast(tf.logical_and(0.0 <= x, x < 1.0), x.dtype)
+            def acquisition(x: TensorType) -> TensorType:
+                x_ = tf.squeeze(x, -2)
+                return tf.cast(tf.logical_and(0.0 <= x_, x_ < 1.0), x.dtype)
+
+            return acquisition
 
     data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
@@ -399,12 +417,13 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
     constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
 
-    xs = tf.range(-10.0, 10.0, 100)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
     npt.assert_allclose(eci(xs), constraint_fn(xs))
 
 
 def test_expected_constrained_improvement_min_feasibility_probability_bound_is_inclusive() -> None:
-    pof = tfp.bijectors.Sigmoid().forward
+    def pof(x_: TensorType) -> TensorType:
+        return tfp.bijectors.Sigmoid().forward(tf.squeeze(x_, -2))
 
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
@@ -416,28 +435,30 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
     data = {"foo": Dataset(tf.constant([[1.1], [2.0]]), tf.constant([[1.21], [4.0]]))}
     eci = ExpectedConstrainedImprovement(
-        "foo", _Constraint(), min_feasibility_probability=pof(1.0)
+        "foo", _Constraint(), min_feasibility_probability=tfp.bijectors.Sigmoid().forward(1.0)
     ).prepare_acquisition_function(data, models_)
 
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
-
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
-def test_independent_reparametrization_sampler_raises_for_negative_sample_size(
+def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel())
 
 
-def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape() -> None:
+@pytest.mark.parametrize("shape", [[], [1], [2], [2, 3]])
+def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape(
+    shape: ShapeLike,
+) -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.constant(0))
+        sampler.sample(tf.zeros(shape))
 
 
 def _assert_kolmogorov_smirnov_95(
@@ -471,16 +492,16 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
 @random_seed
 def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
     sample_size = 1000
-    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    x = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
 
     model = _dim_two_gp()
-    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, L]
+    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, 1, L]
 
-    assert samples.shape == [len(x), sample_size, 2]
+    assert samples.shape == [len(x), sample_size, 1, 2]
 
-    mean, var = model.predict(x)  # [N, L], [N, L]
+    mean, var = model.predict(tf.squeeze(x, -2))  # [N, L], [N, L]
     _assert_kolmogorov_smirnov_95(
-        tf.linalg.matrix_transpose(samples),
+        tf.linalg.matrix_transpose(tf.squeeze(samples, -2)),
         tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
     )
 
@@ -488,13 +509,13 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
 @random_seed
 def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
     sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
 
 def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
     sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
@@ -502,92 +523,8 @@ def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
 def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
     sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp())
     sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
-
-
-def test_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
-    class _Acq(MCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
-            samplers: Mapping[str, IndependentReparametrizationSampler],
-        ) -> AcquisitionFunction:
-            return raise_
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        _Acq(-1)
-
-
-@random_seed
-def test_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
-    class _Acq(MCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            datasets: Mapping[str, Dataset],
-            models: Mapping[str, ProbabilisticModel],
-            samplers: Mapping[str, IndependentReparametrizationSampler],
-        ) -> AcquisitionFunction:
-            assert samplers.keys() == {"foo", "bar", "baz"}
-
-            x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-
-            for key in samplers:
-                samples = samplers[key].sample(x)
-                mean, var = models[key].predict(x)
-                _assert_kolmogorov_smirnov_95(
-                    tf.linalg.matrix_transpose(samples),
-                    tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
-                )
-
-            return raise_
-
-    data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.zeros([0, 2], dtype=tf.float64))
-    _Acq(20_000).prepare_acquisition_function(
-        {"foo": data, "bar": data, "baz": data},
-        {
-            "foo": _dim_two_gp((0.5, 0.5)),
-            "bar": _dim_two_gp((1.3, 1.3)),
-            "baz": _dim_two_gp((-0.7, -0.7)),
-        },
-    )
-
-
-def test_single_model_mc_ind_acquisition_function_builder_raises_for_invalid_sample_size() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
-        ) -> AcquisitionFunction:
-            return raise_
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        _Acq(-1)
-
-
-@random_seed
-def test_single_model_mc_ind_acquisition_function_builder_approximates_model_samples() -> None:
-    class _Acq(SingleModelMCIndAcquisitionFunctionBuilder):
-        def _build_with_sampler(
-            self,
-            dataset: Dataset,
-            model: ProbabilisticModel,
-            sampler: IndependentReparametrizationSampler,
-        ) -> AcquisitionFunction:
-            x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-            samples = sampler.sample(x)
-            mean, var = model.predict(x)
-            _assert_kolmogorov_smirnov_95(
-                tf.linalg.matrix_transpose(samples),
-                tfp.distributions.Normal(mean[..., None], tf.sqrt(var)[..., None]),
-            )
-            return raise_
-
-    data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.zeros([0, 2], dtype=tf.float64))
-    _Acq(1000).prepare_acquisition_function(data, _dim_two_gp())
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -699,7 +636,7 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
     ei = ExpectedImprovement().prepare_acquisition_function(data, model)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
-    npt.assert_allclose(batch_ei(xs), ei(tf.squeeze(xs, -2)), rtol=0.03)
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.03)
 
 
 @random_seed
