@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ListN
-from trieste.pareto import Pareto, non_dominated
+from trieste.utils.pareto import Pareto, non_dominated
 
 
 @pytest.mark.parametrize(

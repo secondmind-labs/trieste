@@ -16,9 +16,8 @@ from typing import Callable, Mapping, TypeVar
 
 from typing_extensions import Final
 
-from . import objectives
-from .misc import Err, Ok, Result, T_co, jit, shapes_equal, to_numpy, DEFAULTS
-
+from . import objectives, pareto
+from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
 
 K = TypeVar("K")
 """ An unbound type variable. """

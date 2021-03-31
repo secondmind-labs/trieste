@@ -20,8 +20,8 @@ from typing import Tuple
 import tensorflow as tf
 from typing_extensions import Final
 
-from .type import TensorType
-from .utils import DEFAULTS
+from ..type import TensorType
+from .misc import DEFAULTS
 
 
 def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
