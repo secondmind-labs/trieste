@@ -16,7 +16,7 @@ from typing import Callable, Mapping, TypeVar
 
 from typing_extensions import Final
 
-from . import objectives, pareto
+from . import objectives
 from .misc import Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
 
 
