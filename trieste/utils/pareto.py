@@ -94,7 +94,7 @@ class Pareto:
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
 
-        # this assumes the Pareto set has been sorted in ascending order on the first
+        # This assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
         len_front, number_of_objectives = front.shape
 
@@ -115,13 +115,6 @@ class Pareto:
 
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
-
-        # Tests if a point augments or dominates the Pareto set.
-        # :param smaller: a boolean tf.Tensor storing test point < Pareto front
-        # :return: True if the test point dominates or augments the Pareto front (boolean)
-
-        # if and only if the test point is at least in one dimension smaller
-        # for every point in the Pareto set
         idx_dom_augm = tf.reduce_any(smaller, axis=1)
         is_dom_augm = tf.reduce_all(idx_dom_augm)
 
@@ -136,12 +129,11 @@ class Pareto:
         lower = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper = tf.zeros([0, number_of_objectives], dtype=tf.int32)
 
-        # Extend front with the ideal and anti-ideal point
         min_pf = tf.reduce_min(front, axis=0, keepdims=True) - 1
         max_pf = tf.reduce_max(front, axis=0, keepdims=True) + 1
         pf_ext = tf.concat(
             [min_pf, front, max_pf], axis=0
-        )  # Needed for early stopping check (threshold)
+        )  
 
         pf_ext_idx = tf.concat(
             [
@@ -152,7 +144,6 @@ class Pareto:
             axis=0,
         )
 
-        # Start with one cell covering the whole front
         dc = tf.stack(
             [
                 tf.zeros(number_of_objectives, dtype=tf.int32),
@@ -162,7 +153,6 @@ class Pareto:
         )[None]
 
         total_size = tf.reduce_prod(max_pf - min_pf)
-        # Start divide and conquer until we processed all cells
 
         _, lower, upper = tf.while_loop(
             lambda dc, lower, upper: dc.shape[0] > 0,
@@ -200,7 +190,6 @@ class Pareto:
         total_size,
         threshold,
     ):
-        # Process test cell
         dc = tf.unstack(dc, axis=0)
         cell = dc[-1]
         dc = tf.cond(
@@ -215,7 +204,6 @@ class Pareto:
         lb = tf.gather_nd(pf_ext, tf.stack((idx_lb, arr), -1))
         ub = tf.gather_nd(pf_ext, tf.stack((idx_ub, arr), -1))
 
-        # Acceptance test:
         test_accepted = self._is_test_required((ub - jitter) < front)
         lower, upper = tf.cond(
             test_accepted,
@@ -223,7 +211,6 @@ class Pareto:
             lambda: (lower, upper),
         )
 
-        # Reject test:
         test_rejected = self._is_test_required((lb + jitter) < front)
         dc = tf.cond(
             tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
@@ -243,8 +230,6 @@ class Pareto:
         dc_dist = cell[1] - cell[0]
         hc_size = tf.math.reduce_prod(ub - lb, axis=0, keepdims=True)
 
-        # Only divide when it is not an unit cell
-        # and the volume is above the approx. threshold
         not_unit_cell = tf.reduce_any(dc_dist > 1)
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
         dc = tf.cond(
@@ -255,12 +240,10 @@ class Pareto:
         return dc
 
     def _divide_body(self, dc, dc_dist, cell):
-        # Divide the test cell over its largest dimension
         edge_size, idx = tf.reduce_max(dc_dist), tf.argmax(dc_dist)
         edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
         edge_size2 = edge_size - edge_size1
 
-        # Store divided cells
         ub = tf.unstack(tf.identity(cell[1]))
         ub[idx] = ub[idx] - edge_size1
         ub = tf.stack(ub)
