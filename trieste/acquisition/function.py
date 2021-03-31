@@ -170,8 +170,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
         """
         :param search_space: The global search space over which the optimisation is defined.
-        :param num_samples: Number of samples to draw from the distribution over the objective
-            minimum.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of the
+            objective function.
         :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
             scaling this with search space dimension.
         """
