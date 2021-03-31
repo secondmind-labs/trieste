@@ -193,12 +193,7 @@ class Pareto:
             return divide_conquer_cells, lower_result, upper_result
 
         _, lower_result, upper_result = tf.while_loop(
-<<<<<<< HEAD
             lambda divide_conquer_cells, lower_result, upper_result: len(divide_conquer_cells) > 0,
-=======
-            lambda divide_conquer_cells, lower_result, upper_result: divide_conquer_cells.shape[0]
-            > 0,
->>>>>>> eaa01f86cffb015226ad6cb15a42cbd376970d89
             while_body,
             loop_vars=[divide_conquer_cells, lower_result, upper_result],
             shape_invariants=[
