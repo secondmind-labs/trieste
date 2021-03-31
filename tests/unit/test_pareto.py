@@ -179,30 +179,6 @@ def test_pareto_hypervolume_indicator(
     npt.assert_allclose(pareto.hypervolume_indicator(tf.constant(reference)), expected)
 
 
-def test_pareto_divide_conquer_nd_two_dimension_case() -> None:
-    objectives = tf.constant(
-        [
-            [0.9575, 0.4218],
-            [0.9649, 0.9157],
-            [0.1576, 0.7922],
-            [0.9706, 0.9595],
-            [0.9572, 0.6557],
-            [0.4854, 0.0357],
-            [0.8003, 0.8491],
-            [0.1419, 0.9340],
-        ]
-    )
-
-    pareto = Pareto(objectives, generic_strategy=True)
-
-    npt.assert_array_equal(pareto.bounds.lower_idx, [[3, 0], [2, 0], [1, 2], [0, 2], [0, 0]])
-    npt.assert_array_equal(
-        pareto.bounds.upper_idx, tf.constant([[4, 3], [3, 2], [2, 1], [1, 4], [2, 2]])
-    )
-    npt.assert_allclose(
-        pareto.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
-    )
-
 
 def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
     objectives = tf.constant(
@@ -216,7 +192,7 @@ def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
         ]
     )
 
-    pareto = Pareto(objectives, generic_strategy=True)
+    pareto = Pareto(objectives)
 
     npt.assert_array_equal(
         pareto.bounds.lower_idx,

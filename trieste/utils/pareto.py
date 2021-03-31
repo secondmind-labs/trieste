@@ -74,7 +74,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
     """
 
-    def __init__(self, observations: TensorType, generic_strategy: bool = False):
+    def __init__(self, observations: TensorType):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
@@ -83,10 +83,10 @@ class Pareto:
 
         pfront, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
-        self.bounds = self._get_bounds(self.front, generic_strategy)
+        self.bounds = self._get_bounds(self.front)
 
-    def _get_bounds(self, front: TensorType, generic_strategy: bool = False) -> BoundedVolumes:
-        if generic_strategy or front.shape[-1] > 2:
+    def _get_bounds(self, front: TensorType) -> BoundedVolumes:
+        if front.shape[-1] > 2:
             return self._divide_conquer_nd(front)
         else:
             return self._bounds_2d(front)
