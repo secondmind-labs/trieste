@@ -233,12 +233,12 @@ class Pareto:
 
         not_unit_cell = tf.reduce_any(divide_conquer_cells_dist > 1)
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
-        divide_conquer_cells = tf.cond(
+        divide_conquer_cells_rejected = tf.cond(
             tf.logical_and(not_unit_cell, vol_above_thresh),
             lambda: self._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
             lambda: tf.identity(divide_conquer_cells),
         )
-        return divide_conquer_cells
+        return divide_conquer_cells_rejected
 
     def _divide_body(
         self,
