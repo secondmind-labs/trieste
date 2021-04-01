@@ -14,6 +14,7 @@ from trieste.acquisition.rule import OBJECTIVE
 from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
+from trieste.space import Box
 from trieste.type import TensorType
 
 np.random.seed(1793)
@@ -116,9 +117,10 @@ models = {OBJECTIVE: ModelStack(*objective_models)}
 #
 # Here we utilize the `HVExpectedImprovement` acquisition function proposed in
 # Yang 2019 [1]:
+from trieste.acquisition.rule import EfficientGlobalOptimization
 
-hvei = ExpectedHypervolumeImprovement().using(OBJECTIVE)
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
+hvei = ExpectedHypervolumeImprovement()
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=hvei.using(OBJECTIVE))
 
 # ## Run the optimization loop
 #
