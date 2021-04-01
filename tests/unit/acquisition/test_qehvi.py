@@ -99,4 +99,3 @@ def test_batch_monte_carlo_expected_hv_improvement_can_approx_analytical_ehvi(
     )
 
     npt.assert_allclose(ehvi, qehvi, rtol=rtol, atol=atol)
-
