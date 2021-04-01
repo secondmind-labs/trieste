@@ -155,43 +155,43 @@ def test_pareto_hypervolume_indicator(
 
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
-def test_pareto_get_hypercell_bounds_raises_for_reference_with_invalid_shape(
+def test_pareto_hypercell_bounds_raises_for_reference_with_invalid_shape(
     reference: ListN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        pareto.get_hypercell_bounds(tf.constant([0.0, 0.0]), tf.constant(reference))
+        pareto.hypercell_bounds(tf.constant([0.0, 0.0]), tf.constant(reference))
 
 
 @pytest.mark.parametrize("anti_reference", [0.0, [0.0], [[0.0]]])
-def test_pareto_get_hypercell_bounds_raises_for_anti_reference_with_invalid_shape(
+def test_pareto_hypercell_bounds_raises_for_anti_reference_with_invalid_shape(
     anti_reference: ListN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant([0.0, 0.0]))
+        pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant([0.0, 0.0]))
 
 
 @pytest.mark.parametrize("reference", [[0.1, -0.65], [-0.7, -0.1]])
-def test_pareto_get_hypercell_bounds_raises_for_reference_below_anti_ideal_point(
+def test_pareto_hypercell_bounds_raises_for_reference_below_anti_ideal_point(
     reference: list[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        pareto.get_hypercell_bounds(tf.constant([-10.0, -10.0]), tf.constant(reference))
+        pareto.hypercell_bounds(tf.constant([-10.0, -10.0]), tf.constant(reference))
 
 
 @pytest.mark.parametrize("anti_reference", [[0.1, -0.65], [-0.7, -0.1]])
-def test_pareto_get_hypercell_bounds_raises_for_front_below_anti_reference_point(
+def test_pareto_hypercell_bounds_raises_for_front_below_anti_reference_point(
     anti_reference: list[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant([10.0, 10.0]))
+        pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant([10.0, 10.0]))
 
 
 @pytest.mark.parametrize(
@@ -218,13 +218,13 @@ def test_pareto_get_hypercell_bounds_raises_for_front_below_anti_reference_point
         ),
     ],
 )
-def test_pareto_get_hypercell_bounds(objectives, anti_reference, reference, expected):
+def test_pareto_hypercell_bounds(objectives, anti_reference, reference, expected):
     pareto = Pareto(tf.constant(objectives))
     npt.assert_allclose(
-        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[0],
+        pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[0],
         tf.constant(expected[0]),
     )
     npt.assert_allclose(
-        pareto.get_hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[1],
+        pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[1],
         tf.constant(expected[1]),
     )

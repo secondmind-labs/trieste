@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
+from __future__ import annotations
 
 from typing import Tuple
 
@@ -149,7 +150,9 @@ class Pareto:
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
 
-    def get_hypercell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
+    def hypercell_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
         """
         Get the partitioned hypercells lower and upper bounds
         :param anti_reference: a worst point to use with shape [D].
