@@ -257,7 +257,7 @@ class Pareto:
         )
         upper = tf.identity(cell[1]) - tf.cast(sparse_edge_size1, dtype=tf.int32)
 
-        divide_conquer_cells = tf.concat(
+        divide_conquer_cells_new = tf.concat(
             [divide_conquer_cells, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0
         )
 
@@ -266,11 +266,11 @@ class Pareto:
         )
         lower = tf.identity(cell[0]) + tf.cast(sparse_edge_size2, dtype=tf.int32)
 
-        divide_conquer_cells = tf.concat(
-            [divide_conquer_cells, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0
+        divide_conquer_cells_final = tf.concat(
+            [divide_conquer_cells_new, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]], axis=0
         )
 
-        return divide_conquer_cells
+        return divide_conquer_cells_final
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
