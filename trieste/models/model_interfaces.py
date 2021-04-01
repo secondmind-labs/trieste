@@ -118,8 +118,6 @@ class ModelStack(TrainableProbabilisticModel):
         The order of individual models specified at :meth:`__init__` determines the order of the
         :class:`ModelStack` output dimensions.
 
-
-
         :param model_with_event_size: The first model, and the size of its output events.
             **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
             method signature requires at least one model. It is not treated specially.
