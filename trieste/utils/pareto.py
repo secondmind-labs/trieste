@@ -214,9 +214,9 @@ class Pareto:
         lower_idx: TensorType,
         upper_idx: TensorType,
     ) -> Tuple[TensorType, TensorType]:
-        lower_result = tf.concat([lower_result, lower_idx[None]], axis=0)
-        upper_result = tf.concat([upper_result, upper_idx[None]], axis=0)
-        return lower_result, upper_result
+        lower_result_accepted = tf.concat([lower_result, lower_idx[None]], axis=0)
+        upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
+        return lower_result_accepted, upper_result_accepted
 
     def _rejected_test_body(
         self,
