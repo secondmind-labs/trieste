@@ -194,13 +194,14 @@ M = TypeVar("M", bound=tf.Module)
 
 def module_deepcopy(self: M, memo: dict[int, object]) -> M:
     r"""
-    This function provides a workaround for `a bug`_ in TensorFlow Probability (fixed in version
-    0.12) where a :class:`tf.Module` cannot be deep-copied if it has :class:`tfp.bijectors.Bijector`
-    instances on it. The function can be used to directly copy an object ``self`` as e.g.
-    ``module_deepcopy(self, {})``, but it is perhaps more useful as an implemention for
-    :meth:`__deepcopy__` on classes, where it can be used as follows:
+    This function provides a workaround for `a bug`_ in TensorFlow Probability (fixed in `version
+    0.12`_) where a :class:`tf.Module` cannot be deep-copied if it has
+    :class:`tfp.bijectors.Bijector` instances on it. The function can be used to directly copy an
+    object ``self`` as e.g. ``module_deepcopy(self, {})``, but it is perhaps more useful as an
+    implemention for :meth:`__deepcopy__` on classes, where it can be used as follows:
 
     .. _a bug: https://github.com/tensorflow/probability/issues/547
+    .. _version 0.12: https://github.com/tensorflow/probability/releases/tag/v0.12.1
 
     .. testsetup:: *
 
