@@ -163,11 +163,11 @@ class Pareto:
             lower_result: TensorType,
             upper_result: TensorType,
         ) -> Tuple[TensorType, TensorType, TensorType]:
-            divide_conquer_cells = tf.unstack(divide_conquer_cells, axis=0)
-            cell = divide_conquer_cells[-1]
-            divide_conquer_cells = tf.cond(
-                tf.not_equal(tf.size(divide_conquer_cells[:-1]), 0),
-                lambda: tf.stack(divide_conquer_cells[:-1]),
+            divide_conquer_cells_unstacked = tf.unstack(divide_conquer_cells, axis=0)
+            cell = divide_conquer_cells_unstacked[-1]
+            divide_conquer_cells_new = tf.cond(
+                tf.not_equal(tf.size(divide_conquer_cells_unstacked[:-1]), 0),
+                lambda: tf.stack(divide_conquer_cells_unstacked[:-1]),
                 lambda: tf.zeros([0, 2, number_of_objectives], dtype=tf.int32),
             )
 
@@ -185,15 +185,15 @@ class Pareto:
             )
 
             test_rejected = self._is_test_required((lower + jitter) < front)
-            divide_conquer_cells = tf.cond(
+            divide_conquer_cells_final = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
                 lambda: self._rejected_test_body(
-                    cell, lower, upper, divide_conquer_cells, total_size, threshold
+                    cell, lower, upper, divide_conquer_cells_new, total_size, threshold
                 ),
-                lambda: divide_conquer_cells,
+                lambda: divide_conquer_cells_new,
             )
 
-            return divide_conquer_cells, lower_result, upper_result
+            return divide_conquer_cells_final, lower_result, upper_result
 
         _, lower_result, upper_result = tf.while_loop(
             lambda divide_conquer_cells, lower_result, upper_result: len(divide_conquer_cells) > 0,
