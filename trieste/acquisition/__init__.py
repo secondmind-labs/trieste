@@ -40,6 +40,7 @@ from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     BatchMonteCarloExpectedImprovement,
+    BatchMonteCarloHypervolumeExpectedImprovement,
     BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,

@@ -13,33 +13,31 @@
 # limitations under the License.
 from __future__ import annotations
 
+import itertools
+
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import itertools
-import numpy as np
 
-from tests.util.misc import (
-    TF_DEBUGGING_ERROR_TYPES,
-    random_seed,
-)
-from tests.util.model import QuadraticMeanAndRBFKernel
 from tests.unit.acquisition.test_ehvi import _linear_mean_gaussian_process
-from trieste.acquisition.function import BatchMonteCarloHypervolumeExpectedImprovement
-from trieste.acquisition.function import expected_hv_improvement
-
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
+from tests.util.model import QuadraticMeanAndRBFKernel
+from trieste.acquisition.function import (
+    BatchMonteCarloHypervolumeExpectedImprovement,
+    expected_hv_improvement,
+    get_reference_point,
+)
 from trieste.data import Dataset
-
-from trieste.utils.pareto import Pareto
-from trieste.acquisition.function import get_reference_point
 from trieste.models.model_interfaces import ModelStack
+from trieste.utils.pareto import Pareto
 
 test_models = (QuadraticMeanAndRBFKernel, _linear_mean_gaussian_process, QuadraticMeanAndRBFKernel)
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_hypervolume_expected_improvement_raises_for_invalid_sample_size(
-        sample_size: int,
+    sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloHypervolumeExpectedImprovement(sample_size)
@@ -69,11 +67,19 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_empty_dat
     ],
 )
 def test_batch_monte_carlo_expected_hv_improvement_can_approx_analytical_ehvi(
-        input_dim: int, num_samples_per_point: int, training_input: tf.Tensor, obj_num: int,
-        variance_scale: float, rtol: float, atol: float) -> None:
+    input_dim: int,
+    num_samples_per_point: int,
+    training_input: tf.Tensor,
+    obj_num: int,
+    variance_scale: float,
+    rtol: float,
+    atol: float,
+) -> None:
     # Note: the test data number grows exponentially with num of obj
     data_num_seg_per_dim = 10  # test data number per input dim
-    xs = tf.constant(list(itertools.product(*[list(np.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)))
+    xs = tf.constant(
+        list(itertools.product(*[list(np.linspace(-1, 1, data_num_seg_per_dim))] * input_dim))
+    )
     xs = tf.cast(xs, dtype=training_input.dtype)
 
     model = ModelStack(*[(test_models[_](), 1) for _ in range(obj_num)])
@@ -85,7 +91,11 @@ def test_batch_monte_carlo_expected_hv_improvement_can_approx_analytical_ehvi(
     _reference_pt = get_reference_point(_model_based_pareto.front)
 
     qehvi_builder = BatchMonteCarloHypervolumeExpectedImprovement(sample_size=num_samples_per_point)
-    qehvi = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)(tf.expand_dims(xs, -2))
-    ehvi = expected_hv_improvement(model, _model_based_pareto, _reference_pt)(tf.expand_dims(xs, -2))
+    qehvi = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)(
+        tf.expand_dims(xs, -2)
+    )
+    ehvi = expected_hv_improvement(model, _model_based_pareto, _reference_pt)(
+        tf.expand_dims(xs, -2)
+    )
 
     npt.assert_allclose(ehvi, qehvi, rtol=rtol, atol=atol)

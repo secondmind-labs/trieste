@@ -18,7 +18,6 @@ from collections.abc import Callable, Sequence
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing import Optional
 
 from tests.util.misc import ListN, quadratic
 from trieste.data import Dataset

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from itertools import product, combinations
+from itertools import combinations, product
 from math import inf
 from typing import Callable
 
@@ -669,7 +669,10 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
 
     def __repr__(self) -> str:
         """"""
-        return f"BatchMonteCarloHypervolumeExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
+        return (
+            f"BatchMonteCarloHypervolumeExpectedImprovement({self._sample_size!r},"
+            f" jitter={self._jitter!r})"
+        )
 
     def _cache_q_subset_indices(self, q: int) -> None:
         r"""Cache indices corresponding to all subsets of `q`.
@@ -690,7 +693,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
             self.q = q
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -700,14 +703,15 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
             does not have an event shape of [1].
         """
 
-        tf.debugging.assert_positive(len(dataset), message='Dataset must be populated.')
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
 
-        lb_points, ub_points = _pf.get_hyper_cell_bounds(tf.constant([-inf] * mean.shape[-1]),
-                                                         _reference_pt)
+        lb_points, ub_points = _pf.get_hyper_cell_bounds(
+            tf.constant([-inf] * mean.shape[-1], dtype=mean.dtype), _reference_pt
+        )
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
         def batch_hvei(at: TensorType) -> TensorType:
@@ -730,22 +734,30 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
                 q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
                 # get combination of subsets: [..., S, B, num_obj] -> [..., S, Cq_j, j, num_obj]
                 obj_subsets = tf.gather(samples, q_choose_j, axis=-2)
-                # get lower vertices of overlap: [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
+                # get lower vertices of overlap:
+                # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
                 overlap_vertices = tf.reduce_max(obj_subsets, axis=-2)
 
-                # compare overlap vertices and lower bound of each cell: -> [..., S, K, Cq_j, num_obj]
-                overlap_vertices = tf.maximum(tf.expand_dims(overlap_vertices, -3),
-                                              lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :])
+                # compare overlap vertices and lower bound of each cell:
+                # -> [..., S, K, Cq_j, num_obj]
+                overlap_vertices = tf.maximum(
+                    tf.expand_dims(overlap_vertices, -3),
+                    lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
+                )
 
                 # get hvi length within each cell:-> [..., S, Cq_j, K, num_obj]
-                lengths_j = tf.maximum((ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :]
-                                        - overlap_vertices), 0.0)
+                lengths_j = tf.maximum(
+                    (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
+                )
                 # take product over hyperrectangle side lengths to compute area within each K
                 # sum over all subsets of size Cq_j #
                 areas_j = tf.reduce_sum(tf.reduce_prod(lengths_j, axis=-1), axis=-1)
                 # [..., S, K]
-                areas_per_segment = (-1) ** (j + 1) * areas_j if areas_per_segment is None \
+                areas_per_segment = (
+                    (-1) ** (j + 1) * areas_j
+                    if areas_per_segment is None
                     else areas_per_segment + (-1) ** (j + 1) * areas_j
+                )
 
             # sum over segments(cells) and average over MC samples
             # return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]

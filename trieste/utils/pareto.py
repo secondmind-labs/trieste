@@ -148,7 +148,6 @@ class Pareto:
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
 
-
     def get_hyper_cell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
         """
         Get the partitioned hyper cells lower and upper bounds
@@ -176,7 +175,14 @@ class Pareto:
             ]
         )
 
-        pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
+        pseudo_pfront = tf.concat(
+            (
+                tf.cast(anti_reference[None], dtype=self.front.dtype),
+                self.front,
+                tf.cast(reference[None], dtype=self.front.dtype),
+            ),
+            axis=0,
+        )
         N = tf.shape(self.bounds.upper_idx)[0]
         D = tf.shape(self.bounds.upper_idx)[1]
         idx = tf.tile(tf.range(D), (N,))
@@ -188,4 +194,3 @@ class Pareto:
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
 
         return lower, upper
-
