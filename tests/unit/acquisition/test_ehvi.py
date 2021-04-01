@@ -72,9 +72,23 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
 
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
-    xs = tf.linspace([-10.0], [10.0], 100)
-    expected = expected_hv_improvement(model, xs, _prt, get_reference_point(_prt.front))
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+
+    model = ModelStack(*[(test_models[_](), 1) for _ in range(num_obj)])
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    ehvi = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ehvi(at)
 
 
 @random_seed
@@ -119,7 +133,9 @@ def test_expected_hypervolume_improvement(
     )
 
     xs = tf.cast(xs, dtype=existing_observations.dtype)
-    model = ModelStack(*[(test_models[_](variance_scale), 1) for _ in range(obj_num)])
+    model = ModelStack(
+        *[(test_models[_](kernel_amplitude=variance_scale), 1) for _ in range(obj_num)]
+    )
 
     mean, variance = model.predict(xs)
 
@@ -148,6 +164,6 @@ def test_expected_hypervolume_improvement(
     )  #
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)
 
-    ehvi = expected_hv_improvement(model, xs, _pareto, ref_pt)
+    ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=rtol, atol=atol)
