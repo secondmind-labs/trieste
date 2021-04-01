@@ -12,8 +12,8 @@ from trieste.acquisition.rule import OBJECTIVE
 from trieste.models.model_interfaces import ModelStack
 from trieste.models import create_model
 import matplotlib.pyplot as plt
-from trieste.acquisition.multiobjective.qEHVI import BatchMonteCarloHypervolumeExpectedImprovement
-
+from trieste.acquisition.function import BatchMonteCarloHypervolumeExpectedImprovement
+from trieste.space import Box
 from util.plotting import plot_function_2d, plot_bo_points
 
 np.random.seed(1793)
@@ -101,9 +101,12 @@ models = {OBJECTIVE: ModelStack(*objective_models)}
 #
 # Here we utilize the `HVExpectedImprovement` acquisition function proposed in
 # Yang 2019 [1]:
+from trieste.acquisition.rule import EfficientGlobalOptimization
 
 qehvi = BatchMonteCarloHypervolumeExpectedImprovement().using(OBJECTIVE)
-rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, builder=qehvi)
+batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+    num_query_points=3, builder=qehvi.using(OBJECTIVE)
+)
 
 # ## Run the optimization loop
 #
@@ -111,7 +114,7 @@ rule = trieste.acquisition.rule.BatchAcquisitionRule(num_query_points=3, builder
 
 num_steps = 10
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=batch_rule)
 
 # To conclude, we visualize the queried data in the design space
 
