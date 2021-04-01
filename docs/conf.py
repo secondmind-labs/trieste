@@ -84,7 +84,7 @@ intersphinx_mapping = {
 # nbsphinx
 extensions.append("nbsphinx")
 nbsphinx_custom_formats = {
-    ".pct.py": ["jupytext.reads", {"fmt": "py:percent"}],
+    # ".pct.py": ["jupytext.reads", {"fmt": "py:percent"}],
 }
 
 # sphinxcontrib-bibtex
