@@ -28,5 +28,6 @@ from .model_interfaces import (
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
     module_deepcopy,
+    M,
     supported_models,
 )
