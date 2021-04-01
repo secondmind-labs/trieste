@@ -178,7 +178,7 @@ class Pareto:
             upper = tf.gather_nd(pseudo_front, tf.stack((upper_idx, arr), -1))
 
             test_accepted = self._is_test_required((upper - jitter) < front)
-            lower_result, upper_result = tf.cond(
+            lower_result_final, upper_result_final = tf.cond(
                 test_accepted,
                 lambda: self._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
                 lambda: (lower_result, upper_result),
@@ -193,7 +193,7 @@ class Pareto:
                 lambda: divide_conquer_cells_new,
             )
 
-            return divide_conquer_cells_final, lower_result, upper_result
+            return divide_conquer_cells_final, lower_result_final, upper_result_final
 
         _, lower_result_final, upper_result_final = tf.while_loop(
             lambda divide_conquer_cells, lower_result, upper_result: len(divide_conquer_cells) > 0,
