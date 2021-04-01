@@ -195,7 +195,7 @@ class Pareto:
 
             return divide_conquer_cells_final, lower_result, upper_result
 
-        _, lower_result, upper_result = tf.while_loop(
+        _, lower_result_final, upper_result_final = tf.while_loop(
             lambda divide_conquer_cells, lower_result, upper_result: len(divide_conquer_cells) > 0,
             while_body,
             loop_vars=[divide_conquer_cells, lower_result, upper_result],
@@ -205,7 +205,7 @@ class Pareto:
                 tf.TensorShape([None, number_of_objectives]),
             ],
         )
-        return BoundedVolumes(lower_result, upper_result)
+        return BoundedVolumes(lower_result_final, upper_result_final)
 
     def _accepted_test_body(
         self,
