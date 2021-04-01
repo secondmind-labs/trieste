@@ -14,12 +14,12 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
 import tensorflow as tf
-from trieste.utils.pareto import non_dominated_sort, to_Dataset
+from matplotlib import cm
 
 from trieste.type import TensorType
 from trieste.utils import to_numpy
+from trieste.utils.pareto import non_dominated
 
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
@@ -210,20 +210,20 @@ def plot_bo_points(
 
 
 def plot_bo_points_in_obj_space(
-        dataset,
-        num_init=None,
-        mask_fail=None,
-        figsize=None,
-        xlabel='Obj 1',
-        ylabel='Obj 2',
-        zlabel='Obj 3',
-        title=None,
-        m_init="x",
-        m_add="o",
-        c_pass="tab:green",
-        c_fail="tab:red",
-        c_pareto="tab:purple",
-        only_plot_pareto=False
+    observations,
+    num_init=None,
+    mask_fail=None,
+    figsize=None,
+    xlabel="Obj 1",
+    ylabel="Obj 2",
+    zlabel="Obj 3",
+    title=None,
+    m_init="x",
+    m_add="o",
+    c_pass="tab:green",
+    c_fail="tab:red",
+    c_pareto="tab:purple",
+    only_plot_pareto=False,
 ):
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
@@ -237,15 +237,15 @@ def plot_bo_points_in_obj_space(
     :param figsize:
     :param only_plot_pareto: if set true, only plot the pareto points
     """
-    obj_num = dataset.observations.shape[-1]
-    assert obj_num == 2 or obj_num == 3, NotImplementedError('Only support 2/3-objective'
-                                                             ' function plot but found: {}'.format(obj_num))
+    obj_num = observations.shape[-1]
+    assert obj_num == 2 or obj_num == 3, NotImplementedError(
+        "Only support 2/3-objective" " function plot but found: {}".format(obj_num)
+    )
 
-    _, dom = non_dominated_sort(dataset)
+    _, dom = non_dominated(observations)
     idx_pareto = np.where(dom == 0)
 
-    data_observations = dataset.observations
-    pts = data_observations
+    pts = observations
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(
@@ -260,7 +260,7 @@ def plot_bo_points_in_obj_space(
         fig, ax = plt.subplots(figsize=figsize)
     else:
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
     for i in range(pts.shape[0]):
         ax.scatter(*pts[i], c=col_pts[i], marker=mark_pts[i])
     ax.set_xlabel(xlabel)

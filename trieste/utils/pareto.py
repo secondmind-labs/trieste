@@ -26,10 +26,14 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
     Computes the non-dominated set for a set of data points.
     if there are duplicate point(s) in the non-dominated set, this function will return
     as it is without removing the duplicate.
+
+
     :param observations: set of points with shape [N,D]
     :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
         P is the number of points in pareto front
         dominances gives the number of dominating points for each data point
+
+
     """
     extended = tf.tile(observations[None], [len(observations), 1, 1])
     swapped_ext = tf.transpose(extended, [1, 0, 2])
@@ -144,11 +148,12 @@ class Pareto:
 
         return tf.reduce_prod(reference[None] - min_pfront) - hypervolume
 
-    def get_hypercell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
+
+    def get_hyper_cell_bounds(self, anti_reference: TensorType, reference: TensorType) -> Tuple:
         """
-        Get the partitioned hypercells lower and upper bounds
+        Get the partitioned hyper cells lower and upper bounds
+
         :param anti_reference: a worst point to use with shape [D].
-            Defines the lower bound of the hypercell
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
             Should be equal or bigger than the anti-ideal point of the Pareto set.
@@ -156,9 +161,10 @@ class Pareto:
         :return: lower, upper bounds or the partitioned cell
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
+        :raise `tf.errors.InvalidArgumentError`: If ``reference`` is less than the anti-ideal point
+            in any dimension.
         """
         tf.debugging.assert_greater_equal(reference, self.front)
-        tf.debugging.assert_greater_equal(self.front, anti_reference)
 
         tf.debugging.assert_shapes(
             [
@@ -182,3 +188,4 @@ class Pareto:
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
 
         return lower, upper
+

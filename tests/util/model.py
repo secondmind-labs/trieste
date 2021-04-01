@@ -92,12 +92,3 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
-
-
-class LinearMeanAndRBFKernel(GaussianProcess):
-    def __init__(self, kernel_amplitude: Optional[Union[float, TensorType]] = None):
-        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([linear], [kernel])
-
-    def __repr__(self) -> str:
-        return "LinearMeanAndRBFKernel()"
