@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from collections.abc import Callable
+from typing import Any
 
 import gpflow
 import tensorflow as tf
@@ -28,7 +31,7 @@ class ProbabilisticModel(tf.Module, ABC):
     """ A probabilistic model. """
 
     @abstractmethod
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
         ``query_points``.
@@ -45,7 +48,7 @@ class ProbabilisticModel(tf.Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions, of shape [..., B, D].
         :return: The mean and covariance of the joint marginal distribution at each batch of points
@@ -96,19 +99,27 @@ class ModelStack(TrainableProbabilisticModel):
     A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
     It combines the outputs of each model for predictions and sampling, and delegates training data
     to each model for updates and optimization.
+
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
-    multi-output model may have dependence between its outputs.
+    multi-output model may have dependence between its outputs. When we speak of *event size* in
+    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,
+    whether that is the :class:`ModelStack` itself, or one of the subsidiary
+    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+    size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
     """
 
     def __init__(
         self,
-        model_with_event_size: Tuple[TrainableProbabilisticModel, int],
-        *models_with_event_sizes: Tuple[TrainableProbabilisticModel, int],
+        model_with_event_size: tuple[TrainableProbabilisticModel, int],
+        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
         :class:`ModelStack` output dimensions.
+
+
+
         :param model_with_event_size: The first model, and the size of its output events.
             **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
             method signature requires at least one model. It is not treated specially.
@@ -117,7 +128,7 @@ class ModelStack(TrainableProbabilisticModel):
         super().__init__()
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].
         :return: The predictions from all the wrapped models, concatenated along the event axis in
@@ -128,7 +139,7 @@ class ModelStack(TrainableProbabilisticModel):
         means, vars_ = zip(*[model.predict(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., B, D].
         :return: The predictions from all the wrapped models, concatenated along the event axis in
@@ -156,6 +167,7 @@ class ModelStack(TrainableProbabilisticModel):
         Update all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
@@ -168,6 +180,7 @@ class ModelStack(TrainableProbabilisticModel):
         Optimize all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
         event sizes specified at :meth:`__init__`.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
@@ -179,7 +192,7 @@ class ModelStack(TrainableProbabilisticModel):
 class GPflowPredictor(ProbabilisticModel, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
-    def __init__(self, optimizer: Optional[Optimizer] = None):
+    def __init__(self, optimizer: Optimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
@@ -200,10 +213,10 @@ class GPflowPredictor(ProbabilisticModel, ABC):
     def model(self) -> GPModel:
         """ The underlying GPflow model. """
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
 
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -214,7 +227,7 @@ class GPflowPredictor(ProbabilisticModel, ABC):
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(self, model: Union[GPR, SGPR], optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -228,7 +241,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
 
     @property
-    def model(self) -> Union[GPR, SGPR]:
+    def model(self) -> GPR | SGPR:
         return self._model
 
     def update(self, dataset: Dataset) -> None:
@@ -246,7 +259,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param data: The initial training data.
@@ -277,7 +290,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
 
-    def __init__(self, model: VGP, optimizer: Optional[Optimizer] = None):
+    def __init__(self, model: VGP, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -327,7 +340,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified
@@ -336,7 +349,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         return self.model.predict_y(query_points)
 
 
-supported_models: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
+supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,

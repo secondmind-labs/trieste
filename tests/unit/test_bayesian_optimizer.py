@@ -13,7 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Dict, List, Mapping, NoReturn, Optional, Tuple
+from collections.abc import Mapping
+from typing import NoReturn
 
 import numpy.testing as npt
 import pytest
@@ -22,9 +23,9 @@ import tensorflow as tf
 from tests.util.misc import (
     FixedAcquisitionRule,
     assert_datasets_allclose,
-    one_dimensional_range,
+    empty_dataset,
+    mk_dataset,
     quadratic,
-    zero_dataset,
 )
 from tests.util.model import (
     GaussianProcess,
@@ -64,7 +65,7 @@ def test_optimization_result_astuple() -> None:
 
 
 def test_optimization_result_try_get_final_datasets_for_successful_optimization() -> None:
-    data = {"foo": zero_dataset()}
+    data = {"foo": empty_dataset([1], [1])}
     result: OptimizationResult[None] = OptimizationResult(
         Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
     )
@@ -80,7 +81,7 @@ def test_optimization_result_try_get_final_datasets_for_failed_optimization() ->
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
     models = {"foo": _PseudoTrainableQuadratic()}
     result: OptimizationResult[None] = OptimizationResult(
-        Ok(Record({"foo": zero_dataset()}, models, None)), []
+        Ok(Record({"foo": empty_dataset([1], [1])}, models, None)), []
     )
     assert result.try_get_final_models() is models
 
@@ -96,13 +97,13 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     class _CountingObserver:
         call_count = 0
 
-        def __call__(self, x: tf.Tensor) -> Dict[str, Dataset]:
+        def __call__(self, x: tf.Tensor) -> dict[str, Dataset]:
             self.call_count += 1
             return {OBJECTIVE: Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
 
     observer = _CountingObserver()
-    optimizer = BayesianOptimizer(observer, one_dimensional_range(-1, 1))
-    data = Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))
+    optimizer = BayesianOptimizer(observer, Box([-1], [1]))
+    data = mk_dataset([[0.5]], [[0.25]])
 
     optimizer.optimize(
         steps, {OBJECTIVE: data}, {OBJECTIVE: _PseudoTrainableQuadratic()}
@@ -115,28 +116,29 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     "datasets, models",
     [
         ({}, {}),
-        ({"foo": zero_dataset()}, {}),
-        ({"foo": zero_dataset()}, {"bar": _PseudoTrainableQuadratic()}),
+        ({"foo": empty_dataset([1], [1])}, {}),
+        ({"foo": empty_dataset([1], [1])}, {"bar": _PseudoTrainableQuadratic()}),
         (
-            {"foo": zero_dataset()},
+            {"foo": empty_dataset([1], [1])},
             {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()},
         ),
     ],
 )
 def test_bayesian_optimizer_optimize_raises_for_invalid_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, TrainableProbabilisticModel]
+    datasets: dict[str, Dataset], models: dict[str, TrainableProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
-    optimizer = BayesianOptimizer(lambda x: {"foo": Dataset(x, x[:1])}, search_space)
-    rule = FixedAcquisitionRule(tf.constant([[0.0]]))
+    search_space = Box([-1], [1])
+    optimizer = BayesianOptimizer(lambda x: {"foo": Dataset(x, x)}, search_space)
+    rule = FixedAcquisitionRule([[0.0]])
     with pytest.raises(ValueError):
         optimizer.optimize(10, datasets, models, rule)
 
 
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
-    optimizer = BayesianOptimizer(lambda x: x[:1], one_dimensional_range(-1, 1))
+    optimizer = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
+    data, models = {"foo": empty_dataset([1], [1])}, {"foo": _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError):
-        optimizer.optimize(3, {"foo": zero_dataset()}, {"foo": _PseudoTrainableQuadratic()})
+        optimizer.optimize(3, data, models)
 
 
 @pytest.mark.parametrize(
@@ -144,9 +146,9 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_ac
     [(None, [None, 1, 2], 3), (3, [3, 4, 5], 6)],
 )
 def test_bayesian_optimizer_uses_specified_acquisition_state(
-    starting_state: Optional[int],
-    expected_states_received: List[Optional[int]],
-    final_acquisition_state: Optional[int],
+    starting_state: int | None,
+    expected_states_received: list[int | None],
+    final_acquisition_state: int | None,
 ) -> None:
     class Rule(AcquisitionRule[int, Box]):
         def __init__(self):
@@ -157,20 +159,21 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: Optional[int],
-        ) -> Tuple[TensorType, int]:
+            state: int | None,
+        ) -> tuple[TensorType, int]:
             self.states_received.append(state)
 
             if state is None:
                 state = 0
 
-            return tf.constant([[0.0]]), state + 1
+            return tf.constant([[0.0]], tf.float64), state + 1
 
     rule = Rule()
 
+    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
     final_state, history = (
-        BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, one_dimensional_range(-1, 1))
-        .optimize(3, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()}, rule, starting_state)
+        BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1]))
+        .optimize(3, data, models, rule, starting_state)
         .astuple()
     )
 
@@ -186,16 +189,16 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
         def optimize(self, dataset: Dataset) -> None:
             self._optimize_count += 1
 
-        def __deepcopy__(self, memo: Dict[int, object]) -> _UncopyableModel:
+        def __deepcopy__(self, memo: dict[int, object]) -> _UncopyableModel:
             if self._optimize_count >= 3:
                 raise _Whoops
 
             return self
 
-    rule = FixedAcquisitionRule(tf.constant([[0.0]]))
+    rule = FixedAcquisitionRule([[0.0]])
     result, history = (
-        BayesianOptimizer(_quadratic_observer, one_dimensional_range(0, 1))
-        .optimize(10, {"": zero_dataset()}, {"": _UncopyableModel()}, rule)
+        BayesianOptimizer(_quadratic_observer, Box([0], [1]))
+        .optimize(10, {"": mk_dataset([[0.0]], [[0.0]])}, {"": _UncopyableModel()}, rule)
         .astuple()
     )
 
@@ -228,16 +231,17 @@ class _BrokenRule(AcquisitionRule[None, SearchSpace]):
 @pytest.mark.parametrize(
     "observer, model, rule",
     [
-        (_broken_observer, _PseudoTrainableQuadratic(), FixedAcquisitionRule(tf.constant([[0.0]]))),
-        (_quadratic_observer, _BrokenModel(), FixedAcquisitionRule(tf.constant([[0.0]]))),
+        (_broken_observer, _PseudoTrainableQuadratic(), FixedAcquisitionRule([[0.0]])),
+        (_quadratic_observer, _BrokenModel(), FixedAcquisitionRule([[0.0]])),
         (_quadratic_observer, _PseudoTrainableQuadratic(), _BrokenRule()),
     ],
 )
 def test_bayesian_optimizer_optimize_for_failed_step(
     observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule
 ) -> None:
-    optimizer = BayesianOptimizer(observer, one_dimensional_range(0, 1))
-    result, history = optimizer.optimize(3, {"": zero_dataset()}, {"": model}, rule).astuple()
+    optimizer = BayesianOptimizer(observer, Box([0], [1]))
+    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
+    result, history = optimizer.optimize(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -247,10 +251,11 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 
 @pytest.mark.parametrize("num_steps", [-3, -1])
 def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -> None:
-    optimizer = BayesianOptimizer(_quadratic_observer, one_dimensional_range(-1, 1))
+    optimizer = BayesianOptimizer(_quadratic_observer, Box([-1], [1]))
 
+    data, models = {"": empty_dataset([1], [1])}, {"": _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError, match="num_steps"):
-        optimizer.optimize(num_steps, {"": zero_dataset()}, {"": _PseudoTrainableQuadratic()})
+        optimizer.optimize(num_steps, data, models)
 
 
 def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
@@ -283,9 +288,9 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     def _unusable_observer(x: tf.Tensor) -> NoReturn:
         assert False
 
-    data = {"": zero_dataset()}
+    data = {"": mk_dataset([[0.0]], [[0.0]])}
     result, history = (
-        BayesianOptimizer(_unusable_observer, one_dimensional_range(-1, 1))
+        BayesianOptimizer(_unusable_observer, Box([-1], [1]))
         .optimize(0, data, {"": _UnusableModel()}, _UnusableRule())
         .astuple()
     )
@@ -313,8 +318,8 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            previous_state: Optional[int],
-        ) -> Tuple[TensorType, int]:
+            previous_state: int | None,
+        ) -> tuple[TensorType, int]:
             if previous_state is None:
                 previous_state = 1
 
@@ -329,7 +334,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
             return next_query_points, previous_state * 2
 
-    def linear_and_exponential(query_points: tf.Tensor) -> Dict[str, Dataset]:
+    def linear_and_exponential(query_points: tf.Tensor) -> dict[str, Dataset]:
         return {
             LINEAR: Dataset(query_points, 2 * query_points),
             EXPONENTIAL: Dataset(query_points, tf.exp(-query_points)),
@@ -358,14 +363,13 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
 def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None:
     class _UncopyableModel(_PseudoTrainableQuadratic):
-        def __deepcopy__(self, memo: Dict[int, object]) -> NoReturn:
+        def __deepcopy__(self, memo: dict[int, object]) -> NoReturn:
             assert False
 
+    data, models = {OBJECTIVE: empty_dataset([1], [1])}, {OBJECTIVE: _UncopyableModel()}
     history = (
-        BayesianOptimizer(_quadratic_observer, one_dimensional_range(-1, 1))
-        .optimize(
-            5, {OBJECTIVE: zero_dataset()}, {OBJECTIVE: _UncopyableModel()}, track_state=False
-        )
+        BayesianOptimizer(_quadratic_observer, Box([-1], [1]))
+        .optimize(5, data, models, track_state=False)
         .history
     )
     assert len(history) == 0
@@ -378,17 +382,17 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: Optional[int],
-        ) -> Tuple[TensorType, int]:
+            state: int | None,
+        ) -> tuple[TensorType, int]:
             new_state = 0 if state is None else state + 1
-            return tf.constant([[10.0]]) + new_state, new_state
+            return tf.constant([[10.0]], tf.float64) + new_state, new_state
 
     class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
         def __init__(self, data: Dataset):
             super().__init__()
             self._data = data
 
-        def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
             mean, var = super().predict(query_points)
             return mean, var / len(self._data)
 
@@ -398,26 +402,24 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         def optimize(self, dataset: Dataset) -> None:
             pass
 
+    initial_data = mk_dataset([[0.0]], [[0.0]])
+    model = _DecreasingVarianceModel(initial_data)
     _, history = (
-        BayesianOptimizer(_quadratic_observer, one_dimensional_range(0, 1))
-        .optimize(
-            3, {"": zero_dataset()}, {"": _DecreasingVarianceModel(zero_dataset())}, _CountingRule()
-        )
+        BayesianOptimizer(_quadratic_observer, Box([0], [1]))
+        .optimize(3, {"": initial_data}, {"": model}, _CountingRule())
         .astuple()
     )
 
     assert [record.acquisition_state for record in history] == [None, 0, 1]
 
-    assert_datasets_allclose(history[0].datasets[""], zero_dataset())
+    assert_datasets_allclose(history[0].datasets[""], initial_data)
+    assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]]))
     assert_datasets_allclose(
-        history[1].datasets[""],
-        Dataset(tf.constant([[0.0], [10.0]]), tf.constant([[0.0], [100.0]])),
-    )
-    assert_datasets_allclose(
-        history[2].datasets[""],
-        Dataset(tf.constant([[0.0], [10.0], [11.0]]), tf.constant([[0.0], [100.0], [121.0]])),
+        history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
     )
 
     for step in range(3):
-        _, variance_from_saved_model = history[step].models[""].predict(tf.constant([[0.0]]))
+        _, variance_from_saved_model = (
+            history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+        )
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))

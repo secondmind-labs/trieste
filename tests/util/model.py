@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC
-from typing import Callable, Optional, Sequence, Tuple, Union
+from collections.abc import Callable, Sequence
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing import Optional
 
-from tests.util.misc import quadratic, linear
+from tests.util.misc import ListN, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.type import TensorType
@@ -65,11 +68,11 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
     def __repr__(self) -> str:
         return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = self.predict_joint(query_points[..., None, :])
         return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
 
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         means = [f(query_points) for f in self._mean_functions]
         covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
@@ -78,9 +81,14 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 class QuadraticMeanAndRBFKernel(GaussianProcess):
     r""" A Gaussian process with scalar quadratic mean and RBF kernel. """
 
-    def __init__(self, kernel_amplitude: Optional[Union[float, TensorType]] = None):
+    def __init__(
+        self,
+        *,
+        x_shift: float | ListN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+    ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([quadratic], [kernel])
+        super().__init__([lambda x: quadratic(x - x_shift)], [kernel])
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
