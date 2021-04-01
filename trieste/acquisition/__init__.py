@@ -34,29 +34,25 @@ acquisition function should take. Additionally, acquisition functions and builde
 are designed to minimize the objective function. For example, we do not provide an implementation of
 UCB.
 """
-from . import rule
+from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchAcquisitionFunction,
-    BatchAcquisitionFunctionBuilder,
     BatchMonteCarloExpectedImprovement,
     BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
     IndependentReparametrizationSampler,
-    MCIndAcquisitionFunctionBuilder,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
-    SingleModelBatchAcquisitionBuilder,
-    SingleModelMCIndAcquisitionFunctionBuilder,
     expected_hv_improvement,
     expected_improvement,
     lower_confidence_bound,
+    min_value_entropy_search,
     probability_of_feasibility,
 )
