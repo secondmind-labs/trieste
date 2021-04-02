@@ -108,8 +108,8 @@ def test_pareto_2d_bounds() -> None:
 
     pareto_2d = Pareto(objectives)
 
-    npt.assert_allclose(pareto_2d.bounds.lower_idx, tf.constant([[0, 0], [1, 0], [2, 0], [3, 0]]))
-    npt.assert_allclose(pareto_2d.bounds.upper_idx, tf.constant([[1, 4], [2, 1], [3, 2], [4, 3]]))
+    npt.assert_allclose(pareto_2d._bounds.lower_idx, tf.constant([[0, 0], [1, 0], [2, 0], [3, 0]]))
+    npt.assert_allclose(pareto_2d._bounds.upper_idx, tf.constant([[1, 4], [2, 1], [3, 2], [4, 3]]))
     npt.assert_allclose(
         pareto_2d.front, tf.constant([[0.1419, 0.9340], [0.1576, 0.7922], [0.4854, 0.0357]])
     )
@@ -218,7 +218,12 @@ def test_pareto_hypercell_bounds_raises_for_front_below_anti_reference_point(
         ),
     ],
 )
-def test_pareto_hypercell_bounds(objectives, anti_reference, reference, expected):
+def test_pareto_hypercell_bounds(
+    objectives: ListN[float],
+    anti_reference: list[float],
+    reference: list[float],
+    expected: ListN[float],
+):
     pareto = Pareto(tf.constant(objectives))
     npt.assert_allclose(
         pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[0],

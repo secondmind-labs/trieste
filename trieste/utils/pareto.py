@@ -83,7 +83,7 @@ class Pareto:
 
         pf, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pf, tf.argsort(pf[:, :1], axis=0))
-        self.bounds: Final[BoundedVolumes] = self._bounds_2d(self.front)
+        self._bounds: Final[BoundedVolumes] = self._bounds_2d(self.front)
 
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
@@ -126,8 +126,8 @@ class Pareto:
 
         tf.debugging.assert_shapes(
             [
-                (self.bounds.lower_idx, ["N", "D"]),
-                (self.bounds.upper_idx, ["N", "D"]),
+                (self._bounds.lower_idx, ["N", "D"]),
+                (self._bounds.upper_idx, ["N", "D"]),
                 (self.front, ["M", "D"]),
                 (reference, ["D"]),
             ]
@@ -135,14 +135,14 @@ class Pareto:
 
         min_pfront = tf.reduce_min(self.front, 0, keepdims=True)
         pseudo_pfront = tf.concat((min_pfront, self.front, reference[None]), 0)
-        N, D = tf.shape(self.bounds.upper_idx)
+        N, D = tf.shape(self._bounds.upper_idx)
 
         idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
         upper_idx = tf.reshape(
-            tf.stack([tf.transpose(self.bounds.upper_idx), idx], axis=2), [N * D, 2]
+            tf.stack([tf.transpose(self._bounds.upper_idx), idx], axis=2), [N * D, 2]
         )
         lower_idx = tf.reshape(
-            tf.stack([tf.transpose(self.bounds.lower_idx), idx], axis=2), [N * D, 2]
+            tf.stack([tf.transpose(self._bounds.lower_idx), idx], axis=2), [N * D, 2]
         )
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [D, N])
         lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [D, N])
@@ -167,11 +167,13 @@ class Pareto:
         """
         tf.debugging.assert_greater_equal(reference, self.front)
         tf.debugging.assert_greater_equal(self.front, anti_reference)
+        tf.debugging.assert_type(anti_reference, self.front.dtype)
+        tf.debugging.assert_type(reference, self.front.dtype)
 
         tf.debugging.assert_shapes(
             [
-                (self.bounds.lower_idx, ["N", "D"]),
-                (self.bounds.upper_idx, ["N", "D"]),
+                (self._bounds.lower_idx, ["N", "D"]),
+                (self._bounds.upper_idx, ["N", "D"]),
                 (self.front, ["M", "D"]),
                 (reference, ["D"]),
                 (anti_reference, ["D"]),
@@ -179,12 +181,12 @@ class Pareto:
         )
 
         pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
-        N = tf.shape(self.bounds.upper_idx)[0]
-        D = tf.shape(self.bounds.upper_idx)[1]
+        N = tf.shape(self._bounds.upper_idx)[0]
+        D = tf.shape(self._bounds.upper_idx)[1]
         idx = tf.tile(tf.range(D), (N,))
 
-        lower_idx = tf.stack((tf.reshape(self.bounds.lower_idx, [-1]), idx), axis=1)
-        upper_idx = tf.stack((tf.reshape(self.bounds.upper_idx, [-1]), idx), axis=1)
+        lower_idx = tf.stack((tf.reshape(self._bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(self._bounds.upper_idx, [-1]), idx), axis=1)
 
         lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
