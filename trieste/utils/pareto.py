@@ -48,7 +48,7 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
     return tf.boolean_mask(observations, dominance == 0), dominance
 
 
-class BoundedVolumes:
+class _BoundedVolumes:
     """
     A :class:`BoundedVolumes` store the index of the Pareto front to form lower and upper
     bounds of the pseudo cells decomposition.
@@ -83,10 +83,10 @@ class Pareto:
 
         pf, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pf, tf.argsort(pf[:, :1], axis=0))
-        self._bounds: Final[BoundedVolumes] = self._bounds_2d(self.front)
+        self._bounds: Final[_BoundedVolumes] = self._bounds_2d(self.front)
 
     @staticmethod
-    def _bounds_2d(front: TensorType) -> BoundedVolumes:
+    def _bounds_2d(front: TensorType) -> _BoundedVolumes:
 
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
@@ -105,7 +105,7 @@ class Pareto:
         lower = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
         upper = tf.concat([range_ + 1, pf_ext_idx[::-1, 1:][: pf_ext_idx[-1, 0]]], axis=-1)
 
-        return BoundedVolumes(lower, upper)
+        return _BoundedVolumes(lower, upper)
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
