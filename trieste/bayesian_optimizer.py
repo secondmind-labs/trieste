@@ -22,7 +22,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast, overload
 
-import gpflow
 import tensorflow as tf
 from absl import logging
 
@@ -31,7 +30,7 @@ from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import Observer
 from .space import SearchSpace
-from .utils import Err, Ok, Result
+from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -231,7 +230,7 @@ class BayesianOptimizer(Generic[SP]):
 
             acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
-        models = {tag: create_model(spec) for tag, spec in model_specs.items()}
+        models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
 
         for step in range(num_steps):
@@ -240,7 +239,7 @@ class BayesianOptimizer(Generic[SP]):
 
             try:
                 if track_state:
-                    models = {tag: gpflow.utilities.deepcopy(m) for tag, m in models.items()}
+                    models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
 
                 query_points, acquisition_state = acquisition_rule.acquire(

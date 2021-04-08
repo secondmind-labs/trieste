@@ -2,9 +2,9 @@
 
 ### Who are we?
 
-*Administrators* (Artem Artemev, Joel Berkeley) look after the GitHub repository itself.
+*Administrators* (Henry Moss, Artem Artemev) look after the GitHub repository itself.
 
-*Maintainers* (Artem Artemev, Joel Berkeley, Victor Picheny) steer the project, keep the community thriving, and manage contributions.
+*Maintainers* (Henry Moss, Victor Picheny, Artem Artemev) steer the project, keep the community thriving, and manage contributions.
 
 *Contributors* (you?) submit issues, make pull requests, answer questions on Slack, and more.
 

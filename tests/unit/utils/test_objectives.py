@@ -18,16 +18,23 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
+from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
+    HARTMANN_3_MINIMIZER,
+    HARTMANN_3_MINIMUM,
+    HARTMANN_6_MINIMIZER,
+    HARTMANN_6_MINIMUM,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     branin,
     gramacy_lee,
+    hartmann_3,
+    hartmann_6,
     logarithmic_goldstein_price,
     mk_observer,
 )
@@ -37,12 +44,6 @@ from trieste.utils.mo_objectives import (
     vlmop2,
     MultiObjectiveTestProblem,
 )
-
-
-def _unit_grid_2d() -> TensorType:
-    search_values_1d = tf.range(1001.0, dtype=tf.float64) / 1000
-    x0, x1 = (tf.reshape(t, [-1, 1]) for t in tf.meshgrid(search_values_1d, search_values_1d))
-    return tf.squeeze(tf.stack([x0, x1], axis=-1))
 
 
 @pytest.mark.parametrize(
@@ -55,6 +56,8 @@ def _unit_grid_2d() -> TensorType:
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
         ),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM),
     ],
 )
 def test_objective_maps_minimizers_to_minimum(
@@ -64,18 +67,20 @@ def test_objective_maps_minimizers_to_minimum(
 
 
 def test_branin_no_function_values_are_less_than_global_minimum() -> None:
-    npt.assert_array_less(tf.squeeze(BRANIN_MINIMUM) - 1e-6, branin(_unit_grid_2d()))
+    samples = Box([0.0, 0.0], [1.0, 1.0]).sample(1000)
+    npt.assert_array_less(tf.squeeze(BRANIN_MINIMUM) - 1e-6, branin(samples))
 
 
 def test_gramacy_lee_no_points_are_less_than_global_minimum() -> None:
-    xs = tf.linspace([0.5], [2.5], 1_000_000)
-    npt.assert_array_less(tf.squeeze(GRAMACY_LEE_MINIMUM) - 1e-6, gramacy_lee(xs))
+    samples = Box([0.5], [2.5]).sample(1000)
+    npt.assert_array_less(tf.squeeze(GRAMACY_LEE_MINIMUM) - 1e-6, gramacy_lee(samples))
 
 
 def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_minimum() -> None:
+    samples = Box([0.0, 0.0], [1.0, 1.0]).sample(1000)
     npt.assert_array_less(
         tf.squeeze(LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM) - 1e-6,
-        logarithmic_goldstein_price(_unit_grid_2d()),
+        logarithmic_goldstein_price(samples),
     )
 
 
@@ -156,6 +161,16 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
 ):
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         obj_inst.prepare_benchmark()(actual_x)
+
+
+def test_hartmann_3_no_function_values_are_less_than_global_minimum() -> None:
+    samples = Box([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]).sample(1000)
+    npt.assert_array_less(tf.squeeze(HARTMANN_3_MINIMUM) - 1e-6, hartmann_3(samples))
+
+
+def test_hartmann_6_no_function_values_are_less_than_global_minimum() -> None:
+    samples = Box([0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).sample(1000)
+    npt.assert_array_less(tf.squeeze(HARTMANN_6_MINIMUM) - 1e-6, hartmann_6(samples))
 
 
 def test_mk_observer() -> None:

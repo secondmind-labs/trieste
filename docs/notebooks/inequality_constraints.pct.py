@@ -14,8 +14,7 @@ tf.random.set_seed(1793)
 # In this tutorial, we replicate one of the results of <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, specifically their synthetic experiment "simulation 1", which consists of an objective function with a single constraint, defined over a two-dimensional input domain. We'll start by defining the problem parameters.  The constraint is satisfied when `constraint(input_data) <= threshold`.
 
 # %%
-import gpflow
-import trieste
+from trieste.space import Box
 
 class Sim:
     threshold = 0.5
@@ -33,12 +32,13 @@ class Sim:
         return z[:, None]
 
 
-search_space = trieste.space.Box([0, 0], [6, 6])
+search_space = Box([0, 0], [6, 6])
 
 # %% [markdown]
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
+import trieste
 import matplotlib.pyplot as plt
 from util.inequality_constraints_utils import plot_objective_and_constraints
 
@@ -49,13 +49,15 @@ plt.show()
 # We'll make an observer that outputs the objective and constraint data, labelling each as shown.
 
 # %%
+from trieste.data import Dataset
+
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
 def observer(query_points):
     return {
-        OBJECTIVE: trieste.data.Dataset(query_points, Sim.objective(query_points)),
-        CONSTRAINT: trieste.data.Dataset(query_points, Sim.constraint(query_points)),
+        OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
+        CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
 
 # %% [markdown]
@@ -85,11 +87,14 @@ plt.show()
 # We'll model the objective and constraint data with their own Gaussian process regression models.
 
 # %%
+import gpflow
+
 def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
+    jitter = gpflow.kernels.White(1e-12)
+    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.create_model({
         "model": gpr,
@@ -99,11 +104,7 @@ def create_bo_model(data):
         },
     })
 
-
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
 # ## Define the acquisition process
@@ -111,11 +112,13 @@ initial_models = {
 # We can construct the _expected constrained improvement_ acquisition function defined in <cite data-cite="gardner14">[Gardner et al.](http://proceedings.mlr.press/v32/gardner14.html)</cite>, where they use the probability of feasibility with respect to the constraint model.
 
 # %%
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(eci)
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -152,11 +155,11 @@ plt.show()
 # %% [markdown]
 # ## Batch-sequential strategy
 #
-# It is sometimes beneficial to query several points at a time instead of one. We show here how to create an ad-hoc extensions of the previous acquistion function and use the `BatchAcquisitionRule`.
+# We'll now look at a batch-sequential approach to the same problem. Sometimes it's beneficial to query several points at a time instead of one. The acquisition function we used earlier, built by `ExpectedConstrainedImprovement`, only supports a batch size of 1, so we'll need a new acquisition function builder for larger batch sizes. We can implement this using the reparametrization trick with the Monte-Carlo sampler `BatchReparametrizationSampler`. Note that when we do this, we must initialise the sampler *outside* the acquisition function (here `batch_efi`). This is crucial: a given instance of a sampler produces repeatable, continuous samples, and we can use this to create a repeatable continuous acquisition function. Using a new sampler on each call would not result in a repeatable continuous acquisition function.
 
 # %%
 class BatchExpectedConstrainedImprovement(
-    trieste.acquisition.BatchAcquisitionFunctionBuilder
+    trieste.acquisition.AcquisitionFunctionBuilder
 ):
     def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
@@ -173,8 +176,8 @@ class BatchExpectedConstrainedImprovement(
         }
 
         pf = trieste.acquisition.probability_of_feasibility(
-            models[CONSTRAINT], self._threshold, objective_dataset.query_points
-        )
+            models[CONSTRAINT], self._threshold
+        )(tf.expand_dims(objective_dataset.query_points, 1))
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
@@ -201,18 +204,15 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule = trieste.acquisition.rule.BatchAcquisitionRule(
-    num_query_points, batch_eci
+batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+    batch_eci, num_query_points=num_query_points
 )
 
 # %% [markdown]
 # We can now run the BO loop as before; note that here we also query twenty points, but in five batches of four points.
 
 # %%
-initial_models = {
-    OBJECTIVE: create_bo_model(initial_data[OBJECTIVE]),
-    CONSTRAINT: create_bo_model(initial_data[CONSTRAINT]),
-}
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 num_steps = 5
 batch_data = bo.optimize(

@@ -30,7 +30,9 @@ def masked_branin(x):
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
 
 # %%
-search_space = trieste.space.Box([0, 0], [1, 1])
+from trieste.space import Box
+
+search_space = Box([0, 0], [1, 1])
 
 # %% [markdown]
 # ... where the `masked_branin` now looks as follows. The white area in the centre shows the failure
@@ -147,14 +149,19 @@ models: dict[str, trieste.models.ModelSpec] = {
 # We'll need a custom acquisition function for this problem. This function is the product of the expected improvement for the objective data and the predictive mean for the failure data. We can specify which data and model to use in each acquisition function builder with the `OBJECTIVE` and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
 
 # %%
-class ProbabilityOfValidity(trieste.acquisition.SingleModelAcquisitionBuilder):
-    def prepare_acquisition_function(self, dataset, model):
-        return lambda at: trieste.acquisition.lower_confidence_bound(model, 0.0, at)
+from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.acquisition import (
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
+)
 
-ei = trieste.acquisition.ExpectedImprovement()
+class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
+    def prepare_acquisition_function(self, dataset, model):
+        return lower_confidence_bound(model, 0.0)
+
+ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
-acq_fn = trieste.acquisition.Product(ei.using(OBJECTIVE), pov.using(FAILURE))
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
+acq_fn = Product(ei.using(OBJECTIVE), pov.using(FAILURE))
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(acq_fn)
 
 # %% [markdown]
 # ## Run the optimizer
@@ -201,7 +208,7 @@ from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 
 fig = plot_gp_plotly(
-    result.models[OBJECTIVE].model,
+    result.models[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50
@@ -224,7 +231,7 @@ fig.show()
 
 # %%
 fig, ax = plot_gp_2d(
-    result.models[FAILURE].model,
+    result.models[FAILURE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50,
