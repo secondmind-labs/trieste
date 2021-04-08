@@ -22,17 +22,20 @@ from trieste.type import TensorType
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
-    DTLZ1,
-    DTLZ2,
     GRAMACY_LEE_MINIMIZER,
     GRAMACY_LEE_MINIMUM,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
-    MultiObjectiveTestProblem,
     branin,
     gramacy_lee,
     logarithmic_goldstein_price,
     mk_observer,
+)
+from trieste.utils.mo_objectives import (
+    DTLZ1,
+    DTLZ2,
+    vlmop2,
+    MultiObjectiveTestProblem,
 )
 
 
@@ -77,6 +80,52 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
 
 
 @pytest.mark.parametrize(
+    "test_x, expected",
+    [
+        (tf.constant([[0.0, 0.0]]),
+         tf.convert_to_tensor([[1.0 - tf.math.exp(-1.0), 1.0 - tf.math.exp(-1.0)]])),
+        (tf.constant([[0.5, 1.0]]),
+         tf.convert_to_tensor([[1.0 - tf.math.exp(- (0.5 - 1/tf.sqrt(2.0)) ** 2 - (1.0 - 1/tf.sqrt(2.0)) ** 2),
+                                1.0 - tf.math.exp(- (0.5 + 1/tf.sqrt(2.0)) ** 2 - (1.0 + 1/tf.sqrt(2.0)) ** 2)]]))
+    ],
+)
+def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
+    npt.assert_allclose(vlmop2(test_x), expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize(
+    "test_x, input_dim, num_obj, expected",
+    [
+        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2,
+         tf.constant([[0.0, 5.5]])),
+        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2,
+         tf.constant([[4.8, 1.2]])),
+        (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3,
+         tf.constant([[0.06, 0.24, 2.7]]))
+    ],
+)
+def test_dtlz1_has_expected_output(test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType):
+    f = DTLZ1(input_dim, num_obj).prepare_benchmark()
+    npt.assert_allclose(f(test_x), expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize(
+    "test_x, input_dim, num_obj, expected",
+    [
+        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2,
+         tf.constant([[1.1, 0.0]])),
+        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2,
+         tf.constant([[0.3430008637, 1.055672733]])),
+        (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3,
+         tf.constant([[0.9863148, 0.3204731, 0.16425618]]))
+    ],
+)
+def test_dtlz2_has_expected_output(test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType):
+    f = DTLZ2(input_dim, num_obj).prepare_benchmark()
+    npt.assert_allclose(f(test_x), expected, rtol=1e-4)
+
+
+@pytest.mark.parametrize(
     "obj_inst, input_dim, num_obj, gen_pf_num",
     [
         (DTLZ1(3, 2), 3, 2, 1000),
@@ -102,7 +151,7 @@ def test_gen_pareto_front_is_equal_to_math_defined(
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
     ],
 )
-def test_func_raises_specified_input_dim_not_alin_with_actual_input_dim(
+def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
 ):
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
