@@ -81,7 +81,7 @@ $ isort .
 
 #### Virtual environments and taskipy
 
-During development, it can sometimes be more convenient to set up a virtual environment to run the tests in rather than use tox. If you decide to do this, then we recommend installing [taskipy](https://github.com/illBeRoy/taskipy) by running:
+During development, it can sometimes be more convenient to set up a virtual environment to run the tests in rather than using tox. If you decide to do this, then we recommend installing [taskipy](https://github.com/illBeRoy/taskipy) by running:
 
 ```bash
 pip install -r common_build/taskipy/requirements.txt -c common_build/taskipy/constraints.txt
