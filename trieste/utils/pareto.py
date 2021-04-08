@@ -95,8 +95,8 @@ class Pareto:
 
     @staticmethod
     def _bounds_2d(front: TensorType) -> BoundedVolumes:
-
-        # This assumes the Pareto set has been sorted in ascending order on the first
+        # Compute the cells covering the non-dominated region for 2 dimension case
+        # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
         len_front, number_of_objectives = front.shape
 
