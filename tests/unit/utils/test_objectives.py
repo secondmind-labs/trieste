@@ -20,6 +20,7 @@ import tensorflow as tf
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.space import Box
 from trieste.type import TensorType
+from trieste.utils.mo_objectives import DTLZ1, DTLZ2, MultiObjectiveTestProblem, vlmop2
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
@@ -37,12 +38,6 @@ from trieste.utils.objectives import (
     hartmann_6,
     logarithmic_goldstein_price,
     mk_observer,
-)
-from trieste.utils.mo_objectives import (
-    DTLZ1,
-    DTLZ2,
-    vlmop2,
-    MultiObjectiveTestProblem,
 )
 
 
@@ -87,11 +82,27 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
 @pytest.mark.parametrize(
     "test_x, expected",
     [
-        (tf.constant([[0.0, 0.0]]),
-         tf.convert_to_tensor([[1.0 - tf.math.exp(-1.0), 1.0 - tf.math.exp(-1.0)]])),
-        (tf.constant([[0.5, 1.0]]),
-         tf.convert_to_tensor([[1.0 - tf.math.exp(- (0.5 - 1/tf.sqrt(2.0)) ** 2 - (1.0 - 1/tf.sqrt(2.0)) ** 2),
-                                1.0 - tf.math.exp(- (0.5 + 1/tf.sqrt(2.0)) ** 2 - (1.0 + 1/tf.sqrt(2.0)) ** 2)]]))
+        (
+            tf.constant([[0.0, 0.0]]),
+            tf.convert_to_tensor([[1.0 - tf.math.exp(-1.0), 1.0 - tf.math.exp(-1.0)]]),
+        ),
+        (
+            tf.constant([[0.5, 1.0]]),
+            tf.convert_to_tensor(
+                [
+                    [
+                        1.0
+                        - tf.math.exp(
+                            -((0.5 - 1 / tf.sqrt(2.0)) ** 2) - (1.0 - 1 / tf.sqrt(2.0)) ** 2
+                        ),
+                        1.0
+                        - tf.math.exp(
+                            -((0.5 + 1 / tf.sqrt(2.0)) ** 2) - (1.0 + 1 / tf.sqrt(2.0)) ** 2
+                        ),
+                    ]
+                ]
+            ),
+        ),
     ],
 )
 def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
@@ -101,15 +112,14 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
 @pytest.mark.parametrize(
     "test_x, input_dim, num_obj, expected",
     [
-        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2,
-         tf.constant([[0.0, 5.5]])),
-        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2,
-         tf.constant([[4.8, 1.2]])),
-        (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3,
-         tf.constant([[0.06, 0.24, 2.7]]))
+        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[0.0, 5.5]])),
+        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[4.8, 1.2]])),
+        (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3, tf.constant([[0.06, 0.24, 2.7]])),
     ],
 )
-def test_dtlz1_has_expected_output(test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType):
+def test_dtlz1_has_expected_output(
+    test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
+):
     f = DTLZ1(input_dim, num_obj).prepare_benchmark()
     npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
@@ -117,15 +127,19 @@ def test_dtlz1_has_expected_output(test_x: TensorType, input_dim: int, num_obj: 
 @pytest.mark.parametrize(
     "test_x, input_dim, num_obj, expected",
     [
-        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2,
-         tf.constant([[1.1, 0.0]])),
-        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2,
-         tf.constant([[0.3430008637, 1.055672733]])),
-        (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3,
-         tf.constant([[0.9863148, 0.3204731, 0.16425618]]))
+        (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[1.1, 0.0]])),
+        (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[0.3430008637, 1.055672733]])),
+        (
+            tf.constant([[0.1, 0.2, 0.3, 0.4]]),
+            4,
+            3,
+            tf.constant([[0.9863148, 0.3204731, 0.16425618]]),
+        ),
     ],
 )
-def test_dtlz2_has_expected_output(test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType):
+def test_dtlz2_has_expected_output(
+    test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
+):
     f = DTLZ2(input_dim, num_obj).prepare_benchmark()
     npt.assert_allclose(f(test_x), expected, rtol=1e-4)
 
