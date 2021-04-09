@@ -74,6 +74,10 @@ class Pareto:
     A :class:`Pareto` Construct a Pareto set.
     Stores a Pareto set and calculates the cell bounds covering the non-dominated region.
     The latter is needed for certain multiobjective acquisition functions.
+
+    For hypervolume-based multiobjective optimisation with n>2 objectives, this class
+    implement branch and bound procedure algorithm. a divide and conquer method introduced
+    in :cite:`Couckuyt2012`.
     """
 
     def __init__(self, observations: TensorType, *, jitter: float = DEFAULTS.JITTER):
