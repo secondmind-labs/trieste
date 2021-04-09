@@ -127,7 +127,7 @@ class Pareto:
     def _divide_conquer_nd(
         self, front: TensorType, jitter: float, threshold: TensorType | float = 0
     ) -> TensorType:
-        # Divide and conquer strategy to compute the cells covering the non-dominated region.
+        # Branch and bound procedure to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
 
         len_front, number_of_objectives = front.shape
