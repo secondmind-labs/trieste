@@ -47,6 +47,7 @@ def automatic_optimizer_selector(
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
     an :const:`AcquisitionOptimizer` appropriate for the
     problem's :class:`~trieste.space.SearchSpace`.
+
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
@@ -72,6 +73,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
     batches of size of 1.
+
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
@@ -92,6 +94,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
+
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
@@ -119,6 +122,7 @@ def batchify(
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
         single point with shape [1, D].
     :param batch_size: The number of points in the batch.
