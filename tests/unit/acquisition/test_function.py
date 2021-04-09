@@ -169,7 +169,7 @@ def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes
         MinValueEntropySearch(search_space, grid_size=-5)
 
 
-@unittest.mock.patch('trieste.acquisition.function.min_value_entropy_search')
+@unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
 def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
     dataset = Dataset(tf.zeros([3, 2]), tf.ones([3, 2]))
     search_space = Box([0, 0], [1, 1])
