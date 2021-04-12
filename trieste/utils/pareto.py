@@ -121,13 +121,6 @@ class Pareto:
 
         return BoundedVolumes(lower_result, upper_result)
 
-    @staticmethod
-    def _is_test_required(smaller: TensorType) -> TensorType:
-        idx_dom_augm = tf.reduce_any(smaller, axis=1)
-        is_dom_augm = tf.reduce_all(idx_dom_augm)
-
-        return is_dom_augm
-
     def _divide_conquer_nd(
         self, front: TensorType, jitter: float, threshold: TensorType | float = 0
     ) -> TensorType:
@@ -211,8 +204,15 @@ class Pareto:
         )
         return BoundedVolumes(lower_result_final, upper_result_final)
 
+    @staticmethod
+    def _is_test_required(smaller: TensorType) -> TensorType:
+        idx_dom_augm = tf.reduce_any(smaller, axis=1)
+        is_dom_augm = tf.reduce_all(idx_dom_augm)
+
+        return is_dom_augm
+
+    @staticmethod
     def _accepted_test_body(
-        self,
         lower_result: TensorType,
         upper_result: TensorType,
         lower_idx: TensorType,
@@ -244,8 +244,8 @@ class Pareto:
         )
         return divide_conquer_cells_rejected
 
+    @staticmethod
     def _divide_body(
-        self,
         divide_conquer_cells: TensorType,
         divide_conquer_cells_dist: TensorType,
         cell: TensorType,
