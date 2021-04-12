@@ -792,7 +792,7 @@ takes input shape `[..., 1, D]` and returns shape `[..., 1]`.
 
 
 class PenalizationFunctionBuilder(ABC):
-    """ An :class:`PenalizationFunctionBuilder` builds a penalization function. """
+    """ An :class:`PenalizationFunctionBuilder` esimtates the parameters of and builds a penalization function. """
 
     @abstractmethod
     def prepare_penalization_function(
@@ -809,11 +809,7 @@ class PenalizationFunctionBuilder(ABC):
         """
         :param search_space: The global search space over which the optimisation is defined.        
         :param models: The models.
-        :return: A penalization function.
         """
-
-
-
 
 
 class SingleModelPenalizationBuilder(ABC):
@@ -859,7 +855,6 @@ class SingleModelPenalizationBuilder(ABC):
         """
         :param search_space: The global search space over which the optimisation is defined.        
         :param model: The model over the specified ``dataset``.
-        :return: A penalization function.
         """
 
 
@@ -875,7 +870,7 @@ class LocalPenalization(SingleModelPenalizationBuilder):
     """
 
 
-def __init__(self, grid_size: int = 5000):
+def __init__(self, grid_size: int = 500):
         """
         :param grid_size: Size of the grid over which the Lipschitz constant is estimated. We recommend
             scaling this with search space dimension.
@@ -890,8 +885,7 @@ def __init__(self, grid_size: int = 5000):
 
     def estimate_penalization_parameters(self, search_space: SearchSpace, model: ProbabilisticModel):
         r"""
-        DESCRIBE MATHS FOR SAMPLES!
-
+        This is to be called once per BO step at the very start
 
         :param search_space: The global search space over which the optimisation is defined.
         :param model: The model over the specified ``dataset``.
@@ -931,14 +925,12 @@ def __init__(self, grid_size: int = 5000):
         if (not self._lipschitz_constant) or (not self._eta):
             raise ValueError("penalization parameters must be estimated before penalization building a penalization function.")  
 
-        return local_penalization(model, pending_points, self._eta, self._lipschitz_constant)
+        return soft_local_penalization(model, pending_points, self._eta, self._lipschitz_constant)
 
 
-
-
-def local_penalization(model: ProbabilisticModel, pending_points: TensorType, eta: TensorType, lipschitz_constant: TensorType) -> PenalizationFunction:
+def soft_local_penalization(model: ProbabilisticModel, pending_points: TensorType, eta: TensorType, lipschitz_constant: TensorType) -> PenalizationFunction:
     r"""
-    Return the local penalizer as used for single-objective greedy batch Bayesian optimization by 
+    Return the soft local penalization function used for single-objective greedy batch Bayesian optimization by 
     :cite:`Gonzalez:2016`.
 
 

@@ -176,7 +176,8 @@ class GreedyEfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
         :param num_query_points: The number of points to acquire.
-        :param penalizer_builder: ?????
+        :param penalizer_builder: The penalization function builder to use. Defaults to
+            :class:`~trieste.acquisition.LocalPenalization` with tag :data:`OBJECTIVE`.
         """
 
         if not num_query_points > 0:
