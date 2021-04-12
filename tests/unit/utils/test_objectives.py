@@ -57,7 +57,9 @@ def test_objective_maps_minimizers_to_minimum(
     objective: Callable[[TensorType], TensorType], minimizers: TensorType, minimum: TensorType
 ) -> None:
     objective_values_at_minisers = objective(minimizers)
-    tf.debugging.assert_shapes([(objective_values_at_minisers, ["N", 1])])
+    tf.debugging.assert_shapes(
+        [(objective_values_at_minisers, [len(objective_values_at_minisers), 1])]
+    )
     npt.assert_allclose(objective_values_at_minisers, tf.squeeze(minimum), rtol=1e-5)
 
 
