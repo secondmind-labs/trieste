@@ -13,9 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -27,7 +28,7 @@ from ..utils import DEFAULTS
 from .optimizer import Optimizer
 
 
-class ProbabilisticModel(tf.Module, ABC):
+class ProbabilisticModel(ABC):
     """ A probabilistic model. """
 
     @abstractmethod
@@ -187,7 +188,49 @@ class ModelStack(TrainableProbabilisticModel):
             model.optimize(Dataset(dataset.query_points, obs))
 
 
-class GPflowPredictor(ProbabilisticModel, ABC):
+M = TypeVar("M", bound=tf.Module)
+""" A type variable bound to :class:`tf.Module`. """
+
+
+def module_deepcopy(self: M, memo: dict[int, object]) -> M:
+    r"""
+    This function provides a workaround for `a bug`_ in TensorFlow Probability (fixed in `version
+    0.12`_) where a :class:`tf.Module` cannot be deep-copied if it has
+    :class:`tfp.bijectors.Bijector` instances on it. The function can be used to directly copy an
+    object ``self`` as e.g. ``module_deepcopy(self, {})``, but it is perhaps more useful as an
+    implemention for :meth:`__deepcopy__` on classes, where it can be used as follows:
+
+    .. _a bug: https://github.com/tensorflow/probability/issues/547
+    .. _version 0.12: https://github.com/tensorflow/probability/releases/tag/v0.12.1
+
+    .. testsetup:: *
+
+        >>> import tensorflow_probability as tfp
+
+    >>> class Foo(tf.Module):
+    ...     example_bijector = tfp.bijectors.Exp()
+    ...
+    ...     __deepcopy__ = module_deepcopy
+
+    Classes with this method can be deep-copied even if they contain
+    :class:`tfp.bijectors.Bijector`\ s.
+
+    :param self: The object to copy.
+    :param memo: References to existing deep-copied objects (by object :func:`id`).
+    :return: A deep-copy of ``self``.
+    """
+    gpflow.utilities.reset_cache_bijectors(self)
+
+    new = self.__new__(type(self))
+    memo[id(self)] = new
+
+    for name, value in self.__dict__.items():
+        setattr(new, name, copy.deepcopy(value, memo))
+
+    return new
+
+
+class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
     """ A trainable wrapper for a GPflow Gaussian process model. """
 
     def __init__(self, optimizer: Optimizer | None = None):
@@ -222,6 +265,8 @@ class GPflowPredictor(ProbabilisticModel, ABC):
 
     def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)
+
+    __deepcopy__ = module_deepcopy
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
