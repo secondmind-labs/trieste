@@ -171,7 +171,7 @@ def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes
 
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
 def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
-    dataset = Dataset(tf.zeros([3, 2]), tf.ones([3, 2]))
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space)
     model = QuadraticMeanAndRBFKernel()
@@ -180,10 +180,10 @@ def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
 
     # check that the Gumbel samples look sensible
     gumbel_samples = mocked_mves.call_args[0][1]
-    query_points = tf.cast(builder._search_space.sample(num_samples=builder._grid_size), tf.float32)
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
     query_points = tf.concat([dataset.query_points, query_points], 0)
     fmean, _ = model.predict(query_points)
-    # TODO: assert some property of gumbel_samples
+    assert max(gumbel_samples) < min(fmean)
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])

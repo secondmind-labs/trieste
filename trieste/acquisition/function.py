@@ -198,7 +198,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
-        query_points = tf.cast(self._search_space.sample(num_samples=self._grid_size), tf.float32)
+        query_points = self._search_space.sample(num_samples=self._grid_size)
         query_points = tf.concat([dataset.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
