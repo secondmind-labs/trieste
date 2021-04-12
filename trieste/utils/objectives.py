@@ -147,7 +147,7 @@ def hartmann_3(x: TensorType) -> TensorType:
     ]
 
     inner_sum = -tf.reduce_sum(A * (tf.expand_dims(x, 1) - P) ** 2, -1)
-    return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1)
+    return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1, keepdims=True)
 
 
 HARTMANN_3_MINIMIZER = tf.constant([[0.114614, 0.555649, 0.852547]], tf.float64)
@@ -191,7 +191,7 @@ def hartmann_6(x: TensorType) -> TensorType:
     ]
 
     inner_sum = -tf.reduce_sum(A * (tf.expand_dims(x, 1) - P) ** 2, -1)
-    return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1)
+    return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1, keepdims=True)
 
 
 HARTMANN_6_MINIMIZER = tf.constant(
