@@ -717,3 +717,259 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
         return batch_ei
+
+
+
+
+
+
+class IndependentReparametrizationSampler:
+    r"""
+    This sampler employs the *reparameterization trick* to approximate samples from a
+    :class:`ProbabilisticModel`\ 's predictive distribution as
+
+    .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+    where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+    samples form a continuous curve.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+
+        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
+        # populated on the first call to sample
+        self._eps = tf.Variable(
+            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
+        )  # [S, 0]
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
+
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+        :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+        produce the exact same samples. Calls to :meth:`sample` on *different*
+        :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+            of dimension `D`.
+        :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+            the number of latent model dimensions.
+        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+        """
+        tf.debugging.assert_shapes([(at, [..., 1, None])])
+        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
+
+        if tf.size(self._eps) == 0:
+            self._eps.assign(
+                tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
+            )  # [S, L]
+
+        return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
+
+
+
+PenalizationFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for penalization functions.
+
+A :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single
+value that measures how heavily that query point should be penalized (between 0 and 1) with 
+respect to a set of `M` pending points (each of dimension `D`). Thus, with leading dimensions, an :const:`PenalizationFunction`
+takes input shape `[..., 1, D]` and returns shape `[..., 1]`.
+"""
+
+
+class PenalizationFunctionBuilder(ABC):
+    """ An :class:`PenalizationFunctionBuilder` builds a penalization function. """
+
+    @abstractmethod
+    def prepare_penalization_function(
+        self, pending_points: TensorType, models: Mapping[str, ProbabilisticModel]
+    ) -> PenalizationFunction:
+        """
+        :param pending_points: The set of pending points which we penalize with respect to.
+        :param models: The models.
+        :return: A penalization function.
+        """
+
+    @abstractmethod
+    def estimate_penalization_parameters(self, search_space: SearchSpace, models: Mapping[str, ProbabilisticModel]):
+        """
+        :param search_space: The global search space over which the optimisation is defined.        
+        :param models: The models.
+        :return: A penalization function.
+        """
+
+
+
+
+
+class SingleModelPenalizationBuilder(ABC):
+    """
+    Convenience penalization function builder for an penalization function (or component of a
+    composite penalization function) that requires only one model.
+    """
+
+    def using(self, tag: str) -> PenalizationFunctionBuilder:
+        """
+        :param tag: The tag for the model used to build this penalization function.
+        :return: An penalization function builder that selects the model specified by
+            ``tag``, as defined in :meth:`prepare_penalization_function`.
+        """
+        single_builder = self
+
+        class _Anon(PenalizationFunctionBuilder):
+            def prepare_penalization_function(
+                self, pending_points: TensorType, models: Mapping[str, ProbabilisticModel]
+            ) -> PenalizationFunction:
+                return single_builder.prepare_penalization_function(pending_points, models[tag])
+
+            def estimate_penalization_parameters(self, search_space: SearchSpace, models: Mapping[str, ProbabilisticModel]):
+                return single_builder.estimate_penalization_parameters(search_space, models[tag])
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_penalization_function(
+        self, pending_points: TensorType, model: ProbabilisticModel
+    ) -> PenalizationFunction:
+        """
+        :param pending_points: The set of pending points which we penalize with respect to.
+        :param model: The model over the specified ``dataset``.
+        :return: A penalization function.
+        """
+
+    @abstractmethod
+    def estimate_penalization_parameters(self, search_space: SearchSpace, model: ProbabilisticModel):
+        """
+        :param search_space: The global search space over which the optimisation is defined.        
+        :param model: The model over the specified ``dataset``.
+        :return: A penalization function.
+        """
+
+
+class LocalPenalization(SingleModelPenalizationBuilder):
+    """
+    Builder for the local penalization acqusiition function. See :cite:`Gonzalez:2016` for details.
+
+
+    SAY WHAT THIS IS
+
+    xpected improvement function where the "best" value is taken to be the minimum
+    of the posterior mean at observed points.
+    """
+
+
+def __init__(self, grid_size: int = 5000):
+        """
+        :param grid_size: Size of the grid over which the Lipschitz constant is estimated. We recommend
+            scaling this with search space dimension.
+        """
+
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+        self._lipschitz_constant = None
+        self._eta = None
+
+    def estimate_penalization_parameters(self, search_space: SearchSpace, model: ProbabilisticModel):
+        r"""
+        DESCRIBE MATHS FOR SAMPLES!
+
+
+        :param search_space: The global search space over which the optimisation is defined.
+        :param model: The model over the specified ``dataset``.
+        """
+        samples_points = search_space.sample(num_samples=self._grid_size)
+        
+        with tf.GradientTape() as g: # get gradients of posterior mean at samples
+            g.watch(sample_points)
+            mean, _ = model.predict(sample_points)
+        grads = g.gradient(mean,sample_points)
+        grads_norm =  tf.norm(grads, axis=1)
+        max_grads_norm = tf.reduce_max(grads_norm)
+
+        if max_grads_norm < 1e-5: # threshold to improve numerical stability for 'flat' models
+                self._lipschitz_constant = 10
+            else:
+                self._lipschitz_constant = max_grads_norm
+
+        self._eta = tf.reduce_min(mean, axis=0)
+
+
+    def prepare_penalization_function(
+        self, pending_points: TensorType, model: ProbabilisticModel
+    ) -> PenalizationFunction:
+        """
+        :param pending_points: The set of pending points which we penalize with respect to.
+        :param model: The model over the specified ``dataset``.
+        :return: The local penalization function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise ValueError: If ``dataset`` is empty or if the penalization parameters have not yet been estimated.
+        """
+
+        if len(pending_points) == 0:
+            raise ValueError("pending_points must be populated.")
+
+        if (not self._lipschitz_constant) or (not self._eta):
+            raise ValueError("penalization parameters must be estimated before penalization building a penalization function.")  
+
+        return local_penalization(model, pending_points, self._eta, self._lipschitz_constant)
+
+
+
+
+def local_penalization(model: ProbabilisticModel, pending_points: TensorType, eta: TensorType, lipschitz_constant: TensorType) -> PenalizationFunction:
+    r"""
+    Return the local penalizer as used for single-objective greedy batch Bayesian optimization by 
+    :cite:`Gonzalez:2016`.
+
+
+    DISCUSS MATHGS
+
+
+    :param model: The model of the objective function.
+    :param pending points: The set of pending points which we penalize with respect to.
+    :param eta: The estimated global minimum value.
+    :param lipschitz_constant: The estimated objective function's Lipschitz constant.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one as it is to be used to build batches greedily 
+    """
+
+    mean, variance  = model.predict(self._X_pending)
+    radius = tf.transpose((mean - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function can only be used for greedy batch design.",
+        )
+
+        pairwise_distances = tf.norm(tf.expand_dims(x,1)-tf.expand_dims(pending_points,0),axis=-1)
+        standardised_distances = (pairwise_distances - radius) / scale
+
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        penalisation = normal.cdf(standardised_distances)
+        return penalisation
+
+    return penalization_function
+

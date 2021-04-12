@@ -30,7 +30,7 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import AcquisitionFunctionBuilder, ExpectedImprovement, PenalizationFunctionBuilder, LocalPenalization
 from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
@@ -156,6 +156,89 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         """
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
         return self._optimizer(search_space, acquisition_function), None
+
+
+class GreedyEfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
+    """ Implements the Efficient Global Optimization, or EGO, algorithm. WITH GREEDY (defaults to local penalisation)"""
+
+    def __init__(
+        self,
+        builder: AcquisitionFunctionBuilder | None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+        penalizer_builder: PenalizationFunctionBuilder | None = None,
+    ):
+        """
+        :param builder: The acquisition function builder to use. Defaults to
+            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
+        :param optimizer: The optimizer with which to optimize the acquisition function built by
+            ``builder``. This should *maximize* the acquisition function, and must be compatible
+            with the global search space. Defaults to
+            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        :param num_query_points: The number of points to acquire.
+        :param penalizer_builder: ?????
+        """
+
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
+        if builder is None:
+            builder = ExpectedImprovement().using(OBJECTIVE)
+
+        if penalizer_builder is None:
+            penalizer_builder = LocalPenalization().using(OBJECTIVE)
+           
+        if optimizer is None:
+            optimizer = automatic_optimizer_selector
+        optimizer = batchify(optimizer, num_query_points)
+
+        self._builder = builder
+        self._penalizer_builder = penalizer_builder
+        self._optimizer = optimizer
+        self._num_query_points = num_query_points
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""GreedyEfficientGlobalOptimization(
+        {self._builder!r},
+        {self._penalizer_builder!r},
+        {self._optimizer!r},
+        {self._num_query_points!r})"""
+
+    def acquire(
+        self,
+        search_space: SP_contra,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: None = None,
+    ) -> tuple[TensorType, None]:
+        """
+        Return the query point that optimizes the acquisition function produced by ``builder`` (see
+        :meth:`__init__`). ADD GREEDY (SAY UPDATE PAPRAMS ONCE per BO step)
+
+        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
+            optimization problem is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The single (or batch of) points to query, and `None`.
+        """
+
+        base_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        self._penalizer_builder.estimate_penalization_parameters()
+
+        first_point = self._optimizer(search_space, base_acquisition_function)
+        points = first_point
+
+        for i in range(self._num_query_points - 1): # build batch of points in greedy manner
+            penalization  = self._penalizer_builder.prepare_penalization_function(points, models)
+            log_penalized_acquisiton_function = tf.math.log(base_acquisition_function) + tf.math.log(penalization)
+            next_point = self._optimizer(search_space, log_penalized_acquisition_function)
+            points = tf.concat([points,first_point], axis=0)
+
+        return points, None
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
