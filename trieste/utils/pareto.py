@@ -76,7 +76,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
 
     For hypervolume-based multiobjective optimisation with n>2 objectives, this class
-    implement branch and bound procedure algorithm. a divide and conquer method introduced
+    implements branch and bound procedure algorithm. a divide and conquer method introduced
     in :cite:`Couckuyt2012`.
     """
 
