@@ -56,7 +56,9 @@ from trieste.utils.objectives import (
 def test_objective_maps_minimizers_to_minimum(
     objective: Callable[[TensorType], TensorType], minimizers: TensorType, minimum: TensorType
 ) -> None:
-    npt.assert_allclose(objective(minimizers), tf.squeeze(minimum), rtol=1e-5)
+    objective_values_at_minimizers = objective(minimizers)
+    tf.debugging.assert_shapes([(objective_values_at_minimizers, [len(minimizers), 1])])
+    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), rtol=1e-5)
 
 
 def test_branin_no_function_values_are_less_than_global_minimum() -> None:
