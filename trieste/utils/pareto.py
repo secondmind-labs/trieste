@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 from typing import Tuple
+from typing_extensions import Final
 
 import tensorflow as tf
 
