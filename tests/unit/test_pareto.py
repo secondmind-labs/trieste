@@ -238,6 +238,7 @@ def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
         ),
     )
 
+
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypercell_bounds_raises_for_reference_with_invalid_shape(
     reference: ListN[float],
@@ -315,4 +316,5 @@ def test_pareto_hypercell_bounds(
     )
     npt.assert_allclose(
         pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[1],
-        tf.constant(expected[1]),)
+        tf.constant(expected[1]),
+    )

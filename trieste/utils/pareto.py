@@ -14,8 +14,6 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-from __future__ import annotations
-
 from typing import Tuple
 
 import tensorflow as tf
