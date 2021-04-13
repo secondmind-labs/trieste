@@ -122,8 +122,9 @@ class Pareto:
 
         return BoundedVolumes(lower_result, upper_result)
 
+    @classmethod
     def _divide_conquer_nd(
-        self, front: TensorType, jitter: float, threshold: TensorType | float = 0
+        cls, front: TensorType, jitter: float, threshold: TensorType | float = 0
     ) -> TensorType:
         # Branch and bound procedure to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
@@ -175,17 +176,17 @@ class Pareto:
             lower = tf.gather_nd(pseudo_front, tf.stack((lower_idx, arr), -1))
             upper = tf.gather_nd(pseudo_front, tf.stack((upper_idx, arr), -1))
 
-            test_accepted = self._is_test_required((upper - jitter) < front)
+            test_accepted = cls._is_test_required((upper - jitter) < front)
             lower_result_final, upper_result_final = tf.cond(
                 test_accepted,
-                lambda: self._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
+                lambda: cls._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
                 lambda: (lower_result, upper_result),
             )
 
-            test_rejected = self._is_test_required((lower + jitter) < front)
+            test_rejected = cls._is_test_required((lower + jitter) < front)
             divide_conquer_cells_final = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
-                lambda: self._rejected_test_body(
+                lambda: cls._rejected_test_body(
                     cell, lower, upper, divide_conquer_cells_new, total_size, threshold
                 ),
                 lambda: divide_conquer_cells_new,
@@ -223,8 +224,9 @@ class Pareto:
         upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
         return lower_result_accepted, upper_result_accepted
 
+    @classmethod
     def _rejected_test_body(
-        self,
+        cls,
         cell: TensorType,
         lower: TensorType,
         upper: TensorType,
@@ -240,7 +242,7 @@ class Pareto:
         vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
         divide_conquer_cells_rejected = tf.cond(
             tf.logical_and(not_unit_cell, vol_above_thresh),
-            lambda: self._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
+            lambda: cls._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
             lambda: tf.identity(divide_conquer_cells),
         )
         return divide_conquer_cells_rejected
