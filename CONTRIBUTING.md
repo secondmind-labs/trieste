@@ -2,9 +2,9 @@
 
 ### Who are we?
 
-*Administrators* (Artem Artemev, Joel Berkeley) look after the GitHub repository itself.
+*Administrators* (Henry Moss, Artem Artemev, Uri Granta) look after the GitHub repository itself.
 
-*Maintainers* (Artem Artemev, Joel Berkeley, Victor Picheny) steer the project, keep the community thriving, and manage contributions.
+*Maintainers* (Henry Moss, Victor Picheny, Artem Artemev, Uri Granta) steer the project, keep the community thriving, and manage contributions.
 
 *Contributors* (you?) submit issues, make pull requests, answer questions on Slack, and more.
 
@@ -78,6 +78,21 @@ $ black .
 $ flake8 .
 $ isort .
 ```
+
+#### Virtual environments and taskipy
+
+During development, it can sometimes be more convenient to set up a virtual environment to run the tests in rather than using tox. If you decide to do this, then we recommend installing [taskipy](https://github.com/illBeRoy/taskipy) by running:
+
+```bash
+pip install -r common_build/taskipy/requirements.txt -c common_build/taskipy/constraints.txt
+```
+
+You can then use `task` to run various common tasks:
+
+- `task tests` to run all the tests (including type checking);
+- `task mypy` to run just the type checks;
+- `task format` to reformat the code using black, flake8 and isort;
+- `task check_format` to check whether the code is correctly formatted.
 
 #### Continuous integration
 
