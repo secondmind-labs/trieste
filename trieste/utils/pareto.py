@@ -51,7 +51,7 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
 
 class _BoundedVolumes:
     """
-    A :class:`BoundedVolumes` store the index of the Pareto front to form lower and upper
+    A :class:`_BoundedVolumes` store the index of the Pareto front to form lower and upper
     bounds of the pseudo cells decomposition.
     """
 
@@ -326,14 +326,14 @@ class Pareto:
         self, anti_reference: TensorType, reference: TensorType
     ) -> tuple[TensorType, TensorType]:
         """
-        Get the partitioned hypercells lower and upper bounds
+        Get the partitioned hypercell's lower and upper bounds.
         :param anti_reference: a worst point to use with shape [D].
             Defines the lower bound of the hypercell
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
-            Should be equal or bigger than the anti-ideal point of the Pareto set.
+            Should be equal to or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
-        :return: lower, upper bounds or the partitioned cell
+        :return: lower, upper bounds of the partitioned cell
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
         """
