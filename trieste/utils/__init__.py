@@ -17,18 +17,7 @@ from typing import Callable, Mapping, TypeVar
 from typing_extensions import Final
 
 from . import objectives, pareto
-from .misc import Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
-
-
-class DEFAULTS:
-    """ Default constants used in Trieste. """
-
-    JITTER: Final[float] = 1e-6
-    """
-    The default jitter, typically used to stabilise computations near singular points, such as in
-    Cholesky decomposition.
-    """
-
+from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
 
 K = TypeVar("K")
 """ An unbound type variable. """

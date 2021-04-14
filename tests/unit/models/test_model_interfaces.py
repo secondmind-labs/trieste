@@ -23,6 +23,7 @@ trieste model).
 """
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable, Iterable, Sequence
 
 import gpflow
@@ -32,6 +33,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
+from packaging.version import parse
 
 from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.model import GaussianProcess, PseudoTrainableProbModel
@@ -43,6 +45,7 @@ from trieste.models.model_interfaces import (
     SparseVariational,
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
+    module_deepcopy,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
@@ -154,6 +157,52 @@ def test_model_stack_training() -> None:
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
     stack.optimize(data)
+
+
+class _ModuleWithBijector(tf.Module):
+    def __init__(self):
+        super().__init__()
+        self.const = tf.constant(1.2)
+        self.var = tf.Variable(3.4)
+        self.bijector = tfp.bijectors.Exp()
+
+
+class _NestedModuleWithBijector(tf.Module):
+    def __init__(self):
+        super().__init__()
+        self.inst = _ModuleWithBijector()
+        self.bijector = tfp.bijectors.Sigmoid(0.0, 1.0)
+
+
+def test_module_deepcopy_is_copyable() -> None:
+    class Deepcopyable(_NestedModuleWithBijector):
+        __deepcopy__ = module_deepcopy
+
+    module = Deepcopyable()
+
+    _ = module.bijector.forward(0.5)
+    _ = module.bijector.inverse(0.5)
+    _ = module.inst.bijector.forward(0.5)
+    _ = module.inst.bijector.inverse(0.5)
+
+    module_copy = copy.deepcopy(module)
+
+    module.inst.var.assign(5.6)
+
+    assert module_copy.inst.const == 1.2
+    assert module_copy.inst.var == 3.4
+    assert module_copy.inst.bijector.forward(7.8) == tf.exp(7.8)
+
+
+if parse(tfp.__version__) < parse("0.12"):
+
+    def test_cant_copy_tf_module_with_used_bijector() -> None:
+        module = _NestedModuleWithBijector()
+
+        _ = module.bijector.forward(0.5)
+
+        with pytest.raises(TypeError, match="HashableWeakRef"):
+            copy.deepcopy(module)
 
 
 def _mock_data() -> tuple[tf.Tensor, tf.Tensor]:
@@ -401,6 +450,15 @@ def test_sparse_variational_model_attribute() -> None:
     model = _svgp(_mock_data()[0])
     sv = SparseVariational(model, Dataset(*_mock_data()))
     assert sv.model is model
+
+
+def test_sparse_variational_update_updates_num_data() -> None:
+    model = SparseVariational(
+        _svgp(tf.zeros([1, 4])),
+        Dataset(tf.zeros([3, 4]), tf.zeros([3, 1])),
+    )
+    model.update(Dataset(tf.zeros([5, 4]), tf.zeros([5, 1])))
+    assert model.model.num_data == 5
 
 
 @pytest.mark.parametrize(

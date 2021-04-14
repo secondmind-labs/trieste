@@ -37,6 +37,7 @@ generate_for_env () {
 
 generate_for_env docs false
 generate_for_env common_build/format false
+generate_for_env common_build/taskipy false
 generate_for_env common_build/types false
 generate_for_env notebooks true
 generate_for_env tests true
