@@ -61,10 +61,10 @@ class Optimizer:
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
         """
-        Extract a loss function for the specified `model` with the `dataset`.
+        Build a loss function for the specified `model` with the `dataset`.
 
-        :param model: The model to extract a loss function for.
-        :param dataset: The data with which to extract the loss function.
+        :param model: The model to build a loss function for.
+        :param dataset: The data with which to build the loss function.
         :return: The loss function.
         """
         x = tf.convert_to_tensor(dataset.query_points)
