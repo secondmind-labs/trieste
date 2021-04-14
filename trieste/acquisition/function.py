@@ -514,8 +514,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the :func:`hv_probability_of_improvement` acquisition function
-    refer yang2019efficient
+    Builder for the :func:`expected_hv_improvement` acquisition function
+    The implementation of the acquisition function largely
+    follows :cite:`yang2019efficient`
     """
 
     def __repr__(self) -> str:
@@ -527,7 +528,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
-        :return: The expecyed_hv_of_improvement function.
+        :return: The expected_hv_improvement function.
         """
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -543,23 +544,28 @@ def expected_hv_improvement(
     reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
-    HV calculation using Eq. 44 of yang2019efficient paper
+    HV calculation using Eq. 44 of :cite:`yang2019efficient` paper
+    The expected hypervolume calculation is performed in the non-dominated region, which,
+    provided the partitioned cell, can be reformulated as a combination of several one
+    dimensional generalized expected improvement based on each of the partitioned cell.
+    The generlized expected improvement can be further divided into 2 types for easier
+    math operation, which corresponding to Psi function and nu function calculation.
+    Mainly referring Eq. 44, and Eq. 45
     Note:
     1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm.
-       we do not assume the last dimension partition has only one (lower) bound (which is used
-       in the yang2019efficient paper), this is not equally efficient as the original paper, but
-       is applicable to different non-dominated partition algorithm
+       we do not assume the last dimension partitioned cell has only one (lower) bound
+       (which is used in the :cite:`yang2019efficient` paper), this is not equally efficient as
+        the original paper, but is applicable to different non-dominated partition algorithm
     2. The Psi and nu function in the original paper is defined for a maximization problem, to
-       make use of the same notation for easier reading, we inverse our problem (as maximization)
+       make use of the same notation for easier following, we inverse our problem (as maximization)
        to make use of the same equation
-    3. The calculation of EHVI based on Eq.44 is independent on the order of each cell
 
     :param model: The model of the objective function.
-    :param at: The points at which to evaluate the probability of feasibility.
-                Must have rank at least two
     :param pareto: Pareto class
     :param reference_point The reference point for calculating hypervolume
-    :return: The hypervolume expected improvement at ``at``.
+    :return The expected_hv_improvement acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
 
     def acquisition(x: TensorType) -> TensorType:
@@ -573,11 +579,12 @@ def expected_hv_improvement(
 
         def Psi(a, b, mean, std) -> TensorType:
             """
-            Generic Expected Improvement o reference a, defined at Eq. 19 of [yang2019]
-            param: a: [num_cells, out_dim] lower bounds
-            param: b: [num_cells, out_dim] upper bounds
-            param: mean: [..., out_dim]
-            param: var: [..., out_dim]
+            Generic Expected Improvement defined at Eq. 19 in :cite:`yang2019efficient`,
+            calculate the expected improvement on reference a, integrating from b
+            :param a: shape [num_cells, out_dim] expected improvement reference point
+            :param b: shape [num_cells, out_dim] integral upper bounds
+            :param mean: shape [..., out_dim]
+            :param std: shape [..., out_dim]
             """
             return std * normal.prob((b - mean) / std) + (mean - a) * (
                 1 - normal.cdf((b - mean) / std)
@@ -585,9 +592,12 @@ def expected_hv_improvement(
 
         def nu(lb, ub, mean, std) -> TensorType:
             """
-            Eq. 25 of [yang2019]
-            Note: as we deal with minimization, we use negative version of our problem
-             to make use of the original formula
+            A special expected improvement given fixed improvement,
+            defined at Eq. 25 in :cite:`yang2019efficient`
+            :param lb: shape [..., num_cells, out_dim] slice lower bound
+            :param ub: shape [..., num_cells, out_dim] slice upper bound
+            :param mean: shape [..., out_dim]
+            :param std: shape [..., out_dim]
             """
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
 
@@ -598,11 +608,11 @@ def expected_hv_improvement(
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
         candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
-        lb_points, ub_points = pareto.get_hyper_cell_bounds(
+        lb_points, ub_points = pareto.hypercell_bounds(
             tf.constant([-inf] * candidate_mean.shape[-1], dtype=x.dtype), reference_point
         )
 
-        neg_lb_points, neg_ub_points = -ub_points, -lb_points  # ref Note. 3
+        neg_lb_points, neg_ub_points = -ub_points, -lb_points
 
         neg_ub_points = tf.minimum(
             neg_ub_points, 1e10
@@ -619,7 +629,7 @@ def expected_hv_improvement(
         nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
 
         # get stacked factors of Eq. 45
-        # [2^m, dim_indices]
+        # [2^m, indices_at_dim]
         cross_index = tf.constant(
             list(product(*[[0, 1] for _ in range(reference_point.shape[-1])]))
         )
