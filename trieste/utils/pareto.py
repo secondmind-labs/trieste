@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
-
 from __future__ import annotations
 
 from typing import Tuple
@@ -50,9 +49,9 @@ def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
     return tf.boolean_mask(observations, dominance == 0), dominance
 
 
-class BoundedVolumes:
+class _BoundedVolumes:
     """
-    A :class:`BoundedVolumes` store the index of the Pareto front to form lower and upper
+    A :class:`_BoundedVolumes` store the index of the Pareto front to form lower and upper
     bounds of the pseudo cells decomposition.
     """
 
@@ -90,16 +89,16 @@ class Pareto:
 
         pfront, _ = non_dominated(observations)
         self.front: Final[TensorType] = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
-        self.bounds = self._get_bounds(self.front, jitter)
+        self._bounds = self._get_bounds(self.front, jitter)
 
-    def _get_bounds(self, front: TensorType, jitter: float) -> BoundedVolumes:
+    def _get_bounds(self, front: TensorType, jitter: float) -> _BoundedVolumes:
         if front.shape[-1] > 2:
             return self._divide_conquer_nd(front, jitter)
         else:
             return self._bounds_2d(front)
 
     @staticmethod
-    def _bounds_2d(front: TensorType) -> BoundedVolumes:
+    def _bounds_2d(front: TensorType) -> _BoundedVolumes:
         # Compute the cells covering the non-dominated region for 2 dimension case
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
@@ -120,12 +119,12 @@ class Pareto:
             [range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1
         )
 
-        return BoundedVolumes(lower_result, upper_result)
+        return _BoundedVolumes(lower_result, upper_result)
 
     @classmethod
     def _divide_conquer_nd(
         cls, front: TensorType, jitter: float, threshold: TensorType | float = 0
-    ) -> TensorType:
+    ) -> _BoundedVolumes:
         # Branch and bound procedure to compute the cells covering the non-dominated region.
         # Generic version: works for an arbitrary number of objectives.
 
@@ -204,7 +203,7 @@ class Pareto:
                 tf.TensorShape([None, number_of_objectives]),
             ],
         )
-        return BoundedVolumes(lower_result_final, upper_result_final)
+        return _BoundedVolumes(lower_result_final, upper_result_final)
 
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
@@ -299,8 +298,8 @@ class Pareto:
 
         tf.debugging.assert_shapes(
             [
-                (self.bounds.lower_idx, ["N", "D"]),
-                (self.bounds.upper_idx, ["N", "D"]),
+                (self._bounds.lower_idx, ["N", "D"]),
+                (self._bounds.upper_idx, ["N", "D"]),
                 (self.front, ["M", "D"]),
                 (reference, ["D"]),
             ]
@@ -308,17 +307,60 @@ class Pareto:
 
         min_front = tf.reduce_min(self.front, 0, keepdims=True)
         pseudo_front = tf.concat((min_front, self.front, reference[None]), 0)
-        N, D = tf.shape(self.bounds.upper_idx)
+        N, D = tf.shape(self._bounds.upper_idx)
 
         idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
         upper_idx = tf.reshape(
-            tf.stack([tf.transpose(self.bounds.upper_idx), idx], axis=2), [N * D, 2]
+            tf.stack([tf.transpose(self._bounds.upper_idx), idx], axis=2), [N * D, 2]
         )
         lower_idx = tf.reshape(
-            tf.stack([tf.transpose(self.bounds.lower_idx), idx], axis=2), [N * D, 2]
+            tf.stack([tf.transpose(self._bounds.lower_idx), idx], axis=2), [N * D, 2]
         )
         upper = tf.reshape(tf.gather_nd(pseudo_front, upper_idx), [D, N])
         lower = tf.reshape(tf.gather_nd(pseudo_front, lower_idx), [D, N])
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
         return tf.reduce_prod(reference[None] - min_front) - hypervolume
+
+    def hypercell_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get the partitioned hypercell's lower and upper bounds.
+        :param anti_reference: a worst point to use with shape [D].
+            Defines the lower bound of the hypercell
+        :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
+            Should be equal to or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: lower, upper bounds of the partitioned cell
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        """
+        tf.debugging.assert_greater_equal(reference, self.front)
+        tf.debugging.assert_greater_equal(self.front, anti_reference)
+        tf.debugging.assert_type(anti_reference, self.front.dtype)
+        tf.debugging.assert_type(reference, self.front.dtype)
+
+        tf.debugging.assert_shapes(
+            [
+                (self._bounds.lower_idx, ["N", "D"]),
+                (self._bounds.upper_idx, ["N", "D"]),
+                (self.front, ["M", "D"]),
+                (reference, ["D"]),
+                (anti_reference, ["D"]),
+            ]
+        )
+
+        pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
+        N = tf.shape(self._bounds.upper_idx)[0]
+        D = tf.shape(self._bounds.upper_idx)[1]
+        idx = tf.tile(tf.range(D), (N,))
+
+        lower_idx = tf.stack((tf.reshape(self._bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(self._bounds.upper_idx, [-1]), idx), axis=1)
+
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
+
+        return lower, upper
