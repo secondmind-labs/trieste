@@ -33,7 +33,12 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.model import (
+    GaussianProcess,
+    PseudoTrainableProbModel,
+    QuadraticMeanAndRBFKernel,
+    rbf,
+)
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -467,26 +472,34 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 
 
-def _linear_mean_gaussian_process(
-    kernel_amplitude: float | TensorType | None = None,
-) -> GaussianProcess:
-    return GaussianProcess(
-        [lambda x: tf.reduce_sum(x, axis=-1, keepdims=True)],
-        [tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)],
-    )
+class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+    pass
+
+
+class _PseudoTrainableLinear(GaussianProcess, PseudoTrainableProbModel):
+    def __init__(
+        self,
+        *,
+        kernel_amplitude: float | TensorType | None = None,
+    ):
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
+        super().__init__([lambda x: tf.reduce_sum(x, axis=-1, keepdims=True)], [kernel])
+
+    def __repr__(self) -> str:
+        return "_PseudoTrainableLinear()"
 
 
 _mo_test_models = (
-    QuadraticMeanAndRBFKernel,
-    _linear_mean_gaussian_process,
-    QuadraticMeanAndRBFKernel,
+    _PseudoTrainableQuadratic,
+    _PseudoTrainableLinear,
+    _PseudoTrainableQuadratic,
 )
 
 
 def test_ehvi_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    model = ModelStack(*[(QuadraticMeanAndRBFKernel(), 1) for _ in range(num_obj)])
+    model = ModelStack(*[(_PseudoTrainableQuadratic(), 1) for _ in range(num_obj)])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
