@@ -541,7 +541,7 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
 
 @random_seed
 @pytest.mark.parametrize(
-    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale ,rtol, atol",
+    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale, rtol, atol",
     [
         (
             1,
@@ -611,7 +611,7 @@ def test_expected_hypervolume_improvement(
 
     ehvi_approx = tf.transpose(
         tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True)
-    )  #
+    )
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)
 
     ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))

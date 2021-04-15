@@ -514,7 +514,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the :func:`expected_hv_improvement` acquisition function
+    Builder for the :func:`expected_hv_improvement` acquisition function.
     The implementation of the acquisition function largely
     follows :cite:`yang2019efficient`
     """
@@ -535,7 +535,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        return lambda at: expected_hv_improvement(model, _pf, _reference_pt)(at)
+        return expected_hv_improvement(model, _pf, _reference_pt)
 
 
 def expected_hv_improvement(
@@ -544,21 +544,21 @@ def expected_hv_improvement(
     reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
-    HV calculation using Eq. 44 of :cite:`yang2019efficient` paper
+    HV calculation using Eq. 44 of :cite:`yang2019efficient` paper.
     The expected hypervolume calculation is performed in the non-dominated region, which,
     provided the partitioned cell, can be reformulated as a combination of several one
-    dimensional generalized expected improvement based on each of the partitioned cell.
-    The generlized expected improvement can be further divided into 2 types for easier
-    math operation, which corresponding to Psi function and nu function calculation.
+    dimensional generalized expected improvements based on each of the partitioned cell.
+    The generalized expected improvement can be further divided into 2 types for easier
+    math operation, corresponding to Psi function and nu function calculations.
     Mainly referring Eq. 44, and Eq. 45
     Note:
-    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm.
+    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm,
        we do not assume the last dimension partitioned cell has only one (lower) bound
-       (which is used in the :cite:`yang2019efficient` paper), this is not equally efficient as
-        the original paper, but is applicable to different non-dominated partition algorithm
-    2. The Psi and nu function in the original paper is defined for a maximization problem, to
+       (which is used in the :cite:`yang2019efficient` paper). This is not as efficient as
+        the original paper, but is applicable to different non-dominated partition algorithm.
+    2. The Psi and nu function in the original paper is defined for a maximization problem. To
        make use of the same notation for easier following, we inverse our problem (as maximization)
-       to make use of the same equation
+       to make use of the same equation.
 
     :param model: The model of the objective function.
     :param pareto: Pareto class
@@ -631,7 +631,7 @@ def expected_hv_improvement(
         # get stacked factors of Eq. 45
         # [2^m, indices_at_dim]
         cross_index = tf.constant(
-            list(product(*[[0, 1] for _ in range(reference_point.shape[-1])]))
+            list(product(*[[0, 1]] * reference_point.shape[-1]))
         )
 
         # Take the cross product of psi_diff and nu across all outcomes
