@@ -633,9 +633,7 @@ def test_expected_hypervolume_improvement(
     splus_ub = tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
     splus = tf.concat([splus_idx, splus_ub - splus_lb], axis=-1)
 
-    ehvi_approx = tf.transpose(
-        tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True)
-    )
+    ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)
 
     ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
