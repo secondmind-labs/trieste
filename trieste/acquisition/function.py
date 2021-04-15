@@ -546,11 +546,11 @@ def expected_hv_improvement(
 ) -> AcquisitionFunction:
     r"""
     HV calculation using Eq. 44 of :cite:`yang2019efficient` paper.
-    The expected hypervolume calculation is performed in the non-dominated region, which,
-    provided the partitioned cell, can be reformulated as a combination of several one
-    dimensional generalized expected improvements based on each of the partitioned cell.
-    The generalized expected improvement can be further divided into 2 types for easier
-    math operation, corresponding to Psi function and nu function calculations.
+    The expected hypervolume improvement calculation in the non-dominated region
+    can be decomposed into sub-calculations based on each partitioned cell.
+    This sub-scalculation can be further reformulated as a combination of two types of
+    generalized expected improvements for easier math operation, corresponding to Psi
+    function and nu function calculations.
     Mainly referring Eq. 44, and Eq. 45
     Note:
     1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm,
