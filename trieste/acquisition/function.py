@@ -520,6 +520,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
 
     def __repr__(self) -> str:
+        """"""
         return "ExpectedHypervolumeImprovement()"
 
     def prepare_acquisition_function(
@@ -630,9 +631,7 @@ def expected_hv_improvement(
 
         # get stacked factors of Eq. 45
         # [2^m, indices_at_dim]
-        cross_index = tf.constant(
-            list(product(*[[0, 1]] * reference_point.shape[-1]))
-        )
+        cross_index = tf.constant(list(product(*[[0, 1]] * reference_point.shape[-1])))
 
         # Take the cross product of psi_diff and nu across all outcomes
         # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]

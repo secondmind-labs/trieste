@@ -541,9 +541,9 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
 
 @random_seed
 @pytest.mark.parametrize(
-    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale, rtol, atol",
+    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale ,rtol, atol",
     [
-        (
+        pytest.param(
             1,
             50_000,
             tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]),
@@ -551,8 +551,9 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
             1.0,
             0.01,
             1e-2,
+            id="1d_input_2obj_gp_var_1",
         ),
-        (
+        pytest.param(
             1,
             200_000,
             tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]),
@@ -560,8 +561,31 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
             2.0,
             0.01,
             1e-2,
+            id="1d_input_2obj_gp_var_2",
         ),
-        (2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, 0.01, 1e-2),
+        pytest.param(
+            2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, 0.01, 1e-2, id="2d_input_2obj_gp_var_2"
+        ),
+        pytest.param(
+            3,
+            50_000,
+            tf.constant([[2.0, 1.0], [0.8, 3.0]]),
+            2,
+            1.0,
+            0.01,
+            1e-2,
+            id="3d_input_2obj_gp_var_1",
+        ),
+        pytest.param(
+            4,
+            100_000,
+            tf.constant([[3.0, 2.0, 1.0], [1.1, 2.0, 3.0]]),
+            3,
+            1.0,
+            0.01,
+            1e-2,
+            id="4d_input_3obj_gp_var_1",
+        ),
     ],
 )
 def test_expected_hypervolume_improvement(
@@ -574,7 +598,7 @@ def test_expected_hypervolume_improvement(
     atol: float,
 ) -> None:
     # Note: the test data number grows exponentially with num of obj
-    data_num_seg_per_dim = 10  # test data number per input dim
+    data_num_seg_per_dim = 2  # test data number per input dim
     N = data_num_seg_per_dim ** input_dim
     xs = tf.convert_to_tensor(
         list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim))
