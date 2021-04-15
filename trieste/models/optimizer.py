@@ -172,11 +172,11 @@ def _create_scipy_optimizer(
 @singledispatch
 def create_loss_function(model, dataset: TrainingData, compile: bool = False) -> LossClosure:
     """
-    Generic function for extracting a loss function for a specified `model` and `dataset`.
+    Generic function for building a loss function for a specified `model` and `dataset`.
     The implementations depends on the type of the model.
 
-    :param model: The model to extract a loss function for.
-    :param dataset: The data with which to extract the loss function.
+    :param model: The model to build a loss function for.
+    :param dataset: The data with which to build the loss function.
     :param compile: Whether to compile with :func:`tf.function`.
     :return: The loss function.
     """
