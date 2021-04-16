@@ -54,7 +54,6 @@ from trieste.acquisition.function import (
     SingleModelAcquisitionBuilder,
     expected_hv_improvement,
     expected_improvement,
-    get_reference_point,
     lower_confidence_bound,
     min_value_entropy_search,
     probability_of_feasibility,
@@ -65,7 +64,7 @@ from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
-from trieste.utils.pareto import Pareto
+from trieste.utils.pareto import Pareto, get_reference_point
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):

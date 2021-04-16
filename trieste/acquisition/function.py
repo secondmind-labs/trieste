@@ -28,7 +28,7 @@ from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
-from ..utils.pareto import Pareto
+from ..utils.pareto import Pareto, get_reference_point
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -545,21 +545,20 @@ def expected_hv_improvement(
     reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
-    HV calculation using Eq. 44 of :cite:`yang2019efficient` paper.
+    expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
     The expected hypervolume improvement calculation in the non-dominated region
     can be decomposed into sub-calculations based on each partitioned cell.
-    This sub-scalculation can be further reformulated as a combination of two types of
-    generalized expected improvements for easier math operation, corresponding to Psi
-    function and nu function calculations.
-    Mainly referring Eq. 44, and Eq. 45
+    For easier calculation, this sub-calculation can be reformulated as a combination
+    of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+    function calculations, respectively.
     Note:
     1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm,
        we do not assume the last dimension partitioned cell has only one (lower) bound
        (which is used in the :cite:`yang2019efficient` paper). This is not as efficient as
         the original paper, but is applicable to different non-dominated partition algorithm.
-    2. The Psi and nu function in the original paper is defined for a maximization problem. To
-       make use of the same notation for easier following, we inverse our problem (as maximization)
-       to make use of the same equation.
+    2. As the Psi and nu function in the original paper are defined for maximization problems,
+        we inverse our minimisation problem (to also be a maximisation), allowing use of the
+        original notation and equations.
 
     :param model: The model of the objective function.
     :param pareto: Pareto class
@@ -595,12 +594,39 @@ def expected_hv_improvement(
             """
             A special expected improvement given fixed improvement,
             defined at Eq. 25 in :cite:`yang2019efficient`
-            :param lb: shape [..., num_cells, out_dim] slice lower bound
-            :param ub: shape [..., num_cells, out_dim] slice upper bound
+            :param lb: shape [..., num_cells, out_dim] cell lower bound
+            :param ub: shape [..., num_cells, out_dim] cell upper bound
             :param mean: shape [..., out_dim]
             :param std: shape [..., out_dim]
             """
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
+
+        def ehvi_based_on_partitioned_cell(psi_val, nu_val):
+            r"""
+            Use psi and nu function value to calculate the ehvi based on cell i.
+            The original integration on each output dimensionality can be formulated as 2 type of
+            generic expected improvement corresponding to psi and nu respectively, hence
+            the integration through d dimension is a sum of combinations. Refer
+            Eq. 44, Eq. 45
+            .. math::
+                \int_{y_1=l_1}^{\infty}\int_{y_2=l_2}^{\infty},...,\int_{y_d=l_d}^{\infty}
+                \lambda_d[S_d^{(i)}\cap\Delta(y)]\cdot\xi_{\mu,\sigma}(y)dy
+                = \Sigma_{j=1}^{2^d}(\prod_{k=1}^d \omega(.,.,C_k^{j})
+            Which can be reformulated as combinations of Psi and nu
+            :param psi_val shape [..., num_cells, out_dim]
+            :param nu_val shape [..., num_cells, out_dim]
+            """
+
+            stacked_factors = tf.concat(
+                [tf.expand_dims(psi_val, -2), tf.expand_dims(nu_val, -2)], axis=-2
+            )  # Take the cross product of psi_diff and nu across all outcomes
+            # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
+
+            factor_combinations = tf.linalg.diag_part(
+                tf.gather(stacked_factors, cross_index, axis=-2)
+            )  # [..., num_cells, 2^d, 2(operation_num), num_obj]
+
+            return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
 
         candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
         candidate_std = tf.sqrt(candidate_var)
@@ -615,9 +641,7 @@ def expected_hv_improvement(
 
         neg_lb_points, neg_ub_points = -ub_points, -lb_points
 
-        neg_ub_points = tf.minimum(
-            neg_ub_points, 1e10
-        )  # this maximum: 1e10 is heuristically chosen
+        neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
 
         psi_ub = Psi(
             neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std
@@ -630,35 +654,20 @@ def expected_hv_improvement(
         nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
 
         # get stacked factors of Eq. 45
-        # [2^m, indices_at_dim]
-        cross_index = tf.constant(list(product(*[[0, 1]] * reference_point.shape[-1])))
+        cross_index = tf.constant(
+            list(product(*[[0, 1]] * reference_point.shape[-1]))
+        )  # [2^d, indices_at_dim]
 
-        # Take the cross product of psi_diff and nu across all outcomes
-        # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
-        stacked_factors = tf.concat(
-            [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
-        )
+        ehvi_cells_based = ehvi_based_on_partitioned_cell(psi_lb2ub, nu_contrib)
 
-        # [..., num_cells, 2^m, 2(operation_num), num_obj]
-        factor_combinations = tf.linalg.diag_part(tf.gather(stacked_factors, cross_index, axis=-2))
-
-        # calculate Eq. 44
-        # prod of different output_dim -> sum over 2^m combination -> sum over num_cells; [..., 1]
+        # calculate Eq. 44: sum over num_cells to get the EHVI; [..., 1]
         return tf.reduce_sum(
-            tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1),
+            ehvi_cells_based,
             axis=-1,
             keepdims=True,
         )
 
     return acquisition
-
-
-def get_reference_point(front: TensorType) -> TensorType:
-    """
-    reference point calculation method
-    """
-    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
-    return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
 
 
 class IndependentReparametrizationSampler:
