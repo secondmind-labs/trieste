@@ -577,7 +577,7 @@ def expected_hv_improvement(
             loc=tf.zeros(shape=1, dtype=x.dtype), scale=tf.ones(shape=1, dtype=x.dtype)
         )
 
-        def Psi(a, b, mean, std) -> TensorType:
+        def Psi(a: TensorType, b: TensorType, mean: TensorType, std: TensorType) -> TensorType:
             """
             Generic Expected Improvement defined at Eq. 19 in :cite:`yang2019efficient`,
             calculate the expected improvement on reference a, integrating from b
@@ -590,7 +590,7 @@ def expected_hv_improvement(
                 1 - normal.cdf((b - mean) / std)
             )
 
-        def nu(lb, ub, mean, std) -> TensorType:
+        def nu(lb: TensorType, ub: TensorType, mean: TensorType, std: TensorType) -> TensorType:
             """
             A special expected improvement given fixed improvement,
             defined at Eq. 25 in :cite:`yang2019efficient`
@@ -601,7 +601,7 @@ def expected_hv_improvement(
             """
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
 
-        def ehvi_based_on_partitioned_cell(psi_val, nu_val):
+        def ehvi_based_on_partitioned_cell(psi_val: TensorType, nu_val: TensorType) -> TensorType:
             r"""
             Use psi and nu function value to calculate the ehvi based on cell i.
             The original integration on each output dimensionality can be formulated as 2 type of
@@ -631,7 +631,6 @@ def expected_hv_improvement(
         candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
         candidate_std = tf.sqrt(candidate_var)
 
-        # calc ehvi assuming maximization
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
         candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
@@ -653,14 +652,12 @@ def expected_hv_improvement(
         psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
         nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
 
-        # get stacked factors of Eq. 45
         cross_index = tf.constant(
             list(product(*[[0, 1]] * reference_point.shape[-1]))
         )  # [2^d, indices_at_dim]
 
         ehvi_cells_based = ehvi_based_on_partitioned_cell(psi_lb2ub, nu_contrib)
 
-        # calculate Eq. 44: sum over num_cells to get the EHVI; [..., 1]
         return tf.reduce_sum(
             ehvi_cells_based,
             axis=-1,
