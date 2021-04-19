@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from itertools import product
+from math import inf
 from typing import Callable
 
 import tensorflow as tf
@@ -26,6 +28,7 @@ from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
+from ..utils.pareto import Pareto, get_reference_point
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -507,6 +510,137 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
+
+
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the expected hypervolume improvement acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`yang2019efficient`
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return "ExpectedHypervolumeImprovement()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected hypervolume improvement acquisition function.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        return expected_hv_improvement(model, _pf, _reference_pt)
+
+
+def expected_hv_improvement(
+    model: ProbabilisticModel,
+    pareto: Pareto,
+    reference_point: TensorType,
+) -> AcquisitionFunction:
+    r"""
+    expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+    The expected hypervolume improvement calculation in the non-dominated region
+    can be decomposed into sub-calculations based on each partitioned cell.
+    For easier calculation, this sub-calculation can be reformulated as a combination
+    of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+    function calculations, respectively.
+    Note:
+    1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+        algorithm, we do not assume the last dimension of the partitioned cell has only one
+        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+        This is not as efficient as the original paper, but is applicable to different non-dominated
+        partition algorithm.
+    2. As the Psi and nu function in the original paper are defined for maximization problems,
+        we inverse our minimisation problem (to also be a maximisation), allowing use of the
+        original notation and equations.
+
+    :param model: The model of the objective function.
+    :param pareto: Pareto class
+    :param reference_point The reference point for calculating hypervolume
+    :return The expected_hv_improvement acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    """
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        normal = tfp.distributions.Normal(
+            loc=tf.zeros(shape=1, dtype=x.dtype), scale=tf.ones(shape=1, dtype=x.dtype)
+        )
+
+        def Psi(a: TensorType, b: TensorType, mean: TensorType, std: TensorType) -> TensorType:
+            return std * normal.prob((b - mean) / std) + (mean - a) * (
+                1 - normal.cdf((b - mean) / std)
+            )
+
+        def nu(lb: TensorType, ub: TensorType, mean: TensorType, std: TensorType) -> TensorType:
+            return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
+
+        def ehvi_based_on_partitioned_cell(
+            neg_pred_mean: TensorType, pred_std: TensorType
+        ) -> TensorType:
+            r"""
+            Calculate the ehvi based on cell i.
+            """
+
+            lb_points, ub_points = pareto.hypercell_bounds(
+                tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
+            )
+
+            neg_lb_points, neg_ub_points = -ub_points, -lb_points
+
+            neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
+
+            psi_ub = Psi(
+                neg_lb_points, neg_ub_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+            psi_lb = Psi(
+                neg_lb_points, neg_lb_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+
+            psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
+            nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
+
+            cross_index = tf.constant(
+                list(product(*[[0, 1]] * reference_point.shape[-1]))
+            )  # [2^d, indices_at_dim]
+
+            stacked_factors = tf.concat(
+                [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
+            )  # Take the cross product of psi_diff and nu across all outcomes
+            # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
+
+            factor_combinations = tf.linalg.diag_part(
+                tf.gather(stacked_factors, cross_index, axis=-2)
+            )  # [..., num_cells, 2^d, 2(operation_num), num_obj]
+
+            return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
+
+        candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
+        candidate_std = tf.sqrt(candidate_var)
+
+        neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
+        candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
+
+        ehvi_cells_based = ehvi_based_on_partitioned_cell(neg_candidate_mean, candidate_std)
+
+        return tf.reduce_sum(
+            ehvi_cells_based,
+            axis=-1,
+            keepdims=True,
+        )
+
+    return acquisition
 
 
 class IndependentReparametrizationSampler:
