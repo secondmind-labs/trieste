@@ -26,27 +26,25 @@ from ..type import TensorType
 
 
 class MultiObjectiveTestProblem(ABC):
-    r"""Base class for test multi-objective test functions.
-    between a provided point and the closest point on the true pareto front.
-    """
+    """base class for synthetic multi-objective test functions"""
 
     @abstractmethod
     def prepare_benchmark(self):
         """
-        Evaluate Original problem
+        Evaluate original problem.
         """
 
     @abstractmethod
     def gen_pareto_optimal_points(self, n: int):
         """
-        Generate `n` pareto optimal points
+        Generate `n` pareto optimal points.
         """
 
 
 class VLMOP2(MultiObjectiveTestProblem):
     """
     The VLMOP2 function, typically evaluated over :math:`[-2, 2]^2`. See
-    :cite:`van1999multiobjective`  for details.
+    See :cite:deb2002scalable for details.
     """
 
     bounds = [[-2.0] * 2, [2.0] * 2]
@@ -76,7 +74,7 @@ def vlmop2(x: TensorType) -> TensorType:
 class DTLZ(MultiObjectiveTestProblem):
     """
     DTLZ series multi-objective test functions.
-    :cite: deb2002scalable
+    See :cite:deb2002scalable for details.
     """
 
     def __init__(self, input_dim: int, num_objective: int):
@@ -92,7 +90,6 @@ class DTLZ(MultiObjectiveTestProblem):
         self.M = num_objective
         self.k = self.dim - self.M + 1
         self.bounds = [[0] * input_dim, [1] * input_dim]
-        super().__init__()
 
 
 class DTLZ1(DTLZ):

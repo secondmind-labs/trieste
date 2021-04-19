@@ -20,7 +20,7 @@ import tensorflow as tf
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.space import Box
 from trieste.type import TensorType
-from trieste.utils.mo_objectives import DTLZ1, DTLZ2, MultiObjectiveTestProblem, vlmop2
+from trieste.utils.mo_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem, vlmop2
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
@@ -168,6 +168,7 @@ def test_gen_pareto_front_is_equal_to_math_defined(
 @pytest.mark.parametrize(
     "obj_inst, actual_x",
     [
+        (VLMOP2(), tf.constant([[0.4, 0.2, 0.5]])),
         (DTLZ1(3, 2), tf.constant([[0.3, 0.1]])),
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
     ],
