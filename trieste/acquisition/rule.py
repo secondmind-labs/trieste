@@ -226,18 +226,16 @@ class GreedyEfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
+        acquisition_function_constructor = self._builder.prepare_greedy_acquisition_function_constructor(datasets, models)
+        points=None
+        for i in range(self._num_query_points):
+            greedy_acquisition_function = acquisition_function_constructor(points)
+            chosen_point = self._optimizer(search_space, greedy_acquisition_function)
 
-        base_acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        self._penalizer_builder.estimate_penalization_parameters()
-
-        first_point = self._optimizer(search_space, base_acquisition_function)
-        points = first_point
-
-        for i in range(self._num_query_points - 1): # build batch of points in greedy manner
-            penalization  = self._penalizer_builder.prepare_penalization_function(points, models)
-            log_penalized_acquisiton_function = tf.math.log(base_acquisition_function) + tf.math.log(penalization)
-            next_point = self._optimizer(search_space, log_penalized_acquisition_function)
-            points = tf.concat([points,first_point], axis=0)
+            if not points:
+                points = chosen_point
+            else:
+                points = tf.concat([points,chosen_point], axis=0)
 
         return points, None
 
