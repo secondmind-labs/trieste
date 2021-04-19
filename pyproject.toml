@@ -38,3 +38,9 @@ profile = "black"
 skip_gitignore = true
 skip_glob = "docs/notebooks"
 line_length = 100
+
+[tool.taskipy.tasks]
+tests = "pytest --mypy --cov trieste --cov-report html:htmlcov"
+mypy = "pytest --mypy --cache-clear -m mypy -v"
+check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
+format = "black . && flake8 . && isort ."

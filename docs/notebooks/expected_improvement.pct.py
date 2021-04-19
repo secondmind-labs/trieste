@@ -153,7 +153,7 @@ plot_bo_points(
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_models()[OBJECTIVE].model,
+    result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30
@@ -176,7 +176,9 @@ fig.show()
 # We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. Note the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
 
 # %%
-gpflow.utilities.print_summary(result.try_get_final_models()[OBJECTIVE].model)
+gpflow.utilities.print_summary(
+    result.try_get_final_models()[OBJECTIVE].model  # type: ignore
+)
 
 ls_list = [
     step.models[OBJECTIVE].model.kernel.lengthscales.numpy()  # type: ignore
@@ -235,7 +237,7 @@ batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
 batch_query_points = batch_dataset.query_points.numpy()
 batch_observations = batch_dataset.observations.numpy()
 fig = plot_gp_plotly(
-    batch_result.try_get_final_models()[OBJECTIVE].model,
+    batch_result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30
