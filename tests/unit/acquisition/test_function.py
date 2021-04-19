@@ -33,12 +33,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.model import (
-    GaussianProcess,
-    PseudoTrainableProbModel,
-    QuadraticMeanAndRBFKernel,
-    rbf,
-)
+from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -60,7 +55,6 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
@@ -471,34 +465,16 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 
 
-class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
-    pass
-
-
-class _PseudoTrainableLinear(GaussianProcess, PseudoTrainableProbModel):
-    def __init__(
-        self,
-        *,
-        kernel_amplitude: float | TensorType | None = None,
-    ):
-        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([lambda x: tf.reduce_sum(x, axis=-1, keepdims=True)], [kernel])
-
-    def __repr__(self) -> str:
-        return "_PseudoTrainableLinear()"
-
-
-_mo_test_models = (
-    _PseudoTrainableQuadratic,
-    _PseudoTrainableLinear,
-    _PseudoTrainableQuadratic,
-)
+def _mo_test_model(num_obj: int, *kernel_amplitudes: float | TensorType | None) -> GaussianProcess:
+    means = [quadratic, lambda x: tf.reduce_sum(x, axis=-1, keepdims=True), quadratic]
+    kernels = [tfp.math.psd_kernels.ExponentiatedQuadratic(k_amp) for k_amp in kernel_amplitudes]
+    return GaussianProcess(means[:num_obj], kernels[:num_obj])
 
 
 def test_ehvi_builder_raises_for_empty_data() -> None:
     num_obj = 3
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    model = ModelStack(*[(_PseudoTrainableQuadratic(), 1) for _ in range(num_obj)])
+    dataset = empty_dataset([2], [num_obj])
+    model = QuadraticMeanAndRBFKernel()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
@@ -514,7 +490,7 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
         ),
     )
 
-    model = ModelStack(*[(_mo_test_models[_](), 1) for _ in range(num_obj)])
+    model = _mo_test_model(num_obj, *[None] * num_obj)
     acq_fn = ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
 
     model_pred_observation = model.predict(train_x)[0]
@@ -529,7 +505,7 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
 
-    model = ModelStack(*[(_mo_test_models[_](), 1) for _ in range(num_obj)])
+    model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
     ehvi = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))
@@ -540,16 +516,14 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
 
 @random_seed
 @pytest.mark.parametrize(
-    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale ,rtol, atol",
+    "input_dim, num_samples_per_point, existing_observations, obj_num, variance_scale",
     [
         pytest.param(
             1,
-            50_000,
+            100_000,
             tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]),
             2,
             1.0,
-            0.01,
-            1e-2,
             id="1d_input_2obj_gp_var_1",
         ),
         pytest.param(
@@ -558,21 +532,15 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
             tf.constant([[0.3, 0.2], [0.2, 0.22], [0.1, 0.25], [0.0, 0.3]]),
             2,
             2.0,
-            0.01,
-            1e-2,
             id="1d_input_2obj_gp_var_2",
         ),
-        pytest.param(
-            2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, 0.01, 1e-2, id="2d_input_2obj_gp_var_2"
-        ),
+        pytest.param(2, 50_000, tf.constant([[0.0, 0.0]]), 2, 1.0, id="2d_input_2obj_gp_var_2"),
         pytest.param(
             3,
             50_000,
             tf.constant([[2.0, 1.0], [0.8, 3.0]]),
             2,
             1.0,
-            0.01,
-            1e-2,
             id="3d_input_2obj_gp_var_1",
         ),
         pytest.param(
@@ -581,8 +549,6 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
             tf.constant([[3.0, 2.0, 1.0], [1.1, 2.0, 3.0]]),
             3,
             1.0,
-            0.01,
-            1e-2,
             id="4d_input_3obj_gp_var_1",
         ),
     ],
@@ -593,8 +559,6 @@ def test_expected_hypervolume_improvement(
     existing_observations: tf.Tensor,
     obj_num: int,
     variance_scale: float,
-    rtol: float,
-    atol: float,
 ) -> None:
     # Note: the test data number grows exponentially with num of obj
     data_num_seg_per_dim = 2  # test data number per input dim
@@ -604,15 +568,11 @@ def test_expected_hypervolume_improvement(
     )
 
     xs = tf.cast(xs, dtype=existing_observations.dtype)
-    model = ModelStack(
-        *[(_mo_test_models[_](kernel_amplitude=variance_scale), 1) for _ in range(obj_num)]
-    )
-
+    model = _mo_test_model(obj_num, *[variance_scale] * obj_num)
     mean, variance = model.predict(xs)
 
-    # [f_samples, B, L]
     predict_samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(
-        num_samples_per_point
+        num_samples_per_point  # [f_samples, batch_size, obj_num]
     )
     _pareto = Pareto(existing_observations)
     ref_pt = get_reference_point(_pareto.front)
@@ -624,8 +584,8 @@ def test_expected_hypervolume_improvement(
     splus_valid = tf.reduce_all(
         tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
         > tf.expand_dims(predict_samples, axis=1),
-        axis=-1,
-    )  # num_cells x B
+        axis=-1,  # [f_samples, num_cells,  B]
+    )
     splus_idx = tf.expand_dims(tf.cast(splus_valid, dtype=ub_points.dtype), -1)
     splus_lb = tf.tile(lb_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
     splus_lb = tf.maximum(splus_lb, tf.expand_dims(predict_samples, 1))
@@ -637,7 +597,7 @@ def test_expected_hypervolume_improvement(
 
     ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
 
-    npt.assert_allclose(ehvi, ehvi_approx, rtol=rtol, atol=atol)
+    npt.assert_allclose(ehvi, ehvi_approx, rtol=0.01, atol=0.01)
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])

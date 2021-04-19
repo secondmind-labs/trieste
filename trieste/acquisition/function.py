@@ -514,7 +514,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the :func:`expected_hv_improvement` acquisition function.
+    Builder for the expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
     follows :cite:`yang2019efficient`
     """
@@ -529,7 +529,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
-        :return: The expected_hv_improvement function.
+        :return: The expected hypervolume improvement acquisition function.
         """
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -552,10 +552,11 @@ def expected_hv_improvement(
     of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
     function calculations, respectively.
     Note:
-    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm,
-       we do not assume the last dimension partitioned cell has only one (lower) bound
-       (which is used in the :cite:`yang2019efficient` paper). This is not as efficient as
-        the original paper, but is applicable to different non-dominated partition algorithm.
+    1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+        algorithm, we do not assume the last dimension of the partitioned cell has only one
+        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+        This is not as efficient as the original paper, but is applicable to different non-dominated
+        partition algorithm.
     2. As the Psi and nu function in the original paper are defined for maximization problems,
         we inverse our minimisation problem (to also be a maximisation), allowing use of the
         original notation and equations.
@@ -578,47 +579,44 @@ def expected_hv_improvement(
         )
 
         def Psi(a: TensorType, b: TensorType, mean: TensorType, std: TensorType) -> TensorType:
-            """
-            Generic Expected Improvement defined at Eq. 19 in :cite:`yang2019efficient`,
-            calculate the expected improvement on reference a, integrating from b
-            :param a: shape [num_cells, out_dim] expected improvement reference point
-            :param b: shape [num_cells, out_dim] integral upper bounds
-            :param mean: shape [..., out_dim]
-            :param std: shape [..., out_dim]
-            """
             return std * normal.prob((b - mean) / std) + (mean - a) * (
                 1 - normal.cdf((b - mean) / std)
             )
 
         def nu(lb: TensorType, ub: TensorType, mean: TensorType, std: TensorType) -> TensorType:
-            """
-            A special expected improvement given fixed improvement,
-            defined at Eq. 25 in :cite:`yang2019efficient`
-            :param lb: shape [..., num_cells, out_dim] cell lower bound
-            :param ub: shape [..., num_cells, out_dim] cell upper bound
-            :param mean: shape [..., out_dim]
-            :param std: shape [..., out_dim]
-            """
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
 
-        def ehvi_based_on_partitioned_cell(psi_val: TensorType, nu_val: TensorType) -> TensorType:
+        def ehvi_based_on_partitioned_cell(
+            neg_pred_mean: TensorType, pred_std: TensorType
+        ) -> TensorType:
             r"""
-            Use psi and nu function value to calculate the ehvi based on cell i.
-            The original integration on each output dimensionality can be formulated as 2 type of
-            generic expected improvement corresponding to psi and nu respectively, hence
-            the integration through d dimension is a sum of combinations. Refer
-            Eq. 44, Eq. 45
-            .. math::
-                \int_{y_1=l_1}^{\infty}\int_{y_2=l_2}^{\infty},...,\int_{y_d=l_d}^{\infty}
-                \lambda_d[S_d^{(i)}\cap\Delta(y)]\cdot\xi_{\mu,\sigma}(y)dy
-                = \Sigma_{j=1}^{2^d}(\prod_{k=1}^d \omega(.,.,C_k^{j})
-            Which can be reformulated as combinations of Psi and nu
-            :param psi_val shape [..., num_cells, out_dim]
-            :param nu_val shape [..., num_cells, out_dim]
+            Calculate the ehvi based on cell i.
             """
 
+            lb_points, ub_points = pareto.hypercell_bounds(
+                tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
+            )
+
+            neg_lb_points, neg_ub_points = -ub_points, -lb_points
+
+            neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
+
+            psi_ub = Psi(
+                neg_lb_points, neg_ub_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+            psi_lb = Psi(
+                neg_lb_points, neg_lb_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+
+            psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
+            nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
+
+            cross_index = tf.constant(
+                list(product(*[[0, 1]] * reference_point.shape[-1]))
+            )  # [2^d, indices_at_dim]
+
             stacked_factors = tf.concat(
-                [tf.expand_dims(psi_val, -2), tf.expand_dims(nu_val, -2)], axis=-2
+                [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
             )  # Take the cross product of psi_diff and nu across all outcomes
             # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
 
@@ -634,29 +632,7 @@ def expected_hv_improvement(
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
         candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
-        lb_points, ub_points = pareto.hypercell_bounds(
-            tf.constant([-inf] * candidate_mean.shape[-1], dtype=x.dtype), reference_point
-        )
-
-        neg_lb_points, neg_ub_points = -ub_points, -lb_points
-
-        neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
-
-        psi_ub = Psi(
-            neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std
-        )  # [..., num_cells, out_dim]
-        psi_lb = Psi(
-            neg_lb_points, neg_lb_points, neg_candidate_mean, candidate_std
-        )  # [..., num_cells, out_dim]
-
-        psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
-        nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
-
-        cross_index = tf.constant(
-            list(product(*[[0, 1]] * reference_point.shape[-1]))
-        )  # [2^d, indices_at_dim]
-
-        ehvi_cells_based = ehvi_based_on_partitioned_cell(psi_lb2ub, nu_contrib)
+        ehvi_cells_based = ehvi_based_on_partitioned_cell(neg_candidate_mean, candidate_std)
 
         return tf.reduce_sum(
             ehvi_cells_based,
