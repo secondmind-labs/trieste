@@ -584,20 +584,19 @@ def test_expected_hypervolume_improvement(
     splus_valid = tf.reduce_all(
         tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
         > tf.expand_dims(predict_samples, axis=1),
-        axis=-1,  # validity label representing whether predict_samples can contribute hvi in cell
+        axis=-1,  # can predict_samples contribute to hvi in cell
     )  # [f_samples, num_cells,  B]
     splus_idx = tf.expand_dims(tf.cast(splus_valid, dtype=ub_points.dtype), -1)
     splus_lb = tf.tile(lb_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
-    splus_lb = tf.maximum(  # dimensional wise max of cell lower bound & predict samples
+    splus_lb = tf.maximum(  # max of lower bounds and predict_samples
         splus_lb, tf.expand_dims(predict_samples, 1)
     )
     splus_ub = tf.tile(ub_points[tf.newaxis, :, tf.newaxis, :], [num_samples_per_point, 1, N, 1])
-    splus = tf.concat(  # concatenate validity labels & dimensional wise (possible) improvement
+    splus = tf.concat(  # concatenate validity labels and possible improvements
         [splus_idx, splus_ub - splus_lb], axis=-1
     )
-    # calc hvi: in case hvi contributing label is valid:
-    # calculate the product of dimensional wise improvement
-    # sum up hvi through all partitioned cell to get the hvi in the non-dominated region
+
+    # calculate hyper-volume improvement over the non-dominated cells
     ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)  # average through mc sample
 
