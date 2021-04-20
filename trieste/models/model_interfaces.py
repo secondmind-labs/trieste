@@ -451,10 +451,11 @@ class GPFluxModel(TrainableProbabilisticModel):
 
         Z = layer.inducing_variable.Z
         Z = tf.random.shuffle(Z)
+        num_inducing = len(layer.inducing_variable)
 
         f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
         Knn = layer.kernel(Z, full_cov=True)  # [N, N]
-        jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
+        jitter_mat = jitter * tf.eye(num_inducing, dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
         new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
         tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
