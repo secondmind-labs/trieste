@@ -407,6 +407,12 @@ class GPFluxModel(TrainableProbabilisticModel):
                  batch_size: int = 128):
         super().__init__()
         self._model = model
+
+        if len(self.model.f_layers) > 1:
+            raise NotImplementedError(
+                "GPFluxModels are restricted to single-layer models."
+            )
+
         self._data = data
         self.num_epochs = num_epochs
         self._batch_size = batch_size
@@ -434,12 +440,31 @@ class GPFluxModel(TrainableProbabilisticModel):
     def sample_trajectory(self) -> Callable:
         return sample_dgp(self.model)
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, dataset: Dataset, jitter: float = DEFAULTS.JITTER) -> None:
         _assert_data_is_compatible(dataset, self._data)
 
         self._data = dataset
 
         num_data = dataset.query_points.shape[0]
+        layer = self.model.f_layers[0]
+
+        Z = layer.inducing_variable.Z
+        Z = tf.random.shuffle(Z)
+
+        f_mu, f_cov = self.predict_f(Z, full_cov=True)  # [N, L], [L, N, N]
+        Knn = layer.kernel(Z, full_cov=True)  # [N, N]
+        jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
+        Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
+        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
+        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+        new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
+
+        layer.q_mu = gpflow.Parameter(new_q_mu)
+        layer.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+        # TODO: keep trainable property consistent over updates
+        layer.inducing_variable.Z = gpflow.Parameter(Z, trainable=layer.inducing_variable.Z.trainable)
+
         self.model.num_data = num_data
 
     def optimize(self, dataset: Dataset) -> None:
@@ -450,11 +475,8 @@ class GPFluxModel(TrainableProbabilisticModel):
                 monitor="loss", patience=5, factor=0.95, verbose=0, min_lr=1e-6,
             )
         ]
-        x = dataset.query_points
-        y = dataset.observations
-        print(x, y)
         model.fit(
-            {"inputs": x, "targets": y},
+            {"inputs": dataset.query_points, "targets": dataset.observations},
             batch_size=self._batch_size,
             epochs=self.num_epochs,
             callbacks=callbacks
