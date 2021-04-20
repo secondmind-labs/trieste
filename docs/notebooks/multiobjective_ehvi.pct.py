@@ -30,7 +30,7 @@ tf.random.set_seed(1793)
 
 
 vlmop2 = VLMOP2().prepare_benchmark()
-
+observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
 
 mins = [-2, -2]
 maxs = [2, 2]
@@ -43,9 +43,9 @@ search_space = trieste.space.Box(lower_bound, upper_bound)
 num_objective = 2
 
 
-def observer(query_points):
-    y = vlmop2(query_points)
-    return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
+# def observer(query_points):
+#     y = vlmop2(query_points)
+#     return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
 
 
 # Let's randomly sample some initial data from the observer ...

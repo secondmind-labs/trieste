@@ -65,7 +65,7 @@ class VLMOP2(MultiObjectiveTestProblem):
 
 def vlmop2(x: TensorType) -> TensorType:
     tf.debugging.assert_shapes([(x, ("N", 2))], message="vlmop2 only allow 2d input")
-    transl = 1 / tf.sqrt(2.0)
+    transl = 1 / math.sqrt(2.0)
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
     y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=1))
     return tf.stack([y1, y2], axis=1)
