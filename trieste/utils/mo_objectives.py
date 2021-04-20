@@ -98,7 +98,7 @@ class DTLZ1(DTLZ):
 
     def gen_pareto_optimal_points(self, n: int, seed=None):
         tf.debugging.assert_greater_equal(self.M, 2)
-        rnd = tf.random.uniform([n, self.M - 1], minval=0, maxval=1)
+        rnd = tf.random.uniform([n, self.M - 1], minval=0, maxval=1, seed=seed)
         strnd = tf.sort(rnd, axis=-1)
         strnd = tf.concat([tf.zeros([n, 1]), strnd, tf.ones([n, 1])], axis=-1)
         return 0.5 * (strnd[..., 1:] - strnd[..., :-1])
