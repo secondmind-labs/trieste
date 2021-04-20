@@ -54,7 +54,7 @@ num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
 
 from gpflow.config import default_float
 from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
-from gpflux.sampling.kernel_with_mercer_decomposition import KernelWithMercerDecomposition
+from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 
 def build_rff_model(data):
@@ -63,10 +63,9 @@ def build_rff_model(data):
     num_rff = 1000
     eigenfunctions = RandomFourierFeatures(ker, num_rff, dtype=default_float())
     eigenvalues = np.ones((num_rff, 1), dtype=default_float())
-    kernel2 = KernelWithMercerDecomposition(None, eigenfunctions, eigenvalues)
+    kernel2 = KernelWithFeatureDecomposition(None, eigenfunctions, eigenvalues)
 
     Z = search_space.sample(20)
-    # Z = data.query_points
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
     gpflow.utilities.set_trainable(inducing_variable, True)
 
@@ -75,7 +74,6 @@ def build_rff_model(data):
         inducing_variable=inducing_variable,
         num_data=num_initial_points,
         white=False,
-        verify=False,
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
     )
@@ -102,9 +100,9 @@ models = {OBJECTIVE: model}
 
 # %%
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), 4)
+rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), 10)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(2, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]

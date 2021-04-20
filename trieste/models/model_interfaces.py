@@ -270,13 +270,17 @@ class GPFluxModel(TrainableProbabilisticModel):
     def model(self) -> BayesianModel:
         return self._model
 
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         pred = self.model(query_points)
         return pred.f_mu, pred.f_var
 
+    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        pred = self.model(query_points)
+        return pred.f_mean, pred.f_var
+
     def predict_f(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         pred = self.model(query_points)
-        return pred.f_mu, pred.f_var
+        return pred.f_mean, pred.f_var
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """ Latent function samples """
