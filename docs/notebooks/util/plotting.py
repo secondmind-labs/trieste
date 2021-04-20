@@ -228,7 +228,7 @@ def plot_bo_points_in_obj_space(
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
     Markers and colors are chosen according to BO factors.
-    :param dataset:
+    :param observations:
     :param num_init: initial number of BO points
     :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
     :param title:
@@ -238,12 +238,14 @@ def plot_bo_points_in_obj_space(
     :param only_plot_pareto: if set true, only plot the pareto points
     """
     obj_num = observations.shape[-1]
+    tf.debugging.assert_shapes([])
     assert obj_num == 2 or obj_num == 3, NotImplementedError(
         "Only support 2/3-objective" " function plot but found: {}".format(obj_num)
     )
 
     _, dom = non_dominated(observations)
-    idx_pareto = np.where(dom == 0)
+    idx_pareto = np.where(dom == 0) if mask_fail is None else \
+        np.where(np.logical_and(dom == 0, ~mask_fail))
 
     pts = observations
     num_pts = pts.shape[0]
