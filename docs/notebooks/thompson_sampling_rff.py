@@ -20,6 +20,10 @@ from util.plotting_plotly import plot_function_plotly
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 
+def noisy_branin(x):
+    y = branin(x)
+    return y + tf.random.normal(y.shape, stddev=0.1, dtype=y.dtype)
+
 # fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
 # fig.update_layout(height=400, width=400)
 # fig.show()
@@ -34,9 +38,9 @@ search_space = trieste.space.Box([0, 0], [1, 1])
 # %%
 from trieste.acquisition.rule import OBJECTIVE
 
-observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
+observer = trieste.utils.objectives.mk_observer(noisy_branin, OBJECTIVE)
 
-num_initial_points = 5
+num_initial_points = 50
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -50,6 +54,7 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 import gpflux
+from trieste.utils.robustgp import ConditionalVariance
 
 num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
 
@@ -66,9 +71,12 @@ def build_rff_model(data) -> tf.keras.Model:
     coefficients = np.ones((num_rff, 1), dtype=default_float())
     kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
-    Z = search_space.sample(20)
+    num_inducing = 40
+    init_method = ConditionalVariance()
+    Z = init_method.compute_initialisation(data.query_points.numpy(), num_inducing, kernel)[0]
+    # Z = search_space.sample(20)
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
-    # gpflow.utilities.set_trainable(inducing_variable, True)
+    gpflow.utilities.set_trainable(inducing_variable, False)
 
     layer = gpflux.layers.GPLayer(
         kernel_with_features,
@@ -78,8 +86,8 @@ def build_rff_model(data) -> tf.keras.Model:
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
     )
-    likelihood = gpflow.likelihoods.Gaussian(1e-5)
-    gpflow.utilities.set_trainable(likelihood, False)
+    likelihood = gpflow.likelihoods.Gaussian(1e-0)
+    gpflow.utilities.set_trainable(likelihood, True)
     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
     model = gpflux.models.DeepGP([layer], likelihood_layer)
     return model
@@ -100,7 +108,7 @@ models = {OBJECTIVE: model}
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
 rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=10)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(2, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]

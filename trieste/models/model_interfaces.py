@@ -25,7 +25,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from gpflux.models import DeepGP
 from gpflow.conditionals.util import sample_mvn
 from gpflux.models.deep_gp import sample_dgp
-
+from trieste.utils.robustgp import ConditionalVariance
 
 
 from ..data import Dataset
@@ -449,10 +449,9 @@ class GPFluxModel(TrainableProbabilisticModel):
         num_data = dataset.query_points.shape[0]
         layer = self.model.f_layers[0]
 
-        Z = layer.inducing_variable.Z
-        # Z = tf.random.shuffle(Z)
         num_inducing = len(layer.inducing_variable)
-
+        init_method = ConditionalVariance()
+        Z = init_method.compute_initialisation(dataset.query_points.numpy(), num_inducing, layer.kernel)[0]
 
         if layer.whiten:
             f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
