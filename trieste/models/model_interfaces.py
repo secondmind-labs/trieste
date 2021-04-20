@@ -22,8 +22,11 @@ from typing import Any, TypeVar, Tuple
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
-from gpflux.models import BayesianModel
+from gpflux.models import DeepGP
 from gpflow.conditionals.util import sample_mvn
+from gpflux.models.deep_gp import sample_dgp
+
+
 
 from ..data import Dataset
 from ..type import TensorType
@@ -398,7 +401,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 class GPFluxModel(TrainableProbabilisticModel):
 
     def __init__(self,
-                 model: BayesianModel,
+                 model: DeepGP,
                  data: Dataset,
                  num_epochs: int = 100,
                  batch_size: int = 128):
@@ -409,20 +412,18 @@ class GPFluxModel(TrainableProbabilisticModel):
         self._batch_size = batch_size
 
     @property
-    def model(self) -> BayesianModel:
+    def model(self) -> DeepGP:
         return self._model
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        pred = self.model(query_points)
-        return pred.f_mean, pred.f_var
+        f_mean, f_var = self.model.predict_f(query_points)
+        return f_mean, f_var
 
     def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        pred = self.model(query_points)
-        return pred.f_mu, pred.f_var
+        return self.predict(query_points)
 
     def predict_f(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        pred = self.model(query_points)
-        return pred.f_mean, pred.f_var
+        return self.predict(query_points)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """ Latent function samples """
@@ -431,7 +432,7 @@ class GPFluxModel(TrainableProbabilisticModel):
         return samples  # [..., (S), N, P]
 
     def sample_trajectory(self) -> Callable:
-        return self._model.sample()
+        return sample_dgp(self.model)
 
     def update(self, dataset: Dataset) -> None:
         _assert_data_is_compatible(dataset, self._data)
@@ -442,22 +443,28 @@ class GPFluxModel(TrainableProbabilisticModel):
         self.model.num_data = num_data
 
     def optimize(self, dataset: Dataset) -> None:
+        model = self.model.as_training_model()
+        model.compile(tf.optimizers.Adam(learning_rate=0.1))
         callbacks = [
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor="loss", patience=5, factor=0.95, verbose=0, min_lr=1e-6,
             )
         ]
-
-        self._model.fit(x=dataset.query_points, y=dataset.observations,
-                        batch_size=self._batch_size, epochs=self.num_epochs,
-                        callbacks=callbacks)
+        x = dataset.query_points,
+        y = dataset.observations,
+        model.fit(
+            {"inputs": x, "targets": y},
+            batch_size=self._batch_size,
+            epochs=self.num_epochs,
+            callbacks=callbacks
+        )
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    BayesianModel: GPFluxModel,
+    DeepGP: GPFluxModel,
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those

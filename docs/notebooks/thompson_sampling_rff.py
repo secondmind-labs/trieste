@@ -57,34 +57,31 @@ from gpflux.layers.basis_functions.random_fourier_features import RandomFourierF
 from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 
-def build_rff_model(data):
+def build_rff_model(data) -> tf.keras.Model:
     var = tf.math.reduce_variance(data.observations)
-    ker = gpflow.kernels.Matern52(variance=var, lengthscales=0.2 * np.ones(2, ))
+    kernel = gpflow.kernels.Matern52(variance=var, lengthscales=0.2 * np.ones(2, ))
     num_rff = 1000
-    eigenfunctions = RandomFourierFeatures(ker, num_rff, dtype=default_float())
-    eigenvalues = np.ones((num_rff, 1), dtype=default_float())
-    kernel2 = KernelWithFeatureDecomposition(None, eigenfunctions, eigenvalues)
+    features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
+    coefficients = np.ones((num_rff, 1), dtype=default_float())
+    kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
     Z = search_space.sample(20)
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
-    gpflow.utilities.set_trainable(inducing_variable, True)
+    # gpflow.utilities.set_trainable(inducing_variable, True)
 
     layer = gpflux.layers.GPLayer(
-        kernel=kernel2,
-        inducing_variable=inducing_variable,
-        num_data=num_initial_points,
-        white=False,
+        kernel_with_features,
+        inducing_variable,
+        num_data,
+        whiten=False,
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
     )
-    layer._initialized = True
-    lik = gpflow.likelihoods.Gaussian(variance=1e-5)
-    gpflow.utilities.set_trainable(lik, False)
-    likelihood_layer = gpflux.layers.LikelihoodLayer(lik)
-    mod = gpflux.models.DeepGP([layer], likelihood_layer)
-    mod.compile(tf.optimizers.Adam(learning_rate=0.1))
-
-    return mod
+    likelihood = gpflow.likelihoods.Gaussian(1e-5)
+    gpflow.utilities.set_trainable(likelihood, False)
+    likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
+    model = gpflux.models.DeepGP([layer], likelihood_layer)
+    return model
 
 
 # %%
