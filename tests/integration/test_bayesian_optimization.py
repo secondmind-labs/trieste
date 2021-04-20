@@ -17,6 +17,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
+from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import (
     OBJECTIVE,
     AcquisitionRule,
@@ -28,20 +29,22 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
-from trieste.utils.objectives import (
-    BRANIN_GLOBAL_ARGMIN,
-    BRANIN_GLOBAL_MINIMUM,
-    branin,
-    mk_observer,
-)
+from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
 
 @random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (30, EfficientGlobalOptimization()),
-        (22, TrustRegion()),
+        (20, EfficientGlobalOptimization()),
+        (
+            15,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                num_query_points=2,
+            ),
+        ),
+        (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],
 )
@@ -73,9 +76,8 @@ def test_optimizer_finds_minima_of_the_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    argmin = tf.cast(BRANIN_GLOBAL_ARGMIN, tf.float64)
-    relative_argmin_err = tf.abs((best_x - argmin) / argmin)
+    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
-    assert tf.reduce_any(tf.reduce_all(relative_argmin_err < 0.03, axis=-1), axis=0)
-    npt.assert_allclose(best_y, BRANIN_GLOBAL_MINIMUM, rtol=0.03)
+    assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
+    npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)

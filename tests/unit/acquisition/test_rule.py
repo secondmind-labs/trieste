@@ -11,43 +11,59 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
-from typing import Dict, Mapping
+from collections.abc import Mapping
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import one_dimensional_range, random_seed, zero_dataset
+from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.model import QuadraticMeanAndRBFKernel
-from trieste.acquisition.function import (
-    BatchAcquisitionFunction,
-    BatchAcquisitionFunctionBuilder,
+from trieste.acquisition import (
+    AcquisitionFunction,
+    AcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
 )
+from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     OBJECTIVE,
-    BatchAcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
     TrustRegion,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.space import Box
+from trieste.type import TensorType
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": zero_dataset()}])
-@pytest.mark.parametrize(
-    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
-)
-def test_trust_region_raises_for_missing_datasets_key(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
-) -> None:
-    search_space = one_dimensional_range(-1, 1)
-    rule = TrustRegion()
-    with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+def _line_search_maximize(
+    search_space: Box, f: AcquisitionFunction, num_query_points: int = 1
+) -> TensorType:
+    if num_query_points != 1:
+        raise ValueError("_line_search_maximizer only defined for batches of size 1")
+    if len(search_space.lower) != 1:
+        raise ValueError("_line_search_maximizer only defined for search spaces of dimension 1")
+    xs = tf.linspace(search_space.lower, search_space.upper, 10 ** 6)
+    return xs[tf.squeeze(tf.argmax(f(tf.expand_dims(xs, 1)))), None]
+
+
+@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
+def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
+    class NegQuadratic(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
+
+    search_space = Box([-10], [10])
+    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
+    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
+    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
+    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -58,33 +74,27 @@ def test_trust_region_raises_for_missing_datasets_key(
         {"foo": QuadraticMeanAndRBFKernel(), OBJECTIVE: QuadraticMeanAndRBFKernel()},
     ],
 )
-@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: zero_dataset()}])
+@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 def test_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: Dict[str, Dataset], models: Dict[str, ProbabilisticModel]
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = one_dimensional_range(-1, 1)
+    search_space = Box([-1], [1])
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
 
 
+@pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
 @pytest.mark.parametrize(
-    "search_space, expected_minimum",
-    [
-        (
-            DiscreteSearchSpace(tf.constant([[-2.2, -1.0], [0.1, -0.1], [1.3, 3.3]])),
-            tf.constant([[0.1, -0.1]]),
-        ),
-        (Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3])), tf.constant([[0.0, 0.0]])),
-    ],
+    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
-def test_ego(search_space: SearchSpace, expected_minimum: tf.Tensor) -> None:
-    ego = EfficientGlobalOptimization(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )
-    npt.assert_array_almost_equal(query_point, expected_minimum, decimal=5)
+def test_trust_region_raises_for_missing_datasets_key(
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+) -> None:
+    search_space = Box([-1], [1])
+    rule = TrustRegion()
+    with pytest.raises(KeyError):
+        rule.acquire(search_space, datasets, models, None)
 
 
 def test_trust_region_for_default_state() -> None:
@@ -209,10 +219,10 @@ def test_trust_region_state_deepcopy() -> None:
     assert tr_state_copy.is_global == tr_state.is_global
 
 
-class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
+class _BatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
         self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
-    ) -> BatchAcquisitionFunction:
+    ) -> AcquisitionFunction:
         return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
 
 
@@ -220,7 +230,10 @@ class _BatchModelMinusMeanMaximumSingleBuilder(BatchAcquisitionFunctionBuilder):
 def test_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
-    ego = BatchAcquisitionRule(num_query_points, _BatchModelMinusMeanMaximumSingleBuilder())
+    acq = _BatchModelMinusMeanMaximumSingleBuilder()
+    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}

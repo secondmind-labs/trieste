@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
-from typing import Tuple
 
 import pytest
 import tensorflow as tf
@@ -49,8 +50,8 @@ def test_dataset_raises_for_zero_dimensional_data(
 )
 @pytest.mark.parametrize("last_dim_size", [1, 5])
 def test_dataset_raises_for_different_leading_shapes(
-    query_points_leading_shape: Tuple[int, ...],
-    observations_leading_shape: Tuple[int, ...],
+    query_points_leading_shape: tuple[int, ...],
+    observations_leading_shape: tuple[int, ...],
     last_dim_size: int,
 ) -> None:
     query_points = tf.zeros(query_points_leading_shape + (last_dim_size,))

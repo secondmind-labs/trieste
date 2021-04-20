@@ -11,42 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Union
+from collections.abc import Mapping
+from itertools import product
+from math import inf
+from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing_extensions import final
+from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel, GPFluxModel
+
+from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
+from ..utils.pareto import Pareto, get_reference_point
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for acquisition functions.
 
-An `AcquisitionFunction` maps a single query point (of dimension `D`) to a single value that
-describes how useful it would be evaluate that point (to our goal of optimizing the objective
-function). Thus, with leading dimensions, an `AcquisitionFunction` takes input shape
-`[..., D]` and returns shape `[..., 1]`.
-
-**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
-`BatchAcquisitionFunction`.
-"""
-
-BatchAcquisitionFunction = Callable[[TensorType], TensorType]
-"""
-Type alias for batch acquisition functions.
-
-A `BatchAcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
+An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
 value that describes how useful it would be evaluate all these points together (to our goal of
-optimizing the objective function). Thus, with leading dimensions, a `BatchAcquisitionFunction`
+optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
 takes input shape `[..., B, D]` and returns shape `[..., 1]`.
 
-**Note:** Type checkers will not be able to distinguish an `AcquisitionFunction` from a
-`BatchAcquisitionFunction`.
+Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
+with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
@@ -116,29 +111,24 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
-        :return: The expected improvement function.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         :raise ValueError: If ``dataset`` is empty.
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
-
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        return lambda at: self._acquisition_function(model, eta, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, eta: TensorType, at: TensorType
-    ) -> TensorType:
-        return expected_improvement(model, eta, at)
+        return expected_improvement(model, eta)
 
 
-def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorType) -> TensorType:
+def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> AcquisitionFunction:
     r"""
-    The Expected Improvement (EI) acquisition function for single-objective global optimization.
-    Return the expectation of the improvement at ``at`` over the current "best" observation ``eta``,
-    where an improvement moves towards the objective function's minimum, and the expectation is
-    calculated with respect to the ``model`` posterior. For model posterior :math:`f`, this is
+    Return the Expected Improvement (EI) acquisition function for single-objective global
+    optimization. Improvement is with respect to the current "best" observation ``eta``, where an
+    improvement moves towards the objective function's minimum, and the expectation is calculated
+    with respect to the ``model`` posterior. For model posterior :math:`f`, this is
 
     .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
 
@@ -146,12 +136,146 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorT
 
     :param model: The model of the objective function.
     :param eta: The "best" observation.
-    :param at: The points for which to calculate the expected improvement.
-    :return: The expected improvement at ``at``.
+    :return: The expected improvement function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     """
-    mean, variance = model.predict(at)
-    normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-    return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = model.predict(tf.squeeze(x, -2))
+        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+    return acquisition
+
+
+class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+    r"""
+    Builder for the max-value entropy search acquisition function modified for objective
+    minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
+    of the objective minimum that would be gained by evaluating the objective at a given point.
+
+    This implementation largely follows :cite:`wang2017max` and samples the objective minimum
+    :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf is approximated
+    by a Gumbel distribution
+
+    .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+
+    where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+    Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+    :math:`[0, 1]` and applying the inverse probability integral transform
+    :math:`y = \mathcal G^{-1}(r; a, b)`.
+    """
+
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of the
+            objective function.
+        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+            scaling this with search space dimension.
+        """
+        self._search_space = search_space
+
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        fmean, fvar = model.predict(query_points)
+        fsd = tf.math.sqrt(fvar)
+
+        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
+            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
+
+        left = tf.reduce_min(fmean - 5 * fsd)
+        right = tf.reduce_max(fmean + 5 * fsd)
+
+        def binary_search(val: float) -> float:  # Find empirical interquartile range
+            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
+
+        q1, q2 = map(binary_search, [0.25, 0.75])
+
+        log = tf.math.log
+        l1 = log(log(4.0 / 3.0))
+        l2 = log(log(4.0))
+        b = (q1 - q2) / (l1 - l2)
+        a = (q2 * l1 - q1 * l2) / (l1 - l2)
+
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
+            a, fmean.dtype
+        )
+
+        return min_value_entropy_search(model, gumbel_samples)
+
+
+def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
+    r"""
+    Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+    modified for objective minimisation. This function calculates the information gain (or change in
+    entropy) in the distribution over the objective minimum :math:`y^*`, if we were to evaluate the
+    objective at a given point.
+
+    :param model: The model of the objective function.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :return: The max-value entropy search acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    """
+    tf.debugging.assert_rank(samples, 1)
+
+    if len(samples) == 0:
+        raise ValueError("Gumbel samples must be populated.")
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        fsd = tf.math.sqrt(fvar)
+        fsd = tf.clip_by_value(
+            fsd, 1.0e-8, fmean.dtype.max
+        )  # clip below to improve numerical stability
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (samples - fmean) / fsd
+
+        minus_cdf = 1 - normal.cdf(gamma)
+        minus_cdf = tf.clip_by_value(
+            minus_cdf, 1.0e-8, 1
+        )  # clip below to improve numerical stability
+        f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+
+        return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
+
+    return acquisition
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
@@ -177,14 +301,13 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :return: The negative of the lower confidence bound function. This function will raise
-            `ValueError` if ``beta`` is negative.
+        :return: The negative lower confidence bound function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise ValueError: If ``beta`` is negative.
         """
-        return lambda at: self._acquisition_function(model, self._beta, at)
-
-    @staticmethod
-    def _acquisition_function(model: ProbabilisticModel, beta: float, at: TensorType) -> TensorType:
-        return -lower_confidence_bound(model, beta, at)
+        lcb = lower_confidence_bound(model, self._beta)
+        return lambda at: -lcb(at)
 
 
 class NegativePredictiveMean(NegativeLowerConfidenceBound):
@@ -201,7 +324,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
         return "NegativePredictiveMean()"
 
 
-def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorType) -> TensorType:
+def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> AcquisitionFunction:
     r"""
     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
 
@@ -212,8 +335,9 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorTyp
     :param model: The model of the objective function.
     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
         negative.
-    :param at: The points at which to evaluate the LCB.
-    :return: The lower confidence bound at ``at``.
+    :return: The lower confidence bound function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
     :raise ValueError: If ``beta`` is negative.
     """
     if beta < 0:
@@ -221,8 +345,15 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float, at: TensorTyp
             f"Standard deviation scaling parameter beta must not be negative, got {beta}"
         )
 
-    mean, variance = model.predict(at)
-    return mean - beta * tf.sqrt(variance)
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = model.predict(tf.squeeze(x, -2))
+        return mean - beta * tf.sqrt(variance)
+
+    return acquisition
 
 
 class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
@@ -239,7 +370,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     constraint function. See also :cite:`schonlau1998global` for details.
     """
 
-    def __init__(self, threshold: Union[float, TensorType]):
+    def __init__(self, threshold: float | TensorType):
         """
         :param threshold: The (scalar) probability of feasibility threshold.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
@@ -255,7 +386,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
-    def threshold(self) -> Union[float, TensorType]:
+    def threshold(self) -> float | TensorType:
         """ The probability of feasibility threshold. """
         return self._threshold
 
@@ -265,20 +396,16 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :return: The probability of feasibility acquisition function.
+        :return: The probability of feasibility function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         """
-        return lambda at: self._acquisition_function(model, self.threshold, at)
-
-    @staticmethod
-    def _acquisition_function(
-        model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
-    ) -> TensorType:
-        return probability_of_feasibility(model, threshold, at)
+        return probability_of_feasibility(model, self.threshold)
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
-) -> TensorType:
+    model: ProbabilisticModel, threshold: float | TensorType
+) -> AcquisitionFunction:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
 
@@ -292,17 +419,23 @@ def probability_of_feasibility(
 
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
-    :param at: The points at which to evaluate the probability of feasibility. Must have rank at
-        least two
-    :return: The probability of feasibility at ``at``.
-    :raise ValueError (or InvalidArgumentError): If arguments have the incorrect shape.
+    :return: The probability of feasibility function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    :raise ValueError: If ``threshold`` is not a scalar.
     """
     tf.debugging.assert_scalar(threshold)
-    tf.debugging.assert_rank_at_least(at, 2)
 
-    mean, var = model.predict(at)
-    distr = tfp.distributions.Normal(mean, tf.sqrt(var))
-    return distr.cdf(tf.cast(threshold, at.dtype))
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, var = model.predict(tf.squeeze(x, -2))
+        distr = tfp.distributions.Normal(mean, tf.sqrt(var))
+        return distr.cdf(tf.cast(threshold, x.dtype))
+
+    return acquisition
 
 
 class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
@@ -317,7 +450,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self,
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
-        min_feasibility_probability: Union[float, TensorType] = 0.5,
+        min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -352,7 +485,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained improvement acquisition function.
+        :return: The expected constrained improvement acquisition function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
         :raise ValueError: If the objective data is empty.
         """
@@ -366,7 +501,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             )
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
-        pof = constraint_fn(objective_dataset.query_points)
+        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = pof >= self._min_feasibility_probability
 
         if not tf.reduce_any(is_feasible):
@@ -375,7 +510,138 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
-        return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+        return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
+
+
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the expected hypervolume improvement acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`yang2019efficient`
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return "ExpectedHypervolumeImprovement()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected hypervolume improvement acquisition function.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        return expected_hv_improvement(model, _pf, _reference_pt)
+
+
+def expected_hv_improvement(
+    model: ProbabilisticModel,
+    pareto: Pareto,
+    reference_point: TensorType,
+) -> AcquisitionFunction:
+    r"""
+    expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+    The expected hypervolume improvement calculation in the non-dominated region
+    can be decomposed into sub-calculations based on each partitioned cell.
+    For easier calculation, this sub-calculation can be reformulated as a combination
+    of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+    function calculations, respectively.
+    Note:
+    1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+        algorithm, we do not assume the last dimension of the partitioned cell has only one
+        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+        This is not as efficient as the original paper, but is applicable to different non-dominated
+        partition algorithm.
+    2. As the Psi and nu function in the original paper are defined for maximization problems,
+        we inverse our minimisation problem (to also be a maximisation), allowing use of the
+        original notation and equations.
+
+    :param model: The model of the objective function.
+    :param pareto: Pareto class
+    :param reference_point The reference point for calculating hypervolume
+    :return The expected_hv_improvement acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    """
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        normal = tfp.distributions.Normal(
+            loc=tf.zeros(shape=1, dtype=x.dtype), scale=tf.ones(shape=1, dtype=x.dtype)
+        )
+
+        def Psi(a: TensorType, b: TensorType, mean: TensorType, std: TensorType) -> TensorType:
+            return std * normal.prob((b - mean) / std) + (mean - a) * (
+                1 - normal.cdf((b - mean) / std)
+            )
+
+        def nu(lb: TensorType, ub: TensorType, mean: TensorType, std: TensorType) -> TensorType:
+            return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
+
+        def ehvi_based_on_partitioned_cell(
+            neg_pred_mean: TensorType, pred_std: TensorType
+        ) -> TensorType:
+            r"""
+            Calculate the ehvi based on cell i.
+            """
+
+            lb_points, ub_points = pareto.hypercell_bounds(
+                tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
+            )
+
+            neg_lb_points, neg_ub_points = -ub_points, -lb_points
+
+            neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
+
+            psi_ub = Psi(
+                neg_lb_points, neg_ub_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+            psi_lb = Psi(
+                neg_lb_points, neg_lb_points, neg_pred_mean, pred_std
+            )  # [..., num_cells, out_dim]
+
+            psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
+            nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
+
+            cross_index = tf.constant(
+                list(product(*[[0, 1]] * reference_point.shape[-1]))
+            )  # [2^d, indices_at_dim]
+
+            stacked_factors = tf.concat(
+                [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
+            )  # Take the cross product of psi_diff and nu across all outcomes
+            # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
+
+            factor_combinations = tf.linalg.diag_part(
+                tf.gather(stacked_factors, cross_index, axis=-2)
+            )  # [..., num_cells, 2^d, 2(operation_num), num_obj]
+
+            return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
+
+        candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
+        candidate_std = tf.sqrt(candidate_var)
+
+        neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
+        candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
+
+        ehvi_cells_based = ehvi_based_on_partitioned_cell(neg_candidate_mean, candidate_std)
+
+        return tf.reduce_sum(
+            ehvi_cells_based,
+            axis=-1,
+            keepdims=True,
+        )
+
+    return acquisition
 
 
 class IndependentReparametrizationSampler:
@@ -417,161 +683,21 @@ class IndependentReparametrizationSampler:
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`IndependentReparametrizationSampler` instances will produce different samples.
 
-        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
+        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
-        :return: The samples, of shape `[..., S, L]`, where `S` is the `sample_size` and `L` is the
-            number of latent model dimensions.
-        :raise ValueError (or InvalidArgumentError): If ``at`` is a scalar.
+        :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+            the number of latent model dimensions.
+        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
         """
-        tf.debugging.assert_rank_at_least(at, 1)
-        mean, var = self._model.predict(at[..., None, :])  # [..., 1, L], [..., 1, L]
+        tf.debugging.assert_shapes([(at, [..., 1, None])])
+        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
 
         if tf.size(self._eps) == 0:
             self._eps.assign(
                 tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
             )  # [S, L]
 
-        return mean + tf.sqrt(var) * tf.cast(self._eps, var.dtype)  # [..., S, L]
-
-
-class MCIndAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
-    """
-    A :class:`MCIndAcquisitionFunctionBuilder` builds an acquisition function that
-    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
-    estimation via the reparameterization trick. This class is essentially a convenience
-    :class:`AcquisitionFunctionBuilder` using a :class:`IndependentReparametrizationSampler`.
-
-    Subclasses implement :meth:`_build_with_sampler` which, in addition to the arguments `datasets`
-    and `models`, provides a :class:`IndependentReparametrizationSampler` for each model which can
-    be used to approximate continuous samples from the models.
-    """
-
-    def __init__(self, sample_size: int):
-        """
-        :param sample_size: The number of samples to take at each point. Must be positive.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        tf.debugging.assert_positive(sample_size)
-        self._sample_size = sample_size
-
-    @final
-    def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
-        samplers = {
-            key: IndependentReparametrizationSampler(self._sample_size, model)
-            for key, model in models.items()
-        }
-        return self._build_with_sampler(datasets, models, samplers)
-
-    @abstractmethod
-    def _build_with_sampler(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-        samplers: Mapping[str, IndependentReparametrizationSampler],
-    ) -> AcquisitionFunction:
-        """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        :param samplers: A sampler for each model in ``models``.
-        :return: An acquisition function.
-        """
-
-
-class SingleModelMCIndAcquisitionFunctionBuilder(SingleModelAcquisitionBuilder):
-    """
-    A :class:`SingleModelMCIndAcquisitionFunctionBuilder` builds an acquisition function that
-    estimates the value of evaluating the observer at a given point, and does this using Monte-Carlo
-    estimation via the reparameterization trick. This class is essentially a convenience
-    :class:`SingleModelAcquisitionBuilder` using a :class:`IndependentReparametrizationSampler`.
-
-    Subclasses implement :meth:`_build_with_sampler` which, in addition to the arguments `dataset`
-    and `model`, provides a :class:`IndependentReparametrizationSampler` which can be used to
-    approximate continuous samples from the model.
-    """
-
-    def __init__(self, sample_size: int):
-        """
-        :param sample_size: The number of samples to take at each point. Must be positive.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        tf.debugging.assert_positive(sample_size)
-        self._sample_size = sample_size
-
-    @final
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        sampler = IndependentReparametrizationSampler(self._sample_size, model)
-        return self._build_with_sampler(dataset, model, sampler)
-
-    @abstractmethod
-    def _build_with_sampler(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        sampler: IndependentReparametrizationSampler,
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
-        :param sampler: A sampler for ``model``.
-        :return: An acquisition function.
-        """
-
-
-class BatchAcquisitionFunctionBuilder(ABC):
-    """
-    A :class:`BatchAcquisitionFunctionBuilder` builds an acquisition function for evaluating batches
-    of query points.
-    """
-
-    @abstractmethod
-    def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> BatchAcquisitionFunction:
-        """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        :return: A batch acquisition function.
-        """
-
-
-class SingleModelBatchAcquisitionBuilder(ABC):
-    """
-    Convenience acquisition function builder for a batch acquisition function (or component of a
-    composite batch acquisition function) that requires only one model, dataset pair.
-    """
-
-    def using(self, tag: str) -> BatchAcquisitionFunctionBuilder:
-        """
-        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
-        :return: A batch acquisition function builder that selects the model and dataset specified
-            by ``tag``, as defined in :meth:`prepare_acquisition_function`.
-        """
-        single_builder = self
-
-        class _Anon(BatchAcquisitionFunctionBuilder):
-            def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-            ) -> AcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
-
-            def __repr__(self) -> str:
-                return f"{single_builder!r} using tag {tag!r}"
-
-        return _Anon()
-
-    @abstractmethod
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
-        :return: A batch acquisition function.
-        """
+        return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
 class BatchReparametrizationSampler:
@@ -668,7 +794,7 @@ class BatchReparametrizationSampler:
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelBatchAcquisitionBuilder):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
@@ -755,4 +881,4 @@ class NegativeGaussianProcessTrajectory(SingleModelAcquisitionBuilder):
             `ValueError` if ``beta`` is negative.
         """
         trajectory = model.sample_trajectory()
-        return lambda at: -trajectory(at)
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))

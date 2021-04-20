@@ -11,22 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import functools
-from typing import (
-    Any,
-    Callable,
-    Container,
-    FrozenSet,
-    List,
-    Mapping,
-    NoReturn,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from collections.abc import Callable, Container, Mapping
+from typing import Any, List, NoReturn, Tuple, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -35,15 +24,15 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.space import Box, SearchSpace
+from trieste.space import SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
-TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
+TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
     ValueError,
     tf.errors.InvalidArgumentError,
 )
-""" Error types thrown by TensorFlow's debugging functionality. """
+""" Error types thrown by TensorFlow's debugging functionality for tensor shapes. """
 
 C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
@@ -66,7 +55,7 @@ def random_seed(f: C) -> C:
 T = TypeVar("T")
 """ Unbound type variable. """
 
-NList = Union[
+ListN = Union[
     List[T],
     List[List[T]],
     List[List[List[T]]],
@@ -75,7 +64,7 @@ NList = Union[
 """ Type alias for a nested list with array shape. """
 
 
-def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]]) -> Dataset:
+def mk_dataset(query_points: ListN[List[float]], observations: ListN[List[float]]) -> Dataset:
     """
     :param query_points: The query points.
     :param observations: The observations.
@@ -85,25 +74,18 @@ def mk_dataset(query_points: NList[List[float]], observations: NList[List[float]
     return Dataset(tf.cast(query_points, tf.float64), tf.cast(observations, tf.float64))
 
 
-def zero_dataset() -> Dataset:
+def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
     """
-    :return: A 1D input, 1D output dataset with a single entry of zeroes.
+    :param query_point_shape: The shape of a *single* query point.
+    :param observation_shape: The shape of a *single* observation.
+    :return: An empty dataset with points of the specified shapes, and dtype `tf.float64`.
     """
-    return Dataset(tf.constant([[0.0]]), tf.constant([[0.0]]))
+    qp = tf.zeros(tf.TensorShape([0]) + query_point_shape, tf.float64)
+    obs = tf.zeros(tf.TensorShape([0]) + observation_shape, tf.float64)
+    return Dataset(qp, obs)
 
 
-def one_dimensional_range(lower: float, upper: float) -> Box:
-    """
-    :param lower: The box lower bound.
-    :param upper:  The box upper bound.
-    :return: A one-dimensional box with range given by ``lower`` and ``upper``, and bound dtype
-        `tf.float32`.
-    :raise ValueError: If ``lower`` is not less than ``upper``.
-    """
-    return Box(tf.constant([lower], dtype=tf.float32), tf.constant([upper], tf.float32))
-
-
-def raise_(*_: object, **__: object) -> NoReturn:
+def raise_exc(*_: object, **__: object) -> NoReturn:
     """
     Raise an exception. This dummy function can be used wherever a function of any signature is
     expected but isn't intended to be used.
@@ -130,11 +112,12 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
-    def __init__(self, query_points: TensorType):
+    def __init__(self, query_points: ListN[List[float]]):
         """
-        :param query_points: The value to return on each step.
+        :param query_points: The value to return on each step. Will be converted to a tensor with
+            dtype `tf.float64`.
         """
-        self._qp = query_points
+        self._qp = tf.cast(query_points, tf.float64)
 
     def __repr__(self) -> str:
         return f"FixedAcquisitionRule({self._qp!r})"
@@ -145,7 +128,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         :param search_space: Unused.
         :param datasets: Unused.
@@ -160,7 +143,7 @@ ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
-def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[int, ...]]:
+def various_shapes(*, excluding_ranks: Container[int] = ()) -> frozenset[tuple[int, ...]]:
     """
     :param excluding_ranks: Ranks to exclude from the result.
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank
