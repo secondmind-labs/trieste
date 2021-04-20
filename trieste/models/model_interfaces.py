@@ -450,8 +450,9 @@ class GPFluxModel(TrainableProbabilisticModel):
                 monitor="loss", patience=5, factor=0.95, verbose=0, min_lr=1e-6,
             )
         ]
-        x = dataset.query_points,
-        y = dataset.observations,
+        x = dataset.query_points
+        y = dataset.observations
+        print(x, y)
         model.fit(
             {"inputs": x, "targets": y},
             batch_size=self._batch_size,
