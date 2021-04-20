@@ -723,73 +723,54 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 
 
 
+T = TypeVar("T")
 
-
-
-
-
-
+AcquisitionFunctionMaker =  Callable[[T], AcquisitionFunction]
 """
-Type alias for greedy acquisition functions.
+Type alias for an acquisition function maker. 
 
-
-TODO
-
-An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
-value that describes how useful it would be evaluate all these points together (to our goal of
-optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
-takes input shape `[..., B, D]` and returns shape `[..., 1]`.
-
-Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
-with a batch dimension, i.e. an input of shape `[..., 1, D]`.
+An :const:`AcquisitionFunctionMaker` takes in an input (of Generic type) and produces a :const:`AcquisitionFunction` 
+and is to be used when we require multiple acquisition functions for each optimization step that all share
+some computations. An example use of an :const:`AcquisitionFunctionMaker` is to build the seperate acquisiiton functions required 
+to greedily allocate batches of query points. In this setting, the :const:`AcquisitionFunctionMaker` would take in the
+current pending batch points as its input and output the :const:`AcquisitionFunction` that measures the utility of 
+evaluating a further point.
 """
 
-
-
-
-
-
-
-
-
-
-
-AcquisitionFunction = Callable[[TensorType], TensorType]
-
-
-
-
-class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder, ABC):
-    """ An :class:`AcquisitionFunctionBuilder` builds an acquisition function.TODO """
-
+class MultiAcquisitionFunctionBuilder(ABC, Generic[T]):
+    """ An :class:`MultiAcquisitionFunctionBuilder` builds an acquisition function maker.
+    """
     @abstractmethod
-    def update_pending_points(self, pending_points: TensorType) :
+    def prepare_acquisition_function_maker(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunctionMaker:
         """
-        TODO
-        :param pending_points: The set of pending points which we penalize with respect to.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: An acquisition function maker.
         """
 
 
-class SingleModelGreedyAcquisitionBuilder(ABC):
+
+class SingleModelMultiAcquisitionBuilder(ABC, Generic[T]):
     """
-    TODO
-    Convenience acquisition function builder for an acquisition function (or component of a
-    composite acquisition function) that requires only one model, dataset pair.
+    Convenience acquisition function builder for an acquisition function maker
+    that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder:
+    def using(self, tag: str) -> AcquisitionFunctionBuilder:
         """
-        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
-        :return: An acquisition function builder that selects the model and dataset specified by
-            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        :param tag: The tag for the model, dataset pair to build this acquisition function maker.
+        :return: A builder for an acquisition function maker that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function_maker`.
         """
         single_builder = self
 
-        class _Anon(GreedyAcquisitionFunctionBuilder):
-            def prepare_acquisition_function(
+        class _Anon(MultiAcquisitionFunctionBuilder):
+            def prepare_acquisition_function_maker(
                 self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-            ) -> AcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+            ) -> AcquisitionFunctionMaker:
+                return single_builder.prepare_acquisition_function_maker(datasets[tag], models[tag])
 
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
@@ -797,107 +778,96 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         return _Anon()
 
     @abstractmethod
-    def prepare_acquisition_function(
+    def prepare_acquisition_function_maker(
         self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
+    ) -> AcquisitionFunctionMaker:
         """
-        :param dataset: The data to use to build the acquisition function.
+        :param dataset: The data to use to build the acquisition function maker.
         :param model: The model over the specified ``dataset``.
-        :return: An acquisition function.
+        :return: An acquisition function maker.
         """
 
 
 
+class LocallyPenalizedExpectedImprovement(MultiAcquisitionFunctionBuilder[TensorType]):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches by local 
+    penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending 
+    points and returns the expected improvment acquisiton function penalized around those points.
+    
 
 
-class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
+    Say it allows us to perofrm batch BO using standard non-batch acqusiton function
+    by successively maximizing function penalized around alread selected points.
+    Talk about penalization being multiplicative (do log space)
+
+
+
+    For our penalization function, we implement the soft penalization strategy of :cite:`Gonzalez:2016`, 
+    where an estimate of the objective function's Lipschitz constant is used to control the size 
+    of penalization. The Lipschitz constant and additionl penalization parameters are estimated once 
+    when preparing  the :const:`AcquisitionFunctionMaker` (not for each individual :const:`AcquisitionFunction`).
+    
     """
- Builder for the local penalization acqusiition function. See :cite:`Gonzalez:2016` for details.
-TODO say default EI
-    """
-
-
 
 
     def __init__(self, search_space: SearchSpace, grid_size: int = 500):
         """
-        SAY WHAT GOES ONE HERE!
-       :param grid_size: Size of the grid over which the Lipschitz constant is estimated. We recommend
+        :param search_space: The global search space over which the optimisation is defined.
+        :param grid_size: Size of the grid over which the Lipschitz constant is estimated. We recommend
             scaling this with search space dimension.
         """
-
+        self._search_space = search_space
         if grid_size <= 0:
             raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
+        
 
-        self._search_space = search_space
-
-
-       
-
-
-    def prepare_greedy_acquisition_function_constructor(
-        self, dataset: Dataset, model: ProbabilisticModel,
-    ) -> AcquisitionFunction:
+    def prepare_acquisition_function_maker(
+            self, dataset: Dataset, model: ProbabilisticModel,
+    ) -> AcquisitionFunctionMaker:
         """
-        TODO
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The acqusition function maker for locally penalized acquisition functions.
         """
-
-
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
+        samples = self._search_space.sample(num_samples=self._grid_size)
+        samples  = tf.concat([dataset.query_points, samples ], 0)
 
-        samples_points  = self._search_space.sample(num_samples=self._grid_size)
-        samples_points  = tf.concat([dataset.query_points, samples_points ], 0)
- 
-        with tf.GradientTape() as g: # get gradients of posterior mean at samples
-            g.watch(sample_points)
-            mean, _ = model.predict(sample_points)
-        grads = g.gradient(mean,sample_points)
-        grads_norm =  tf.norm(grads, axis=1)
-        max_grads_norm = tf.reduce_max(grads_norm)
+        def get_lipschitz_estimate(sampled_points)-> tf.Tensor: # use max norm of posterior mean gradients
+            with tf.GradientTape() as g: 
+                g.watch(sampled_points)
+                mean, _ = model.predict(sampled_points)
+            grads = g.gradient(mean,sampled_points)
+            grads_norm =  tf.norm(grads, axis=1)
+            max_grads_norm = tf.reduce_max(grads_norm)
 
-        if max_grads_norm < 1e-5: # threshold to improve numerical stability for 'flat' models
+        lipschitz_constant = get_lipschitz_estimate(samples)
+
+        if lipschitz_constant < 1e-5: # threshold to improve numerical stability for 'flat' models
                 lipschitz_constant = 10
-            else:
-                lipschitz_constant = max_grads_norm
-
+               
         eta = tf.reduce_min(mean, axis=0)
 
-
-
-            def greedy_acquisition_function_constructor(pending_points: TensorType=None):
+            def acquisition_function_maker(pending_points: TensorType=None) -> AcquisitionFunction:
                 """
-                Init params
+                :param pending_points: The points we penalize with respect to.
+                :return: The (log) expected improvement acqusiiton function penalized with respect to the pending points.
                 """
+                log_base_acquisition = tf.math.log(expected_improvement(model, eta))
+
                 if not pending_points:
-                    return tf.math.log(expected_improvement(model, eta))
+                    return base_acquisition
 
-                mean_pending, variance_pending  = model.predict(pending_points)
-                radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
-                scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
-
-                base_acquisition = expected_improvement(model, eta)
-                penalization = local_penalizer(radius, scale)
+                penalization = local_penalizer(model, pending_points, lipschitz_constant, eta)
                 log_penalized_acquisition = tf.math.log(base_acquisition) + tf.math.log(penalization)
+
                 return log_penalized_acquisition
 
-
-        return greedy_acquisition_function_constructor
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return acquisition_function_maker
 
 
 PenalizationFunction = Callable[[TensorType], TensorType]
@@ -910,22 +880,32 @@ leading dimensions, an :const:`PenalizationFunction` takes input
 shape `[..., 1, D]` and returns shape `[..., 1]`.
 """
 
-def soft_local_penalizer(radius, scale ) -> PenalizationFunction:
+
+def soft_local_penalizer(model: ProbabilisticModel, pending_points: TensorType, lipschitz_constant: TensorType, eta: TensorType) -> PenalizationFunction:
     r"""
-    Return the local penalization function used for single-objective greedy batch Bayesian optimization by 
-    :cite:`Gonzalez:2016`.
+    Return the local penalization function used for single-objective greedy batch Bayesian optimization in 
+    :cite:`Gonzalez:2016`. Soft penalization returns the probability that a candidate point does not belong
+    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model posterior variance
+    :math:`\sigma^2`, current "best" function value :math:`\eta`, and an estimated Lipschitz constant :math:`L`, 
+    the penalization from a set of pending point :math:`x'` on a candidate point :math:`x` is given by
 
+    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
 
-    DISCUSS MATHGS
+    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`. The penalization from a set of 
+    pending points is just product of the individual penalizations. See :cite:`Gonzalez:2016` for a full derivation.
 
-    
-
-    SORT OUT
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
     :return: The local penalization function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one as it is to be used to build batches greedily 
+        greater than one.
     """
 
+    mean_pending, variance_pending  = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
 
     def penalization_function(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
@@ -942,5 +922,8 @@ def soft_local_penalizer(radius, scale ) -> PenalizationFunction:
         return penalization
 
     return penalization_function
+
+
+
 
 

@@ -123,7 +123,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
-        optimizer = batchify(optimizer, num_query_points)
+
+        if isinstance(self._builder, AcquisitionFunctionBuilder): 
+            optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder
         self._optimizer = optimizer
@@ -154,90 +156,27 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        return self._optimizer(search_space, acquisition_function), None
+
+        if isinstance(self._builder, AcquisitionFunctionBuilder): 
+            acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+            points = self._optimizer(search_space, acquisition_function)
 
 
-class GreedyEfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
-    """ Implements the Efficient Global Optimization, or EGO, algorithm. WITH GREEDY (defaults to local penalisation)"""
+        elif isinstance(self._builder, MultiAcquisitionFunctionBuilder):
+            acquisition_function_maker= self._builder.prepare_acquisition_function_maker(datasets, models)
+            points = None
+            for i in range(self._num_query_points):
+                greedy_acquisition_function = acquisition_function_constructor(points)
+                chosen_point = self._optimizer(search_space, greedy_acquisition_function)
 
-    def __init__(
-        self,
-        builder: AcquisitionFunctionBuilder | None = None,
-        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
-        num_query_points: int = 1,
-        penalizer_builder: PenalizationFunctionBuilder | None = None,
-    ):
-        """
-        :param builder: The acquisition function builder to use. Defaults to
-            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
-        :param optimizer: The optimizer with which to optimize the acquisition function built by
-            ``builder``. This should *maximize* the acquisition function, and must be compatible
-            with the global search space. Defaults to
-            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
-        :param num_query_points: The number of points to acquire.
-        :param penalizer_builder: The penalization function builder to use. Defaults to
-            :class:`~trieste.acquisition.LocalPenalization` with tag :data:`OBJECTIVE`.
-        """
-
-        if not num_query_points > 0:
-            raise ValueError(
-                f"Number of query points must be greater than 0, got {num_query_points}"
-            )
-
-        if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
-
-        if penalizer_builder is None:
-            penalizer_builder = LocalPenalization().using(OBJECTIVE)
-           
-        if optimizer is None:
-            optimizer = automatic_optimizer_selector
-        optimizer = batchify(optimizer, num_query_points)
-
-        self._builder = builder
-        self._penalizer_builder = penalizer_builder
-        self._optimizer = optimizer
-        self._num_query_points = num_query_points
-
-    def __repr__(self) -> str:
-        """"""
-        return f"""GreedyEfficientGlobalOptimization(
-        {self._builder!r},
-        {self._penalizer_builder!r},
-        {self._optimizer!r},
-        {self._num_query_points!r})"""
-
-    def acquire(
-        self,
-        search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-        state: None = None,
-    ) -> tuple[TensorType, None]:
-        """
-        Return the query point that optimizes the acquisition function produced by ``builder`` (see
-        :meth:`__init__`). ADD GREEDY (SAY UPDATE PAPRAMS ONCE per BO step)
-
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
-        :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
-        :param state: Unused.
-        :return: The single (or batch of) points to query, and `None`.
-        """
-        acquisition_function_constructor = self._builder.prepare_greedy_acquisition_function_constructor(datasets, models)
-        points=None
-        for i in range(self._num_query_points):
-            greedy_acquisition_function = acquisition_function_constructor(points)
-            chosen_point = self._optimizer(search_space, greedy_acquisition_function)
-
-            if not points:
-                points = chosen_point
-            else:
-                points = tf.concat([points,chosen_point], axis=0)
+                if not points:
+                    points = chosen_point
+                else:
+                    points = tf.concat([points,chosen_point], axis=0)
 
         return points, None
+
+
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
