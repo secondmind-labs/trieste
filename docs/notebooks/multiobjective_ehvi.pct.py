@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# # Multi-objective optimization: an Expected HyperVolume Improvement Approach
+# # Multi-objective optimization with Expected HyperVolume Improvement Approach
 
 import gpflow
 import matplotlib.pyplot as plt
@@ -11,11 +11,10 @@ from util.plotting import plot_bo_points, plot_function_2d
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import OBJECTIVE
-from trieste.data import Dataset
+from triestehttp://localhost:8888/notebooks/multiobjective_ehvi.pct.py#.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
-from trieste.type import TensorType
 from trieste.utils.mo_objectives import VLMOP2
 
 np.random.seed(1793)
@@ -24,9 +23,9 @@ tf.random.set_seed(1793)
 
 # -
 
-# ## The problem
+# ## Describe the problem
 #
-# In this tutorial, we replicate one of the numerical examples in [GPflowOpt](https://github.com/GPflow/GPflowOpt/blob/master/doc/source/notebooks/multiobjective.ipynb) using acquisition function from Couckuyt, 2014 [1], which is a multi-objective optimization problem with 2 objective functions. We'll start by defining the problem parameters.
+# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function from [1]. The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
 
 
 vlmop2 = VLMOP2().prepare_benchmark()
@@ -34,19 +33,8 @@ observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
 
 mins = [-2, -2]
 maxs = [2, 2]
-lower_bound = tf.cast(mins, gpflow.default_float())
-upper_bound = tf.cast(maxs, gpflow.default_float())
-search_space = trieste.space.Box(lower_bound, upper_bound)
-
-# We'll make an observer that outputs different objective function values, labelling each as shown.
-
+search_space = Box(mins, maxs)
 num_objective = 2
-
-
-# def observer(query_points):
-#     y = vlmop2(query_points)
-#     return {OBJECTIVE: trieste.data.Dataset(query_points, y)}
-
 
 # Let's randomly sample some initial data from the observer ...
 
@@ -112,6 +100,7 @@ models = {OBJECTIVE: ModelStack(*objective_models)}
 #
 # Here we utilize the `HVExpectedImprovement` acquisition function proposed in
 # Yang 2019 [1]:
+
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 hvei = ExpectedHypervolumeImprovement()
