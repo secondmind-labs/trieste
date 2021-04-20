@@ -11,10 +11,10 @@ from util.plotting import plot_bo_points, plot_function_2d
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import OBJECTIVE
-from triestehttp://localhost:8888/notebooks/multiobjective_ehvi.pct.py#.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
+from trieste.data import Dataset
 from trieste.utils.mo_objectives import VLMOP2
 
 np.random.seed(1793)
@@ -25,7 +25,7 @@ tf.random.set_seed(1793)
 
 # ## Describe the problem
 #
-# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function from [1]. The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
+# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function. The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
 
 
 vlmop2 = VLMOP2().prepare_benchmark()
@@ -94,17 +94,18 @@ objective_models = [
     for i in range(num_objective)
 ]
 
+# And stack the two independent GP model in a single `ModelStack` multioutput model representing predictions through different outputs. 
+
 models = {OBJECTIVE: ModelStack(*objective_models)}
 
 # ## Define the acquisition process
 #
-# Here we utilize the `HVExpectedImprovement` acquisition function proposed in
-# Yang 2019 [1]:
+# Here we utilize the [EHVI](https://link.springer.com/article/10.1007/s10898-019-00798-7): `ExpectedHypervolumeImprovement` acquisition function:
 
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-hvei = ExpectedHypervolumeImprovement()
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=hvei.using(OBJECTIVE))
+ehvi = ExpectedHypervolumeImprovement()
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehvi.using(OBJECTIVE))
 
 # ## Run the optimization loop
 #
@@ -114,7 +115,7 @@ num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
-# To conclude, we visualize the queried data in the design space
+# To conclude, we visualize the multi-objective boqueried data in the design space
 
 # +
 datasets = result.try_get_final_datasets()
@@ -133,7 +134,54 @@ plt.show()
 plot_bo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points)
 plt.show()
 
-# [1] Yang, K., Emmerich, M., Deutz, A., & Bäck, T. (2019). Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1), 3-34.
+# # Advanced: Problem with 3 Objective Function
+
+# Now we demonstrate an optimization for DTLZ2 function with 3 objectives in 4 dimension:
+
+# +
+from tensorflow import sin, cos
+from math import pi
+from trieste.utils.mo_objectives import DTLZ2
+
+dtlz2 = DTLZ2(input_dim=4, num_objective=3).prepare_benchmark()
+
+dtlz_observer = trieste.utils.objectives.mk_observer(dtlz2, OBJECTIVE)
+
+
+# -
+
+# Now we can follow similar setup to optimize this problem, it will take a while waiting for the finish of the optimizer
+
+# +
+input_dim = 4
+
+mins = [0] * input_dim
+maxs = [1] * input_dim
+lower_bound = tf.cast(mins, gpflow.default_float())
+upper_bound = tf.cast(maxs, gpflow.default_float())
+search_space = trieste.space.Box(lower_bound, upper_bound)
+
+num_objective = 3
+num_initial_points = 15
+initial_query_points = search_space.sample(num_initial_points)
+initial_data = dtlz_observer(initial_query_points)
+
+objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
+                                             tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1)),
+                                     input_dim, 0.8), 1) for i in range(num_objective)]
+
+models = {OBJECTIVE: ModelStack(*objective_models)}
+
+hvei = ExpectedHypervolumeImprovement().using(OBJECTIVE)
+rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
+
+num_steps = 30
+bo = trieste.bayesian_optimizer.BayesianOptimizer(dtlz_observer, search_space)
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+# -
+
+plot_bo_points_in_obj_space(result.try_get_final_datasets()[OBJECTIVE].observations, num_init=num_initial_points)
+plt.show()
 
 # ## LICENSE
 #
