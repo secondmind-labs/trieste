@@ -44,7 +44,7 @@ class MultiObjectiveTestProblem(ABC):
 class VLMOP2(MultiObjectiveTestProblem):
     """
     The VLMOP2 function, typically evaluated over :math:`[-2, 2]^2`. See
-    See :cite:deb2002scalable for details.
+    See :cite:`van1999multiobjective` for details.
     """
 
     bounds = [[-2.0] * 2, [2.0] * 2]

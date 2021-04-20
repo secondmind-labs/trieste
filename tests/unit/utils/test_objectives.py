@@ -86,24 +86,11 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
     [
         (
             tf.constant([[0.0, 0.0]]),
-            tf.convert_to_tensor([[1.0 - tf.math.exp(-1.0), 1.0 - tf.math.exp(-1.0)]]),
+            tf.constant([[0.63212055, 0.63212055]]),
         ),
         (
             tf.constant([[0.5, 1.0]]),
-            tf.convert_to_tensor(
-                [
-                    [
-                        1.0
-                        - tf.math.exp(
-                            -((0.5 - 1 / tf.sqrt(2.0)) ** 2) - (1.0 - 1 / tf.sqrt(2.0)) ** 2
-                        ),
-                        1.0
-                        - tf.math.exp(
-                            -((0.5 + 1 / tf.sqrt(2.0)) ** 2) - (1.0 + 1 / tf.sqrt(2.0)) ** 2
-                        ),
-                    ]
-                ]
-            ),
+            tf.constant([[0.12074441, 0.9873655]]),
         ),
     ],
 )
