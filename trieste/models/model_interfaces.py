@@ -412,13 +412,13 @@ class GPFluxModel(TrainableProbabilisticModel):
     def model(self) -> BayesianModel:
         return self._model
 
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        pred = self.model(query_points)
-        return pred.f_mu, pred.f_var
-
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         pred = self.model(query_points)
         return pred.f_mean, pred.f_var
+
+    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+        pred = self.model(query_points)
+        return pred.f_mu, pred.f_var
 
     def predict_f(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         pred = self.model(query_points)
@@ -430,6 +430,9 @@ class GPFluxModel(TrainableProbabilisticModel):
         samples = sample_mvn(fs_mean, fs_var, False, num_samples=num_samples)  # [..., (S), N, P]
         return samples  # [..., (S), N, P]
 
+    def sample_trajectory(self) -> Callable:
+        return self._model.sample()
+
     def update(self, dataset: Dataset) -> None:
         _assert_data_is_compatible(dataset, self._data)
 
@@ -437,9 +440,6 @@ class GPFluxModel(TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
-
-    def sample_trajectory(self) -> Callable:
-        return self._model.sample()
 
     def optimize(self, dataset: Dataset) -> None:
         callbacks = [
