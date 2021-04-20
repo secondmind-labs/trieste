@@ -426,7 +426,8 @@ class GPFluxModel(TrainableProbabilisticModel):
         return f_mean, f_var
 
     def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        return self.predict(query_points)
+        layer = self.model.f_layers[0]
+        return layer.predict(query_points, full_cov=True)
 
     def predict_f(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return self.predict(query_points)
@@ -451,7 +452,7 @@ class GPFluxModel(TrainableProbabilisticModel):
         Z = layer.inducing_variable.Z
         Z = tf.random.shuffle(Z)
 
-        f_mu, f_cov = self.predict_f(Z, full_cov=True)  # [N, L], [L, N, N]
+        f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
         Knn = layer.kernel(Z, full_cov=True)  # [N, N]
         jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
         Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
