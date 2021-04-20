@@ -450,17 +450,23 @@ class GPFluxModel(TrainableProbabilisticModel):
         layer = self.model.f_layers[0]
 
         Z = layer.inducing_variable.Z
-        Z = tf.random.shuffle(Z)
+        # Z = tf.random.shuffle(Z)
         num_inducing = len(layer.inducing_variable)
 
-        f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
-        Knn = layer.kernel(Z, full_cov=True)  # [N, N]
-        jitter_mat = jitter * tf.eye(num_inducing, dtype=Knn.dtype)
-        Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
-        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
-        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
-        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
-        new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
+
+        if layer.whiten:
+            f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
+            Knn = layer.kernel(Z, full_cov=True)  # [N, N]
+            jitter_mat = jitter * tf.eye(num_inducing, dtype=Knn.dtype)
+            Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
+            new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+            tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
+            S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+            new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
+        else:
+            new_q_mu, new_f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
+            jitter_mat = jitter * tf.eye(num_inducing, dtype=new_f_cov.dtype)
+            new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
 
         layer.q_mu = gpflow.Parameter(new_q_mu)
         layer.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
