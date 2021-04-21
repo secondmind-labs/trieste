@@ -133,7 +133,7 @@ plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 # -
 
-# ... and visulize in the objective space, orange dots denotes the nondominated points.
+# ... and visulize in the objective space, purple dots denotes the nondominated points.
 
 plot_bo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
