@@ -64,10 +64,10 @@ class ProbabilisticModel(ABC):
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
 
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S] + E, where S is the number of samples.
+            [..., N, S] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -261,7 +261,10 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         return self.model.predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self.model.predict_f_samples(query_points, num_samples)
+        samples = self.model.predict_f_samples(query_points, num_samples)  # [..., S, N, E]
+        rank = tf.rank(samples)
+        new_order = tf.concat([tf.range(rank - 3), [rank - 2, rank - 3, rank - 1]], -1)
+        return tf.transpose(samples, new_order)  # [..., N, S, E]
 
     def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)

@@ -431,9 +431,9 @@ def test_gpflow_predictor_sample() -> None:
     num_samples = 20_000
     samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
 
-    assert samples.shape == [num_samples, 1, 1]
+    assert samples.shape == [1, num_samples, 1]
 
-    sample_mean = tf.reduce_mean(samples, axis=0)
+    sample_mean = tf.reduce_mean(samples, axis=1)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
     linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
@@ -443,7 +443,7 @@ def test_gpflow_predictor_sample() -> None:
 
 def test_gpflow_predictor_sample_no_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
-    assert samples.shape == (0, 1, 1)
+    assert samples.shape == (1, 0, 1)
 
 
 def test_sparse_variational_model_attribute() -> None:
