@@ -806,7 +806,8 @@ class LocallyPenalizedExpectedImprovement(MultiAcquisitionFunctionBuilder[Tensor
     For our penalization function, we implement the soft penalization strategy of :cite:`Gonzalez:2016`, 
     where an estimate of the objective function's Lipschitz constant is used to control the size 
     of penalization. The Lipschitz constant and additionl penalization parameters are estimated once 
-    when preparing  the :const:`AcquisitionFunctionMaker` (not for each individual :const:`AcquisitionFunction`).
+    when preparing the :const:`AcquisitionFunctionMaker` and reused for each 
+    individual :const:`AcquisitionFunction`) it makes.
     
     """
 
@@ -844,6 +845,7 @@ class LocallyPenalizedExpectedImprovement(MultiAcquisitionFunctionBuilder[Tensor
             grads = g.gradient(mean,sampled_points)
             grads_norm =  tf.norm(grads, axis=1)
             max_grads_norm = tf.reduce_max(grads_norm)
+            return max_grads_norm
 
         lipschitz_constant = get_lipschitz_estimate(samples)
 
@@ -863,7 +865,7 @@ class LocallyPenalizedExpectedImprovement(MultiAcquisitionFunctionBuilder[Tensor
                     return base_acquisition
 
                 penalization = local_penalizer(model, pending_points, lipschitz_constant, eta)
-                log_penalized_acquisition = tf.math.log(base_acquisition) + tf.math.log(penalization)
+                log_penalized_acquisition = log_base_acquisition + tf.math.log(penalization)
 
                 return log_penalized_acquisition
 
