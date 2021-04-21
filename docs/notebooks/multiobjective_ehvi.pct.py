@@ -19,7 +19,6 @@ from trieste.data import Dataset
 from trieste.utils.mo_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
 
-
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -28,7 +27,8 @@ tf.random.set_seed(1793)
 
 # ## Describe the problem
 #
-# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function. The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
+# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function.   
+# The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
 
 
 vlmop2 = VLMOP2().prepare_benchmark()
@@ -45,7 +45,7 @@ num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
-# ... and visualise those points in the design space.
+# ... and visualise those data in the design space.
 
 _, ax = plot_function_2d(
     vlmop2, mins, maxs, grid_density=100, contour=True, title=["Obj 1", "Obj 2"]
@@ -57,14 +57,13 @@ plt.show()
 # ... and in the objective space
 
 from util.plotting import plot_bo_points_in_obj_space
-
 plot_bo_points_in_obj_space(initial_data[OBJECTIVE].observations)
 plt.show()
 
 
 # ## Modelling the two functions
 #
-# We'll model the different objective functions with their own Gaussian process regression models.
+# We'll model the different objective functions individually their own Gaussian process regression models.
 
 
 def create_bo_model(data, input_dim=2, l=1.0):
