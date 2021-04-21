@@ -17,6 +17,8 @@ from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.data import Dataset
 from trieste.utils.mo_objectives import VLMOP2
+from trieste.utils.pareto import Pareto, get_reference_point
+
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -116,7 +118,7 @@ num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
-# To conclude, we visualize the multi-objective boqueried data in the design space
+# To conclude, we visualize the multi-objective bo queried data in the design space
 
 # +
 datasets = result.try_get_final_datasets()
@@ -136,38 +138,33 @@ plt.show()
 plot_bo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
 
-# We can also visualize how the performance metric get envolved with respect to the iteration numbers. 
-# First, we need to define a metric function by ourself. We make use of log hypervolume difference here. 
+# We can also visualize how the performance metric get envolved with respect to the bo iterations. 
+# First, we need to define a metric function by ourself. We make use of log hypervolume difference here.
 
-# The log hypervolume difference is a 
-# measurement of difference between current hypervolume extracted from obtained pareto front, compared with the idea hypervolume based on true pareto front. 
+# The log hypervolume difference is defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the observed data.
 # $$
-# log\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{ideal}} - \text{HV}_{\text{bo obtained}})
+# log_{10}\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{true}} - \text{HV}_{\text{bo obtained}})
 # $$
 #
 
-plt.scatter(ideal_pf[:, 0], ideal_pf[:, 1])
-Pareto(ideal_pf).hypervolume_indicator(ref_point)
+# First we need to calculate the $\text{HV}_{\text{ideal}}$, this is approximated by calculating the hypervolume based on ideal pareto front:
 
-
-
-# +
-from trieste.utils.pareto import Pareto, get_reference_point
 ideal_pf = VLMOP2().gen_pareto_optimal_points(100).numpy().astype(data_observations.dtype)  # gen 100 pf points
 ref_point = get_reference_point(data_observations).numpy()
 idea_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
+
+# Then define the metric function:
+
 def log_hv(observations):
-    '''A metric function calculating performance measure'''
     obs_hv = Pareto(observations).hypervolume_indicator(ref_point)
-    print(idea_hv - obs_hv)
-    print(obs_hv)
     return math.log(idea_hv - obs_hv)
 
 
-# -
-
-plot_mo_history(data_observations, log_hv)
+fig, ax = plot_mo_history(data_observations, log_hv, num_init = num_initial_points)
+ax.set_xlabel('Iterations')
+ax.set_ylabel('log HV difference')
+plt.show()
 
 # # Advanced: Problem with 3 Objective Function
 

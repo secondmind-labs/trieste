@@ -20,6 +20,7 @@ import tensorflow as tf
 from trieste.type import TensorType
 from trieste.utils import to_numpy
 from trieste.utils.pareto import non_dominated
+from itertools import accumulate
 
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
@@ -293,11 +294,12 @@ def plot_mo_history(
 
     fig, ax = plt.subplots(figsize=figsize)
     safe_obs_values = obs_values.copy()
+    size, obj_num = safe_obs_values.shape
 
     if mask_fail is not None:
-        safe_obs_values[mask_fail] = [np.inf] * safe_obs_values.shape[-1]
+        safe_obs_values[mask_fail] = [np.inf] * obj_num
 
-    ax.plot(metric_func(np.minimum.accumulate(safe_obs_values)), color="tab:orange")
+    ax.plot([metric_func(safe_obs_values[:pts, :]) for pts in range(size)], color="tab:orange")
     ax.axvline(x=num_init - 0.5, color="tab:blue")
     return fig, ax
 
