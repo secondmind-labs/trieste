@@ -210,7 +210,7 @@ def plot_bo_points(
 
 
 def plot_bo_points_in_obj_space(
-    observations,
+    obs_values,
     num_init=None,
     mask_fail=None,
     figsize=None,
@@ -228,7 +228,7 @@ def plot_bo_points_in_obj_space(
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
     Markers and colors are chosen according to BO factors.
-    :param observations:
+    :param obs_values:
     :param num_init: initial number of BO points
     :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
     :param title:
@@ -237,17 +237,17 @@ def plot_bo_points_in_obj_space(
     :param figsize:
     :param only_plot_pareto: if set true, only plot the pareto points
     """
-    obj_num = observations.shape[-1]
+    obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
     assert obj_num == 2 or obj_num == 3, NotImplementedError(
         "Only support 2/3-objective" " function plot but found: {}".format(obj_num)
     )
 
-    _, dom = non_dominated(observations)
+    _, dom = non_dominated(obs_values)
     idx_pareto = np.where(dom == 0) if mask_fail is None else \
         np.where(np.logical_and(dom == 0, ~mask_fail))
 
-    pts = observations
+    pts = obs_values
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(
@@ -271,6 +271,35 @@ def plot_bo_points_in_obj_space(
         ax.set_zlabel(zlabel)
     if title is not None:
         ax.set_title(title)
+    return fig, ax
+
+
+def plot_mo_history(
+        obs_values,
+        metric_func,
+        num_init=None,
+        mask_fail=None,
+        figsize=None,
+):
+    """
+    Draw the performance measure for multi-objective optimization
+    :param obs_values:
+    :param metric_func: a callable function calculate metric score
+                        metric = measure_func(observations)
+    :param num_init:
+    :param mask_fail:
+    :param figsize
+    """
+
+    fig, ax = plt.subplots(figsize=figsize)
+    safe_obs_values = obs_values.copy()
+
+    if mask_fail is not None:
+        safe_obs_values[mask_fail] = [np.inf] * safe_obs_values.shape[-1]
+
+    ax.plot(metric_func(np.minimum.accumulate(safe_obs_values)), color="tab:orange")
+    ax.axvline(x=num_init - 0.5, color="tab:blue")
+    return fig, ax
 
 
 def plot_regret(

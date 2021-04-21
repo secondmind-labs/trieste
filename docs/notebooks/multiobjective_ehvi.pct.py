@@ -5,7 +5,8 @@ import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from util.plotting import plot_bo_points, plot_function_2d
+import math
+from util.plotting import plot_bo_points, plot_function_2d, plot_mo_history
 
 # +
 import trieste
@@ -119,7 +120,8 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # +
 datasets = result.try_get_final_datasets()
-data_query_points = datasets[OBJECTIVE].query_points
+data_query_points = datasets[OBJECTIVE].query_points.numpy()
+data_observations = datasets[OBJECTIVE].observations.numpy()
 
 _, ax = plot_function_2d(
     vlmop2, mins, maxs, grid_density=100, contour=True, title=["Obj 1", "Obj 2"]
@@ -131,8 +133,41 @@ plt.show()
 
 # ... and visulize in the objective space, orange dots denotes the nondominated points.
 
-plot_bo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points)
+plot_bo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
+
+# We can also visualize how the performance metric get envolved with respect to the iteration numbers. 
+# First, we need to define a metric function by ourself. We make use of log hypervolume difference here. 
+
+# The log hypervolume difference is a 
+# measurement of difference between current hypervolume extracted from obtained pareto front, compared with the idea hypervolume based on true pareto front. 
+# $$
+# log\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{ideal}} - \text{HV}_{\text{bo obtained}})
+# $$
+#
+
+plt.scatter(ideal_pf[:, 0], ideal_pf[:, 1])
+Pareto(ideal_pf).hypervolume_indicator(ref_point)
+
+
+
+# +
+from trieste.utils.pareto import Pareto, get_reference_point
+ideal_pf = VLMOP2().gen_pareto_optimal_points(100).numpy().astype(data_observations.dtype)  # gen 100 pf points
+ref_point = get_reference_point(data_observations).numpy()
+idea_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
+
+def log_hv(observations):
+    '''A metric function calculating performance measure'''
+    obs_hv = Pareto(observations).hypervolume_indicator(ref_point)
+    print(idea_hv - obs_hv)
+    print(obs_hv)
+    return math.log(idea_hv - obs_hv)
+
+
+# -
+
+plot_mo_history(data_observations, log_hv)
 
 # # Advanced: Problem with 3 Objective Function
 
