@@ -138,8 +138,8 @@ plt.show()
 plot_bo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
 
-# We can also visualize how the performance metric get envolved with respect to the bo iterations. 
-# First, we need to define a metric function by ourself. We make use of log hypervolume difference here.
+# We can also visualize how the performance metric get envolved with respect to the bo iterations.  
+# First, we need to define a metric function by ourself. The performance metric function for multi-objective function can be fleaxibly choosen. Here, we make use of the log hypervolume difference.
 
 # The log hypervolume difference is defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the observed data.
 # $$
@@ -164,55 +164,6 @@ def log_hv(observations):
 fig, ax = plot_mo_history(data_observations, log_hv, num_init = num_initial_points)
 ax.set_xlabel('Iterations')
 ax.set_ylabel('log HV difference')
-plt.show()
-
-# # Advanced: Problem with 3 Objective Function
-
-# Now we demonstrate an optimization for DTLZ2 function with 3 objectives in 4 dimension:
-
-# +
-from tensorflow import sin, cos
-from math import pi
-from trieste.utils.mo_objectives import DTLZ2
-
-dtlz2 = DTLZ2(input_dim=4, num_objective=3).prepare_benchmark()
-
-dtlz_observer = trieste.utils.objectives.mk_observer(dtlz2, OBJECTIVE)
-
-
-# -
-
-# Now we can follow similar setup to optimize this problem, it will take a while waiting for the finish of the optimizer
-
-# +
-input_dim = 4
-
-mins = [0] * input_dim
-maxs = [1] * input_dim
-lower_bound = tf.cast(mins, gpflow.default_float())
-upper_bound = tf.cast(maxs, gpflow.default_float())
-search_space = trieste.space.Box(lower_bound, upper_bound)
-
-num_objective = 3
-num_initial_points = 15
-initial_query_points = search_space.sample(num_initial_points)
-initial_data = dtlz_observer(initial_query_points)
-
-objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
-                                             tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1)),
-                                     input_dim, 0.8), 1) for i in range(num_objective)]
-
-models = {OBJECTIVE: ModelStack(*objective_models)}
-
-hvei = ExpectedHypervolumeImprovement().using(OBJECTIVE)
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=hvei)
-
-num_steps = 30
-bo = trieste.bayesian_optimizer.BayesianOptimizer(dtlz_observer, search_space)
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
-# -
-
-plot_bo_points_in_obj_space(result.try_get_final_datasets()[OBJECTIVE].observations, num_init=num_initial_points)
 plt.show()
 
 # ## LICENSE
