@@ -796,7 +796,7 @@ class LocallyPenalizedExpectedImprovement(MultiAcquisitionFunctionBuilder[Tensor
     points and returns the expected improvment acquisiton function penalized around those points.
     
 
-
+	TODO
     Say it allows us to perofrm batch BO using standard non-batch acqusiton function
     by successively maximizing function penalized around alread selected points.
     Talk about penalization being multiplicative (do log space)

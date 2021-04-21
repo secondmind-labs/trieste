@@ -93,7 +93,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | None = None,
+        builder: AcquisitionFunctionBuilder | MultiAcquisitionFunctionBuilder | None = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
