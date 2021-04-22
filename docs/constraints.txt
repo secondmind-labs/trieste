@@ -14,7 +14,7 @@ docutils==0.16
 entrypoints==0.3
 idna==2.10
 imagesize==1.2.0
-importlib-metadata==3.10.1
+importlib-metadata==4.0.1
 ipython==7.22.0
 ipython-genutils==0.2.0
 jedi==0.18.0
@@ -41,7 +41,7 @@ prompt-toolkit==3.0.18
 ptyprocess==0.7.0
 pybtex==0.24.0
 pybtex-docutils==1.0.0
-pydata-sphinx-theme==0.6.0
+pydata-sphinx-theme==0.6.1
 Pygments==2.8.1
 pyparsing==2.4.7
 pyrsistent==0.17.3
