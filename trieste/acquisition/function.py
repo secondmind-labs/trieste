@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable
+from typing import Any, Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -49,11 +49,12 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], **kwargs: Any
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
+        :param **kwargs: Additional parameters required for specific :class:`AcquisitionFunctionBuilder`.
         :return: An acquisition function.
         """
 
@@ -852,3 +853,202 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
         return batch_ei
+
+
+
+class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
+    """ 
+    An :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function suitiable for
+	greedily building batches for batch Bayesian Optimisation. :class:`GreedyAcquisitionFunctionBuilder`
+	differs from :class:`AcquisitionFunctionBuilder` by requiring that a set of pending points is passed
+	to the builder.
+    """
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], pending_points: TensorType
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]), 
+        	where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+
+
+class SingleModelGreedyAcquisitionBuilder(ABC):
+    """
+    Convenience acquisition function builder for an acquisition function (or component of a
+    composite acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(GreedyAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], pending_points: TensorType
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(datasets[tag], models[tag], pending_points=pending_points)
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]), 
+        	where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+
+
+class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches by local 
+    penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending 
+    points and returns the expected improvment acquisiton function penalized around those points.
+    
+	TODO
+    Say it allows us to perofrm batch BO using standard non-batch acqusiton function
+    by successively maximizing function penalized around alread selected points.
+    Talk about penalization being multiplicative (do log space)
+
+    For our penalization function, we implement the soft penalization strategy of :cite:`Gonzalez:2016`, 
+    where an estimate of the objective function's Lipschitz constant is used to control the size 
+    of penalization. The Lipschitz constant and additionl penalization parameters are estimated once 
+    when preparing the :const:`AcquisitionFunctionMaker` and reused for each 
+    individual :const:`AcquisitionFunction`) it makes.
+    
+    """
+
+
+    def __init__(self, search_space: SearchSpace, grid_size: int = 500):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param grid_size: Size of the grid over which the Lipschitz constant is estimated. We recommend
+            scaling this with search space dimension.
+        """
+        self._search_space = search_space
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+        self._lipschitz_constant = None
+        self._eta = None
+        
+
+    def prepare_acquisition_function_maker(
+            self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.	
+        :return: The (log) expected improvement acqusiiton function penalized with respect to the pending points.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        if not pending_points: # only compute penalization parameters once per optimization step
+
+	        samples = self._search_space.sample(num_samples=self._grid_size)
+	        samples  = tf.concat([dataset.query_points, samples ], 0)
+
+	        def get_lipschitz_estimate(sampled_points)-> tf.Tensor: # use max norm of posterior mean gradients
+	            with tf.GradientTape() as g: 
+	                g.watch(sampled_points)
+	                mean, _ = model.predict(sampled_points)
+	            grads = g.gradient(mean,sampled_points)
+	            grads_norm =  tf.norm(grads, axis=1)
+	            max_grads_norm = tf.reduce_max(grads_norm)
+	            return max_grads_norm
+
+	        lipschitz_constant = get_lipschitz_estimate(samples)
+
+	        if lipschitz_constant < 1e-5: # threshold to improve numerical stability for 'flat' models
+	                lipschitz_constant = 10
+
+	        eta = tf.reduce_min(mean, axis=0)
+
+	        self._lipschitz_constant = lipschitz_constant
+	        self._eta = eta
+
+
+        log_base_acquisition = tf.math.log(expected_improvement(model, eta))
+
+        if not pending_points: # no penalization required for first batch element.
+            return base_acquisition
+
+        penalization = local_penalizer(model, pending_points, lipschitz_constant, eta)
+        log_penalized_acquisition = log_base_acquisition + tf.math.log(penalization)
+
+        return log_penalized_acquisition
+
+
+
+
+PenalizationFunction = Callable[[TensorType], TensorType]
+"""
+An :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single
+value that described how heavily it should be penalized (a positive quantity). 
+As penalization is applied multiplicatively to acquisition functions, small
+penalization outputs correspond to a stronger penalization effect. Thus, with 
+leading dimensions, an :const:`PenalizationFunction` takes input 
+shape `[..., 1, D]` and returns shape `[..., 1]`.
+"""
+
+
+def soft_local_penalizer(model: ProbabilisticModel, pending_points: TensorType, lipschitz_constant: TensorType, eta: TensorType) -> PenalizationFunction:
+    r"""
+    Return the local penalization function used for single-objective greedy batch Bayesian optimization in 
+    :cite:`Gonzalez:2016`. Soft penalization returns the probability that a candidate point does not belong
+    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model posterior variance
+    :math:`\sigma^2`, current "best" function value :math:`\eta`, and an estimated Lipschitz constant :math:`L`, 
+    the penalization from a set of pending point :math:`x'` on a candidate point :math:`x` is given by
+    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`. The penalization from a set of 
+    pending points is just product of the individual penalizations. See :cite:`Gonzalez:2016` for a full derivation.
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending  = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(tf.expand_dims(x,1)-tf.expand_dims(pending_points,0),axis=-1)
+        standardised_distances = (pairwise_distances - radius) / scale
+
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        penalization = normal.cdf(standardised_distances)
+
+        return penalization
+
+    return penalization_function
+
+
+        
