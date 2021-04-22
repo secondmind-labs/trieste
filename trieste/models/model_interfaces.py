@@ -247,6 +247,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     def optimizer(self) -> Optimizer:
+        """ The optimizer with which to train the model. """
         return self._optimizer
 
     @property
@@ -264,12 +265,22 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         return self.model.predict_f_samples(query_points, num_samples)
 
     def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
         self.optimizer.optimize(self.model, dataset)
 
     __deepcopy__ = module_deepcopy
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
+    or :class:`~gpflow.models.SGPR`.
+    """
+
     def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow model to wrap.
@@ -302,6 +313,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+    """
+
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.

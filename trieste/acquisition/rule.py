@@ -107,7 +107,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param num_query_points: The number of points to acquire.
         """
 
-        if not num_query_points > 0:
+        if num_query_points <= 0:
             raise ValueError(
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
