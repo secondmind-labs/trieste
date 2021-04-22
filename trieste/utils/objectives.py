@@ -69,7 +69,7 @@ BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
 def gramacy_lee(x: TensorType) -> TensorType:
     """
     The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
-    :cite:`gramacy2010cases` and :cite:`Ranjan2013` for details.
+    :cite:`gramacy2012cases` for details.
 
     :param x: Where to evaluate the function, with shape [..., 1].
     :return: The function values, with shape [..., 1].

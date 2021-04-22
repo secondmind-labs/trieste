@@ -1,3 +1,8 @@
+# ---
+# nbsphinx:
+#   orphan: true
+# ---
+
 # %% [markdown]
 # # Noise-free optimization with Expected Improvement
 
