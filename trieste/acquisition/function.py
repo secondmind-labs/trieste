@@ -49,12 +49,11 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], **kwargs: Any
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :param **kwargs: Additional parameters required for specific :class:`AcquisitionFunctionBuilder`.
         :return: An acquisition function.
         """
 
@@ -856,7 +855,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 
 
 
-class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
+class GreedyAcquisitionFunctionBuilder(ABC):
     """ 
     An :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function suitiable for
 	greedily building batches for batch Bayesian Optimisation. :class:`GreedyAcquisitionFunctionBuilder`
@@ -864,7 +863,7 @@ class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
 	to the builder.
     """
 
-    @abstractmethod
+    @abstractmethodd
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], pending_points: TensorType=None
     ) -> AcquisitionFunction:
@@ -879,8 +878,8 @@ class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
 
 class SingleModelGreedyAcquisitionBuilder(ABC):
     """
-    Convenience acquisition function builder for an acquisition function (or component of a
-    composite acquisition function) that requires only one model, dataset pair.
+    Convenience acquisition function builder for a greedy acquisition function (or component of a
+    composite greedy acquisition function) that requires only one model, dataset pair.
     """
 
     def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder:
@@ -958,6 +957,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: The points we penalize with respect to.	
         :return: The (log) expected improvement acqusiiton function penalized with respect to the pending points.
+        This function will raise :exc:`ValueError` if its first call does not have pending_points=None.
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
@@ -986,13 +986,15 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 	        self._lipschitz_constant = lipschitz_constant
 	        self._eta = eta
 
+	    if not self._lipschitz_constant or not self._eta:
+	    	raise ValueError("Local penalization must be first called with no pending_points.")
 
-        log_base_acquisition = tf.math.log(expected_improvement(model, eta))
+        log_base_acquisition = tf.math.log(expected_improvement(model, self._eta))
 
-        if not pending_points: # no penalization required for first batch element.
+        if not pending_points: # no penalization required if no pending_points.
             return base_acquisition
 
-        penalization = local_penalizer(model, pending_points, lipschitz_constant, eta)
+        penalization = local_penalizer(model, pending_points, self._lipschitz_constant, self._eta)
         log_penalized_acquisition = log_base_acquisition + tf.math.log(penalization)
 
         return log_penalized_acquisition
