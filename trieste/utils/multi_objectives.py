@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains toy multi-objective functions, useful for experimentation.
+This module contains synthetic multi-objective functions, useful for experimentation.
 """
 from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import partial
 
 import tensorflow as tf
@@ -26,44 +27,56 @@ from ..type import TensorType
 
 
 class MultiObjectiveTestProblem(ABC):
-    """base class for synthetic multi-objective test functions"""
+    """
+    Base class for synthetic multi-objective test functions.
+    Prepares the synthetic function and generates pareto optimal points.
+    The latter can be used as a reference of performance measure of certain
+    multi-objective optimization algorithms.
+    """
 
     @abstractmethod
-    def prepare_benchmark(self):
+    def objective(self) -> Callable[[TensorType], TensorType]:
         """
-        Evaluate original problem.
+        Get the synthetic test function.
+        :return: A callable synthetic function
         """
 
     @abstractmethod
-    def gen_pareto_optimal_points(self, n: int):
+    def gen_pareto_optimal_points(self, n: int, seed=None) -> tf.Tensor:
         """
-        Generate `n` pareto optimal points.
+        Generate `n` Pareto optimal points.
+        :param n: The number of pareto optimal points to be generated.
+        :param seed: An integer used to create a random seed for distributions that
+         used to generate pareto optimal points.
+        :return: The Pareto optimal points
         """
 
 
 class VLMOP2(MultiObjectiveTestProblem):
     """
-    The VLMOP2 function, typically evaluated over :math:`[-2, 2]^2`. See
-    See :cite:`van1999multiobjective` for details.
+    The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^2`.
+    The idea pareto fronts lies on -1/sqrt(2) - 1/sqrt(2) and x1=x2.
+    See :cite:`van1999multiobjective` and  :cite: fonseca1995multiobjective
+    (the latter for discussion of pareto front property) for details.
     """
 
     bounds = [[-2.0] * 2, [2.0] * 2]
     dim = 2
 
-    def prepare_benchmark(self):
+    def objective(self):
         return vlmop2
 
-    def gen_pareto_optimal_points(self, n: int):
-        """
-        :cite: fonseca1995multiobjective
-        True pareto lies on -1/sqrt(2)-1/sqrt(2) and x1=x2
-        """
+    def gen_pareto_optimal_points(self, n: int, seed=None):
         tf.debugging.assert_greater(n, 0)
         _x = tf.linspace([-1 / tf.sqrt(2.0)], [1 / tf.sqrt(2.0)], n)
         return vlmop2(tf.concat([_x, _x], axis=1))
 
 
 def vlmop2(x: TensorType) -> TensorType:
+    """
+    The VLMOP2 synthetic function.
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    """
     tf.debugging.assert_shapes([(x, ("N", 2))], message="vlmop2 only allow 2d input")
     transl = 1 / math.sqrt(2.0)
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
@@ -73,7 +86,7 @@ def vlmop2(x: TensorType) -> TensorType:
 
 class DTLZ(MultiObjectiveTestProblem):
     """
-    DTLZ series multi-objective test functions.
+    DTLZ series multi-objective test problem.
     See :cite:deb2002scalable for details.
     """
 
@@ -93,7 +106,12 @@ class DTLZ(MultiObjectiveTestProblem):
 
 
 class DTLZ1(DTLZ):
-    def prepare_benchmark(self):
+    """
+    The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
+    See :cite:deb2002scalable for details.
+    """
+
+    def objective(self):
         return partial(dtlz1, m=self.M, k=self.k, d=self.dim)
 
     def gen_pareto_optimal_points(self, n: int, seed=None):
@@ -105,10 +123,20 @@ class DTLZ1(DTLZ):
 
 
 def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
+    """
+    The DTLZ1 synthetic function.
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param m: The objective numbers.
+    :param k: The input dimensionality for g.
+    :param d: The dimensionality of the synthetic function.
+    :return : The function values at ``x``, with shape [..., m].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
     tf.debugging.assert_shapes(
         [(x, ("N", d))],
         message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
     )
+    tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
     def g(xM):
         return 100 * (
@@ -130,7 +158,12 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
 
 
 class DTLZ2(DTLZ):
-    def prepare_benchmark(self):
+    """
+    The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
+    See :cite:deb2002scalable for details.
+    """
+
+    def objective(self):
         return partial(dtlz2, m=self.M, d=self.dim)
 
     def gen_pareto_optimal_points(self, n: int, seed=None):
@@ -141,10 +174,19 @@ class DTLZ2(DTLZ):
 
 
 def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
+    """
+    The DTLZ2 synthetic function.
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param m: The objective numbers.
+    :param d: The dimensionality of the synthetic function.
+    :return : The function values at ``x``, with shape [..., m].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
     tf.debugging.assert_shapes(
         [(x, ("N", d))],
         message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
     )
+    tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
     def g(xM):
         z = (xM - 0.5) ** 2
