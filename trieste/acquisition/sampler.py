@@ -68,6 +68,7 @@ class DiscreteThompsonSampler(Sampler):
         """
         Return approximate samples from of the objective function's minimser. We return only
         unique samples.
+
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
         :return: The samples, of shape `[S, D]`, where `S` is the `sample_size`.
@@ -100,6 +101,7 @@ class GumbelSampler(Sampler):
     def sample(self, at: TensorType) -> TensorType:
         """
         Return approximate samples from of the objective function's minimum value.
+
         :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
             of dimension `D`. We recommend scaling `N` with search space dimension.
         :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
