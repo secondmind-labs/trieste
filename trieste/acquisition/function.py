@@ -866,7 +866,7 @@ class GreedyAcquisitionFunctionBuilder(AcquisitionFunctionBuilder):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], pending_points: TensorType
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel], pending_points: TensorType=None
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -904,7 +904,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType,
+        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType=None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -951,7 +951,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         
 
     def prepare_acquisition_function_maker(
-            self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType,
+            self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType=None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
