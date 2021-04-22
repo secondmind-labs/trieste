@@ -255,7 +255,7 @@ class BayesianOptimizer(Generic[SP]):
                     model.update(dataset)
                     model.optimize(dataset)
 
-            except Exception as error:
+            except Exception as error:  # pylint: disable=broad-except
                 tf.print(
                     f"\nOptimization failed at step {step}, encountered error with traceback:"
                     f"\n{traceback.format_exc()}"

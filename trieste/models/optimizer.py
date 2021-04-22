@@ -60,6 +60,13 @@ class Optimizer:
     """ If `True`, the optimization process will be compiled with :func:`tf.function`. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
+        """
+        Build a loss function for the specified `model` with the `dataset`.
+
+        :param model: The model to build a loss function for.
+        :param dataset: The data with which to build the loss function.
+        :return: The loss function.
+        """
         x = tf.convert_to_tensor(dataset.query_points)
         y = tf.convert_to_tensor(dataset.observations)
         data = (x, y)
@@ -135,7 +142,15 @@ def create_optimizer(
     optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer,
     optimizer_args: Dict[str, Any],
 ) -> Optimizer:
-    pass
+    """
+    Generic function for creating a :class:`Optimizer` wrapper from a specified
+    `optimizer` and `optimizer_args`. The implementations depends on the type of the
+    underlying optimizer.
+
+    :param optimizer: The optimizer with which to train the model.
+    :param optimizer_args: The keyword arguments to pass to the optimizer wrapper..
+    :return: The :class:`Optimizer` wrapper.
+    """
 
 
 @create_optimizer.register
@@ -156,6 +171,15 @@ def _create_scipy_optimizer(
 
 @singledispatch
 def create_loss_function(model, dataset: TrainingData, compile: bool = False) -> LossClosure:
+    """
+    Generic function for building a loss function for a specified `model` and `dataset`.
+    The implementations depends on the type of the model.
+
+    :param model: The model to build a loss function for.
+    :param dataset: The data with which to build the loss function.
+    :param compile: Whether to compile with :func:`tf.function`.
+    :return: The loss function.
+    """
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
 
 
