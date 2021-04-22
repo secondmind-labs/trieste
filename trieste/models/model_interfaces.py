@@ -64,10 +64,10 @@ class ProbabilisticModel(ABC):
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
 
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S] + E, where S is the number of samples.
+            [..., S, N] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -152,11 +152,11 @@ class ModelStack(TrainableProbabilisticModel):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples from all the wrapped models, concatenated along the event axis. For
             wrapped models with predictive distributions with event shapes [:math:`E_i`], this has
-            shape [..., S, :math:`\sum_i E_i`], where S is the number of samples.
+            shape [..., S, N, :math:`\sum_i E_i`], where S is the number of samples.
         """
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)

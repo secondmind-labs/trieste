@@ -209,8 +209,8 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
         nqp, ns = self._num_query_points, self._num_search_space_samples
         query_points = search_space.sample(ns)  # [ns, ...]
-        samples = models[OBJECTIVE].sample(query_points, nqp)  # [nqp, ns, ...]
-        samples_2d = tf.reshape(samples, [nqp, ns])  # [nqp, ns]
+        samples = models[OBJECTIVE].sample(query_points, nqp)  # [..., nqp, ns, 1]
+        samples_2d = tf.squeeze(samples, -1)  # [nqp, ns]
         indices = tf.math.argmin(samples_2d, axis=1)
         unique_indices = tf.unique(indices).y
         return tf.gather(query_points, unique_indices), None
