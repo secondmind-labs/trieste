@@ -112,10 +112,10 @@ def test_model_stack_sample() -> None:
     stack, (model01, model2, model3) = _model_stack()
     samples = stack.sample(query_points, 10_000)
 
-    assert samples.shape == [5, 7, 10_000, 4]
+    assert samples.shape == [5, 10_000, 7, 4]
 
-    mean = tf.reduce_mean(samples, axis=-2)
-    var = tf.math.reduce_variance(samples, axis=-2)
+    mean = tf.reduce_mean(samples, axis=1)
+    var = tf.math.reduce_variance(samples, axis=1)
 
     mean01, var01 = model01.predict(query_points)
     mean2, var2 = model2.predict(query_points)
@@ -431,9 +431,9 @@ def test_gpflow_predictor_sample() -> None:
     num_samples = 20_000
     samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
 
-    assert samples.shape == [1, num_samples, 1]
+    assert samples.shape == [num_samples, 1, 1]
 
-    sample_mean = tf.reduce_mean(samples, axis=1)
+    sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
     linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
@@ -443,7 +443,7 @@ def test_gpflow_predictor_sample() -> None:
 
 def test_gpflow_predictor_sample_no_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
-    assert samples.shape == (1, 0, 1)
+    assert samples.shape == (0, 1, 1)
 
 
 def test_sparse_variational_model_attribute() -> None:

@@ -95,10 +95,10 @@ def test_gaussian_process_sample() -> None:
         [[0.0, -1.0], [-2.0, 3.0], [4.0, 5.0]],
         [[-3.0, 2.0], [4.0, 3.0], [-4.0, 6.0]],
     ]), 10_000)
-    npt.assert_allclose(tf.reduce_mean(samples, axis=-2), [
+    npt.assert_allclose(tf.reduce_mean(samples, axis=-3), [
         [[1.0, 0.2], [13.0, 2.6], [41.0, 8.2]],
         [[13.0, 2.6], [25.0, 5.0], [52.0, 10.4]]
     ], rtol=0.02)
-    variance = tf.math.reduce_variance(samples, axis=-2)
+    variance = tf.math.reduce_variance(samples, axis=-3)
     npt.assert_allclose(variance, tf.fill([2, 3, 2], 2.56), rtol=0.02)
     # fmt: on

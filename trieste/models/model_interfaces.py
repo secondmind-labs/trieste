@@ -67,7 +67,7 @@ class ProbabilisticModel(ABC):
         :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., N, S] + E, where S is the number of samples.
+            [..., S, N] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -152,11 +152,11 @@ class ModelStack(TrainableProbabilisticModel):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples from all the wrapped models, concatenated along the event axis. For
             wrapped models with predictive distributions with event shapes [:math:`E_i`], this has
-            shape [..., S, :math:`\sum_i E_i`], where S is the number of samples.
+            shape [..., S, N, :math:`\sum_i E_i`], where S is the number of samples.
         """
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
@@ -261,10 +261,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         return self.model.predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        samples = self.model.predict_f_samples(query_points, num_samples)  # [..., S, N, E]
-        rank = tf.rank(samples)
-        new_order = tf.concat([tf.range(rank - 3), [rank - 2, rank - 3, rank - 1]], -1)
-        return tf.transpose(samples, new_order)  # [..., N, S, E]
+        return self.model.predict_f_samples(query_points, num_samples)
 
     def optimize(self, dataset: Dataset) -> None:
         self.optimizer.optimize(self.model, dataset)

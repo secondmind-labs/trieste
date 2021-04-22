@@ -49,7 +49,7 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         mean, var = self.predict(query_points)
         samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
         dim_order = tf.range(tf.rank(samples))
-        return tf.transpose(samples, tf.concat([dim_order[1:-1], [0], dim_order[-1:]], -1))
+        return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
