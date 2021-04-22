@@ -35,16 +35,20 @@ class Sampler(ABC):
     underlying :class:`ProbabilisticModel`.
     """
 
-    @abstractmethod
     def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         tf.debugging.assert_positive(sample_size)
 
         self._sample_size = sample_size
         self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
 
     @abstractmethod
     def sample(self, at: TensorType) -> TensorType:
@@ -59,18 +63,6 @@ class DiscreteThompsonSampler(Sampler):
     This sampler provides approximate Thompson samples of the objective function's
     maximiser :math:`x^*` over a discrete set of input locations.
     """
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
-        :param sample_size: The number of samples to take at each point. Must be positive.
-        :param model: The model to sample from.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        super().__init__(sample_size, model)
-
-    def __repr__(self) -> str:
-        """"""
-        return f"DiscreteThompsonSampler({self._sample_size!r}, {self._model!r})"
 
     def sample(self, at: TensorType) -> TensorType:
         """
@@ -104,18 +96,6 @@ class GumbelSampler(Sampler):
     :math:`[0, 1]` and applying the inverse probability integral transform
     :math:`y = \mathcal G^{-1}(r; a, b)`.
     """
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
-        :param sample_size: The number of samples to take at each point. Must be positive.
-        :param model: The model to sample from.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        super().__init__(sample_size, model)
-
-    def __repr__(self) -> str:
-        """"""
-        return f"DiscreteThompsonSampler({self._sample_size!r}, {self._model!r})"
 
     def sample(self, at: TensorType) -> TensorType:
         """
@@ -182,10 +162,6 @@ class IndependentReparametrizationSampler(Sampler):
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
 
-    def __repr__(self) -> str:
-        """"""
-        return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
-
     def sample(self, at: TensorType) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
@@ -235,10 +211,6 @@ class BatchReparametrizationSampler(Sampler):
         self._eps = tf.Variable(
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
-
-    def __repr__(self) -> str:
-        """"""
-        return f"BatchReparametrizationSampler({self._sample_size!r}, {self._model!r})"
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """

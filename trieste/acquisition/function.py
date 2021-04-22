@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains acquisition function builders, which build acquisition functions
-that estimate the utility of evaluating sets of candidate points.
+This module contains acquisition function builders, which build and define our acquisition
+functions --- functions that estimate the utility of evaluating sets of candidate points.
 """
 from __future__ import annotations
 
