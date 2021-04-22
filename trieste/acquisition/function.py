@@ -858,9 +858,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 class GreedyAcquisitionFunctionBuilder(ABC):
     """ 
     An :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function suitiable for
-	greedily building batches for batch Bayesian Optimisation. :class:`GreedyAcquisitionFunctionBuilder`
-	differs from :class:`AcquisitionFunctionBuilder` by requiring that a set of pending points is passed
-	to the builder.
+    greedily building batches for batch Bayesian Optimisation. :class:`GreedyAcquisitionFunctionBuilder`
+    differs from :class:`AcquisitionFunctionBuilder` by requiring that a set of pending points is passed
+    to the builder.
     """
 
     @abstractmethodd
@@ -871,7 +871,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]), 
-        	where M is the number of pending points and D is the search space dimension.
+            where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
 
@@ -909,7 +909,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         :param dataset: The data to use to build the acquisition function.
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]), 
-        	where M is the number of pending points and D is the search space dimension.
+            where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
 
@@ -920,7 +920,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending 
     points and returns the expected improvment acquisiton function penalized around those points.
     
-	TODO
+    TODO
     Say it allows us to perofrm batch BO using standard non-batch acqusiton function
     by successively maximizing function penalized around alread selected points.
     Talk about penalization being multiplicative (do log space)
@@ -955,7 +955,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         """
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
-        :param pending_points: The points we penalize with respect to.	
+        :param pending_points: The points we penalize with respect to.  
         :return: The (log) expected improvement acqusiiton function penalized with respect to the pending points.
         This function will raise :exc:`ValueError` if its first call does not have pending_points=None.
         """
@@ -964,30 +964,30 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
         if not pending_points: # only compute penalization parameters once per optimization step
 
-	        samples = self._search_space.sample(num_samples=self._grid_size)
-	        samples  = tf.concat([dataset.query_points, samples ], 0)
+            samples = self._search_space.sample(num_samples=self._grid_size)
+            samples  = tf.concat([dataset.query_points, samples ], 0)
 
-	        def get_lipschitz_estimate(sampled_points)-> tf.Tensor: # use max norm of posterior mean gradients
-	            with tf.GradientTape() as g: 
-	                g.watch(sampled_points)
-	                mean, _ = model.predict(sampled_points)
-	            grads = g.gradient(mean,sampled_points)
-	            grads_norm =  tf.norm(grads, axis=1)
-	            max_grads_norm = tf.reduce_max(grads_norm)
-	            return max_grads_norm
+            def get_lipschitz_estimate(sampled_points)-> tf.Tensor: # use max norm of posterior mean gradients
+                with tf.GradientTape() as g: 
+                    g.watch(sampled_points)
+                    mean, _ = model.predict(sampled_points)
+                grads = g.gradient(mean,sampled_points)
+                grads_norm =  tf.norm(grads, axis=1)
+                max_grads_norm = tf.reduce_max(grads_norm)
+                return max_grads_norm
 
-	        lipschitz_constant = get_lipschitz_estimate(samples)
+            lipschitz_constant = get_lipschitz_estimate(samples)
 
-	        if lipschitz_constant < 1e-5: # threshold to improve numerical stability for 'flat' models
-	                lipschitz_constant = 10
+            if lipschitz_constant < 1e-5: # threshold to improve numerical stability for 'flat' models
+                    lipschitz_constant = 10
 
-	        eta = tf.reduce_min(mean, axis=0)
+            eta = tf.reduce_min(mean, axis=0)
 
-	        self._lipschitz_constant = lipschitz_constant
-	        self._eta = eta
+            self._lipschitz_constant = lipschitz_constant
+            self._eta = eta
 
-	    if not self._lipschitz_constant or not self._eta:
-	    	raise ValueError("Local penalization must be first called with no pending_points.")
+        if not self._lipschitz_constant or not self._eta:
+            raise ValueError("Local penalization must be first called with no pending_points.")
 
         log_base_acquisition = tf.math.log(expected_improvement(model, self._eta))
 
