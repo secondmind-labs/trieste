@@ -25,7 +25,6 @@ from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -33,6 +32,7 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
+from .sampler import BatchReparametrizationSampler, GumbelSampler
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -163,15 +163,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     of the objective minimum that would be gained by evaluating the objective at a given point.
 
     This implementation largely follows :cite:`wang2017max` and samples the objective minimum
-    :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf is approximated
-    by a Gumbel distribution
-
-    .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
-
-    where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
-    Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
-    :math:`[0, 1]` and applying the inverse probability integral transform
-    :math:`y = \mathcal G^{-1}(r; a, b)`.
+    :math:`y^*` via a Gumbel sampler.
     """
 
     def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
@@ -205,35 +197,12 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
+        gumbel_sampler = GumbelSampler(self._num_samples, model)
+
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        fmean, fvar = model.predict(query_points)
-        fsd = tf.math.sqrt(fvar)
-
-        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
-            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
-            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
-
-        left = tf.reduce_min(fmean - 5 * fsd)
-        right = tf.reduce_max(fmean + 5 * fsd)
-
-        def binary_search(val: float) -> float:  # Find empirical interquartile range
-            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
-
-        q1, q2 = map(binary_search, [0.25, 0.75])
-
-        log = tf.math.log
-        l1 = log(log(4.0 / 3.0))
-        l2 = log(log(4.0))
-        b = (q1 - q2) / (l1 - l2)
-        a = (q2 * l1 - q1 * l2) / (l1 - l2)
-
-        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
-            a, fmean.dtype
-        )
+        gumbel_samples = gumbel_sampler.sample(query_points)
 
         return min_value_entropy_search(model, gumbel_samples)
 

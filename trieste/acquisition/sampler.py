@@ -19,67 +19,142 @@ acquisiiton functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from itertools import product
-from math import inf
-from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
 
-from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
-from ..utils.pareto import Pareto, get_reference_point
-
 
 
 class Sampler(ABC):
-    """ 
-    An :class:`Sampler` samples a specific quantity according to an underlying
-    :class:`ProbabilisticModel`.
+    r"""
+    An :class:`Sampler` samples a specific quantity according to an
+    underlying :class:`ProbabilisticModel`.
     """
 
     @abstractmethod
-    def sample(
-        self, datasets: Mapping[str, Dataset], model: ProbabilisticModel
-    ) -> AcquisitionFunction:
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
-        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+        :param sample_size: The desired number of samples.
+        :param model: The model to sample from.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+        self._model = model
+
+    @abstractmethod
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        :param at: Input points that define the sampler.
+        :return: Samples.
+        """
+
+
+class DiscreteThompsonSampler(Sampler):
+    r"""
+    This sampler provides approximate Thompson samples of the objective function's
+    maximiser :math:`x^*` over a discrete set of input locations.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        super().__init__(sample_size, model)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"DiscreteThompsonSampler({self._sample_size!r}, {self._model!r})"
+
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        Return approximate samples from of the objective function's minimser. We return only
+        unique samples.
+        :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
-        :param models: The models over each dataset in ``datasets``.
-        :return: An acquisition function.
+        :return: The samples, of shape `[S, D]`, where `S` is the `sample_size`.
+        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
         """
+        tf.debugging.assert_shapes([(at, ["N", None])])
+
+        samples = self._model.sample(at, self._sample_size)  # [self._sample_size, len(at), 1]
+        samples_2d = tf.squeeze(samples, -1)  # [self._sample_size, len(at)]
+        indices = tf.math.argmin(samples_2d, axis=1)
+        unique_indices = tf.unique(indices).y
+        thompson_samples = tf.gather(at, unique_indices)
+        return thompson_samples
 
 
+class GumbelSampler(Sampler):
+    r"""
+    This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
+    minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
+    is approximated by a Gumbel distribution
 
+    .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
 
+    where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+    Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+    :math:`[0, 1]` and applying the inverse probability integral transform
+    :math:`y = \mathcal G^{-1}(r; a, b)`.
+    """
 
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The number of samples to take at each point. Must be positive.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        super().__init__(sample_size, model)
 
+    def __repr__(self) -> str:
+        """"""
+        return f"DiscreteThompsonSampler({self._sample_size!r}, {self._model!r})"
 
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        Return approximate samples from of the objective function's minimum value.
+        :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
+            of dimension `D`. We recommend scaling `N` with search space dimension.
+        :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
+        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+        """
+        tf.debugging.assert_shapes([(at, ["N", None])])
 
+        fmean, fvar = self._model.predict(at)
+        fsd = tf.math.sqrt(fvar)
 
+        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
+            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
+        left = tf.reduce_min(fmean - 5 * fsd)
+        right = tf.reduce_max(fmean + 5 * fsd)
 
+        def binary_search(val: float) -> float:  # Find empirical interquartile range
+            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
 
+        q1, q2 = map(binary_search, [0.25, 0.75])
 
+        log = tf.math.log
+        l1 = log(log(4.0 / 3.0))
+        l2 = log(log(4.0))
+        b = (q1 - q2) / (l1 - l2)
+        a = (q2 * l1 - q1 * l2) / (l1 - l2)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        uniform_samples = tf.random.uniform([self._sample_size], dtype=fmean.dtype)
+        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
+            a, fmean.dtype
+        )
+        gumbel_samples = tf.expand_dims(gumbel_samples, axis=-1)  # [S, 1]
+        return gumbel_samples
 
 
 class IndependentReparametrizationSampler(Sampler):
@@ -99,16 +174,13 @@ class IndependentReparametrizationSampler(Sampler):
         :param model: The model to sample from.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
-        tf.debugging.assert_positive(sample_size)
-
-        self._sample_size = sample_size
+        super().__init__(sample_size, model)
 
         # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
         # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
-        self._model = model
 
     def __repr__(self) -> str:
         """"""
@@ -156,16 +228,13 @@ class BatchReparametrizationSampler(Sampler):
         :param model: The model to sample from.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
-        tf.debugging.assert_positive(sample_size)
-
-        self._sample_size = sample_size
+        super().__init__(sample_size, model)
 
         # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
         # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
-        self._model = model
 
     def __repr__(self) -> str:
         """"""

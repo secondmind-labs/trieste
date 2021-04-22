@@ -51,21 +51,6 @@ def _line_search_maximize(
     return xs[tf.squeeze(tf.argmax(f(tf.expand_dims(xs, 1)))), None]
 
 
-@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
-def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
-    class NegQuadratic(AcquisitionFunctionBuilder):
-        def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-        ) -> AcquisitionFunction:
-            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
-
-    search_space = Box([-10], [10])
-    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
-    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
-    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
-
-
 @pytest.mark.parametrize(
     "models",
     [
@@ -82,6 +67,21 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
+
+
+@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
+def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
+    class NegQuadratic(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
+
+    search_space = Box([-10], [10])
+    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
+    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
+    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
+    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
