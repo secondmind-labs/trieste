@@ -54,8 +54,6 @@ def automatic_optimizer_selector(
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    optimizer: AcquisitionOptimizer[Box | DiscreteSearchSpace]
-
     if isinstance(space, DiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
