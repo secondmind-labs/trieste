@@ -65,7 +65,7 @@ from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureD
 
 def build_rff_model(data) -> tf.keras.Model:
     var = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=var, lengthscales=0.2 * np.ones(2, ))
+    kernel = gpflow.kernels.SquaredExponential(variance=var, lengthscales=0.2 * np.ones(2, ))
     num_rff = 1000
     features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
     coefficients = np.ones((num_rff, 1), dtype=default_float())
@@ -97,7 +97,7 @@ def build_rff_model(data) -> tf.keras.Model:
 from trieste.models.model_interfaces import GPFluxModel
 
 model = build_rff_model(initial_data[OBJECTIVE])
-model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=1000, batch_size=128)
+model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=100, batch_size=128)
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
 
@@ -108,7 +108,7 @@ models = {OBJECTIVE: model}
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
 rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=10)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(3, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]

@@ -448,6 +448,18 @@ class GPFluxModel(TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         layer = self.model.f_layers[0]
+        feature_function = layer.kernel.feature_functions
+        input_shape = dataset.query_points.shape
+
+        def renew_rff(feature_f, input_dim):
+            shape_bias = [1, feature_f.output_dim]
+            new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
+            feature_f.b = new_b
+            shape_weights = [feature_f.output_dim, input_dim]
+            new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
+            feature_f.W = new_W
+
+        renew_rff(feature_function,  input_shape[-1])
 
         num_inducing = len(layer.inducing_variable)
         init_method = ConditionalVariance()
