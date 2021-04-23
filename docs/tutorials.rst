@@ -44,7 +44,6 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 
    notebooks/recovering_from_errors
 
-
 Run the tutorials interactively
 -------------------------------
 
