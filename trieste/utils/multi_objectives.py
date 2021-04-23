@@ -34,6 +34,20 @@ class MultiObjectiveTestProblem(ABC):
     multi-objective optimization algorithms.
     """
 
+    @property
+    @abstractmethod
+    def dim(self):
+        """
+        The input dimensionality of the test function
+        """
+
+    @property
+    @abstractmethod
+    def bounds(self):
+        """
+        The input space bounds of the test function
+        """
+
     @abstractmethod
     def objective(self) -> Callable[[TensorType], TensorType]:
         """
@@ -99,10 +113,18 @@ class DTLZ(MultiObjectiveTestProblem):
             f"input dimension {input_dim}"
             f"  must be greater than function objective numbers {num_objective}",
         )
-        self.dim = input_dim
+        self._dim = input_dim
         self.M = num_objective
-        self.k = self.dim - self.M + 1
-        self.bounds = [[0] * input_dim, [1] * input_dim]
+        self.k = self._dim - self.M + 1
+        self._bounds = [[0] * input_dim, [1] * input_dim]
+
+    @property
+    def dim(self):
+        return self._dim
+
+    @property
+    def bounds(self):
+        return self._bounds
 
 
 class DTLZ1(DTLZ):
