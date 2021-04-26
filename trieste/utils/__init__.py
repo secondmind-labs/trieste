@@ -18,6 +18,8 @@ from typing_extensions import Final
 
 from . import objectives, pareto
 from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
+from .inducing_point_selectors import InducingPointSelector, UniformSampler, KMeans, ConditionalVariance, GIBBON
+
 
 K = TypeVar("K")
 """ An unbound type variable. """
