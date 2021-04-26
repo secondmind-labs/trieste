@@ -406,10 +406,11 @@ class GPFluxModel(TrainableProbabilisticModel):
                  data: Dataset,
                  num_epochs: int = 100,
                  batch_size: int = 128,
-                 inducing_point_selector: InducingPointSelector = None ):
+                 inducing_point_selector: InducingPointSelector = None,
+                 verbose = bool = True ):
         super().__init__()
         self._model = model
-
+        print(self.model)
         if len(self.model.f_layers) > 1:
             raise NotImplementedError(
                 "GPFluxModels are restricted to single-layer models."
@@ -422,6 +423,7 @@ class GPFluxModel(TrainableProbabilisticModel):
         if inducing_point_selector is None:
             inducing_point_selector = KMeans
         self._inducing_point_selector = inducing_point_selector
+        self._verbose=verbose
 
 
 
@@ -499,15 +501,16 @@ class GPFluxModel(TrainableProbabilisticModel):
         model.compile(tf.optimizers.Adam(learning_rate=0.1))
         callbacks = [
             tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="loss", patience=5, factor=0.95, verbose=True, min_lr=1e-6,
+                monitor="loss", patience=5, factor=0.95, verbose=self._verbose, min_lr=1e-6,
             ),
-            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=True,mode="min"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=self.verbose,mode="min"),
 
         ]
         model.fit(
             {"inputs": dataset.query_points, "targets": dataset.observations},
             batch_size=self._batch_size,
             epochs=self.num_epochs,
+            verbose=self._verbose,
             callbacks=callbacks
         )
 
