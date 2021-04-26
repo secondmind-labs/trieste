@@ -407,7 +407,7 @@ class GPFluxModel(TrainableProbabilisticModel):
                  num_epochs: int = 100,
                  batch_size: int = 128,
                  inducing_point_selector: InducingPointSelector = None,
-                 verbose = bool = True ):
+                 verbose:bool = True ):
         super().__init__()
         self._model = model
         print(self.model)
