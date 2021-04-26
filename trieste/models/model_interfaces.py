@@ -25,6 +25,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from gpflux.models import DeepGP
 from gpflow.conditionals.util import sample_mvn
 from gpflux.models.deep_gp import sample_dgp
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
 from trieste.utils.robustgp import ConditionalVariance
 
 
@@ -32,7 +33,7 @@ from ..data import Dataset
 from ..type import TensorType
 from ..utils import DEFAULTS
 from .optimizer import Optimizer
-
+from ..utils import InducingPointSelector, KMeans
 
 class ProbabilisticModel(ABC):
     """ A probabilistic model. """
@@ -404,7 +405,8 @@ class GPFluxModel(TrainableProbabilisticModel):
                  model: DeepGP,
                  data: Dataset,
                  num_epochs: int = 100,
-                 batch_size: int = 128):
+                 batch_size: int = 128,
+                 inducing_point_selector: InducingPointSelector = None ):
         super().__init__()
         self._model = model
 
@@ -416,6 +418,12 @@ class GPFluxModel(TrainableProbabilisticModel):
         self._data = data
         self.num_epochs = num_epochs
         self._batch_size = batch_size
+
+        if inducing_point_selector is None:
+            inducing_point_selector = KMeans
+        self._inducing_point_selector = inducing_point_selector
+
+
 
     @property
     def model(self) -> DeepGP:
@@ -445,25 +453,25 @@ class GPFluxModel(TrainableProbabilisticModel):
         _assert_data_is_compatible(dataset, self._data)
 
         self._data = dataset
-
         num_data = dataset.query_points.shape[0]
         layer = self.model.f_layers[0]
-        feature_function = layer.kernel.feature_functions
         input_shape = dataset.query_points.shape
 
-        def renew_rff(feature_f, input_dim):
-            shape_bias = [1, feature_f.output_dim]
-            new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
-            feature_f.b = new_b
-            shape_weights = [feature_f.output_dim, input_dim]
-            new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
-            feature_f.W = new_W
+        if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
+            feature_function = layer.kernel.feature_functions
+            def renew_rff(feature_f, input_dim): 
+                shape_bias = [1, feature_f.output_dim]
+                new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
+                feature_f.b = new_b
+                shape_weights = [feature_f.output_dim, input_dim]
+                new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
+                feature_f.W = new_W
+            renew_rff(feature_function,  input_shape[-1])
 
-        renew_rff(feature_function,  input_shape[-1])
 
         num_inducing = len(layer.inducing_variable)
-        init_method = ConditionalVariance()
-        Z = init_method.compute_initialisation(dataset.query_points.numpy(), num_inducing, layer.kernel)[0]
+        init_method = self._inducing_point_selector(dataset.query_points, dataset.observations, num_inducing, layer.kernel)
+        Z = init_method.get_points()
 
         if layer.whiten:
             f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
@@ -491,8 +499,10 @@ class GPFluxModel(TrainableProbabilisticModel):
         model.compile(tf.optimizers.Adam(learning_rate=0.1))
         callbacks = [
             tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="loss", patience=5, factor=0.95, verbose=0, min_lr=1e-6,
-            )
+                monitor="loss", patience=5, factor=0.95, verbose=True, min_lr=1e-6,
+            ),
+            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=True,mode="min"),
+
         ]
         model.fit(
             {"inputs": dataset.query_points, "targets": dataset.observations},

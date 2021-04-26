@@ -55,6 +55,7 @@ initial_data = observer(initial_query_points)
 import gpflow
 import gpflux
 from trieste.utils.robustgp import ConditionalVariance
+from trieste.utils.inducing_point_selectors import KMeans, GIBBON, UniformSampler, ConditionalVariance
 
 num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
 
@@ -63,18 +64,16 @@ from gpflux.layers.basis_functions.random_fourier_features import RandomFourierF
 from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 
-def build_rff_model(data) -> tf.keras.Model:
+def build_rff_model(data, inducing_point_selector=KMeans) -> tf.keras.Model:
     var = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.SquaredExponential(variance=var, lengthscales=0.2 * np.ones(2, ))
-    num_rff = 1000
+    num_rff = 10000
     features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
     coefficients = np.ones((num_rff, 1), dtype=default_float())
     kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
     num_inducing = 40
-    init_method = ConditionalVariance()
-    Z = init_method.compute_initialisation(data.query_points.numpy(), num_inducing, kernel)[0]
-    # Z = search_space.sample(20)
+    Z = inducing_point_selector(data.query_points,data.observations,num_inducing, kernel).get_points()
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
     gpflow.utilities.set_trainable(inducing_variable, False)
 
@@ -90,14 +89,14 @@ def build_rff_model(data) -> tf.keras.Model:
     gpflow.utilities.set_trainable(likelihood, True)
     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
     model = gpflux.models.DeepGP([layer], likelihood_layer)
-    return model
+    return model, inducing_point_selector
 
 
 # %%
 from trieste.models.model_interfaces import GPFluxModel
 
-model = build_rff_model(initial_data[OBJECTIVE])
-model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=100, batch_size=128)
+model, inducing_point_selector = build_rff_model(initial_data[OBJECTIVE], GIBBON)
+model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=10000, batch_size=500, inducing_point_selector=inducing_point_selector)
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
 
@@ -106,9 +105,9 @@ models = {OBJECTIVE: model}
 
 # %%
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=10)
+rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=5)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(3, initial_data, models, acquisition_rule=rule, track_state=False)
+result = bo.optimize(10, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]
