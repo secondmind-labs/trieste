@@ -503,7 +503,7 @@ class GPFluxModel(TrainableProbabilisticModel):
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor="loss", patience=5, factor=0.95, verbose=self._verbose, min_lr=1e-6,
             ),
-            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=self.verbose,mode="min"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=self._verbose,mode="min"),
 
         ]
         model.fit(
