@@ -133,7 +133,7 @@ class GIBBON(InducingPointSelector):
         
         chosen_indicies.append(tf.argmax(d_squared)) # get first element
         
-        for m in range(M-1): # get remaining elements
+        for m in range(self._M-1): # get remaining elements
             ix = chosen_indicies[-1] # increment Cholesky with newest point
             newest_point = X[ix]
             d_temp =  tf.math.sqrt(d_squared[ix]) # [1]
