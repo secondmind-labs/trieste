@@ -608,7 +608,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
 
 def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
     builder = BatchMonteCarloExpectedImprovement(100)
-    data = mk_dataset([[0.0, 0.0]], [[0.0, 0.0]])
+    data = mk_dataset([(0.0, 0.0)], [(0.0, 0.0)])
     matern52 = tfp.math.psd_kernels.MaternFiveHalves(
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
