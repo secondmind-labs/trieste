@@ -122,7 +122,7 @@ class GIBBON(InducingPointSelector):
         K = self._kernel.K_diag(X) + 1e-12 # [N] jitter
         
         # estimate mutual information (FOR NOW WE ASSUME EXACT EVALS)
-        eta = 0#,tf.reduce_min(Y)
+        eta = tf.reduce_mean(Y)
         gamma = (eta - tf.squeeze(Y,1)) / tf.math.sqrt(K) # [N]
         normal = tfp.distributions.Normal(tf.cast(0, Y.dtype), tf.cast(1, Y.dtype))
         minus_cdf = 1 - normal.cdf(gamma)
