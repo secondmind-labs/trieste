@@ -59,7 +59,9 @@ class KMeans(InducingPointSelector):
         
         X_stds = tf.math.reduce_std(X,0)
         X_norm = X / X_stds 
-        centroids, _ = kmeans(X_norm,self._M)
+        print(X_norm)
+        print(self._M)
+        centroids, _ = kmeans(X_norm,int(self._M))
         if len(centroids)<self._M: # sometimes scipy returns fewer centroids
             extra_points = self._M - len(centroids)
             extra_indicies = tf.random.categorical(tf.math.log(tf.ones([1,self._N]) ), extra_points)
