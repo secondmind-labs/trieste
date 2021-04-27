@@ -2,6 +2,10 @@
 # # Noise-free optimization with Expected Improvement
 
 # %%
+# %load_ext autoreload
+# %autoreload 2
+
+# %%
 import numpy as np
 import tensorflow as tf
 
@@ -22,7 +26,7 @@ search_space = trieste.space.Box([0, 0], [1, 1])
 
 def noisy_branin(x):
     y = branin(x)
-    return y + tf.random.normal(y.shape, stddev=0.1, dtype=y.dtype)
+    return y #+ tf.random.normal(y.shape, stddev=0.1, dtype=y.dtype)
 
 # fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
 # fig.update_layout(height=400, width=400)
@@ -40,7 +44,7 @@ from trieste.acquisition.rule import OBJECTIVE
 
 observer = trieste.utils.objectives.mk_observer(noisy_branin, OBJECTIVE)
 
-num_initial_points = 50
+num_initial_points = 25
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -72,7 +76,7 @@ def build_rff_model(data, inducing_point_selector=KMeans) -> tf.keras.Model:
     coefficients = np.ones((num_rff, 1), dtype=default_float())
     kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
-    num_inducing = 40
+    num_inducing = tf.reduce_min([len(data.observations),50])
     Z = inducing_point_selector(data.query_points,data.observations,num_inducing, kernel).get_points()
     inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
     gpflow.utilities.set_trainable(inducing_variable, False)
@@ -85,8 +89,8 @@ def build_rff_model(data, inducing_point_selector=KMeans) -> tf.keras.Model:
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
     )
-    likelihood = gpflow.likelihoods.Gaussian(1e-0)
-    gpflow.utilities.set_trainable(likelihood, True)
+    likelihood = gpflow.likelihoods.Gaussian(1e-5)
+    gpflow.utilities.set_trainable(likelihood, False)
     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
     model = gpflux.models.DeepGP([layer], likelihood_layer)
     return model, inducing_point_selector
@@ -96,7 +100,7 @@ def build_rff_model(data, inducing_point_selector=KMeans) -> tf.keras.Model:
 from trieste.models.model_interfaces import GPFluxModel
 
 model, inducing_point_selector = build_rff_model(initial_data[OBJECTIVE], GIBBON)
-model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=10000, batch_size=500, inducing_point_selector=inducing_point_selector)
+model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=10000, batch_size=500, inducing_point_selector=inducing_point_selector,max_num_inducing_points=50)
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
 
@@ -109,6 +113,8 @@ rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIV
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(10, initial_data, models, acquisition_rule=rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
+
+# %%
 
 # %% [markdown]
 # ## Explore the results
