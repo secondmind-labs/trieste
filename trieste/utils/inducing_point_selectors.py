@@ -76,8 +76,9 @@ class ConditionalVariance(InducingPointSelector):
     def get_points(self,seed:int=None):
         if seed:
             tf.random.set_seed(seed)
-        perm = tf.random.shuffle(tf.range(self._N))
-        X = tf.gather(self._X,perm)
+        X=self._X
+        #perm = tf.random.shuffle(tf.range(self._N))
+        #X = tf.gather(self._X,perm)
         
         chosen_indicies = [] # iteratively store chosen points
         
