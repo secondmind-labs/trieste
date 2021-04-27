@@ -92,6 +92,14 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
             tf.constant([[0.5, 1.0]]),
             tf.constant([[0.12074441, 0.9873655]]),
         ),
+        (
+            tf.constant([[[0.5, 1.0]], [[0.0, 0.0]]]),
+            tf.constant([[[0.12074441, 0.9873655]], [[0.63212055, 0.63212055]]]),
+        ),
+        (
+            tf.constant([[[0.5, 1.0], [0.0, 0.0]]]),
+            tf.constant([[[0.12074441, 0.9873655], [0.63212055, 0.63212055]]]),
+        ),
     ],
 )
 def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
@@ -102,8 +110,20 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
     "test_x, input_dim, num_obj, expected",
     [
         (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[0.0, 5.5]])),
+        (
+            tf.constant([[[0.0, 0.2, 0.4]], [[0.0, 0.2, 0.4]]]),
+            3,
+            2,
+            tf.constant([[[0.0, 5.5]], [[0.0, 5.5]]]),
+        ),
         (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[4.8, 1.2]])),
         (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3, tf.constant([[0.06, 0.24, 2.7]])),
+        (
+            tf.constant([[[0.1, 0.2, 0.3, 0.4], [0.1, 0.2, 0.3, 0.4]]]),
+            4,
+            3,
+            tf.constant([[[0.06, 0.24, 2.7], [0.06, 0.24, 2.7]]]),
+        ),
     ],
 )
 def test_dtlz1_has_expected_output(
@@ -117,7 +137,19 @@ def test_dtlz1_has_expected_output(
     "test_x, input_dim, num_obj, expected",
     [
         (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[1.1, 0.0]])),
+        (
+            tf.constant([[[0.0, 0.2, 0.4]], [[0.0, 0.2, 0.4]]]),
+            3,
+            2,
+            tf.constant([[[1.1, 0.0]], [[1.1, 0.0]]]),
+        ),
         (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[0.3430008637, 1.055672733]])),
+        (
+            tf.constant([[[0.8, 0.6, 0.4, 0.2], [0.8, 0.6, 0.4, 0.2]]]),
+            4,
+            2,
+            tf.constant([[[0.3430008637, 1.055672733], [0.3430008637, 1.055672733]]]),
+        ),
         (
             tf.constant([[0.1, 0.2, 0.3, 0.4]]),
             4,

@@ -36,14 +36,14 @@ class MultiObjectiveTestProblem(ABC):
 
     @property
     @abstractmethod
-    def dim(self):
+    def dim(self) -> int:
         """
         The input dimensionality of the test function
         """
 
     @property
     @abstractmethod
-    def bounds(self):
+    def bounds(self) -> list[list[float]]:
         """
         The input space bounds of the test function
         """
@@ -52,6 +52,7 @@ class MultiObjectiveTestProblem(ABC):
     def objective(self) -> Callable[[TensorType], TensorType]:
         """
         Get the synthetic test function.
+
         :return: A callable synthetic function
         """
 
@@ -59,6 +60,7 @@ class MultiObjectiveTestProblem(ABC):
     def gen_pareto_optimal_points(self, n: int, seed=None) -> tf.Tensor:
         """
         Generate `n` Pareto optimal points.
+
         :param n: The number of pareto optimal points to be generated.
         :param seed: An integer used to create a random seed for distributions that
          used to generate pareto optimal points.
@@ -89,13 +91,16 @@ class VLMOP2(MultiObjectiveTestProblem):
 def vlmop2(x: TensorType) -> TensorType:
     """
     The VLMOP2 synthetic function.
+
     :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 2].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, ("N", 2))], message="vlmop2 only allow 2d input")
+    tf.debugging.assert_shapes([(x, (..., 2))], message="vlmop2 only allow 2d input")
     transl = 1 / math.sqrt(2.0)
-    y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=1))
-    y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=1))
-    return tf.stack([y1, y2], axis=1)
+    y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=-1))
+    y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=-1))
+    return tf.stack([y1, y2], axis=-1)
 
 
 class DTLZ(MultiObjectiveTestProblem):
@@ -147,6 +152,7 @@ class DTLZ1(DTLZ):
 def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     """
     The DTLZ1 synthetic function.
+
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param m: The objective numbers.
     :param k: The input dimensionality for g.
@@ -155,7 +161,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes(
-        [(x, ("N", d))],
+        [(x, (..., d))],
         message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
@@ -170,12 +176,12 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
 
     f = None
     for i in range(m):
-        xM = x[:, m - 1 :]
+        xM = x[..., m - 1 :]
         y = 1 + g(xM)
-        y *= 1 / 2 * tf.reduce_prod(x[:, : m - 1 - i], axis=1, keepdims=True)
+        y *= 1 / 2 * tf.reduce_prod(x[..., : m - 1 - i], axis=-1, keepdims=True)
         if i > 0:
-            y *= 1 - x[:, m - i - 1, tf.newaxis]
-        f = y if f is None else tf.concat([f, y], 1)
+            y *= 1 - x[..., m - i - 1, tf.newaxis]
+        f = y if f is None else tf.concat([f, y], axis=-1)
     return f
 
 
@@ -198,6 +204,7 @@ class DTLZ2(DTLZ):
 def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     """
     The DTLZ2 synthetic function.
+
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param m: The objective numbers.
     :param d: The dimensionality of the synthetic function.
@@ -205,21 +212,21 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes(
-        [(x, ("N", d))],
+        [(x, (..., d))],
         message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
     def g(xM):
         z = (xM - 0.5) ** 2
-        return tf.reduce_sum(z, axis=1, keepdims=True)
+        return tf.reduce_sum(z, axis=-1, keepdims=True)
 
     f = None
     for i in range(m):
-        y = 1 + g(x[:, m - 1 :])
+        y = 1 + g(x[..., m - 1 :])
         for j in range(m - 1 - i):
-            y *= tf.cos(math.pi / 2 * x[:, j, tf.newaxis])
+            y *= tf.cos(math.pi / 2 * x[..., j, tf.newaxis])
         if i > 0:
-            y *= tf.sin(math.pi / 2 * x[:, m - 1 - i, tf.newaxis])
-        f = y if f is None else tf.concat([f, y], 1)
+            y *= tf.sin(math.pi / 2 * x[..., m - 1 - i, tf.newaxis])
+        f = y if f is None else tf.concat([f, y], axis=-1)
     return f
