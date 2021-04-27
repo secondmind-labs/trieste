@@ -122,7 +122,7 @@ class GIBBON(InducingPointSelector):
         K = self._kernel.K_diag(X) + 1e-12 # [N] jitter
         
         # estimate mutual information (FOR NOW WE ASSUME EXACT EVALS)
-        eta = tf.reduce_mean(Y)
+        eta = tf.reduce_max(Y)
         gamma = (eta - tf.squeeze(Y,1)) / tf.math.sqrt(K) # [N]
         normal = tfp.distributions.Normal(tf.cast(0, Y.dtype), tf.cast(1, Y.dtype))
         minus_cdf = 1 - normal.cdf(gamma)
@@ -130,7 +130,7 @@ class GIBBON(InducingPointSelector):
         MI =  -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
         q =(1 / tf.math.sqrt(K)) * tf.math.exp(MI)
         d_squared = tf.math.exp(MI)**2
-        
+        print(d_squared)
         chosen_indicies.append(tf.argmax(d_squared)) # get first element
         
         for m in range(self._M-1): # get remaining elements
@@ -151,7 +151,7 @@ class GIBBON(InducingPointSelector):
             
             d_squared -= e ** 2
             d_squared = tf.clip_by_value(d_squared,0,math.inf) # numerical stability
-
+            print(d_squared)
                 
             chosen_indicies.append(tf.argmax(d_squared)) # get next element
       
