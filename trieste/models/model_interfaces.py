@@ -494,10 +494,13 @@ class GPFluxModel(TrainableProbabilisticModel):
             jitter_mat = jitter * tf.eye(num_inducing, dtype=new_f_cov.dtype)
             new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
 
-        layer.q_mu = gpflow.Parameter(new_q_mu)
-        layer.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+
+
         # TODO: keep trainable property consistent over updates
         layer.inducing_variable.Z = gpflow.Parameter(Z, trainable=layer.inducing_variable.Z.trainable)
+        layer.q_mu = gpflow.Parameter(new_q_mu,trainable=layer.q_mu.trainable)
+        layer.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular(),trainable=layer.q_sqrt.trainable)
+        
 
         self.model.num_data = num_data
 
@@ -508,7 +511,7 @@ class GPFluxModel(TrainableProbabilisticModel):
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor="loss", patience=5, factor=0.95, verbose=self._verbose, min_lr=1e-6,
             ),
-            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=20, min_delta=0.01, verbose=self._verbose,mode="min"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss",patience=100, min_delta=0.01, verbose=self._verbose,mode="min"),
 
         ]
         model.fit(
