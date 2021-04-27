@@ -407,6 +407,7 @@ class GPFluxModel(TrainableProbabilisticModel):
                  num_epochs: int = 100,
                  batch_size: int = 128,
                  inducing_point_selector: InducingPointSelector = None,
+                 max_num_inducing_points: int =None,
                  verbose:bool = True ):
         super().__init__()
         self._model = model
@@ -423,6 +424,10 @@ class GPFluxModel(TrainableProbabilisticModel):
         if inducing_point_selector is None:
             inducing_point_selector = KMeans
         self._inducing_point_selector = inducing_point_selector
+
+        if max_num_inducing_points is None:
+            max_num_inducing_points = 100
+        self._max_num_inducing_points = max_num_inducing_points
         self._verbose=verbose
 
 
@@ -471,7 +476,7 @@ class GPFluxModel(TrainableProbabilisticModel):
             renew_rff(feature_function,  input_shape[-1])
 
 
-        num_inducing = len(layer.inducing_variable)
+        num_inducing = tf.reduce_min([num_data,self._max_num_inducing_points])
         init_method = self._inducing_point_selector(dataset.query_points, dataset.observations, num_inducing, layer.kernel)
         Z = init_method.get_points()
 
