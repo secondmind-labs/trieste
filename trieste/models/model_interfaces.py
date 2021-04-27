@@ -495,12 +495,10 @@ class GPFluxModel(TrainableProbabilisticModel):
             new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
 
 
-
         # TODO: keep trainable property consistent over updates
-        layer.inducing_variable.Z = gpflow.Parameter(Z, trainable=layer.inducing_variable.Z.trainable)
         layer.q_mu = gpflow.Parameter(new_q_mu,trainable=layer.q_mu.trainable)
-        layer.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular(),trainable=layer.q_sqrt.trainable)
-        
+        layer.q_sqrt = gpflow.Parameter(new_q_sqrt,trainable=layer.q_sqrt.trainable)
+        layer.inducing_variable.Z = gpflow.Parameter(Z, trainable=layer.inducing_variable.Z.trainable)
 
         self.model.num_data = num_data
 
