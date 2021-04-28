@@ -154,7 +154,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
-        track_performance: bool = False,
+        exact_objective: None,
     ) -> OptimizationResult[S]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -245,10 +245,10 @@ class BayesianOptimizer(Generic[SP]):
                     models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
 
-                if track_performance: # get true score of current believed best 
+                if exact_objective: # get true score of current believed best 
                     idx = tf.argmin(models[OBJECTIVE].predict(datasets[OBJECTIVE].query_points)[0])
                     location = tf.gather(datasets[OBJECTIVE].query_points,idx)
-                    score = self._observer(location)[OBJECTIVE].observations.numpy()[0][0]
+                    score = exact_objective(location).numpy()[0][0]
                     current_best.append(score)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
@@ -279,7 +279,7 @@ class BayesianOptimizer(Generic[SP]):
 
         record = Record(datasets, models, acquisition_state)
 
-        if track_performance:
+        if exact_objective:
             return OptimizationResult(Ok(record), history), current_best
         else:
             return OptimizationResult(Ok(record), history)

@@ -411,7 +411,6 @@ class GPFluxModel(TrainableProbabilisticModel):
                  verbose:bool = True ):
         super().__init__()
         self._model = model
-        print(self.model)
         if len(self.model.f_layers) > 1:
             raise NotImplementedError(
                 "GPFluxModels are restricted to single-layer models."
@@ -463,7 +462,7 @@ class GPFluxModel(TrainableProbabilisticModel):
         num_data = dataset.query_points.shape[0]
         layer = self.model.f_layers[0]
         input_shape = dataset.query_points.shape
-
+        noise = self.model.likelihood_layer.likelihood.variance
         if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
             feature_function = layer.kernel.feature_functions
             def renew_rff(feature_f, input_dim): 
@@ -477,8 +476,7 @@ class GPFluxModel(TrainableProbabilisticModel):
 
 
         num_inducing = tf.reduce_min([num_data,self._max_num_inducing_points])
-        init_method = self._inducing_point_selector(dataset.query_points, dataset.observations, num_inducing, layer.kernel)
-        Z = init_method.get_points()
+        Z = self._inducing_point_selector.get_points(dataset.query_points, dataset.observations, num_inducing, layer.kernel,noise)
 
         if layer.whiten:
             f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
@@ -519,8 +517,6 @@ class GPFluxModel(TrainableProbabilisticModel):
             verbose=self._verbose,
             callbacks=callbacks
         )
-
-
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
