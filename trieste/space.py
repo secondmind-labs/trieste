@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, overload
+from typing import Sequence, TypeVar, overload
 
 import tensorflow as tf
 
@@ -166,17 +166,17 @@ class Box(SearchSpace):
     """
 
     @overload
-    def __init__(self, lower: list[float], upper: list[float]):
+    def __init__(self, lower: Sequence[float], upper: Sequence[float]):
         ...
 
     @overload
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(self, lower: list[float] | TensorType, upper: list[float] | TensorType):
+    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType):
         r"""
-        If ``lower`` and ``upper`` are `list`\ s, they will be converted to tensors of dtype
-        `tf.float64`.
+        If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
+        they will be converted to tensors of dtype `tf.float64`.
 
         :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
@@ -195,9 +195,9 @@ class Box(SearchSpace):
         if len(lower) == 0:
             raise ValueError(f"Bounds must have shape [D] for positive D, got {tf.shape(lower)}.")
 
-        if isinstance(lower, list):
-            self._lower = tf.cast(lower, dtype=tf.float64)
-            self._upper = tf.cast(upper, dtype=tf.float64)
+        if isinstance(lower, Sequence):
+            self._lower = tf.constant(lower, dtype=tf.float64)
+            self._upper = tf.constant(upper, dtype=tf.float64)
         else:
             self._lower = tf.convert_to_tensor(lower)
             self._upper = tf.convert_to_tensor(upper)
