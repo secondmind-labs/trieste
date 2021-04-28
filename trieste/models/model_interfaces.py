@@ -521,6 +521,8 @@ class GPFluxModel(TrainableProbabilisticModel):
         )
 
 
+
+
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,

@@ -32,6 +32,7 @@ from .observer import Observer
 from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
+
 S = TypeVar("S")
 """ Unbound type variable. """
 
@@ -153,6 +154,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
+        track_performance: bool = False,
     ) -> OptimizationResult[S]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -232,6 +234,7 @@ class BayesianOptimizer(Generic[SP]):
 
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
+        current_best=[]
 
         for step in range(num_steps):
             if track_state:
@@ -241,6 +244,12 @@ class BayesianOptimizer(Generic[SP]):
                 if track_state:
                     models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
+
+                if track_performance: # get true score of current believed best 
+                    idx = tf.argmin(models[OBJECTIVE].predict(datasets[OBJECTIVE].query_points)[0])
+                    location = tf.gather(datasets[OBJECTIVE].query_points,idx)
+                    score = self._observer(location)[OBJECTIVE].observations.numpy()[0][0]
+                    current_best.append(score)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state
@@ -269,4 +278,8 @@ class BayesianOptimizer(Generic[SP]):
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
-        return OptimizationResult(Ok(record), history)
+
+        if track_performance:
+            return OptimizationResult(Ok(record), history), current_best
+        else:
+            return OptimizationResult(Ok(record), history)
