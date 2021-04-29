@@ -157,7 +157,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     :param m: The objective numbers.
     :param k: The input dimensionality for g.
     :param d: The dimensionality of the synthetic function.
-    :return : The function values at ``x``, with shape [..., m].
+    :return: The function values at ``x``, with shape [..., m].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes(
@@ -174,15 +174,16 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
             )
         )
 
-    f = None
+    ta = tf.TensorArray(x.dtype, size=m)
     for i in range(m):
         xM = x[..., m - 1 :]
         y = 1 + g(xM)
         y *= 1 / 2 * tf.reduce_prod(x[..., : m - 1 - i], axis=-1, keepdims=True)
         if i > 0:
             y *= 1 - x[..., m - i - 1, tf.newaxis]
-        f = y if f is None else tf.concat([f, y], axis=-1)
-    return f
+        ta = ta.write(i, y)
+
+    return tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0)
 
 
 class DTLZ2(DTLZ):
@@ -208,7 +209,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param m: The objective numbers.
     :param d: The dimensionality of the synthetic function.
-    :return : The function values at ``x``, with shape [..., m].
+    :return: The function values at ``x``, with shape [..., m].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes(
@@ -221,12 +222,13 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
         z = (xM - 0.5) ** 2
         return tf.reduce_sum(z, axis=-1, keepdims=True)
 
-    f = None
-    for i in range(m):
+    ta = tf.TensorArray(x.dtype, size=m)
+    for i in tf.range(m):
         y = 1 + g(x[..., m - 1 :])
-        for j in range(m - 1 - i):
+        for j in tf.range(m - 1 - i):
             y *= tf.cos(math.pi / 2 * x[..., j, tf.newaxis])
         if i > 0:
             y *= tf.sin(math.pi / 2 * x[..., m - 1 - i, tf.newaxis])
-        f = y if f is None else tf.concat([f, y], axis=-1)
-    return f
+        ta = ta.write(i, y)
+
+    return tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0)
