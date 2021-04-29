@@ -495,7 +495,7 @@ class GPFluxModel(TrainableProbabilisticModel):
 
         # TODO: keep trainable property consistent over updates
         layer.q_mu = gpflow.Parameter(new_q_mu,trainable=layer.q_mu.trainable)
-        layer.q_sqrt = gpflow.Parameter(new_q_sqrt,trainable=layer.q_sqrt.trainable)
+        layer.q_sqrt = gpflow.Parameter(new_q_sqrt,trainable=layer.q_sqrt.trainable,transform=gpflow.utilities.triangular())
         layer.inducing_variable.Z = gpflow.Parameter(Z, trainable=layer.inducing_variable.Z.trainable)
 
         self.model.num_data = num_data
