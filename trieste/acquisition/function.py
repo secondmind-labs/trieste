@@ -524,20 +524,21 @@ def expected_hv_improvement(
     For easier calculation, this sub-calculation can be reformulated as a combination
     of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
     function calculations, respectively.
+
     Note:
     1. Since in Trieste we do not assume the use of a certain non-dominated region partition
-        algorithm, we do not assume the last dimension of the partitioned cell has only one
-        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
-        This is not as efficient as the original paper, but is applicable to different non-dominated
-        partition algorithm.
+    algorithm, we do not assume the last dimension of the partitioned cell has only one
+    (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+    This is not as efficient as the original paper, but is applicable to different non-dominated
+    partition algorithm.
     2. As the Psi and nu function in the original paper are defined for maximization problems,
-        we inverse our minimisation problem (to also be a maximisation), allowing use of the
-        original notation and equations.
+    we inverse our minimisation problem (to also be a maximisation), allowing use of the
+    original notation and equations.
 
     :param model: The model of the objective function.
     :param pareto: Pareto class
-    :param reference_point The reference point for calculating hypervolume
-    :return The expected_hv_improvement acquisition function modified for objective
+    :param reference_point: The reference point for calculating hypervolume
+    :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """

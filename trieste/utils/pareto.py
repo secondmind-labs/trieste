@@ -325,6 +325,7 @@ class Pareto:
     ) -> tuple[TensorType, TensorType]:
         """
         Get the partitioned hypercell's lower and upper bounds.
+
         :param anti_reference: a worst point to use with shape [D].
             Defines the lower bound of the hypercell
         :param reference: a reference point to use, with shape [D].

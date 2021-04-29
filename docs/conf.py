@@ -58,6 +58,7 @@ release = "0.4.0"
 extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
+    "sphinx.ext.doctest",
 ]
 add_module_names = False
 autosectionlabel_prefix_document = True
