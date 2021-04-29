@@ -38,6 +38,12 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :ref:`How do I customize the model optimization routine?<notebooks/failure_ego:Create a custom optimize method>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+
+   notebooks/recovering_from_errors
+
 Run the tutorials interactively
 -------------------------------
 
