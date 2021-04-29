@@ -67,6 +67,7 @@ autosectionlabel_prefix_document = True
 extensions.append("autoapi.extension")
 autoapi_dirs = ["../trieste"]
 autoapi_add_toctree_entry = False
+autoapi_keep_files = True
 autoapi_python_class_content = "both"
 autoapi_options = [
     "members",
