@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import unittest.mock
 from collections.abc import Mapping
 
 import numpy.testing as npt
@@ -42,6 +43,7 @@ from trieste.acquisition.function import (
     ExpectedImprovement,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     expected_hv_improvement,
@@ -54,6 +56,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box
 from trieste.type import TensorType
+from trieste.utils import DEFAULTS
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 from trieste.utils.pareto import Pareto, get_reference_point
 
@@ -168,6 +171,23 @@ def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes
         MinValueEntropySearch(search_space, num_samples=-5)
     with pytest.raises(ValueError):
         MinValueEntropySearch(search_space, grid_size=-5)
+
+
+@unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
+def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = MinValueEntropySearch(search_space)
+    model = QuadraticMeanAndRBFKernel()
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_mves.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    gumbel_samples = mocked_mves.call_args[0][1]
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(gumbel_samples) < min(fmean)
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])
@@ -308,6 +328,12 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(ValueError):
         ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+
+
+def test_expected_constrained_improvement_raises_for_out_of_range_min_pof() -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    with pytest.raises(ValueError):
+        ExpectedConstrainedImprovement("", pof, 1.5)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -608,7 +634,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
 
 def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
     builder = BatchMonteCarloExpectedImprovement(100)
-    data = mk_dataset([[0.0, 0.0]], [[0.0, 0.0]])
+    data = mk_dataset([(0.0, 0.0)], [(0.0, 0.0)])
     matern52 = tfp.math.psd_kernels.MaternFiveHalves(
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
@@ -647,3 +673,26 @@ def test_batch_monte_carlo_expected_improvement() -> None:
     acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
 
     npt.assert_allclose(acq(xs), expected, rtol=0.05)
+
+
+@pytest.mark.parametrize(
+    "function, function_repr",
+    [
+        (ExpectedImprovement(), "ExpectedImprovement()"),
+        (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
+        (NegativePredictiveMean(), "NegativePredictiveMean()"),
+        (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
+        (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement()"),
+        (
+            BatchMonteCarloExpectedImprovement(10_000),
+            f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
+        ),
+    ],
+)
+def test_single_model_acquisition_function_builder_reprs(function, function_repr) -> None:
+    assert repr(function) == function_repr
+    assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
+    assert (
+        repr(ExpectedConstrainedImprovement("TAG", function.using("TAG"), 0.0))
+        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+    )

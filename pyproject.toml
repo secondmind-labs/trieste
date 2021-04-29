@@ -46,6 +46,15 @@ pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
 format = "black . && flake8 . && isort ."
 
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "@overload",
+    "def __repr__",
+    "if __name__ == __main__:",
+]
+
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
     "duplicate-code",

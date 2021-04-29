@@ -52,6 +52,18 @@ def _line_search_maximize(
 
 
 @pytest.mark.parametrize(
+    "num_search_space_samples, num_query_points",
+    [
+        (0, 100),
+        (100, 0),
+    ],
+)
+def test_thompson_sampling_raises_for_no_points(num_search_space_samples, num_query_points) -> None:
+    with pytest.raises(ValueError):
+        ThompsonSampling(num_search_space_samples, num_query_points)
+
+
+@pytest.mark.parametrize(
     "models",
     [
         {},
@@ -67,6 +79,16 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
+
+
+def test_efficient_global_optimization_raises_for_no_query_points() -> None:
+    with pytest.raises(ValueError):
+        EfficientGlobalOptimization(num_query_points=0)
+
+
+def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_points() -> None:
+    with pytest.raises(ValueError):
+        EfficientGlobalOptimization(num_query_points=2)
 
 
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
