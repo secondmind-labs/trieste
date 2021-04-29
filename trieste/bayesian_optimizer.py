@@ -280,6 +280,6 @@ class BayesianOptimizer(Generic[SP]):
         record = Record(datasets, models, acquisition_state)
 
         if exact_objective:
-            return OptimizationResult(Ok(record), history), current_best
+            return OptimizationResult(Ok(record), history), current_best, model
         else:
             return OptimizationResult(Ok(record), history)
