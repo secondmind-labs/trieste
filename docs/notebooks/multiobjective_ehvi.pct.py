@@ -16,7 +16,7 @@ from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.data import Dataset
-from trieste.utils.mo_objectives import VLMOP2
+from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
 
 np.random.seed(1793)
@@ -31,7 +31,7 @@ tf.random.set_seed(1793)
 # The synthetic function: VLMOP2 is a functions with 2 outcomes. We'll start by defining the problem parameters.
 
 
-vlmop2 = VLMOP2().prepare_benchmark()
+vlmop2 = VLMOP2().objective()
 observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
 
 mins = [-2, -2]
