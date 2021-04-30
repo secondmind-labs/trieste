@@ -209,7 +209,7 @@ def plot_bo_points(
             ax.scatter(pts[i, 0], pts[i, 1], obs_values[i], c=col_pts[i], marker=mark_pts[i])
 
 
-def plot_bo_points_in_obj_space(
+def plot_mobo_points_in_obj_space(
     obs_values,
     num_init=None,
     mask_fail=None,
@@ -240,7 +240,7 @@ def plot_bo_points_in_obj_space(
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
     assert obj_num == 2 or obj_num == 3, NotImplementedError(
-        "Only support 2/3-objective" " function plot but found: {}".format(obj_num)
+        f"Only support 2/3-objective functions but found: {obj_num}"
     )
 
     _, dom = non_dominated(obs_values)
@@ -275,7 +275,7 @@ def plot_bo_points_in_obj_space(
     return fig, ax
 
 
-def plot_mo_history(
+def plot_mobo_history(
     obs_values,
     metric_func,
     num_init=None,
