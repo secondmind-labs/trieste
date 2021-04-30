@@ -58,6 +58,7 @@ release = "0.4.0"
 extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosectionlabel",
+    "sphinx.ext.doctest",
 ]
 add_module_names = False
 autosectionlabel_prefix_document = True
@@ -66,6 +67,7 @@ autosectionlabel_prefix_document = True
 extensions.append("autoapi.extension")
 autoapi_dirs = ["../trieste"]
 autoapi_add_toctree_entry = False
+autoapi_keep_files = True
 autoapi_python_class_content = "both"
 autoapi_options = [
     "members",

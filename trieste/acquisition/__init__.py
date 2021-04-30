@@ -40,11 +40,9 @@ from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     BatchMonteCarloExpectedImprovement,
-    BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    IndependentReparametrizationSampler,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
@@ -55,4 +53,10 @@ from .function import (
     lower_confidence_bound,
     min_value_entropy_search,
     probability_of_feasibility,
+)
+from .sampler import (
+    BatchReparametrizationSampler,
+    DiscreteThompsonSampler,
+    GumbelSampler,
+    IndependentReparametrizationSampler,
 )
