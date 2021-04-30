@@ -64,10 +64,10 @@ class ProbabilisticModel(ABC):
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
 
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S] + E, where S is the number of samples.
+            [..., S, N] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
@@ -152,11 +152,11 @@ class ModelStack(TrainableProbabilisticModel):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
-        :param query_points: The points at which to sample, with shape [..., D].
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples from all the wrapped models, concatenated along the event axis. For
             wrapped models with predictive distributions with event shapes [:math:`E_i`], this has
-            shape [..., S, :math:`\sum_i E_i`], where S is the number of samples.
+            shape [..., S, N, :math:`\sum_i E_i`], where S is the number of samples.
         """
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
@@ -247,6 +247,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     def optimizer(self) -> Optimizer:
+        """ The optimizer with which to train the model. """
         return self._optimizer
 
     @property
@@ -264,12 +265,22 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         return self.model.predict_f_samples(query_points, num_samples)
 
     def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
         self.optimizer.optimize(self.model, dataset)
 
     __deepcopy__ = module_deepcopy
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
+    or :class:`~gpflow.models.SGPR`.
+    """
+
     def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None):
         """
         :param model: The GPflow model to wrap.
@@ -302,6 +313,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+    """
+
     def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.

@@ -56,3 +56,19 @@ jobs:
         python-version: 3.7
     - run: pip install tox
     - run: tox -e notebooks
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - run: pip install tox
+    - run: |
+        TEMP_DEB="$(mktemp)" &&
+        wget -O "$TEMP_DEB" 'https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb' &&
+        sudo dpkg -i "$TEMP_DEB"
+        rm -f "$TEMP_DEB"
+    - run: tox -e docs
+

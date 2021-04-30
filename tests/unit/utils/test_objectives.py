@@ -20,7 +20,7 @@ import tensorflow as tf
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.space import Box
 from trieste.type import TensorType
-from trieste.utils.mo_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem, vlmop2
+from trieste.utils.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem, vlmop2
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_MINIMUM,
@@ -92,6 +92,14 @@ def test_logarithmic_goldstein_price_no_function_values_are_less_than_global_min
             tf.constant([[0.5, 1.0]]),
             tf.constant([[0.12074441, 0.9873655]]),
         ),
+        (
+            tf.constant([[[0.5, 1.0]], [[0.0, 0.0]]]),
+            tf.constant([[[0.12074441, 0.9873655]], [[0.63212055, 0.63212055]]]),
+        ),
+        (
+            tf.constant([[[0.5, 1.0], [0.0, 0.0]]]),
+            tf.constant([[[0.12074441, 0.9873655], [0.63212055, 0.63212055]]]),
+        ),
     ],
 )
 def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
@@ -102,14 +110,26 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
     "test_x, input_dim, num_obj, expected",
     [
         (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[0.0, 5.5]])),
+        (
+            tf.constant([[[0.0, 0.2, 0.4]], [[0.0, 0.2, 0.4]]]),
+            3,
+            2,
+            tf.constant([[[0.0, 5.5]], [[0.0, 5.5]]]),
+        ),
         (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[4.8, 1.2]])),
         (tf.constant([[0.1, 0.2, 0.3, 0.4]]), 4, 3, tf.constant([[0.06, 0.24, 2.7]])),
+        (
+            tf.constant([[[0.1, 0.2, 0.3, 0.4], [0.1, 0.2, 0.3, 0.4]]]),
+            4,
+            3,
+            tf.constant([[[0.06, 0.24, 2.7], [0.06, 0.24, 2.7]]]),
+        ),
     ],
 )
 def test_dtlz1_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ):
-    f = DTLZ1(input_dim, num_obj).prepare_benchmark()
+    f = DTLZ1(input_dim, num_obj).objective()
     npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
 
@@ -117,7 +137,19 @@ def test_dtlz1_has_expected_output(
     "test_x, input_dim, num_obj, expected",
     [
         (tf.constant([[0.0, 0.2, 0.4]]), 3, 2, tf.constant([[1.1, 0.0]])),
+        (
+            tf.constant([[[0.0, 0.2, 0.4]], [[0.0, 0.2, 0.4]]]),
+            3,
+            2,
+            tf.constant([[[1.1, 0.0]], [[1.1, 0.0]]]),
+        ),
         (tf.constant([[0.8, 0.6, 0.4, 0.2]]), 4, 2, tf.constant([[0.3430008637, 1.055672733]])),
+        (
+            tf.constant([[[0.8, 0.6, 0.4, 0.2], [0.8, 0.6, 0.4, 0.2]]]),
+            4,
+            2,
+            tf.constant([[[0.3430008637, 1.055672733], [0.3430008637, 1.055672733]]]),
+        ),
         (
             tf.constant([[0.1, 0.2, 0.3, 0.4]]),
             4,
@@ -129,7 +161,7 @@ def test_dtlz1_has_expected_output(
 def test_dtlz2_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ):
-    f = DTLZ2(input_dim, num_obj).prepare_benchmark()
+    f = DTLZ2(input_dim, num_obj).objective()
     npt.assert_allclose(f(test_x), expected, rtol=1e-4)
 
 
@@ -164,7 +196,7 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
 ):
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        obj_inst.prepare_benchmark()(actual_x)
+        obj_inst.objective()(actual_x)
 
 
 def test_hartmann_3_no_function_values_are_less_than_global_minimum() -> None:

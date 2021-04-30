@@ -42,5 +42,47 @@ line_length = 100
 [tool.taskipy.tasks]
 tests = "pytest --mypy --cov trieste --cov-report html:htmlcov"
 mypy = "pytest --mypy --cache-clear -m mypy -v"
+pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
 format = "black . && flake8 . && isort ."
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "@overload",
+    "def __repr__",
+    "if __name__ == __main__:",
+]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = [
+    "duplicate-code",
+    "invalid-characters-in-docstring",
+    "invalid-name",
+    "invalid-unary-operand-type",
+    "line-too-long",
+    "locally-disabled",
+    "missing-module-docstring",
+    "no-else-return",
+    "no-self-use",
+    "no-value-for-parameter",
+    "redefined-builtin",
+    "redundant-keyword-arg",
+    "suppressed-message",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-lines",
+    "too-many-instance-attributes",
+    "too-many-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-statements",
+    "too-many-boolean-expressions",
+    "too-many-nested-blocks",
+    "unexpected-keyword-arg",
+    "unused-argument",
+    "unsubscriptable-object",
+    "wrong-spelling-in-comment",
+    "wrong-spelling-in-docstring",
+]

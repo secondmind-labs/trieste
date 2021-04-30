@@ -17,7 +17,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ListN
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
 from trieste.utils.pareto import Pareto, non_dominated
 
 
@@ -141,7 +141,7 @@ def test_pareto_2d_bounds() -> None:
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypervolume_indicator_raises_for_reference_with_invalid_shape(
-    reference: ListN[float],
+    reference: SequenceN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
@@ -241,7 +241,7 @@ def test_pareto_divide_conquer_nd_three_dimension_case() -> None:
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypercell_bounds_raises_for_reference_with_invalid_shape(
-    reference: ListN[float],
+    reference: SequenceN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
@@ -251,7 +251,7 @@ def test_pareto_hypercell_bounds_raises_for_reference_with_invalid_shape(
 
 @pytest.mark.parametrize("anti_reference", [0.0, [0.0], [[0.0]]])
 def test_pareto_hypercell_bounds_raises_for_anti_reference_with_invalid_shape(
-    anti_reference: ListN[float],
+    anti_reference: SequenceN[float],
 ) -> None:
     pareto = Pareto(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]))
 
@@ -304,10 +304,10 @@ def test_pareto_hypercell_bounds_raises_for_front_below_anti_reference_point(
     ],
 )
 def test_pareto_hypercell_bounds(
-    objectives: ListN[float],
+    objectives: SequenceN[float],
     anti_reference: list[float],
     reference: list[float],
-    expected: ListN[float],
+    expected: SequenceN[float],
 ):
     pareto = Pareto(tf.constant(objectives))
     npt.assert_allclose(

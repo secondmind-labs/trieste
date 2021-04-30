@@ -112,10 +112,10 @@ def test_model_stack_sample() -> None:
     stack, (model01, model2, model3) = _model_stack()
     samples = stack.sample(query_points, 10_000)
 
-    assert samples.shape == [5, 7, 10_000, 4]
+    assert samples.shape == [5, 10_000, 7, 4]
 
-    mean = tf.reduce_mean(samples, axis=-2)
-    var = tf.math.reduce_variance(samples, axis=-2)
+    mean = tf.reduce_mean(samples, axis=1)
+    var = tf.math.reduce_variance(samples, axis=1)
 
     mean01, var01 = model01.predict(query_points)
     mean2, var2 = model2.predict(query_points)
