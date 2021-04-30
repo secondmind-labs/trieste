@@ -31,9 +31,9 @@ from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import (
-    AcquisitionFunctionBuilder, 
-    GreedyAcquisitionFunctionBuilder,
+    AcquisitionFunctionBuilder,
     ExpectedImprovement,
+    GreedyAcquisitionFunctionBuilder,
 )
 from .optimizer import (
     AcquisitionOptimizer,
@@ -129,7 +129,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         if optimizer is None:
             optimizer = automatic_optimizer_selector
 
-        if isinstance(builder, AcquisitionFunctionBuilder):
+        if isinstance(
+            builder, AcquisitionFunctionBuilder
+        ):  # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder
@@ -165,15 +167,17 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
         points = self._optimizer(search_space, acquisition_function)
 
-        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder) and self._num_query_points>1:
-            
-            for i in range(self._num_query_points-1): # greedily allocate rest of batch
-                greedy_acquisition_function = self._builder.prepare_acquisition_function(datasets, models, pending_points=points)
+        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
+            for i in range(
+                self._num_query_points - 1
+            ):  # greedily allocate remaining batch elements
+                greedy_acquisition_function = self._builder.prepare_acquisition_function(
+                    datasets, models, pending_points=points
+                )
                 chosen_point = self._optimizer(search_space, greedy_acquisition_function)
-                points = tf.concat([points,chosen_point], axis=0)
+                points = tf.concat([points, chosen_point], axis=0)
 
         return points, None
-        
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
