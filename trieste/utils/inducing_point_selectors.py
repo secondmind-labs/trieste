@@ -119,6 +119,50 @@ class ConditionalVariance(InducingPointSelector):
         return  tf.gather(X,chosen_indicies)
 
 
+class RandomConditionalVariance(InducingPointSelector):
+
+    def get_points(self, X: TensorType, Y:TensorType, M:int, kernel: gpflow.kernels.Kernel,noise:float):
+       
+        N = len(X)
+        if N<M:
+            raise ValueError("Need N>M")
+    
+        X=X
+        perm = tf.random.shuffle(tf.range(N))
+        X = tf.gather(X,perm)
+        
+        chosen_indicies = [] # iteratively store chosen points
+        
+        c = tf.zeros((M-1,N)) # [M-1,N]
+        d_squared = kernel.K_diag(X) + 1e-12 # [N] jitter
+        choice = tf.random.categorical(tf.math.log(tf.expand_dims(d_squared,0)),1)
+        chosen_indicies.append(choice[0][0]) # get first element
+        
+        for m in range(M-1): # get remaining elements
+            ix = chosen_indicies[-1] # increment Cholesky with newest point
+            newest_point = X[ix]
+            d_temp =  tf.math.sqrt(d_squared[ix]) # [1]
+            
+            L = kernel.K(X, newest_point) # [N] 
+            if m==0:
+                e = L/d_temp
+                c = tf.expand_dims(e,0) # [1,N]
+            else:
+                c_temp = c[:,ix:ix+1] # [m,1]
+                e = (L - tf.matmul(tf.transpose(c_temp),c[:m])) / d_temp # [N] 
+                c = tf.concat([c,e],axis=0) # [m+1, N]
+                e = tf.squeeze(e,0)
+            
+            d_squared -= e ** 2
+            d_squared = tf.clip_by_value(d_squared,0,math.inf) # numerical stability
+
+            choice = tf.random.categorical(tf.math.log(tf.expand_dims(d_squared,0)),1)
+            chosen_indicies.append(choice[0][0]) # get next element
+      
+        return  tf.gather(X,chosen_indicies)
+
+
+
 class GIBBON(InducingPointSelector):
 
     def get_points(self, X: TensorType, Y:TensorType, M:int, kernel: gpflow.kernels.Kernel,noise:float):
