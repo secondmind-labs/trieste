@@ -32,7 +32,6 @@ from .observer import Observer
 from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
-
 S = TypeVar("S")
 """ Unbound type variable. """
 
@@ -258,11 +257,11 @@ class BayesianOptimizer(Generic[SP]):
                 observer_output = self._observer(query_points)
 
                 datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
-
                 for tag, model in models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
                     model.optimize(dataset)
+
 
             except Exception as error:
                 tf.print(
