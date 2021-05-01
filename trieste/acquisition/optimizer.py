@@ -110,7 +110,7 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
     def _objective() -> TensorType:
         return -target_func(bijector.forward(variable[:, None, :]))  # [1]
 
-    gpflow.optimizers.Scipy().minimize(_objective, (variable,))
+    print(gpflow.optimizers.Scipy().minimize(_objective, (variable,)))
 
     return bijector.forward(variable)  # [1, D]
 
