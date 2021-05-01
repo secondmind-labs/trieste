@@ -100,7 +100,7 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
         [..., 1].
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    trial_search_space = space.discretize(10000 * tf.shape(space.lower)[-1])
+    trial_search_space = space.discretize(1000 * tf.shape(space.lower)[-1])
 
     initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
 
