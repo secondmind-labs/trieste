@@ -424,5 +424,7 @@ class BatchByMultipleFunctions(AcquisitionRule[None, SearchSpace]):
             if tf.reduce_any(tf.math.is_nan(point)):
                 print("chose a nan!")
                 point = search_space.sample(1)
+            else:
+                print("chose a point!")
             query_points = tf.concat([query_points, point], axis=0)
         return query_points, None
