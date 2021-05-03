@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from typing import Sequence, TypeVar, overload
 
 import tensorflow as tf
+from tensorflow_probability.mcmc import sample_halton_sequence
 
 from .type import TensorType
 from .utils import shapes_equal
@@ -163,6 +164,8 @@ class Box(SearchSpace):
     Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in
     :math:`\mathbb{R}^D`. Mathematically it is equivalent to the Cartesian product of :math:`D`
     closed bounded intervals in :math:`\mathbb{R}`.
+
+    Continous searh spaces can be sampled TODO ...
     """
 
     @overload
@@ -241,10 +244,29 @@ class Box(SearchSpace):
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
+        """
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space.
+        """
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
         )
+
+
+    def sample_halton(self, num_samples: int) -> TensorType:
+        """
+TODO
+
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space.
+        """
+        dim = tf.shape(self._lower)[-1]
+        unit_samples = sample_halton_sequence(dim, num_samples, dtype=tf.float64)
+        return self._lower + samples * (self._upper - self._lower)
+        
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
         """
