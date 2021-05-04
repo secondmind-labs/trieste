@@ -25,7 +25,7 @@ from trieste.acquisition.optimizer import (
     batchify,
     optimize_continuous,
     optimize_discrete,
-    optimize_random,
+    generate_random_search_optimizer,
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
@@ -37,38 +37,38 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
 
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer, optimizers",
+    "search_space, shift, expected_maximizer, optimizer",
     [
         (
             DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
             [1.0],
             [[1.2]],
-            [optimize_discrete, optimize_random],
+            [optimize_discrete, generate_random_search_optimizer(10000)],
         ),  # 1D
         (  # 2D
             DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [-0.2, 0.3], [0.2, -0.3], [1.2, 0.4]])),
             [0.3, -0.4],
             [[0.2, -0.3]],
-            [optimize_discrete, optimize_random],
+            [optimize_discrete, generate_random_search_optimizer(10000)],
         ),
-        (Box([-1], [2]), [1.0], [[1.0]], [optimize_continuous, optimize_random]),  # 1D
+        (Box([-1], [2]), [1.0], [[1.0]], [optimize_continuous, generate_random_search_optimizer(1000)]),  # 1D
         (
             Box([-1, -2], [1.5, 2.5]),
             [0.3, -0.4],
             [[0.3, -0.4]],
-            [optimize_continuous, optimize_random],
+            [optimize_continuous, generate_random_search_optimizer(10000)],
         ),  # 2D
         (
             Box([-1, -2], [1.5, 2.5]),
             [1.0, 4],
             [[1.0, 2.5]],
-            [optimize_continuous, optimize_random],
+            [optimize_continuous, generate_random_search_optimizer(10000)],
         ),  # 2D with maximum outside search space
         (
             Box([-1, -2, 1], [1.5, 2.5, 1.5]),
             [0.3, -0.4, 0.5],
             [[0.3, -0.4, 1.0]],
-            [optimize_continuous, optimize_random],
+            [optimize_continuous, generate_random_search_optimizer(10000)],
         ),  # 3D
     ],
 )
@@ -78,12 +78,11 @@ def test_optimizer(
     expected_maximizer: list[list[float]],
     optimizers: list[AcquisitionOptimizer],
 ) -> None:
-    for optimizer in optimizers:
         maximizer = optimizer(search_space, _quadratic_sum(shift))
-        if optimizer is optimize_random:
-            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
-        else:
-            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
+        npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
+
+
+
 
 
 @random_seed
