@@ -35,21 +35,6 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
     return lambda x: tf.reduce_sum(0.5 - quadratic(x - shift), axis=-2)
 
 
-@pytest.mark.parametrize("optimizer", [optimize_random, optimize_continuous])
-def test_optimizers_raises_for_invalid_sample_sizes(optimizer) -> None:
-    search_space = Box([0, 0], [1, 1])
-    acq_function = _quadratic_sum(1.0)
-    with pytest.raises(ValueError):
-        optimizer(search_space, acq_function, num_samples=-5)
-
-
-def test_random_optimizer_raises_for_too_large_sample_sizes_over_discrete_spaces() -> None:
-    search_space = DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]]))
-    acq_function = _quadratic_sum(1.0)
-    with pytest.raises(ValueError):
-        optimize_random(search_space, acq_function, num_samples=10)
-
-
 @random_seed
 @pytest.mark.parametrize(
     "search_space, shift, expected_maximizer, optimizers",
@@ -94,15 +79,10 @@ def test_optimizer(
     optimizers: list[AcquisitionOptimizer],
 ) -> None:
     for optimizer in optimizers:
+        maximizer = optimizer(search_space, _quadratic_sum(shift))
         if optimizer is optimize_random:
-            if isinstance(search_space, DiscreteSearchSpace):
-                num_samples = len(search_space.points)
-            else:
-                num_samples = 10000
-            maximizer = optimizer(search_space, _quadratic_sum(shift), num_samples=num_samples)
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
         else:
-            maximizer = optimizer(search_space, _quadratic_sum(shift))
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 

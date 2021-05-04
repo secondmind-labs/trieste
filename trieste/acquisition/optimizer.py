@@ -17,7 +17,7 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+from typing import Callable, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -31,7 +31,7 @@ SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-AcquisitionOptimizer = Callable[[SP, AcquisitionFunction, Any], TensorType]
+AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
 a search space. For a search space with points of shape [D], and acquisition function with input
@@ -90,9 +90,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     return space.points[max_value_idx : max_value_idx + 1]
 
 
-def optimize_continuous(
-    space: Box, target_func: AcquisitionFunction, num_samples: int = None
-) -> TensorType:
+def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
     An gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
     of size of 1.
@@ -100,16 +98,10 @@ def optimize_continuous(
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
-    :param num_samples: The size of the random initial design used to find the starting location
-        for the gradient-based optimization.
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    if num_samples is None:
-        num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
-
-    if num_samples <= 0:
-        raise ValueError(f"num_samples must be positive, got {num_samples}")
+    num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
 
     trial_search_space = space.discretize(num_samples)
     initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
@@ -125,29 +117,21 @@ def optimize_continuous(
     return bijector.forward(variable)  # [1, D]
 
 
-def optimize_random(
-    space: SearchSpace, target_func: AcquisitionFunction, num_samples: int = 1000
-) -> TensorType:
+def optimize_random(space: SearchSpace, target_func: AcquisitionFunction) -> TensorType:
     """
-    A random search :const:`AcquisitionOptimizer` defined for any :class:'SearchSpace'
-    with a :method:`sample` and batches of size of 1.
+    A search across 10,000 random points :const:`AcquisitionOptimizer` defined for
+    any :class:'SearchSpace' with a :method:`sample` and batches of size of 1.
+    If we have a :class:'DiscreteSearchSpace' with fewer than 10,000 points,
+    then we query all the points in the space.
 
     :param space: The space over which to search.
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
         [..., 1].
-    :param num_samples: The number of random locations where the acquisition function is evaluated.
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    if num_samples <= 0:
-        raise ValueError(f"num_samples must be positive, got {num_samples}")
-
+    num_samples = 10000
     if isinstance(space, DiscreteSearchSpace) and num_samples > len(space.points):
-        raise ValueError(
-            f"""
-            Cannot get {num_samples} samples from a discrete search space
-            containing only {len(space.points)} points.
-            """
-        )
+        num_samples = len(space.points)
 
     samples = space.sample(num_samples)
     target_func_values = target_func(samples[:, None, :])
@@ -159,7 +143,6 @@ def optimize_random(
         ),
     )
     max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-    print(samples[max_value_idx : max_value_idx + 1])
     return samples[max_value_idx : max_value_idx + 1]
 
 
