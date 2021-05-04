@@ -178,9 +178,9 @@ def rosenbrock_4(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 4))])
 
-    x = 15.0 * x - 5
+    y : TensorType = x * 15.0 - 5
     unscaled_function = tf.reduce_sum(
-        (100.0 * (x[..., 1:] - x[..., :-1]) ** 2 + (1 - x[..., :-1]) ** 2), axis=-1, keepdims=True
+        (100.0 * (y[..., 1:] - y[..., :-1]) ** 2 + (1 - y[..., :-1]) ** 2), axis=-1, keepdims=True
     )
     return (unscaled_function - 3.827 * 1e5) / (3.755 * 1e5)
 
