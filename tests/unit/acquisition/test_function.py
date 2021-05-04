@@ -73,7 +73,7 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
 
 class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType=None
+        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType = None
     ) -> AcquisitionFunction:
         return raise_exc
 
