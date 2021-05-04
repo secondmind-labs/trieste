@@ -142,7 +142,12 @@ def optimize_random(
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 
     if isinstance(space, DiscreteSearchSpace) and num_samples > len(space.points):
-        num_samples = len(space.points)
+        raise ValueError(
+            f"""
+            Cannot get {num_samples} samples from a discrete search space
+            containing only {len(space.points)} points.
+            """
+        )
 
     samples = space.sample(num_samples)
     target_func_values = target_func(samples[:, None, :])

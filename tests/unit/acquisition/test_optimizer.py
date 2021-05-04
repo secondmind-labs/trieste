@@ -20,10 +20,12 @@ import tensorflow as tf
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
+    AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
     optimize_continuous,
     optimize_discrete,
+    optimize_random,
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
@@ -33,44 +35,75 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
     return lambda x: tf.reduce_sum(0.5 - quadratic(x - shift), axis=-2)
 
 
+@pytest.mark.parametrize("optimizer", [optimize_random, optimize_continuous])
+def test_optimizers_raises_for_invalid_sample_sizes(optimizer) -> None:
+    search_space = Box([0, 0], [1, 1])
+    acq_function = _quadratic_sum(1.0)
+    with pytest.raises(ValueError):
+        optimizer(search_space, acq_function, num_samples=-5)
+
+
+def test_random_optimizer_raises_for_too_large_sample_sizes_over_discrete_spaces() -> None:
+    search_space = DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]]))
+    acq_function = _quadratic_sum(1.0)
+    with pytest.raises(ValueError):
+        optimize_random(search_space, acq_function, num_samples=10)
+
+
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer",
+    "search_space, shift, expected_maximizer, optimizers",
     [
-        (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), [1.0], [[1.2]]),  # 1D
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
+            [1.0],
+            [[1.2]],
+            [optimize_discrete, optimize_random],
+        ),  # 1D
         (  # 2D
             DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [-0.2, 0.3], [0.2, -0.3], [1.2, 0.4]])),
             [0.3, -0.4],
             [[0.2, -0.3]],
+            [optimize_discrete, optimize_random],
         ),
+        (Box([-1], [2]), [1.0], [[1.0]], [optimize_continuous, optimize_random]),  # 1D
+        (
+            Box([-1, -2], [1.5, 2.5]),
+            [0.3, -0.4],
+            [[0.3, -0.4]],
+            [optimize_continuous, optimize_random],
+        ),  # 2D
+        (
+            Box([-1, -2], [1.5, 2.5]),
+            [1.0, 4],
+            [[1.0, 2.5]],
+            [optimize_continuous, optimize_random],
+        ),  # 2D with maximum outside search space
+        (
+            Box([-1, -2, 1], [1.5, 2.5, 1.5]),
+            [0.3, -0.4, 0.5],
+            [[0.3, -0.4, 1.0]],
+            [optimize_continuous, optimize_random],
+        ),  # 3D
     ],
 )
-def test_optimize_discrete(
+def test_optimizer(
     search_space: DiscreteSearchSpace,
     shift: list[float],
     expected_maximizer: list[list[float]],
+    optimizers: list[AcquisitionOptimizer],
 ) -> None:
-    maximizer = optimize_discrete(search_space, _quadratic_sum(shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
-
-
-@random_seed
-@pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer",
-    [
-        (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
-        (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
-        (Box([-1, -2], [1.5, 2.5]), [1.0, 4], [[1.0, 2.5]]),  # 2D with maximum outside search space
-        (Box([-1, -2, 1], [1.5, 2.5, 1.5]), [0.3, -0.4, 0.5], [[0.3, -0.4, 1.0]]),  # 3D
-    ],
-)
-def test_optimize_continuous(
-    search_space: Box,
-    shift: list[float],
-    expected_maximizer: list[list[float]],
-) -> None:
-    maximizer = optimize_continuous(search_space, _quadratic_sum(shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
+    for optimizer in optimizers:
+        if optimizer is optimize_random:
+            if isinstance(search_space, DiscreteSearchSpace):
+                num_samples = len(search_space.points)
+            else:
+                num_samples = 10000
+            maximizer = optimizer(search_space, _quadratic_sum(shift), num_samples=num_samples)
+            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
+        else:
+            maximizer = optimizer(search_space, _quadratic_sum(shift))
+            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 
 @random_seed
