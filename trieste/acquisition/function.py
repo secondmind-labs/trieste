@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable
+from typing import Callable, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -684,7 +684,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     suitiable for greedily building batches for batch Bayesian
     Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
     from :class:`AcquisitionFunctionBuilder` by requiring that a set
-    of pending points is passed to the builder. Note that this acquisition function 
+    of pending points is passed to the builder. Note that this acquisition function
     is typically called `B` times each Bayesian optimization step, when building batches
     of size `B`.
     """
