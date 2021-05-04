@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-# # Multi-objective optimization with Expected HyperVolume Improvement Approach
+# # Multi-objective optimization with Expected HyperVolume Improvement
 
 import math
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history
+from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, plot_mobo_points_in_obj_space
 
 # +
 import trieste
@@ -18,6 +18,7 @@ from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.acquisition.rule import EfficientGlobalOptimization
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -48,15 +49,22 @@ initial_data = observer(initial_query_points)
 # ... and visualise the data across the design space.
 
 _, ax = plot_function_2d(
-    vlmop2, mins, maxs, grid_density=100, contour=True, title=["Obj 1", "Obj 2"]
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    title=["Obj 1", "Obj 2"],
+    figsize=(12, 6),
+    colorbar=True,
+    xlabel="$X_1$",
+    ylabel="$X_2$",
 )
 plot_bo_points(initial_query_points, ax=ax[0, 0], num_init=num_initial_points)
 plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # ... and in the objective space
-
-from util.plotting import plot_mobo_points_in_obj_space
 
 plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
 plt.show()
@@ -98,14 +106,12 @@ objective_models = [
     for i in range(num_objective)
 ]
 
-# And stack the two independent GP model in a single `ModelStack` multioutput model representing predictions through different outputs.
+# Stack the two independent GP model in a single `ModelStack` multi-output model.
 
 models = {OBJECTIVE: ModelStack(*objective_models)}
 
 # ## Define the acquisition function
 # Here we utilize the [EHVI](https://link.springer.com/article/10.1007/s10898-019-00798-7): `ExpectedHypervolumeImprovement` acquisition function:
-
-from trieste.acquisition.rule import EfficientGlobalOptimization
 
 ehvi = ExpectedHypervolumeImprovement()
 rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehvi.using(OBJECTIVE))
@@ -126,31 +132,40 @@ data_query_points = datasets[OBJECTIVE].query_points.numpy()
 data_observations = datasets[OBJECTIVE].observations.numpy()
 
 _, ax = plot_function_2d(
-    vlmop2, mins, maxs, grid_density=100, contour=True, title=["Obj 1", "Obj 2"]
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
 )
 plot_bo_points(data_query_points, ax=ax[0, 0], num_init=num_initial_points)
 plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 # -
 
-# ... and visulize in the objective space, purple dots denotes the nondominated points.
+# Visulize objective space. Purple dots denotes the nondominated points.
+# The cross represented dots are initial sampled points by `search_space.sample`, the dots are BO added points.
 
 plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
 
-# We can also visualize how the performance metric get envolved with respect to the number of BO iterations.  
-# First, we need to define a performance metric. Many metrics have been considered for multi-objective function. Here, we use the log hypervolume difference.
+# We can also visualize how the performance metric get envolved with respect to the number of BO iterations.
+# First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
 
-# The log hypervolume difference is defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the observed data.
+#
 # $$
-# log_{10}\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{true}} - \text{HV}_{\text{bo obtained}})
+# log_{10}\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{true}} - \text{HV}_{\text{bo-obtained}})
 # $$
 #
 
 # First we need to calculate the $\text{HV}_{\text{ideal}}$, this is approximated by calculating the hypervolume based on ideal pareto front:
 
-ideal_pf = (VLMOP2().gen_pareto_optimal_points(100)
-)  # gen 100 pf points
+ideal_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
 ref_point = get_reference_point(data_observations)
 idea_hv = Pareto(tf.cast(ideal_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
 
@@ -163,13 +178,13 @@ def log_hv(observations):
     return math.log(idea_hv - obs_hv)
 
 
+# And obtained the convergence history.
+# The blue vertical line in the figure denotes the iterations that after which bo starts.
+
 fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
 ax.set_xlabel("Iterations")
 ax.set_ylabel("log HV difference")
 plt.show()
-
-mask_fail = np.linspace(1, 20, 20).astype(int)
-fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points, mask_fail=mask_fail)
 
 # ## LICENSE
 #

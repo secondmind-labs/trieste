@@ -53,9 +53,9 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
     """
 
     if contour:
-        ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        return ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
     else:
-        ax.plot_surface(
+        return ax.plot_surface(
             xx,
             yy,
             f.reshape(*xx.shape),
@@ -77,6 +77,7 @@ def plot_function_2d(
     xlabel=None,
     ylabel=None,
     figsize=None,
+    colorbar=False,
 ):
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
@@ -90,6 +91,7 @@ def plot_function_2d(
     :param xlabel:
     :param ylabel:
     :param figsize:
+    :param colorbar
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -123,9 +125,11 @@ def plot_function_2d(
         else:
             ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")
 
-        plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
+        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
         if title is not None:
             axx.set_title(title[k])
+        if colorbar:
+            fig.colorbar(plt_obj, ax=axx)
         axx.set_xlabel(xlabel)
         axx.set_ylabel(ylabel)
         axx.set_xlim(mins[0], maxs[0])
