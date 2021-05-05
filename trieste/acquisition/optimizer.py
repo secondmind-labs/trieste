@@ -149,9 +149,8 @@ def batchify(
     return optimizer
 
 
-def generate_random_search_optimizer(num_samples: int=1000) -> AcquisitionOptimizer[SP]:
-    # Generate an acquistion optimizer that samples `num_samples` random points across the search space.
-
+def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:
+    # Generate an acquistion optimizer that samples `num_samples` random points across the space.
 
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
@@ -170,9 +169,11 @@ def generate_random_search_optimizer(num_samples: int=1000) -> AcquisitionOptimi
         """
 
         if isinstance(space, DiscreteSearchSpace) and (num_samples > len(space.points)):
-            num_samples = len(space.points)
-            
-        samples = space.sample(num_samples)
+            _num_samples = len(space.points)
+        else:
+            _num_samples = num_samples
+
+        samples = space.sample(_num_samples)
         target_func_values = target_func(samples[:, None, :])
         max_value_idx = tf.argmax(target_func_values, axis=0)[0]
         return samples[max_value_idx : max_value_idx + 1]
