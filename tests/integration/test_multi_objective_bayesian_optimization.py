@@ -40,7 +40,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
-    def build_stacked_independent_objectives_model(data: Dataset) -> GaussianProcessRegression:
+    def build_stacked_independent_objectives_model(data: Dataset) -> ModelStack:
         gprs = []
         for idx in range(2):
             single_obj_data = Dataset(
