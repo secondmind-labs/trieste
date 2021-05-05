@@ -130,7 +130,8 @@ def batchify(
     :param batch_size: The number of points in the batch.
     :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
     """
-    tf.debugging.assert_positive(batch_size)
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
@@ -151,7 +152,9 @@ def batchify(
 def generate_random_search_optimizer(num_samples: int=1000) -> AcquisitionOptimizer[SP]:
     # Generate an acquistion optimizer that samples `num_samples` random points across the search space.
 
-    tf.debugging.assert_positive(num_samples)
+
+    if num_samples <= 0:
+        raise ValueError(f"num_samples must be positive, got {num_samples}")
 
     def optimizer(space: SP, target_func: AcquisitionFunction) -> TensorType:
         """

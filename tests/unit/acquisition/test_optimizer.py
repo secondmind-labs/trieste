@@ -23,9 +23,9 @@ from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
+    generate_random_search_optimizer,
     optimize_continuous,
     optimize_discrete,
-    generate_random_search_optimizer,
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
@@ -37,7 +37,7 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
 
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer, optimizer",
+    "search_space, shift, expected_maximizer, optimizers",
     [
         (
             DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
@@ -51,7 +51,12 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
             [[0.2, -0.3]],
             [optimize_discrete, generate_random_search_optimizer(10000)],
         ),
-        (Box([-1], [2]), [1.0], [[1.0]], [optimize_continuous, generate_random_search_optimizer(1000)]),  # 1D
+        (
+            Box([-1], [2]),
+            [1.0],
+            [[1.0]],
+            [optimize_continuous, generate_random_search_optimizer(1000)],
+        ),  # 1D
         (
             Box([-1, -2], [1.5, 2.5]),
             [0.3, -0.4],
@@ -78,11 +83,15 @@ def test_optimizer(
     expected_maximizer: list[list[float]],
     optimizers: list[AcquisitionOptimizer],
 ) -> None:
+    for optimizer in optimizers:
         maximizer = optimizer(search_space, _quadratic_sum(shift))
         npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 
-
+def test_optimize_batch_raises_with_invalid_batch_size() -> None:
+    batch_size_one_optimizer = optimize_continuous
+    with pytest.raises(ValueError):
+        batchify(batch_size_one_optimizer, -5)
 
 
 @random_seed
@@ -127,3 +136,8 @@ def test_automatic_optimizer_selector(
     optimizer = automatic_optimizer_selector
     point = optimizer(search_space, acquisition)
     npt.assert_allclose(point, maximizer, rtol=2e-4)
+
+
+def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
+    with pytest.raises(ValueError):
+        generate_random_search_optimizer(num_samples=-5)
