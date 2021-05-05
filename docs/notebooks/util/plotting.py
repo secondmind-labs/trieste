@@ -297,13 +297,12 @@ def plot_mobo_history(
     """
 
     fig, ax = plt.subplots(figsize=figsize)
-    safe_obs_values = obs_values.copy()
-    size, obj_num = safe_obs_values.shape
+    size, obj_num = obs_values.shape
 
     if mask_fail is not None:
-        safe_obs_values[mask_fail] = [np.inf] * obj_num
+        obs_values[mask_fail] = [np.inf] * obj_num
 
-    ax.plot([metric_func(safe_obs_values[:pts, :]) for pts in range(size)], color="tab:orange")
+    ax.plot([metric_func(obs_values[:pts, :]) for pts in range(size)], color="tab:orange")
     ax.axvline(x=num_init - 0.5, color="tab:blue")
     return fig, ax
 

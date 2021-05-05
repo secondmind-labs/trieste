@@ -85,43 +85,25 @@ plt.show()
 
 
 # %%
-def create_single_outcome_model(data, outcome_idx, input_dim=2, l=1.0):
-    variance = tf.math.reduce_variance(tf.gather(data.observations, [outcome_idx], axis=1))
-    lengthscale = l * tf.ones(input_dim, dtype=gpflow.default_float())
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    single_outcome_dataset = Dataset(
-        data.query_points, tf.gather(data.observations, [outcome_idx], axis=1)
-    )
-    gpr = gpflow.models.GPR(single_outcome_dataset.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-    return create_model(
-        {
+def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
+        gprs =[]
+        for idx in range(num_output):
+            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+            variance = tf.math.reduce_variance(single_obj_data.observations)
+            kernel = gpflow.kernels.Matern52(variance)
+            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
+            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            gprs.append((create_model({
             "model": gpr,
             "optimizer": gpflow.optimizers.Scipy(),
             "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    )
+            "minimize_args": {"options": dict(maxiter=100)}}}), 1))
+
+        return ModelStack(*gprs)
 
 
 # %%
-objective_models = [
-    (
-        create_single_outcome_model(
-            initial_data[OBJECTIVE],
-            outcome_idx=i,
-        ),
-        1,
-    )
-    for i in range(num_objective)
-]
-
-# %% [markdown]
-# Stack the two independent GP model in a single `ModelStack` multi-output model.
-
-# %%
-models = {OBJECTIVE: ModelStack(*objective_models)}
+models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)}
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -147,8 +129,8 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # %%
 datasets = result.try_get_final_datasets()
-data_query_points = datasets[OBJECTIVE].query_points.numpy()
-data_observations = datasets[OBJECTIVE].observations.numpy()
+data_query_points = datasets[OBJECTIVE].query_points
+data_observations = datasets[OBJECTIVE].observations
 
 _, ax = plot_function_2d(
     vlmop2,
@@ -174,7 +156,7 @@ plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# We can also visualize how the performance metric get envolved with respect to the number of bo iterations.
+# We can also visualize how a performance metric evolved with respect to the number of bo iterations.
 # First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
 
 # %% [markdown]
@@ -194,17 +176,17 @@ idea_hv = Pareto(tf.cast(ideal_pf, dtype=data_observations.dtype)).hypervolume_i
 
 
 # %% [markdown]
-# Then define the metric function:
+# Then we define the metric function:
 
 
 # %%
 def log_hv(observations):
     obs_hv = Pareto(observations).hypervolume_indicator(ref_point)
-    return math.log(idea_hv - obs_hv)
+    return math.log10(idea_hv - obs_hv)
 
 
 # %% [markdown]
-# And obtained the convergence history.
+# Finally, we can plot the convergence of our performance metric over the course of the optimization.  
 # The blue vertical line in the figure denotes the iterations that after which bo starts.
 
 # %%
