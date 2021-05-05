@@ -164,6 +164,85 @@ float64.
 """
 
 
+def rosenbrock_4(x: TensorType) -> TensorType:
+    """
+    The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
+    :cite:`Picheny2013` for details.
+
+    This function (also known as the Banana function) is unimodal, however the minima
+    lies in a narrow valley.
+
+    :param x: The points at which to evaluate the function, with shape [..., 4].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 4))])
+
+    y: TensorType = x * 15.0 - 5
+    unscaled_function = tf.reduce_sum(
+        (100.0 * (y[..., 1:] - y[..., :-1]) ** 2 + (1 - y[..., :-1]) ** 2), axis=-1, keepdims=True
+    )
+    return (unscaled_function - 3.827 * 1e5) / (3.755 * 1e5)
+
+
+ROSENBROCK_4_MINIMIZER = tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64)
+"""
+The global minimizer for the :func:`rosenbrock_4` function, with shape [1, 4] and
+dtype float64.
+"""
+
+
+ROSENBROCK_4_MINIMUM = tf.constant([-1.01917], tf.float64)
+"""
+The global minimum for the :func:`rosenbrock_4` function, with shape [1] and dtype
+float64.
+"""
+
+
+def ackley_5(x: TensorType) -> TensorType:
+    """
+    The Ackley test function over :math:`[0, 1]^5`. This function has
+    many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
+    for details.
+
+    Note that we rescale the original problem, which is typically defined
+    over `[-32.768, 32.768]`
+
+    :param x: The points at which to evaluate the function, with shape [..., 5].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 5))])
+
+    x = (x - 0.5) * (32.768 * 2.0)
+
+    exponent_1 = -0.2 * tf.math.sqrt((1 / 5.0) * tf.reduce_sum(x ** 2, -1))
+    exponent_2 = (1 / 5.0) * tf.reduce_sum(tf.math.cos(2.0 * math.pi * x), -1)
+
+    function = (
+        -20.0 * tf.math.exp(exponent_1)
+        - tf.math.exp(exponent_2)
+        + 20.0
+        + tf.cast(tf.math.exp(1.0), dtype=tf.float64)
+    )
+
+    return tf.expand_dims(function, -1)
+
+
+ACKLEY_5_MINIMIZER = tf.constant([[0.5, 0.5, 0.5, 0.5, 0.5]], tf.float64)
+"""
+The global minimizer for the :func:`ackley_5` function, with shape [1, 5] and
+dtype float64.
+"""
+
+
+ACKLEY_5_MINIMUM = tf.constant([0.0], tf.float64)
+"""
+The global minimum for the :func:`ackley_5` function, with shape [1] and dtype
+float64.
+"""
+
+
 def hartmann_6(x: TensorType) -> TensorType:
     """
     The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
