@@ -46,7 +46,7 @@ num_objective = 2
 # Let's randomly sample some initial data from the observer ...
 
 # %%
-num_initial_points = 10
+num_initial_points = 20
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -119,7 +119,7 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehv
 # We can now run the optimization loop
 
 # %%
-num_steps = 20
+num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
@@ -149,14 +149,14 @@ plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# Visulize in objective space. Purple dots denote the nondominated points.
+# Visualize in objective space. Purple dots denote the nondominated points.
 
 # %%
 plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# We can also visualize how a performance metric evolved with respect to the number of bo iterations.
+# We can also visualize how a performance metric evolved with respect to the number of BO iterations.
 # First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
 
 # %% [markdown]
@@ -187,7 +187,7 @@ def log_hv(observations):
 
 # %% [markdown]
 # Finally, we can plot the convergence of our performance metric over the course of the optimization.  
-# The blue vertical line in the figure denotes the iterations that after which bo starts.
+# The blue vertical line in the figure denotes the iterations that after which BO starts.
 
 # %%
 fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
