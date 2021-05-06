@@ -44,7 +44,6 @@ from .function import (
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
-    LipschitzPenalizationFunction,
     LocallyPenalizedExpectedImprovement,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,

@@ -776,7 +776,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: LipschitzPenalizationFunction = None,
+        penalizer: soft_local_penalizer | hard_local_penalizer = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -865,7 +865,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         return penalized_acquisition
 
 
-LipschitzPenalizationFunction = Callable[[TensorType], TensorType]
+PenalizationFunction = Callable[[TensorType], TensorType]
 """
 An :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single
 value that described how heavily it should be penalized (a positive quantity).
@@ -881,7 +881,7 @@ def soft_local_penalizer(
     pending_points: TensorType,
     lipschitz_constant: TensorType,
     eta: TensorType,
-) -> LipschitzPenalizationFunction:
+) -> PenalizationFunction:
     r"""
     Return the soft local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Gonzalez:2016`.
@@ -933,7 +933,7 @@ def hard_local_penalizer(
     pending_points: TensorType,
     lipschitz_constant: TensorType,
     eta: TensorType,
-) -> LipschitzPenalizationFunction:
+) -> PenalizationFunction:
     r"""
     Return the hard local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Alvi:2019`.
