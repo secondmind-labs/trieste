@@ -176,6 +176,13 @@ def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: Tensor
         aei(at)
 
 
+def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
+    with pytest.raises(ValueError):
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic()
+        model_without_likelihood = GaussianProcess(quadratic, kernel)
+        augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
+
+
 @pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
 def test_augmented_expected_improvement_builder_builds_expected_improvement_times_augmentation(
     observation_noise: float,

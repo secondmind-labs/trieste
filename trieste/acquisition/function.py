@@ -27,7 +27,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import ProbabilisticModel, GaussianProcessRegression
+from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
@@ -212,6 +212,13 @@ def augmented_expected_improvement(
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     """
+    if not (hasattr(model, "likelihood") and hasattr(model.likelihood, "variance")):
+        raise ValueError(
+            """
+            Augmented expected improvement only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
+        )
 
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(

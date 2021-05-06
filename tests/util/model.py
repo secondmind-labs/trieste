@@ -66,12 +66,10 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         self,
         mean_functions: Sequence[Callable[[TensorType], TensorType]],
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
-        noise_variance: float = 1e-5,
     ):
         super().__init__()
         self._mean_functions = mean_functions
         self._kernels = kernels
-        self.likelihood = Likelihood(noise_variance)
 
     def __repr__(self) -> str:
         return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
@@ -97,7 +95,8 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
         noise_variance: float = 1e-5,
     ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([lambda x: quadratic(x - x_shift)], [kernel], noise_variance)
+        self.likelihood = Likelihood(noise_variance)
+        super().__init__([lambda x: quadratic(x - x_shift)], [kernel])
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
