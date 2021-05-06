@@ -179,7 +179,7 @@ def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: Tensor
 def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic()
-        model_without_likelihood = GaussianProcess(quadratic, kernel)
+        model_without_likelihood = GaussianProcess([quadratic], [kernel])
         augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
 
 
