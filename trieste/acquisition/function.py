@@ -27,7 +27,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import ProbabilisticModel, GPflowPredictor
+from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
@@ -185,7 +185,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
 
 
 def augmented_expected_improvement(
-    model: GPflowPredictor, eta: TensorType
+    model: ProbabilisticModel, eta: TensorType
 ) -> AcquisitionFunction:
     r"""
     Return the Augmented Expected Improvement (AEI) acquisition function for single-objective global
