@@ -27,7 +27,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, GaussianProcessRegression
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS

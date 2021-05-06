@@ -51,10 +51,13 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         dim_order = tf.range(tf.rank(samples))
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
-class Likelihood():
+
+class Likelihood:
     """ A dummy likelihood used to test Trieste's noisy optimization capabilites. """
-    def __init__(self, noise_variance: float=1e-5):
+
+    def __init__(self, noise_variance: float = 1e-5):
         self.variance = noise_variance
+
 
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
     """ A (static) Gaussian process over a vector random variable. """
@@ -63,7 +66,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         self,
         mean_functions: Sequence[Callable[[TensorType], TensorType]],
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
-        noise_variance: float=1e-5,
+        noise_variance: float = 1e-5,
     ):
         super().__init__()
         self._mean_functions = mean_functions
@@ -91,7 +94,7 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
         *,
         x_shift: float | SequenceN[float] | TensorType = 0,
         kernel_amplitude: float | TensorType | None = None,
-        noise_variance: float=1e-5,
+        noise_variance: float = 1e-5,
     ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
         super().__init__([lambda x: quadratic(x - x_shift)], [kernel], noise_variance)
