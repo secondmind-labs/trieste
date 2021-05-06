@@ -37,16 +37,17 @@ from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    BatchReparametrizationSampler,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    IndependentReparametrizationSampler,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
+    augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,
     lower_confidence_bound,
@@ -57,6 +58,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box
 from trieste.type import TensorType
+from trieste.utils import DEFAULTS
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 from trieste.utils.pareto import Pareto, get_reference_point
 
@@ -155,6 +157,51 @@ def test_expected_improvement(
     ei = expected_improvement(model, best)(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+def test_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(ValueError):
+        AugmentedExpectedImprovement().prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel()
+        )
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    aei = augmented_expected_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        aei(at)
+
+
+def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
+    with pytest.raises(ValueError):
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic()
+        model_without_likelihood = GaussianProcess([quadratic], [kernel])
+        augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
+
+
+@pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
+def test_augmented_expected_improvement_builder_builds_expected_improvement_times_augmentation(
+    observation_noise: float,
+) -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel(noise_variance=observation_noise)
+    acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(dataset, model)
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
+
+    _, variance = model.predict(tf.squeeze(xs, -2))
+    augmentation = 1 - (tf.math.sqrt(observation_noise)) / (
+        tf.math.sqrt(observation_noise + variance)
+    )
+    npt.assert_allclose(acq_fn(xs), ei * augmentation)
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
@@ -328,6 +375,12 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> Non
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(ValueError):
         ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+
+
+def test_expected_constrained_improvement_raises_for_out_of_range_min_pof() -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    with pytest.raises(ValueError):
+        ExpectedConstrainedImprovement("", pof, 1.5)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -605,162 +658,6 @@ def test_expected_hypervolume_improvement(
     npt.assert_allclose(ehvi, ehvi_approx, rtol=0.01, atol=0.01)
 
 
-@pytest.mark.parametrize("sample_size", [0, -2])
-def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
-    sample_size: int,
-) -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel())
-
-
-@pytest.mark.parametrize("shape", [[], [1], [2], [2, 3]])
-def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape(
-    shape: ShapeLike,
-) -> None:
-    sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.zeros(shape))
-
-
-def _assert_kolmogorov_smirnov_95(
-    # fmt: off
-    samples: tf.Tensor,  # [..., S]
-    distribution: tfp.distributions.Distribution
-    # fmt: on
-) -> None:
-    assert distribution.event_shape == ()
-    tf.debugging.assert_shapes([(samples, [..., "S"])])
-
-    sample_size = samples.shape[-1]
-    samples_sorted = tf.sort(samples, axis=-1)  # [..., S]
-    edf = tf.range(1.0, sample_size + 1, dtype=samples.dtype) / sample_size  # [S]
-    expected_cdf = distribution.cdf(samples_sorted)  # [..., S]
-
-    _95_percent_bound = 1.36 / math.sqrt(sample_size)
-    assert tf.reduce_max(tf.abs(edf - expected_cdf)) < _95_percent_bound
-
-
-def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess:
-    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
-    )
-    return GaussianProcess(
-        [lambda x: mean_shift[0] + branin(x), lambda x: mean_shift[1] + quadratic(x)],
-        [matern52, rbf()],
-    )
-
-
-@random_seed
-def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
-    sample_size = 1000
-    x = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-
-    model = _dim_two_gp()
-    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, 1, L]
-
-    assert samples.shape == [len(x), sample_size, 1, 2]
-
-    mean, var = model.predict(tf.squeeze(x, -2))  # [N, L], [N, L]
-    _assert_kolmogorov_smirnov_95(
-        tf.linalg.matrix_transpose(tf.squeeze(samples, -2)),
-        tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
-    )
-
-
-@random_seed
-def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
-
-
-def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
-
-
-@random_seed
-def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
-    sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp())
-    sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
-
-
-@pytest.mark.parametrize("sample_size", [0, -2])
-def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        BatchReparametrizationSampler(sample_size, _dim_two_gp())
-
-
-@random_seed
-def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance() -> None:
-    model = _dim_two_gp()
-    sample_size = 10_000
-    leading_dims = [3]
-    batch_size = 4
-    xs = tf.random.uniform(leading_dims + [batch_size, 2], maxval=1.0, dtype=tf.float64)
-    samples = BatchReparametrizationSampler(sample_size, model).sample(xs)
-
-    assert samples.shape == leading_dims + [sample_size, batch_size, 2]
-
-    samples_mean = tf.reduce_mean(samples, axis=-3)
-    samples_covariance = tf.transpose(
-        tfp.stats.covariance(samples, sample_axis=-3, event_axis=-2), [0, 3, 1, 2]
-    )
-
-    model_mean, model_cov = model.predict_joint(xs)
-
-    npt.assert_allclose(samples_mean, model_mean, rtol=0.02)
-    npt.assert_allclose(samples_covariance, model_cov, rtol=0.04)
-
-
-def test_batch_reparametrization_sampler_samples_are_continuous() -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
-
-
-def test_batch_reparametrization_sampler_samples_are_repeatable() -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp())
-    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
-
-
-@random_seed
-def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
-    model = _dim_two_gp()
-    sampler1 = BatchReparametrizationSampler(100, model)
-    sampler2 = BatchReparametrizationSampler(100, model)
-    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
-
-
-@pytest.mark.parametrize("at", [tf.constant([0.0]), tf.constant(0.0), tf.ones([0, 1])])
-def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(at: tf.Tensor) -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(at)
-
-
-def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
-
-
-def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_size() -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
-    sampler.sample(tf.constant([[0.0], [1.0], [2.0]]))
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.constant([[0.0], [1.0]]))
-
-
 @pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
     sample_size: int,
@@ -784,8 +681,11 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
 
 def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
     builder = BatchMonteCarloExpectedImprovement(100)
-    data = mk_dataset([[0.0, 0.0]], [[0.0, 0.0]])
-    model = _dim_two_gp()
+    data = mk_dataset([(0.0, 0.0)], [(0.0, 0.0)])
+    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
+        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
+    )
+    model = GaussianProcess([lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()])
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(data, model)
 
@@ -820,3 +720,26 @@ def test_batch_monte_carlo_expected_improvement() -> None:
     acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
 
     npt.assert_allclose(acq(xs), expected, rtol=0.05)
+
+
+@pytest.mark.parametrize(
+    "function, function_repr",
+    [
+        (ExpectedImprovement(), "ExpectedImprovement()"),
+        (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
+        (NegativePredictiveMean(), "NegativePredictiveMean()"),
+        (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
+        (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement()"),
+        (
+            BatchMonteCarloExpectedImprovement(10_000),
+            f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
+        ),
+    ],
+)
+def test_single_model_acquisition_function_builder_reprs(function, function_repr) -> None:
+    assert repr(function) == function_repr
+    assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
+    assert (
+        repr(ExpectedConstrainedImprovement("TAG", function.using("TAG"), 0.0))
+        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+    )

@@ -19,7 +19,7 @@ from collections.abc import Callable, Sequence
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import ListN, quadratic
+from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.type import TensorType
@@ -49,7 +49,14 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         mean, var = self.predict(query_points)
         samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
         dim_order = tf.range(tf.rank(samples))
-        return tf.transpose(samples, tf.concat([dim_order[1:-1], [0], dim_order[-1:]], -1))
+        return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
+
+
+class Likelihood:
+    """ A dummy likelihood used to test Trieste's noisy optimization capabilites. """
+
+    def __init__(self, noise_variance: float = 1e-5):
+        self.variance = noise_variance
 
 
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
@@ -83,10 +90,12 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
     def __init__(
         self,
         *,
-        x_shift: float | ListN[float] | TensorType = 0,
+        x_shift: float | SequenceN[float] | TensorType = 0,
         kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1e-5,
     ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
+        self.likelihood = Likelihood(noise_variance)
         super().__init__([lambda x: quadratic(x - x_shift)], [kernel])
 
     def __repr__(self) -> str:

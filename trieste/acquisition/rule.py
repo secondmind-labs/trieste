@@ -37,6 +37,7 @@ from .optimizer import (
     batchify,
     optimize_continuous,
 )
+from .sampler import DiscreteThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -107,7 +108,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param num_query_points: The number of points to acquire.
         """
 
-        if not num_query_points > 0:
+        if num_query_points <= 0:
             raise ValueError(
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
@@ -207,13 +208,11 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        nqp, ns = self._num_query_points, self._num_search_space_samples
-        query_points = search_space.sample(ns)  # [ns, ...]
-        samples = models[OBJECTIVE].sample(query_points, nqp)  # [nqp, ns, ...]
-        samples_2d = tf.reshape(samples, [nqp, ns])  # [nqp, ns]
-        indices = tf.math.argmin(samples_2d, axis=1)
-        unique_indices = tf.unique(indices).y
-        return tf.gather(query_points, unique_indices), None
+        thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
+        query_points = search_space.sample(self._num_search_space_samples)
+        thompson_samples = thompson_sampler.sample(query_points)
+
+        return thompson_samples, None
 
 
 class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
