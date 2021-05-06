@@ -776,7 +776,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: soft_local_penalizer | hard_local_penalizer = None,
+        penalizer: Callable[..., PenalizationFunction] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.

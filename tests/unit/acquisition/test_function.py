@@ -783,7 +783,7 @@ def test_locally_penalized_expected_improvement_matches_expected_improvement() -
 
 @pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly(
-    penalizer: soft_local_penalizer | hard_local_penalizer,
+    penalizer,
 ):
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -814,7 +814,7 @@ def test_locally_penalized_expected_improvement_combines_base_and_penalization_c
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_lipschitz_penalizers_raises_for_invalid_batch_size(
     at: TensorType,
-    penalizer: soft_local_penalizer | hard_local_penalizer,
+    penalizer,
 ) -> None:
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
     best = tf.constant([0], dtype=tf.float64)
@@ -829,7 +829,7 @@ def test_lipschitz_penalizers_raises_for_invalid_batch_size(
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     pending_points,
-    penalizer: soft_local_penalizer | hard_local_penalizer,
+    penalizer,
 ) -> None:
     best = tf.constant([0], dtype=tf.float64)
     lipshitz_constant = tf.constant([1], dtype=tf.float64)
