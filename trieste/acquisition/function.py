@@ -681,7 +681,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 class GreedyAcquisitionFunctionBuilder(ABC):
     """
     A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function
-    suitiable for greedily building batches for batch Bayesian
+    suitable for greedily building batches for batch Bayesian
     Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
     from :class:`AcquisitionFunctionBuilder` by requiring that a set
     of pending points is passed to the builder. Note that this acquisition function
@@ -755,12 +755,12 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
-    points and returns the expected improvment acquisiton function penalized around those points.
+    points and returns the expected improvment acquisition function penalized around those points.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
     acqusition function. By iteratively building a batch of points by maximizing an acquisition
     function that is clipped around the values correponding to locations close to the already
-    chosen (pending) points, local penalization provides diverse batches of canidadate points.
+    chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
     improve numerical stability, we perfom additive penalization in a log space.
@@ -770,20 +770,20 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     constant is used to control the size of penalization.
 
     The Lipschitz constant and additional penalization parameters are estimated once
-    when first preparing the acquisition function with no pending points. These estaimtes
+    when first preparing the acquisition function with no pending points. These estimates
     are reused for all subsequent function calls.
     """
 
-    def __init__(self, search_space: SearchSpace, grid_size: int = 500):
+    def __init__(self, search_space: SearchSpace, num_samples: int = 500):
         """
         :param search_space: The global search space over which the optimisation is defined.
-        :param grid_size: Size of the grid over which the Lipschitz constant is estimated.
-            We recommend scaling this with search space dimension.
+        :param num_samples: Size of the random sample over which the Lipschitz constant
+            is estimated. We recommend scaling this with search space dimension.
         """
         self._search_space = search_space
-        if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
-        self._grid_size = grid_size
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
 
         self._lipschitz_constant = None
         self._eta = None
@@ -807,7 +807,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         if (
             pending_points is None
         ):  # only compute penalization parameters once per optimization step
-            samples = self._search_space.sample(num_samples=self._grid_size)
+            samples = self._search_space.sample(num_samples=self._num_samples)
             samples = tf.concat([dataset.query_points, samples], 0)
 
             def get_lipschitz_estimate(
@@ -834,11 +834,9 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         if self._lipschitz_constant is None:
             raise ValueError("Local penalization must be first called with no pending_points.")
 
-        def log_acquisition(x: TensorType) -> TensorType:
-            return tf.math.log(expected_improvement(model, self._eta)(x))
 
         if pending_points is None:
-            return log_acquisition  # no penalization required if no pending_points.
+            return expected_improvement(model, self._eta)  # no penalization required if no pending_points.
 
         tf.debugging.assert_shapes(
             [(pending_points, ["N", len(self._search_space.upper)])],
@@ -850,7 +848,8 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         )
 
         def penalized_acquisition(x: TensorType) -> TensorType:
-            return log_acquisition(x) + tf.math.log(penalization(x))
+            log_acq = tf.math.log(expected_improvement(model, self._eta)(x)) + tf.math.log(penalization(x))
+            return tf.math.exp(log_acq)
 
         return penalized_acquisition
 
