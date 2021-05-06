@@ -153,7 +153,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
-        exact_objective: None,
+        exact_objective: Any=None,
     ) -> OptimizationResult[S]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at

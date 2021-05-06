@@ -100,8 +100,8 @@ def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorT
             [..., 1].
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-
-    trial_search_space = space.discretize(1000 * tf.shape(space.lower)[-1])
+    num_samples = tf.minimum(2000, 100 * tf.shape(space.lower)[-1])
+    trial_search_space = space.discretize(num_samples)
     initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
