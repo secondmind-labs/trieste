@@ -20,8 +20,10 @@ import tensorflow as tf
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
+    AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
+    generate_random_search_optimizer,
     optimize_continuous,
     optimize_discrete,
 )
@@ -35,42 +37,66 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
 
 @random_seed
 @pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer",
+    "search_space, shift, expected_maximizer, optimizers",
     [
-        (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), [1.0], [[1.2]]),  # 1D
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])),
+            [1.0],
+            [[1.2]],
+            [optimize_discrete, generate_random_search_optimizer()],
+        ),  # 1D
         (  # 2D
             DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [-0.2, 0.3], [0.2, -0.3], [1.2, 0.4]])),
             [0.3, -0.4],
             [[0.2, -0.3]],
+            [optimize_discrete, generate_random_search_optimizer()],
         ),
+        (
+            Box([-1], [2]),
+            [1.0],
+            [[1.0]],
+            [optimize_continuous, generate_random_search_optimizer(10_000)],
+        ),  # 1D
+        (
+            Box([-1, -2], [1.5, 2.5]),
+            [0.3, -0.4],
+            [[0.3, -0.4]],
+            [optimize_continuous, generate_random_search_optimizer(10_000)],
+        ),  # 2D
+        (
+            Box([-1, -2], [1.5, 2.5]),
+            [1.0, 4],
+            [[1.0, 2.5]],
+            [optimize_continuous, generate_random_search_optimizer(10_000)],
+        ),  # 2D with maximum outside search space
+        (
+            Box([-1, -2, 1], [1.5, 2.5, 1.5]),
+            [0.3, -0.4, 0.5],
+            [[0.3, -0.4, 1.0]],
+            [optimize_continuous, generate_random_search_optimizer(100_000)],
+        ),  # 3D
     ],
 )
-def test_optimize_discrete(
+def test_optimizer(
     search_space: DiscreteSearchSpace,
     shift: list[float],
     expected_maximizer: list[list[float]],
+    optimizers: list[AcquisitionOptimizer],
 ) -> None:
-    maximizer = optimize_discrete(search_space, _quadratic_sum(shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
+    for optimizer in optimizers:
+        maximizer = optimizer(search_space, _quadratic_sum(shift))
+        if optimizer is optimize_continuous:
+            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
+        elif optimizer is optimize_discrete:
+            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
+        else:
+            npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
 
 
-@random_seed
-@pytest.mark.parametrize(
-    "search_space, shift, expected_maximizer",
-    [
-        (Box([-1], [2]), [1.0], [[1.0]]),  # 1D
-        (Box([-1, -2], [1.5, 2.5]), [0.3, -0.4], [[0.3, -0.4]]),  # 2D
-        (Box([-1, -2], [1.5, 2.5]), [1.0, 4], [[1.0, 2.5]]),  # 2D with maximum outside search space
-        (Box([-1, -2, 1], [1.5, 2.5, 1.5]), [0.3, -0.4, 0.5], [[0.3, -0.4, 1.0]]),  # 3D
-    ],
-)
-def test_optimize_continuous(
-    search_space: Box,
-    shift: list[float],
-    expected_maximizer: list[list[float]],
-) -> None:
-    maximizer = optimize_continuous(search_space, _quadratic_sum(shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-4)
+def test_optimize_batch_raises_with_invalid_batch_size() -> None:
+    batch_size_one_optimizer = optimize_continuous
+    with pytest.raises(ValueError):
+        batchify(batch_size_one_optimizer, -5)
 
 
 @random_seed
@@ -115,3 +141,8 @@ def test_automatic_optimizer_selector(
     optimizer = automatic_optimizer_selector
     point = optimizer(search_space, acquisition)
     npt.assert_allclose(point, maximizer, rtol=2e-4)
+
+
+def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
+    with pytest.raises(ValueError):
+        generate_random_search_optimizer(num_samples=-5)
