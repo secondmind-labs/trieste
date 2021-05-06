@@ -212,7 +212,7 @@ def augmented_expected_improvement(
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
     """
-    if not (hasattr(model, "likelihood") and hasattr(model.likelihood, "variance")):
+    if not (hasattr(model, "likelihood") and hasattr(model.likelihood, "variance")):  # type: ignore
         raise ValueError(
             """
             Augmented expected improvement only currently supports homoscedastic gpflow models
@@ -229,7 +229,7 @@ def augmented_expected_improvement(
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
         expected_improvement = (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
 
-        noise_variance = model.likelihood.variance
+        noise_variance = model.likelihood.variance  # type: ignore
         augmentation = 1 - (tf.math.sqrt(noise_variance)) / (
             tf.math.sqrt(noise_variance + variance)
         )
