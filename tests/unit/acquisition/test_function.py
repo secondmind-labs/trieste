@@ -41,6 +41,7 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
+    LipschitzPenalizationFunction,
     LocallyPenalizedExpectedImprovement,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
@@ -50,6 +51,7 @@ from trieste.acquisition.function import (
     SingleModelGreedyAcquisitionBuilder,
     expected_hv_improvement,
     expected_improvement,
+    hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
     probability_of_feasibility,
@@ -731,10 +733,10 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
         )
 
 
-def test_locally_penalized_expected_improvement_builder_raises_for_invalid_grid_size() -> None:
+def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space, grid_size=-5)
+        LocallyPenalizedExpectedImprovement(search_space, num_samples=-5)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -777,22 +779,25 @@ def test_locally_penalized_expected_improvement_matches_expected_improvement() -
     lp_ei_values = lp_ei(xs[..., None, :])
     ei_values = ei(xs[..., None, :])
 
-    npt.assert_array_equal(lp_ei_values, tf.math.log(ei_values))
+    npt.assert_array_equal(lp_ei_values, ei_values)
 
 
-def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly():
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
+def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly(
+    penalizer: LipschitzPenalizationFunction,
+):
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
 
-    acq_builder = LocallyPenalizedExpectedImprovement(search_space)
+    acq_builder = LocallyPenalizedExpectedImprovement(search_space, penalizer=penalizer)
     acq_builder.prepare_acquisition_function(data, model, None)  # initialize
     lp_ei = acq_builder.prepare_acquisition_function(data, model, pending_points)
     best = acq_builder._eta
     lipshitz_constant = acq_builder._lipschitz_constant
     ei = expected_improvement(model, best)
-    penalizer = soft_local_penalizer(model, pending_points, lipshitz_constant, best)
+    penalizer = penalizer(model, pending_points, lipshitz_constant, best)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -801,22 +806,30 @@ def test_locally_penalized_expected_improvement_combines_base_and_penalization_c
     ei_values = ei(xs[..., None, :])
     penal_values = penalizer(xs[..., None, :])
 
-    npt.assert_array_equal(lp_ei_values, tf.math.log(ei_values) + tf.math.log(penal_values))
+    npt.assert_array_equal(
+        lp_ei_values, tf.math.exp(tf.math.log(ei_values) + tf.math.log(penal_values))
+    )
 
 
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_soft_local_penalization_raises_for_invalid_batch_size(at: TensorType) -> None:
+def test_lipschitz_penalizers_raises_for_invalid_batch_size(
+    at: TensorType, penalizer: LipschitzPenalizationFunction
+) -> None:
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
     best = tf.constant([0], dtype=tf.float64)
     lipshitz_constant = tf.constant([1], dtype=tf.float64)
-    lp = soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+    lp = penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         lp(at)
 
 
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
-def test_soft_local_penalization_raises_for_invalid_pending_points_shape(pending_points) -> None:
+def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
+    pending_points, penalizer: LipschitzPenalizationFunction
+) -> None:
     best = tf.constant([0], dtype=tf.float64)
     lipshitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):

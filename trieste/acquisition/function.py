@@ -756,6 +756,8 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
     points and returns the expected improvment acquisition function penalized around those points.
+    An estimate of the objective function's Lipschitz constant is used to control the size
+    of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
     acqusition function. By iteratively building a batch of points by maximizing an acquisition
@@ -765,16 +767,17 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     Local penalization is applied to the acquisition function multiplicatively. However, to
     improve numerical stability, we perfom additive penalization in a log space.
 
-    For our penalization function, we implement the soft penalization strategy
-    of :cite:`Gonzalez:2016`, where an estimate of the objective function's Lipschitz
-    constant is used to control the size of penalization.
-
     The Lipschitz constant and additional penalization parameters are estimated once
     when first preparing the acquisition function with no pending points. These estimates
     are reused for all subsequent function calls.
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 500):
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 500,
+        penalizer: LipschitzPenalizationFunction = None,
+    ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Size of the random sample over which the Lipschitz constant
@@ -784,6 +787,11 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         if num_samples <= 0:
             raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
+
+        if penalizer is None:
+            penalizer = soft_local_penalizer
+
+        self._lipschitz_penalizer = penalizer
 
         self._lipschitz_constant = None
         self._eta = None
@@ -834,27 +842,30 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         if self._lipschitz_constant is None:
             raise ValueError("Local penalization must be first called with no pending_points.")
 
-
         if pending_points is None:
-            return expected_improvement(model, self._eta)  # no penalization required if no pending_points.
+            return expected_improvement(
+                model, self._eta
+            )  # no penalization required if no pending_points.
 
         tf.debugging.assert_shapes(
             [(pending_points, ["N", len(self._search_space.upper)])],
             message="pending_points must be of shape [N,D]",
         )
 
-        penalization = soft_local_penalizer(
+        penalization = self._lipschitz_penalizer(
             model, pending_points, self._lipschitz_constant, self._eta
         )
 
         def penalized_acquisition(x: TensorType) -> TensorType:
-            log_acq = tf.math.log(expected_improvement(model, self._eta)(x)) + tf.math.log(penalization(x))
+            log_acq = tf.math.log(expected_improvement(model, self._eta)(x)) + tf.math.log(
+                penalization(x)
+            )
             return tf.math.exp(log_acq)
 
         return penalized_acquisition
 
 
-PenalizationFunction = Callable[[TensorType], TensorType]
+LipschitzPenalizationFunction = Callable[[TensorType], TensorType]
 """
 An :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single
 value that described how heavily it should be penalized (a positive quantity).
@@ -870,9 +881,9 @@ def soft_local_penalizer(
     pending_points: TensorType,
     lipschitz_constant: TensorType,
     eta: TensorType,
-) -> PenalizationFunction:
+) -> LipschitzPenalizationFunction:
     r"""
-    Return the local penalization function used for single-objective greedy batch Bayesian
+    Return the soft local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Gonzalez:2016`.
 
     Soft penalization returns the probability that a candidate point does not belong
@@ -912,6 +923,51 @@ def soft_local_penalizer(
 
         normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
         penalization = normal.cdf(standardised_distances)
+        return tf.reduce_prod(penalization, axis=-1)
+
+    return penalization_function
+
+
+def hard_local_penalizer(
+    model: ProbabilisticModel,
+    pending_points: TensorType,
+    lipschitz_constant: TensorType,
+    eta: TensorType,
+) -> LipschitzPenalizationFunction:
+    r"""
+    Return the hard local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Alvi:2019`.
+
+    Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective
+    See :cite:`Alvi:2019` for details. Our implementation follows theirs, with the penalization from
+    a set of pending points being the product of the individual penalizations.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(
+            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+        )
+
+        p = -5  # following experiments of :cite:`Alvi:2019`.
+        penalization = ((pairwise_distances / (radius + scale)) ** p + 1) ** (1 / p)
+
         return tf.reduce_prod(penalization, axis=-1)
 
     return penalization_function
