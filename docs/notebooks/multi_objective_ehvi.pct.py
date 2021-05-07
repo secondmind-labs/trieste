@@ -83,7 +83,7 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
 #
-# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. Which is convenient of use in multi-objective optimization as numerous models may exist simultaneously representing different objectives. 
+# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. 
 
 
 # %%
