@@ -215,7 +215,7 @@ def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
     assert max(gumbel_samples) < min(fmean)
 
 
-@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[]])])
+@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
 def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
@@ -225,7 +225,7 @@ def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_min_value_entropy_search_raises_for_invalid_batch_size(at: TensorType) -> None:
-    mes = min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+    mes = min_value_entropy_search(QuadraticMeanAndRBFKernel(), tf.constant([[1.0], [2.0]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         mes(at)
@@ -233,7 +233,7 @@ def test_min_value_entropy_search_raises_for_invalid_batch_size(at: TensorType) 
 
 def test_min_value_entropy_search_returns_correct_shape() -> None:
     model = QuadraticMeanAndRBFKernel()
-    gumbel_samples = tf.constant([1.0])
+    gumbel_samples = tf.constant([[1.0], [2.0]])
     query_at = tf.linspace([[-10.0]], [[10.0]], 5)
     evals = min_value_entropy_search(model, gumbel_samples)(query_at)
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
@@ -252,7 +252,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
-    gumbel_sample = tf.constant([1.0], dtype=tf.float64)
+    gumbel_sample = tf.constant([[1.0]], dtype=tf.float64)
     mes_evals = min_value_entropy_search(model, gumbel_sample)(xs[..., None, :])
 
     mean, variance = model.predict(xs)
