@@ -72,6 +72,6 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
     obs_hv = Pareto(dataset.observations).hypervolume_indicator(ref_point)
     ideal_pf = tf.cast(VLMOP2().gen_pareto_optimal_points(100), dtype=tf.float64)
-    idea_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
+    ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
-    assert tf.math.log(idea_hv - obs_hv) < -3.5
+    assert tf.math.log(ideal_hv - obs_hv) < -3.5
