@@ -83,7 +83,7 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
 #
-# We utilize a new model wrapper: `ModelStack` to stack these two independent GP in a single model that can be represented by "OBJECTIVE" at once. `ModelStack`could wrap a list of models and working as a (independent) multi-output model. Which is convenient of use in multi-objective optimization as numerous models may exist simultaneously representing different objectives. 
+# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. Which is convenient of use in multi-objective optimization as numerous models may exist simultaneously representing different objectives. 
 
 
 # %%
@@ -127,7 +127,7 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualize the queried data across the design space.  
-# The cross represented dots are initial sampled points by `search_space.sample`, the dots are bo-obtained points.
+# We represent the initial points as crosses and the points obtained by our optimization loop as dots. 
 
 # %%
 datasets = result.try_get_final_datasets()
