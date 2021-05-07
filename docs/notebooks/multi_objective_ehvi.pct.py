@@ -51,7 +51,7 @@ initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
-# ... and visualise the data across the design space.
+# ... and visualise the data across the design space: each figure contains the contour lines of each objective function.
 
 # %%
 _, ax = plot_function_2d(
@@ -71,7 +71,7 @@ plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# ... and in the objective space
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple. 
 
 # %%
 plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
@@ -81,7 +81,9 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# In this example we model the two objective functions individually with their own Gaussian process models. For problems where the objective functions are similar it may make sense to build a joint model rather than a model stack.
+# In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
+#
+# We utilize a new model wrapper: `ModelStack` to stack these two independent GP in a single model that can be represented by "OBJECTIVE" at once. `ModelStack`could wrap a list of models and working as a (independent) multi-output model. Which is convenient of use in multi-objective optimization as numerous models may exist simultaneously representing different objectives. 
 
 
 # %%
@@ -149,7 +151,7 @@ plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# Visualize in objective space. Purple dots denote the nondominated points.
+# Visualize in objective space. Purple dots denote the non-dominated points.
 
 # %%
 plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
@@ -157,22 +159,22 @@ plt.show()
 
 # %% [markdown]
 # We can also visualize how a performance metric evolved with respect to the number of BO iterations.
-# First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the true Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
+# First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the actual Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
 
 # %% [markdown]
 #
 # $$
-# log_{10}\ \text{HV}_{diff} = log_{10}(\text{HV}_{\text{true}} - \text{HV}_{\text{bo-obtained}})
+# log_{10}\ \text{HV}_{\text{diff}} = log_{10}(\text{HV}_{\text{actual}} - \text{HV}_{\text{bo-obtained}})
 # $$
 #
 
 # %% [markdown]
-# First we need to calculate the $\text{HV}_{\text{ideal}}$, this is approximated by calculating the hypervolume based on ideal pareto front:
+# First we need to calculate the $\text{HV}_{\text{actual}}$ based on the actual Pareto front. For some multi-objective synthetic functions like VLMOP2, the actual Pareto front has a clear definition, thus we could use `gen_pareto_optimal_points` to near uniformly sample on the actual Pareto front. And use these generated Pareto optimal points to (approximately) calculate the hypervolume of the actual Pareto frontier:
 
 # %%
-ideal_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
+actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
 ref_point = get_reference_point(data_observations)
-idea_hv = Pareto(tf.cast(ideal_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
+idea_hv = Pareto(tf.cast(actual_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
 
 
 # %% [markdown]
