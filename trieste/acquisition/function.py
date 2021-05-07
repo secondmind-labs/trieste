@@ -220,7 +220,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
-    tf.debugging.assert_rank(samples, 1)
+    tf.debugging.assert_rank(samples, 2)
 
     if len(samples) == 0:
         raise ValueError("Gumbel samples must be populated.")
