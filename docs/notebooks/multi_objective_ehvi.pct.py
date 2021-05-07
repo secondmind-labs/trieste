@@ -28,7 +28,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 #
-# In this tutorial, we provide multi-objective optimization example using the expected hypervolume improvement acquisition function.
+# In this tutorial, we provide a multi-objective optimization example using the expected hypervolume improvement acquisition function.
 # We consider the VLMOP2 function --- a synthetic benchmark problem with two objectives. We start by defining the problem parameters.
 
 
@@ -187,7 +187,7 @@ def log_hv(observations):
 
 # %% [markdown]
 # Finally, we can plot the convergence of our performance metric over the course of the optimization.  
-# The blue vertical line in the figure denotes the iterations that after which BO starts.
+# The blue vertical line in the figure denotes the time after which BO starts.
 
 # %%
 fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
