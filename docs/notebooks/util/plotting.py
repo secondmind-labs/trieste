@@ -52,7 +52,7 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
     """
 
     if contour:
-        ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha, zorder=-1)
     else:
         ax.plot_surface(
             xx,
@@ -65,7 +65,6 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
         )
 
 
-# +
 def plot_function_2d(
     obj_func,
     mins: TensorType,
@@ -135,7 +134,7 @@ def plot_function_2d(
 
 
 def plot_acq_function_2d(
-    obj_func,
+    acq_func,
     mins: TensorType,
     maxs: TensorType,
     grid_density=20,
@@ -147,7 +146,7 @@ def plot_acq_function_2d(
     figsize=None,
 ):
     """
-    Wrapper for a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
+    Wrapper to produce a2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
@@ -159,13 +158,12 @@ def plot_acq_function_2d(
     :param ylabel:
     :param figsize:
     """
+    def batched_func(x):
+        return acq_func(tf.expand_dims(x,axis=-2))
     
-    def batch_dimension_wrapper(x):
-        return obj_func(tf.expand_dims(x,-2))
-    return  plot_function_2d(batch_dimension_wrapper(obj_func),mins,maxs,grid_density,contour,log,title,xlabel,ylabel,figsize)
+    return plot_function_2d(batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize)
 
 
-# -
 
 def format_point_markers(
     num_pts,
