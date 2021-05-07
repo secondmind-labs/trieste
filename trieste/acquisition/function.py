@@ -214,9 +214,9 @@ def augmented_expected_improvement(
         greater than one.
     """
 
-    if  (hasattr(model.model, "likelihood") and hasattr(model.model.likelihood, "variance")):  # type: ignore
+    if  (hasattr(model, "model") and hasattr(model.model, "likelihood") and hasattr(model.model.likelihood, "variance")):  # type: ignore
         noise_variance = model.model.likelihood.variance  # type: ignore
-    elif (hasattr(model.model, "likelihood_layer") and hasattr(model.model.likelihood_layer, "likelihood") and hasattr(model.model.likelihood_layer.likelihood,"variance")):
+    elif (hasattr(model, "model") and hasattr(model.model, "likelihood_layer") and hasattr(model.model.likelihood_layer, "likelihood") and hasattr(model.model.likelihood_layer.likelihood,"variance")):
         noise_variance = model.model.likelihood_layer.likelihood.variance
     else:
         raise ValueError(
@@ -311,7 +311,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
-    tf.debugging.assert_rank(samples, 1)
+    tf.debugging.assert_rank(samples, 2)
 
     if len(samples) == 0:
         raise ValueError("Gumbel samples must be populated.")
@@ -328,7 +328,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-        gamma = (samples - fmean) / fsd
+        gamma = (tf.squeeze(samples) - fmean) / fsd
 
         minus_cdf = 1 - normal.cdf(gamma)
         minus_cdf = tf.clip_by_value(
@@ -340,6 +340,84 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
 
     return acquisition
 
+
+
+class GIBBON(MinValueEntropySearch):
+    r"""
+    Sequential GIBBON (Noisy MES)
+    """
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        gumbel_sampler = GumbelSampler(self._num_samples, model)
+
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        gumbel_samples = gumbel_sampler.sample(query_points)
+
+        return gibbon(model, gumbel_samples)
+
+
+def gibbon(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
+    r"""
+    Sequential GIBBON (Noisy MES)
+    """
+    tf.debugging.assert_rank(samples, 2)
+
+    if len(samples) == 0:
+        raise ValueError("Gumbel samples must be populated.")
+
+    if  (hasattr(model, "model") and hasattr(model.model, "likelihood") and hasattr(model.model.likelihood, "variance")):  # type: ignore
+        noise_variance = model.model.likelihood.variance  # type: ignore
+    elif (hasattr(model, "model") and hasattr(model.model, "likelihood_layer") and hasattr(model.model.likelihood_layer, "likelihood") and hasattr(model.model.likelihood_layer.likelihood,"variance")):
+        noise_variance = model.model.likelihood_layer.likelihood.variance
+    else:
+        raise ValueError(
+            """
+            GIBBON only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
+        )
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        fsd = tf.math.sqrt(fvar)
+        fsd = tf.clip_by_value(
+            fsd, 1.0e-8, fmean.dtype.max
+        )  # clip below to improve numerical stability
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (tf.squeeze(samples) - fmean) / fsd
+
+
+        minus_cdf = 1 - normal.cdf(gamma)
+        minus_cdf = tf.clip_by_value(
+            minus_cdf, 1.0e-8, 1
+        )  # clip below to improve numerical stability
+        ratio = normal.prob(gamma) / minus_cdf
+        rho = fsd / tf.math.sqrt(fsd**2+noise_variance)
+
+        f_acqu_x = -0.5 * tf.math.log(1 + (rho**2)*ratio*(gamma-ratio))
+
+        return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
+
+    return acquisition
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
     """
