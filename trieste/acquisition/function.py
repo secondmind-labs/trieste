@@ -237,7 +237,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-        gamma = (samples - fmean) / fsd
+        gamma = (tf.squeeze(samples) - fmean) / fsd
 
         minus_cdf = 1 - normal.cdf(gamma)
         minus_cdf = tf.clip_by_value(
