@@ -2,7 +2,7 @@
 # # Batch Bayesian Optimization with Batch Expected Improvement and Local Penalization
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates how to perfom batch Bayesian optimization with `trieste`.
+# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates two ways to perfom batch Bayesian optimization with `trieste`.
 
 # %%
 import numpy as np
@@ -66,11 +66,11 @@ models = map_values(create_model, model_spec)
 
 # %% [markdown]
 # ## Batch acquisition functions.
-# To peform batch BO, we must define a batch acquisition function. Two popular batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement` and `LocallyPenalizedExpectedImprovement`. Although both of these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, `LocallyPenalizedExpectedImprovement` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. In practice, `BatchMonteCarloExpectedImprovement` has superior performance for small batches (`batch_size`<10) but scales poorly for larger batches.
+# To perform batch BO, we must define a batch acquisition function. Two popular batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement` and `LocallyPenalizedExpectedImprovement`. Although both of these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, `LocallyPenalizedExpectedImprovement` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. In practice, `BatchMonteCarloExpectedImprovement` can be expected to have superior performance for small batches (`batch_size`<10) but scales poorly for larger batches.
 #
-# Note that both of these acquisition functions have controllable parameters. In particular, `BatchMonteCarloExpectedImprovement` is computed using a Monte-Carlo method (so it requires a `sample_size`), but uses a reparametrisation trick to make it deterministic. `LocallyPenalizedExpectedImprovement` has parameters controlling the degree of penalization that must be estimated from a random sample of  `num_samples` model predictions.
+# Note that both of these acquisition functions have controllable parameters. In particular, `BatchMonteCarloExpectedImprovement` is computed using a Monte-Carlo method (so it requires a `sample_size`), but uses a reparametrisation trick to make it deterministic. `LocallyPenalizedExpectedImprovement` has parameters controlling the degree of penalization that must be estimated from a random sample of `num_samples` model predictions.
 #
-# We now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocallyPenalizedExpectedImprovement` focuses evaluations into more promising areas of the space.
+# We now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocallyPenalizedExpectedImprovement` focuses evaluations in the most promising areas of the space.
 
 # %%
 from trieste.acquisition import (
