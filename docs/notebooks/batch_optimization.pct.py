@@ -23,7 +23,7 @@ tf.random.set_seed(42)
 # We begin our optimization after collecting five function evaluations from random locations in the search space.
 
 # %%
-from trieste.utils.objectives import branin, mk_observer
+from trieste.utils.objectives import branin, mk_observer, BRANIN_MINIMUM
 from trieste.acquisition.rule import OBJECTIVE
 from trieste.space import Box
 
@@ -121,20 +121,29 @@ cbar.set_label("EI", rotation=270)
 # ## Run the batch optimization loop
 # We can now run a batch Bayesian optimization loop by defining a `BayesianOptimizer` with one of our batch acquisition functions.
 #
+# We reuse the same ` EfficientGlobalOptimization` rule as in the purely sequential case, however we pass in one of batch acquisition functions and set `num_query_points`>1.
+#
 # We'll run each method for ten steps for batches of three points.
+
+# %% [markdown]
+# First we run ten steps of `LocallyPenalizedExpectedImprovement
 
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+
+batch_ei_rule = EfficientGlobalOptimization(
     num_query_points=3, builder=batch_ei.using(OBJECTIVE)
 )
 qei_result = bo.optimize(10, initial_data, models, acquisition_rule=batch_ei_rule)
 
+# %% [markdown]
+# and then repeat with `LocallyPenalizedExpectedImprovement`.
 
-local_penalization_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+# %%
+local_penalization_rule = EfficientGlobalOptimization(
     num_query_points=3, builder=local_penalization.using(OBJECTIVE)
 )
 local_penalization_result = bo.optimize(
@@ -149,22 +158,22 @@ local_penalization_result = bo.optimize(
 # %%
 from util.plotting import plot_regret
 
-qei_observations = qei_result.try_get_final_datasets()[OBJECTIVE].observations.numpy() - 0.397887
+qei_observations = qei_result.try_get_final_datasets()[OBJECTIVE].observations - BRANIN_MINIMUM
 qei_min_idx = tf.squeeze(tf.argmin(qei_observations, axis=0))
 local_penalization_observations = (
-    local_penalization_result.try_get_final_datasets()[OBJECTIVE].observations.numpy() - 0.397887
+    local_penalization_result.try_get_final_datasets()[OBJECTIVE].observations - BRANIN_MINIMUM
 )
 local_penalization_min_idx = tf.squeeze(tf.argmin(local_penalization_observations, axis=0))
 
 _, ax = plt.subplots(1, 2)
-plot_regret(qei_observations, ax[0], num_init=5, idx_best=qei_min_idx)
+plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
 ax[0].set_ylim(0.1, 100)
 ax[0].set_xlabel("# evaluations")
 ax[0].set_title("Batch-EI")
 
-plot_regret(local_penalization_observations, ax[1], num_init=5, idx_best=local_penalization_min_idx)
+plot_regret(local_penalization_observations.numpy(), ax[1], num_init=5, idx_best=local_penalization_min_idx)
 ax[1].set_yscale("log")
 ax[1].set_xlabel("# evaluations")
 ax[0].set_ylim(0.1, 100)
