@@ -12,8 +12,8 @@ from util.plotting_plotly import plot_function_plotly
 import matplotlib.pyplot as plt
 import trieste
 
-np.random.seed(42)
-tf.random.set_seed(42)
+np.random.seed(12345)
+tf.random.set_seed(12345)
 
 # %% [markdown]
 # ## Describe the problem
@@ -69,42 +69,53 @@ models = map_values(create_model, model_spec)
 # To perform batch BO, we must define a batch acquisition function. Two popular batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement` and `LocallyPenalizedExpectedImprovement`. Although both of these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, `LocallyPenalizedExpectedImprovement` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. In practice, `BatchMonteCarloExpectedImprovement` can be expected to have superior performance for small batches (`batch_size`<10) but scales poorly for larger batches.
 #
 # Note that both of these acquisition functions have controllable parameters. In particular, `BatchMonteCarloExpectedImprovement` is computed using a Monte-Carlo method (so it requires a `sample_size`), but uses a reparametrisation trick to make it deterministic. `LocallyPenalizedExpectedImprovement` has parameters controlling the degree of penalization that must be estimated from a random sample of `num_samples` model predictions.
-#
-# We now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocallyPenalizedExpectedImprovement` focuses evaluations in the most promising areas of the space.
+
+# %% [markdown]
+# First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-from trieste.acquisition import (
-    BatchMonteCarloExpectedImprovement,
-    ExpectedImprovement,
-    LocallyPenalizedExpectedImprovement,
-)
+from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
+batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
+points_chosen_by_batch_ei, _ = EfficientGlobalOptimization(
+    num_query_points=10, builder=batch_ei_acq.using(OBJECTIVE)
+).acquire(search_space, initial_data, models)
+
+# %% [markdown]
+# and then do the same with `LocallyPenalizedExpectedImprovement`.
+
+# %%
+from trieste.acquisition import LocallyPenalizedExpectedImprovement
+
+local_penalization_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
+points_chosen_by_local_penalization, _ = EfficientGlobalOptimization(
+    num_query_points=10, builder=local_penalization_acq.using(OBJECTIVE)
+).acquire(search_space, initial_data, models)
+
+# %% [markdown]
+# We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocallyPenalizedExpectedImprovement` focuses evaluations in the most promising areas of the space.
+
+# %%
+from trieste.acquisition import ExpectedImprovement
+
+# plot standard EI acquisition function
 ei = ExpectedImprovement()
 ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, models)
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100)
 
-batch_ei = BatchMonteCarloExpectedImprovement(sample_size=1000)
-chosen_points, _ = EfficientGlobalOptimization(
-    num_query_points=10, builder=batch_ei.using(OBJECTIVE)
-).acquire(search_space, initial_data, models)
 plt.scatter(
-    chosen_points[:, 0],
-    chosen_points[:, 1],
+    points_chosen_by_batch_ei[:, 0],
+    points_chosen_by_batch_ei[:, 1],
     color="red",
     lw=5,
     label="Batch-EI",
     marker="*",
     zorder=1,
 )
-
-local_penalization = LocallyPenalizedExpectedImprovement(search_space, num_samples=1000)
-chosen_points, _ = EfficientGlobalOptimization(
-    num_query_points=10, builder=local_penalization.using(OBJECTIVE)
-).acquire(search_space, initial_data, models)
 plt.scatter(
-    chosen_points[:, 0],
-    chosen_points[:, 1],
+    points_chosen_by_local_penalization[:, 0],
+    points_chosen_by_local_penalization[:, 1],
     color="cyan",
     lw=10,
     label="Local \nPenalization",
@@ -126,25 +137,23 @@ cbar.set_label("EI", rotation=270)
 # We'll run each method for ten steps for batches of three points.
 
 # %% [markdown]
-# First we run ten steps of `LocallyPenalizedExpectedImprovement
+# First we run ten steps of `BatchMonteCarloExpectedImprovement`
 
 # %%
-from trieste.acquisition.rule import EfficientGlobalOptimization
-
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 
 batch_ei_rule = EfficientGlobalOptimization(
-    num_query_points=3, builder=batch_ei.using(OBJECTIVE)
+    num_query_points=3, builder=batch_ei_acq.using(OBJECTIVE)
 )
 qei_result = bo.optimize(10, initial_data, models, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]
-# and then repeat with `LocallyPenalizedExpectedImprovement`.
+# and then repeat the same optimization with `LocallyPenalizedExpectedImprovement`.
 
 # %%
 local_penalization_rule = EfficientGlobalOptimization(
-    num_query_points=3, builder=local_penalization.using(OBJECTIVE)
+    num_query_points=3, builder=local_penalization_acq.using(OBJECTIVE)
 )
 local_penalization_result = bo.optimize(
     10, initial_data, models, acquisition_rule=local_penalization_rule
@@ -153,7 +162,7 @@ local_penalization_result = bo.optimize(
 # %% [markdown]
 # We can visualize the performance of each of these methods by plotting the trajectory of the regret (suboptimality) of the best observed solution as the optimization progresses. We denote this trajectory with the orange line, the start of the optimization loop with the blue line and the best overall point as a purple dot.
 #
-# For this particular problem (and random seed), we see that `LocallyPenalizedExpectedImprovement` provides more effective batch optimization, finding a solution with a magnitude smaller regret than `BatchMonteCarloExpectedImprovement` over the same optimization budget.
+# For this particular problem (and random seed), we see that `BatchMonteCarloExpectedImprovement` provides more effective batch optimization, finding a solution with a magnitude smaller regret than  `LocallyPenalizedExpectedImprovement` under the same optimization budget.
 
 # %%
 from util.plotting import plot_regret
@@ -169,14 +178,14 @@ _, ax = plt.subplots(1, 2)
 plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
-ax[0].set_ylim(0.1, 100)
+ax[0].set_ylim(0.01, 100)
 ax[0].set_xlabel("# evaluations")
 ax[0].set_title("Batch-EI")
 
 plot_regret(local_penalization_observations.numpy(), ax[1], num_init=5, idx_best=local_penalization_min_idx)
 ax[1].set_yscale("log")
 ax[1].set_xlabel("# evaluations")
-ax[0].set_ylim(0.1, 100)
+ax[1].set_ylim(0.01, 100)
 ax[1].set_title("Local Penalization")
 
 # %% [markdown]

@@ -14,8 +14,8 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
 import tensorflow as tf
+from matplotlib import cm
 
 from trieste.type import TensorType
 from trieste.utils import to_numpy
@@ -158,11 +158,13 @@ def plot_acq_function_2d(
     :param ylabel:
     :param figsize:
     """
-    def batched_func(x):
-        return acq_func(tf.expand_dims(x,axis=-2))
-    
-    return plot_function_2d(batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize)
 
+    def batched_func(x):
+        return acq_func(tf.expand_dims(x, axis=-2))
+
+    return plot_function_2d(
+        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize
+    )
 
 
 def format_point_markers(

@@ -24,6 +24,7 @@ The following tutorials explore various optimization problems using Trieste.
    :maxdepth: 1
 
    notebooks/expected_improvement
+   notebook/batch_optimization
    notebooks/thompson_sampling
    notebooks/inequality_constraints
    notebooks/failure_ego
