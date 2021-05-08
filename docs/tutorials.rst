@@ -27,6 +27,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/thompson_sampling
    notebooks/inequality_constraints
    notebooks/failure_ego
+   notebooks/multi_objective_ehvi
 
 Frequently asked questions
 --------------------------
