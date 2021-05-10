@@ -129,7 +129,7 @@ float64.
 def hartmann_3(x: TensorType) -> TensorType:
     """
     The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
-    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details
+    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.
 
     :param x: The points at which to evaluate the function, with shape [..., 3].
     :return: The function values at ``x``, with shape [..., 1].
@@ -164,11 +164,52 @@ float64.
 """
 
 
+def shekel_4(x: TensorType) -> TensorType:
+    """
+    The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+    minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
+    Note that we rescale the original problem, which is typically defined
+    over `[0, 10]^4`.
+
+    :param x: The points at which to evaluate the function, with shape [..., 4].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 4))])
+
+    y: TensorType = x * 10.0
+
+    beta = [0.1, 0.2, 0.2, 0.4, 0.4, 0.6, 0.3, 0.7, 0.5, 0.5]
+    C = [
+        [4.0, 1.0, 8.0, 6.0, 3.0, 2.0, 5.0, 8.0, 6.0, 7.0],
+        [4.0, 1.0, 8.0, 6.0, 7.0, 9.0, 3.0, 1.0, 2.0, 3.6],
+        [4.0, 1.0, 8.0, 6.0, 3.0, 2.0, 5.0, 8.0, 6.0, 7.0],
+        [4.0, 1.0, 8.0, 6.0, 7.0, 9.0, 3.0, 1.0, 2.0, 3.6],
+    ]
+
+    inner_sum = tf.reduce_sum((tf.expand_dims(y, -1) - C) ** 2, 1)
+    inner_sum += tf.cast(tf.transpose(beta), dtype=inner_sum.dtype)
+    return -tf.reduce_sum(inner_sum ** (-1), -1, keepdims=True)
+
+
+SHEKEL_4_MINIMIZER = tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64)
+"""
+The global minimizer for the :func:`shekel_4` function, with shape [1, 4] and
+dtype float64.
+"""
+
+
+SHEKEL_4_MINIMUM = tf.constant([-10.5363], tf.float64)
+"""
+The global minimum for the :func:`shekel_4` function, with shape [1] and dtype
+float64.
+"""
+
+
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
     :cite:`Picheny2013` for details.
-
     This function (also known as the Banana function) is unimodal, however the minima
     lies in a narrow valley.
 
@@ -204,9 +245,8 @@ def ackley_5(x: TensorType) -> TensorType:
     The Ackley test function over :math:`[0, 1]^5`. This function has
     many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
     for details.
-
     Note that we rescale the original problem, which is typically defined
-    over `[-32.768, 32.768]`
+    over `[-32.768, 32.768]`.
 
     :param x: The points at which to evaluate the function, with shape [..., 5].
     :return: The function values at ``x``, with shape [..., 1].
