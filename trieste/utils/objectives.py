@@ -32,6 +32,7 @@ def branin(x: TensorType) -> TensorType:
     """
     The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
     :cite:`Picheny2013` for details.
+
     :param x: The points at which to evaluate the function, with shape [..., 2].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -69,6 +70,7 @@ def gramacy_lee(x: TensorType) -> TensorType:
     """
     The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
     :cite:`gramacy2012cases` for details.
+
     :param x: Where to evaluate the function, with shape [..., 1].
     :return: The function values, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -94,6 +96,7 @@ def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     """
     A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
     :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
+
     :param x: The points at which to evaluate the function, with shape [..., 2].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -126,7 +129,8 @@ float64.
 def hartmann_3(x: TensorType) -> TensorType:
     """
     The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
-    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details
+    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.
+
     :param x: The points at which to evaluate the function, with shape [..., 3].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -162,9 +166,8 @@ float64.
 
 def shekel_4(x: TensorType) -> TensorType:
     """
-    The Shekel test function over :math:`[0, 1]^4`. This function has
-    ten local minima and a single global minima.
-    See https://www.sfu.ca/~ssurjano/shekel.html for details.
+    The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+    minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
     Note that we rescale the original problem, which is typically defined
     over `[0, 10]^4`.
 
@@ -209,6 +212,7 @@ def rosenbrock_4(x: TensorType) -> TensorType:
     :cite:`Picheny2013` for details.
     This function (also known as the Banana function) is unimodal, however the minima
     lies in a narrow valley.
+
     :param x: The points at which to evaluate the function, with shape [..., 4].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -243,6 +247,7 @@ def ackley_5(x: TensorType) -> TensorType:
     for details.
     Note that we rescale the original problem, which is typically defined
     over `[-32.768, 32.768]`.
+
     :param x: The points at which to evaluate the function, with shape [..., 5].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -283,6 +288,7 @@ def hartmann_6(x: TensorType) -> TensorType:
     The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
     6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html
     for details.
+
     :param x: The points at which to evaluate the function, with shape [..., 6].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
