@@ -34,6 +34,8 @@ from trieste.utils.objectives import (
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     ROSENBROCK_4_MINIMIZER,
     ROSENBROCK_4_MINIMUM,
+    SHEKEL_4_MINIMIZER,
+    SHEKEL_4_MINIMUM,
     ackley_5,
     branin,
     gramacy_lee,
@@ -42,6 +44,7 @@ from trieste.utils.objectives import (
     logarithmic_goldstein_price,
     mk_observer,
     rosenbrock_4,
+    shekel_4,
 )
 
 
@@ -57,6 +60,7 @@ from trieste.utils.objectives import (
         ),
         (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM),
         (rosenbrock_4, ROSENBROCK_4_MINIMIZER, ROSENBROCK_4_MINIMUM),
+        (shekel_4, SHEKEL_4_MINIMIZER, SHEKEL_4_MINIMUM),
         (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM),
         (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM),
     ],
@@ -66,7 +70,7 @@ def test_objective_maps_minimizers_to_minimum(
 ) -> None:
     objective_values_at_minimizers = objective(minimizers)
     tf.debugging.assert_shapes([(objective_values_at_minimizers, [len(minimizers), 1])])
-    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-5)
+    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -81,6 +85,7 @@ def test_objective_maps_minimizers_to_minimum(
         ),
         (hartmann_3, Box([0.0] * 3, [1.0] * 3), HARTMANN_3_MINIMUM),
         (rosenbrock_4, Box([0.0] * 4, [1.0] * 4), ROSENBROCK_4_MINIMUM),
+        (shekel_4, Box([0.0] * 4, [1.0] * 4), SHEKEL_4_MINIMUM),
         (ackley_5, Box([0.0] * 5, [1.0] * 5), ACKLEY_5_MINIMUM),
         (hartmann_6, Box([0.0] * 6, [1.0] * 6), HARTMANN_6_MINIMUM),
     ],

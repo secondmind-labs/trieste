@@ -17,9 +17,14 @@ from typing import Callable, Mapping, TypeVar
 from typing_extensions import Final
 
 from . import objectives, pareto
+from .inducing_point_selectors import (
+    GIBBON,
+    ConditionalVariance,
+    InducingPointSelector,
+    KMeans,
+    UniformSampler,
+)
 from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
-from .inducing_point_selectors import InducingPointSelector, UniformSampler, KMeans, ConditionalVariance, GIBBON
-
 
 K = TypeVar("K")
 """ An unbound type variable. """

@@ -10,8 +10,12 @@ class InducingPointInitializer:
         self._randomized = randomized
         self.seed = seed if self.randomized else None
 
-    def __call__(self, training_inputs: np.ndarray, M: int,
-                 kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray]):
+    def __call__(
+        self,
+        training_inputs: np.ndarray,
+        M: int,
+        kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray],
+    ):
         if self.seed is not None:
             restore_random_state = np.random.get_state()
             np.random.seed(self.seed)
@@ -25,8 +29,12 @@ class InducingPointInitializer:
 
         return Z
 
-    def compute_initialisation(self, training_inputs: np.ndarray, M: int,
-                               kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray]):
+    def compute_initialisation(
+        self,
+        training_inputs: np.ndarray,
+        M: int,
+        kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray],
+    ):
         raise NotImplementedError
 
     @property
@@ -40,7 +48,9 @@ class InducingPointInitializer:
             return False
 
     def __repr__(self):
-        params = ', '.join([f'{k}={v}' for k, v in self.__dict__.items() if k not in ['_randomized']])
+        params = ", ".join(
+            [f"{k}={v}" for k, v in self.__dict__.items() if k not in ["_randomized"]]
+        )
         return f"{type(self).__name__}({params})"
 
 
@@ -103,8 +113,13 @@ class Kmeans(InducingPointInitializer):
 
 
 class ConditionalVariance(InducingPointInitializer):
-    def __init__(self, sample: Optional[bool] = False, threshold: Optional[int] = 0.0, seed: Optional[int] = 0,
-                 **kwargs):
+    def __init__(
+        self,
+        sample: Optional[bool] = False,
+        threshold: Optional[int] = 0.0,
+        seed: Optional[int] = 0,
+        **kwargs,
+    ):
         """
         :param sample: bool, if True, sample points into subset to use with weights based on variance, if False choose
         point with highest variance at each iteration
@@ -115,8 +130,12 @@ class ConditionalVariance(InducingPointInitializer):
         self.sample = sample
         self.threshold = threshold
 
-    def compute_initialisation(self, training_inputs: np.ndarray, M: int,
-                               kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray]):
+    def compute_initialisation(
+        self,
+        training_inputs: np.ndarray,
+        M: int,
+        kernel: Callable[[np.ndarray, Optional[np.ndarray], Optional[bool]], np.ndarray],
+    ):
         """
         The version of this code without sampling follows the Greedy approximation to MAP for DPPs in
         @incollection{NIPS2018_7805,
@@ -160,7 +179,7 @@ class ConditionalVariance(InducingPointInitializer):
         ci = np.zeros((M - 1, N))  # [M,N]
         for m in range(M - 1):
             j = int(indices[m])  # int
-            new_Z = training_inputs[j:j + 1]  # [1,D]
+            new_Z = training_inputs[j : j + 1]  # [1,D]
             dj = np.sqrt(di[j])  # float
             cj = ci[:m, j]  # [m, 1]
             Lraw = np.array(kernel(training_inputs, new_Z, full_cov=True))
@@ -180,7 +199,9 @@ class ConditionalVariance(InducingPointInitializer):
             # sum of di is tr(Kff-Qff), if this is small things are ok
             if np.sum(np.clip(di, 0, None)) < self.threshold:
                 indices = indices[:m]
-                warnings.warn("ConditionalVariance: Terminating selection of inducing points early.")
+                warnings.warn(
+                    "ConditionalVariance: Terminating selection of inducing points early."
+                )
                 break
         indices = indices.astype(int)
         Z = training_inputs[indices]
@@ -188,10 +209,13 @@ class ConditionalVariance(InducingPointInitializer):
         return Z, indices
 
     def __repr__(self):
-        params = ', '.join([f'{k}={v}' for k, v in self.__dict__.items()
-                            if
-                            k not in ['_randomized'] and
-                            not (k == "threshold" and self.threshold == 0.0)])
+        params = ", ".join(
+            [
+                f"{k}={v}"
+                for k, v in self.__dict__.items()
+                if k not in ["_randomized"] and not (k == "threshold" and self.threshold == 0.0)
+            ]
+        )
         return f"{type(self).__name__}({params})"
 
 
