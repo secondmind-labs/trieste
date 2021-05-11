@@ -777,7 +777,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[..., PenalizationFunction] = None,
-        base_acquisition_function_builder: Optional[SingleModelAcquisitionFunctionBuilder] = None,
+        base_acquisition_function_builder: Optional[SingleModelAcquisitionBuilder] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -795,11 +795,15 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
-        self._base_builder = ExpectedImprovement() if base_acquisition_function_builder is None else base_acquisition_function_builder
-        
+        self._base_builder = (
+            ExpectedImprovement()
+            if base_acquisition_function_builder is None
+            else base_acquisition_function_builder
+        )
+
         self._lipschitz_constant = None
         self._eta = None
-        self._base_acquisition_function : Optional[AcquisitionFunction] = None
+        self._base_acquisition_function: Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
         self,
