@@ -19,7 +19,11 @@ from typing import Any, Dict, Union
 import gpflow
 import tensorflow as tf
 
-from .model_interfaces import TrainableProbabilisticModel, supported_models
+from .model_interfaces import (
+    TrainableProbabilisticModel,
+    TrainableNonProbabilisticModel,
+    supported_models,
+)
 from .optimizer import create_optimizer
 
 
@@ -85,10 +89,12 @@ ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
-def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
+def create_model(config: ModelSpec) -> Union[TrainableProbabilisticModel, TrainableNonProbabilisticModel]:
     """
-    :param config: A :class:`TrainableProbabilisticModel` or configuration of a model.
-    :return: A :class:`~trieste.models.TrainableProbabilisticModel` build according to ``config``.
+    :param config: A :class:`TrainableProbabilisticModel` or
+        :class:`~trieste.models.TrainableNonProbabilisticModel`, or configuration of a model.
+    :return: A :class:`~trieste.models.TrainableProbabilisticModel` or
+        :class:`~trieste.models.TrainableNonProbabilisticModel` build according to ``config``.
     """
     if isinstance(config, ModelConfig):
         return config.create_model_interface()
@@ -96,4 +102,6 @@ def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
         return ModelConfig(**config).create_model_interface()
     elif isinstance(config, TrainableProbabilisticModel):
         return config
-    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel.")
+    elif isinstance(config, TrainableNonProbabilisticModel):
+        return config
+    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel or a TrainableNonProbabilisticModel.")

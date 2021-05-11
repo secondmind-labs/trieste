@@ -27,7 +27,8 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.models import GaussianProcessRegression
+from trieste.models import GaussianProcessRegression, NeuralNetworkEnsemble
+from trieste.models.keras_networks import get_tensor_spec_from_data, MultilayerFcNetwork
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
@@ -48,7 +49,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
         (17, ThompsonSampling(500, 3)),
     ],
 )
-def test_optimizer_finds_minima_of_the_branin_function(
+def test_gp_optimizer_finds_minima_of_the_branin_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
     search_space = Box([0, 0], [1, 1])
@@ -66,8 +67,54 @@ def test_optimizer_finds_minima_of_the_branin_function(
     model = build_model(initial_data[OBJECTIVE])
 
     dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        BayesianOptimizer(observer, search_space).optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .try_get_final_datasets()[OBJECTIVE]
+    )
+
+    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+
+    best_y = dataset.observations[arg_min_idx]
+    best_x = dataset.query_points[arg_min_idx]
+
+    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+    # these accuracies are the current best for the given number of optimization steps, which makes
+    # this is a regression test
+    assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
+    npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        (17, ThompsonSampling(500, 3)),
+    ],
+)
+def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
+    num_steps: int, acquisition_rule: AcquisitionRule
+) -> None:
+    search_space = Box([0, 0], [1, 1])
+    ensemble_size = 3
+
+    def build_model(data: Dataset) -> NeuralNetworkEnsemble:
+        input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(data)
+        networks = [
+            MultilayerFcNetwork(
+                input_tensor_spec,
+                output_tensor_spec,
+                num_hidden_layers=0,
+                bootstrap_data=False,
+            )
+            for _ in range(ensemble_size)
+        ]
+        return NeuralNetworkEnsemble(networks, tf.keras.optimizers.Adam())
+
+    initial_query_points = search_space.sample(5)
+    observer = mk_observer(branin, OBJECTIVE)
+    initial_data = observer(initial_query_points)
+    model = build_model(initial_data[OBJECTIVE])
+    dataset = (
+        BayesianOptimizer(observer, search_space).optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
         .try_get_final_datasets()[OBJECTIVE]
     )
 

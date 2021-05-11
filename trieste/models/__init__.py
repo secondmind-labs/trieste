@@ -28,6 +28,15 @@ from .model_interfaces import (
     SparseVariational,
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
+    NonProbabilisticModel,
+    TrainableNonProbabilisticModel,
+    NeuralNetworkEnsemble,
     module_deepcopy,
     supported_models,
+)
+from .keras_networks import (
+    KerasNetwork,
+    MultilayerFcNetwork,
+    get_tensor_spec_from_data,
+    sample_with_replacement,
 )

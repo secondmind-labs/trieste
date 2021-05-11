@@ -27,7 +27,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, NonProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import AcquisitionFunctionBuilder, ExpectedImprovement
@@ -54,7 +54,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         self,
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, Union[ProbabilisticModel, NonProbabilisticModel]],
         state: S | None,
     ) -> tuple[TensorType, S]:
         """
