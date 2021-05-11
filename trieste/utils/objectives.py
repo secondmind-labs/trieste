@@ -278,6 +278,41 @@ float64.
 """
 
 
+
+def rastrigin_5(x: TensorType) -> TensorType:
+    """
+    The Rastrigin test function over :math:`[0, 1]^5`. This function has
+    many local minima and a global minima. See https://www.sfu.ca/~ssurjano/rastr.html
+    for details.
+    Note that we rescale the original problem, which is typically defined
+    over `[-5.12, 5.12]`.
+    :param x: The points at which to evaluate the function, with shape [..., 5].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 5))])
+
+    x = (x - 0.5) * (5.12 * 2.0)
+    func = 50 + tf.reduce_sum(x**2 - 10.0 * tf.math.cos(2.0 * math.pi * x),axis=-1, keepdims=True)
+    return (func - 90.0) / 22.0
+
+
+RASTRIGIN_5_MINIMIZER = tf.constant([[0.5, 0.5, 0.5, 0.5, 0.5]], tf.float64)
+"""
+The global minimizer for the :func:`rastrigin_5` function, with shape [1, 5] and
+dtype float64.
+"""
+
+
+RASTRIGIN_5_MINIMUM = tf.constant([-90.0/22.0], tf.float64)
+"""
+The global minimum for the :func:`rastrigin_5` function, with shape [1] and dtype
+float64.
+"""
+
+
+
+
 def hartmann_6(x: TensorType) -> TensorType:
     """
     The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
