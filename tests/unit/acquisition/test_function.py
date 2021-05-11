@@ -769,7 +769,7 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
 )
 def test_locally_penalized_acquisition_matches_base_acquisition(
-    base_builder: AcquisitionFunctionBuilder,
+    base_builder,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -801,7 +801,7 @@ def test_locally_penalized_acquisition_matches_base_acquisition(
 )
 def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly(
     penalizer: Callable[..., PenalizationFunction],
-    base_builder: AcquisitionFunctionBuilder,
+    base_builder,
 ):
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
