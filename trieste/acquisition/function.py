@@ -777,7 +777,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[..., PenalizationFunction] = None,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder = None,
+        base_acquisition_function_builder: Optional[SingleModelAcquisitionFunctionBuilder] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -793,17 +793,13 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
             raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
 
-        if penalizer is None:
-            penalizer = soft_local_penalizer
-        self._lipschitz_penalizer = penalizer
+        self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
-        if base_acquisition_function_builder is None:
-            base_acquisition_function_builder = ExpectedImprovement()
-        self._base_builder = base_acquisition_function_builder
-
+        self._base_builder = ExpectedImprovement() if base_acquisition_function_builder is None else base_acquisition_function_builder
+        
         self._lipschitz_constant = None
         self._eta = None
-        self._base_acquisition_function = None
+        self._base_acquisition_function : Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
         self,
@@ -854,7 +850,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
             def soft_plus_acquisition_function(
                 x: TensorType,
-            ) -> TensorType:  # require stricly positive acquisition functions
+            ) -> TensorType:  # require strictly positive acquisition functions
                 return tf.math.softplus(base_acquisition_function(x))
 
             self._base_acquisition_function = soft_plus_acquisition_function
