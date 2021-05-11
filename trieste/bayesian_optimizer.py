@@ -236,6 +236,7 @@ class BayesianOptimizer(Generic[SP]):
         current_best=[]
 
         for step in range(num_steps):
+            print(f"starting step {step}")
             if track_state:
                 history.append(Record(datasets, models, acquisition_state))
 
