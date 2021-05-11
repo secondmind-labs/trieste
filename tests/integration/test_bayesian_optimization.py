@@ -48,7 +48,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
             ),
         ),
         (
-            10,
+            15,
             EfficientGlobalOptimization(
                 LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
                 num_query_points=3,
