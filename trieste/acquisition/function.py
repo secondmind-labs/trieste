@@ -751,17 +751,18 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         """
 
 
-class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
+class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
-    points and returns the expected improvment acquisition function penalized around those points.
+    points and returns a base acquisition function penalized around those points.
     An estimate of the objective function's Lipschitz constant is used to control the size
     of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acqusition function. By iteratively building a batch of points by maximizing an acquisition
-    function that is clipped around the values correponding to locations close to the already
+    acqusition function. All that we require is that the acquisition function takes strictly
+    positive values. By iteratively building a batch of points though sequentially maximizing
+    this acquisition function but down-weighted around locations close to the already
     chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
@@ -795,11 +796,19 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
-        self._base_builder = (
-            ExpectedImprovement()
-            if base_acquisition_function_builder is None
-            else base_acquisition_function_builder
-        )
+        if base_acquisition_function_builder is None:
+            self._base_builder = ExpectedImprovement()
+        elif isinstance(
+            base_acquisition_function_builder, (ExpectedImprovement, MinValueEntropySearch)
+        ):
+            self._base_builder = base_acquisition_function_builder
+        else:
+            raise ValueError(
+                f"""
+                Local penalization can only be applied to strictly positive acquisition functions,
+                we got {base_acquisition_function_builder}.
+                """
+            )
 
         self._lipschitz_constant = None
         self._eta = None
@@ -848,16 +857,9 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
             self._lipschitz_constant = lipschitz_constant
             self._eta = eta
 
-            base_acquisition_function = self._base_builder.prepare_acquisition_function(
+            self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
                 dataset, model
             )
-
-            def soft_plus_acquisition_function(
-                x: TensorType,
-            ) -> TensorType:  # require strictly positive acquisition functions
-                return tf.math.softplus(base_acquisition_function(x))
-
-            self._base_acquisition_function = soft_plus_acquisition_function
 
         if (self._lipschitz_constant is None) or (self._base_acquisition_function is None):
             raise ValueError("Local penalization must be first called with no pending_points.")

@@ -42,7 +42,7 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    LocallyPenalizedExpectedImprovement,
+    LocalPenalization,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
@@ -729,7 +729,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space=space).prepare_acquisition_function(
+        LocalPenalization(search_space=space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel()
         )
 
@@ -737,7 +737,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space, num_samples=-5)
+        LocalPenalization(search_space, num_samples=-5)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -746,7 +746,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
-    builder = LocallyPenalizedExpectedImprovement(search_space=space)
+    builder = LocalPenalization(search_space=space)
     builder.prepare_acquisition_function(
         data, QuadraticMeanAndRBFKernel(), None
     )  # first initialize
@@ -759,25 +759,30 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     search_space = Box([0, 0], [1, 1])
     pending_points = tf.zeros([1, 2])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space).prepare_acquisition_function(
+        LocalPenalization(search_space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel(), pending_points
         )
+
+
+def test_locally_penalized_expected_improvement_raises_when_called_with_invalid_base() -> None:
+    search_space = Box([0, 0], [1, 1])
+    base_builder = NegativeLowerConfidenceBound()
+    with pytest.raises(ValueError):
+        LocalPenalization(search_space, base_acquisition_function_builder=base_builder)
 
 
 @random_seed
 @pytest.mark.parametrize(
     "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
 )
-def test_locally_penalized_acquisition_matches_base_acquisition(
+def test_locally_penalized_acquisitions_match_base_acquisition(
     base_builder,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
 
-    lp_acq_builder = LocallyPenalizedExpectedImprovement(
-        search_space, base_acquisition_function_builder=base_builder
-    )
+    lp_acq_builder = LocalPenalization(search_space, base_acquisition_function_builder=base_builder)
     lp_acq = lp_acq_builder.prepare_acquisition_function(data, model, None)
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
@@ -789,9 +794,9 @@ def test_locally_penalized_acquisition_matches_base_acquisition(
     base_acq_values = base_acq(xs[..., None, :])
 
     if isinstance(base_builder, ExpectedImprovement):
-        npt.assert_array_equal(lp_acq_values, tf.math.softplus(base_acq_values))
+        npt.assert_array_equal(lp_acq_values, base_acq_values)
     else:  # check sampling-based acquisition functions are close
-        npt.assert_allclose(lp_acq_values, tf.math.softplus(base_acq_values), atol=0.001)
+        npt.assert_allclose(lp_acq_values, base_acq_values, atol=0.001)
 
 
 @random_seed
@@ -799,7 +804,7 @@ def test_locally_penalized_acquisition_matches_base_acquisition(
 @pytest.mark.parametrize(
     "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
 )
-def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly(
+def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalizer: Callable[..., PenalizationFunction],
     base_builder,
 ):
@@ -808,7 +813,7 @@ def test_locally_penalized_expected_improvement_combines_base_and_penalization_c
     model = QuadraticMeanAndRBFKernel()
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
 
-    acq_builder = LocallyPenalizedExpectedImprovement(
+    acq_builder = LocalPenalization(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
     acq_builder.prepare_acquisition_function(data, model, None)  # initialize
@@ -827,9 +832,7 @@ def test_locally_penalized_expected_improvement_combines_base_and_penalization_c
     lp_acq_values = lp_acq(xs[..., None, :])
     base_acq_values = base_acq(xs[..., None, :])
     penal_values = penalizer(xs[..., None, :])
-    penalized_base_acq = tf.math.exp(
-        tf.math.log(tf.math.softplus(base_acq_values)) + tf.math.log(penal_values)
-    )
+    penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penal_values))
 
     if isinstance(base_builder, ExpectedImprovement):
         npt.assert_array_equal(lp_acq_values, penalized_base_acq)
