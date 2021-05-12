@@ -17,7 +17,7 @@ random.seed(3)
 
 # %%
 import trieste
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.observer import OBJECTIVE
 from trieste.utils.objectives import branin
 
 
@@ -75,7 +75,7 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, history = bo.optimize(15, initial_data, models, acquisition_rule).astuple()
+result, history = bo.optimize_multi(15, initial_data, models, acquisition_rule).astuple()
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.
@@ -103,7 +103,7 @@ if result.is_err:
 
     observer.manual_fix()
 
-    result, new_history = bo.optimize(
+    result, new_history = bo.optimize_multi(
         15 - len(history),
         history[-1].datasets,
         history[-1].models,

@@ -25,10 +25,10 @@ from typing import Generic, TypeVar, cast, overload
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
-from .observer import Observer
+from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
@@ -121,7 +121,7 @@ class BayesianOptimizer(Generic[SP]):
         return f"BayesianOptimizer({self._observer!r}, {self._search_space!r})"
 
     @overload
-    def optimize(
+    def optimize_multi(
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
@@ -132,7 +132,7 @@ class BayesianOptimizer(Generic[SP]):
         ...
 
     @overload
-    def optimize(
+    def optimize_multi(
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
@@ -144,7 +144,7 @@ class BayesianOptimizer(Generic[SP]):
     ) -> OptimizationResult[S]:
         ...
 
-    def optimize(
+    def optimize_multi(
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
@@ -160,7 +160,7 @@ class BayesianOptimizer(Generic[SP]):
 
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
-              ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
+              ``acquisition_rule``'s :meth:`acquire_multi` method, passing it the ``search_space``,
               ``datasets``, models built from the ``model_specs``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
@@ -170,9 +170,9 @@ class BayesianOptimizer(Generic[SP]):
         `absl` at level `logging.ERROR`).
 
         **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
-        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will be
-        updated during the optimization process. For example, if ``track_state`` is `True`, a copied
-        model will be used on each optimization step. Use the models in the return value for
+        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize_multi` will
+        be updated during the optimization process. For example, if ``track_state`` is `True`, a
+        copied model will be used on each optimization step. Use the models in the return value for
         reliable access to the updated models.
 
         **Type hints:**
@@ -242,7 +242,7 @@ class BayesianOptimizer(Generic[SP]):
                     models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
 
-                query_points, acquisition_state = acquisition_rule.acquire(
+                query_points, acquisition_state = acquisition_rule.acquire_multi(
                     self._search_space, datasets, models, acquisition_state
                 )
 
@@ -270,3 +270,93 @@ class BayesianOptimizer(Generic[SP]):
 
         record = Record(datasets, models, acquisition_state)
         return OptimizationResult(Ok(record), history)
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        dataset: Dataset,
+        model_spec: ModelSpec,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        dataset: Dataset,
+        model_spec: ModelSpec,
+        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    def optimize(
+        self,
+        num_steps: int,
+        dataset: Dataset,
+        model_spec: ModelSpec,
+        acquisition_rule: AcquisitionRule[S, SP] | None = None,
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[S]:
+        """
+        A convenience wrapper for :meth:`optimize_multi` that uses only one model, dataset pair.
+
+        Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
+        :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
+
+        For each step in ``num_steps``, this method:
+            - Finds the next points with which to query the ``observer`` using the
+              ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
+              ``dataset``, model built from the ``model_spec``, and current acquisition state.
+            - Queries the ``observer`` *once* at those points.
+            - Updates the dataset and model with the data from the ``observer``.
+
+        If any errors are raised during the optimization loop, this method will catch and return
+        them instead, along with the history of the optimization process, and print a message (using
+        `absl` at level `logging.ERROR`).
+
+        **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
+        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will be
+        updated during the optimization process. For example, if ``track_state`` is `True`, a copied
+        model will be used on each optimization step. Use the models in the return value for
+        reliable access to the updated models.
+
+        :param num_steps: The number of optimization steps to run.
+        :param dataset: The known observer query points and observations.
+        :param model_spec: The model to use for the dataset.
+        :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+            on each optimization step. Defaults to
+            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+            arguments. Note that if the default is used, this implies that
+            the search space can be any :class:`~trieste.space.SearchSpace`, and the
+            acquisition state returned in the :class:`OptimizationResult` will be `None`.
+        :param acquisition_state: The acquisition state to use on the first optimization step.
+            This argument allows the caller to restore the optimization process from an existing
+            :class:`Record`.
+        :param track_state: If `True`, this method saves the optimization state at the start of each
+            step. Models and acquisition state are copied using `copy.deepcopy`.
+        :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
+            the final optimization data, models and acquisition state, or, if an exception was
+            raised while executing the optimization loop, it contains the exception raised. In
+            either case, the :attr:`history` element is the history of the data, models and
+            acquisition state at the *start* of each optimization step (up to and including any step
+            that fails to complete). The history will never include the final optimization result.
+        :raise ValueError: If any of the following are true:
+
+            - ``num_steps`` is negative.
+        """
+        return self.optimize_multi(
+            num_steps,
+            {OBJECTIVE: dataset},
+            {OBJECTIVE: model_spec},
+            acquisition_rule,  # type: ignore
+            acquisition_state,
+            track_state=track_state,
+        )

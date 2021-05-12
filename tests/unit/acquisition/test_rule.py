@@ -29,14 +29,10 @@ from trieste.acquisition import (
     NegativeLowerConfidenceBound,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
-from trieste.acquisition.rule import (
-    OBJECTIVE,
-    EfficientGlobalOptimization,
-    ThompsonSampling,
-    TrustRegion,
-)
+from trieste.acquisition.rule import EfficientGlobalOptimization, ThompsonSampling, TrustRegion
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.type import TensorType
 
@@ -79,7 +75,7 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     search_space = Box([-1], [1])
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire_multi(search_space, datasets, models)
 
 
 def test_efficient_global_optimization_raises_for_no_query_points() -> None:
@@ -103,7 +99,7 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
+    query_point, _ = ego.acquire_multi(search_space, {"": data}, {"": model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
@@ -123,7 +119,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
+    query_point, _ = ego.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
 
@@ -155,7 +151,7 @@ def test_greedy_batch_acquisition_rule_acquire() -> None:
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
+    query_point, _ = ego.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )
 
@@ -172,7 +168,7 @@ def test_trust_region_raises_for_missing_datasets_key(
     search_space = Box([-1], [1])
     rule = TrustRegion()
     with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+        rule.acquire_multi(search_space, datasets, models, None)
 
 
 def test_trust_region_for_default_state() -> None:
@@ -182,7 +178,7 @@ def test_trust_region_for_default_state() -> None:
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    query_point, state = tr.acquire(
+    query_point, state = tr.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, None
     )
 
@@ -205,7 +201,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     is_global = True
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
+    query_point, current_state = tr.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
@@ -229,7 +225,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     acquisition_space = search_space
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
+    query_point, current_state = tr.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
@@ -253,7 +249,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
+    _, current_state = tr.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 
@@ -276,7 +272,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
+    _, current_state = tr.acquire_multi(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
     )
 

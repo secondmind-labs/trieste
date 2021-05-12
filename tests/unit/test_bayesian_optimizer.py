@@ -33,11 +33,11 @@ from tests.util.model import (
     QuadraticMeanAndRBFKernel,
     rbf,
 )
-from trieste.acquisition.rule import OBJECTIVE, AcquisitionRule
+from trieste.acquisition.rule import AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
-from trieste.observer import Observer
+from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import Err, Ok
@@ -105,7 +105,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     optimizer = BayesianOptimizer(observer, Box([-1], [1]))
     data = mk_dataset([[0.5]], [[0.25]])
 
-    optimizer.optimize(
+    optimizer.optimize_multi(
         steps, {OBJECTIVE: data}, {OBJECTIVE: _PseudoTrainableQuadratic()}
     ).final_result.unwrap()
 
@@ -131,14 +131,14 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_keys(
     optimizer = BayesianOptimizer(lambda x: {"foo": Dataset(x, x)}, search_space)
     rule = FixedAcquisitionRule([[0.0]])
     with pytest.raises(ValueError):
-        optimizer.optimize(10, datasets, models, rule)
+        optimizer.optimize_multi(10, datasets, models, rule)
 
 
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
     optimizer = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
     data, models = {"foo": empty_dataset([1], [1])}, {"foo": _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError):
-        optimizer.optimize(3, data, models)
+        optimizer.optimize_multi(3, data, models)
 
 
 @pytest.mark.parametrize(
@@ -154,7 +154,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         def __init__(self):
             self.states_received = []
 
-        def acquire(
+        def acquire_multi(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -173,7 +173,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
     final_state, history = (
         BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1]))
-        .optimize(3, data, models, rule, starting_state)
+        .optimize_multi(3, data, models, rule, starting_state)
         .astuple()
     )
 
@@ -198,7 +198,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
     rule = FixedAcquisitionRule([[0.0]])
     result, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(10, {"": mk_dataset([[0.0]], [[0.0]])}, {"": _UncopyableModel()}, rule)
+        .optimize_multi(10, {"": mk_dataset([[0.0]], [[0.0]])}, {"": _UncopyableModel()}, rule)
         .astuple()
     )
 
@@ -218,7 +218,7 @@ class _BrokenModel(_PseudoTrainableQuadratic):
 
 
 class _BrokenRule(AcquisitionRule[None, SearchSpace]):
-    def acquire(
+    def acquire_multi(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
@@ -241,7 +241,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
-    result, history = optimizer.optimize(3, data, models, rule).astuple()
+    result, history = optimizer.optimize_multi(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -255,7 +255,7 @@ def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -
 
     data, models = {"": empty_dataset([1], [1])}, {"": _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError, match="num_steps"):
-        optimizer.optimize(num_steps, data, models)
+        optimizer.optimize_multi(num_steps, data, models)
 
 
 def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
@@ -276,7 +276,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             assert False
 
     class _UnusableRule(AcquisitionRule[None, Box]):
-        def acquire(
+        def acquire_multi(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -291,7 +291,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     data = {"": mk_dataset([[0.0]], [[0.0]])}
     result, history = (
         BayesianOptimizer(_unusable_observer, Box([-1], [1]))
-        .optimize(0, data, {"": _UnusableModel()}, _UnusableRule())
+        .optimize_multi(0, data, {"": _UnusableModel()}, _UnusableRule())
         .astuple()
     )
     assert history == []
@@ -313,7 +313,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     EXPONENTIAL = "exponential"
 
     class AdditionRule(AcquisitionRule[int, Box]):
-        def acquire(
+        def acquire_multi(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -352,7 +352,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
     data = (
         BayesianOptimizer(linear_and_exponential, Box(tf.constant([-2.0]), tf.constant([2.0])))
-        .optimize(20, data, models, AdditionRule())
+        .optimize_multi(20, data, models, AdditionRule())
         .try_get_final_datasets()
     )
 
@@ -369,7 +369,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
     data, models = {OBJECTIVE: empty_dataset([1], [1])}, {OBJECTIVE: _UncopyableModel()}
     history = (
         BayesianOptimizer(_quadratic_observer, Box([-1], [1]))
-        .optimize(5, data, models, track_state=False)
+        .optimize_multi(5, data, models, track_state=False)
         .history
     )
     assert len(history) == 0
@@ -377,7 +377,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
     class _CountingRule(AcquisitionRule[int, Box]):
-        def acquire(
+        def acquire_multi(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -406,7 +406,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
     model = _DecreasingVarianceModel(initial_data)
     _, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(3, {"": initial_data}, {"": model}, _CountingRule())
+        .optimize_multi(3, {"": initial_data}, {"": model}, _CountingRule())
         .astuple()
     )
 

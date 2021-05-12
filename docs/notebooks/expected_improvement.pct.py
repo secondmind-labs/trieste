@@ -34,7 +34,7 @@ fig.show()
 
 # %%
 import trieste
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.observer import OBJECTIVE
 
 observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
 
@@ -71,7 +71,7 @@ model = build_model(initial_data[OBJECTIVE])
 # %% [markdown]
 # ## Run the optimization loop
 #
-# We can now run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its `optimize` method.
+# We can now run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its `optimize_multi` method.
 #
 # The optimizer uses an acquisition rule to choose where in the search space to try on each optimization step. We'll use the default acquisition rule, which is Efficient Global Optimization with Expected Improvement.
 #
@@ -82,7 +82,7 @@ model = build_model(initial_data[OBJECTIVE])
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(15, initial_data, model)
+result = bo.optimize_multi(15, initial_data, model)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]
@@ -195,7 +195,7 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(
+result = bo.optimize_multi(
     5, result.try_get_final_datasets(), result.try_get_final_models()
 )
 dataset = result.try_get_final_datasets()[OBJECTIVE]
@@ -227,7 +227,7 @@ batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
 )
 
 model = build_model(initial_data[OBJECTIVE])
-batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
+batch_result = bo.optimize_multi(5, initial_data, model, acquisition_rule=batch_rule)
 
 # %% [markdown]
 # We can again visualise the GP model and query points.

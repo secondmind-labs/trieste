@@ -21,19 +21,21 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
-from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
+    SingleModelAcquisitionBuilder,
+    SingleModelGreedyAcquisitionBuilder,
 )
 from .optimizer import (
     AcquisitionOptimizer,
@@ -54,7 +56,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
     """ The central component of the acquisition API. """
 
     @abstractmethod
-    def acquire(
+    def acquire_multi(
         self,
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
@@ -85,12 +87,28 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         :return: The optimal points and the acquisition state for this step.
         """
 
+    def acquire(
+        self,
+        search_space: SP_contra,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        state: S | None,
+    ) -> tuple[TensorType, S]:
+        """
+        A convenience wrapper for :meth:`acquire_multi` that uses only one model, dataset pair.
 
-OBJECTIVE: Final[str] = "OBJECTIVE"
-"""
-A tag typically used by acquisition rules to denote the data sets and models corresponding to the
-optimization objective.
-"""
+        Return the optimal points within the specified ``search_space``, where optimality is defined
+        by the acquisition rule.
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param dataset: The known observer query points and observations.
+        :param models The model to use for the dataset.
+        :param state: The acquisition state from the previous step, if there was a previous step,
+            else `None`.
+        :return: The optimal points and the acquisition state for this step.
+        """
+        return self.acquire_multi(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, state)
 
 
 class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
@@ -98,18 +116,23 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | GreedyAcquisitionFunctionBuilder | None = None,
+        builder: Optional[
+            AcquisitionFunctionBuilder
+            | GreedyAcquisitionFunctionBuilder
+            | SingleModelAcquisitionBuilder
+            | SingleModelGreedyAcquisitionBuilder
+        ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
-            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
+            :class:`~trieste.acquisition.ExpectedImprovement`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
-        :param num_query_points: The number of points to acquire.
+        :param num_query_points: The number of points to acquire_multi.
         """
 
         if num_query_points <= 0:
@@ -119,7 +142,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
         if builder is None:
             if num_query_points == 1:
-                builder = ExpectedImprovement().using(OBJECTIVE)
+                builder = ExpectedImprovement()
             else:
                 raise ValueError(
                     """Need to specify a batch acquisition function when number of query points
@@ -130,11 +153,15 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             optimizer = automatic_optimizer_selector
 
         if isinstance(
-            builder, AcquisitionFunctionBuilder
-        ):  # Joint batch acquisitions require batch optimizers
+            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
+        ):
+            builder = builder.using(OBJECTIVE)
+
+        if isinstance(builder, AcquisitionFunctionBuilder):
+            # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder = builder
+        self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
 
@@ -145,7 +172,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         {self._optimizer!r},
         {self._num_query_points!r})"""
 
-    def acquire(
+    def acquire_multi(
         self,
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
@@ -186,7 +213,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
     def __init__(self, num_search_space_samples: int, num_query_points: int):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
-        :param num_query_points: The number of points to acquire.
+        :param num_query_points: The number of points to acquire_multi.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -203,7 +230,7 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
         """"""
         return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
 
-    def acquire(
+    def acquire_multi(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
@@ -266,7 +293,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | None = None,
+        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         optimizer: AcquisitionOptimizer[Box] | None = None,
@@ -282,7 +309,10 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             ``builder``. This must be able optimize over a :class:`Box`.
         """
         if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
+            builder = ExpectedImprovement()
+
+        if isinstance(builder, SingleModelAcquisitionBuilder):
+            builder = builder.using(OBJECTIVE)
 
         if optimizer is None:
             optimizer = optimize_continuous
@@ -296,7 +326,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         """"""
         return f"TrustRegion({self._builder!r}, {self._beta!r}, {self._kappa!r})"
 
-    def acquire(
+    def acquire_multi(
         self,
         search_space: Box,
         datasets: Mapping[str, Dataset],

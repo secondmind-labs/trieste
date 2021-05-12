@@ -17,11 +17,12 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
-from trieste.acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.models.model_interfaces import ModelStack
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.objectives import mk_observer
@@ -63,7 +64,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .optimize_multi(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
         .try_get_final_datasets()[OBJECTIVE]
     )
 

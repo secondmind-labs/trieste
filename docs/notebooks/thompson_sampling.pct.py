@@ -18,7 +18,7 @@ tf.random.set_seed(1793)
 # %%
 import trieste
 from trieste.utils.objectives import branin
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.observer import OBJECTIVE
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 
@@ -68,7 +68,7 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
+result = bo.optimize_multi(5, initial_data, model_config, acq_rule, track_state=False)
 dataset = result.try_get_final_datasets()[OBJECTIVE]
 
 # %% [markdown]

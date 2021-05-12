@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Callable, Mapping
 
 import tensorflow as tf
+from typing_extensions import Final
 
 from .data import Dataset
 from .type import TensorType
@@ -25,6 +26,12 @@ Observer = Callable[[TensorType], Mapping[str, Dataset]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
 datasets).
+"""
+
+OBJECTIVE: Final[str] = "OBJECTIVE"
+"""
+A tag typically used by acquisition rules to denote the data sets and models corresponding to the
+optimization objective.
 """
 
 

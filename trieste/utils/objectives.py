@@ -24,7 +24,7 @@ from collections.abc import Callable
 import tensorflow as tf
 
 from ..data import Dataset
-from ..observer import Observer
+from ..observer import OBJECTIVE, Observer
 from ..type import TensorType
 
 
@@ -329,7 +329,7 @@ float64.
 """
 
 
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:
+def mk_observer(objective: Callable[[TensorType], TensorType], key: str = OBJECTIVE) -> Observer:
     """
     :param objective: An objective function designed to be used with a single data set and model.
     :param key: The key to use to access the data from the observer result.

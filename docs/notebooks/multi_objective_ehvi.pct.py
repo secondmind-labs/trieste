@@ -13,7 +13,7 @@ from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, p
 # %%
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.observer import OBJECTIVE
 from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
@@ -123,7 +123,7 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehv
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+result = bo.optimize_multi(num_steps, initial_data, models, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualize the queried data across the design space.  
