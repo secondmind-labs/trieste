@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -751,17 +751,18 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         """
 
 
-class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
+class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
-    points and returns the expected improvment acquisition function penalized around those points.
+    points and returns a base acquisition function penalized around those points.
     An estimate of the objective function's Lipschitz constant is used to control the size
     of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acqusition function. By iteratively building a batch of points by maximizing an acquisition
-    function that is clipped around the values correponding to locations close to the already
+    acqusition function. All that we require is that the acquisition function takes strictly
+    positive values. By iteratively building a batch of points though sequentially maximizing
+    this acquisition function but down-weighted around locations close to the already
     chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
@@ -777,24 +778,44 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[..., PenalizationFunction] = None,
+        base_acquisition_function_builder: Optional[
+            Union[ExpectedImprovement, MinValueEntropySearch]
+        ] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Size of the random sample over which the Lipschitz constant
             is estimated. We recommend scaling this with search space dimension.
+        :param penalizer: The chosen penalization method (defaults to soft penalization).
+        :param base_acquisition_function_builder: Base acquisition function to be
+            penalized (defaults to expected improvement). Local penalization only supports
+            strictly positive acquisition functions.
+
         """
         self._search_space = search_space
         if num_samples <= 0:
             raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
 
-        if penalizer is None:
-            penalizer = soft_local_penalizer
+        self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
-        self._lipschitz_penalizer = penalizer
+        if base_acquisition_function_builder is None:
+            self._base_builder: SingleModelAcquisitionBuilder = ExpectedImprovement()
+        elif isinstance(
+            base_acquisition_function_builder, (ExpectedImprovement, MinValueEntropySearch)
+        ):
+            self._base_builder = base_acquisition_function_builder
+        else:
+            raise ValueError(
+                f"""
+                Local penalization can only be applied to strictly positive acquisition functions,
+                we got {base_acquisition_function_builder}.
+                """
+            )
 
         self._lipschitz_constant = None
         self._eta = None
+        self._base_acquisition_function: Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
         self,
@@ -814,7 +835,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
         if (
             pending_points is None
-        ):  # only compute penalization parameters once per optimization step
+        ):  # compute penalization params and base acquisition once per optimization step
             samples = self._search_space.sample(num_samples=self._num_samples)
             samples = tf.concat([dataset.query_points, samples], 0)
 
@@ -839,13 +860,18 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
             self._lipschitz_constant = lipschitz_constant
             self._eta = eta
 
-        if self._lipschitz_constant is None:
+            if isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
+                self._base_acquisition_function = expected_improvement(model, self._eta)
+            else:
+                self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
+                    dataset, model
+                )
+
+        if (self._lipschitz_constant is None) or (self._base_acquisition_function is None):
             raise ValueError("Local penalization must be first called with no pending_points.")
 
         if pending_points is None:
-            return expected_improvement(
-                model, self._eta
-            )  # no penalization required if no pending_points.
+            return self._base_acquisition_function  # no penalization required if no pending_points.
 
         tf.debugging.assert_shapes(
             [(pending_points, ["N", len(self._search_space.upper)])],
@@ -857,9 +883,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         )
 
         def penalized_acquisition(x: TensorType) -> TensorType:
-            log_acq = tf.math.log(expected_improvement(model, self._eta)(x)) + tf.math.log(
-                penalization(x)
-            )
+            log_acq = tf.math.log(self._base_acquisition_function(x)) + tf.math.log(penalization(x))
             return tf.math.exp(log_acq)
 
         return penalized_acquisition
