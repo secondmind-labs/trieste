@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -751,7 +751,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         """
 
 
-class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
+class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
@@ -778,7 +778,9 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[..., PenalizationFunction] = None,
-        base_acquisition_function_builder: Optional[SingleModelAcquisitionBuilder] = None,
+        base_acquisition_function_builder: Optional[
+            Union[ExpectedImprovement, MinValueEntropySearch]
+        ] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -786,7 +788,8 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
             is estimated. We recommend scaling this with search space dimension.
         :param penalizer: The chosen penalization method (defaults to soft penalization).
         :param base_acquisition_function_builder: Base acquisition function to be
-            penalized (defaults to expected improvement).
+            penalized (defaults to expected improvement). Local penalization only supports
+            strictly positive acquisition functions.
 
         """
         self._search_space = search_space
@@ -797,7 +800,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
         if base_acquisition_function_builder is None:
-            self._base_builder = ExpectedImprovement()
+            self._base_builder: SingleModelAcquisitionBuilder = ExpectedImprovement()
         elif isinstance(
             base_acquisition_function_builder, (ExpectedImprovement, MinValueEntropySearch)
         ):
@@ -857,9 +860,12 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder):
             self._lipschitz_constant = lipschitz_constant
             self._eta = eta
 
-            self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
-                dataset, model
-            )
+            if isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
+                self._base_acquisition_function = expected_improvement(model, self._eta)
+            else:
+                self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
+                    dataset, model
+                )
 
         if (self._lipschitz_constant is None) or (self._base_acquisition_function is None):
             raise ValueError("Local penalization must be first called with no pending_points.")
