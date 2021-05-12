@@ -36,7 +36,7 @@ class Dataset:
 
     def __post_init__(self) -> None:
         """
-        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have
+        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have \
             rank less than two, or they have unequal shape in any but their last dimension.
         """
         tf.debugging.assert_rank_at_least(self.query_points, 2)

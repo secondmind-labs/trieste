@@ -50,7 +50,7 @@ def automatic_optimizer_selector(
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-        [..., 1].
+            [..., 1].
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
@@ -63,7 +63,8 @@ def automatic_optimizer_selector(
     else:
         raise NotImplementedError(
             f""" No optimizer currentely supports acquisition function
-                    maximisation over search spaces of type {space}"""
+                    maximisation over search spaces of type {space}.
+                    Try specifying the optimize_random optimizer"""
         )
 
 
@@ -74,7 +75,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-        [..., 1].
+            [..., 1].
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
     target_func_values = target_func(space.points[:, None, :])
@@ -91,15 +92,18 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches of size of 1.
+    An gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
+    of size of 1.
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-        [..., 1].
+            [..., 1].
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    trial_search_space = space.discretize(tf.minimum(2000, 500 * tf.shape(space.lower)[-1]))
 
+    num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
+
+    trial_search_space = space.discretize(num_samples)
     initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
 
     bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
@@ -122,11 +126,12 @@ def batchify(
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
-        single point with shape [1, D].
+            single point with shape [1, D].
     :param batch_size: The number of points in the batch.
     :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
     """
-    tf.debugging.assert_positive(batch_size)
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
@@ -140,5 +145,37 @@ def batchify(
             expanded_search_space, target_func_with_vectorized_inputs
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
+
+    return optimizer
+
+
+def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:
+    # Generate an acquistion optimizer that samples `num_samples` random points across the space.
+
+    if num_samples <= 0:
+        raise ValueError(f"num_samples must be positive, got {num_samples}")
+
+    def optimizer(space: SP, target_func: AcquisitionFunction) -> TensorType:
+        """
+        A random search :const:`AcquisitionOptimizer` defined for
+        any :class:'SearchSpace' with a :meth:`sample` and for batches of size of 1.
+        If we have a :class:'DiscreteSearchSpace' with fewer than `num_samples` points,
+        then we query all the points in the space.
+
+        :param space: The space over which to search.
+        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+                [..., 1].
+        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        """
+
+        if isinstance(space, DiscreteSearchSpace) and (num_samples > len(space.points)):
+            _num_samples = len(space.points)
+        else:
+            _num_samples = num_samples
+
+        samples = space.sample(_num_samples)
+        target_func_values = target_func(samples[:, None, :])
+        max_value_idx = tf.argmax(target_func_values, axis=0)[0]
+        return samples[max_value_idx : max_value_idx + 1]
 
     return optimizer

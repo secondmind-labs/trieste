@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable, Container, Mapping
-from typing import Any, List, NoReturn, Tuple, TypeVar, Union, cast
+from typing import Any, NoReturn, Sequence, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -55,23 +55,27 @@ def random_seed(f: C) -> C:
 T = TypeVar("T")
 """ Unbound type variable. """
 
-ListN = Union[
-    List[T],
-    List[List[T]],
-    List[List[List[T]]],
-    List[List[List[List[Any]]]],
+SequenceN = Union[
+    Sequence[T],
+    Sequence[Sequence[T]],
+    Sequence[Sequence[Sequence[T]]],
+    Sequence[Sequence[Sequence[Sequence[Any]]]],
 ]
-""" Type alias for a nested list with array shape. """
+""" Type alias for a nested sequence (e.g. list or tuple) with array shape. """
 
 
-def mk_dataset(query_points: ListN[List[float]], observations: ListN[List[float]]) -> Dataset:
+def mk_dataset(
+    query_points: SequenceN[Sequence[float]], observations: SequenceN[Sequence[float]]
+) -> Dataset:
     """
     :param query_points: The query points.
     :param observations: The observations.
     :return: A :class:`Dataset` containing the specified ``query_points`` and ``observations`` with
         dtype `tf.float64`.
     """
-    return Dataset(tf.cast(query_points, tf.float64), tf.cast(observations, tf.float64))
+    return Dataset(
+        tf.constant(query_points, dtype=tf.float64), tf.constant(observations, dtype=tf.float64)
+    )
 
 
 def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
@@ -112,12 +116,12 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
-    def __init__(self, query_points: ListN[List[float]]):
+    def __init__(self, query_points: SequenceN[Sequence[float]]):
         """
         :param query_points: The value to return on each step. Will be converted to a tensor with
             dtype `tf.float64`.
         """
-        self._qp = tf.cast(query_points, tf.float64)
+        self._qp = tf.constant(query_points, dtype=tf.float64)
 
     def __repr__(self) -> str:
         return f"FixedAcquisitionRule({self._qp!r})"
@@ -139,7 +143,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         return self._qp, None
 
 
-ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
+ShapeLike = Union[tf.TensorShape, Sequence[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
