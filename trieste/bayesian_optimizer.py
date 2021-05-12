@@ -52,6 +52,22 @@ class Record(Generic[S]):
     acquisition_state: S | None
     """ The acquisition state. """
 
+    @property
+    def dataset(self) -> Dataset:
+        """ The dataset when there is just one dataset. """
+        if len(self.datasets) == 1:
+            return next(iter(self.datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """ The model when there is just one dataset. """
+        if len(self.models) == 1:
+            return next(iter(self.models.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
 
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
@@ -90,6 +106,20 @@ class OptimizationResult(Generic[S]):
         """
         return self.final_result.unwrap().datasets
 
+    def try_get_final_dataset(self) -> Dataset:
+        """
+        Convenience method to attempt to get the final data for a single-objective run.
+
+        :return: The final data, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        :raise ValueError: If the optimization was not a single-objective run.
+        """
+        datasets = self.try_get_final_datasets()
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
+
     def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.
@@ -98,6 +128,19 @@ class OptimizationResult(Generic[S]):
         :raise Exception: If an exception occurred during optimization.
         """
         return self.final_result.unwrap().models
+
+    def try_get_final_model(self) -> TrainableProbabilisticModel:
+        """
+        Convenience method to attempt to get the final model for a single-objective run.
+
+        :return: The final model, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        """
+        models = self.try_get_final_models()
+        if len(models) == 1:
+            return next(iter(models.values()))
+        else:
+            raise ValueError(f"Expected single model, found {len(models)}")
 
 
 class BayesianOptimizer(Generic[SP]):
@@ -248,7 +291,13 @@ class BayesianOptimizer(Generic[SP]):
 
                 observer_output = self._observer(query_points)
 
-                datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
+                tagged_output = (
+                    observer_output
+                    if isinstance(observer_output, Mapping)
+                    else {OBJECTIVE: observer_output}
+                )
+
+                datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
                 for tag, model in models.items():
                     dataset = datasets[tag]

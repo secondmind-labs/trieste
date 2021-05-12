@@ -14,7 +14,7 @@
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
 
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Union
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -22,10 +22,10 @@ from typing_extensions import Final
 from .data import Dataset
 from .type import TensorType
 
-Observer = Callable[[TensorType], Mapping[str, Dataset]]
+Observer = Callable[[TensorType], Union[Dataset, Mapping[str, Dataset]]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
-datasets).
+or unlabelled datasets).
 """
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
