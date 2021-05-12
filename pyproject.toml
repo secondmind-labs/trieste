@@ -41,6 +41,7 @@ line_length = 100
 
 [tool.taskipy.tasks]
 tests = "pytest --mypy --cov trieste --cov-report html:htmlcov"
+quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
 mypy = "pytest --mypy --cache-clear -m mypy -v"
 pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"

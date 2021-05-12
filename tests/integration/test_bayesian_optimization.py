@@ -19,7 +19,7 @@ import tensorflow as tf
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
     BatchMonteCarloExpectedImprovement,
-    LocallyPenalizedExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
 )
 from trieste.acquisition.rule import (
     OBJECTIVE,
@@ -50,7 +50,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
         (
             10,
             EfficientGlobalOptimization(
-                LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
