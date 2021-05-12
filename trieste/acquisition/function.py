@@ -971,3 +971,181 @@ def hard_local_penalizer(
         return tf.reduce_prod(penalization, axis=-1)
 
     return penalization_function
+
+
+
+
+class GIBBON(SingleModelGreedyAcquisitionBuilder):
+    r"""
+
+    The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
+    of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the information 
+    gained about (i.e the change in entropy of) the objective function's minimum by evaluating a batch of 
+    candidate points. Batches are built in a greedy manner.
+
+    This implementation follows :cite:`Moss:2021` but is modified for function
+    minimisation (rather than maximisation).
+
+    """
+
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of the
+            objective function.
+        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+            scaling this with search space dimension.
+        """
+
+        self._search_space = search_space
+
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+        
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+        self._gumbel_samples = None
+
+
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The GIBBON acquisition function modified for objective minimisation.
+        :raise ValueError: if the first call does not have pending_points=None.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        if (
+            pending_points is None
+        ):  # only collect Gumbel samples once per optimization step
+
+            gumbel_sampler = GumbelSampler(self._num_samples, model)
+            query_points = self._search_space.sample(num_samples=self._grid_size)
+            tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+            query_points = tf.concat([dataset.query_points, query_points], 0)
+            self._gumbel_samples = gumbel_sampler.sample(query_points)
+
+           
+        if (self._gumbel_samples is None):
+            raise ValueError("GIBBON must be first called with no pending_points.")
+
+        return gibbon(model, self._gumbel_samples, pending_points)
+
+
+
+def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optional[TensorType] = None) -> AcquisitionFunction:
+    r"""
+
+    Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function of :cite:`Moss:2021`.
+
+    The GIBBON acquisition function consists of two terms --- a quality term and a diversity term. The
+    quality term measures the ammount of information that each individual batch element provides about the objective
+    function's minimal value :math:`y^*` (ensuring that evaluations are targeted in promising areas of the space), 
+    whereas the repulsion term encourages diversity within the batch (achieving high values for points with low 
+    predictive correlation). 
+
+
+    TO IMPLEMENT 
+
+    When using GIBBON for batch optimization, we calculate the additional information provided by adding a new 
+    candidate point to the current set of pending points, rather than calculating the information
+    provided by the whole batch. This allows a modest computational saving. GIBBON's repulsion term :math:`r=\log |C|` 
+    is given by the log determinant of the predictive correlation matrix :math:`C`
+    between the `m` pending points and the current candidate. The predictive covariance :math:`V`
+    can be expressed as :math:V = [[v, A], [A, B]]` for a tensor :math:`B` with shape [`m`,`m`] and so we efficientely
+    calculate :math:`|V|` using the formulat for the determinant of block matricies,
+    i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`. As the |B| term does not depend on x and we later take its log,
+    it provides only a translation of the acqusition function surface and can thus be ignored.
+
+
+
+    Note that when using GIBBON for purely sequential optimization, the repulsion term is not required.
+
+    
+    :param model: The model of the objective function.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :param pending_points: The points already chosen in the current batch.
+    :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    """
+    tf.debugging.assert_rank(samples, 2)
+    if len(samples) == 0:
+        raise ValueError("Gumbel samples must be populated.")
+
+
+    if pending_points is not None:
+        tf.debugging.assert_shapes(
+            [(pending_points, ["N", None])],
+            message="pending_points must be of shape [N,D]",
+        )
+
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        fsd = tf.math.sqrt(fvar)
+        fsd = tf.clip_by_value(
+            fsd, 1.0e-8, fmean.dtype.max
+        )  # clip below to improve numerical stability
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (tf.squeeze(samples) - fmean) / fsd
+
+        minus_cdf = 1 - normal.cdf(gamma)
+        minus_cdf = tf.clip_by_value(
+            minus_cdf, 1.0e-8, 1
+        )  # clip below to improve numerical stability
+        
+        ratio =  normal.prob(gamma) / minus_cdf
+        acq = tf.math.log(1 + ratio * (gamma - ratio))
+        quality_term =  -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True) # [len(x), 1]
+
+        tf.debugging.assert_shapes(
+            [(quality_term, [len(x), 1])],
+        )
+
+        if pending_points is None: # no repulsion term required if no pending_points
+            return quality_term 
+
+        tiled_pending_points = tf.tile(tf.expand_dims(pending_points,0),(len(x),1,1))
+        canididate_batches = tf.concat([x,tiled_pending_points],1) # len(x) x (1 + m) x d
+
+
+        V = model.predict_joint(canididate_batches)[1] # len(x) x 1 x (1 + m) x (1 + m)
+        L = tf.linalg.cholesky(tf.squeeze(V,-3))  # len(x) x (1 + m) x (1 + m)
+        L_diag = tf.linalg.diag_part(L) # len(x) x (1 + m)
+        V_log_determinant = 2.0 * tf.reduce_sum(tf.math.log(L_diag),axis = -1, keepdims=True)  # len(x) x 1
+        C_log_determinant = V_log_determinant - tf.math.log(fvar)
+    
+        repulsion_term = 0.5 * C_log_determinant # len(x) x 1
+
+
+        # A = 
+        # V = self.model(X_batches)
+        # # Evaluate terms required for A
+        # A = V.lazy_covariance_matrix[:, 0, 1:].unsqueeze(1)
+        # # batch_shape x 1 x m
+        # _, B = model.predict_joint(pending_points) # 1 x m x m
+        # L = tf.linalg.triangular_solve(tf.linalg.cholesk(B), A, lower=True)  # what shape?
+        # V_det = fvar - tf.linalg.matmul(L, L, transpose_a=True) # det of block matrix eq
+        # repulsion_term = V_det.log() - fvar.log() # Take logs and convert to correlations.
+        # repulsion_term = 0.5 * r.transpose(0, 1)
+        
+        return quality_term + repulsion_term
+
+    return acquisition

@@ -20,6 +20,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition.function import (
     BatchMonteCarloExpectedImprovement,
     LocallyPenalizedExpectedImprovement,
+    GIBBON,
 )
 from trieste.acquisition.rule import (
     OBJECTIVE,
@@ -39,23 +40,31 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (20, EfficientGlobalOptimization()),
         (
             15,
             EfficientGlobalOptimization(
-                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=2,
-            ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE),
                 num_query_points=3,
-            ),
-        ),
-        (15, TrustRegion()),
-        (17, ThompsonSampling(500, 3)),
+            )
+        )
+
+        # (20, EfficientGlobalOptimization()),
+        # (
+        #     15,
+        #     EfficientGlobalOptimization(
+        #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+        #         num_query_points=2,
+        #     ),
+        # ),
+        # (
+        #     10,
+        #     EfficientGlobalOptimization(
+        #         LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
+        #         num_query_points=3,
+        #     ),
+        # ),
+        # (15, TrustRegion()),
+        # (17, ThompsonSampling(500, 3)),
     ],
 )
 def test_optimizer_finds_minima_of_the_branin_function(
