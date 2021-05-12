@@ -22,10 +22,21 @@ from typing_extensions import Final
 from .data import Dataset
 from .type import TensorType
 
-Observer = Callable[[TensorType], Union[Dataset, Mapping[str, Dataset]]]
+SingleObserver = Callable[[TensorType], Dataset]
+"""
+Type alias for an observer of the objective function (that takes query points and returns an
+unlabelled dataset).
+"""
+
+MultiObserver = Callable[[TensorType], Mapping[str, Dataset]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
-or unlabelled datasets).
+datasets).
+"""
+
+Observer = Union[SingleObserver, MultiObserver]
+"""
+Type alias for an observer, returning either labelled datasets or a single unlabelled dataset.
 """
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
