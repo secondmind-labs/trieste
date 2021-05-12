@@ -769,7 +769,7 @@ def test_locally_penalized_expected_improvement_raises_when_called_with_invalid_
     base_builder = NegativeLowerConfidenceBound()
     with pytest.raises(ValueError):
         LocalPenalizationAcquisitionFunction(
-            search_space, base_acquisition_function_builder=base_builder
+            search_space, base_acquisition_function_builder=base_builder  # type: ignore
         )
 
 
