@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import cm
 
+from trieste.acquisition import AcquisitionFunction
 from trieste.type import TensorType
 from trieste.utils import to_numpy
 
@@ -69,7 +70,7 @@ def plot_function_2d(
     obj_func,
     mins: TensorType,
     maxs: TensorType,
-    grid_density=20,
+    grid_density: int = 20,
     contour=False,
     log=False,
     title=None,
@@ -134,10 +135,10 @@ def plot_function_2d(
 
 
 def plot_acq_function_2d(
-    acq_func,
+    acq_func: AcquisitionFunction,
     mins: TensorType,
     maxs: TensorType,
-    grid_density=20,
+    grid_density: int = 20,
     contour=False,
     log=False,
     title=None,
@@ -146,7 +147,7 @@ def plot_acq_function_2d(
     figsize=None,
 ):
     """
-    Wrapper to produce a2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
+    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
