@@ -103,7 +103,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param dataset: The known observer query points and observations.
-        :param models The model to use for the dataset.
+        :param models: The model to use for the dataset.
         :param state: The acquisition state from the previous step, if there was a previous step,
             else `None`.
         :return: The optimal points and the acquisition state for this step.

@@ -224,7 +224,7 @@ batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
 )
 
 model = build_model(initial_data)
-batch_result = bo.optimize_multi(5, initial_data, model, acquisition_rule=batch_rule)
+batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
 
 # %% [markdown]
 # We can again visualise the GP model and query points.
