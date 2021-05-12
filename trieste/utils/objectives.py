@@ -331,7 +331,7 @@ float64.
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: None) -> SingleObserver:
+def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
     ...
 
 
