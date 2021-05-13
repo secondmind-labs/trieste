@@ -108,11 +108,11 @@ class OptimizationResult(Generic[S]):
 
     def try_get_final_dataset(self) -> Dataset:
         """
-        Convenience method to attempt to get the final data for a single-objective run.
+        Convenience method to attempt to get the final data for a single dataset run.
 
         :return: The final data, if the optimization completed successfully.
         :raise Exception: If an exception occurred during optimization.
-        :raise ValueError: If the optimization was not a single-objective run.
+        :raise ValueError: If the optimization was not a single dataset run.
         """
         datasets = self.try_get_final_datasets()
         if len(datasets) == 1:
@@ -131,10 +131,11 @@ class OptimizationResult(Generic[S]):
 
     def try_get_final_model(self) -> TrainableProbabilisticModel:
         """
-        Convenience method to attempt to get the final model for a single-objective run.
+        Convenience method to attempt to get the final model for a single model run.
 
         :return: The final model, if the optimization completed successfully.
         :raise Exception: If an exception occurred during optimization.
+        :raise ValueError: If the optimization was not a single model run.
         """
         models = self.try_get_final_models()
         if len(models) == 1:
