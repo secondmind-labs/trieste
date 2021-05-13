@@ -112,7 +112,10 @@ class NonProbabilisticModel(ABC):
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
-        Return ``num_samples`` samples at ``query_points``. Some versions of non probabilistic models can still sample from a distribution even if not having direct access to it. Non probabilistic models that cannot sample should simply pass
+        Return ``num_samples`` samples at ``query_points``. Some versions of
+        non probabilistic models can still sample from a distribution even if
+        not having direct access to it. Non probabilistic models that cannot
+        sample should simply pass
 
         :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
@@ -453,8 +456,9 @@ class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
 
     def __init__(self, optimizer: TFOptimizer | None = None):
         """
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tensorflow.keras.optimizers.Adam`.
+        :param optimizer: The optimizer with which to train the model. Defaults
+            to :class:`~trieste.models.optimizer.TFOptimizer` with
+            :class:`~tensorflow.keras.optimizers.Adam`.
         """
         super().__init__()
 
@@ -491,7 +495,10 @@ class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
 
 
 class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticModel):
-    """ A :class:`TrainableProbabilisticModel` wrapper for a Keras :class:`~trieste.models.keras_networks.KerasNetwork`. """
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a Keras
+    :class:`~trieste.models.keras_networks.KerasNetwork`.
+    """
 
     def __init__(
         self, networks: List[KerasNetwork], optimizer: tf.keras.optimizers.Optimizer | None = None
@@ -586,7 +593,10 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
-        Return ``num_samples`` samples at ``query_points``. Some versions of non probabilistic models can still sample from a distribution even if not having direct access to it. Non probabilistic models that cannot sample should simply pass
+        Return ``num_samples`` samples at ``query_points``. Some versions of
+        non probabilistic models can still sample from a distribution even if
+        not having direct access to it. Non probabilistic models that cannot
+        sample should simply pass
 
         :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
@@ -600,7 +610,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
         self._model.predict([query_points, query_points, query_points])
         # TODO: it can probably be done in a more efficient way than for loop?
         samples = []
-        for s in range(num_samples):
+        for _ in range(num_samples):
             self._resample_indices()
             inputs = tf.dynamic_partition(query_points, self._indices, self._ensemble_size)
             samples.append(self._model.predict(inputs))

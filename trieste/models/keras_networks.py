@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import List, Optional
@@ -91,8 +90,8 @@ class KerasNetwork(ABC):
         bootstrap_data: bool = False,
     ):
         """
-        :param bootstrap_data: Create an ensemble version of the network where data is resampled with
-                               replacement.
+        :param bootstrap_data: Create an ensemble version of the network where
+            data is resampled with replacement.
         """
         assert isinstance(input_tensor_spec, tf.TensorSpec)
         assert isinstance(output_tensor_spec, tf.TensorSpec)
