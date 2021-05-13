@@ -145,7 +145,7 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 
 # %%
 from typing import cast
-from trieste.models.model_interfaces import GaussianProcessRegression
+from trieste.models import GaussianProcessRegression
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
