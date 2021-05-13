@@ -123,7 +123,7 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
 # %% [markdown]
 # ## Run the optimization loop
 #
-# We can now run the optimization loop
+# We can now run the optimization loop. Since we have multiple datasets (objective and constraint), we use `optimize_multi` rather than `optimize`.
 
 # %%
 num_steps = 20
