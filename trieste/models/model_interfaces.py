@@ -534,8 +534,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
     @property
     def model(self) -> tf.keras.Model:
         return self._model
-    self._resample_indices()
-    tf.random.uniform(shape=(self._batch_size,), maxval=self._ensemble_size, dtype=tf.int32)
+
     def _resample_indices(self):
         self._indices.assign(
             tf.random.uniform(
