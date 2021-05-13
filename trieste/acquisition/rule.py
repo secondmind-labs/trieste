@@ -108,6 +108,11 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
             else `None`.
         :return: The optimal points and the acquisition state for this step.
         """
+        if isinstance(dataset, dict) or isinstance(model, dict):
+            raise ValueError(
+                "AcquisitionRule.acquire method does not support multiple datasets or models: "
+                "use acquire_multi instead"
+            )
         return self.acquire_multi(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, state)
 
 

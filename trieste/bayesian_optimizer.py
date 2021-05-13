@@ -20,7 +20,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, TypeVar, cast, overload
+from typing import Dict, Generic, TypeVar, cast, overload
 
 import tensorflow as tf
 from absl import logging
@@ -281,8 +281,8 @@ class BayesianOptimizer(Generic[SP]):
             model_specs = {OBJECTIVE: model_specs}
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Mapping[str, Dataset], datasets)
-        model_specs = cast(Mapping[str, ModelSpec], model_specs)
+        datasets = cast(Dict[str, Dataset], datasets)
+        model_specs = cast(Dict[str, ModelSpec], model_specs)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
