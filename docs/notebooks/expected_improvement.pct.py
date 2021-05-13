@@ -192,8 +192,8 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize_multi(
-    5, result.try_get_final_datasets(), result.try_get_final_models()
+result = bo.optimize(
+    5, result.try_get_final_dataset(), result.try_get_final_model()
 )
 dataset = result.try_get_final_dataset()
 
