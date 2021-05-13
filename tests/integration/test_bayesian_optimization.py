@@ -77,7 +77,7 @@ def test_optimizer_finds_minima_of_the_branin_function(
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize_multi(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
         .try_get_final_datasets()[OBJECTIVE]
     )
 

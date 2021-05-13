@@ -123,13 +123,13 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
 # %% [markdown]
 # ## Run the optimization loop
 #
-# We can now run the optimization loop. Since we have multiple datasets (objective and constraint), we use `optimize_multi` rather than `optimize`.
+# We can now run the optimization loop.
 
 # %%
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-data = bo.optimize_multi(
+data = bo.optimize(
     num_steps, initial_data, initial_models, rule, track_state=False
 ).try_get_final_datasets()
 
@@ -215,7 +215,7 @@ batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 num_steps = 5
-batch_data = bo.optimize_multi(
+batch_data = bo.optimize(
     num_steps, initial_data, initial_models, batch_rule, track_state=False
 ).try_get_final_datasets()
 
