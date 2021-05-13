@@ -89,7 +89,9 @@ ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
-def create_model(config: ModelSpec) -> Union[TrainableProbabilisticModel, TrainableNonProbabilisticModel]:
+def create_model(
+    config: ModelSpec,
+) -> Union[TrainableProbabilisticModel, TrainableNonProbabilisticModel]:
     """
     :param config: A :class:`TrainableProbabilisticModel` or
         :class:`~trieste.models.TrainableNonProbabilisticModel`, or configuration of a model.
@@ -104,4 +106,6 @@ def create_model(config: ModelSpec) -> Union[TrainableProbabilisticModel, Traina
         return config
     elif isinstance(config, TrainableNonProbabilisticModel):
         return config
-    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel or a TrainableNonProbabilisticModel.")
+    raise NotImplementedError(
+        "Unknown format passed to create a TrainableProbabilisticModel or a TrainableNonProbabilisticModel."
+    )

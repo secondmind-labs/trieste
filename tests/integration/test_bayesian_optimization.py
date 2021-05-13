@@ -77,7 +77,8 @@ def test_gp_optimizer_finds_minima_of_the_branin_function(
     model = build_model(initial_data[OBJECTIVE])
 
     dataset = (
-        BayesianOptimizer(observer, search_space).optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        BayesianOptimizer(observer, search_space)
+        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
         .try_get_final_datasets()[OBJECTIVE]
     )
 
@@ -124,7 +125,8 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
     dataset = (
-        BayesianOptimizer(observer, search_space).optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        BayesianOptimizer(observer, search_space)
+        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
         .try_get_final_datasets()[OBJECTIVE]
     )
 

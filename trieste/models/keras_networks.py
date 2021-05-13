@@ -22,6 +22,7 @@ import numpy as np
 import tensorflow as tf
 
 from ..data import Dataset
+
 # from ..type import TensorType
 # from ..utils import DEFAULTS
 # from .optimizer import Optimizer
@@ -86,7 +87,7 @@ class KerasNetwork(ABC):
     def __init__(
         self,
         input_tensor_spec: tf.TensorSpec,
-        output_tensor_spec: tf. TensorSpec,
+        output_tensor_spec: tf.TensorSpec,
         bootstrap_data: bool = False,
     ):
         """
@@ -116,7 +117,7 @@ class KerasNetwork(ABC):
             shape=input_tensor_spec.shape,
             batch_size=batch_size,
             dtype=input_tensor_spec.dtype,
-            name=name
+            name=name,
         )
         # breakpoint()
         return input_tensor
@@ -180,7 +181,7 @@ class MultilayerFcNetwork(KerasNetwork):
     def __init__(
         self,
         input_tensor_spec: tf.TensorSpec,
-        output_tensor_spec: tf. TensorSpec,
+        output_tensor_spec: tf.TensorSpec,
         num_hidden_layers: int = 0,
         units: Optional[List[int]] = None,
         activation: Optional[List[Callable]] = None,
@@ -276,13 +277,9 @@ class MultilayerFcNetwork(KerasNetwork):
     def build_model(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         if input_layer is None:
             input_tensor = self.gen_input_tensor()
-            input_layer = tf.keras.layers.Flatten(
-                dtype=self._input_tensor_spec.dtype
-            )(input_tensor)
+            input_layer = tf.keras.layers.Flatten(dtype=self._input_tensor_spec.dtype)(input_tensor)
         output_space_nodes = size(self._output_tensor_spec)
         hidden_layer = input_layer
         hidden_layer = self.gen_hidden_dense_layers(hidden_layer)
-        output_layer = tf.keras.layers.Dense(output_space_nodes, activation="linear")(
-            hidden_layer
-        )
+        output_layer = tf.keras.layers.Dense(output_space_nodes, activation="linear")(hidden_layer)
         return output_layer

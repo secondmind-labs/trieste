@@ -137,7 +137,6 @@ class TFOptimizer(Optimizer):
             train_fn()
 
 
-
 @dataclass
 class TFKerasOptimizer(Optimizer):
     """ Optimizer for training models with mini-batches of training data. """
@@ -183,7 +182,6 @@ class TFKerasOptimizer(Optimizer):
         self._model = self._build_model()
         self._compile_model()
 
-        
         loss_fn = self.create_loss(model, dataset)
         variables = model.trainable_variables
 
@@ -238,7 +236,6 @@ class TFKerasOptimizer(Optimizer):
     def update_batch_size(self, batch_size: int) -> None:
         if isinstance(self._trajectory_sampling_strategy, BatchSizeUpdaterMixin):
             self._trajectory_sampling_strategy.update_batch_size(batch_size)
-
 
 
 @singledispatch

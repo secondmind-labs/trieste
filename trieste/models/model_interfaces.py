@@ -494,9 +494,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
     """ A :class:`TrainableProbabilisticModel` wrapper for a Keras :class:`~trieste.models.keras_networks.KerasNetwork`. """
 
     def __init__(
-        self,
-        networks: List[KerasNetwork],
-        optimizer: tf.keras.optimizers.Optimizer | None = None
+        self, networks: List[KerasNetwork], optimizer: tf.keras.optimizers.Optimizer | None = None
     ):
         """
         :param networks: A list of `KerasNetwork` objects. The ensemble
@@ -521,7 +519,9 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
             0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
         )
 
-        self._indices = tf.Variable(0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(self._batch_size))
+        self._indices = tf.Variable(
+            0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(self._batch_size)
+        )
 
         # self._resample_indices()
         self._model = self._build_ensemble()
@@ -554,14 +554,14 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
         inputs = []
         outputs = []
         for index, network in enumerate(self._networks):
-            
+
             name = network.input_tensor_spec.name + "_" + str(index)
             input_tensor = network.gen_input_tensor(name)
             inputs.append(input_tensor)
 
-            input_layer = tf.keras.layers.Flatten(
-                dtype=network.input_tensor_spec.dtype
-            )(input_tensor)
+            input_layer = tf.keras.layers.Flatten(dtype=network.input_tensor_spec.dtype)(
+                input_tensor
+            )
             output_layer = network.build_model(input_layer)
             outputs.append(output_layer)
 
@@ -593,14 +593,14 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        assert num_samples < self._ensemble_size, (
-            "'num_samples' must be smaller than 'ensemble_size'"
-        )
+        assert (
+            num_samples < self._ensemble_size
+        ), "'num_samples' must be smaller than 'ensemble_size'"
 
-        self._model.predict([query_points,query_points,query_points])
+        self._model.predict([query_points, query_points, query_points])
         # TODO: it can probably be done in a more efficient way than for loop?
         samples = []
-        for s in range(num_samples): 
+        for s in range(num_samples):
             self._resample_indices()
             inputs = tf.dynamic_partition(query_points, self._indices, self._ensemble_size)
             samples.append(self._model.predict(inputs))
