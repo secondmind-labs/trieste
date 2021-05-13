@@ -16,16 +16,16 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, TypeVar, List
+from typing import Any, List, TypeVar
 
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from .keras_networks import KerasNetwork
 from ..data import Dataset
 from ..type import TensorType
 from ..utils import DEFAULTS
+from .keras_networks import KerasNetwork
 from .optimizer import Optimizer, TFOptimizer
 
 

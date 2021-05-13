@@ -27,7 +27,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from ..data import Dataset
-from ..models import ProbabilisticModel, NonProbabilisticModel
+from ..models import NonProbabilisticModel, ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import (

@@ -20,8 +20,8 @@ import gpflow
 import tensorflow as tf
 
 from .model_interfaces import (
-    TrainableProbabilisticModel,
     TrainableNonProbabilisticModel,
+    TrainableProbabilisticModel,
     supported_models,
 )
 from .optimizer import create_optimizer

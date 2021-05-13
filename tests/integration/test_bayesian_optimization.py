@@ -31,7 +31,7 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression, NeuralNetworkEnsemble
-from trieste.models.keras_networks import get_tensor_spec_from_data, MultilayerFcNetwork
+from trieste.models.keras_networks import MultilayerFcNetwork, get_tensor_spec_from_data
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 

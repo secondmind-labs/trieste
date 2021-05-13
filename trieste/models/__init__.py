@@ -19,24 +19,24 @@ and its trainable subclass :class:`TrainableProbabilisticModel`. It also contain
 """
 from . import optimizer
 from .config import ModelConfig, ModelSpec, create_model
-from .model_interfaces import (
-    GaussianProcessRegression,
-    GPflowPredictor,
-    M,
-    ModelStack,
-    ProbabilisticModel,
-    SparseVariational,
-    TrainableProbabilisticModel,
-    VariationalGaussianProcess,
-    NonProbabilisticModel,
-    TrainableNonProbabilisticModel,
-    NeuralNetworkEnsemble,
-    module_deepcopy,
-    supported_models,
-)
 from .keras_networks import (
     KerasNetwork,
     MultilayerFcNetwork,
     get_tensor_spec_from_data,
     sample_with_replacement,
+)
+from .model_interfaces import (
+    GaussianProcessRegression,
+    GPflowPredictor,
+    M,
+    ModelStack,
+    NeuralNetworkEnsemble,
+    NonProbabilisticModel,
+    ProbabilisticModel,
+    SparseVariational,
+    TrainableNonProbabilisticModel,
+    TrainableProbabilisticModel,
+    VariationalGaussianProcess,
+    module_deepcopy,
+    supported_models,
 )
