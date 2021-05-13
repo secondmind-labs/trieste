@@ -159,7 +159,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: int | None,
+            state: int | None = None,
         ) -> tuple[TensorType, int]:
             self.states_received.append(state)
 
@@ -223,7 +223,7 @@ class _BrokenRule(AcquisitionRule[None, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: None,
+        state: None = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -281,7 +281,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: None,
+            state: None = None,
         ) -> NoReturn:
             assert False
 
@@ -318,7 +318,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            previous_state: int | None,
+            previous_state: int | None = None,
         ) -> tuple[TensorType, int]:
             if previous_state is None:
                 previous_state = 1
@@ -382,7 +382,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: int | None,
+            state: int | None = None,
         ) -> tuple[TensorType, int]:
             new_state = 0 if state is None else state + 1
             return tf.constant([[10.0]], tf.float64) + new_state, new_state

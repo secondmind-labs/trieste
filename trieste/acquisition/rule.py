@@ -61,7 +61,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: S | None,
+        state: S | None = None,
     ) -> tuple[TensorType, S]:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
@@ -92,7 +92,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         search_space: SP_contra,
         dataset: Dataset,
         model: ProbabilisticModel,
-        state: S | None,
+        state: S | None = None,
     ) -> tuple[TensorType, S]:
         """
         A convenience wrapper for :meth:`acquire_multi` that uses only one model, dataset pair.
@@ -331,7 +331,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: State | None,
+        state: State | None = None,
     ) -> tuple[TensorType, State]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
