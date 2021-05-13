@@ -20,6 +20,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition.function import (
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
+    MinValueEntropySearch,
 )
 from trieste.acquisition.rule import (
     OBJECTIVE,
@@ -40,6 +41,14 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
     "num_steps, acquisition_rule",
     [
         (20, EfficientGlobalOptimization()),
+        (
+            15,
+            EfficientGlobalOptimization(
+                MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(
+                    OBJECTIVE
+                )
+            ),
+        ),
         (
             15,
             EfficientGlobalOptimization(
