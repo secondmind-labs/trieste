@@ -161,7 +161,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
 acq_fn = Product(ei.using(OBJECTIVE), pov.using(FAILURE))
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(acq_fn)
+rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimizer

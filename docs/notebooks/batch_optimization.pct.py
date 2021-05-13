@@ -75,7 +75,7 @@ from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
-batch_ei_acq_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=batch_ei_acq)
 points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire(search_space, initial_data, model)
 
@@ -86,7 +86,7 @@ points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire(search_space, initial_d
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=1000)
-local_penalization_acq_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=local_penalization_acq)
 points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire(
     search_space, initial_data, model)
@@ -140,7 +140,7 @@ cbar.set_label("EI", rotation=270)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
 qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
@@ -149,7 +149,7 @@ qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule
 # and then repeat the same optimization with `LocalPenalizationAcquisitionFunction`.
 
 # %%
-local_penalization_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=local_penalization_acq
 )
 local_penalization_result = bo.optimize(

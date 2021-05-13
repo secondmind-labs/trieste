@@ -118,7 +118,7 @@ pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
+rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -204,7 +204,7 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+batch_rule = EfficientGlobalOptimization(  # type: ignore
     batch_eci, num_query_points=num_query_points
 )
 

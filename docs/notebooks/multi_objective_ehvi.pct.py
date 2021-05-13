@@ -112,7 +112,7 @@ model = build_stacked_independent_objectives_model(initial_data, num_objective)
 
 # %%
 ehvi = ExpectedHypervolumeImprovement()
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehvi)
+rule = EfficientGlobalOptimization(builder=ehvi)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimization loop
