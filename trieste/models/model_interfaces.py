@@ -71,6 +71,20 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError
 
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Return the mean and variance of the independent marginal distributions at each point in
+        ``query_points`` for the actual observations, including noise contributions.
+
+        Note that this is not supported by all models.
+
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
+        """
+        raise NotImplementedError(f"Model {self!r} does not support predicting actual observations")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
@@ -160,6 +174,18 @@ class ModelStack(TrainableProbabilisticModel):
         """
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean and variance will both have
+            shape [..., :math:`\sum_i E_i`].
+        :raise NotImplementedError: If any of the models don't implement predict_y.
+        """
+        means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -263,6 +289,9 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.model.predict_y(query_points)
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -397,14 +426,6 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.num_data = len(dataset)
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance of the observations at the specified
-            ``query_points``.
-        """
-        return self.model.predict_y(query_points)
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
