@@ -311,7 +311,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         self.model.data = dataset.query_points, dataset.observations
 
-    def covariance_between_points(self, query_points_1: TensorType, query_points_2: TensorType) -> TensorType:
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
         """
         Compute the posterior covariance between sets of query points.
 
@@ -340,7 +342,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         K12 = self.model.kernel(query_points_1, query_points_2)
         cov = K12 - tf.tensordot(tf.transpose(Linv_Kx1), Linv_Kx2, [[-1], [-2]])
 
-        tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])])
+        tf.debugging.assert_shapes(
+            [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
+        )
 
         return cov
 
