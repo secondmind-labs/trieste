@@ -70,6 +70,16 @@ def test_optimization_result_try_get_final_datasets_for_successful_optimization(
         Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
     )
     assert result.try_get_final_datasets() is data
+    assert result.try_get_final_dataset() is data["foo"]
+
+
+def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
+    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
+    models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
+    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    assert result.try_get_final_datasets() is data
+    with pytest.raises(ValueError):
+        result.try_get_final_dataset()
 
 
 def test_optimization_result_try_get_final_datasets_for_failed_optimization() -> None:
@@ -84,6 +94,16 @@ def test_optimization_result_try_get_final_models_for_successful_optimization() 
         Ok(Record({"foo": empty_dataset([1], [1])}, models, None)), []
     )
     assert result.try_get_final_models() is models
+    assert result.try_get_final_model() is models["foo"]
+
+
+def test_optimization_result_try_get_final_models_for_multiple_models() -> None:
+    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
+    models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
+    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    assert result.try_get_final_models() is models
+    with pytest.raises(ValueError):
+        result.try_get_final_model()
 
 
 def test_optimization_result_try_get_final_models_for_failed_optimization() -> None:
@@ -97,17 +117,15 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     class _CountingObserver:
         call_count = 0
 
-        def __call__(self, x: tf.Tensor) -> dict[str, Dataset]:
+        def __call__(self, x: tf.Tensor) -> Dataset:
             self.call_count += 1
-            return {OBJECTIVE: Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))}
+            return Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))
 
     observer = _CountingObserver()
     optimizer = BayesianOptimizer(observer, Box([-1], [1]))
     data = mk_dataset([[0.5]], [[0.25]])
 
-    optimizer.optimize(
-        steps, {OBJECTIVE: data}, {OBJECTIVE: _PseudoTrainableQuadratic()}
-    ).final_result.unwrap()
+    optimizer.optimize(steps, data, _PseudoTrainableQuadratic()).final_result.unwrap()
 
     assert observer.call_count == steps
 
@@ -419,6 +437,9 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
     )
 
     for step in range(3):
+        assert history[step].model == history[step].models[""]
+        assert history[step].dataset == history[step].datasets[""]
+
         _, variance_from_saved_model = (
             history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
         )

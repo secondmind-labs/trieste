@@ -71,14 +71,14 @@ def test_optimizer_finds_minima_of_the_branin_function(
         return GaussianProcessRegression(gpr)
 
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(branin, OBJECTIVE)
+    observer = mk_observer(branin)
     initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
+    model = build_model(initial_data)
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_datasets()[OBJECTIVE]
+        .optimize(num_steps, initial_data, model, acquisition_rule)
+        .try_get_final_dataset()
     )
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
