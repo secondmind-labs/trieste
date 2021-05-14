@@ -228,7 +228,7 @@ class BayesianOptimizer(Generic[SP]):
 
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
-              ``acquisition_rule``'s :meth:`acquire_multi` method, passing it the ``search_space``,
+              ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
               ``datasets``, models built from the ``model_specs``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
@@ -318,7 +318,7 @@ class BayesianOptimizer(Generic[SP]):
                     models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
 
-                query_points, acquisition_state = acquisition_rule.acquire_multi(
+                query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state
                 )
 

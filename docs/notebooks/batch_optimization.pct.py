@@ -77,7 +77,7 @@ from trieste.acquisition.rule import EfficientGlobalOptimization
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=batch_ei_acq)
-points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire(search_space, initial_data, model)
+points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
 # and then do the same with `LocalPenalizationAcquisitionFunction`.
@@ -88,7 +88,7 @@ from trieste.acquisition import LocalPenalizationAcquisitionFunction
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=1000)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=local_penalization_acq)
-points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire(
+points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_single(
     search_space, initial_data, model)
 
 # %% [markdown]

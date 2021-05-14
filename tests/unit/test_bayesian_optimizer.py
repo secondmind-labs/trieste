@@ -172,7 +172,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         def __init__(self):
             self.states_received = []
 
-        def acquire_multi(
+        def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -236,7 +236,7 @@ class _BrokenModel(_PseudoTrainableQuadratic):
 
 
 class _BrokenRule(AcquisitionRule[None, SearchSpace]):
-    def acquire_multi(
+    def acquire(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
@@ -294,7 +294,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             assert False
 
     class _UnusableRule(AcquisitionRule[None, Box]):
-        def acquire_multi(
+        def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -331,7 +331,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     EXPONENTIAL = "exponential"
 
     class AdditionRule(AcquisitionRule[int, Box]):
-        def acquire_multi(
+        def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
@@ -395,7 +395,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
     class _CountingRule(AcquisitionRule[int, Box]):
-        def acquire_multi(
+        def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],

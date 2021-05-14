@@ -126,7 +126,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     def __repr__(self) -> str:
         return f"FixedAcquisitionRule({self._qp!r})"
 
-    def acquire_multi(
+    def acquire(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
