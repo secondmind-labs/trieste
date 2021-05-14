@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+This module contains acquisition function builders, which build and define our acquisition
+functions --- functions that estimate the utility of evaluating sets of candidate points.
+"""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product, combinations
 from math import inf
-from typing import Callable
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -29,6 +32,7 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
+from .sampler import BatchReparametrizationSampler, GumbelSampler
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -159,15 +163,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     of the objective minimum that would be gained by evaluating the objective at a given point.
 
     This implementation largely follows :cite:`wang2017max` and samples the objective minimum
-    :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf is approximated
-    by a Gumbel distribution
-
-    .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
-
-    where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
-    Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
-    :math:`[0, 1]` and applying the inverse probability integral transform
-    :math:`y = \mathcal G^{-1}(r; a, b)`.
+    :math:`y^*` via a Gumbel sampler.
     """
 
     def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
@@ -201,35 +197,12 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
+        gumbel_sampler = GumbelSampler(self._num_samples, model)
+
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        fmean, fvar = model.predict(query_points)
-        fsd = tf.math.sqrt(fvar)
-
-        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
-            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
-            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
-
-        left = tf.reduce_min(fmean - 5 * fsd)
-        right = tf.reduce_max(fmean + 5 * fsd)
-
-        def binary_search(val: float) -> float:  # Find empirical interquartile range
-            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
-
-        q1, q2 = map(binary_search, [0.25, 0.75])
-
-        log = tf.math.log
-        l1 = log(log(4.0 / 3.0))
-        l2 = log(log(4.0))
-        b = (q1 - q2) / (l1 - l2)
-        a = (q2 * l1 - q1 * l2) / (l1 - l2)
-
-        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
-        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
-            a, fmean.dtype
-        )
+        gumbel_samples = gumbel_sampler.sample(query_points)
 
         return min_value_entropy_search(model, gumbel_samples)
 
@@ -247,7 +220,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
-    tf.debugging.assert_rank(samples, 1)
+    tf.debugging.assert_rank(samples, 2)
 
     if len(samples) == 0:
         raise ValueError("Gumbel samples must be populated.")
@@ -264,7 +237,7 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-        gamma = (samples - fmean) / fsd
+        gamma = (tf.squeeze(samples) - fmean) / fsd
 
         minus_cdf = 1 - normal.cdf(gamma)
         minus_cdf = tf.clip_by_value(
@@ -551,20 +524,21 @@ def expected_hv_improvement(
     For easier calculation, this sub-calculation can be reformulated as a combination
     of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
     function calculations, respectively.
+
     Note:
     1. Since in Trieste we do not assume the use of a certain non-dominated region partition
-        algorithm, we do not assume the last dimension of the partitioned cell has only one
-        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
-        This is not as efficient as the original paper, but is applicable to different non-dominated
-        partition algorithm.
+    algorithm, we do not assume the last dimension of the partitioned cell has only one
+    (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+    This is not as efficient as the original paper, but is applicable to different non-dominated
+    partition algorithm.
     2. As the Psi and nu function in the original paper are defined for maximization problems,
-        we inverse our minimisation problem (to also be a maximisation), allowing use of the
-        original notation and equations.
+    we inverse our minimisation problem (to also be a maximisation), allowing use of the
+    original notation and equations.
 
     :param model: The model of the objective function.
     :param pareto: Pareto class
-    :param reference_point The reference point for calculating hypervolume
-    :return The expected_hv_improvement acquisition function modified for objective
+    :param reference_point: The reference point for calculating hypervolume
+    :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
@@ -767,156 +741,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
         return batch_hvei
 
 
-class IndependentReparametrizationSampler:
-    r"""
-    This sampler employs the *reparameterization trick* to approximate samples from a
-    :class:`ProbabilisticModel`\ 's predictive distribution as
-
-    .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
-
-    where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
-    samples form a continuous curve.
-    """
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
-        :param sample_size: The number of samples to take at each point. Must be positive.
-        :param model: The model to sample from.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        tf.debugging.assert_positive(sample_size)
-
-        self._sample_size = sample_size
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample
-        self._eps = tf.Variable(
-            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
-        )  # [S, 0]
-        self._model = model
-
-    def __repr__(self) -> str:
-        """"""
-        return f"IndependentReparametrizationSampler({self._sample_size!r}, {self._model!r})"
-
-    def sample(self, at: TensorType) -> TensorType:
-        """
-        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
-        :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
-        produce the exact same samples. Calls to :meth:`sample` on *different*
-        :class:`IndependentReparametrizationSampler` instances will produce different samples.
-
-        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
-            of dimension `D`.
-        :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
-            the number of latent model dimensions.
-        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
-        """
-        tf.debugging.assert_shapes([(at, [..., 1, None])])
-        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
-
-        if tf.size(self._eps) == 0:
-            self._eps.assign(
-                tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
-            )  # [S, L]
-
-        return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
-
-
-class BatchReparametrizationSampler:
-    r"""
-    This sampler employs the *reparameterization trick* to approximate batches of samples from a
-    :class:`ProbabilisticModel`\ 's predictive joint distribution as
-
-    .. math:: x \mapsto \mu(x) + \epsilon L(x)
-
-    where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
-    :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
-    form a continuous curve.
-    """
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
-        :param sample_size: The number of samples for each batch of points. Must be positive.
-        :param model: The model to sample from.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
-        """
-        tf.debugging.assert_positive(sample_size)
-
-        self._sample_size = sample_size
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample
-        self._eps = tf.Variable(
-            tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
-        )  # [0, 0, S]
-        self._model = model
-
-    def __repr__(self) -> str:
-        """"""
-        return f"BatchReparametrizationSampler({self._sample_size!r}, {self._model!r})"
-
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
-        """
-        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
-        :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
-        produce the exact same samples. Calls to :meth:`sample` on *different*
-        :class:`BatchReparametrizationSampler` instances will produce different samples.
-
-        :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
-            consistent batch size across all calls to :meth:`sample` for any given
-            :class:`BatchReparametrizationSampler`.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
-            number of points per batch, and `L` the dimension of the model's predictive
-            distribution.
-        :raise ValueError (or InvalidArgumentError): If any of the following are true:
-
-            - ``at`` is a scalar.
-            - The batch size `B` of ``at`` is not positive.
-            - The batch size `B` of ``at`` differs from that of previous calls.
-            - ``jitter`` is negative.
-        """
-        tf.debugging.assert_rank_at_least(at, 2)
-        tf.debugging.assert_greater_equal(jitter, 0.0)
-
-        batch_size = at.shape[-2]
-
-        tf.debugging.assert_positive(batch_size)
-
-        eps_is_populated = tf.size(self._eps) != 0
-
-        if eps_is_populated:
-            tf.debugging.assert_equal(
-                batch_size,
-                tf.shape(self._eps)[-2],
-                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
-                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
-            )
-
-        mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
-
-        if not eps_is_populated:
-            self._eps.assign(
-                tf.random.normal(
-                    [mean.shape[-1], batch_size, self._sample_size], dtype=tf.float64
-                )  # [L, B, S]
-            )
-
-        identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-        cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
-
-        variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]
-
-        leading_indices = tf.range(tf.rank(variance_contribution) - 3)
-        absolute_trailing_indices = [-1, -2, -3] + tf.rank(variance_contribution)
-        new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
-
-        return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
-
-
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
@@ -976,3 +800,322 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
             return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
         return batch_ei
+
+
+class GreedyAcquisitionFunctionBuilder(ABC):
+    """
+    A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function
+    suitable for greedily building batches for batch Bayesian
+    Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
+    from :class:`AcquisitionFunctionBuilder` by requiring that a set
+    of pending points is passed to the builder. Note that this acquisition function
+    is typically called `B` times each Bayesian optimization step, when building batches
+    of size `B`.
+    """
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+
+
+class SingleModelGreedyAcquisitionBuilder(ABC):
+    """
+    Convenience acquisition function builder for a greedy acquisition function (or component of a
+    composite greedy acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(GreedyAcquisitionFunctionBuilder):
+            def prepare_acquisition_function(
+                self,
+                datasets: Mapping[str, Dataset],
+                models: Mapping[str, ProbabilisticModel],
+                pending_points: Optional[TensorType] = None,
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(
+                    datasets[tag], models[tag], pending_points=pending_points
+                )
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data to use to build the acquisition function.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+
+
+class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches by local
+    penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
+    points and returns a base acquisition function penalized around those points.
+    An estimate of the objective function's Lipschitz constant is used to control the size
+    of penalization.
+
+    Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
+    acqusition function. All that we require is that the acquisition function takes strictly
+    positive values. By iteratively building a batch of points though sequentially maximizing
+    this acquisition function but down-weighted around locations close to the already
+    chosen (pending) points, local penalization provides diverse batches of candidate points.
+
+    Local penalization is applied to the acquisition function multiplicatively. However, to
+    improve numerical stability, we perfom additive penalization in a log space.
+
+    The Lipschitz constant and additional penalization parameters are estimated once
+    when first preparing the acquisition function with no pending points. These estimates
+    are reused for all subsequent function calls.
+    """
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 500,
+        penalizer: Callable[..., PenalizationFunction] = None,
+        base_acquisition_function_builder: Optional[
+            Union[ExpectedImprovement, MinValueEntropySearch]
+        ] = None,
+    ):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Size of the random sample over which the Lipschitz constant
+            is estimated. We recommend scaling this with search space dimension.
+        :param penalizer: The chosen penalization method (defaults to soft penalization).
+        :param base_acquisition_function_builder: Base acquisition function to be
+            penalized (defaults to expected improvement). Local penalization only supports
+            strictly positive acquisition functions.
+
+        """
+        self._search_space = search_space
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+        self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
+
+        if base_acquisition_function_builder is None:
+            self._base_builder: SingleModelAcquisitionBuilder = ExpectedImprovement()
+        elif isinstance(
+            base_acquisition_function_builder, (ExpectedImprovement, MinValueEntropySearch)
+        ):
+            self._base_builder = base_acquisition_function_builder
+        else:
+            raise ValueError(
+                f"""
+                Local penalization can only be applied to strictly positive acquisition functions,
+                we got {base_acquisition_function_builder}.
+                """
+            )
+
+        self._lipschitz_constant = None
+        self._eta = None
+        self._base_acquisition_function: Optional[AcquisitionFunction] = None
+
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The (log) expected improvement penalized with respect to the pending points.
+        :raise ValueError: if the first call does not have pending_points=None.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        if (
+            pending_points is None
+        ):  # compute penalization params and base acquisition once per optimization step
+            samples = self._search_space.sample(num_samples=self._num_samples)
+            samples = tf.concat([dataset.query_points, samples], 0)
+
+            def get_lipschitz_estimate(
+                sampled_points,
+            ) -> tf.Tensor:  # use max norm of posterior mean gradients
+                with tf.GradientTape() as g:
+                    g.watch(sampled_points)
+                    mean, _ = model.predict(sampled_points)
+                grads = g.gradient(mean, sampled_points)
+                grads_norm = tf.norm(grads, axis=1)
+                max_grads_norm = tf.reduce_max(grads_norm)
+                eta = tf.reduce_min(mean, axis=0)
+                return max_grads_norm, eta
+
+            lipschitz_constant, eta = get_lipschitz_estimate(samples)
+            if (
+                lipschitz_constant < 1e-5
+            ):  # threshold to improve numerical stability for 'flat' models
+                lipschitz_constant = 10
+
+            self._lipschitz_constant = lipschitz_constant
+            self._eta = eta
+
+            if isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
+                self._base_acquisition_function = expected_improvement(model, self._eta)
+            else:
+                self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
+                    dataset, model
+                )
+
+        if (self._lipschitz_constant is None) or (self._base_acquisition_function is None):
+            raise ValueError("Local penalization must be first called with no pending_points.")
+
+        if pending_points is None:
+            return self._base_acquisition_function  # no penalization required if no pending_points.
+
+        tf.debugging.assert_shapes(
+            [(pending_points, ["N", len(self._search_space.upper)])],
+            message="pending_points must be of shape [N,D]",
+        )
+
+        penalization = self._lipschitz_penalizer(
+            model, pending_points, self._lipschitz_constant, self._eta
+        )
+
+        def penalized_acquisition(x: TensorType) -> TensorType:
+            log_acq = tf.math.log(self._base_acquisition_function(x)) + tf.math.log(penalization(x))
+            return tf.math.exp(log_acq)
+
+        return penalized_acquisition
+
+
+PenalizationFunction = Callable[[TensorType], TensorType]
+"""
+An :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single
+value that described how heavily it should be penalized (a positive quantity).
+As penalization is applied multiplicatively to acquisition functions, small
+penalization outputs correspond to a stronger penalization effect. Thus, with
+leading dimensions, an :const:`PenalizationFunction` takes input
+shape `[..., 1, D]` and returns shape `[..., 1]`.
+"""
+
+
+def soft_local_penalizer(
+    model: ProbabilisticModel,
+    pending_points: TensorType,
+    lipschitz_constant: TensorType,
+    eta: TensorType,
+) -> PenalizationFunction:
+    r"""
+    Return the soft local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Gonzalez:2016`.
+
+    Soft penalization returns the probability that a candidate point does not belong
+    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
+    posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
+    estimated Lipschitz constant :math:`L`,the penalization from a set of pending point :math:`x'`
+    on a candidate point :math:`x` is given by
+    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+
+    The penalization from a set of pending points is just product of the individual penalizations.
+    See :cite:`Gonzalez:2016` for a full derivation.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(
+            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+        )
+        standardised_distances = (pairwise_distances - radius) / scale
+
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        penalization = normal.cdf(standardised_distances)
+        return tf.reduce_prod(penalization, axis=-1)
+
+    return penalization_function
+
+
+def hard_local_penalizer(
+    model: ProbabilisticModel,
+    pending_points: TensorType,
+    lipschitz_constant: TensorType,
+    eta: TensorType,
+) -> PenalizationFunction:
+    r"""
+    Return the hard local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Alvi:2019`.
+
+    Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective
+    See :cite:`Alvi:2019` for details. Our implementation follows theirs, with the penalization from
+    a set of pending points being the product of the individual penalizations.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(
+            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+        )
+
+        p = -5  # following experiments of :cite:`Alvi:2019`.
+        penalization = ((pairwise_distances / (radius + scale)) ** p + 1) ** (1 / p)
+
+        return tf.reduce_prod(penalization, axis=-1)
+
+    return penalization_function

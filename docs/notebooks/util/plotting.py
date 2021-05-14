@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import cm
 
+from trieste.acquisition import AcquisitionFunction
 from trieste.type import TensorType
 from trieste.utils import to_numpy
 from trieste.utils.pareto import non_dominated
@@ -53,9 +54,9 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
     """
 
     if contour:
-        ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        return ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
     else:
-        ax.plot_surface(
+        return ax.plot_surface(
             xx,
             yy,
             f.reshape(*xx.shape),
@@ -70,13 +71,14 @@ def plot_function_2d(
     obj_func,
     mins: TensorType,
     maxs: TensorType,
-    grid_density=20,
+    grid_density: int = 20,
     contour=False,
     log=False,
     title=None,
     xlabel=None,
     ylabel=None,
     figsize=None,
+    colorbar=False,
 ):
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
@@ -90,6 +92,7 @@ def plot_function_2d(
     :param xlabel:
     :param ylabel:
     :param figsize:
+    :param colorbar
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -123,15 +126,51 @@ def plot_function_2d(
         else:
             ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")
 
-        plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
+        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
         if title is not None:
             axx.set_title(title[k])
+        if colorbar:
+            fig.colorbar(plt_obj, ax=axx)
         axx.set_xlabel(xlabel)
         axx.set_ylabel(ylabel)
         axx.set_xlim(mins[0], maxs[0])
         axx.set_ylim(mins[1], maxs[1])
 
     return fig, ax
+
+
+def plot_acq_function_2d(
+    acq_func: AcquisitionFunction,
+    mins: TensorType,
+    maxs: TensorType,
+    grid_density: int = 20,
+    contour=False,
+    log=False,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    figsize=None,
+):
+    """
+    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
+    :param obj_func: a function that returns a n-array given a [n, d] array
+    :param mins: 2 lower bounds
+    :param maxs: 2 upper bounds
+    :param grid_density: positive integer for the grid size
+    :param contour: Boolean. If False, a 3d plot is produced
+    :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
+    :param title:
+    :param xlabel:
+    :param ylabel:
+    :param figsize:
+    """
+
+    def batched_func(x):
+        return acq_func(tf.expand_dims(x, axis=-2))
+
+    return plot_function_2d(
+        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize
+    )
 
 
 def format_point_markers(
@@ -209,8 +248,8 @@ def plot_bo_points(
             ax.scatter(pts[i, 0], pts[i, 1], obs_values[i], c=col_pts[i], marker=mark_pts[i])
 
 
-def plot_bo_points_in_obj_space(
-    observations,
+def plot_mobo_points_in_obj_space(
+    obs_values,
     num_init=None,
     mask_fail=None,
     figsize=None,
@@ -228,7 +267,7 @@ def plot_bo_points_in_obj_space(
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
     Markers and colors are chosen according to BO factors.
-    :param dataset:
+    :param obs_values:
     :param num_init: initial number of BO points
     :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
     :param title:
@@ -237,15 +276,18 @@ def plot_bo_points_in_obj_space(
     :param figsize:
     :param only_plot_pareto: if set true, only plot the pareto points
     """
-    obj_num = observations.shape[-1]
+    obj_num = obs_values.shape[-1]
+    tf.debugging.assert_shapes([])
     assert obj_num == 2 or obj_num == 3, NotImplementedError(
-        "Only support 2/3-objective" " function plot but found: {}".format(obj_num)
+        f"Only support 2/3-objective functions but found: {obj_num}"
     )
 
-    _, dom = non_dominated(observations)
-    idx_pareto = np.where(dom == 0)
+    _, dom = non_dominated(obs_values)
+    idx_pareto = (
+        np.where(dom == 0) if mask_fail is None else np.where(np.logical_and(dom == 0, ~mask_fail))
+    )
 
-    pts = observations
+    pts = obs_values
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(
@@ -269,6 +311,35 @@ def plot_bo_points_in_obj_space(
         ax.set_zlabel(zlabel)
     if title is not None:
         ax.set_title(title)
+    return fig, ax
+
+
+def plot_mobo_history(
+    obs_values,
+    metric_func,
+    num_init=None,
+    mask_fail=None,
+    figsize=None,
+):
+    """
+    Draw the performance measure for multi-objective optimization
+    :param obs_values:
+    :param metric_func: a callable function calculate metric score
+                        metric = measure_func(observations)
+    :param num_init:
+    :param mask_fail:
+    :param figsize
+    """
+
+    fig, ax = plt.subplots(figsize=figsize)
+    size, obj_num = obs_values.shape
+
+    if mask_fail is not None:
+        obs_values[mask_fail] = [np.inf] * obj_num
+
+    ax.plot([metric_func(obs_values[:pts, :]) for pts in range(size)], color="tab:orange")
+    ax.axvline(x=num_init - 0.5, color="tab:blue")
+    return fig, ax
 
 
 def plot_regret(

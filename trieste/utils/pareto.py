@@ -14,8 +14,6 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-from typing import Tuple
-
 import tensorflow as tf
 from typing_extensions import Final
 
@@ -23,7 +21,7 @@ from ..type import TensorType
 from .misc import DEFAULTS
 
 
-def non_dominated(observations: TensorType) -> Tuple[TensorType, TensorType]:
+def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     """
     Computes the non-dominated set for a set of data points.
     if there are duplicate point(s) in the non-dominated set, this function will return
@@ -160,7 +158,7 @@ class Pareto:
             divide_conquer_cells: TensorType,
             lower_result: TensorType,
             upper_result: TensorType,
-        ) -> Tuple[TensorType, TensorType, TensorType]:
+        ) -> tuple[TensorType, TensorType, TensorType]:
             divide_conquer_cells_unstacked = tf.unstack(divide_conquer_cells, axis=0)
             cell = divide_conquer_cells_unstacked[-1]
             divide_conquer_cells_new = tf.cond(
@@ -218,7 +216,7 @@ class Pareto:
         upper_result: TensorType,
         lower_idx: TensorType,
         upper_idx: TensorType,
-    ) -> Tuple[TensorType, TensorType]:
+    ) -> tuple[TensorType, TensorType]:
         lower_result_accepted = tf.concat([lower_result, lower_idx[None]], axis=0)
         upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
         return lower_result_accepted, upper_result_accepted
@@ -327,6 +325,7 @@ class Pareto:
     ) -> tuple[TensorType, TensorType]:
         """
         Get the partitioned hypercell's lower and upper bounds.
+
         :param anti_reference: a worst point to use with shape [D].
             Defines the lower bound of the hypercell
         :param reference: a reference point to use, with shape [D].

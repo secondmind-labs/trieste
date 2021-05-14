@@ -181,12 +181,20 @@ def test_discrete_search_space_deepcopy() -> None:
     npt.assert_allclose(copy.deepcopy(dss).points, _points_in_2D_search_space())
 
 
-def test_box_converts_lists_to_float64_tensors() -> None:
-    box = Box([0.0], [1.0])
+@pytest.mark.parametrize(
+    "lower, upper",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], id="lists"),
+        pytest.param((0.0, 1.0), (1.0, 2.0), id="tuples"),
+        pytest.param(range(2), range(1, 3), id="ranges"),
+    ],
+)
+def test_box_converts_sequences_to_float64_tensors(lower, upper) -> None:
+    box = Box(lower, upper)
     assert tf.as_dtype(box.lower.dtype) is tf.float64
     assert tf.as_dtype(box.upper.dtype) is tf.float64
-    npt.assert_array_equal(box.lower, [0.0])
-    npt.assert_array_equal(box.upper, [1.0])
+    npt.assert_array_equal(box.lower, [0.0, 1.0])
+    npt.assert_array_equal(box.upper, [1.0, 2.0])
 
 
 def _pairs_of_shapes(

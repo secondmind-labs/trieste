@@ -25,6 +25,7 @@ from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    GreedyAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
@@ -51,19 +52,16 @@ def _line_search_maximize(
     return xs[tf.squeeze(tf.argmax(f(tf.expand_dims(xs, 1)))), None]
 
 
-@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
-def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
-    class NegQuadratic(AcquisitionFunctionBuilder):
-        def prepare_acquisition_function(
-            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-        ) -> AcquisitionFunction:
-            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
-
-    search_space = Box([-10], [10])
-    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
-    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
-    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
+@pytest.mark.parametrize(
+    "num_search_space_samples, num_query_points",
+    [
+        (0, 100),
+        (100, 0),
+    ],
+)
+def test_thompson_sampling_raises_for_no_points(num_search_space_samples, num_query_points) -> None:
+    with pytest.raises(ValueError):
+        ThompsonSampling(num_search_space_samples, num_query_points)
 
 
 @pytest.mark.parametrize(
@@ -82,6 +80,86 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     rule = ThompsonSampling(100, 10)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
+
+
+def test_efficient_global_optimization_raises_for_no_query_points() -> None:
+    with pytest.raises(ValueError):
+        EfficientGlobalOptimization(num_query_points=0)
+
+
+def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_points() -> None:
+    with pytest.raises(ValueError):
+        EfficientGlobalOptimization(num_query_points=2)
+
+
+@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
+def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
+    class NegQuadratic(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
+
+    search_space = Box([-10], [10])
+    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
+    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
+    query_point, _ = ego.acquire(search_space, {"": data}, {"": model})
+    npt.assert_allclose(query_point, [[1]], rtol=1e-4)
+
+
+class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
+    def prepare_acquisition_function(
+        self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
+
+
+@random_seed
+def test_joint_batch_acquisition_rule_acquire() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
+    acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
+    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    query_point, _ = ego.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )
+
+    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+
+
+class _GreedyBatchModelMinusMeanMaximumSingleBuilder(GreedyAcquisitionFunctionBuilder):
+    def prepare_acquisition_function(
+        self,
+        dataset: Mapping[str, Dataset],
+        model: Mapping[str, ProbabilisticModel],
+        pending_points: TensorType = None,
+    ) -> AcquisitionFunction:
+        if pending_points is None:
+            return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
+        else:
+            best_pending_score = tf.reduce_max(model[OBJECTIVE].predict(pending_points)[0])
+            return lambda at: -tf.math.maximum(
+                model[OBJECTIVE].predict(at)[0][0], best_pending_score
+            )
+
+
+@random_seed
+def test_greedy_batch_acquisition_rule_acquire() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
+    acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
+    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    query_point, _ = ego.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )
+
+    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
@@ -217,26 +295,3 @@ def test_trust_region_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.eps, tr_state.eps)
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
     assert tr_state_copy.is_global == tr_state.is_global
-
-
-class _BatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
-    def prepare_acquisition_function(
-        self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
-        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
-
-
-@random_seed
-def test_batch_acquisition_rule_acquire() -> None:
-    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    num_query_points = 4
-    acq = _BatchModelMinusMeanMaximumSingleBuilder()
-    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-        acq, num_query_points=num_query_points
-    )
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )
-
-    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
