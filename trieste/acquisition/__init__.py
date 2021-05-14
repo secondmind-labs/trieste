@@ -39,8 +39,8 @@ from .combination import Product, Reducer, Sum
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
-    BatchMonteCarloHypervolumeExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,

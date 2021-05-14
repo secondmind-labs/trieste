@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from itertools import product, combinations
+from itertools import combinations, product
 from math import inf
 from typing import Callable, Optional, Union
 
@@ -617,11 +617,11 @@ def expected_hv_improvement(
     return acquisition
 
 
-class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilder):
+class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
-    Use of the inclusion-exclusion method
-    refer cite:daulton2020differentiable
-
+    Builder for the batch expected hypervolume improvement acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`:daulton2020differentiable`
     """
 
     def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
@@ -655,10 +655,9 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
         Note: this will use more memory than regenerating the indices
         for each i and then deleting them, but it will be faster for
         repeated evaluations (e.g. during optimization).
-        Args:
-            q: batch size
+        :param q: batch size
         """
-        if q != self.q:
+        if q != self.q:  # regenerate subset indices
             indices = list(range(q))
             self.q_subset_indices = {
                 f"q_choose_{i}": tf.constant(list(combinations(indices, i)))
@@ -673,8 +672,6 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1].
         :return: The batch *expected improvement* acquisition function.
-        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
-            does not have an event shape of [1].
         """
 
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -691,52 +688,46 @@ class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilde
         def batch_hvei(at: TensorType) -> TensorType:
             """
             :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
-            consistent batch size across all calls to :meth:`sample` for any given
-            Complexity: O(num_obj * SK(2^q - 1))
+            shape `[..., B, D]`.
             """
+
             # [..., S, B, num_obj]
             samples = sampler.sample(at, jitter=self._jitter)
 
             q = at.shape[-2]  # B
             self._cache_q_subset_indices(q)
 
-            areas_per_segment = None
-            # Inclusion-Exclusion loop
-            for j in range(1, q + 1):
-                # chose combination
-                q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
-                # get combination of subsets: [..., S, B, num_obj] -> [..., S, Cq_j, j, num_obj]
-                obj_subsets = tf.gather(samples, q_choose_j, axis=-2)
-                # get lower vertices of overlap:
+            hv_contrib = 0.0
+
+            def hv_contrib_on_samples(obj_samples: TensorType) -> TensorType:
                 # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
-                overlap_vertices = tf.reduce_max(obj_subsets, axis=-2)
+                overlap_vertices = tf.reduce_max(obj_samples, axis=-2)
 
-                # compare overlap vertices and lower bound of each cell:
-                # -> [..., S, K, Cq_j, num_obj]
-                overlap_vertices = tf.maximum(
-                    tf.expand_dims(overlap_vertices, -3),
-                    lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
-                )
+                overlap_vertices = (
+                    tf.maximum(  # compare overlap vertices and lower bound of each cell:
+                        tf.expand_dims(overlap_vertices, -3),  # expand a cell dimension
+                        lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
+                    )
+                )  # [..., S, K, Cq_j, num_obj]
 
-                # get hvi length within each cell:-> [..., S, Cq_j, K, num_obj]
-                lengths_j = tf.maximum(
+                lengths_j = tf.maximum(  # get hvi length per obj within each cell
                     (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
-                )
-                # take product over hyperrectangle side lengths to compute area within each K
-                # sum over all subsets of size Cq_j #
-                areas_j = tf.reduce_sum(tf.reduce_prod(lengths_j, axis=-1), axis=-1)
-                # [..., S, K]
-                areas_per_segment = (
-                    (-1) ** (j + 1) * areas_j
-                    if areas_per_segment is None
-                    else areas_per_segment + (-1) ** (j + 1) * areas_j
+                )  # [..., S, K, Cq_j, num_obj]
+
+                areas_j = tf.reduce_sum(  # sum over all subsets Cq_j -> [..., S, K]
+                    tf.reduce_prod(lengths_j, axis=-1), axis=-1  # calc hvi within each K
                 )
 
-            # sum over segments(cells) and average over MC samples
-            # return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
-            areas_in_total = tf.reduce_sum(areas_per_segment, axis=-1)
-            return tf.reduce_mean(areas_in_total, axis=-1, keepdims=True)
+                return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
+
+            for j in range(1, q + 1):  # Inclusion-Exclusion loop
+                q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
+                j_sub_samples = tf.gather(
+                    samples, q_choose_j, axis=-2
+                )  # [..., S, Cq_j, j, num_obj]
+                hv_contrib += (-1) ** (j + 1) * hv_contrib_on_samples(j_sub_samples)
+
+            return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
 
         return batch_hvei
 

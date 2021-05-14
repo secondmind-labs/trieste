@@ -38,6 +38,7 @@ from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
@@ -636,6 +637,68 @@ def test_expected_hypervolume_improvement(
     ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=0.01, atol=0.01)
+
+
+def test_qehvi_builder_raises_for_empty_data() -> None:
+    num_obj = 3
+    dataset = empty_dataset([2], [num_obj])
+    model = QuadraticMeanAndRBFKernel()
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size)
+
+
+def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_jitter() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedImprovement(100, jitter=-1.0)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "input_dim, num_samples_per_point, training_input, obj_num, variance_scale",
+    [
+        (1, 50_000, tf.constant([[0.3], [0.22], [0.1], [0.35]]), 2, 1.0),
+        (1, 50_000, tf.constant([[0.3], [0.22], [0.1], [0.35]]), 2, 2.0),
+        (2, 50_000, tf.constant([[0.0, 0.0], [0.2, 0.5]]), 2, 1.0),
+    ],
+)
+def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
+    input_dim: int,
+    num_samples_per_point: int,
+    training_input: tf.Tensor,
+    obj_num: int,
+    variance_scale: float,
+) -> None:
+
+    data_num_seg_per_dim = 10  # test data number per input dim
+
+    model = _mo_test_model(obj_num, *[variance_scale] * obj_num)
+
+    mean, _ = model.predict(training_input)  # gen prepare Pareto
+    _model_based_tr_dataset = Dataset(training_input, mean)
+
+    _model_based_pareto = Pareto(mean)
+    _reference_pt = get_reference_point(_model_based_pareto.front)
+
+    qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=num_samples_per_point)
+    qehvi_acq = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)
+    ehvi_acq = expected_hv_improvement(model, _model_based_pareto, _reference_pt)
+
+    test_xs = tf.convert_to_tensor(
+        list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)),
+        dtype=training_input.dtype,
+    )  # [test_num, input_dim]
+    test_xs = tf.expand_dims(test_xs, -2)  # add Batch dim: q=1
+
+    npt.assert_allclose(ehvi_acq(test_xs), qehvi_acq(test_xs), rtol=1e-2, atol=1e-2)
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
