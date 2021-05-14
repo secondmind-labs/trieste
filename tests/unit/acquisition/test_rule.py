@@ -25,7 +25,6 @@ from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    GreedyAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
