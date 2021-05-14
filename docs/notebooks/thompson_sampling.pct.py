@@ -89,12 +89,10 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # We can also visualise the observations on a three-dimensional plot of the Branin. We'll add the contours of the mean and variance of the model's predictive distribution as translucent surfaces.
 
 # %%
-from typing import cast
-from trieste.models.model_interfaces import GaussianProcessRegression
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
-    cast(GaussianProcessRegression, result.try_get_final_model()).model,
+    result.try_get_final_model().model, # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30

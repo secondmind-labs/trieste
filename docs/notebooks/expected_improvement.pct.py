@@ -144,12 +144,10 @@ plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_mi
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
 
 # %%
-from typing import cast
-from trieste.models import GaussianProcessRegression
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    cast(GaussianProcessRegression, result.try_get_final_model()).model,
+    result.try_get_final_model().model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30,
@@ -173,11 +171,11 @@ fig.show()
 
 # %%
 gpflow.utilities.print_summary(
-    cast(GaussianProcessRegression, result.try_get_final_model()).model
+    result.try_get_final_model().model  # type: ignore
 )
 
 ls_list = [
-    cast(GaussianProcessRegression, step.model).model.kernel.lengthscales.numpy()
+    step.model.model.kernel.lengthscales.numpy()  # type: ignore
     for step in result.history + [result.final_result.unwrap()]
 ]
 

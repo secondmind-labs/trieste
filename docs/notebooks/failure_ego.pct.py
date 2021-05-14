@@ -203,14 +203,12 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
-from typing import cast
-from trieste.models import GaussianProcessRegression
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 
 fig = plot_gp_plotly(
-    cast(GaussianProcessRegression, result.models[OBJECTIVE]).model,
+    result.models[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50
@@ -233,7 +231,7 @@ fig.show()
 
 # %%
 fig, ax = plot_gp_2d(
-    cast(GaussianProcessRegression, result.models[FAILURE]).model,
+    result.models[FAILURE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50,
