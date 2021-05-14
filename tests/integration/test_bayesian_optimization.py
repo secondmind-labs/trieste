@@ -18,6 +18,10 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import BatchMonteCarloExpectedImprovement, AugmentedExpectedImprovement, MinValueEntropySearch, GIBBON
+from trieste.acquisition.function import (
+    BatchMonteCarloExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
+)
 from trieste.acquisition.rule import (
     OBJECTIVE,
     AcquisitionRule,
@@ -36,24 +40,24 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (
-            30,
-            EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE),
-            ),  
-        ),
-        (
-            30,
-            EfficientGlobalOptimization(
-                AugmentedExpectedImprovement().using(OBJECTIVE),
-            ),  
-        ),    
-        (
-            30,
-            EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1])).using(OBJECTIVE),
-            ),  
-        ),    
+        # (
+        #     30,
+        #     EfficientGlobalOptimization(
+        #         GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE),
+        #     ),  
+        # ),
+        # (
+        #     30,
+        #     EfficientGlobalOptimization(
+        #         AugmentedExpectedImprovement().using(OBJECTIVE),
+        #     ),  
+        # ),    
+        # (
+        #     30,
+        #     EfficientGlobalOptimization(
+        #         MinValueEntropySearch(Box([0, 0], [1, 1])).using(OBJECTIVE),
+        #     ),  
+        # ),    
         (20, EfficientGlobalOptimization()),
         (
             15,
@@ -61,7 +65,14 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                 num_query_points=2,
             ),
-        ),    
+        ),
+        (
+            10,
+            EfficientGlobalOptimization(
+                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
         (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],

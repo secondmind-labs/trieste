@@ -64,7 +64,6 @@ class DummyLikelihood:
     def __init__(self, noise_variance: float = 1e-5):
         self.variance = noise_variance
 
-
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
     """ A (static) Gaussian process over a vector random variable. """
 
@@ -98,7 +97,7 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
         *,
         x_shift: float | SequenceN[float] | TensorType = 0,
         kernel_amplitude: float | TensorType | None = None,
-        noise_variance: float = 1e-5,
+        noise_variance: float | TensorType = 1e-5
     ):
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
         self.model = DummyModel(noise_variance)

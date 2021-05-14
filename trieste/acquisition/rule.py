@@ -30,7 +30,11 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import Box, SearchSpace
 from ..type import TensorType
-from .function import AcquisitionFunctionBuilder, ExpectedImprovement
+from .function import (
+    AcquisitionFunctionBuilder,
+    ExpectedImprovement,
+    GreedyAcquisitionFunctionBuilder,
+)
 from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
@@ -94,7 +98,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | None = None,
+        builder: AcquisitionFunctionBuilder | GreedyAcquisitionFunctionBuilder | None = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -124,7 +128,11 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
-        optimizer = batchify(optimizer, num_query_points)
+
+        if isinstance(
+            builder, AcquisitionFunctionBuilder
+        ):  # Joint batch acquisitions require batch optimizers
+            optimizer = batchify(optimizer, num_query_points)
 
         self._builder = builder
         self._optimizer = optimizer
@@ -155,8 +163,21 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
+
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        return self._optimizer(search_space, acquisition_function), None
+        points = self._optimizer(search_space, acquisition_function)
+
+        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
+            for i in range(
+                self._num_query_points - 1
+            ):  # greedily allocate remaining batch elements
+                greedy_acquisition_function = self._builder.prepare_acquisition_function(
+                    datasets, models, pending_points=points
+                )
+                chosen_point = self._optimizer(search_space, greedy_acquisition_function)
+                points = tf.concat([points, chosen_point], axis=0)
+
+        return points, None
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):

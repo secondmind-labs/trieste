@@ -126,7 +126,8 @@ float64.
 def hartmann_3(x: TensorType) -> TensorType:
     """
     The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
-    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details
+    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.
+
     :param x: The points at which to evaluate the function, with shape [..., 3].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
@@ -162,9 +163,9 @@ float64.
 
 def shekel_4(x: TensorType) -> TensorType:
     """
-    The Shekel test function over :math:`[0, 1]^4`. This function has
-    ten local minima and a single global minima.
-    See https://www.sfu.ca/~ssurjano/shekel.html for details.
+    The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+    minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
+
     Note that we rescale the original problem, which is typically defined
     over `[0, 10]^4`.
 
@@ -243,6 +244,7 @@ def ackley_5(x: TensorType) -> TensorType:
     for details.
     Note that we rescale the original problem, which is typically defined
     over `[-32.768, 32.768]`.
+
     :param x: The points at which to evaluate the function, with shape [..., 5].
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
