@@ -13,7 +13,6 @@ from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, p
 # %%
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
-from trieste.acquisition.rule import OBJECTIVE
 from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
@@ -34,7 +33,7 @@ tf.random.set_seed(1793)
 
 # %%
 vlmop2 = VLMOP2().objective()
-observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
+observer = trieste.utils.objectives.mk_observer(vlmop2)
 
 # %%
 mins = [-2, -2]
@@ -74,7 +73,7 @@ plt.show()
 # ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple. 
 
 # %%
-plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
+plot_mobo_points_in_obj_space(initial_data.observations)
 plt.show()
 
 
@@ -105,7 +104,7 @@ def build_stacked_independent_objectives_model(data: Dataset, num_output) -> Mod
 
 
 # %%
-models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)}
+model = build_stacked_independent_objectives_model(initial_data, num_objective)
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -113,7 +112,7 @@ models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJ
 
 # %%
 ehvi = ExpectedHypervolumeImprovement()
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehvi.using(OBJECTIVE))
+rule = EfficientGlobalOptimization(builder=ehvi)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -123,16 +122,16 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=ehv
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualize the queried data across the design space.  
 # We represent the initial points as crosses and the points obtained by our optimization loop as dots. 
 
 # %%
-datasets = result.try_get_final_datasets()
-data_query_points = datasets[OBJECTIVE].query_points
-data_observations = datasets[OBJECTIVE].observations
+dataset = result.try_get_final_dataset()
+data_query_points = dataset.query_points
+data_observations = dataset.observations
 
 _, ax = plot_function_2d(
     vlmop2,

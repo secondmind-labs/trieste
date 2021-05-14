@@ -20,15 +20,15 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, TypeVar, cast, overload
+from typing import Dict, Generic, TypeVar, cast, overload
 
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
-from .observer import Observer
+from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
@@ -51,6 +51,22 @@ class Record(Generic[S]):
 
     acquisition_state: S | None
     """ The acquisition state. """
+
+    @property
+    def dataset(self) -> Dataset:
+        """ The dataset when there is just one dataset. """
+        if len(self.datasets) == 1:
+            return next(iter(self.datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """ The model when there is just one dataset. """
+        if len(self.models) == 1:
+            return next(iter(self.models.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
 
 
 # this should be a generic NamedTuple, but mypy doesn't support them
@@ -90,6 +106,20 @@ class OptimizationResult(Generic[S]):
         """
         return self.final_result.unwrap().datasets
 
+    def try_get_final_dataset(self) -> Dataset:
+        """
+        Convenience method to attempt to get the final data for a single dataset run.
+
+        :return: The final data, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        :raise ValueError: If the optimization was not a single dataset run.
+        """
+        datasets = self.try_get_final_datasets()
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
+
     def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.
@@ -98,6 +128,20 @@ class OptimizationResult(Generic[S]):
         :raise Exception: If an exception occurred during optimization.
         """
         return self.final_result.unwrap().models
+
+    def try_get_final_model(self) -> TrainableProbabilisticModel:
+        """
+        Convenience method to attempt to get the final model for a single model run.
+
+        :return: The final model, if the optimization completed successfully.
+        :raise Exception: If an exception occurred during optimization.
+        :raise ValueError: If the optimization was not a single model run.
+        """
+        models = self.try_get_final_models()
+        if len(models) == 1:
+            return next(iter(models.values()))
+        else:
+            raise ValueError(f"Expected single model, found {len(models)}")
 
 
 class BayesianOptimizer(Generic[SP]):
@@ -144,11 +188,35 @@ class BayesianOptimizer(Generic[SP]):
     ) -> OptimizationResult[S]:
         ...
 
+    @overload
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset] | Dataset,
+        model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[S, SP] | None = None,
         acquisition_state: S | None = None,
         *,
@@ -170,9 +238,9 @@ class BayesianOptimizer(Generic[SP]):
         `absl` at level `logging.ERROR`).
 
         **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
-        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will be
-        updated during the optimization process. For example, if ``track_state`` is `True`, a copied
-        model will be used on each optimization step. Use the models in the return value for
+        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will
+        be updated during the optimization process. For example, if ``track_state`` is `True`, a
+        copied model will be used on each optimization step. Use the models in the return value for
         reliable access to the updated models.
 
         **Type hints:**
@@ -209,6 +277,14 @@ class BayesianOptimizer(Generic[SP]):
             - ``datasets`` or ``model_specs`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
+        if isinstance(datasets, Dataset):
+            datasets = {OBJECTIVE: datasets}
+            model_specs = {OBJECTIVE: model_specs}
+
+        # reassure the type checker that everything is tagged
+        datasets = cast(Dict[str, Dataset], datasets)
+        model_specs = cast(Dict[str, ModelSpec], model_specs)
+
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
@@ -248,7 +324,13 @@ class BayesianOptimizer(Generic[SP]):
 
                 observer_output = self._observer(query_points)
 
-                datasets = {tag: datasets[tag] + observer_output[tag] for tag in observer_output}
+                tagged_output = (
+                    observer_output
+                    if isinstance(observer_output, Mapping)
+                    else {OBJECTIVE: observer_output}
+                )
+
+                datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
                 for tag, model in models.items():
                     dataset = datasets[tag]

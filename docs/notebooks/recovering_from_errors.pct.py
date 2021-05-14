@@ -17,7 +17,6 @@ random.seed(3)
 
 # %%
 import trieste
-from trieste.acquisition.rule import OBJECTIVE
 from trieste.utils.objectives import branin
 
 
@@ -35,7 +34,7 @@ class FaultyBranin:
         if self._is_broken:
             raise Exception("Observer is broken")
 
-        return {OBJECTIVE: trieste.data.Dataset(x, branin(x))}
+        return trieste.data.Dataset(x, branin(x))
 
 
 observer = FaultyBranin()
@@ -52,13 +51,13 @@ search_space = trieste.space.Box(
 )
 initial_data = observer(search_space.sample(5))
 
-variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
+variance = tf.math.reduce_variance(initial_data.observations)
 kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(1e-12)
 gpr = gpflow.models.GPR(
-    initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5
+    initial_data.astuple(), kernel, noise_variance=1e-5
 )
 gpflow.set_trainable(gpr.likelihood, False)
-models = {OBJECTIVE: trieste.models.GaussianProcessRegression(gpr)}
+model = trieste.models.GaussianProcessRegression(gpr)
 
 acquisition_rule = trieste.acquisition.rule.TrustRegion()
 
@@ -75,7 +74,7 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, history = bo.optimize(15, initial_data, models, acquisition_rule).astuple()
+result, history = bo.optimize(15, initial_data, model, acquisition_rule).astuple()
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.
@@ -87,7 +86,7 @@ result, history = bo.optimize(15, initial_data, models, acquisition_rule).astupl
 
 # %%
 if result.is_ok:
-    data = result.unwrap().datasets[OBJECTIVE]
+    data = result.unwrap().dataset
     print("best observation: ", tf.reduce_min(data.observations))
 
 # %% [markdown]
@@ -105,8 +104,8 @@ if result.is_err:
 
     result, new_history = bo.optimize(
         15 - len(history),
-        history[-1].datasets,
-        history[-1].models,
+        history[-1].dataset,
+        history[-1].model,
         acquisition_rule,
         history[-1].acquisition_state
     ).astuple()
@@ -120,7 +119,7 @@ if result.is_err:
 from util.plotting import plot_bo_points, plot_function_2d
 
 if result.is_ok:
-    data = result.unwrap().datasets[OBJECTIVE]
+    data = result.unwrap().dataset
     arg_min_idx = tf.squeeze(tf.argmin(data.observations, axis=0))
     _, ax = plot_function_2d(
         branin, search_space.lower, search_space.upper, 30, contour=True

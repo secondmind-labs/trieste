@@ -20,11 +20,12 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from typing import Optional, cast, overload
 
 import tensorflow as tf
 
 from ..data import Dataset
-from ..observer import Observer
+from ..observer import MultiObserver, Observer, SingleObserver
 from ..type import TensorType
 
 
@@ -329,10 +330,25 @@ float64.
 """
 
 
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:
+@overload
+def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
+    ...
+
+
+@overload
+def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
+    ...
+
+
+def mk_observer(
+    objective: Callable[[TensorType], TensorType], key: Optional[str] = None
+) -> Observer:
     """
     :param objective: An objective function designed to be used with a single data set and model.
-    :param key: The key to use to access the data from the observer result.
-    :return: An observer returning the data from ``objective`` with the specified ``key``.
+    :param key: An optional key to use to access the data from the observer result.
+    :return: An observer returning the data from ``objective``.
     """
-    return lambda qp: {key: Dataset(qp, objective(qp))}
+    if key is not None:
+        return lambda qp: {cast(str, key): Dataset(qp, objective(qp))}
+    else:
+        return lambda qp: Dataset(qp, objective(qp))
