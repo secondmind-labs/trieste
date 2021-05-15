@@ -24,10 +24,9 @@ tf.random.set_seed(42)
 
 # %%
 from trieste.utils.objectives import branin, mk_observer, BRANIN_MINIMUM
-from trieste.acquisition.rule import OBJECTIVE
 from trieste.space import Box
 
-observer = mk_observer(branin, OBJECTIVE)
+observer = mk_observer(branin)
 search_space = Box([0, 0], [1, 1])
 
 num_initial_points = 5
@@ -51,18 +50,16 @@ def build_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
 
     return {
-        OBJECTIVE: {
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
+        "model": gpr,
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
     }
 
 
-model_spec = build_model(initial_data[OBJECTIVE])
-models = map_values(create_model, model_spec)
+model_spec = build_model(initial_data)
+model = create_model(model_spec)
 
 # %% [markdown]
 # ## Batch acquisition functions.
@@ -78,9 +75,9 @@ from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
-points_chosen_by_batch_ei, _ = EfficientGlobalOptimization(
-    num_query_points=10, builder=batch_ei_acq.using(OBJECTIVE)
-).acquire(search_space, initial_data, models) # type: ignore
+batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=10, builder=batch_ei_acq)
+points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
 # and then do the same with `LocalPenalizationAcquisitionFunction`.
@@ -89,9 +86,10 @@ points_chosen_by_batch_ei, _ = EfficientGlobalOptimization(
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=1000)
-points_chosen_by_local_penalization, _ = EfficientGlobalOptimization(
-    num_query_points=10, builder=local_penalization_acq.using(OBJECTIVE)
-).acquire(search_space, initial_data, models) # type: ignore
+local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=10, builder=local_penalization_acq)
+points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_single(
+    search_space, initial_data, model)
 
 # %% [markdown]
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas the `LocalPenalizationAcquisitionFunction` focuses evaluations in the most promising areas of the space.
@@ -101,7 +99,7 @@ from trieste.acquisition import ExpectedImprovement
 
 # plot standard EI acquisition function
 ei = ExpectedImprovement()
-ei_acq_function = ei.using(OBJECTIVE).prepare_acquisition_function(initial_data, models)
+ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100)
 
 plt.scatter(
@@ -142,20 +140,20 @@ cbar.set_label("EI", rotation=270)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule = EfficientGlobalOptimization( # type: ignore
-    num_query_points=3, builder=batch_ei_acq.using(OBJECTIVE)
+batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=3, builder=batch_ei_acq
 )
-qei_result = bo.optimize(10, initial_data, models, acquisition_rule=batch_ei_rule)
+qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]
 # and then repeat the same optimization with `LocalPenalizationAcquisitionFunction`.
 
 # %%
-local_penalization_rule = EfficientGlobalOptimization( # type: ignore
-    num_query_points=3, builder=local_penalization_acq.using(OBJECTIVE)
+local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=3, builder=local_penalization_acq
 )
 local_penalization_result = bo.optimize(
-    10, initial_data, models, acquisition_rule=local_penalization_rule
+    10, initial_data, model, acquisition_rule=local_penalization_rule
 )
 
 # %% [markdown]
@@ -166,10 +164,10 @@ local_penalization_result = bo.optimize(
 # %%
 from util.plotting import plot_regret
 
-qei_observations = qei_result.try_get_final_datasets()[OBJECTIVE].observations - BRANIN_MINIMUM
+qei_observations = qei_result.try_get_final_dataset().observations - BRANIN_MINIMUM
 qei_min_idx = tf.squeeze(tf.argmin(qei_observations, axis=0))
 local_penalization_observations = (
-    local_penalization_result.try_get_final_datasets()[OBJECTIVE].observations - BRANIN_MINIMUM
+    local_penalization_result.try_get_final_dataset().observations - BRANIN_MINIMUM
 )
 local_penalization_min_idx = tf.squeeze(tf.argmin(local_penalization_observations, axis=0))
 

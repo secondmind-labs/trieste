@@ -17,11 +17,12 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
-from trieste.acquisition.rule import OBJECTIVE, AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.models.model_interfaces import ModelStack
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.objectives import mk_observer
