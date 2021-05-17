@@ -621,7 +621,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     """
     Builder for the batch expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
-    follows :cite:`:daulton2020differentiable`
+    follows :cite:`daulton2020differentiable`
     """
 
     def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
