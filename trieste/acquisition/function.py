@@ -649,12 +649,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         )
 
     def _cache_q_subset_indices(self, q: int) -> None:
-        r"""Cache indices corresponding to all subsets of `q`.
-        This means that consecutive calls to `forward` with the same
-        `q` will not recompute the indices for all (2^q - 1) subsets.
-        Note: this will use more memory than regenerating the indices
-        for each i and then deleting them, but it will be faster for
-        repeated evaluations (e.g. during optimization).
+        """
+        Cache indices containing all subsets of `q`.
+
         :param q: batch size
         """
         if q != self.q:  # regenerate subset indices
@@ -687,7 +684,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         def batch_hvei(at: TensorType) -> TensorType:
             """
-            :param at: Batches of query points at which to sample the predictive distribution, with
+            :param at: batches of query points at which to sample the predictive distribution, with
             shape `[..., B, D]`.
             """
 
