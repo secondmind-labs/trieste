@@ -22,7 +22,6 @@ from trieste.acquisition.function import (
     LocalPenalizationAcquisitionFunction,
 )
 from trieste.acquisition.rule import (
-    OBJECTIVE,
     AcquisitionRule,
     EfficientGlobalOptimization,
     ThompsonSampling,
@@ -31,6 +30,7 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
@@ -71,14 +71,14 @@ def test_optimizer_finds_minima_of_the_branin_function(
         return GaussianProcessRegression(gpr)
 
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(branin, OBJECTIVE)
+    observer = mk_observer(branin)
     initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
+    model = build_model(initial_data)
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_datasets()[OBJECTIVE]
+        .optimize(num_steps, initial_data, model, acquisition_rule)
+        .try_get_final_dataset()
     )
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
