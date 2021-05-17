@@ -658,7 +658,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_s
 
 def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_jitter() -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        BatchMonteCarloExpectedImprovement(100, jitter=-1.0)
+        BatchMonteCarloExpectedHypervolumeImprovement(100, jitter=-1.0)
 
 
 @random_seed
