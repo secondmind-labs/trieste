@@ -129,6 +129,15 @@ class TrainableNonProbabilisticModel(NonProbabilisticModel):
     """ A trainable non-probabilistic model. """
 
     @abstractmethod
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the model given the specified ``dataset``. Does not train the model.
+
+        :param dataset: The data with which to update the model.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize the model objective with respect to (hyper)parameters given the specified
@@ -454,21 +463,21 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
     """ A trainable wrapper for a Keras neural network models. """
 
-    def __init__(self, optimizer: TFOptimizer | None = None):
+    def __init__(self, optimizer: TFKerasOptimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults
-            to :class:`~trieste.models.optimizer.TFOptimizer` with
-            :class:`~tensorflow.keras.optimizers.Adam`.
+            to :class:`~trieste.models.optimizer.TFKerasOptimizer` with
+            default arguments to the :meth:`fit` method.
         """
         super().__init__()
 
         if optimizer is None:
-            optimizer = TFOptimizer(tf.keras.optimizers.Adam())
+            optimizer = TFKerasOptimizer()
 
         self._optimizer = optimizer
 
     @property
-    def optimizer(self) -> TFOptimizer:
+    def optimizer(self) -> TFKerasOptimizer:
         """ The optimizer with which to train the model. """
         return self._optimizer
 
@@ -489,7 +498,7 @@ class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(self.model, dataset)
+        self.optimizer.optimize(dataset)
 
     __deepcopy__ = module_deepcopy
 
@@ -508,7 +517,6 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
             will consist of this collection of networks.
         :param ensemble_size: Number of functions in the ensemble.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with
             :class:`~tensorflow.keras.optimizers.Adam`.
         """
 
@@ -516,7 +524,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
             optimizer = tf.keras.optimizers.Adam()
         self._optimizer_keras = optimizer
 
-        super().__init__(TFOptimizer(optimizer))
+        super().__init__(TFKerasOptimizer())
 
         self._networks = networks
         self._ensemble_size = len(networks)
@@ -616,6 +624,13 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticMod
             samples.append(self._model.predict(inputs))
 
         return samples
+
+    def update(self, dataset: Dataset) -> None:
+        """
+        Neural networks are parametric models and do not need to save update data. However,
+        Bayesian optimization loop requires an update method, so here we simply pass the execution.
+        """
+        pass
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {

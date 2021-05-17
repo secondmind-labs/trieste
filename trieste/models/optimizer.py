@@ -138,104 +138,45 @@ class TFOptimizer(Optimizer):
 
 
 @dataclass
-class TFKerasOptimizer(Optimizer):
-    """ Optimizer for training models with mini-batches of training data. """
+class TFKerasOptimizer:
+    """ Optimizer for Keras models with mini-batches of training data. """
 
-    max_iter: int = 100
-    """ The number of iterations over which to optimize the model. """
-
-    batch_size: int | None = None
-    """ The size of the mini-batches. """
+    fit_args: dict[str, Any] | None = None
+    """
+    The keyword arguments to pass to the :meth:`fit` method of the :class:`~tensorflow.keras.Model`.
+    """
 
     dataset_builder: DatasetTransformer | None = None
-    """ A mapping from :class:`~trieste.observer.Observer` data to mini-batches. """
+    """
+    A mapping from :class:`~trieste.observer.Observer` data to mini-batches as either a
+    `tensorflow.data` dataset, a generator or `tensorflow.keras.utils.Sequence`.
+    """
 
-    def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
-        def creator_fn(data: TrainingData) -> LossClosure:
-            return create_loss_function(model, data, self.compile)
-
-        if self.dataset_builder is None and self.batch_size is None:
+    def get_data(self, dataset: Dataset) -> tuple(TensorType, TensorType):
+        
+        if self.dataset_builder is None:
             x = tf.convert_to_tensor(dataset.query_points)
             y = tf.convert_to_tensor(dataset.observations)
-            return creator_fn((x, y))
-        elif self.dataset_builder is None:
-            return creator_fn(
-                iter(
-                    tf.data.Dataset.from_tensor_slices(dataset.astuple())
-                    .shuffle(len(dataset))
-                    .batch(self.batch_size)
-                    .prefetch(tf.data.experimental.AUTOTUNE)
-                    .repeat()
-                )
-            )
+        else:
+            x = self.dataset_builder(dataset)
+            y = None
 
-        return creator_fn(self.dataset_builder(dataset, self.batch_size))
+        return x, y
 
-    def optimize(self, model: tf.Module, dataset: Dataset) -> None:
+    def optimize(self, model: tf.Module, dataset: Dataset) -> tf.keras.callbacks.History:
         """
-        Optimize the specified `model` with the `dataset`.
+        Optimize the Keras neural network `model`, using the Keras fit method, according to the
+        specifications in `fit_args` and using the `dataset`. Method name is for consistency
+        reasons, to match the method names of probabilistic models.
 
         :param model: The model to optimize.
         :param dataset: The data with which to optimize the `model`.
         """
 
-        self._model = self._build_model()
-        self._compile_model()
-
-        loss_fn = self.create_loss(model, dataset)
-        variables = model.trainable_variables
-
-        @jit(apply=self.compile)
-        def train_fn() -> None:
-            self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
-
-        for _ in range(self.max_iter):
-            train_fn()
-
-    def _train(
-        self, latent_trajectories: Trajectory, training_spec: KerasTrainingSpec
-    ) -> tf.keras.callbacks.History:
-        """
-        Train the ensemble model, using the training Keras model, according to the specifications
-        in `training_spec`. For each of the networks in the ensemble it prepares the training data
-        from trajectories, creating a batched TensorFlow dataset which is used to fit the training
-        Keras model.
-        This method would require overwriting if there is a custom model on a subset of
-        observations or actions, since all state information and actions are by default packed into
-        the dataset.
-        :param latent_trajectories: Trajectories of latent states, actions, rewards and next latent
-            states.
-        :param training_spec: Keras training specifications. Currently only `training_batch_size`,
-        `epochs` and `callbacks` are used.
-        :return: Keras History object with model training information.
-        """
-
-        # TODO: trajectory sampler should not care about training
-        self._trajectory_sampling_strategy.train_model()
-
-        transition = extract_transitions_from_trajectories(
-            latent_trajectories,
-            self.latent_observation_space_spec,
-            self.action_space_spec,
-            self.predict_state_difference,
-        )
-        training_data_set = pack_transition_into_ensemble_training_data_set(
-            transition,
-            self._model.input_names,
-            self._model.output_names,
-            self._keras_transition_networks,
-        )
-        batched_training_data_set = training_data_set.batch(training_spec.training_batch_size)
-        # TODO: validation_split, workers and use_multiprocessing do not work with BatchDataset
-        training_spec_dict = dict(training_spec.__dict__)
-        training_spec_dict.pop("training_batch_size", None)
-        history = self._model.fit(batched_training_data_set, **training_spec_dict)
+        x, y = self.get_data(dataset)
+        history = model.fit(x=x, y=y, **self.fit_args)
 
         return history
-
-    def update_batch_size(self, batch_size: int) -> None:
-        if isinstance(self._trajectory_sampling_strategy, BatchSizeUpdaterMixin):
-            self._trajectory_sampling_strategy.update_batch_size(batch_size)
 
 
 @singledispatch
@@ -260,14 +201,6 @@ def _create_tf_optimizer(
     optimizer_args: Dict[str, Any],
 ) -> Optimizer:
     return TFOptimizer(optimizer, **optimizer_args)
-
-
-@create_optimizer.register
-def _create_tf_keras_optimizer(
-    optimizer: tf.optimizers.Adam,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return TFKerasOptimizer(optimizer, **optimizer_args)
 
 
 @create_optimizer.register
