@@ -83,7 +83,10 @@ class ProbabilisticModel(ABC):
             ``query_points``. For a predictive distribution with event shape E, the mean and
             variance will both have shape [...] + E.
         """
-        raise NotImplementedError(f"Model {self!r} does not support predicting actual observations")
+        raise NotImplementedError(
+            f"Model {self!r} does not support predicting actual observations, "
+            f"just the latent function"
+        )
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
