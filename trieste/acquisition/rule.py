@@ -486,7 +486,7 @@ class Molecule_BatchByMultipleFunctions(AcquisitionRule[None, SearchSpace]):
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
-        optimizer = batchify(optimizer, 1)
+        #optimizer = batchify(optimizer, 1)
 
         self._builder = builder
         self._num_query_points = num_query_points

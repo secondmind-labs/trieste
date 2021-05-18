@@ -72,14 +72,23 @@ class KMeans(InducingPointSelector):
         X = tf.gather(X, perm)
 
         X_stds = tf.math.reduce_std(X, 0)
-        X_norm = X / X_stds
+
+        if tf.math.count_nonzero(X_stds)==len(X_stds):
+            X_norm = X / X_stds
+        else:
+            X_norm = X
+
         centroids, _ = kmeans(X_norm, int(M))
         if len(centroids) < M:  # sometimes scipy returns fewer centroids
             extra_points = M - len(centroids)
             extra_indicies = tf.random.categorical(tf.math.log(tf.ones([1, N])), extra_points)
             extra_centroids = tf.gather(X_norm, tf.squeeze(extra_indicies, 0))
             centroids = tf.concat([centroids, extra_centroids], axis=0)
-        return centroids * X_stds
+        
+        if tf.math.count_nonzero(X_stds)==len(X_stds):
+            return centroids * X_stds
+        else:
+            return centroids
 
 
 class ConditionalVariance(InducingPointSelector):
