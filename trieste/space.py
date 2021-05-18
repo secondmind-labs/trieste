@@ -158,6 +158,14 @@ class DiscreteSearchSpace(SearchSpace):
         return self
 
 
+    def remove(self, x:TensorType) -> None:
+    	tf.debugging.assert_shapes([(x, ("1", "D"))])
+    	matches = tf.reduce_all(tf.math.equal(self._points, x),1,keepdims=False)
+    	if tf.reduce_any(matches):
+    		self._points = tf.boolean_mask(self._points,tf.math.logical_not(matches))
+    	else:
+    		raise ValueError("tried to remove a point not in search space")
+
 class Box(SearchSpace):
     r"""
     Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in

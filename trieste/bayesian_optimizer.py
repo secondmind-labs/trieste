@@ -281,4 +281,4 @@ class BayesianOptimizer(Generic[SP]):
         if exact_objective:
             return OptimizationResult(Ok(record), history), current_best, model
         else:
-            return OptimizationResult(Ok(record), history)
+            return OptimizationResult(Ok(record), history), model

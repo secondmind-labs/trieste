@@ -28,7 +28,7 @@ from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..space import Box, SearchSpace
+from ..space import Box, SearchSpace, DiscreteSearchSpace
 from ..type import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
@@ -453,3 +453,99 @@ class BatchByMultipleFunctions(AcquisitionRule[None, SearchSpace]):
             print("chose a point!")
             query_points = tf.concat([query_points, point], axis=0)
         return query_points, None
+
+
+
+class Molecule_BatchByMultipleFunctions(AcquisitionRule[None, SearchSpace]):
+    """ 
+    Implements Thompson sampling for choosing optimal points for our molecular search
+    problem. Unlike above, once a particular molecule has been chosen, it is then removed
+    from the search space (discrete).
+    """
+    @dataclass(frozen=True)
+    class State:
+        """ The acquisition state for the :class:`TrustRegion` acquisition rule. """
+        acquisition_space: DiscreteSearchSpace
+        """ The search space. """
+
+
+    def __init__(
+        self,
+        builder: AcquisitionFunctionBuilder | None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        """
+        :param builder: The acquisition function builder to use.
+        :param num_query_points: The number of points to acquire.
+        """
+        if not num_query_points > 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
+        if optimizer is None:
+            optimizer = automatic_optimizer_selector
+        optimizer = batchify(optimizer, 1)
+
+        self._builder = builder
+        self._num_query_points = num_query_points
+        self._optimizer = optimizer
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""BatchByMultipleFunctions(
+        {self._builder!r},
+        {self._optimizer!r},
+        {self._num_query_points!r})"""
+
+    def acquire(
+        self,
+        search_space: DiscreteSearchSpace,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        state: State | None = None,
+    ) -> tuple[TensorType, State]:
+        """
+        Return the `num_query_points` points at which
+        random samples yield the **minima** of the model posterior.
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :param state: Unused.
+        :return: The `num_query_points` points to query, and `None`.
+        :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
+            other key.
+        """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if state is None:
+            current_space = search_space
+        else:
+            current_space = state.acquisition_space
+
+        query_points = current_space.sample(0)
+        for i in range(self._num_query_points):
+            acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+            point = self._optimizer(current_space, acquisition_function)
+            fail_count = 0
+            while tf.reduce_any(tf.math.is_nan(point)):
+                print("chose a nan so redo!")
+                point = self._optimizer(current_space, acquisition_function)
+                fail_count+=1
+                if fail_count==5:
+                    print("chose a nan from 5 restarts so just choose random")
+                    point = current_space.sample(1)
+                    break
+            print("chose a point!")
+
+            current_space.remove(point) # dont choose point again
+            query_points = tf.concat([query_points, point], axis=0)
+
+        state_ = Molecule_BatchByMultipleFunctions.State(current_space)
+        return query_points, state_
