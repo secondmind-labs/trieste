@@ -343,6 +343,43 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         self.model.data = dataset.query_points, dataset.observations
 
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        :param query_points_1: Set of query points with shape [N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+
+        :return: Covariance matrix between the sets of query points with shape [N, M]
+        """
+        tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
+
+        x, _ = self.model.data
+        num_data = x.shape[0]
+        s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
+
+        K = self.model.kernel(x)
+        L = tf.linalg.cholesky(K + s)
+
+        Kx1 = self.model.kernel(x, query_points_1)
+        Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)
+
+        Kx2 = self.model.kernel(x, query_points_2)
+        Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)
+
+        K12 = self.model.kernel(query_points_1, query_points_2)
+        cov = K12 - tf.tensordot(tf.transpose(Linv_Kx1), Linv_Kx2, [[-1], [-2]])
+
+        tf.debugging.assert_shapes(
+            [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
+        )
+
+        return cov
+
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
