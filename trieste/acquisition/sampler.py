@@ -109,7 +109,11 @@ class GumbelSampler(Sampler):
         """
         tf.debugging.assert_shapes([(at, ["N", None])])
 
-        fmean, fvar = self._model.predict(at)
+        try:
+            fmean, fvar = self._model.predict_y(at)
+        except NotImplementedError:
+            fmean, fvar = self._model.predict(at)
+
         fsd = tf.math.sqrt(fvar)
 
         def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
