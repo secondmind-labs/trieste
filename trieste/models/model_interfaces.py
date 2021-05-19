@@ -84,8 +84,7 @@ class ProbabilisticModel(ABC):
             variance will both have shape [...] + E.
         """
         raise NotImplementedError(
-            f"Model {self!r} does not support predicting observations, "
-            f"just the latent function"
+            f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
 
