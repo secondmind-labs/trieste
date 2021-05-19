@@ -301,6 +301,25 @@ def test_gaussian_process_regression_update(gpr_interface_factory) -> None:
     npt.assert_allclose(internal_model.training_loss(), reference_model.training_loss(), rtol=1e-6)
 
 
+def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+
+    if isinstance(model, VariationalGaussianProcess):
+        pytest.skip("covariance_between_points is only implemented for the GPR and SGPR models.")
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[0, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
+
+
 def test_vgp_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)

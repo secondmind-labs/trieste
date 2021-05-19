@@ -17,6 +17,7 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
+from typing import Callable
 
 import numpy.testing as npt
 import pytest
@@ -41,10 +42,11 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    LocallyPenalizedExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
+    PenalizationFunction,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -727,7 +729,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space=space).prepare_acquisition_function(
+        LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel()
         )
 
@@ -735,7 +737,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space, num_samples=-5)
+        LocalPenalizationAcquisitionFunction(search_space, num_samples=-5)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -744,7 +746,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
-    builder = LocallyPenalizedExpectedImprovement(search_space=space)
+    builder = LocalPenalizationAcquisitionFunction(search_space=space)
     builder.prepare_acquisition_function(
         data, QuadraticMeanAndRBFKernel(), None
     )  # first initialize
@@ -757,64 +759,96 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     search_space = Box([0, 0], [1, 1])
     pending_points = tf.zeros([1, 2])
     with pytest.raises(ValueError):
-        LocallyPenalizedExpectedImprovement(search_space).prepare_acquisition_function(
+        LocalPenalizationAcquisitionFunction(search_space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel(), pending_points
         )
 
 
-def test_locally_penalized_expected_improvement_matches_expected_improvement() -> None:
+def test_locally_penalized_expected_improvement_raises_when_called_with_invalid_base() -> None:
+    search_space = Box([0, 0], [1, 1])
+    base_builder = NegativeLowerConfidenceBound()
+    with pytest.raises(ValueError):
+        LocalPenalizationAcquisitionFunction(
+            search_space, base_acquisition_function_builder=base_builder  # type: ignore
+        )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
+)
+def test_locally_penalized_acquisitions_match_base_acquisition(
+    base_builder,
+) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
 
-    acq_builder = LocallyPenalizedExpectedImprovement(search_space)
-    lp_ei = acq_builder.prepare_acquisition_function(data, model, None)
-    best = acq_builder._eta
-    ei = expected_improvement(model, best)
+    lp_acq_builder = LocalPenalizationAcquisitionFunction(
+        search_space, base_acquisition_function_builder=base_builder
+    )
+    lp_acq = lp_acq_builder.prepare_acquisition_function(data, model, None)
+
+    base_acq = base_builder.prepare_acquisition_function(data, model)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    lp_ei_values = lp_ei(xs[..., None, :])
-    ei_values = ei(xs[..., None, :])
+    lp_acq_values = lp_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
 
-    npt.assert_array_equal(lp_ei_values, ei_values)
+    if isinstance(base_builder, ExpectedImprovement):
+        npt.assert_array_equal(lp_acq_values, base_acq_values)
+    else:  # check sampling-based acquisition functions are close
+        npt.assert_allclose(lp_acq_values, base_acq_values, atol=0.001)
 
 
+@random_seed
 @pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
-def test_locally_penalized_expected_improvement_combines_base_and_penalization_correctly(
-    penalizer,
+@pytest.mark.parametrize(
+    "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
+)
+def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
+    penalizer: Callable[..., PenalizationFunction],
+    base_builder,
 ):
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
 
-    acq_builder = LocallyPenalizedExpectedImprovement(search_space, penalizer=penalizer)
+    acq_builder = LocalPenalizationAcquisitionFunction(
+        search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
+    )
     acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_ei = acq_builder.prepare_acquisition_function(data, model, pending_points)
+    lp_acq = acq_builder.prepare_acquisition_function(data, model, pending_points)
+
+    base_acq = base_builder.prepare_acquisition_function(data, model)
+
     best = acq_builder._eta
     lipshitz_constant = acq_builder._lipschitz_constant
-    ei = expected_improvement(model, best)
     penalizer = penalizer(model, pending_points, lipshitz_constant, best)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    lp_ei_values = lp_ei(xs[..., None, :])
-    ei_values = ei(xs[..., None, :])
-    penal_values = penalizer(xs[..., None, :])
 
-    npt.assert_array_equal(
-        lp_ei_values, tf.math.exp(tf.math.log(ei_values) + tf.math.log(penal_values))
-    )
+    lp_acq_values = lp_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
+    penal_values = penalizer(xs[..., None, :])
+    penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penal_values))
+
+    if isinstance(base_builder, ExpectedImprovement):
+        npt.assert_array_equal(lp_acq_values, penalized_base_acq)
+    else:  # check sampling-based acquisition functions are close
+        npt.assert_allclose(lp_acq_values, penalized_base_acq, atol=0.001)
 
 
 @pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_lipschitz_penalizers_raises_for_invalid_batch_size(
     at: TensorType,
-    penalizer,
+    penalizer: Callable[..., PenalizationFunction],
 ) -> None:
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
     best = tf.constant([0], dtype=tf.float64)
@@ -828,8 +862,8 @@ def test_lipschitz_penalizers_raises_for_invalid_batch_size(
 @pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
-    pending_points,
-    penalizer,
+    pending_points: TensorType,
+    penalizer: Callable[..., PenalizationFunction],
 ) -> None:
     best = tf.constant([0], dtype=tf.float64)
     lipshitz_constant = tf.constant([1], dtype=tf.float64)

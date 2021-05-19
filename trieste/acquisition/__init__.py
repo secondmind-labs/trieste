@@ -45,7 +45,7 @@ from .function import (
     ExpectedImprovement,
     GIBBON,
     GreedyAcquisitionFunctionBuilder,
-    LocallyPenalizedExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,

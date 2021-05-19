@@ -107,3 +107,14 @@ def test_mk_observer() -> None:
     assert ys.keys() == {"bar"}
     npt.assert_array_equal(ys["bar"].query_points, x_)
     npt.assert_array_equal(ys["bar"].observations, x_ + 1)
+
+
+def test_mk_observer_unlabelled() -> None:
+    def foo(x: tf.Tensor) -> tf.Tensor:
+        return x + 1
+
+    x_ = tf.constant([[3.0]])
+    ys = mk_observer(foo)(x_)
+
+    npt.assert_array_equal(ys.query_points, x_)
+    npt.assert_array_equal(ys.observations, x_ + 1)
