@@ -74,7 +74,7 @@ class ProbabilisticModel(ABC):
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
-        ``query_points`` for the actual observations, including noise contributions.
+        ``query_points`` for the observations, including noise contributions.
 
         Note that this is not supported by all models.
 
@@ -84,7 +84,7 @@ class ProbabilisticModel(ABC):
             variance will both have shape [...] + E.
         """
         raise NotImplementedError(
-            f"Model {self!r} does not support predicting actual observations, "
+            f"Model {self!r} does not support predicting observations, "
             f"just the latent function"
         )
 
