@@ -1139,6 +1139,9 @@ def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optio
         acq = tf.math.log(1 + ratio * (gamma - ratio))
         quality_term =  -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True) # [len(x), 1]
 
+
+        quality_term =  tf.math.reduce_mean(-gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf), axis=1, keepdims=True)
+
         tf.debugging.assert_shapes(
             [(quality_term, [len(x), 1])],
         )
@@ -1146,30 +1149,24 @@ def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optio
         if pending_points is None: # no repulsion term required if no pending_points
             return quality_term 
 
-        tiled_pending_points = tf.tile(tf.expand_dims(pending_points,0),(len(x),1,1))
-        canididate_batches = tf.concat([x,tiled_pending_points],1) # len(x) x (1 + m) x d
 
 
-        V = model.predict_joint(canididate_batches)[1] # len(x) x 1 x (1 + m) x (1 + m)
-        L = tf.linalg.cholesky(tf.squeeze(V,-3))  # len(x) x (1 + m) x (1 + m)
-        L_diag = tf.linalg.diag_part(L) # len(x) x (1 + m)
-        V_log_determinant = 2.0 * tf.reduce_sum(tf.math.log(L_diag),axis = -1, keepdims=True)  # len(x) x 1
-        C_log_determinant = V_log_determinant - tf.math.log(fvar)
-    
+
+        #NEED PREDICT JOINT Y HERE
+
+        A = tf.expand_dims(model.covariance_between_points(tf.squeeze(x,1),pending_points),-1) # len(x) x m x 1
+        _, B = model.predict_joint(pending_points) # m x m
+        L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # len(x) x 1 x m
+        V_determinant = fvar - tf.squeeze(tf.linalg.matmul(L, L, transpose_a=True),1) # det of block matrix eq
+        
+        C_log_determinant = tf.math.log(V_determinant) - tf.math.log(fvar)
         repulsion_term = 0.5 * C_log_determinant # len(x) x 1
 
 
-        # A = 
-        # V = self.model(X_batches)
-        # # Evaluate terms required for A
-        # A = V.lazy_covariance_matrix[:, 0, 1:].unsqueeze(1)
-        # # batch_shape x 1 x m
-        # _, B = model.predict_joint(pending_points) # 1 x m x m
-        # L = tf.linalg.triangular_solve(tf.linalg.cholesk(B), A, lower=True)  # what shape?
-        # V_det = fvar - tf.linalg.matmul(L, L, transpose_a=True) # det of block matrix eq
-        # repulsion_term = V_det.log() - fvar.log() # Take logs and convert to correlations.
-        # repulsion_term = 0.5 * r.transpose(0, 1)
-        
+        tf.debugging.assert_shapes(
+            [(repulsion_term, [len(x), 1])],
+        )
+
         return quality_term + repulsion_term
 
     return acquisition
