@@ -12,8 +12,8 @@ from util.plotting_plotly import plot_function_plotly
 import matplotlib.pyplot as plt
 import trieste
 
-np.random.seed(42)
-tf.random.set_seed(42)
+np.random.seed(12345)
+tf.random.set_seed(12345)
 
 # %%
 # %load_ext autoreload
@@ -105,12 +105,10 @@ points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(
     search_space, initial_data, model)
 
 # %%
-
-# %%
 from trieste.acquisition import MinValueEntropySearch
 
 # plot standard EI acquisition function
-ei =MinValueEntropySearch(search_space,grid_size=1000)
+ei =GIBBON(search_space,grid_size=1000)
 ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=500)
 
@@ -127,12 +125,46 @@ plt.scatter(
 
 
 
+plt.scatter(
+    initial_data.query_points[:, 0],
+    initial_data.query_points[:, 1],
+    color="black",
+    lw=25,
+    label="data",
+    marker="x",
+)
+
+
+
+
 
 plt.legend(bbox_to_anchor=(1.2, 1), loc="upper left")
 plt.xlabel(r"$x_1$")
 plt.ylabel(r"$x_2$")
 cbar = plt.colorbar()
 cbar.set_label("EI", rotation=270)
+
+# %%
+plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=1000)
+
+
+
+# %%
+ei_acq_function(tf.expand_dims(initial_data.query_points,1))
+
+# %%
+ei_acq_function(tf.constant([[[4.56967857e-01, 5.36232150e-01]]],dtype=tf.float64)).numpy()[0][0]
+
+# %%
+
+# %%
+ei_acq_function(tf.expand_dims(points_chosen_by_gibbon,1))
+
+# %%
+points_chosen_by_gibbon
+
+# %%
+initial_data.query_points
 
 # %% [markdown]
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas the `LocalPenalizationAcquisitionFunction` focuses evaluations in the most promising areas of the space.

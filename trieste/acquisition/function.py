@@ -27,7 +27,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, GaussianProcessRegression
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
@@ -1047,6 +1047,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The GIBBON acquisition function modified for objective minimisation.
         :raise ValueError: if the first call does not have pending_points=None.
         """
+       
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
@@ -1068,7 +1069,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
 
 
-def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optional[TensorType] = None) -> AcquisitionFunction:
+def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points: Optional[TensorType] = None) -> AcquisitionFunction:
     r"""
 
     Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function of :cite:`Moss:2021`.
@@ -1079,25 +1080,22 @@ def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optio
     whereas the repulsion term encourages diversity within the batch (achieving high values for points with low 
     predictive correlation). 
 
+    When using GIBBON for batch optimization,rather than calculating the information provided by the whole batch, 
+    we enjoy a computational saving by instead calculating just  the additional information provided 
+    by adding a new candidate point to the current set of pending points.
 
-    TO IMPLEMENT 
-
-    When using GIBBON for batch optimization, we calculate the additional information provided by adding a new 
-    candidate point to the current set of pending points, rather than calculating the information
-    provided by the whole batch. This allows a modest computational saving. GIBBON's repulsion term :math:`r=\log |C|` 
-    is given by the log determinant of the predictive correlation matrix :math:`C`
+    GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive correlation matrix :math:`C`
     between the `m` pending points and the current candidate. The predictive covariance :math:`V`
-    can be expressed as :math:V = [[v, A], [A, B]]` for a tensor :math:`B` with shape [`m`,`m`] and so we efficientely
+    can be expressed as :math:V = [[v, A], [A, B]]` for a tensor :math:`B` with shape [`m`,`m`] and so we can efficientely
     calculate :math:`|V|` using the formulat for the determinant of block matricies,
     i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`. As the |B| term does not depend on x and we later take its log,
     it provides only a translation of the acqusition function surface and can thus be ignored.
 
-
-
     Note that when using GIBBON for purely sequential optimization, the repulsion term is not required.
 
     
-    :param model: The model of the objective function.
+    :param model: The model of the objective function. GIBBON requires a model with a :method:covariance_between_points 
+        method and so only supports :class:`GaussianProcessRegression` models.
     :param samples: Samples from the distribution over :math:`y^*`.
     :param pending_points: The points already chosen in the current batch.
     :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
@@ -1108,65 +1106,60 @@ def gibbon(model: ProbabilisticModel, samples: TensorType, pending_points: Optio
         raise ValueError("Gumbel samples must be populated.")
 
 
+    if not isinstance(model,GaussianProcessRegression):
+        raise ValueError(f"GIBBON requires a GaussianProcessRegression surrogate model but receved {model}.")
+        
+    
+
     if pending_points is not None:
         tf.debugging.assert_shapes(
             [(pending_points, ["N", None])],
             message="pending_points must be of shape [N,D]",
         )
 
-
+       
     def acquisition(x: TensorType) -> TensorType:
+
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        
-        fmean, fvar = model.predict(tf.squeeze(x, -2))
-        fsd = tf.math.sqrt(fvar)
-        fsd = tf.clip_by_value(
-            fsd, 1.0e-8, fmean.dtype.max
-        )  # clip below to improve numerical stability
 
-        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        noise_variance = model.model.likelihood.variance
+        yvar = fvar + noise_variance  # need predictive variance of observations
+        rho_squared = fvar / yvar # squared correlation between observations and latent function
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), 1.0e-10, fmean.dtype.max
+        )  # clip below to improve numerical stability
         gamma = (tf.squeeze(samples) - fmean) / fsd
 
-        minus_cdf = 1 - normal.cdf(gamma)
-        minus_cdf = tf.clip_by_value(
-            minus_cdf, 1.0e-8, 1
-        )  # clip below to improve numerical stability
-        
-        ratio =  normal.prob(gamma) / minus_cdf
-        acq = tf.math.log(1 + ratio * (gamma - ratio))
-        quality_term =  -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True) # [len(x), 1]
+        def quality_term(rho_squared: Tensortype, gamma: Tensortype) -> Tensortype: # calculate GIBBON's quality term
+            normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            minus_cdf = 1 - normal.cdf(gamma)
+            minus_cdf = tf.clip_by_value(
+                minus_cdf, 1.0e-15, 1
+            )  # clip below to improve numerical stability
+            ratio =  normal.prob(gamma) / minus_cdf
+            inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+            acq = tf.math.log(inner_log)
+            acq = tf.math.log(tf.clip_by_value(inner_log,1.0e-45, fmean.dtype.max))
+            acq = -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True)
+            return tf.clip_by_value(acq,0.000001,100000) # [..., 1]
 
-
-        quality_term =  tf.math.reduce_mean(-gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf), axis=1, keepdims=True)
-
-        tf.debugging.assert_shapes(
-            [(quality_term, [len(x), 1])],
-        )
+        def repulsion_term(x:Tensortype, pending_points: Tensortype, yvar: Tensortype) -> Tensortype: # calculate GIBBON's repulsion term 
+            A = tf.expand_dims(model.covariance_between_points(tf.squeeze(x,1),pending_points),-1)# [..., m, 1]
+            #A = tf.clip_by_value(A, -0.9*tf.expand_dims(fvar,1), 0.9*tf.expand_dims(fvar,1))
+            _, B = model.predict_joint(pending_points) # [m x m]
+            B = B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype) # need predictive variance of observations
+            L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # [..., m, 1]
+            V_determinant = yvar - tf.squeeze(tf.linalg.matmul(L, L, transpose_a=True),1) # equation for determinant of block matricies
+            C_log_determinant = tf.math.log(V_determinant) - tf.math.log(yvar) # [..., 1]
+            return 0.5 * C_log_determinant # [..., 1]
 
         if pending_points is None: # no repulsion term required if no pending_points
-            return quality_term 
-
-
-
-
-        #NEED PREDICT JOINT Y HERE
-
-        A = tf.expand_dims(model.covariance_between_points(tf.squeeze(x,1),pending_points),-1) # len(x) x m x 1
-        _, B = model.predict_joint(pending_points) # m x m
-        L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # len(x) x 1 x m
-        V_determinant = fvar - tf.squeeze(tf.linalg.matmul(L, L, transpose_a=True),1) # det of block matrix eq
+            return quality_term(rho_squared, gamma) # [..., 1]
+        else:
+            return  quality_term(rho_squared, gamma)  + repulsion_term(x, pending_points, yvar)
         
-        C_log_determinant = tf.math.log(V_determinant) - tf.math.log(fvar)
-        repulsion_term = 0.5 * C_log_determinant # len(x) x 1
-
-
-        tf.debugging.assert_shapes(
-            [(repulsion_term, [len(x), 1])],
-        )
-
-        return quality_term + repulsion_term
-
     return acquisition
