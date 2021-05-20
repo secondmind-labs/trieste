@@ -20,7 +20,6 @@ import gpflow
 import tensorflow as tf
 
 from .model_interfaces import (
-    TrainableNonProbabilisticModel,
     TrainableProbabilisticModel,
     supported_models,
 )
@@ -91,12 +90,10 @@ ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
 
 def create_model(
     config: ModelSpec,
-) -> Union[TrainableProbabilisticModel, TrainableNonProbabilisticModel]:
+) -> TrainableProbabilisticModel:
     """
-    :param config: A :class:`TrainableProbabilisticModel` or
-        :class:`~trieste.models.TrainableNonProbabilisticModel`, or configuration of a model.
-    :return: A :class:`~trieste.models.TrainableProbabilisticModel` or
-        :class:`~trieste.models.TrainableNonProbabilisticModel` build according to ``config``.
+    :param config: A :class:`TrainableProbabilisticModel` or configuration of a model.
+    :return: A :class:`~trieste.models.TrainableProbabilisticModel` build according to ``config``.
     """
     if isinstance(config, ModelConfig):
         return config.create_model_interface()
@@ -104,9 +101,6 @@ def create_model(
         return ModelConfig(**config).create_model_interface()
     elif isinstance(config, TrainableProbabilisticModel):
         return config
-    elif isinstance(config, TrainableNonProbabilisticModel):
-        return config
     raise NotImplementedError(
-        "Unknown format passed to create a TrainableProbabilisticModel "
-        "or a TrainableNonProbabilisticModel."
+        "Unknown format passed to create a TrainableProbabilisticModel."
     )

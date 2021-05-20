@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, List, TypeVar
@@ -75,58 +76,6 @@ class ProbabilisticModel(ABC):
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
-
-    @abstractmethod
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update the model given the specified ``dataset``. Does not train the model.
-
-        :param dataset: The data with which to update the model.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def optimize(self, dataset: Dataset) -> None:
-        """
-        Optimize the model objective with respect to (hyper)parameters given the specified
-        ``dataset``.
-
-        :param dataset: The data with which to train the model.
-        """
-        raise NotImplementedError
-
-
-class NonProbabilisticModel(ABC):
-    """ A non-probabilistic model. """
-
-    @abstractmethod
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        Return the prediction for each point in ``query_points``.
-
-        :param query_points: The points at which to make predictions, of shape [..., D].
-        :return: The prediction for each point in ``query_points``.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """
-        Return ``num_samples`` samples at ``query_points``. Some versions of
-        non probabilistic models can still sample from a distribution even if
-        not having direct access to it. Non probabilistic models that cannot
-        sample should simply pass
-
-        :param query_points: The points at which to sample, with shape [..., N, D].
-        :param num_samples: The number of samples at each point.
-        :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S, N] + E, where S is the number of samples.
-        """
-        raise NotImplementedError
-
-
-class TrainableNonProbabilisticModel(NonProbabilisticModel):
-    """ A trainable non-probabilistic model. """
 
     @abstractmethod
     def update(self, dataset: Dataset) -> None:
@@ -460,7 +409,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         return self.model.predict_y(query_points)
 
 
-class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
+class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
     """ A trainable wrapper for a Keras neural network models. """
 
     def __init__(self, optimizer: TFKerasOptimizer | None = None):
@@ -489,6 +438,10 @@ class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        warnings.warn("NeuralNetworkPredictor class does not implement predict_joint method.")
+        pass
+
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.sample(query_points, num_samples)
 
@@ -503,7 +456,7 @@ class NeuralNetworkPredictor(NonProbabilisticModel, tf.Module, ABC):
     __deepcopy__ = module_deepcopy
 
 
-class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableNonProbabilisticModel):
+class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a Keras
     :class:`~trieste.models.keras_networks.KerasNetwork`.
