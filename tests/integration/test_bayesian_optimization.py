@@ -31,67 +31,68 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression, NeuralNetworkEnsemble
+from trieste.models.optimizer import TFKerasOptimizer
 from trieste.models.keras_networks import MultilayerFcNetwork, get_tensor_spec_from_data
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
 
-@random_seed
-@pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
-    [
-        (20, EfficientGlobalOptimization()),
-        (
-            15,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=2,
-            ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
-                num_query_points=3,
-            ),
-        ),
-        (15, TrustRegion()),
-        (17, ThompsonSampling(500, 3)),
-    ],
-)
-def test_gp_optimizer_finds_minima_of_the_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
-) -> None:
-    search_space = Box([0, 0], [1, 1])
+# @random_seed
+# @pytest.mark.parametrize(
+#     "num_steps, acquisition_rule",
+#     [
+#         (20, EfficientGlobalOptimization()),
+#         (
+#             15,
+#             EfficientGlobalOptimization(
+#                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+#                 num_query_points=2,
+#             ),
+#         ),
+#         (
+#             10,
+#             EfficientGlobalOptimization(
+#                 LocallyPenalizedExpectedImprovement(Box([0, 0], [1, 1])).using(OBJECTIVE),
+#                 num_query_points=3,
+#             ),
+#         ),
+#         (15, TrustRegion()),
+#         (17, ThompsonSampling(500, 3)),
+#     ],
+# )
+# def test_gp_optimizer_finds_minima_of_the_branin_function(
+#     num_steps: int, acquisition_rule: AcquisitionRule
+# ) -> None:
+#     search_space = Box([0, 0], [1, 1])
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
+#     def build_model(data: Dataset) -> GaussianProcessRegression:
+#         variance = tf.math.reduce_variance(data.observations)
+#         kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+#         gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
+#         gpflow.utilities.set_trainable(gpr.likelihood, False)
+#         return GaussianProcessRegression(gpr)
 
-    initial_query_points = search_space.sample(5)
-    observer = mk_observer(branin, OBJECTIVE)
-    initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
+#     initial_query_points = search_space.sample(5)
+#     observer = mk_observer(branin, OBJECTIVE)
+#     initial_data = observer(initial_query_points)
+#     model = build_model(initial_data[OBJECTIVE])
 
-    dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_datasets()[OBJECTIVE]
-    )
+#     dataset = (
+#         BayesianOptimizer(observer, search_space)
+#         .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+#         .try_get_final_datasets()[OBJECTIVE]
+#     )
 
-    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+#     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
-    best_y = dataset.observations[arg_min_idx]
-    best_x = dataset.query_points[arg_min_idx]
+#     best_y = dataset.observations[arg_min_idx]
+#     best_x = dataset.query_points[arg_min_idx]
 
-    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
-    # these accuracies are the current best for the given number of optimization steps, which makes
-    # this is a regression test
-    assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
-    npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)
+#     relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+#     # these accuracies are the current best for the given number of optimization steps, which makes
+#     # this is a regression test
+#     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
+#     npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)
 
 
 @random_seed
@@ -105,7 +106,7 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
     search_space = Box([0, 0], [1, 1])
-    ensemble_size = 3
+    ensemble_size = 5
 
     def build_model(data: Dataset) -> NeuralNetworkEnsemble:
         input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(data)
@@ -118,9 +119,17 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
             )
             for _ in range(ensemble_size)
         ]
-        return NeuralNetworkEnsemble(networks, tf.keras.optimizers.Adam())
+        fit_args = {
+            'batch_size': 16,
+            'epochs': 10,
+            'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
+            'validation_split': 0.1,
+            'verbose': 1,
+        }
+        optimizer = TFKerasOptimizer(fit_args)
+        return NeuralNetworkEnsemble(networks, optimizer)
 
-    initial_query_points = search_space.sample(5)
+    initial_query_points = search_space.sample(16)
     observer = mk_observer(branin, OBJECTIVE)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
