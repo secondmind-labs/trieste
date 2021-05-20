@@ -51,18 +51,18 @@ from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
 
 
+class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
+    def __init__(self, mean_shifts: list[float], kernel_amplitudes: list[float]):
+        super().__init__(
+            [(lambda y: lambda x: quadratic(x) + y)(shift) for shift in mean_shifts],
+            [tfp.math.psd_kernels.ExponentiatedQuadratic(x) for x in kernel_amplitudes],
+        )
+
+
 def _model_stack() -> tuple[ModelStack, tuple[TrainableProbabilisticModel, ...]]:
-    class Model(GaussianProcess, PseudoTrainableProbModel):
-        def __init__(self, mean_shifts: list[float], kernel_amplitudes: list[float]):
-            super().__init__(
-                [(lambda y: lambda x: quadratic(x) + y)(shift) for shift in mean_shifts],
-                [tfp.math.psd_kernels.ExponentiatedQuadratic(x) for x in kernel_amplitudes],
-            )
-
-    model01 = Model([0.0, 0.5], [1.0, 0.3])
-    model2 = Model([2.0], [2.0])
-    model3 = Model([-1.0], [0.1])
-
+    model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
+    model2 = _QuadraticModel([2.0], [2.0])
+    model3 = _QuadraticModel([-1.0], [0.1])
     return ModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
 
 
@@ -104,6 +104,35 @@ def test_model_stack_predict_joint() -> None:
     npt.assert_allclose(cov[..., :2, :, :], cov01)
     npt.assert_allclose(cov[..., 2:3, :, :], cov2)
     npt.assert_allclose(cov[..., 3:, :, :], cov3)
+
+
+def test_model_missing_predict_y() -> None:
+    model = _QuadraticModel([-1.0], [0.1])
+    x_predict = tf.constant([[0]], gpflow.default_float())
+    with pytest.raises(NotImplementedError):
+        model.predict_y(x_predict)
+
+
+def test_model_stack_missing_predict_y() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model1 = _gpr(x, _3x_plus_10(x))
+    model2 = _QuadraticModel([1.0], [2.0])
+    stack = ModelStack((model1, 1), (model2, 1))
+    x_predict = tf.constant([[0]], gpflow.default_float())
+    with pytest.raises(NotImplementedError):
+        stack.predict_y(x_predict)
+
+
+def test_model_stack_predict_y() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model1 = _gpr(x, _3x_plus_10(x))
+    model2 = _sgpr(x, _2sin_x_over_3(x))
+    stack = ModelStack((model1, 1), (model2, 1))
+    mean, variance = stack.predict_y(x)
+    npt.assert_allclose(mean[:, 0:1], model1.predict_y(x)[0])
+    npt.assert_allclose(mean[:, 1:2], model2.predict_y(x)[0])
+    npt.assert_allclose(variance[:, 0:1], model1.predict_y(x)[1])
+    npt.assert_allclose(variance[:, 1:2], model2.predict_y(x)[1])
 
 
 @random_seed
@@ -301,6 +330,36 @@ def test_gaussian_process_regression_update(gpr_interface_factory) -> None:
     npt.assert_allclose(internal_model.training_loss(), reference_model.training_loss(), rtol=1e-6)
 
 
+def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+
+    if isinstance(model, VariationalGaussianProcess):
+        pytest.skip("covariance_between_points is only implemented for the GPR and SGPR models.")
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[0, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
+
+
+def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
+    x_predict = tf.constant([[50.5]], gpflow.default_float())
+    mean_f, variance_f = model.predict(x_predict)
+    mean_y, variance_y = model.predict_y(x_predict)
+
+    npt.assert_allclose(mean_f, mean_y)
+    npt.assert_array_less(variance_f, variance_y)
+
+
 def test_vgp_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -374,6 +433,7 @@ def test_variational_gaussian_process_predict() -> None:
     )
     x_predict = tf.constant([[50.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
+    mean_y, variance_y = model.predict_y(x_predict)
 
     reference_model = _reference_gpr(x_observed, y_observed)
     gpflow.optimizers.Scipy().minimize(
@@ -384,6 +444,7 @@ def test_variational_gaussian_process_predict() -> None:
 
     npt.assert_allclose(mean, reference_mean)
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
+    npt.assert_allclose(variance_y - 0.01 ** 2, variance, atol=5e-5)
 
 
 class _QuadraticPredictor(GPflowPredictor):

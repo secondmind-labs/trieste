@@ -263,3 +263,19 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0], [1.0]]))
+
+
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        BatchReparametrizationSampler,
+        DiscreteThompsonSampler,
+        GumbelSampler,
+        IndependentReparametrizationSampler,
+    ],
+)
+def test_sampler_reprs(sampler) -> None:
+    assert (
+        repr(sampler(20, QuadraticMeanAndRBFKernel()))
+        == f"{sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
+    )

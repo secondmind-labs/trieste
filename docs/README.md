@@ -1,15 +1,23 @@
 # Building documentation
 
-Install dependencies for building documentation by first installing dependencies for the notebooks
-(see the [root README.md](../README.md#installation) for instructions). Then run 
+To build the documentation, ensure you have both [tox](https://tox.readthedocs.io) and [pandoc](https://github.com/jgm/pandoc/releases/) installed.
+Then run the following from the repository root directory:
+
 ```
-$ pip install -r requirements.txt -c constraints.txt
+$ tox -e docs
 ```
-Build the documentation with
-```
-$ make html
-```
-Open `_build/html/index.html` in a browser to view the docs.
+
+Open `docs/_build/html/index.html` in a browser to view the docs.
+
+### Fixing documentation build errors
+
+Any errors in the notebooks or API documentation markup will result in documentation
+build errors that must be fixed. To fix these, ensure that all new documentation is valid [reST markup](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html).
+
+Note that since the API documentation is generated from inline Python docstrings, 
+**the line numbers in any API error logs refer to generated reST files,
+not the original Python source files**. You can find these generated reST files
+at `docs/autoapi`.
 
 # License
 

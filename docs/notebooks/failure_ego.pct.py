@@ -156,12 +156,15 @@ from trieste.acquisition import (
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
-        return lower_confidence_bound(model, 0.0)
+        def acquisition(at):
+            mean, _ = model.predict_y(tf.squeeze(at, -2))
+            return mean
+        return acquisition
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
 acq_fn = Product(ei.using(OBJECTIVE), pov.using(FAILURE))
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(acq_fn)
+rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimizer

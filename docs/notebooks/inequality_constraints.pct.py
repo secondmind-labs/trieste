@@ -46,7 +46,7 @@ plot_objective_and_constraints(search_space, Sim)
 plt.show()
 
 # %% [markdown]
-# We'll make an observer that outputs the objective and constraint data, labelling each as shown.
+# We'll make an observer that outputs both the objective and constraint data. Since the observer is outputting multiple datasets, we have to label them so that the optimization process knows which is which.
 
 # %%
 from trieste.data import Dataset
@@ -68,7 +68,7 @@ num_initial_points = 5
 initial_data = observer(search_space.sample(num_initial_points))
 
 # %% [markdown]
-# ... and visualise those points on the constrained objective.
+# ... and visualise those points on the constrained objective. Note how the generated data is labelled, like the observer.
 
 # %%
 from util.inequality_constraints_utils import plot_init_query_points
@@ -118,12 +118,12 @@ pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(eci)
+rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimization loop
 #
-# We can now run the optimization loop
+# We can now run the optimization loop. We obtain the final objective and constraint data using `.try_get_final_datasets()`.
 
 # %%
 num_steps = 20
@@ -204,7 +204,7 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
+batch_rule = EfficientGlobalOptimization(  # type: ignore
     batch_eci, num_query_points=num_query_points
 )
 
