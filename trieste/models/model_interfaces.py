@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import copy
-import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, List, TypeVar
@@ -439,8 +438,12 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
         return self.model.predict(query_points)
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        warnings.warn("NeuralNetworkPredictor class does not implement predict_joint method.")
-        pass
+        raise Error(
+            """
+            NeuralNetworkPredictor class does not implement predict_joint method. Acquisition rules
+            relying on it cannot be used with this class.
+            """
+        )
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.sample(query_points, num_samples)
