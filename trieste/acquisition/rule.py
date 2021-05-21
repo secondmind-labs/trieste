@@ -200,7 +200,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         points = self._optimizer(search_space, acquisition_function)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
-            for i in range(
+            for _ in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
                 greedy_acquisition_function = self._builder.prepare_acquisition_function(
