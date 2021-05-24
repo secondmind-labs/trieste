@@ -16,8 +16,13 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--runslow", action="store", default="no", choices=("yes","no","only"), help="whether to run slow tests"
+        "--runslow",
+        action="store",
+        default="no",
+        choices=("yes", "no", "only"),
+        help="whether to run slow tests",
     )
+
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
