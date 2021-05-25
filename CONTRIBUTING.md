@@ -70,6 +70,11 @@ Run tests with
 $ tox -e tests
 ```
 
+To save time, some slower tests are not run by default. Run these with:
+```bash
+$ tox -e alltests
+```
+
 #### Code formatting
 
 We format all Python code, other than the notebooks, with [black](https://black.readthedocs.io/en/stable/), [flake8](https://flake8.pycqa.org/en/latest/), and [isort](https://pycqa.github.io/isort/). You may need to run these before pushing changes, with (in the repository root)
@@ -89,8 +94,10 @@ pip install -r common_build/taskipy/requirements.txt -c common_build/taskipy/con
 
 You can then use `task` to run various common tasks:
 
-- `task tests` to run all the tests (including type checking);
+- `task tests` to run all the normal tests (including type checking);
 - `task quicktests` to run just the unit tests (starting with the last failure and exiting immediately on any error);
+- `task alltests` to run all the tests including the slow ones;
+- `task slowtests` to run just the slow tests;
 - `task mypy` to run just the type checks;
 - `task format` to reformat the code using black, flake8 and isort;
 - `task check_format` to check whether the code is correctly formatted.
