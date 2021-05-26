@@ -20,7 +20,7 @@ from typing import Sequence, TypeVar, overload
 import tensorflow as tf
 
 from .type import TensorType
-from .utils import shapes_equal
+from .utils import design, shapes_equal
 
 SP = TypeVar("SP", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
@@ -173,7 +173,7 @@ class Box(SearchSpace):
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType):
+    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, doe = None):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
         they will be converted to tensors of dtype `tf.float64`.
@@ -188,6 +188,12 @@ class Box(SearchSpace):
             - ``lower`` and ``upper`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
+
+        if doe is None:
+            self._design = design.Random()
+        else:
+            self._design = doe
+
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
@@ -241,9 +247,14 @@ class Box(SearchSpace):
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
+
         dim = tf.shape(self._lower)[-1]
-        return tf.random.uniform(
-            (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
+        return self._design.generate(
+            num_samples=num_samples,
+            domain_dim=dim,
+            lower=self._lower,
+            upper=self._upper,
+            dtype=self._lower.dtype,
         )
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
