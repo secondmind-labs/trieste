@@ -94,9 +94,9 @@ pip install -r common_build/taskipy/requirements.txt -c common_build/taskipy/con
 
 You can then use `task` to run various common tasks:
 
-- `task tests` to run all the normal tests (including type checking);
+- `task tests` to run all the tests (including type checking, but excluding slow tests);
 - `task quicktests` to run just the unit tests (starting with the last failure and exiting immediately on any error);
-- `task alltests` to run all the tests including the slow ones;
+- `task alltests` to run all the tests including the slow tests;
 - `task slowtests` to run just the slow tests;
 - `task mypy` to run just the type checks;
 - `task format` to reformat the code using black, flake8 and isort;
