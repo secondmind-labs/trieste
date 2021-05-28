@@ -1,5 +1,10 @@
 # %% [markdown]
-# # Noise-free optimization with Expected Improvement
+# # S-GP-TS Demo
+
+# %% [markdown]
+# This code accomapnies the paper "Scalable Thompson Sampling usingSparse Gaussian Process Models".
+#
+# First we demonstrate the method on a simple 2D benchmark, before showing how more complicated experiments can be ran.
 
 # %%
 # %load_ext autoreload
@@ -28,14 +33,14 @@ def noisy_branin(x):
     y = branin(x)
     return y #+ tf.random.normal(y.shape, stddev=0.1, dtype=y.dtype)
 
-# fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
-# fig.update_layout(height=400, width=400)
-# fig.show()
+fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
+fig.update_layout(height=400, width=400)
+fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
 #
-# Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, the observer outputs a number of datasets, each of which must be labelled so the optimization process knows which is which. In our case, we only have one dataset, the objective. We'll use _Trieste_'s default label for single-model setups, `OBJECTIVE`. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
+# In _Trieste_, the observer outputs a number of datasets, each of which must be labelled so the optimization process knows which is which. In our case, we only have one dataset, the objective. We'll use _Trieste_'s default label for single-model setups, `OBJECTIVE`. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
 #
 # The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
 
@@ -51,7 +56,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian process regression for this, provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Sparse Variantional Gaussian process regression for this, provided by GPflux. The model will need to be trained on each step as more points are evaluated.
 #
 # Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
 
