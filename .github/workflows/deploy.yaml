@@ -13,6 +13,7 @@
 # limitations under the License.
 
 on:
+  workflow_dispatch:
   push:
     tags: v[0-9]+.[0-9]+.[0-9]+*
 
@@ -42,6 +43,7 @@ jobs:
         touch docs/.nojekyll
     - run: |
         git add .
+        git add -f docs/autoapi
         git config --global user.email "none"
         git config --global user.name "github-actions-bot"
         git commit -m "build documentation"
