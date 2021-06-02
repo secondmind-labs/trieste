@@ -8,7 +8,12 @@ This codebase is a fork of Trieste : a Bayesian optimization toolbox built on [T
 
 We include a notebook S_GP_TS_demo.pct.py (in ./docs/notebooks) that allows the running of S-GP-TS on synthetic benchmark problems.
 
-The notebook can be found in the notebooks directory, and is written as a Python script for running with Jupytext. To run it, first install trieste this Trieste fork, then install additional dependencies with
+The notebook can be found in the notebooks directory, and is written as a Python script for running with Jupytext. To run it, first install this Trieste fork with
+
+```bash
+$ pip install .
+```
+then install additional dependencies with
 ```bash
 $ pip install -r notebooks/requirements.txt
 ```
