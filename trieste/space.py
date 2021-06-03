@@ -173,7 +173,9 @@ class Box(SearchSpace):
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, doe = None):
+    def __init__(
+        self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, doe=None
+    ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
         they will be converted to tensors of dtype `tf.float64`.
