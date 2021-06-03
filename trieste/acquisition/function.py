@@ -1296,10 +1296,7 @@ def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points
         raise ValueError("Gumbel samples must be populated.")
 
 
-    if not isinstance(model,GaussianProcessRegression):
-        raise ValueError(f"GIBBON requires a GaussianProcessRegression surrogate model but receved {model}.")
-        
-    
+
 
     if pending_points is not None:
         tf.debugging.assert_shapes(
