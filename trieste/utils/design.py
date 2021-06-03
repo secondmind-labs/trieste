@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence
+from typing import Sequence, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,6 +32,28 @@ class Design(ABC):
 
 
 class Random(Design):
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: Sequence[float],
+        upper: Sequence[float],
+        dtype=tf.float64,
+    ) -> TensorType:
+        ...
+
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: TensorType,
+        upper: TensorType,
+        dtype=tf.float64,
+    ) -> TensorType:
+        ...
+
     def generate(
         self,
         num_samples: int,
@@ -44,6 +66,30 @@ class Random(Design):
 
 
 class HaltonSequence(Design):
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: Sequence[float],
+        upper: Sequence[float],
+        dtype=tf.float64,
+        seed: int = None,
+    ) -> TensorType:
+        ...
+
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: TensorType,
+        upper: TensorType,
+        dtype=tf.float64,
+        seed: int = None,
+    ) -> TensorType:
+        ...
+
     def generate(
         self,
         num_samples: int,
@@ -59,6 +105,30 @@ class HaltonSequence(Design):
 
 
 class SobolSequence(Design):
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: Sequence[float],
+        upper: Sequence[float],
+        dtype=tf.float64,
+        skip: int = None,
+    ) -> TensorType:
+        ...
+
+    @overload
+    def generate(
+        self,
+        num_samples: int,
+        domain_dim: int,
+        lower: TensorType,
+        upper: TensorType,
+        dtype=tf.float64,
+        skip: int = None,
+    ) -> TensorType:
+        ...
+
     def generate(
         self,
         num_samples: int,
