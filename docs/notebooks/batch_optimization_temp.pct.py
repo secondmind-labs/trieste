@@ -98,7 +98,7 @@ points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_sin
 # %%
 from trieste.acquisition import GIBBON
 
-gibbon_acq = GIBBON(search_space, grid_size=1000, num_samples=100)
+gibbon_acq = GIBBON(search_space, grid_size=1000, num_samples=10)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=gibbon_acq)
 points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(
@@ -143,6 +143,57 @@ plt.xlabel(r"$x_1$")
 plt.ylabel(r"$x_2$")
 cbar = plt.colorbar()
 cbar.set_label("EI", rotation=270)
+
+# %%
+x = points_chosen_by_gibbon
+ei =GIBBON(search_space,grid_size=1000)
+ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
+ei_acq_function = ei.prepare_acquisition_function(initial_data, model,pending_points=x[0:3])
+
+plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=1000)
+
+
+plt.scatter(
+    initial_data.query_points[:, 0],
+    initial_data.query_points[:, 1],
+    color="black",
+    lw=25,
+    label="data",
+    marker="x",
+)
+
+
+
+cbar = plt.colorbar()
+
+# %%
+ei_acq_function(tf.expand_dims(x,1))
+
+# %%
+x
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
++0.01
+with tf.GradientTape() as g:
+    g.watch(x)
+    a = 
+g.gradient(a,x)
+
+# %%
+g
+
+# %%
+points_chosen_by_gibbon
 
 # %%
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=1000)

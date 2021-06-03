@@ -1088,8 +1088,7 @@ def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points
     between the `m` pending points and the current candidate. The predictive covariance :math:`V`
     can be expressed as :math:V = [[v, A], [A, B]]` for a tensor :math:`B` with shape [`m`,`m`] and so we can efficientely
     calculate :math:`|V|` using the formulat for the determinant of block matricies,
-    i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`. As the |B| term does not depend on x and we later take its log,
-    it provides only a translation of the acqusition function surface and can thus be ignored.
+    i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`. 
 
     Note that when using GIBBON for purely sequential optimization, the repulsion term is not required.
 
@@ -1145,17 +1144,19 @@ def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points
             acq = tf.math.log(inner_log)
             acq = tf.math.log(tf.clip_by_value(inner_log,1.0e-45, fmean.dtype.max))
             acq = -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True)
-            return tf.clip_by_value(acq,0.000001,100000) # [..., 1]
+            return tf.clip_by_value(acq,0.000001,-math.inf) # [..., 1]
 
         def repulsion_term(x:Tensortype, pending_points: Tensortype, yvar: Tensortype) -> Tensortype: # calculate GIBBON's repulsion term 
             A = tf.expand_dims(model.covariance_between_points(tf.squeeze(x,1),pending_points),-1)# [..., m, 1]
-            #A = tf.clip_by_value(A, -0.9*tf.expand_dims(fvar,1), 0.9*tf.expand_dims(fvar,1))
             _, B = model.predict_joint(pending_points) # [m x m]
             B = B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype) # need predictive variance of observations
             L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # [..., m, 1]
             V_determinant = yvar - tf.squeeze(tf.linalg.matmul(L, L, transpose_a=True),1) # equation for determinant of block matricies
-            C_log_determinant = tf.math.log(V_determinant) - tf.math.log(yvar) # [..., 1]
-            return 0.5 * C_log_determinant # [..., 1]
+            V_determinant = V_determinant * tf.linalg.det(B)
+            C_log_determinant = tf.math.log(V_determinant) - tf.math.log(yvar) - tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(B,0)))) # [..., 1]
+            return 0.5 * tf.clip_by_value(C_log_determinant,-math.inf,-0.01)
+
+
 
         if pending_points is None: # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma) # [..., 1]

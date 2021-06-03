@@ -40,7 +40,6 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (20, EfficientGlobalOptimization(GIBBON(Box([0, 0], [1, 1]), grid_size=100, num_samples=10).using(OBJECTIVE),num_query_points=3)),
         (20, EfficientGlobalOptimization()),
         (
             15,
@@ -64,6 +63,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
                 num_query_points=3,
             ),
         ),
+        (10, EfficientGlobalOptimization(GIBBON(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(OBJECTIVE),num_query_points=3)),
         (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],
