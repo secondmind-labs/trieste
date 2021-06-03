@@ -1332,7 +1332,7 @@ def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points
            # acq = tf.math.log(inner_log)
             acq = tf.math.log(tf.clip_by_value(inner_log,1.0e-45, fmean.dtype.max))
             acq = -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True)
-            return tf.clip_by_value(acq,0.000001,inf) # [..., 1]
+            return acq#tf.clip_by_value(acq,0.000001,inf) # [..., 1]
 
         def repulsion_term(x:Tensortype, pending_points: Tensortype, yvar: Tensortype) -> Tensortype: # calculate GIBBON's repulsion term 
             A = tf.expand_dims(model.covariance_between_points(tf.squeeze(x,1),pending_points),-1)# [..., m, 1]
