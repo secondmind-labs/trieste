@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Sequence
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -18,8 +19,8 @@ class Design(ABC):
         self,
         num_samples: int,
         domain_dim: int,
-        lower: list[float] | TensorType,
-        upper: list[float] | TensorType,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
     ) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
@@ -35,8 +36,8 @@ class Random(Design):
         self,
         num_samples: int,
         domain_dim: int,
-        lower: list[float] | TensorType,
-        upper: list[float] | TensorType,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
         dtype=tf.float64,
     ) -> TensorType:
         return tf.random.uniform((num_samples, domain_dim), minval=lower, maxval=upper, dtype=dtype)
@@ -47,8 +48,8 @@ class HaltonSequence(Design):
         self,
         num_samples: int,
         domain_dim: int,
-        lower: list[float] | TensorType,
-        upper: list[float] | TensorType,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
         dtype=tf.float64,
         seed: int = None,
     ) -> TensorType:
@@ -62,8 +63,8 @@ class SobolSequence(Design):
         self,
         num_samples: int,
         domain_dim: int,
-        lower: list[float] | TensorType,
-        upper: list[float] | TensorType,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
         dtype=tf.float64,
         skip: int = 0,
     ) -> TensorType:
