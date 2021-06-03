@@ -42,6 +42,7 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
+    GIBBON,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
@@ -54,12 +55,13 @@ from trieste.acquisition.function import (
     expected_improvement,
     hard_local_penalizer,
     lower_confidence_bound,
+    gibbon,
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import ProbabilisticModel, GaussianProcessRegression
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils import DEFAULTS
@@ -869,3 +871,125 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     lipshitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+
+
+
+
+#GIBBON
+
+
+
+
+
+
+def test_gibbon_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space)
+    with pytest.raises(ValueError):
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+
+
+def test_gibbon_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        GIBBON(search_space, num_samples=-5)
+    with pytest.raises(ValueError):
+        GIBBON(search_space, grid_size=-5)
+
+
+
+
+
+
+
+
+
+@unittest.mock.patch("trieste.acquisition.function.gibbon")
+def test_gibbon_builder_gumbel_samples(mocked_gibbon) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space)
+    model = QuadraticMeanAndRBFKernel()
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_gibbon.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    gumbel_samples = mocked_gibbon.call_args[0][1]
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(gumbel_samples) < min(fmean)
+
+
+
+
+
+
+@pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
+def test_gibbon_raises_for_gumbel_samples_with_invalid_shape(
+    samples: TensorType,
+) -> None:
+    with pytest.raises(ValueError):
+        model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+        gibbon(model, samples)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_gibbon_raises_for_invalid_batch_size(at: TensorType) -> None:
+    model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+    mes = gibbon(model, tf.constant([[1.0], [2.0]]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mes(at)
+
+
+def test_gibbon_returns_correct_shape() -> None:
+    model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+    gumbel_samples = tf.constant([[1.0], [2.0]])
+    query_at = tf.linspace([[-10.0]], [[10.0]], 5)
+    evals = gibbon(model, gumbel_samples)(query_at)
+    npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
+
+
+
+
+
+
+
+
+def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -> None:
+    """
+    When based on a single max-value sample, MES should choose the same point that probability of
+    improvement would when calcualted with the max-value as its threshold (See :cite:`wang2017max`).
+    """
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves()
+    model = GaussianProcess([branin], [kernel])
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    gumbel_sample = tf.constant([[1.0]], dtype=tf.float64)
+    mes_evals = min_value_entropy_search(model, gumbel_sample)(xs[..., None, :])
+
+    mean, variance = model.predict(xs)
+    gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
+    norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
+    pi_evals = norm.cdf(gamma)
+    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
+
+
+
+
+
+#standard sequential tests
+#cehck same as MES under no noise and one gumbel sample
+
+
+
+#batch tests (check needs to be ran with no pending points etc)
+
+
+

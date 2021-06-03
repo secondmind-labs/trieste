@@ -18,8 +18,8 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
-    BatchMonteCarloExpectedImprovement,
     GIBBON,
+    BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
 )
@@ -35,6 +35,7 @@ from trieste.models import GaussianProcessRegression
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
+
 
 @random_seed
 @pytest.mark.parametrize(
@@ -63,7 +64,13 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
                 num_query_points=3,
             ),
         ),
-        (10, EfficientGlobalOptimization(GIBBON(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(OBJECTIVE),num_query_points=3)),
+        (
+            10,
+            EfficientGlobalOptimization(
+                GIBBON(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
         (15, TrustRegion()),
         (17, ThompsonSampling(500, 3)),
     ],

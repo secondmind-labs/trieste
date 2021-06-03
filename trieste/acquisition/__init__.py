@@ -37,13 +37,13 @@ UCB.
 from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (
+    GIBBON,
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    GIBBON,
     GreedyAcquisitionFunctionBuilder,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
@@ -54,8 +54,8 @@ from .function import (
     SingleModelGreedyAcquisitionBuilder,
     expected_hv_improvement,
     expected_improvement,
-    hard_local_penalizer,
     gibbon,
+    hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
     probability_of_feasibility,
