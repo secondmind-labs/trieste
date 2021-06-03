@@ -1071,27 +1071,21 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
 def gibbon(model: GaussianProcessRegression, samples: TensorType, pending_points: Optional[TensorType] = None) -> AcquisitionFunction:
     r"""
-
     Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function of :cite:`Moss:2021`.
-
     The GIBBON acquisition function consists of two terms --- a quality term and a diversity term. The
     quality term measures the ammount of information that each individual batch element provides about the objective
     function's minimal value :math:`y^*` (ensuring that evaluations are targeted in promising areas of the space), 
     whereas the repulsion term encourages diversity within the batch (achieving high values for points with low 
     predictive correlation). 
-
     When using GIBBON for batch optimization,rather than calculating the information provided by the whole batch, 
     we enjoy a computational saving by instead calculating just  the additional information provided 
     by adding a new candidate point to the current set of pending points.
-
     GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive correlation matrix :math:`C`
     between the `m` pending points and the current candidate. The predictive covariance :math:`V`
     can be expressed as :math:V = [[v, A], [A, B]]` for a tensor :math:`B` with shape [`m`,`m`] and so we can efficientely
     calculate :math:`|V|` using the formulat for the determinant of block matricies,
     i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`. 
-
     Note that when using GIBBON for purely sequential optimization, the repulsion term is not required.
-
     
     :param model: The model of the objective function. GIBBON requires a model with a :method:covariance_between_points 
         method and so only supports :class:`GaussianProcessRegression` models.
