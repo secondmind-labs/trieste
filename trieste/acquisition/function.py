@@ -1164,7 +1164,7 @@ def gibbon(
                 - tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(B, 0))))
             )  # [..., 1]
             C_log_determinant = tf.clip_by_value(
-                C_log_determinant, -inf, -0.01
+                C_log_determinant, -inf, -CLAMP_LB
             )  # log det of correlation matrix should be less than zero
 
             return 0.5 * C_log_determinant
