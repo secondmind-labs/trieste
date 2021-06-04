@@ -15,12 +15,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence, TypeVar, overload
+from typing import Sequence, Type, TypeVar, overload
 
 import tensorflow as tf
 
 from .type import TensorType
 from .utils import design, shapes_equal
+from .utils.design import Design
 
 SP = TypeVar("SP", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
@@ -174,7 +175,10 @@ class Box(SearchSpace):
         ...
 
     def __init__(
-        self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, doe=None
+        self,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
+        doe: Type[Design] = None,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
