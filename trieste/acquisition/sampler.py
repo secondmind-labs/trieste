@@ -89,7 +89,9 @@ class GumbelSampler(Sampler):
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
     is approximated by a Gumbel distribution
+
     .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+
     where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
     Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
     :math:`[0, 1]` and applying the inverse probability integral transform
@@ -232,7 +234,6 @@ class BatchReparametrizationSampler(Sampler):
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
-
         :raise ValueError (or InvalidArgumentError): If any of the following are true:
             - ``at`` is a scalar.
             - The batch size `B` of ``at`` is not positive.
