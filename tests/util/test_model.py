@@ -106,6 +106,4 @@ def test_gaussian_process_sample() -> None:
 
 def test_gaussian_process_get_observation_noise() -> None:
     noise = _example_gaussian_process().get_observation_noise()
-    npt.assert_equal(noise,1.0)
-
-
+    npt.assert_equal(noise, 1.0)

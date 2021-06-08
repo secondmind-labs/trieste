@@ -205,13 +205,13 @@ def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: Tensor
 
 def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
     class dummy_model_without_likelihood(ProbabilisticModel):
-        def predict(self, query_points: TensorType) -> None:
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
             return None
 
-        def predict_joint(self, query_points: TensorType) -> None:
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
             return None
 
-        def sample(self, query_points: TensorType) -> None:
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
             return None
 
     with pytest.raises(ValueError):
