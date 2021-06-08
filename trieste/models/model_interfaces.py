@@ -407,8 +407,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         try:
             noise_variance = self.model.likelihood.variance
-        except NotImplementedError:
-            raise ValueError("Model {self!r} does not have scalar observation noise")
+        except AttributeError:
+            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
 
         return noise_variance
 

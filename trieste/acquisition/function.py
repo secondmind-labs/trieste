@@ -200,6 +200,7 @@ def augmented_expected_improvement(
     .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
     where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
     This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
+
     :param model: The model of the objective function.
     :param eta: The "best" observation.
     :return: The expected improvement function. This function will raise
