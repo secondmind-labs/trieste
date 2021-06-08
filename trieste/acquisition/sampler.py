@@ -68,6 +68,7 @@ class DiscreteThompsonSampler(Sampler):
         """
         Return approximate samples from of the objective function's minimser. We return only
         unique samples.
+
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
         :return: The samples, of shape `[S, D]`, where `S` is the `sample_size`.
@@ -98,6 +99,7 @@ class GumbelSampler(Sampler):
     def sample(self, at: TensorType) -> TensorType:
         """
         Return approximate samples from of the objective function's minimum value.
+
         :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
             of dimension `D`. We recommend scaling `N` with search space dimension.
         :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
@@ -143,7 +145,9 @@ class IndependentReparametrizationSampler(Sampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
+
     .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
     where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
     samples form a continuous curve.
     """
@@ -168,6 +172,7 @@ class IndependentReparametrizationSampler(Sampler):
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
@@ -189,7 +194,9 @@ class BatchReparametrizationSampler(Sampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
     .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
     where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
     :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
     form a continuous curve.
@@ -215,6 +222,7 @@ class BatchReparametrizationSampler(Sampler):
         :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`BatchReparametrizationSampler` instances will produce different samples.
+
         :param at: Batches of query points at which to sample the predictive distribution, with
             shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
             consistent batch size across all calls to :meth:`sample` for any given
@@ -224,6 +232,7 @@ class BatchReparametrizationSampler(Sampler):
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
+
         :raise ValueError (or InvalidArgumentError): If any of the following are true:
             - ``at`` is a scalar.
             - The batch size `B` of ``at`` is not positive.
