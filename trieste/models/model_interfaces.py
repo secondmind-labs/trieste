@@ -87,6 +87,17 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise.
+
+        Note that this is only supported for models with with homoscedastic noise, and so this
+        function returns a scalar.
+
+        :return: The observation noise.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
@@ -188,6 +199,15 @@ class ModelStack(TrainableProbabilisticModel):
         """
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
+
+    def get_observation_noise(self) -> TensorType:
+        r"""
+        :return: The observation noise variance for all the wrapped models, concatenated along the
+        event axis in the same order as they appear in :meth:`__init__`.
+        :raise NotImplementedError: If any of the models don't implement get_observation_noise.
+        """
+        noises = [model.get_observation_noise() for model in self._models]
+        return tf.stack(noises)
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -378,6 +398,19 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )
 
         return cov
+
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model.likelihood.variance
+        except NotImplementedError:
+            raise ValueError("Model {self!r} does not have scalar observation noise")
+
+        return noise_variance
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):

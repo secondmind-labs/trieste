@@ -52,10 +52,16 @@ from trieste.type import TensorType
 
 
 class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
-    def __init__(self, mean_shifts: list[float], kernel_amplitudes: list[float]):
+    def __init__(
+        self,
+        mean_shifts: list[float],
+        kernel_amplitudes: list[float],
+        observations_noise: float = 1.0,
+    ):
         super().__init__(
             [(lambda y: lambda x: quadratic(x) + y)(shift) for shift in mean_shifts],
             [tfp.math.psd_kernels.ExponentiatedQuadratic(x) for x in kernel_amplitudes],
+            observations_noise,
         )
 
 
@@ -133,6 +139,17 @@ def test_model_stack_predict_y() -> None:
     npt.assert_allclose(mean[:, 1:2], model2.predict_y(x)[0])
     npt.assert_allclose(variance[:, 0:1], model1.predict_y(x)[1])
     npt.assert_allclose(variance[:, 1:2], model2.predict_y(x)[1])
+
+
+def test_model_stack_get_observation_noise() -> None:
+    model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3], 1.0)
+    model2 = _QuadraticModel([2.0], [2.0], 2.0)
+    model3 = _QuadraticModel([-1.0], [0.1], 3.0)
+    stack = ModelStack((model01, 2), (model2, 1), (model3, 1))
+    observations_noises = stack.get_observation_noise()
+
+    assert observations_noises.shape == [3]
+    npt.assert_allclose(observations_noises, tf.constant([1.0, 2.0, 3.0], dtype=tf.float64))
 
 
 @random_seed
