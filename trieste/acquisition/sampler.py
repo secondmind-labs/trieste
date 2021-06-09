@@ -22,17 +22,17 @@ from abc import ABC, abstractmethod
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
 from ..models import ProbabilisticModel
 from ..type import TensorType
 from ..utils import DEFAULTS
 
-
-class Sampler(ABC):
+class DiscreteSampler(ABC):
     r"""
-    An :class:`Sampler` samples a specific quantity according to an
-    underlying :class:`ProbabilisticModel`.
+    An :class:`DiscreteSampler` samples a specific quantity across a discrete set of points according
+    to an underlying :class:`ProbabilisticModel`.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
@@ -58,7 +58,7 @@ class Sampler(ABC):
         """
 
 
-class DiscreteThompsonSampler(Sampler):
+class DiscreteThompsonSampler(DiscreteSampler):
     r"""
     This sampler provides approximate Thompson samples of the objective function's
     maximiser :math:`x^*` over a discrete set of input locations.
@@ -84,7 +84,7 @@ class DiscreteThompsonSampler(Sampler):
         return thompson_samples
 
 
-class GumbelSampler(Sampler):
+class GumbelSampler(DiscreteSampler):
     r"""
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
@@ -143,7 +143,7 @@ class GumbelSampler(Sampler):
         return gumbel_samples
 
 
-class IndependentReparametrizationSampler(Sampler):
+class IndependentReparametrizationSampler(DiscreteSampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
@@ -192,7 +192,7 @@ class IndependentReparametrizationSampler(Sampler):
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
-class BatchReparametrizationSampler(Sampler):
+class BatchReparametrizationSampler(DiscreteSampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -276,3 +276,138 @@ class BatchReparametrizationSampler(Sampler):
         new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
+
+
+
+
+
+
+class ContinuousSampler(ABC):
+    r"""
+    An :class:`ContinuousSampler` samples a specific quantity according
+    to an underlying :class:`ProbabilisticModel`.
+    Unlike our :class:`DiscreteSampler`, :class:`ContinuousSampler` returns a 
+    queryable function that returns the sample's value at a query location.
+
+    TALK ABOUT TRAJECTORIES
+    """
+
+    def __init__(self, dataset: Dataset, model: ProbabilisticModel):
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model to sample from.
+        :raise ValueError: If ``dataset`` is empty.
+        """
+
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+       
+        self._dataset = dataset
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
+
+    @abstractmethod
+    def sample(self) -> Callable[[TensorType], TensorType]:
+        """
+        :return: Queryable function representing a sample.
+        """
+
+
+
+
+
+
+
+
+
+class RandomFourierFeatureThompsonSampler(ContinuousSampler):
+    r"""
+    TODO
+    """
+
+
+    def __init__(self, dataset: Dataset, model: ProbabilisticModel, num_features: int =1000, design_space=True):
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model to sample from.
+        :raise ValueError: If ``dataset`` is empty.
+        """
+        super().__init__(dataset, model)
+        self._num_features = num_features # [m]
+        self._num_data = len(self._dataset.query_points) # [n]
+
+        #CHECK THAT MODEL HAS A KERNEL!
+
+        try:
+            self._noise_variance = model.get_observation_noise()
+        except NotImplementedError:
+            raise ValueError(
+            """
+            RandomFourierFeatureThompsonSampler only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
+            )
+
+        self._feature_functions = RandomFourierFeatures(self._model.model.kernel, self._num_features, dtype=self._dataset.query_points.dtype)
+
+        if design_space:
+            self._prepare_theta_posterior_in_design_space()
+        else:
+            self._prepare_theta_posterior_in_gram_space()
+
+    def _prepare_theta_posterior_in_design_space(self):
+
+        phi = self._feature_functions(self._dataset.query_points) # [n, m]
+
+        design_matrix = tf.matmul(phi,phi, transpose_a=True) # [m, m]
+        s = self._noise_variance * tf.eye(self._num_features, dtype=phi.dtype)
+        
+        inv_design_matrix = tf.linalg.inv(design_matrix+s)  # [m, m]
+        theta_posterior_mean = tf.matmul(tf.matmul(inv_design_matrix, phi, transpose_b=True), self._dataset.observations) # [m, 1]
+        theta_posterior_mean= tf.squeeze(theta_posterior_mean) # [m]
+        theta_posterior_covariance =inv_design_matrix* self._noise_variance # [m, m]
+        self._theta_posterior = tfp.distributions.MultivariateNormalTriL(theta_posterior_mean, tf.linalg.cholesky(theta_posterior_covariance))
+
+
+        # chol_design_matrix = tf.linalg.cholesky(design_matrix+s)  # [m, m]
+        # inv_chol_design_matrix = tf.linalg.inv(chol_design_matrix) # [m, m]
+        # inv_design_matrix = tf.tensordot(tf.transpose(inv_chol_design_matrix),inv_chol_design_matrix, [[-1], [-2]]) # [m, m]
+        # theta_posterior_mean = tf.matmul(tf.matmul(inv_design_matrix, phi, transpose_b=True), self._dataset.observations) # [m, 1]
+        # theta_posterior_mean= tf.squeeze(theta_posterior_mean) # [m]
+        # theta_posterior_chol_covariance = tf.transpose(inv_chol_design_matrix) * tf.math.sqrt(self._noise_variance) # [m, m]
+        #self._theta_posterior = tfp.distributions.MultivariateNormalTriL(theta_posterior_mean, theta_posterior_chol_covariance)
+
+
+
+    def _prepare_theta_posterior_in_gram_space(self):
+
+        phi = self._feature_functions(self._dataset.query_points) # [n, m]
+
+        gram_matrix = tf.matmul(phi,phi, transpose_b=True) # [n, n]
+        s = self._noise_variance * tf.eye(self._num_data, dtype=phi.dtype)
+        inv_gram_matrix = tf.linalg.inv(gram_matrix + s)
+        phi_times_inv_gram_matrix = tf.matmul(phi,inv_gram_matrix, transpose_a=True) # [m, n]
+
+        theta_posterior_mean =tf.matmul(phi_times_inv_gram_matrix, self._dataset.observations) # [m, 1]
+        theta_posterior_mean= tf.squeeze(theta_posterior_mean) # [m]
+        theta_posterior_covariance =  tf.eye(self._num_features, dtype=phi.dtype) - tf.matmul(phi_times_inv_gram_matrix, phi) # [m, 1]
+        theta_posterior_chol_covariance = tf.linalg.cholesky(theta_posterior_covariance)
+        
+        self._theta_posterior = tfp.distributions.MultivariateNormalTriL(theta_posterior_mean, theta_posterior_chol_covariance)
+
+
+
+    def sample(self) -> Callable[[TensorType], TensorType]:
+        """
+        TODO
+        """
+        def trajectory(x: TensorType) -> TensorType:
+            feature_evaluations = self._feature_functions(x)
+            theta_sample = self._theta_posterior.sample(1) # [m]
+            return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)
+
+
+        return trajectory
