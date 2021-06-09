@@ -87,6 +87,17 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise.
+
+        Note that this is only supported for models with with homoscedastic noise, and so this
+        function returns a scalar.
+
+        :return: The observation noise.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
@@ -378,6 +389,19 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )
 
         return cov
+
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model.likelihood.variance
+        except AttributeError:
+            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+
+        return noise_variance
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):

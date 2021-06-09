@@ -235,7 +235,6 @@ class BatchReparametrizationSampler(Sampler):
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
         :raise ValueError (or InvalidArgumentError): If any of the following are true:
-
             - ``at`` is a scalar.
             - The batch size `B` of ``at`` is not positive.
             - The batch size `B` of ``at`` differs from that of previous calls.

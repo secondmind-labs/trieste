@@ -156,6 +156,86 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> Acquisit
     return acquisition
 
 
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the augmented expected improvement function for optimization single-objective
+    optimization problems with high levels of observation noise.
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return "AugmentedExpectedImprovement()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise ValueError: If ``dataset`` is empty.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        return augmented_expected_improvement(model, eta)
+
+
+def augmented_expected_improvement(
+    model: ProbabilisticModel, eta: TensorType
+) -> AcquisitionFunction:
+    r"""
+    Return the Augmented Expected Improvement (AEI) acquisition function for single-objective global
+    optimization under homoscedastic observation noise.
+    Improvement is with respect to the current "best" observation ``eta``, where an
+    improvement moves towards the objective function's minimum, and the expectation is calculated
+    with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
+    multiplicative factor that penalizes evaluations made in areas of the space with very small
+    posterior predictive variance. Thus, when applying standard EI to noisy optimisation
+    problems, AEI avoids getting trapped and repeatedly querying the same point.
+    For model posterior :math:`f`, this is
+    .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
+    where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
+    This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
+
+    :param model: The model of the objective function.
+    :param eta: The "best" observation.
+    :return: The expected improvement function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    try:
+        noise_variance = model.get_observation_noise()
+    except NotImplementedError:
+        raise ValueError(
+            """
+            Augmented expected improvement only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
+        )
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = model.predict(tf.squeeze(x, -2))
+        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        expected_improvement = (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+        augmentation = 1 - (tf.math.sqrt(noise_variance)) / (
+            tf.math.sqrt(noise_variance + variance)
+        )
+
+        return expected_improvement * augmentation
+
+    return acquisition
+
+
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
