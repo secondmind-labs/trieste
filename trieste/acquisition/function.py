@@ -55,16 +55,33 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 
 
 class AcquisitionFunctionBuilder(ABC):
-    """An :class:`AcquisitionFunctionBuilder` builds an acquisition function."""
+    """ An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function. """
 
     @abstractmethod
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
+        Build an acquisition function.
+
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
         :return: An acquisition function.
+        """
+
+    @abstractmethod
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> None:
+        """
+        Update an acquisition function.
+
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
         """
 
 
@@ -88,6 +105,14 @@ class SingleModelAcquisitionBuilder(ABC):
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
+            def update_acquisition_function(
+                self,
+                function: AcquisitionFunction,
+                datasets: Mapping[str, Dataset],
+                models: Mapping[str, ProbabilisticModel],
+            ) -> None:
+                single_builder.update_acquisition_function(function, datasets[tag], models[tag])
+
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
 
@@ -102,6 +127,16 @@ class SingleModelAcquisitionBuilder(ABC):
         :param model: The model over the specified ``dataset``.
         :return: An acquisition function.
         """
+
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> None:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        ... # TODO: make abstract
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -129,10 +164,28 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        return expected_improvement(model, eta)
+        eta_variable = tf.Variable(eta)
+        # TODO: make this a callable class
+        function = expected_improvement(model, eta_variable)
+        function.eta = eta_variable
+        return function
+
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> None:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.eta.assign(eta)  # type: ignore
 
 
-def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> AcquisitionFunction:
+def expected_improvement(model: ProbabilisticModel, eta: tf.Variable) -> AcquisitionFunction:
     r"""
     Return the Expected Improvement (EI) acquisition function for single-objective global
     optimization. Improvement is with respect to the current "best" observation ``eta``, where an

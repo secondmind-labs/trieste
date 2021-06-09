@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Dict, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
@@ -129,6 +129,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
+        # TODO: make this obligatory?
+        datasets: Dict[str, Dataset] | None = None,
+        models: Mapping[str, ProbabilisticModel] | None = None
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -169,6 +172,8 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
+        # TODO: allow now or later?
+        self._acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
 
     def __repr__(self) -> str:
         """"""
@@ -195,9 +200,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
-
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        points = self._optimizer(search_space, acquisition_function)
+#        self._acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        self._builder.update_acquisition_function(self._acquisition_function, datasets, models)
+        points = self._optimizer(search_space, self._acquisition_function)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for _ in range(

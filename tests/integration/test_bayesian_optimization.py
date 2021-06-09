@@ -100,6 +100,9 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
+    # TODO!
+    acquisition_rule = EfficientGlobalOptimization(datasets={OBJECTIVE: initial_data}, models={OBJECTIVE: model})
+
     dataset = (
         BayesianOptimizer(observer, search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
