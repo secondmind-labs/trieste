@@ -200,15 +200,6 @@ class ModelStack(TrainableProbabilisticModel):
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def get_observation_noise(self) -> TensorType:
-        r"""
-        :return: The observation noise variance for all the wrapped models, concatenated along the
-        event axis in the same order as they appear in :meth:`__init__`.
-        :raise NotImplementedError: If any of the models don't implement get_observation_noise.
-        """
-        noises = [model.get_observation_noise() for model in self._models]
-        return tf.stack(noises)
-
     def update(self, dataset: Dataset) -> None:
         """
         Update all the wrapped models on their corresponding data. The data for each model is
