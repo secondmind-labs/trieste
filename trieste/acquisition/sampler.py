@@ -27,7 +27,7 @@ from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, GPflowPredictor
 from ..type import TensorType
 from ..utils import DEFAULTS
 
@@ -304,7 +304,7 @@ class ContinuousSampler(ABC):
 
     def __repr__(self) -> str:
         """"""
-        return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
+        return f"{self.__class__.__name__}({self._model!r}, {self._dataset!r})"
 
     @abstractmethod
     def sample(self) -> Callable[[TensorType], TensorType]:
@@ -355,7 +355,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
     """
 
-    def __init__(self, dataset: Dataset, model: ProbabilisticModel, num_features: int = 1000):
+    def __init__(self, dataset: Dataset, model: GPflowPredictor, num_features: int = 1000):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model to sample from.
