@@ -98,6 +98,21 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+        
+        Note that this is not supported by all models.
+
+        :param query_points_1: Set of query points with shape [N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+
+        :return: Covariance matrix between the sets of query points with shape [N, M]
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide covariance between points")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """
@@ -315,6 +330,14 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
 
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return self.model.kernel
+
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize the model with the specified `dataset`.
@@ -411,6 +434,15 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             raise NotImplementedError("Model {self!r} does not have scalar observation noise")
 
         return noise_variance
+
+
+
+
+
+
+
+
+
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
