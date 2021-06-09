@@ -309,8 +309,8 @@ class ContinuousSampler(ABC):
     @abstractmethod
     def sample(self) -> Callable[[TensorType], TensorType]:
         """
-        Return a function that evaluates a particular sample at a set of `N` query 
-        points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns 
+        Return a function that evaluates a particular sample at a set of `N` query
+        points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
         shape `[N, 1]`.
 
         :return: Queryable function representing a sample.
@@ -455,14 +455,14 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         """
         Prepare the approximate sample by sampling weights and evaluating the feature functions.
 
-        :return: A function representing an approximate sample from the Gaussian process, taking an 
+        :return: A function representing an approximate sample from the Gaussian process, taking an
             input of shape `[N, D]` and returns shape `[N, 1]`
         """
 
         def trajectory(x: TensorType) -> TensorType:
 
-            feature_evaluations = self._feature_functions(x) # [N, m]
+            feature_evaluations = self._feature_functions(x)  # [N, m]
             theta_sample = self._theta_posterior.sample(1)  # [1, m]
-            return tf.matmul(feature_evaluations, theta_sample, transpose_b=True) # [N,1]
+            return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]
 
         return trajectory

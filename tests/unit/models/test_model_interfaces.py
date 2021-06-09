@@ -141,17 +141,6 @@ def test_model_stack_predict_y() -> None:
     npt.assert_allclose(variance[:, 1:2], model2.predict_y(x)[1])
 
 
-def test_model_stack_get_observation_noise() -> None:
-    model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3], 1.0)
-    model2 = _QuadraticModel([2.0], [2.0], 2.0)
-    model3 = _QuadraticModel([-1.0], [0.1], 3.0)
-    stack = ModelStack((model01, 2), (model2, 1), (model3, 1))
-    observations_noises = stack.get_observation_noise()
-
-    assert observations_noises.shape == [3]
-    npt.assert_allclose(observations_noises, tf.constant([1.0, 2.0, 3.0], dtype=tf.float64))
-
-
 @random_seed
 def test_model_stack_sample() -> None:
     query_points = tf.random.uniform([5, 7, 3], maxval=10.0)

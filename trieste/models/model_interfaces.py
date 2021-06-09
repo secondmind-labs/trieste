@@ -103,7 +103,7 @@ class ProbabilisticModel(ABC):
     ) -> TensorType:
         r"""
         Compute the posterior covariance between sets of query points.
-        
+
         Note that this is not supported by all models.
 
         :param query_points_1: Set of query points with shape [N, D]
@@ -214,15 +214,6 @@ class ModelStack(TrainableProbabilisticModel):
         """
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
-
-    def get_observation_noise(self) -> TensorType:
-        r"""
-        :return: The observation noise variance for all the wrapped models, concatenated along the
-        event axis in the same order as they appear in :meth:`__init__`.
-        :raise NotImplementedError: If any of the models don't implement get_observation_noise.
-        """
-        noises = [model.get_observation_noise() for model in self._models]
-        return tf.stack(noises)
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -434,15 +425,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             raise NotImplementedError("Model {self!r} does not have scalar observation noise")
 
         return noise_variance
-
-
-
-
-
-
-
-
-
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
