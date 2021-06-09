@@ -395,7 +395,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
         .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
 
-        where the design matrix :math:`D=(\Phi^T\phi + \sigma^2I_m)` is defined for
+        where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
         the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
         and observation noise variance :math:`\sigma^2`.
 
@@ -423,11 +423,11 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         r"""
         Calculate the posterior of theta (the feature weights) in the gram space.
 
-         .. math:: \theta \sim N(\Phi^TG^{-1}y,I - \Phi^TG^{-1}\Phi)
+         .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
 
-        where :math:`G=(\phi\Phi^T + \sigma^2I_n)` for the [n,m] matrix of feature
-        evaluations across the training data :math:`\Phi` and observation noise
-        variance :math:`\sigma^2`.
+        where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
+        matrix of feature evaluations across the training data :math:`\Phi` and
+        observation noise variance :math:`\sigma^2`.
 
         :return: The posterior distribution for theta.
         """
