@@ -98,21 +98,6 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-    def covariance_between_points(
-        self, query_points_1: TensorType, query_points_2: TensorType
-    ) -> TensorType:
-        r"""
-        Compute the posterior covariance between sets of query points.
-
-        Note that this is not supported by all models.
-
-        :param query_points_1: Set of query points with shape [N, D]
-        :param query_points_2: Sets of query points with shape [M, D]
-
-        :return: Covariance matrix between the sets of query points with shape [N, M]
-        """
-        raise NotImplementedError(f"Model {self!r} does not provide covariance between points")
-
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """ A trainable probabilistic model. """

@@ -286,7 +286,7 @@ class ContinuousSampler(ABC):
     An :class:`ContinuousSampler` samples a specific quantity according
     to an underlying :class:`ProbabilisticModel`.
     Unlike our :class:`DiscreteSampler`, :class:`ContinuousSampler` returns a
-    queryable function that provides the sample's value at a query location.
+    queryable function (a trajectory) that provides the sample's value at a query location.
     """
 
     def __init__(self, dataset: Dataset, model: ProbabilisticModel):
@@ -307,7 +307,7 @@ class ContinuousSampler(ABC):
         return f"{self.__class__.__name__}({self._model!r}, {self._dataset!r})"
 
     @abstractmethod
-    def sample(self) -> Callable[[TensorType], TensorType]:
+    def get_trajectory(self) -> Callable[[TensorType], TensorType]:
         """
         Return a function that evaluates a particular sample at a set of `N` query
         points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
@@ -320,14 +320,14 @@ class ContinuousSampler(ABC):
 class RandomFourierFeatureThompsonSampler(ContinuousSampler):
     r"""
 
-    This class builds functions that approximate samples from an underlying Gaussian
+    This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
     the model's kernel. See :cite:`hernandez2014predictive` for details.
 
-    A key property of these functions is that the same function draw (sample) is evaluated
+    A key property of these trajectory functions is that the same sample draw is evaluated
     for all queries. This property is known as consistency. Achieving consistency for exact
-    sample draws from a  GP is prohibitevly costly because it scales cubically with the number
+    sample draws from a  GP is prohibitively costly because it scales cubically with the number
     of query points. However, finite feature representations can be evaluated with constant cost
     regardless of the required number of queries.
 
@@ -341,8 +341,9 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
     model's datapoints.
 
     Our implementation follows :cite:`hernandez2014predictive`, with our calculations
-    differing slightly depending on properties of the problem, in particular,  with respect to the
-    number of considered features m and the number of data points n.
+    differing slightly depending on properties of the problem. In particular,  we used different
+    calculation strategies depending on the number of considered features m and the number
+    of data points n.
 
     If :math:`m<n` then we follow Appendix A of :cite:`hernandez2014predictive` and calculate the
     posterior distribution for :math:`\theta` following their Bayesian linear regression motivation,
@@ -363,17 +364,17 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         :raise ValueError: If ``dataset`` is empty.
         """
         super().__init__(dataset, model)
-        self._num_features = num_features  # [m]
-        self._num_data = len(self._dataset.query_points)  # [n]
+        self._num_features = num_features  # m
+        self._num_data = len(self._dataset.query_points)  # n
 
         try:
             self._noise_variance = model.get_observation_noise()
             self._kernel = model.get_kernel()
-        except NotImplementedError:
+        except (NotImplementedError, AttributeError):
             raise ValueError(
                 """
             Thompson sampling with random Fourier features only currently supports models
-            with a likelihood.variance attribute and an accessible kernel.
+            with likelihood.variance and kernel attributes.
             """
             )
 
@@ -383,9 +384,9 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
         if (
             self._num_features < self._num_data
-        ):  # if m < n  then calculate posterior in gram space through an m*m matrix inversion
+        ):  # if m < n  then calculate posterior in design space through an m*m matrix inversion
             self._theta_posterior = self._prepare_theta_posterior_in_design_space()
-        else:  # if n < m  then calculate posterior in gram space through an m*m matrix inversion
+        else:  # if n < m  then calculate posterior in gram space through an n*n matrix inversion
             self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
     def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.Distribution:
@@ -410,7 +411,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         theta_posterior_mean = tf.matmul(
             tf.matmul(inv_design_matrix, phi, transpose_b=True), self._dataset.observations
         )  # [m, 1]
-        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m]
+        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m,]
         theta_posterior_chol_covariance = tf.linalg.cholesky(
             inv_design_matrix * self._noise_variance
         )  # [m, m]
@@ -441,7 +442,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         theta_posterior_mean = tf.matmul(
             phi_times_inv_gram_matrix, self._dataset.observations
         )  # [m, 1]
-        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m]
+        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m,]
         theta_posterior_covariance = tf.eye(self._num_features, dtype=phi.dtype) - tf.matmul(
             phi_times_inv_gram_matrix, phi
         )  # [m, m]
@@ -451,16 +452,16 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def sample(self) -> Callable[[TensorType], TensorType]:
+    def get_trajectory(self) -> Callable[[TensorType], TensorType]:
         """
-        Prepare the approximate sample by sampling weights and evaluating the feature functions.
+        Generate an approximate function draw (trajectory) by sampling weights 
+        and evaluating the feature functions.
 
-        :return: A function representing an approximate sample from the Gaussian process, taking an
-            input of shape `[N, D]` and returns shape `[N, 1]`
+        :return: A function representing an approximate trajectory from the Gaussian process,
+        taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
         def trajectory(x: TensorType) -> TensorType:
-
             feature_evaluations = self._feature_functions(x)  # [N, m]
             theta_sample = self._theta_posterior.sample(1)  # [1, m]
             return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]
