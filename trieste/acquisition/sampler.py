@@ -319,7 +319,6 @@ class ContinuousSampler(ABC):
 
 class RandomFourierFeatureThompsonSampler(ContinuousSampler):
     r"""
-
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
@@ -353,7 +352,6 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
     inversion of a gram matrix. As well as being more efficient in early BO
     steps (where :math:`n<m`), this second computation method allows must larger choices
     of m (as required to approximate very flexible kernels).
-
     """
 
     def __init__(self, dataset: Dataset, model: ProbabilisticModel, num_features: int = 1000):
@@ -460,7 +458,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         the feautre weights.
 
         :return: A function representing an approximate trajectory from the Gaussian process,
-        taking an input of shape `[N, D]` and returning shape `[N, 1]`
+            taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
         if not self._pre_calc:
