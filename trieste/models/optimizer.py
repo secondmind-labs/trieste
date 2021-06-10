@@ -48,7 +48,7 @@ TensorFlow optimizer doesn't return any result.
 
 @dataclass
 class Optimizer:
-    """ Optimizer for training models with all the training data at once. """
+    """Optimizer for training models with all the training data at once."""
 
     optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer
     """ The underlying optimizer to use. """
@@ -87,7 +87,7 @@ class Optimizer:
 
 @dataclass
 class TFOptimizer(Optimizer):
-    """ Optimizer for training models with mini-batches of training data. """
+    """Optimizer for training models with mini-batches of training data."""
 
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """

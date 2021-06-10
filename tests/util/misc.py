@@ -114,7 +114,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
 
 
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
-    """ An acquisition rule that returns the same fixed value on every step. """
+    """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):
         """
