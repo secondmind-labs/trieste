@@ -27,7 +27,7 @@ from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
 from ..data import Dataset
-from ..models import GPflowPredictor, ProbabilisticModel
+from ..models import ProbabilisticModel
 from ..type import TensorType
 from ..utils import DEFAULTS
 
@@ -356,7 +356,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
     """
 
-    def __init__(self, dataset: Dataset, model: GPflowPredictor, num_features: int = 1000):
+    def __init__(self, dataset: Dataset, model: ProbabilisticModel, num_features: int = 1000):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model to sample from.
@@ -364,6 +364,8 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         :raise ValueError: If ``dataset`` is empty.
         """
         super().__init__(dataset, model)
+
+        tf.debugging.assert_positive(num_features)
         self._num_features = num_features  # m
         self._num_data = len(self._dataset.query_points)  # n
 
@@ -378,16 +380,13 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
             """
             )
 
-        self._feature_functions = RandomFourierFeatures(
-            self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
-        )
+        self._pre_calc = False
 
-        if (
-            self._num_features < self._num_data
-        ):  # if m < n  then calculate posterior in design space through an m*m matrix inversion
-            self._theta_posterior = self._prepare_theta_posterior_in_design_space()
-        else:  # if n < m  then calculate posterior in gram space through an n*n matrix inversion
-            self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"{self.__class__.__name__}({self._model!r}, {self._dataset!r}, {self._num_features!r})"
+        )
 
     def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.Distribution:
         r"""
@@ -457,9 +456,26 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
+        If this is the first call, then we calculate the posterior distributions for
+        the feautre weights.
+
         :return: A function representing an approximate trajectory from the Gaussian process,
         taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
+
+        if not self._pre_calc:
+            self._feature_functions = RandomFourierFeatures(
+                self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
+            )
+
+            if (
+                self._num_features < self._num_data
+            ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
+                self._theta_posterior = self._prepare_theta_posterior_in_design_space()
+            else:  # if n < m  then calculate posterior in gram space (an n*n matrix inversion)
+                self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
+
+            self._pre_calc = True
 
         def trajectory(x: TensorType) -> TensorType:
             feature_evaluations = self._feature_functions(x)  # [N, m]

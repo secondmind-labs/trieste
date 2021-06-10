@@ -98,6 +98,14 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return sNotImplementedError(f"Model {self!r} does have an accessible kernel")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """A trainable probabilistic model."""
