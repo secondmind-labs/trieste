@@ -404,17 +404,17 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         """
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
-        design_matrix = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
+        D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
         s = self._noise_variance * tf.eye(self._num_features, dtype=phi.dtype)
-        inv_design_matrix = tf.linalg.inv(design_matrix + s)
+        L = tf.linalg.cholesky(D + s)
+        D_inv = tf.linalg.cholesky_solve(L, tf.eye(self._num_features, dtype=phi.dtype))
 
         theta_posterior_mean = tf.matmul(
-            tf.matmul(inv_design_matrix, phi, transpose_b=True), self._dataset.observations
-        )  # [m, 1]
-        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m,]
-        theta_posterior_chol_covariance = tf.linalg.cholesky(
-            inv_design_matrix * self._noise_variance
-        )  # [m, m]
+            D_inv, tf.matmul(phi, self._dataset.observations, transpose_a=True)
+        )[
+            :, 0
+        ]  # [m,]
+        theta_posterior_chol_covariance = tf.linalg.cholesky(D_inv * self._noise_variance)  # [m, m]
 
         return tfp.distributions.MultivariateNormalTriL(
             theta_posterior_mean, theta_posterior_chol_covariance
@@ -434,19 +434,19 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         """
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
-        gram_matrix = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
+        G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
         s = self._noise_variance * tf.eye(self._num_data, dtype=phi.dtype)
-        inv_gram_matrix = tf.linalg.inv(gram_matrix + s)
-        phi_times_inv_gram_matrix = tf.matmul(phi, inv_gram_matrix, transpose_a=True)  # [m, n]
+        L = tf.linalg.cholesky(G + s)
+        L_inv_phi = tf.linalg.triangular_solve(L, phi)  # [n, m]
+        L_inv_y = tf.linalg.triangular_solve(L, self._dataset.observations)  # [n, 1]
 
-        theta_posterior_mean = tf.matmul(
-            phi_times_inv_gram_matrix, self._dataset.observations
-        )  # [m, 1]
-        theta_posterior_mean = tf.squeeze(theta_posterior_mean)  # [m,]
-        theta_posterior_covariance = tf.eye(self._num_features, dtype=phi.dtype) - tf.matmul(
-            phi_times_inv_gram_matrix, phi
+        theta_posterior_mean = tf.tensordot(tf.transpose(L_inv_phi), L_inv_y, [[-1], [-2]])[
+            :, 0
+        ]  # [m,]
+        theta_posterior_covariance = tf.eye(self._num_features, dtype=phi.dtype) - tf.tensordot(
+            tf.transpose(L_inv_phi), L_inv_phi, [[-1], [-2]]
         )  # [m, m]
-        theta_posterior_chol_covariance = tf.linalg.cholesky(theta_posterior_covariance)
+        theta_posterior_chol_covariance = tf.linalg.cholesky(theta_posterior_covariance)  # [m, m]
 
         return tfp.distributions.MultivariateNormalTriL(
             theta_posterior_mean, theta_posterior_chol_covariance
@@ -454,7 +454,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
     def get_trajectory(self) -> Callable[[TensorType], TensorType]:
         """
-        Generate an approximate function draw (trajectory) by sampling weights 
+        Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
         :return: A function representing an approximate trajectory from the Gaussian process,
