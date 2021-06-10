@@ -55,7 +55,7 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 
 
 class AcquisitionFunctionBuilder(ABC):
-    """ An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function. """
+    """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function."""
 
     @abstractmethod
     def prepare_acquisition_function(
@@ -69,20 +69,23 @@ class AcquisitionFunctionBuilder(ABC):
         :return: An acquisition function.
         """
 
-    @abstractmethod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> None:
+    ) -> AcquisitionFunction:
         """
-        Update an acquisition function.
+        Update an acquisition function. To avoid retracing every optimization loop, use this
+        to update the acquistion function variables rather than generating a new function.
+        By default this generates a new acquisition function each time.
 
         :param function: The acquisition function to update.
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
+        :return: The updated acquisition function.
         """
+        return self.prepare_acquisition_function(datasets, models)
 
 
 class SingleModelAcquisitionBuilder(ABC):
@@ -110,8 +113,10 @@ class SingleModelAcquisitionBuilder(ABC):
                 function: AcquisitionFunction,
                 datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
-            ) -> None:
-                single_builder.update_acquisition_function(function, datasets[tag], models[tag])
+            ) -> AcquisitionFunction:
+                return single_builder.update_acquisition_function(
+                    function, datasets[tag], models[tag]
+                )
 
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
@@ -130,13 +135,14 @@ class SingleModelAcquisitionBuilder(ABC):
 
     def update_acquisition_function(
         self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
-    ) -> None:
+    ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
+        :return: The updated acquisition function.
         """
-        ... # TODO: make abstract
+        return self.prepare_acquisition_function(dataset, model)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -164,15 +170,11 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        eta_variable = tf.Variable(eta)
-        # TODO: make this a callable class
-        function = expected_improvement(model, eta_variable)
-        function.eta = eta_variable
-        return function
+        return expected_improvement(model, eta)
 
     def update_acquisition_function(
         self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
-    ) -> None:
+    ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param dataset: The data from the observer.
@@ -180,39 +182,49 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
+        if not isinstance(function, expected_improvement):
+            raise ValueError("Acquisition function is not expected_improvement")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        function.eta.assign(eta)  # type: ignore
+        function.update(eta)
+        return function
 
 
-def expected_improvement(model: ProbabilisticModel, eta: tf.Variable) -> AcquisitionFunction:
-    r"""
-    Return the Expected Improvement (EI) acquisition function for single-objective global
-    optimization. Improvement is with respect to the current "best" observation ``eta``, where an
-    improvement moves towards the objective function's minimum, and the expectation is calculated
-    with respect to the ``model`` posterior. For model posterior :math:`f`, this is
+class expected_improvement:
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        r"""
+        Return the Expected Improvement (EI) acquisition function for single-objective global
+        optimization. Improvement is with respect to the current "best" observation ``eta``, where
+        an improvement moves towards the objective function's minimum and the expectation is
+        calculated with respect to the ``model`` posterior. For model posterior :math:`f`, this is
 
-    .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
+        .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
 
-    This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
+        This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
 
-    :param model: The model of the objective function.
-    :param eta: The "best" observation.
-    :return: The expected improvement function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
-    """
+        :param model: The model of the objective function.
+        :param eta: The "best" observation.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+        self._eta = tf.Variable(eta)
 
-    def acquisition(x: TensorType) -> TensorType:
+    def update(self, eta: TensorType):
+        """Update the acquisition function with a new eta value."""
+        self._eta = eta
+
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, variance = model.predict(tf.squeeze(x, -2))
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
-
-    return acquisition
+        ans = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
+        return ans
 
 
 class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -242,57 +254,90 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         return augmented_expected_improvement(model, eta)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+        if not isinstance(function, augmented_expected_improvement):
+            raise ValueError("Acquisition function is not augmented_expected_improvement")
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)
+        return function
 
-def augmented_expected_improvement(
-    model: ProbabilisticModel, eta: TensorType
-) -> AcquisitionFunction:
-    r"""
-    Return the Augmented Expected Improvement (AEI) acquisition function for single-objective global
-    optimization under homoscedastic observation noise.
-    Improvement is with respect to the current "best" observation ``eta``, where an
-    improvement moves towards the objective function's minimum, and the expectation is calculated
-    with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
-    multiplicative factor that penalizes evaluations made in areas of the space with very small
-    posterior predictive variance. Thus, when applying standard EI to noisy optimisation
-    problems, AEI avoids getting trapped and repeatedly querying the same point.
-    For model posterior :math:`f`, this is
-    .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
-    where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
-    This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
 
-    :param model: The model of the objective function.
-    :param eta: The "best" observation.
-    :return: The expected improvement function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
-    """
+class augmented_expected_improvement:
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        r"""
+        Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
+        global optimization under homoscedastic observation noise.
+        Improvement is with respect to the current "best" observation ``eta``, where an
+        improvement moves towards the objective function's minimum and the expectation is calculated
+        with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
+        multiplicative factor that penalizes evaluations made in areas of the space with very small
+        posterior predictive variance. Thus, when applying standard EI to noisy optimisation
+        problems, AEI avoids getting trapped and repeatedly querying the same point.
+        For model posterior :math:`f`, this is
+        .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
+        where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
+        This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
 
-    try:
-        noise_variance = model.get_observation_noise()
-    except NotImplementedError:
-        raise ValueError(
-            """
-            Augmented expected improvement only currently supports homoscedastic gpflow models
-            with a likelihood.variance attribute.
-            """
-        )
+        :param model: The model of the objective function.
+        :param eta: The "best" observation.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+        self._eta = tf.Variable(eta)
 
-    def acquisition(x: TensorType) -> TensorType:
+        try:
+            self._noise_variance = model.get_observation_noise()
+        except NotImplementedError:
+            raise ValueError(
+                """
+                Augmented expected improvement only currently supports homoscedastic gpflow models
+                with a likelihood.variance attribute.
+                """
+            )
+
+    def update(self, eta: TensorType):
+        """Update the acquisition function with a new eta value and noise variance."""
+        self._eta = eta
+
+        try:
+            self._noise_variance = self._model.get_observation_noise()
+        except NotImplementedError:
+            raise ValueError(
+                """
+                Augmented expected improvement only currently supports homoscedastic gpflow models
+                with a likelihood.variance attribute.
+                """
+            )
+
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, variance = model.predict(tf.squeeze(x, -2))
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        expected_improvement = (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+        expected_improvement = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(
+            self._eta
+        )
 
-        augmentation = 1 - (tf.math.sqrt(noise_variance)) / (
-            tf.math.sqrt(noise_variance + variance)
+        augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
+            tf.math.sqrt(self._noise_variance + variance)
         )
 
         return expected_improvement * augmentation
-
-    return acquisition
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
@@ -939,7 +984,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acqusition function. All that we require is that the acquisition function takes strictly
+    acquisition function. All that we require is that the acquisition function takes strictly
     positive values. By iteratively building a batch of points though sequentially maximizing
     this acquisition function but down-weighted around locations close to the already
     chosen (pending) points, local penalization provides diverse batches of candidate points.

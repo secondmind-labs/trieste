@@ -297,8 +297,6 @@ class BayesianOptimizer(Generic[SP]):
         if not datasets:
             raise ValueError("dicts of datasets and model_specs must be populated.")
 
-        models = map_values(create_model, model_specs)
-
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
                 raise ValueError(
@@ -306,19 +304,17 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            # TODO: handle passed in rules
-            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization(datasets=datasets, models=models))
+            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
 
+        models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
 
         for step in range(num_steps):
-            if track_state:
-                history.append(Record(datasets, models, acquisition_state))
-
             try:
                 if track_state:
-                    models = copy.deepcopy(models)
-                    acquisition_state = copy.deepcopy(acquisition_state)
+                    models_copy = copy.deepcopy(models)
+                    acquisition_state_copy = copy.deepcopy(acquisition_state)
+                    history.append(Record(datasets, models_copy, acquisition_state_copy))
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state

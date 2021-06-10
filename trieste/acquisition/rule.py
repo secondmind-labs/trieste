@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
@@ -31,6 +31,7 @@ from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import (
+    AcquisitionFunction,
     AcquisitionFunctionBuilder,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
@@ -129,9 +130,6 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
-        # TODO: make this obligatory?
-        datasets: Dict[str, Dataset] | None = None,
-        models: Mapping[str, ProbabilisticModel] | None = None
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -172,8 +170,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
-        # TODO: allow now or later?
-        self._acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -200,8 +197,18 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
-#        self._acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        self._builder.update_acquisition_function(self._acquisition_function, datasets, models)
+        if self._acquisition_function is None or isinstance(
+            self._builder, GreedyAcquisitionFunctionBuilder
+        ):
+            # TODO: support updating greedy acquisition functions
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                datasets, models
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function, datasets, models
+            )
+
         points = self._optimizer(search_space, self._acquisition_function)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
