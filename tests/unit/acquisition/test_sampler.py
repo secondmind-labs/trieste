@@ -339,9 +339,31 @@ def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_
     tf.debugging.assert_shapes([(trajectory(xs), [num_evals, 1])])
 
 
+def test_rff_sampler_returns_deterministic_trajectory() -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+    trajectory = sampler.get_trajectory()
+
+    trajectory_eval_1 = trajectory(xs)
+    trajectory_eval_2 = trajectory(xs)
+
+    npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
+
+
 def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> None:
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
-    model.kernel = gpflow.kernels.RBF()
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))

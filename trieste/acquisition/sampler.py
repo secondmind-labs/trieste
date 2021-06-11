@@ -475,9 +475,10 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
             self._pre_calc = True
 
+        theta_sample = self._theta_posterior.sample(1)  # [1, m]
+
         def trajectory(x: TensorType) -> TensorType:
             feature_evaluations = self._feature_functions(x)  # [N, m]
-            theta_sample = self._theta_posterior.sample(1)  # [1, m]
             return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]
 
         return trajectory
