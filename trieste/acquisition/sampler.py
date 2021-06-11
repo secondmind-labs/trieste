@@ -19,7 +19,7 @@ acquisiiton functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
