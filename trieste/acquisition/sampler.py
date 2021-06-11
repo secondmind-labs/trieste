@@ -281,6 +281,19 @@ class BatchReparametrizationSampler(DiscreteSampler):
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
+TrajectoryFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for trajectory functions.
+
+An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
+points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+shape `[N, 1]`.
+
+A key property of these trajectory functions is that the same sample draw is evaluated
+for all queries. This property is known as consistency.
+"""
+
+
 class ContinuousSampler(ABC):
     r"""
     An :class:`ContinuousSampler` samples a specific quantity according
@@ -307,9 +320,9 @@ class ContinuousSampler(ABC):
         return f"{self.__class__.__name__}({self._model!r}, {self._dataset!r})"
 
     @abstractmethod
-    def get_trajectory(self) -> Callable[[TensorType], TensorType]:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
-        Return a function that evaluates a particular sample at a set of `N` query
+        Return a trajectory function that evaluates a particular sample at a set of `N` query
         points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
         shape `[N, 1]`.
 
@@ -324,11 +337,10 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
     Linear model across a set of features sampled from the Fourier feature decomposition of
     the model's kernel. See :cite:`hernandez2014predictive` for details.
 
-    A key property of these trajectory functions is that the same sample draw is evaluated
-    for all queries. This property is known as consistency. Achieving consistency for exact
-    sample draws from a  GP is prohibitively costly because it scales cubically with the number
-    of query points. However, finite feature representations can be evaluated with constant cost
-    regardless of the required number of queries.
+    Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
+    trajectry function) for exact sample draws from a  GP is prohibitively costly because it scales
+    cubically with the number of query points. However, finite feature representations can be
+    evaluated with constant cost regardless of the required number of queries.
 
     In particular, we approximate the Gaussian processes' posterior samples as the finite feature
     approximation
@@ -449,16 +461,16 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def get_trajectory(self) -> Callable[[TensorType], TensorType]:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
         If this is the first call, then we calculate the posterior distributions for
-        the feautre weights.
+        the feature weights.
 
-        :return: A function representing an approximate trajectory from the Gaussian process,
-            taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        :return: A trajectory function representing an approximate trajectory from the Gaussian
+            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
         if not self._pre_calc:
@@ -470,7 +482,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
                 self._num_features < self._num_data
             ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
                 self._theta_posterior = self._prepare_theta_posterior_in_design_space()
-            else:  # if n < m  then calculate posterior in gram space (an n*n matrix inversion)
+            else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
                 self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
             self._pre_calc = True
