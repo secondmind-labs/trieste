@@ -22,10 +22,10 @@ dm-tree==0.1.6
 entrypoints==0.3
 flatbuffers==1.12
 gast==0.4.0
-google-auth==1.30.2
+google-auth==1.31.0
 google-auth-oauthlib==0.4.4
 google-pasta==0.2.0
-gpflow==2.1.5
+gpflow==2.2.1
 gpflux==0.1.0
 grpcio==1.34.1
 h5py==3.1.0
@@ -44,7 +44,7 @@ jupyter-server==1.8.0
 jupyterlab==3.0.16
 jupyterlab-pygments==0.1.2
 jupyterlab-server==2.6.0
-jupytext==1.11.2
+jupytext==1.11.3
 keras-nightly==2.5.0.dev2021032900
 Keras-Preprocessing==1.1.2
 kiwisolver==1.3.1
@@ -103,7 +103,7 @@ tensorflow==2.5.0
 tensorflow-estimator==2.5.0
 tensorflow-probability==0.12.2
 termcolor==1.1.0
-terminado==0.10.0
+terminado==0.10.1
 testpath==0.5.0
 toml==0.10.2
 tornado==6.1
@@ -112,7 +112,7 @@ typing-extensions==3.7.4.3
 urllib3==1.26.5
 wcwidth==0.2.5
 webencodings==0.5.1
-websocket-client==1.0.1
+websocket-client==1.1.0
 Werkzeug==2.0.1
 wrapt==1.12.1
 zipp==3.4.1
