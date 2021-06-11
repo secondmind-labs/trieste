@@ -370,7 +370,9 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model to sample from.
-        :param num_features: The number of features used to approximate the kernel.
+        :param num_features: The number of features used to approximate the kernel. We use a default
+            of 1000 as it typically perfoms well for a wide range of kernel. Note that very smooth
+            kernels (e.g. RBF) can be well-approximated with fewer features.
         :raise ValueError: If ``dataset`` is empty.
         """
         super().__init__(dataset, model)
@@ -386,11 +388,11 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
             raise ValueError(
                 """
             Thompson sampling with random Fourier features only currently supports models
-            with likelihood.variance and kernel attributes.
+            with a Gaussian likelihood and an accessible kernel attribute.
             """
             )
 
-        self._pre_calc = False
+        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
 
     def __repr__(self) -> str:
         """"""
