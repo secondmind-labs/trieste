@@ -295,20 +295,6 @@ for all queries. This property is known as consistency.
 """
 
 
-AcquisitionFunction = Callable[[TensorType], TensorType]
-"""
-Type alias for acquisition functions.
-
-An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
-value that describes how useful it would be evaluate all these points together (to our goal of
-optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
-takes input shape `[..., B, D]` and returns shape `[..., 1]`.
-
-Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
-with a batch dimension, i.e. an input of shape `[..., 1, D]`.
-"""
-
-
 class ContinuousSampler(ABC):
     r"""
     An :class:`ContinuousSampler` samples a specific quantity according
@@ -506,7 +492,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
 
         theta_sample = self._theta_posterior.sample(1)  # [1, m]
 
-        def trajectory(x: TensorType) -> TensorType:
+        def trajectory(x: TensorType) -> TensorType:  # [N, 1, D] -> [N, 1]
             x = x[:, 0, :]  # [N, D]
             feature_evaluations = self._feature_functions(x)  # [N, m]
             return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]

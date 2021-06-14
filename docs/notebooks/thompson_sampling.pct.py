@@ -54,7 +54,7 @@ model_config = {
 
 # %%
 acq_rule = trieste.acquisition.rule.ThompsonSampling(
-    num_search_space_samples=1000, num_query_points=10
+    num_query_points=10, num_search_space_samples=1000
 )
 
 # %% [markdown]
