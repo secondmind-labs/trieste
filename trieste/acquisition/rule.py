@@ -53,7 +53,7 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 
 
 class AcquisitionRule(ABC, Generic[S, SP_contra]):
-    """ The central component of the acquisition API. """
+    """The central component of the acquisition API."""
 
     @abstractmethod
     def acquire(
@@ -117,7 +117,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
 
 
 class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
-    """ Implements the Efficient Global Optimization, or EGO, algorithm. """
+    """Implements the Efficient Global Optimization, or EGO, algorithm."""
 
     def __init__(
         self,
@@ -200,7 +200,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         points = self._optimizer(search_space, acquisition_function)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
-            for i in range(
+            for _ in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
                 greedy_acquisition_function = self._builder.prepare_acquisition_function(
@@ -213,7 +213,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """ Implements Thompson sampling for choosing optimal points. """
+    """Implements Thompson sampling for choosing optimal points."""
 
     def __init__(self, num_search_space_samples: int, num_query_points: int):
         """
@@ -269,11 +269,11 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
 
 class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
-    """ Implements the *trust region* acquisition algorithm. """
+    """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
     class State:
-        """ The acquisition state for the :class:`TrustRegion` acquisition rule. """
+        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
         acquisition_space: Box
         """ The search space. """

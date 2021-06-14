@@ -38,6 +38,7 @@ from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
@@ -51,6 +52,7 @@ from trieste.acquisition.function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,
     hard_local_penalizer,
@@ -183,6 +185,61 @@ def test_expected_improvement(
     ei = expected_improvement(model, best)(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+def test_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(ValueError):
+        AugmentedExpectedImprovement().prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel()
+        )
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    aei = augmented_expected_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        aei(at)
+
+
+def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
+    class dummy_model_without_likelihood(ProbabilisticModel):
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
+            return None
+
+    with pytest.raises(ValueError):
+        model_without_likelihood = dummy_model_without_likelihood()
+        augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
+
+
+@pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
+def test_augmented_expected_improvement_builder_builds_expected_improvement_times_augmentation(
+    observation_noise: float,
+) -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+
+    model = QuadraticMeanAndRBFKernel(noise_variance=observation_noise)
+    acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(dataset, model)
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
+
+    _, variance = model.predict(tf.squeeze(xs, -2))
+    augmentation = 1.0 - (tf.math.sqrt(observation_noise)) / (
+        tf.math.sqrt(observation_noise + variance)
+    )
+    npt.assert_allclose(acq_fn(xs), ei * augmentation)
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:

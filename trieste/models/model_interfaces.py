@@ -29,7 +29,7 @@ from .optimizer import Optimizer
 
 
 class ProbabilisticModel(ABC):
-    """ A probabilistic model. """
+    """A probabilistic model."""
 
     @abstractmethod
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -71,9 +71,44 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError
 
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Return the mean and variance of the independent marginal distributions at each point in
+        ``query_points`` for the observations, including noise contributions.
+
+        Note that this is not supported by all models.
+
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
+        """
+        raise NotImplementedError(
+            f"Model {self!r} does not support predicting observations, just the latent function"
+        )
+
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise.
+
+        Note that this is only supported for models with with homoscedastic noise, and so this
+        function returns a scalar.
+
+        :return: The observation noise.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return NotImplementedError(f"Model {self!r} does have an accessible kernel")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
-    """ A trainable probabilistic model. """
+    """A trainable probabilistic model."""
 
     @abstractmethod
     def update(self, dataset: Dataset) -> None:
@@ -161,6 +196,18 @@ class ModelStack(TrainableProbabilisticModel):
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
 
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean and variance will both have
+            shape [..., :math:`\sum_i E_i`].
+        :raise NotImplementedError: If any of the models don't implement predict_y.
+        """
+        means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
+
     def update(self, dataset: Dataset) -> None:
         """
         Update all the wrapped models on their corresponding data. The data for each model is
@@ -231,7 +278,7 @@ def module_deepcopy(self: M, memo: dict[int, object]) -> M:
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
-    """ A trainable wrapper for a GPflow Gaussian process model. """
+    """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
         """
@@ -247,13 +294,13 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     def optimizer(self) -> Optimizer:
-        """ The optimizer with which to train the model. """
+        """The optimizer with which to train the model."""
         return self._optimizer
 
     @property
     @abstractmethod
     def model(self) -> GPModel:
-        """ The underlying GPflow model. """
+        """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
@@ -263,6 +310,17 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.model.predict_y(query_points)
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return self.model.kernel
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -311,6 +369,56 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         self.model.data = dataset.query_points, dataset.observations
 
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        :param query_points_1: Set of query points with shape [N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+
+        :return: Covariance matrix between the sets of query points with shape [N, M]
+        """
+        tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
+
+        x, _ = self.model.data
+        num_data = x.shape[0]
+        s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
+
+        K = self.model.kernel(x)
+        L = tf.linalg.cholesky(K + s)
+
+        Kx1 = self.model.kernel(x, query_points_1)
+        Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)
+
+        Kx2 = self.model.kernel(x, query_points_2)
+        Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)
+
+        K12 = self.model.kernel(query_points_1, query_points_2)
+        cov = K12 - tf.tensordot(tf.transpose(Linv_Kx1), Linv_Kx2, [[-1], [-2]])
+
+        tf.debugging.assert_shapes(
+            [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
+        )
+
+        return cov
+
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model.likelihood.variance
+        except AttributeError:
+            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+
+        return noise_variance
+
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
@@ -346,7 +454,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
-    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+    """A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`."""
 
     def __init__(self, model: VGP, optimizer: Optimizer | None = None):
         """
@@ -397,14 +505,6 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.num_data = len(dataset)
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance of the observations at the specified
-            ``query_points``.
-        """
-        return self.model.predict_y(query_points)
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {

@@ -39,6 +39,7 @@ from .combination import Product, Reducer, Sum
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
@@ -52,6 +53,7 @@ from .function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,
     hard_local_penalizer,
