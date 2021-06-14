@@ -217,6 +217,8 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
     TODO ELAB
 
+    NOTE ONLY AVAILBE FOR SOME MODELS BUT FAST
+
     """
 
     def __init__(

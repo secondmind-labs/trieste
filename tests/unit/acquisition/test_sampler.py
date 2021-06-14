@@ -310,7 +310,7 @@ def test_rff_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
 
 def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = gpflow.kernels.RBF()
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
@@ -324,7 +324,7 @@ def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
 
 @pytest.mark.parametrize("num_evals", [10, 100])
 def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_evals: int) -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -340,7 +340,7 @@ def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_
 
 
 def test_rff_sampler_returns_deterministic_trajectory() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -361,7 +361,7 @@ def test_rff_sampler_returns_deterministic_trajectory() -> None:
 
 
 def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions

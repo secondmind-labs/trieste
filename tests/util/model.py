@@ -79,7 +79,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
     def get_observation_noise(self) -> TensorType:
-        return tf.constant(self._noise_variance, dtype=tf.float64)
+        return tf.constant(self._noise_variance)
 
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):

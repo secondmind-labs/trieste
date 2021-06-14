@@ -106,7 +106,7 @@ def test_thompson_sampling_acquire_returns_correct_shape(
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     ts = ThompsonSampling(num_query_points, 100, fourier_decomposition)
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
