@@ -98,6 +98,14 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return NotImplementedError(f"Model {self!r} does have an accessible kernel")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """A trainable probabilistic model."""
@@ -305,6 +313,14 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return self.model.kernel
 
     def optimize(self, dataset: Dataset) -> None:
         """

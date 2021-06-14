@@ -92,8 +92,11 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
         kernel_amplitude: float | TensorType | None = None,
         noise_variance: float = 1.0,
     ):
-        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([lambda x: quadratic(x - x_shift)], [kernel], noise_variance)
+        self.kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
+        super().__init__([lambda x: quadratic(x - x_shift)], [self.kernel], noise_variance)
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
+
+    def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
+        return self.kernel
