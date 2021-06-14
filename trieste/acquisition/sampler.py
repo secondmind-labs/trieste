@@ -287,15 +287,12 @@ Type alias for trajectory functions.
 
 An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
 points (each of dimension `D`) i.e. takes input of shape `[N, 1, D]` and returns
-shape `[N, 1]`. The additional batch dimension is important to ensure compatibility 
+shape `[N, 1]`. The additional batch dimension is important to ensure compatibility
 with our optimizers and :const:`AcquisitionFunction`s.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
 """
-
-
-
 
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
@@ -310,7 +307,6 @@ takes input shape `[..., B, D]` and returns shape `[..., 1]`.
 Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
 with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
-
 
 
 class ContinuousSampler(ABC):
@@ -511,7 +507,7 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         theta_sample = self._theta_posterior.sample(1)  # [1, m]
 
         def trajectory(x: TensorType) -> TensorType:
-            x = x[:,0,:] # [N, D]
+            x = x[:, 0, :]  # [N, D]
             feature_evaluations = self._feature_functions(x)  # [N, m]
             return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]
 

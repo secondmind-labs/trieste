@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 
+import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -50,7 +51,7 @@ def _line_search_maximize(
 
 
 @pytest.mark.parametrize(
-    "num_search_space_samples, num_query_points",
+    "num_query_points, num_search_space_samples",
     [
         (0, 100),
         (100, 0),
@@ -58,7 +59,7 @@ def _line_search_maximize(
 )
 def test_thompson_sampling_raises_for_no_points(num_search_space_samples, num_query_points) -> None:
     with pytest.raises(ValueError):
-        ThompsonSampling(num_search_space_samples, num_query_points)
+        ThompsonSampling(num_query_points, num_search_space_samples)
 
 
 @pytest.mark.parametrize(
@@ -74,9 +75,48 @@ def test_thompson_sampling_raises_for_invalid_models_keys(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
-    rule = ThompsonSampling(100, 10)
+    rule = ThompsonSampling(10, 100)
     with pytest.raises(ValueError):
         rule.acquire(search_space, datasets, models)
+
+
+@pytest.mark.parametrize("models", [{}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}])
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {"foo": empty_dataset([1], [1]), OBJECTIVE: empty_dataset([1], [1])},
+    ],
+)
+def test_thompson_sampling_raises_for_invalid_dataset_keys(
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+) -> None:
+    search_space = Box([-1], [1])
+    rule = ThompsonSampling(10, 100)
+    with pytest.raises(ValueError):
+        rule.acquire(search_space, datasets, models)
+
+
+@pytest.mark.parametrize("fourier_decomposition", [True, False])
+@pytest.mark.parametrize("num_query_points", [1, 10])
+def test_thompson_sampling_acquire_returns_correct_shape(
+    fourier_decomposition: bool, num_query_points: int
+) -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    ts = ThompsonSampling(num_query_points, 100, fourier_decomposition)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel()
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    query_points, _ = ts.acquire_single(search_space, dataset, model)
+
+    npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
+
+
+def test_thompson_sampling_reprs() -> None:
+    assert repr(ThompsonSampling(20, 10)) == f"{ThompsonSampling.__name__}(20, 10)"
 
 
 def test_efficient_global_optimization_raises_for_no_query_points() -> None:

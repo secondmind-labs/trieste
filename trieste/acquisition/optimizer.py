@@ -146,7 +146,7 @@ def batchify(
         )
         return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 
-    return optimizerzz
+    return optimizer
 
 
 def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:

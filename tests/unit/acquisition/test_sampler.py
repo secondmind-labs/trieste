@@ -310,7 +310,7 @@ def test_rff_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
 
 def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
     model.kernel = gpflow.kernels.RBF()
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
@@ -324,7 +324,7 @@ def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
 
 @pytest.mark.parametrize("num_evals", [10, 100])
 def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_evals: int) -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -334,13 +334,13 @@ def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_
     sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
 
     trajectory = sampler.get_trajectory()
-    xs = tf.linspace([-10.0], [10.0], num_evals)
+    xs = tf.expand_dims(tf.linspace([-10.0], [10.0], num_evals), 1)
 
     tf.debugging.assert_shapes([(trajectory(xs), [num_evals, 1])])
 
 
 def test_rff_sampler_returns_deterministic_trajectory() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -353,6 +353,7 @@ def test_rff_sampler_returns_deterministic_trajectory() -> None:
     sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
     trajectory = sampler.get_trajectory()
 
+    xs = tf.expand_dims(xs, 1)
     trajectory_eval_1 = trajectory(xs)
     trajectory_eval_2 = trajectory(xs)
 
@@ -360,7 +361,7 @@ def test_rff_sampler_returns_deterministic_trajectory() -> None:
 
 
 def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=1.0)
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
