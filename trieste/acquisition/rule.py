@@ -43,7 +43,7 @@ from .optimizer import (
     batchify,
     optimize_continuous,
 )
-from .sampler import DiscreteThompsonSampler
+from .sampler import RandomFourierFeatureThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -213,23 +213,32 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
 
 class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """Implements Thompson sampling for choosing optimal points."""
+    """Implements Thompson sampling for choosing optimal points.
 
-    def __init__(self, num_search_space_samples: int, num_query_points: int):
+    TODO ELAB
+
+    """
+
+    def __init__(self, num_query_points: int, discretization_size: int = 1000, fourier_decomposition: bool = False):
         """
-        :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
+        :param discretization_size: The size of the discretization used to approximate a 
+            sample draw from the GP. We discretize either our search space or, 
+            if fourier_decomposition=True, our kernel's Fourier space.
+        :param fourier_decomposition: If True, then use random Fourier feature decomposition of 
+            the kernel to generate cheap GP sample draws.
         """
-        if not num_search_space_samples > 0:
-            raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
+        if not discretization_size > 0:
+            raise ValueError(f"Discretization size must be greater than 0, got {num_search_space_samples}")
 
         if not num_query_points > 0:
             raise ValueError(
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
-        self._num_search_space_samples = num_search_space_samples
-        self._num_query_points = num_query_points
+        self._discretization_size = discretization_size # d
+        self._num_query_points = num_query_points # q
+        self._fourier_decompositon = fourier_decomposition
 
     def __repr__(self) -> str:
         """"""
@@ -261,9 +270,32 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
-        query_points = search_space.sample(self._num_search_space_samples)
-        thompson_samples = thompson_sampler.sample(query_points)
+        if datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of datasets must contain the single key {OBJECTIVE}, got keys {datasets.keys()}"
+            )
+
+        if self._fourier_decompositon:  # approximate samples from Fourier feature decomposition
+
+            thompson_sampler = RandomFourierFeatureThompsonSampler(datasets[OBJECTIVE], models[OBJECTIVE], self._discretization_size)
+            thompson_samples = search_space.sample(0)
+
+            for _ in range(self._num_query_points):  # construct batch
+
+                thompson_sample = thompson_sampler.get_trajectory()
+                def negative_thompson_sample(x: TensorType) -> TensorType:  # [N, 1, D] -> [N, 1]
+                    return -1 * thompson_sample(x)
+
+                chosen_point = automatic_optimizer_selector(search_space,  negative_thompson_sample)
+                thompson_samples = tf.concat([thompson_samples, chosen_point], axis=0) # [q, d]
+
+        else: # eval exact samples across discretization of the search space
+
+            discretization = search_space.sample(self._discretization_size)
+            samples = models[OBJECTIVE].sample(discretization, self._num_query_points)  # [q, d, 1]
+            samples_2d = tf.squeeze(samples, -1)  # [q, d]
+            indices = tf.math.argmin(samples_2d, axis=1)
+            thompson_samples = tf.gather(discretization, indices) # [q, d]
 
         return thompson_samples, None
 
