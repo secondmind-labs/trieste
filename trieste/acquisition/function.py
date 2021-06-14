@@ -719,7 +719,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
-        self.q = -1
+        self._batch_size: Optional[int] = None
 
     def __repr__(self) -> str:
         """"""
@@ -734,13 +734,13 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         :param q: batch size
         """
-        if q != self.q:  # regenerate subset indices
+        if q != self._batch_size:  # regenerate subset indices
             indices = list(range(q))
             self.q_subset_indices = {
                 f"q_choose_{i}": tf.constant(list(combinations(indices, i)))
                 for i in range(1, q + 1)
             }
-            self.q = q
+            self._batch_size = q
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
