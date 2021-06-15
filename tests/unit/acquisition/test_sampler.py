@@ -284,8 +284,13 @@ def test_discrete_sampler_reprs(discrete_sampler) -> None:
 
 
 def test_rff_sampler_repr_includes_class_name() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
     sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
     assert type(sampler).__name__ in repr(sampler)
 
@@ -303,23 +308,9 @@ def test_rff_sampler_raises_for_invalid_number_of_features(
 def test_rff_sampler_raises_for_a_non_gpflow_kernel() -> None:
     model = QuadraticMeanAndRBFKernel()
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
-    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
 
     with pytest.raises(AssertionError):
-        sampler.get_trajectory()
-
-
-def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
-    model.kernel = gpflow.kernels.RBF()
-    dataset = Dataset(
-        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
-    )
-    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
-    assert sampler._pre_calc is False
-
-    sampler.get_trajectory()
-    assert sampler._pre_calc is True
+        RandomFourierFeatureThompsonSampler(dataset, model, 100)
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])

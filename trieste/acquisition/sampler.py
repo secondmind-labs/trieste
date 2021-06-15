@@ -297,7 +297,7 @@ for all queries. This property is known as consistency.
 
 class ContinuousSampler(ABC):
     r"""
-    An :class:`ContinuousSampler` samples a specific quantity according
+    A :class:`ContinuousSampler` samples a specific quantity according
     to an underlying :class:`ProbabilisticModel`.
     Unlike our :class:`DiscreteSampler`, :class:`ContinuousSampler` returns a
     queryable function (a trajectory) that provides the sample's value at a query location.
@@ -393,7 +393,16 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
             """
             )
 
-        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
+        self._feature_functions = RandomFourierFeatures(
+            self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
+        )  # Sample Fourier features.
+
+        if (
+            self._num_features < self._num_data
+        ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
+            self._theta_posterior = self._prepare_theta_posterior_in_design_space()
+        else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
+            self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
     def __repr__(self) -> str:
         """"""
@@ -469,26 +478,9 @@ class RandomFourierFeatureThompsonSampler(ContinuousSampler):
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
-        If this is the first call, then we calculate the posterior distributions for
-        the feature weights.
-
         :return: A trajectory function representing an approximate trajectory from the Gaussian
             process, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`
         """
-
-        if not self._pre_calc:
-            self._feature_functions = RandomFourierFeatures(
-                self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
-            )
-
-            if (
-                self._num_features < self._num_data
-            ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
-                self._theta_posterior = self._prepare_theta_posterior_in_design_space()
-            else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
-                self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
-
-            self._pre_calc = True
 
         theta_sample = self._theta_posterior.sample(1)  # [1, m]
 
