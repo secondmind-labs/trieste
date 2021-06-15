@@ -51,15 +51,15 @@ def _line_search_maximize(
 
 
 @pytest.mark.parametrize(
-    "num_query_points, num_search_space_samples",
+    "num_query_points, discretization_size",
     [
         (0, 100),
         (100, 0),
     ],
 )
-def test_thompson_sampling_raises_for_no_points(num_search_space_samples, num_query_points) -> None:
+def test_thompson_sampling_raises_for_no_points(num_query_points, discretization_size) -> None:
     with pytest.raises(ValueError):
-        ThompsonSampling(num_query_points, num_search_space_samples)
+        ThompsonSampling(num_query_points, discretization_size)
 
 
 @pytest.mark.parametrize(
