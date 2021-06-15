@@ -29,7 +29,7 @@ from .optimizer import Optimizer
 
 
 class ProbabilisticModel(ABC):
-    """ A probabilistic model. """
+    """A probabilistic model."""
 
     @abstractmethod
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -89,7 +89,7 @@ class ProbabilisticModel(ABC):
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
-    """ A trainable probabilistic model. """
+    """A trainable probabilistic model."""
 
     @abstractmethod
     def update(self, dataset: Dataset) -> None:
@@ -259,7 +259,7 @@ def module_deepcopy(self: M, memo: dict[int, object]) -> M:
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
-    """ A trainable wrapper for a GPflow Gaussian process model. """
+    """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
         """
@@ -275,13 +275,13 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     def optimizer(self) -> Optimizer:
-        """ The optimizer with which to train the model. """
+        """The optimizer with which to train the model."""
         return self._optimizer
 
     @property
     @abstractmethod
     def model(self) -> GPModel:
-        """ The underlying GPflow model. """
+        """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
@@ -414,7 +414,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
-    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+    """A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`."""
 
     def __init__(self, model: VGP, optimizer: Optimizer | None = None):
         """

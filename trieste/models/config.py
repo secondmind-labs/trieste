@@ -29,7 +29,7 @@ def _default_optimizer() -> gpflow.optimizers.Scipy:
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """ Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`. """
+    """Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`."""
 
     model: tf.Module | TrainableProbabilisticModel
     """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """

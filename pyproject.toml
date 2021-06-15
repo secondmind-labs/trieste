@@ -45,7 +45,7 @@ quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
 mypy = "pytest --mypy --cache-clear -m mypy -v"
 pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
-format = "black . && flake8 . && isort ."
+format = "black . --extend-exclude .tox && flake8 . && isort ."
 
 [tool.coverage.report]
 exclude_lines = [

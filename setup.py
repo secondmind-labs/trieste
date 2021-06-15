@@ -38,7 +38,7 @@ setup(
     python_requires="~=3.7",
     install_requires=[
         "absl-py",
-        "gpflow==2.1.*",
+        "gpflow==2.2.*",
         "numpy",
         # tensorflow!=2.2.0,!=2.3.0 because of https://github.com/advisories/GHSA-8fxw-76px-3rxv
         "tensorflow>=2.1,!=2.2.0,!=2.3.0",

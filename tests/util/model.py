@@ -33,7 +33,7 @@ def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
 
 
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
-    """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
+    """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
         pass
@@ -43,7 +43,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
 
 
 class GaussianMarginal(ProbabilisticModel, ABC):
-    """ A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]. """
+    """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
@@ -53,7 +53,7 @@ class GaussianMarginal(ProbabilisticModel, ABC):
 
 
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
-    """ A (static) Gaussian process over a vector random variable. """
+    """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
         self,
@@ -78,7 +78,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):
-    r""" A Gaussian process with scalar quadratic mean and RBF kernel. """
+    r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
         self,

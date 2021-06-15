@@ -71,7 +71,7 @@ class Reducer(AcquisitionFunctionBuilder):
 
     @property
     def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:
-        """ The acquisition function builders specified at class initialisation. """
+        """The acquisition function builders specified at class initialisation."""
         return self._acquisitions
 
     def _reduce_acquisition_functions(

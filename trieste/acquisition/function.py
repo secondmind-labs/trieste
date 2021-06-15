@@ -49,7 +49,7 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 
 
 class AcquisitionFunctionBuilder(ABC):
-    """ An :class:`AcquisitionFunctionBuilder` builds an acquisition function. """
+    """An :class:`AcquisitionFunctionBuilder` builds an acquisition function."""
 
     @abstractmethod
     def prepare_acquisition_function(
@@ -359,7 +359,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @property
     def threshold(self) -> float | TensorType:
-        """ The probability of feasibility threshold. """
+        """The probability of feasibility threshold."""
         return self._threshold
 
     def prepare_acquisition_function(
