@@ -43,7 +43,7 @@ from .optimizer import (
     batchify,
     optimize_continuous,
 )
-from .sampler import RandomFourierFeatureThompsonSampler
+from .sampler import DiscreteThompsonSampler, RandomFourierFeatureThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -305,11 +305,9 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
         else:  # minimize exact samples across a discretization of the search space
 
+            thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
             discretization = search_space.sample(self._discretization_size)
-            samples = models[OBJECTIVE].sample(discretization, self._num_query_points)  # [q, d, 1]
-            samples_2d = tf.squeeze(samples, -1)  # [q, d]
-            indices = tf.math.argmin(samples_2d, axis=1)
-            thompson_samples = tf.gather(discretization, indices)  # [q, d]
+            thompson_samples = thompson_sampler.sample(discretization)  # [q, d]
 
         return thompson_samples, None
 

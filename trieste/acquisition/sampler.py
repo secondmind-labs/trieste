@@ -69,8 +69,7 @@ class DiscreteThompsonSampler(DiscreteSampler):
 
     def sample(self, at: TensorType) -> TensorType:
         """
-        Return approximate samples from of the objective function's minimser. We return only
-        unique samples.
+        Return approximate samples from of the objective function's minimser.
 
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
@@ -82,8 +81,7 @@ class DiscreteThompsonSampler(DiscreteSampler):
         samples = self._model.sample(at, self._sample_size)  # [self._sample_size, len(at), 1]
         samples_2d = tf.squeeze(samples, -1)  # [self._sample_size, len(at)]
         indices = tf.math.argmin(samples_2d, axis=1)
-        unique_indices = tf.unique(indices).y
-        thompson_samples = tf.gather(at, unique_indices)
+        thompson_samples = tf.gather(at, indices)
         return thompson_samples
 
 
