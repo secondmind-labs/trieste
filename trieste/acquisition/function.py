@@ -213,7 +213,7 @@ class expected_improvement:
 
     def update(self, eta: TensorType):
         """Update the acquisition function with a new eta value."""
-        self._eta = eta
+        self._eta.assign(eta)
 
     # @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -223,8 +223,7 @@ class expected_improvement:
         )
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        ans = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
-        return ans
+        return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
 class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -309,7 +308,7 @@ class augmented_expected_improvement:
 
     def update(self, eta: TensorType):
         """Update the acquisition function with a new eta value and noise variance."""
-        self._eta = eta
+        self._eta.assign(eta)
 
         try:
             self._noise_variance = self._model.get_observation_noise()
