@@ -15,13 +15,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence, Type, TypeVar, overload
+from typing import Sequence, TypeVar, overload
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from .type import TensorType
-from .utils import design, shapes_equal
-from .utils.design import Design
+from .utils import shapes_equal
 
 SP = TypeVar("SP", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
@@ -178,7 +178,6 @@ class Box(SearchSpace):
         self,
         lower: Sequence[float] | TensorType,
         upper: Sequence[float] | TensorType,
-        doe: Type[Design] = None,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
@@ -194,11 +193,6 @@ class Box(SearchSpace):
             - ``lower`` and ``upper`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
-
-        if doe is None:
-            self._design = design.Random()
-        else:
-            self._design = doe
 
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
@@ -253,15 +247,22 @@ class Box(SearchSpace):
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
-
         dim = tf.shape(self._lower)[-1]
-        return self._design.generate(
-            num_samples=num_samples,
-            domain_dim=dim,
-            lower=self._lower,
-            upper=self._upper,
-            dtype=self._lower.dtype,
+        return tf.random.uniform(
+            (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
         )
+
+    def sample_halton(self, num_samples: int, seed: int = 0) -> TensorType:
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
+        ) + self._lower
+
+    def sample_sobol(self, num_samples: int, skip: int = 0) -> TensorType:
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tf.math.sobol_sample(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
+        ) + self._lower
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
         """
