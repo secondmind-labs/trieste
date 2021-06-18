@@ -16,7 +16,10 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import ExpectedHypervolumeImprovement
+from trieste.acquisition.function import (
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+)
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
@@ -31,13 +34,34 @@ from trieste.utils.pareto import Pareto, get_reference_point
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
+    "num_steps, acquisition_rule, performance_threshold",
     [
-        (20, EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE))),
+        pytest.param(
+            20,
+            EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
+            -3.65,
+            id="ehvi_vlmop2",
+        ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=2
+            ),
+            -3.49,
+            id="qehvi_vlmop2_q_2",
+        ),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=4
+            ),
+            -3.27,
+            id="qehvi_vlmop2_q_4",
+        ),
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
+    num_steps: int, acquisition_rule: AcquisitionRule, performance_threshold: float
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
@@ -75,4 +99,4 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     ideal_pf = tf.cast(VLMOP2().gen_pareto_optimal_points(100), dtype=tf.float64)
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
-    assert tf.math.log(ideal_hv - obs_hv) < -3.5
+    assert tf.math.log(ideal_hv - obs_hv) < performance_threshold
