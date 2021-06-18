@@ -734,7 +734,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :return: The batch *expected improvement* acquisition function.
+        :return: The batch expected hypervolume improvement acquisition function.
         """
 
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -753,9 +753,10 @@ def batch_ehvi(
 ) -> AcquisitionFunction:
     """
     :param sampler: The posterior sampler to sample the possible observations @ query points `at`
-    :param sampler_jitter
+    :param sampler_jitter: The size of the jitter to use in sampler
     :param pareto: Pareto class
     :param reference_point: The reference point for calculating hypervolume
+    :return: The batch expected hypervolume improvement acquisition function for objective minimisation.
     """
 
     def acquisition(at: TensorType) -> TensorType:
