@@ -761,14 +761,14 @@ def batch_ehvi(
     def acquisition(at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
-        def q_subset_indices(q: int) -> list:
+        def gen_q_subset_indices(q: int) -> list:
             indices = list(range(q))
             return [tf.constant(list(combinations(indices, i))) for i in range(1, q + 1)]
 
         # [..., S, B, num_obj]
         samples = sampler.sample(at, jitter=sampler_jitter)
 
-        q_subset_indices = q_subset_indices(_batch_size)
+        q_subset_indices = gen_q_subset_indices(_batch_size)
 
         hv_contrib = 0.0
         lb_points, ub_points = pareto.hypercell_bounds(
