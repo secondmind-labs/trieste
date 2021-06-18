@@ -756,7 +756,8 @@ def batch_ehvi(
     :param sampler_jitter: The size of the jitter to use in sampler
     :param pareto: Pareto class
     :param reference_point: The reference point for calculating hypervolume
-    :return: The batch expected hypervolume improvement acquisition function for objective minimisation.
+    :return: The batch expected hypervolume improvement acquisition
+        function for objective minimisation.
     """
 
     def acquisition(at: TensorType) -> TensorType:
