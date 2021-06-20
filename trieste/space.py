@@ -247,18 +247,39 @@ class Box(SearchSpace):
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
+        """
+        Sampling points randomly 
+
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space.
+        """
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
         )
 
     def sample_halton(self, num_samples: int, seed: int = 0) -> TensorType:
+        """
+        Sampling points using randomized halton sequence
+
+        :param num_samples: The number of points to sample from this search space.
+        :param seed: Random seed for the halton sequence
+        :return: ``num_samples`` of points, using halton sequence.
+        """
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
         ) + self._lower
 
     def sample_sobol(self, num_samples: int, skip: int = 0) -> TensorType:
+        """
+        Arange points using sobol sample
+
+        :param num_samples: The number of points to sample from this search space.
+        :param skip: The number of initial points of the Sobol sequence to skip
+        :return: ``num_samples`` of points, using sobol sequence.
+        """
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
