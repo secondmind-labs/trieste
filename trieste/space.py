@@ -248,7 +248,7 @@ class Box(SearchSpace):
 
     def sample(self, num_samples: int) -> TensorType:
         """
-        Sampling points randomly 
+        Sampling points randomly
 
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
