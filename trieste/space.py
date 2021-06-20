@@ -267,6 +267,8 @@ class Box(SearchSpace):
         :param seed: Random seed for the halton sequence
         :return: ``num_samples`` of points, using halton sequence.
         """
+        if num_samples == 0:
+            return []
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
@@ -280,6 +282,8 @@ class Box(SearchSpace):
         :param skip: The number of initial points of the Sobol sequence to skip
         :return: ``num_samples`` of points, using sobol sequence.
         """
+        if num_samples == 0:
+            return []
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip

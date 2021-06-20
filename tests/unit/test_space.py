@@ -309,6 +309,20 @@ def test_box_sampling(num_samples: int) -> None:
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_box_sobol_sampling(num_samples: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    sobol_samples = box.sample_sobol(num_samples)
+    _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_box_halton_sampling(num_samples: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    halton_samples = box.sample_halton(num_samples)
+    _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
 def test_box_discretize_returns_search_space_with_only_points_contained_within_box(
     num_samples: int,
 ) -> None:
