@@ -248,11 +248,11 @@ class Box(SearchSpace):
 
     def sample(self, num_samples: int) -> TensorType:
         """
-        Sampling points randomly
+        Sample randomly from the space.
 
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
-            from this search space.
+            from this search space with shape ('N', 'D').
         """
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
@@ -261,11 +261,12 @@ class Box(SearchSpace):
 
     def sample_halton(self, num_samples: int, seed: int = 0) -> TensorType:
         """
-        Sampling points using randomized halton sequence
+        Sample from the space using a Halton sequence. The resulting samples are guaranteed to be
+        diverse and are reproducible by using the same choice of ``seed``.
 
         :param num_samples: The number of points to sample from this search space.
         :param seed: Random seed for the halton sequence
-        :return: ``num_samples`` of points, using halton sequence.
+        :return: ``num_samples`` of points, using halton sequence with shape ('N', 'D').
         """
         if num_samples == 0:
             return []
@@ -276,11 +277,12 @@ class Box(SearchSpace):
 
     def sample_sobol(self, num_samples: int, skip: int = 0) -> TensorType:
         """
-        Arange points using sobol sample
+        Arange points using sobol sample. The resulting samples are deterministic and skipped
+        the first ``skip`` points of the sobol sequence
 
         :param num_samples: The number of points to sample from this search space.
         :param skip: The number of initial points of the Sobol sequence to skip
-        :return: ``num_samples`` of points, using sobol sequence.
+        :return: ``num_samples`` of points, using sobol sequence with shape ('N', 'D').
         """
         if num_samples == 0:
             return []
