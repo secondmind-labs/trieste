@@ -45,7 +45,6 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    :maxdepth: 1
 
    notebooks/recovering_from_errors
-   notebooks/sampler
 
 Run the tutorials interactively
 -------------------------------
