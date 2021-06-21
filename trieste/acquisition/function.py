@@ -719,7 +719,6 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
-        self._batch_size: Optional[int] = None
 
     def __repr__(self) -> str:
         """"""
@@ -763,12 +762,11 @@ def batch_ehvi(
     def acquisition(at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
-        def gen_q_subset_indices(q: int) -> list:
+        def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
             return [tf.constant(list(combinations(indices, i))) for i in range(1, q + 1)]
 
-        # [..., S, B, num_obj]
-        samples = sampler.sample(at, jitter=sampler_jitter)
+        samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 

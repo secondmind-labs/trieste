@@ -34,7 +34,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, acquisition_rule, performance_threshold",
+    "num_steps, acquisition_rule, convergence_threshold",
     [
         pytest.param(
             20,
@@ -61,7 +61,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
-    num_steps: int, acquisition_rule: AcquisitionRule, performance_threshold: float
+    num_steps: int, acquisition_rule: AcquisitionRule, convergence_threshold: float
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
@@ -99,4 +99,4 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     ideal_pf = tf.cast(VLMOP2().gen_pareto_optimal_points(100), dtype=tf.float64)
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
-    assert tf.math.log(ideal_hv - obs_hv) < performance_threshold
+    assert tf.math.log(ideal_hv - obs_hv) < convergence_threshold
