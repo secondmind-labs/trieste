@@ -25,8 +25,6 @@ from typing_extensions import Final
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
-tf.random.set_seed(1)
-
 
 class Integers(SearchSpace):
     def __init__(self, exclusive_limit: int):
@@ -356,7 +354,9 @@ def test_box_sobol_sampling_returns_same_points_for_same_skip(skip: int) -> None
 @pytest.mark.parametrize("seed", [1, 42, 123])
 def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
+    tf.random.set_seed(1)
     halton_samples_1 = box.sample_halton(num_samples=100, seed=seed)
+    tf.random.set_seed(1)
     halton_samples_2 = box.sample_halton(num_samples=100, seed=seed)
     npt.assert_allclose(halton_samples_1, halton_samples_2)
 
