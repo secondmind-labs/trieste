@@ -302,21 +302,21 @@ def test_box_contains_raises_on_point_of_different_shape(
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sampling(num_samples: int) -> None:
+def test_box_sampling_returns_correct_shape(num_samples: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     samples = box.sample(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, samples)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sobol_sampling(num_samples: int) -> None:
+def test_box_sobol_sampling_returns_correct_shape(num_samples: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     sobol_samples = box.sample_sobol(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_halton_sampling(num_samples: int) -> None:
+def test_box_halton_sampling_returns_correct_shape(num_samples: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     halton_samples = box.sample_halton(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
