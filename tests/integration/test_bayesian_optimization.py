@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
+    AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
@@ -41,6 +42,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
     "num_steps, acquisition_rule",
     [
         (20, EfficientGlobalOptimization()),
+        (20, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
             15,
             EfficientGlobalOptimization(

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 
+import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -27,6 +28,7 @@ from trieste.acquisition.sampler import (
     DiscreteThompsonSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,
+    RandomFourierFeatureThompsonSampler,
 )
 from trieste.data import Dataset
 from trieste.space import Box
@@ -266,7 +268,7 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
 
 
 @pytest.mark.parametrize(
-    "sampler",
+    "discrete_sampler",
     [
         BatchReparametrizationSampler,
         DiscreteThompsonSampler,
@@ -274,8 +276,105 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
         IndependentReparametrizationSampler,
     ],
 )
-def test_sampler_reprs(sampler) -> None:
+def test_discrete_sampler_reprs(discrete_sampler) -> None:
     assert (
-        repr(sampler(20, QuadraticMeanAndRBFKernel()))
-        == f"{sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
+        repr(discrete_sampler(20, QuadraticMeanAndRBFKernel()))
+        == f"{discrete_sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
     )
+
+
+def test_rff_sampler_repr_includes_class_name() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+    assert type(sampler).__name__ in repr(sampler)
+
+
+@pytest.mark.parametrize("num_features", [0, -2])
+def test_rff_sampler_raises_for_invalid_number_of_features(
+    num_features: int,
+) -> None:
+    model = QuadraticMeanAndRBFKernel()
+    dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        RandomFourierFeatureThompsonSampler(dataset, model, num_features)
+
+
+def test_rff_sampler_raises_for_a_non_gpflow_kernel() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+
+    with pytest.raises(AssertionError):
+        sampler.get_trajectory()
+
+
+def test_rff_sampler_does_pre_calc_during_first_trajectory_call() -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = gpflow.kernels.RBF()
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+    assert sampler._pre_calc is False
+
+    sampler.get_trajectory()
+    assert sampler._pre_calc is True
+
+
+@pytest.mark.parametrize("num_evals", [10, 100])
+def test_rff_sampler_returns_trajectory_function_with_correct_shaped_output(num_evals: int) -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+
+    trajectory = sampler.get_trajectory()
+    xs = tf.linspace([-10.0], [10.0], num_evals)
+
+    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, 1])])
+
+
+def test_rff_sampler_returns_deterministic_trajectory() -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+    trajectory = sampler.get_trajectory()
+
+    trajectory_eval_1 = trajectory(xs)
+    trajectory_eval_2 = trajectory(xs)
+
+    npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
+
+
+def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler = RandomFourierFeatureThompsonSampler(dataset, model, 100)
+    sampler.get_trajectory()
+
+    posterior_1 = sampler._prepare_theta_posterior_in_design_space()
+    posterior_2 = sampler._prepare_theta_posterior_in_gram_space()
+
+    npt.assert_allclose(posterior_1.loc, posterior_2.loc, rtol=0.02)
+    npt.assert_allclose(posterior_1.scale_tril, posterior_2.scale_tril, rtol=0.02)

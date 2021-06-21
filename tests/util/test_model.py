@@ -102,3 +102,8 @@ def test_gaussian_process_sample() -> None:
     variance = tf.math.reduce_variance(samples, axis=-3)
     npt.assert_allclose(variance, tf.fill([2, 3, 2], 2.56), rtol=0.02)
     # fmt: on
+
+
+def test_gaussian_process_get_observation_noise() -> None:
+    noise = _example_gaussian_process().get_observation_noise()
+    npt.assert_equal(noise, tf.constant(1.0))

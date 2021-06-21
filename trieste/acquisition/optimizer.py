@@ -150,8 +150,12 @@ def batchify(
 
 
 def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:
-    # Generate an acquistion optimizer that samples `num_samples` random points across the space.
+    """
+    Generate an acquisition optimizer that samples `num_samples` random points across the space.
 
+    :param num_samples: The number of random points to sample.
+    :return: The acquisition optimizer.
+    """
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 

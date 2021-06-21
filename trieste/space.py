@@ -106,7 +106,7 @@ class DiscreteSearchSpace(SearchSpace):
 
     @property
     def points(self) -> TensorType:
-        """ All the points in this space. """
+        """All the points in this space."""
         return self._points
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -218,12 +218,12 @@ class Box(SearchSpace):
 
     @property
     def lower(self) -> TensorType:
-        """ The lower bounds of the box. """
+        """The lower bounds of the box."""
         return self._lower
 
     @property
     def upper(self) -> TensorType:
-        """ The upper bounds of the box. """
+        """The upper bounds of the box."""
         return self._upper
 
     def __contains__(self, value: TensorType) -> bool | TensorType:

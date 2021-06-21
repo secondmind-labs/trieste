@@ -41,7 +41,7 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 @dataclass(frozen=True)
 class Record(Generic[S]):
-    """ Container to record the state of each step of the optimization process. """
+    """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[str, Dataset]
     """ The known data from the observer. """
@@ -54,7 +54,7 @@ class Record(Generic[S]):
 
     @property
     def dataset(self) -> Dataset:
-        """ The dataset when there is just one dataset. """
+        """The dataset when there is just one dataset."""
         if len(self.datasets) == 1:
             return next(iter(self.datasets.values()))
         else:
@@ -62,7 +62,7 @@ class Record(Generic[S]):
 
     @property
     def model(self) -> TrainableProbabilisticModel:
-        """ The model when there is just one dataset. """
+        """The model when there is just one dataset."""
         if len(self.models) == 1:
             return next(iter(self.models.values()))
         else:
@@ -73,7 +73,7 @@ class Record(Generic[S]):
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
 class OptimizationResult(Generic[S]):
-    """ The final result, and the historical data of the optimization process. """
+    """The final result, and the historical data of the optimization process."""
 
     final_result: Result[Record[S]]
     """

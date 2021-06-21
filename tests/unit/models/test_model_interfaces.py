@@ -52,10 +52,16 @@ from trieste.type import TensorType
 
 
 class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
-    def __init__(self, mean_shifts: list[float], kernel_amplitudes: list[float]):
+    def __init__(
+        self,
+        mean_shifts: list[float],
+        kernel_amplitudes: list[float],
+        observations_noise: float = 1.0,
+    ):
         super().__init__(
             [(lambda y: lambda x: quadratic(x) + y)(shift) for shift in mean_shifts],
             [tfp.math.psd_kernels.ExponentiatedQuadratic(x) for x in kernel_amplitudes],
+            observations_noise,
         )
 
 

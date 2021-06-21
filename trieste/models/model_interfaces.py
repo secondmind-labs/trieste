@@ -29,7 +29,7 @@ from .optimizer import Optimizer
 
 
 class ProbabilisticModel(ABC):
-    """ A probabilistic model. """
+    """A probabilistic model."""
 
     @abstractmethod
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -87,9 +87,28 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise.
+
+        Note that this is only supported for models with with homoscedastic noise, and so this
+        function returns a scalar.
+
+        :return: The observation noise.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return NotImplementedError(f"Model {self!r} does have an accessible kernel")
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
-    """ A trainable probabilistic model. """
+    """A trainable probabilistic model."""
 
     @abstractmethod
     def update(self, dataset: Dataset) -> None:
@@ -259,7 +278,7 @@ def module_deepcopy(self: M, memo: dict[int, object]) -> M:
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
-    """ A trainable wrapper for a GPflow Gaussian process model. """
+    """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
         """
@@ -275,13 +294,13 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     def optimizer(self) -> Optimizer:
-        """ The optimizer with which to train the model. """
+        """The optimizer with which to train the model."""
         return self._optimizer
 
     @property
     @abstractmethod
     def model(self) -> GPModel:
-        """ The underlying GPflow model. """
+        """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_f(query_points)
@@ -294,6 +313,14 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
+        return self.model.kernel
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -379,6 +406,19 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         return cov
 
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model.likelihood.variance
+        except AttributeError:
+            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+
+        return noise_variance
+
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
@@ -414,7 +454,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
-    """ A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`. """
+    """A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`."""
 
     def __init__(self, model: VGP, optimizer: Optimizer | None = None):
         """

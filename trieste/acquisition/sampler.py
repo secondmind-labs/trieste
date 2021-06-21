@@ -19,20 +19,23 @@ acquisiiton functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
+from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..type import TensorType
 from ..utils import DEFAULTS
 
 
-class Sampler(ABC):
+class DiscreteSampler(ABC):
     r"""
-    An :class:`Sampler` samples a specific quantity according to an
-    underlying :class:`ProbabilisticModel`.
+    An :class:`DiscreteSampler` samples a specific quantity across a discrete set of points
+    according to an underlying :class:`ProbabilisticModel`.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
@@ -58,7 +61,7 @@ class Sampler(ABC):
         """
 
 
-class DiscreteThompsonSampler(Sampler):
+class DiscreteThompsonSampler(DiscreteSampler):
     r"""
     This sampler provides approximate Thompson samples of the objective function's
     maximiser :math:`x^*` over a discrete set of input locations.
@@ -84,7 +87,7 @@ class DiscreteThompsonSampler(Sampler):
         return thompson_samples
 
 
-class GumbelSampler(Sampler):
+class GumbelSampler(DiscreteSampler):
     r"""
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
@@ -143,7 +146,7 @@ class GumbelSampler(Sampler):
         return gumbel_samples
 
 
-class IndependentReparametrizationSampler(Sampler):
+class IndependentReparametrizationSampler(DiscreteSampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
@@ -192,7 +195,7 @@ class IndependentReparametrizationSampler(Sampler):
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
-class BatchReparametrizationSampler(Sampler):
+class BatchReparametrizationSampler(DiscreteSampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -235,7 +238,6 @@ class BatchReparametrizationSampler(Sampler):
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
         :raise ValueError (or InvalidArgumentError): If any of the following are true:
-
             - ``at`` is a scalar.
             - The batch size `B` of ``at`` is not positive.
             - The batch size `B` of ``at`` differs from that of previous calls.
@@ -277,3 +279,220 @@ class BatchReparametrizationSampler(Sampler):
         new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
+
+
+TrajectoryFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for trajectory functions.
+
+An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
+points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+shape `[N, 1]`.
+
+A key property of these trajectory functions is that the same sample draw is evaluated
+for all queries. This property is known as consistency.
+"""
+
+
+class ContinuousSampler(ABC):
+    r"""
+    An :class:`ContinuousSampler` samples a specific quantity according
+    to an underlying :class:`ProbabilisticModel`.
+    Unlike our :class:`DiscreteSampler`, :class:`ContinuousSampler` returns a
+    queryable function (a trajectory) that provides the sample's value at a query location.
+    """
+
+    def __init__(self, dataset: Dataset, model: ProbabilisticModel):
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model to sample from.
+        :raise ValueError: If ``dataset`` is empty.
+        """
+
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        self._dataset = dataset
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._model!r}, {self._dataset!r})"
+
+    @abstractmethod
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        Return a trajectory function that evaluates a particular sample at a set of `N` query
+        points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+        shape `[N, 1]`.
+
+        :return: Queryable function representing a sample.
+        """
+
+
+class RandomFourierFeatureThompsonSampler(ContinuousSampler):
+    r"""
+    This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+    process model. For tractibility, the Gaussian process is approximated with a Bayesian
+    Linear model across a set of features sampled from the Fourier feature decomposition of
+    the model's kernel. See :cite:`hernandez2014predictive` for details.
+
+    Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
+    trajectry function) for exact sample draws from a  GP is prohibitively costly because it scales
+    cubically with the number of query points. However, finite feature representations can be
+    evaluated with constant cost regardless of the required number of queries.
+
+    In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+    approximation
+
+    .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+    where :math:`\phi_i` are m Fourier features and :math:`\theta_i` are
+    feature weights sampled from a posterior distribution that depends on the feature values at the
+    model's datapoints.
+
+    Our implementation follows :cite:`hernandez2014predictive`, with our calculations
+    differing slightly depending on properties of the problem. In particular,  we used different
+    calculation strategies depending on the number of considered features m and the number
+    of data points n.
+
+    If :math:`m<n` then we follow Appendix A of :cite:`hernandez2014predictive` and calculate the
+    posterior distribution for :math:`\theta` following their Bayesian linear regression motivation,
+    i.e. the computation revolves around an O(m^3)  inversion of a design matrix.
+
+    If :math:`n<m` then we use the kernel trick to recast computation to revolve around an O(n^3)
+    inversion of a gram matrix. As well as being more efficient in early BO
+    steps (where :math:`n<m`), this second computation method allows must larger choices
+    of m (as required to approximate very flexible kernels).
+    """
+
+    def __init__(self, dataset: Dataset, model: ProbabilisticModel, num_features: int = 1000):
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model to sample from.
+        :param num_features: The number of features used to approximate the kernel. We use a default
+            of 1000 as it typically perfoms well for a wide range of kernel. Note that very smooth
+            kernels (e.g. RBF) can be well-approximated with fewer features.
+        :raise ValueError: If ``dataset`` is empty.
+        """
+        super().__init__(dataset, model)
+
+        tf.debugging.assert_positive(num_features)
+        self._num_features = num_features  # m
+        self._num_data = len(self._dataset.query_points)  # n
+
+        try:
+            self._noise_variance = model.get_observation_noise()
+            self._kernel = model.get_kernel()
+        except (NotImplementedError, AttributeError):
+            raise ValueError(
+                """
+            Thompson sampling with random Fourier features only currently supports models
+            with a Gaussian likelihood and an accessible kernel attribute.
+            """
+            )
+
+        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"{self.__class__.__name__}({self._model!r}, {self._dataset!r}, {self._num_features!r})"
+        )
+
+    def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.Distribution:
+        r"""
+        Calculate the posterior of theta (the feature weights) in the design space. This
+        distribution is a Gaussian
+
+        .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
+
+        where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
+        the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
+        and observation noise variance :math:`\sigma^2`.
+
+        :return: The posterior distribution for theta.
+        """
+
+        phi = self._feature_functions(self._dataset.query_points)  # [n, m]
+        D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
+        s = self._noise_variance * tf.eye(self._num_features, dtype=phi.dtype)
+        L = tf.linalg.cholesky(D + s)
+        D_inv = tf.linalg.cholesky_solve(L, tf.eye(self._num_features, dtype=phi.dtype))
+
+        theta_posterior_mean = tf.matmul(
+            D_inv, tf.matmul(phi, self._dataset.observations, transpose_a=True)
+        )[
+            :, 0
+        ]  # [m,]
+        theta_posterior_chol_covariance = tf.linalg.cholesky(D_inv * self._noise_variance)  # [m, m]
+
+        return tfp.distributions.MultivariateNormalTriL(
+            theta_posterior_mean, theta_posterior_chol_covariance
+        )
+
+    def _prepare_theta_posterior_in_gram_space(self) -> tfp.distributions.Distribution:
+        r"""
+        Calculate the posterior of theta (the feature weights) in the gram space.
+
+         .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
+
+        where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
+        matrix of feature evaluations across the training data :math:`\Phi` and
+        observation noise variance :math:`\sigma^2`.
+
+        :return: The posterior distribution for theta.
+        """
+
+        phi = self._feature_functions(self._dataset.query_points)  # [n, m]
+        G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
+        s = self._noise_variance * tf.eye(self._num_data, dtype=phi.dtype)
+        L = tf.linalg.cholesky(G + s)
+        L_inv_phi = tf.linalg.triangular_solve(L, phi)  # [n, m]
+        L_inv_y = tf.linalg.triangular_solve(L, self._dataset.observations)  # [n, 1]
+
+        theta_posterior_mean = tf.tensordot(tf.transpose(L_inv_phi), L_inv_y, [[-1], [-2]])[
+            :, 0
+        ]  # [m,]
+        theta_posterior_covariance = tf.eye(self._num_features, dtype=phi.dtype) - tf.tensordot(
+            tf.transpose(L_inv_phi), L_inv_phi, [[-1], [-2]]
+        )  # [m, m]
+        theta_posterior_chol_covariance = tf.linalg.cholesky(theta_posterior_covariance)  # [m, m]
+
+        return tfp.distributions.MultivariateNormalTriL(
+            theta_posterior_mean, theta_posterior_chol_covariance
+        )
+
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        Generate an approximate function draw (trajectory) by sampling weights
+        and evaluating the feature functions.
+
+        If this is the first call, then we calculate the posterior distributions for
+        the feature weights.
+
+        :return: A trajectory function representing an approximate trajectory from the Gaussian
+            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        """
+
+        if not self._pre_calc:
+            self._feature_functions = RandomFourierFeatures(
+                self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
+            )
+
+            if (
+                self._num_features < self._num_data
+            ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
+                self._theta_posterior = self._prepare_theta_posterior_in_design_space()
+            else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
+                self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
+
+            self._pre_calc = True
+
+        theta_sample = self._theta_posterior.sample(1)  # [1, m]
+
+        def trajectory(x: TensorType) -> TensorType:
+            feature_evaluations = self._feature_functions(x)  # [N, m]
+            return tf.matmul(feature_evaluations, theta_sample, transpose_b=True)  # [N,1]
+
+        return trajectory
