@@ -254,6 +254,8 @@ class Box(SearchSpace):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space with shape ('N', 'D').
         """
+        tf.debugging.assert_non_negative(num_samples)
+
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
@@ -268,6 +270,7 @@ class Box(SearchSpace):
         :param seed: Random seed for the halton sequence
         :return: ``num_samples`` of points, using halton sequence with shape ('N', 'D').
         """
+        tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
             return []
         dim = tf.shape(self._lower)[-1]
@@ -284,6 +287,7 @@ class Box(SearchSpace):
         :param skip: The number of initial points of the Sobol sequence to skip
         :return: ``num_samples`` of points, using sobol sequence with shape ('N', 'D').
         """
+        tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
             return []
         dim = tf.shape(self._lower)[-1]
