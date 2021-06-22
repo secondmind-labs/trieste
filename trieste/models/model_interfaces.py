@@ -349,6 +349,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        self._model.data = (
+            tf.Variable(self._model.data[0], trainable=False, shape=tf.TensorShape(None)),
+            tf.Variable(self._model.data[1], trainable=False, shape=tf.TensorShape(None)),
+        )
+
     def __repr__(self) -> str:
         """"""
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
@@ -358,7 +365,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        x, y = self.model.data
+        x, y = map(lambda var: var.value(), self.model.data)
 
         _assert_data_is_compatible(dataset, Dataset(x, y))
 
@@ -368,7 +375,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if dataset.observations.shape[-1] != y.shape[-1]:
             raise ValueError
 
-        self.model.data = dataset.query_points, dataset.observations
+        self.model.data[0].assign(dataset.query_points)
+        self.model.data[1].assign(dataset.observations)
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -385,7 +393,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
-        x, _ = self.model.data
+        x, _ = map(lambda var: var.value(), self.model.data)
         num_data = x.shape[0]
         s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
 

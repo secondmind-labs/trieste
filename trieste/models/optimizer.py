@@ -56,7 +56,7 @@ class Optimizer:
     minimize_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the :meth:`minimize` method of the :attr:`optimizer`. """
 
-    compile: bool = False
+    compile: bool = True
     """ If `True`, the optimization process will be compiled with :func:`tf.function`. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:

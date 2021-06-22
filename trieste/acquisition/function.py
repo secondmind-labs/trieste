@@ -215,7 +215,7 @@ class expected_improvement:
         """Update the acquisition function with a new eta value."""
         self._eta.assign(eta)
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
