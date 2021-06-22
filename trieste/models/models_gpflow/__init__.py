@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
+This package contains the primary interfaces for Gaussian process models. It also contains a
+number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 """
-from . import optimizer, models_gpflow
-from .config import supported_models, ModelConfig, ModelSpec, create_model
-from .interfaces import (
-    ModelStack,
-    ProbabilisticModel,
-    TrainableProbabilisticModel,
+from .interface import GPflowPredictor
+from .models import (
+    GaussianProcessRegression,
+    SparseVariational,
     VariationalGaussianProcess,
+)
+from .utils import (
+    M,
+    module_deepcopy,
+    assert_data_is_compatible,
 )

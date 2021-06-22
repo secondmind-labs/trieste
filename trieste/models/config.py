@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,28 @@
 # limitations under the License.
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Dict, Union
 
 import gpflow
 import tensorflow as tf
+from gpflow.models import GPR, SGPR, VGP
 
-from .model_interfaces import TrainableProbabilisticModel, supported_models
-from .optimizer import create_optimizer
+from .interfaces import TrainableProbabilisticModel
+from .optimizer import Optimizer, create_optimizer
+from .models_gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
+
+
+"""
+A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
+types.
+"""
+supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
+    GPR: GaussianProcessRegression,
+    SGPR: GaussianProcessRegression,
+    VGP: VariationalGaussianProcess,
+}
 
 
 def _default_optimizer() -> gpflow.optimizers.Scipy:
