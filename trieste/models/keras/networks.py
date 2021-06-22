@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -19,66 +20,20 @@ from typing import List, Optional
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 
-from ..data import Dataset
-
-# from ..type import TensorType
-# from ..utils import DEFAULTS
-# from .optimizer import Optimizer
-
-
-def size(tensor_spec: tf.TensorSpec) -> int:
-    """
-    Equivalent to `np.size` for `TensorSpec` objects.
-    """
-    return int(np.prod(tensor_spec.shape))
-
-
-def get_tensor_spec_from_data(data: Dataset) -> tuple(tf.TensorSpec, tf.TensorSpec):
-    """
-    Extract tensor specifications for neural network inputs and outputs based on the data.
-    """
-    input_tensor_spec = tf.TensorSpec(
-        shape=(data.query_points.shape[-1],),
-        dtype=data.query_points.dtype,
-        name="query_points",
-    )
-    output_tensor_spec = tf.TensorSpec(
-        shape=(data.observations.shape[-1],),
-        dtype=data.observations.dtype,
-        name="observations",
-    )
-    return input_tensor_spec, output_tensor_spec
-
-
-def sample_with_replacement(dataset: Dataset) -> Dataset:
-    """
-    Create a new ``dataset`` with data sampled with replacement. This
-    function is useful for creating bootstrap samples of data for training ensembles.
-    :param dataset: The data whose observations should be sampled.
-    :return: A (new) ``dataset`` with sampled data.
-    """
-    # transition.observation has shape [batch_size,] + observation_space_spec.shape
-    n_rows = dataset.observations.shape[0]
-
-    index_tensor = tf.random.uniform(
-        (n_rows,), maxval=n_rows, dtype=tf.dtypes.int64
-    )  # pylint: disable=all
-
-    observations = tf.gather(dataset.observations, index_tensor)  # pylint: disable=all
-    query_points = tf.gather(dataset.query_points, index_tensor)  # pylint: disable=all
-
-    return Dataset(query_points=query_points, observations=observations)
+from ...data import Dataset
+from .utils import sample_with_replacement, size
 
 
 class KerasNetwork(ABC):
     """
-    This class defines the structure and essential methods for a transition network. The transition
-    network is a sequential, feed forward neural network. It also makes it easy to create networks
-    where data is bootstrapped for each new network in an ensemble.
+    This class defines the structure and essential methods for a neural network using Keras. It
+    also includes a method that facilitates creating ensembles where data is bootstrapped for each
+    network in an ensemble.
+
     Subclasses of this class should define the structure of the network by implementing the
-    `build_model` method. The output layer should be reshaped to match the observation tensors from
-    the environment. The loss function of the network should be specified by implementing the
+    `build_model` method. The loss function of the network should be specified by implementing the
     `loss` method. The training data can be manipulated by overriding the `transform_training_data`
     method with the appropriate transformation.
     """
@@ -90,14 +45,16 @@ class KerasNetwork(ABC):
         bootstrap_data: bool = False,
     ):
         """
-        :param bootstrap_data: Create an ensemble version of the network where
-            data is resampled with replacement.
+        :param input_tensor_spec: Input tensor specification.
+        :param output_tensor_spec: Output tensor specification.
+        :param bootstrap_data: Resample data with replacement.
         """
         assert isinstance(input_tensor_spec, tf.TensorSpec)
         assert isinstance(output_tensor_spec, tf.TensorSpec)
 
         self._input_tensor_spec = input_tensor_spec
         self._output_tensor_spec = output_tensor_spec
+        self._flattened_output_shape = size(output_tensor_spec)
         self._bootstrap_data = bootstrap_data
 
     @property
@@ -109,6 +66,14 @@ class KerasNetwork(ABC):
         return self._output_tensor_spec
 
     def gen_input_tensor(self, name: str = None, batch_size: int = None) -> tf.keras.Input:
+        """
+        Generate input tensor based on input tensor specification.Define the layers of the sequential, feed-forward neural network from the layer
+        `input_layer`.
+
+        :param name: Optional name for the input layer.
+        :param batch_size: Optional batch size for the input layer.
+        :return: Input layer.
+        """
         input_tensor_spec = self._input_tensor_spec
         if name is None:
             name = input_tensor_spec.name
@@ -118,17 +83,15 @@ class KerasNetwork(ABC):
             dtype=input_tensor_spec.dtype,
             name=name,
         )
-        # breakpoint()
         return input_tensor
 
     @abstractmethod
     def build_model(self, inputs: tf.keras.layers.Layer) -> tf.keras.layers.Layer:
         """
-        Define the layers of the sequential, feed-forward neural network from the layer
-        `input_layer`.
+        Define the layers of the neural network from the layer `inputs`.
 
         :param inputs: Input layer.
-        :return: outputs layer.
+        :return: Output layer.
         """
         pass
 
@@ -137,14 +100,17 @@ class KerasNetwork(ABC):
         Define the loss function for training the network, in standard Bayesian optimization
         applications mean squared error is used and we use it here as a default. Method should be
         overwritten for custom losses.
+
         :return: Return the loss function for this network.
         """
         return tf.keras.losses.MeanSquaredError()
 
     def metrics(self) -> tf.keras.metrics.Metric:
         """
-        Defines metrics for monitoring the training of the network. Method should be overwritten
-        for custom metrics.
+        Defines metrics for monitoring the training of the network. Uses Root mean square error
+        (RMSE) and Mean absolute error (MAE) as a default. Method should be overwritten for custom
+        metrics.
+
         :return: Return the metrics for this network.
         """
         metrics = [
@@ -155,13 +121,12 @@ class KerasNetwork(ABC):
 
     def transform_training_data(self, dataset: Dataset) -> Dataset:
         """
-        This network will be trained on the data in `Transition`. This method ensures the training
-        data can be transformed before it is used in training. Also, when ensembles are used
-        this method can use the `bootstrap_data` flag to use bootstrap samples of the data for
-        each model in the ensemble.
-        :param dataset: A `Transition` object, consisting of states, actions and successor
-                           states.
-        :return: Return a (new) `Transition` object.
+        This method ensures the training data can be transformed before it is used in training.
+        Also, when ensembles are used this method can use the `bootstrap_data` flag to use
+        bootstrap samples of the data for each model in the ensemble.
+
+        :param dataset: A `Dataset` object consisting of `query_points` and `observations`. 
+        :return: Return a (new) `Dataset` object.
         """
         if self._bootstrap_data:
             return sample_with_replacement(dataset)
@@ -171,10 +136,10 @@ class KerasNetwork(ABC):
 
 class MultilayerFcNetwork(KerasNetwork):
     """
-    This class defines a multilayer transition model using Keras, fully connected type. If defined
+    This class defines a multilayer fully-connected feed-forward network. If defined
     with zero layers (default) we obtain a network equivalent of a linear regression.
     If number of hidden layers is one or more then all arguments to the dense Keras layer
-    can be set individually for each layer.
+    should be set individually for each layer.
     """
 
     def __init__(
@@ -272,13 +237,84 @@ class MultilayerFcNetwork(KerasNetwork):
                 if self._bias_constraint is not None:
                     hidden_layer.bias_constraint = self._bias_constraint[id_layer]
         return hidden_layer
+    
+    def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
+        output_layer = tf.keras.layers.Dense(
+            self._flattened_output_shape, activation="linear"
+        )(input_layer)
+        # output_layer_reshaped = tf.keras.layers.Reshape(
+        #     self._output_tensor_spec.shape
+        # )(output_layer)
+        # return output_layer_reshaped
+        return output_layer
 
     def build_model(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         if input_layer is None:
             input_tensor = self.gen_input_tensor()
             input_layer = tf.keras.layers.Flatten(dtype=self._input_tensor_spec.dtype)(input_tensor)
-        output_space_nodes = size(self._output_tensor_spec)
         hidden_layer = input_layer
         hidden_layer = self.gen_hidden_dense_layers(hidden_layer)
-        output_layer = tf.keras.layers.Dense(output_space_nodes, activation="linear")(hidden_layer)
+        output_layer = self.gen_output_layer(hidden_layer)
         return output_layer
+
+
+class LinearNetwork(MultilayerFcNetwork):
+    """
+    This class defines a linear network using Keras, i.e. a neural network with no
+    hidden layers, equivalent to a linear regression.
+    """
+
+    def __init__(
+        self,
+        input_tensor_spec: tf.TensorSpec,
+        output_tensor_spec: tf.TensorSpec,
+        bootstrap_data: bool = False,
+    ):
+        super().__init__(
+            input_tensor_spec,
+            output_tensor_spec,
+            num_hidden_layers=0,
+            bootstrap_data=bootstrap_data
+        )
+
+
+negloglik = lambda y, p_y: -p_y.log_prob(y)
+negloglik.__doc__ = """define general log-likelihood loss for distribution Lambda"""
+
+class GaussianNetwork(MultilayerFcNetwork):
+    """
+    This class defines a probabilistic neural network using Keras, with Gaussian distributed
+    outputs.
+    """
+
+    def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
+        mvn_shape = tfp.layers.MultivariateNormalTriL.params_size(self._flattened_output_shape)
+        output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)
+        dist = tfp.layers.MultivariateNormalTriL(
+            event_size=self._flattened_output_shape,
+            convert_to_tensor_fn=self._convert_to_tensor_fn,
+        )(output_layer)
+        return dist
+
+    def _convert_to_tensor_fn(self, distribution: tfp.distributions.Distribution) -> tf.Tensor:
+        output_tensor_spec_shape = (-1,) + tuple(self._output_tensor_spec.shape)
+        return tf.reshape(distribution.sample(), output_tensor_spec_shape)
+
+    def loss(self):
+        return lambda y, p_y: negloglik(y, p_y)
+
+
+class DiagonalGaussianNetwork(GaussianNetwork):
+    """
+    This class defines a probabilistic neural network using Keras, with Gaussian distributed
+    outputs, but modelling only variances on the diagonal and assuming zero covariances elsewhere.
+    """
+
+    def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
+        mvn_shape = tfp.layers.IndependentNormal.params_size(self._flattened_output_shape)
+        output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)
+        dist = tfp.layers.IndependentNormal(
+            event_shape=self._flattened_output_shape,
+            convert_to_tensor_fn=self._convert_to_tensor_fn,
+        )(output_layer)
+        return dist

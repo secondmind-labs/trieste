@@ -141,6 +141,9 @@ class TFOptimizer(Optimizer):
 class TFKerasOptimizer:
     """ Optimizer for Keras models with mini-batches of training data. """
 
+    optimizer: tf.keras.optimizers.Optimizer
+    """ The underlying optimizer, used for compiling the :class:`~tensorflow.keras.Model`. """
+
     fit_args: dict[str, Any] | None = None
     """
     The keyword arguments to pass to the :meth:`fit` method of the :class:`~tensorflow.keras.Model`.

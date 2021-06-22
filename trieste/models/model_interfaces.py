@@ -25,8 +25,9 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from ..data import Dataset
 from ..type import TensorType
 from ..utils import DEFAULTS
-from .keras_networks import KerasNetwork
-from .optimizer import Optimizer, TFOptimizer
+# from .keras.models import NeuralNetworkEnsemble
+# from .keras.networks import KerasNetwork
+from .optimizer import Optimizer, TFOptimizer, TFKerasOptimizer
 
 
 class ProbabilisticModel(ABC):
@@ -408,192 +409,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         return self.model.predict_y(query_points)
 
 
-class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
-    """ A trainable wrapper for a Keras neural network models. """
-
-    def __init__(self, optimizer: TFKerasOptimizer | None = None):
-        """
-        :param optimizer: The optimizer with which to train the model. Defaults
-            to :class:`~trieste.models.optimizer.TFKerasOptimizer` with
-            default arguments to the :meth:`fit` method.
-        """
-        super().__init__()
-
-        if optimizer is None:
-            optimizer = TFKerasOptimizer()
-
-        self._optimizer = optimizer
-
-    @property
-    def optimizer(self) -> TFKerasOptimizer:
-        """ The optimizer with which to train the model. """
-        return self._optimizer
-
-    @property
-    @abstractmethod
-    def model(self) -> NeuralNetworkPredictor:
-        """ The underlying neural network model. """
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise Error(
-            """
-            NeuralNetworkPredictor class does not implement predict_joint method. Acquisition rules
-            relying on it cannot be used with this class.
-            """
-        )
-
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self.model.sample(query_points, num_samples)
-
-    def optimize(self, dataset: Dataset) -> None:
-        """
-        Optimize the model with the specified `dataset`.
-
-        :param dataset: The data with which to optimize the `model`.
-        """
-        self.optimizer.optimize(dataset)
-
-    __deepcopy__ = module_deepcopy
-
-
-class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
-    """
-    A :class:`TrainableProbabilisticModel` wrapper for a Keras
-    :class:`~trieste.models.keras_networks.KerasNetwork`.
-    """
-
-    def __init__(
-        self, networks: List[KerasNetwork], optimizer: tf.keras.optimizers.Optimizer | None = None
-    ):
-        """
-        :param networks: A list of `KerasNetwork` objects. The ensemble
-            will consist of this collection of networks.
-        :param ensemble_size: Number of functions in the ensemble.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~tensorflow.keras.optimizers.Adam`.
-        """
-
-        if optimizer is None:
-            optimizer = tf.keras.optimizers.Adam()
-        self._optimizer_keras = optimizer
-
-        super().__init__(TFKerasOptimizer())
-
-        self._networks = networks
-        self._ensemble_size = len(networks)
-        self._batch_size = 500
-
-        self._indices = tf.Variable(
-            0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
-        )
-
-        self._indices = tf.Variable(
-            0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(self._batch_size)
-        )
-
-        # self._resample_indices()
-        self._model = self._build_ensemble()
-        self._compile_ensemble()
-
-    def __repr__(self) -> str:
-        """"""
-        return f"NeuralNetworkEnsemble({self._model!r}, {self.optimizer!r})"
-
-    @property
-    def model(self) -> tf.keras.Model:
-        return self._model
-
-    def _resample_indices(self):
-        self._indices.assign(
-            tf.random.uniform(
-                shape=(self._batch_size,),
-                maxval=self._ensemble_size,
-                dtype=tf.int32,  # pylint: disable=all
-            )
-        )
-
-    def _build_ensemble(self) -> tf.keras.Model:
-        """
-        Defines and returns model.
-        This method uses each of the `KerasModel` objects to build an element of the
-        ensemble. All of these networks are collected together into the model.
-        :return: The model.
-        """
-        inputs = []
-        outputs = []
-        for index, network in enumerate(self._networks):
-
-            name = network.input_tensor_spec.name + "_" + str(index)
-            input_tensor = network.gen_input_tensor(name)
-            inputs.append(input_tensor)
-
-            input_layer = tf.keras.layers.Flatten(dtype=network.input_tensor_spec.dtype)(
-                input_tensor
-            )
-            output_layer = network.build_model(input_layer)
-            outputs.append(output_layer)
-
-        return tf.keras.Model(inputs=inputs, outputs=outputs)
-
-    def _compile_ensemble(self) -> tf.keras.Model:
-        """
-        Compiles the model, with the loss function, optimizer and metrics from each of the
-        individual networks. Optimizer is shared among the networks.
-        """
-        losses = [network.loss() for network in self._networks]
-        metrics = [network.metrics() for network in self._networks]
-        self._model.compile(optimizer=self._optimizer_keras, loss=losses, metrics=metrics)
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        :param query_points: The points at which to make predictions.
-        :return: The predicted mean and variance of the observations at the specified
-            ``query_points``.
-        """
-        return self._model.predict(query_points)
-
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """
-        Return ``num_samples`` samples at ``query_points``. Some versions of
-        non probabilistic models can still sample from a distribution even if
-        not having direct access to it. Non probabilistic models that cannot
-        sample should simply pass
-
-        :param query_points: The points at which to sample, with shape [..., N, D].
-        :param num_samples: The number of samples at each point.
-        :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S, N] + E, where S is the number of samples.
-        """
-        assert (
-            num_samples < self._ensemble_size
-        ), "'num_samples' must be smaller than 'ensemble_size'"
-
-        self._model.predict([query_points, query_points, query_points])
-        # TODO: it can probably be done in a more efficient way than for loop?
-        samples = []
-        for _ in range(num_samples):
-            self._resample_indices()
-            inputs = tf.dynamic_partition(query_points, self._indices, self._ensemble_size)
-            samples.append(self._model.predict(inputs))
-
-        return samples
-
-    def update(self, dataset: Dataset) -> None:
-        """
-        Neural networks are parametric models and do not need to save update data. However,
-        Bayesian optimization loop requires an update method, so here we simply pass the execution.
-        """
-        pass
-
-
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    KerasNetwork: NeuralNetworkEnsemble,
+    # KerasNetwork: NeuralNetworkEnsemble,
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those

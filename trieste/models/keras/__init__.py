@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,17 +17,18 @@ and its trainable subclass :class:`TrainableProbabilisticModel`. It also contain
 :class:`TrainableProbabilisticModel` wrappers for GPflow models, as well as tooling for creating
 :class:`TrainableProbabilisticModel`\ s from config.
 """
-from . import optimizer, keras
-from .config import ModelConfig, ModelSpec, create_model
-from .model_interfaces import (
-    GaussianProcessRegression,
-    GPflowPredictor,
-    M,
-    ModelStack,
-    ProbabilisticModel,
-    SparseVariational,
-    TrainableProbabilisticModel,
-    VariationalGaussianProcess,
-    module_deepcopy,
-    supported_models,
+from .models import (
+    NeuralNetworkPredictor,
+    NeuralNetworkEnsemble,
+)
+from .networks import (
+    KerasNetwork,
+    LinearNetwork,
+    DiagonalGaussianNetwork,
+    GaussianNetwork,
+    MultilayerFcNetwork,
+)
+from .utils import (
+    get_tensor_spec_from_data,
+    size,
 )
