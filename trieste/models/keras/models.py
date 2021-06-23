@@ -76,7 +76,7 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(dataset)
+        self.optimizer.optimize(self.model, dataset)
 
     # __deepcopy__ = module_deepcopy
 
@@ -250,18 +250,21 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        # depends...are we ok with resampling?
-        # assert (
-        #     num_samples < self._ensemble_size
-        # ), "'num_samples' must be smaller than 'ensemble_size'"
-        breakpoint()
-        self._resample_indices(len(query_points))
-        inputs = tf.dynamic_partition(query_points, self._indices, self._ensemble_size)
-        samples = self._model(inputs)
-        self._model.predict(inputs)
+        stacked_samples = []
+        for _ in range(num_samples):
+            self._resample_indices(len(query_points))
+            inputs = tf.dynamic_partition(query_points, self._indices, self._ensemble_size)
+            partitioned_samples = self._model(inputs)
 
-        self._model.predict([query_points, query_points, query_points, query_points, query_points])
+            if self._ensemble_size > 1:
+                merge_indices = tf.dynamic_partition(
+                    tf.range(len(query_points)), self._indices, self._ensemble_size
+                )
+                partitioned_samples = tf.dynamic_stitch(merge_indices, partitioned_samples)
 
+            stacked_samples.append(partitioned_samples)
+
+        samples = tf.stack(stacked_samples, axis=0)
         return samples  # [num_samples, len(query_points), 1]
 
     def update(self, dataset: Dataset) -> None:

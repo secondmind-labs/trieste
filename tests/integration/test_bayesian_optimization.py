@@ -31,13 +31,16 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
-from trieste.models.optimizer import TFKerasOptimizer
+from trieste.models.keras.data import EnsembleDataTransformer
+from trieste.models.optimizer import TFKerasOptimizer, TrainingData
 from trieste.models.keras.models import NeuralNetworkEnsemble
 from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 from trieste.space import Box
 from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
 
+
+tf.keras.backend.set_floatx('float64')
 
 # @random_seed
 # @pytest.mark.parametrize(
@@ -130,7 +133,8 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
             'validation_split': 0.1,
             'verbose': 1,
         }
-        return NeuralNetworkEnsemble(networks, TFKerasOptimizer(optimizer, fit_args))
+        dataset_builder = EnsembleDataTransformer(networks)
+        return NeuralNetworkEnsemble(networks, TFKerasOptimizer(optimizer, fit_args, dataset_builder))
 
     initial_query_points = search_space.sample(16)
     observer = mk_observer(branin, OBJECTIVE)
@@ -138,7 +142,7 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
     model = build_model(initial_data[OBJECTIVE])
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule, track_state=False)
         .try_get_final_datasets()[OBJECTIVE]
     )
 
