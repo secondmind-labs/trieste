@@ -32,9 +32,9 @@ from ..type import TensorType
 from ..utils import DEFAULTS
 
 
-class DiscreteSampler(ABC):
+class Sampler(ABC):
     r"""
-    An :class:`DiscreteSampler` samples a specific quantity across a discrete set of points
+    An :class:`Sampler` samples a specific quantity across a discrete set of points
     according to an underlying :class:`ProbabilisticModel`.
     """
 
@@ -61,7 +61,38 @@ class DiscreteSampler(ABC):
         """
 
 
-class DiscreteThompsonSampler(DiscreteSampler):
+
+class ThompsonSampler(Sampler, ABC):
+    r"""
+    TODO
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool):
+        """
+        :param sample_size: The desired number of samples.
+        :param model: The model to sample from.
+        :sample_min_value: If True then sample from the minimum value of the function,
+            else sample the function's minimiser.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        super().__init__(sample_size, model)
+        self._sample_min_value = sample_min_value
+
+    @abstractmethod
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        :param at: Input points that define the sampler.
+        :return: Samples.
+        """
+
+
+
+
+
+
+
+
+class DiscreteThompsonSampler(Sampler):
     r"""
     This sampler provides approximate Thompson samples of the objective function's
     maximiser :math:`x^*` over a discrete set of input locations.
@@ -87,7 +118,7 @@ class DiscreteThompsonSampler(DiscreteSampler):
         return thompson_samples
 
 
-class GumbelSampler(DiscreteSampler):
+class GumbelSampler(Sampler):
     r"""
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
@@ -146,7 +177,7 @@ class GumbelSampler(DiscreteSampler):
         return gumbel_samples
 
 
-class IndependentReparametrizationSampler(DiscreteSampler):
+class IndependentReparametrizationSampler(Sampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
@@ -195,7 +226,7 @@ class IndependentReparametrizationSampler(DiscreteSampler):
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
-class BatchReparametrizationSampler(DiscreteSampler):
+class BatchReparametrizationSampler(Sampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -294,11 +325,12 @@ for all queries. This property is known as consistency.
 """
 
 
+
 class ContinuousSampler(ABC):
     r"""
     An :class:`ContinuousSampler` samples a specific quantity according
     to an underlying :class:`ProbabilisticModel`.
-    Unlike our :class:`DiscreteSampler`, :class:`ContinuousSampler` returns a
+    Unlike our :class:`Sampler`, :class:`ContinuousSampler` returns a
     queryable function (a trajectory) that provides the sample's value at a query location.
     """
 
