@@ -43,7 +43,7 @@ from .optimizer import (
     batchify,
     optimize_continuous,
 )
-from .sampler import DiscreteThompsonSampler
+from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """

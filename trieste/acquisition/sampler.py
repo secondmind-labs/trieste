@@ -135,7 +135,7 @@ class GumbelSampler(ThompsonSampler):
     TODO, only output samples
     """
 
-def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool=False):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool=False):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
@@ -144,10 +144,9 @@ def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         if not sample_min_value:
-            raise ValueError("Gumbel sampler can only provide samples of the minimum value of a function and so requires `sample_min_value` to be True")
+            raise ValueError(f"Gumbel sampler only provides samples of the minimum value of a function, however, `sample_min_value` is {sample_min_value}")
 
-        super().__init__(sample_size, sample_min_value)
-
+        super().__init__(sample_size, model, sample_min_value)
 
 
     def sample(self, at: TensorType) -> TensorType:
@@ -379,11 +378,12 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
     of m (as required to approximate very flexible kernels).
     """
 
-    def __init__(self, model: ProbabilisticModel, dataset: Dataset, sample_min_value: bool=False, num_features: int = 1000):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, dataset: Dataset, sample_min_value: bool=False, num_features: int = 1000):
         """
         TODO, to initilzie we calculate the posterior distributions for
         the feature weights.
 
+        :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :param dataset: The data from the observer. Must be populated.
         :sample_min_value: If True then sample from the minimum value of the function,
@@ -394,7 +394,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        super().__init__(model, dataset, sample_min_value)
+        super().__init__(sample_size, model, sample_min_value)
 
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
