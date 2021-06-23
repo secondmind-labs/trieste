@@ -212,13 +212,14 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         return points, None
 
 
-class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """Implements Thompson sampling for choosing optimal points."""
+class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
+    """Implements Thompson sampling for choosing optimal points. TODO SAY DISCRETE"""
 
-    def __init__(self, num_search_space_samples: int, num_query_points: int):
+    def __init__(self, num_search_space_samples: int, num_query_points: int, num_fourier_features: Optional[int]=None):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
+        :num_fourier_features: TODO
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -228,8 +229,15 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
+        if (type(num_fourier_features) is int) and (num_fourier_features <=0):
+            raise ValueError(
+                f"Number of fourier features must be greater than 0, got {num_query_points}"
+            )     
+
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+        self._num_fourier_features = num_fourier_features
+
 
     def __repr__(self) -> str:
         """"""
@@ -261,7 +269,16 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
+        if datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of datasets must contain the single key {OBJECTIVE}, got keys {datasets.keys()}"
+            )
+
+        if self._num_fourier_features is None: # Perform exact Thompson sampling
+            thompson_sampler = ExactThompsonSampler(self._num_query_points, models[OBJECTIVE])
+        else: # Perform approximate Thompson sampling
+            thompson_sampler = RandomFourierFeatureThompsonSampler(self._num_query_points, models[OBJECTIVE], datasets[OBJECTIVE], num_features = self._num_fourier_features)
+        
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = thompson_sampler.sample(query_points)
 
