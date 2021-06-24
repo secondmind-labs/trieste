@@ -270,6 +270,7 @@ class Box(SearchSpace):
         :param seed: Random seed for the halton sequence
         :return: ``num_samples`` of points, using halton sequence with shape ('N', 'D').
         """
+        tf.random.set_seed(seed)
         tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
             return []
