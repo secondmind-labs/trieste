@@ -66,7 +66,7 @@ class ThompsonSampler(Sampler, ABC):
     TODO
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool=False):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
@@ -76,6 +76,14 @@ class ThompsonSampler(Sampler, ABC):
         """
         super().__init__(sample_size, model)
         self._sample_min_value = sample_min_value
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""{self.__class__.__name__}(
+        {self._sample_size!r},
+        {self._model!r},
+        {self._sample_min_value})
+        """
 
     @abstractmethod
     def sample(self, at: TensorType) -> TensorType:
@@ -95,7 +103,8 @@ class ExactThompsonSampler(ThompsonSampler):
 
     def sample(self, at: TensorType) -> TensorType:
         """
-        Return exact samples from either the objective function's minimser or its minimal value over the candidate set `at`.
+        Return exact samples from either the objective function's minimser or its minimal value
+        over the candidate set `at`.
 
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
@@ -107,14 +116,13 @@ class ExactThompsonSampler(ThompsonSampler):
 
         samples = self._model.sample(at, self._sample_size)  # [S, N, 1]
 
-
         if self._sample_min_value:
-            thompson_samples = tf.reduce_min(samples, axis=1) # [S, 1]
+            thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
 
         else:
             samples_2d = tf.squeeze(samples, -1)  # [S, N]
             indices = tf.math.argmin(samples_2d, axis=1)
-            thompson_samples = tf.gather(at, indices) # [S, D]
+            thompson_samples = tf.gather(at, indices)  # [S, D]
         return thompson_samples
 
 
@@ -135,7 +143,7 @@ class GumbelSampler(ThompsonSampler):
     TODO, only output samples
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool=False):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
@@ -144,10 +152,14 @@ class GumbelSampler(ThompsonSampler):
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         if not sample_min_value:
-            raise ValueError(f"Gumbel sampler only provides samples of the minimum value of a function, however, `sample_min_value` is {sample_min_value}")
+            raise ValueError(
+                f"""
+                Gumbel sampler only provides samples of the minimum value of a function,
+                however, `sample_min_value` is {sample_min_value}
+                """
+            )
 
         super().__init__(sample_size, model, sample_min_value)
-
 
     def sample(self, at: TensorType) -> TensorType:
         """
@@ -378,7 +390,14 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
     of m (as required to approximate very flexible kernels).
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, dataset: Dataset, sample_min_value: bool=False, num_features: int = 1000):
+    def __init__(
+        self,
+        sample_size: int,
+        model: ProbabilisticModel,
+        dataset: Dataset,
+        sample_min_value: bool = False,
+        num_features: int = 1000,
+    ):
         """
         TODO, to initilzie we calculate the posterior distributions for
         the feature weights.
@@ -402,7 +421,6 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         self._dataset = dataset
         self._model = model
 
-
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features  # m
         self._num_data = len(self._dataset.query_points)  # n
@@ -418,10 +436,9 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
             """
             )
 
-
         self._feature_functions = RandomFourierFeatures(
-                self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
-            ) # prep feature functions at data
+            self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
+        )  # prep feature functions at data
 
         if (
             self._num_features < self._num_data
@@ -430,15 +447,16 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
-
-
         self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
 
     def __repr__(self) -> str:
         """"""
-        return (
-            f"{self.__class__.__name__}({self._model!r}, {self._dataset!r}, {self._num_features!r})"
-        )
+        return f"""{self.__class__.__name__}(
+        {self._sample_size!r},
+        {self._model!r},
+        {self._sample_min_value},
+        {self._num_features!r})
+        """
 
     def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.Distribution:
         r"""
@@ -520,11 +538,10 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
 
         return trajectory
 
-
-
     def sample(self, at: TensorType) -> TensorType:
         """
-        Return approximate samples from either the objective function's minimser or its minimal value over the candidate set `at`.
+        Return approximate samples from either the objective function's minimser or its minimal
+        value over the candidate set `at`.
 
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
@@ -534,20 +551,19 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         """
         tf.debugging.assert_shapes([(at, ["N", None])])
 
-
         if self._sample_min_value:
-            thompson_samples = tf.zeros([0,1]) # [0,1]
+            thompson_samples = tf.zeros([0, 1], dtype=at.dtype)  # [0,1]
         else:
-            thompson_samples = tf.zeros([0,tf.shape(at)[1]]) # [0,D]
+            thompson_samples = tf.zeros([0, tf.shape(at)[1]], dtype=at.dtype)  # [0,D]
 
-        for _ in tf.range(self._sample_size): 
-            sampled_trajectory = self.trajectory()
-            evaluated_trajectory = sampled_trajectory(at) # [N, 1]
+        for _ in tf.range(self._sample_size):
+            sampled_trajectory = self.get_trajectory()
+            evaluated_trajectory = sampled_trajectory(at)  # [N, 1]
             if self._sample_min_value:
-                sample = tf.reduce_min(evaluated_trajectory) # [1, 1]
+                sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:
-                sample = tf.gather(at, tf.math.argmin(evaluated_trajectory)) # [1, D]
+                sample = tf.gather(at, tf.math.argmin(evaluated_trajectory))  # [1, D]
 
             thompson_samples = tf.concat([thompson_samples, sample], axis=0)
 
-        return thompson_samples # [S, D] or [S, 1]
+        return thompson_samples  # [S, D] or [S, 1]

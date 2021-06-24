@@ -32,7 +32,13 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
-from .sampler import BatchReparametrizationSampler, GumbelSampler, RandomFourierFeatureThompsonSampler, ExactThompsonSampler
+from .sampler import (
+    BatchReparametrizationSampler,
+    ExactThompsonSampler,
+    GumbelSampler,
+    RandomFourierFeatureThompsonSampler,
+    ThompsonSampler,
+)
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -246,16 +252,23 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     :math:`y^*` via a Gumbel sampler. TODO talk about costs of sampling
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000, use_thompson: bool = False, num_fourier_features: Optional[int]=None):
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 10,
+        grid_size: int = 5000,
+        use_thompson: bool = False,
+        num_fourier_features: Optional[int] = None,
+    ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
             objective function.
         :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
             scaling this with search space dimension.
-        :param use_thompson: If True then use Thompson sampling to sample the objective's 
+        :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of fourier features used for approximate Thompson 
+        :param num_fourier_features: Number of fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
         """
         self._search_space = search_space
@@ -270,9 +283,16 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         if type(num_fourier_features) is int:
             if not use_thompson:
-                raise ValueError(f"Fourier features approximation can only be applied to thompson sampling however `use_thompson` is {use_thompson}.")
-            if num_fourier_features<=0:
-                raise ValueError(f"num_fourier_features must be positive, got {num_fourier_features}")
+                raise ValueError(
+                    f"""
+                    Fourier features approximation can only be applied to thompson sampling
+                    however `use_thompson` is {use_thompson}.
+                    """
+                )
+            if num_fourier_features <= 0:
+                raise ValueError(
+                    f"num_fourier_features must be positive, got {num_fourier_features}"
+                )
         self._use_thompson = use_thompson
         self._num_fourier_features = num_fourier_features
 
@@ -289,13 +309,21 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
-        if not self._use_thompson: # use Gumbel sampler
-            sampler = GumbelSampler(self._num_samples, model, sample_min_value=True)
+        if not self._use_thompson:  # use Gumbel sampler
+            sampler: ThompsonSampler = GumbelSampler(
+                self._num_samples, model, sample_min_value=True
+            )
         else:
-            if type(num_fourier_features) is int: # use approximate Thompson sampler
-                sampler =  RandomFourierFeatureThompsonSampler(self._num_samples, model, dataset, sample_min_value=True, num_features = num_fourier_features)
-            else: # use exact Thompson sampler
-                sampler = ExactThompsonSampler(self._num_samples, model,sample_min_value=True )
+            if type(self._num_fourier_features) is int:  # use approximate Thompson sampler
+                sampler = RandomFourierFeatureThompsonSampler(
+                    self._num_samples,
+                    model,
+                    dataset,
+                    sample_min_value=True,
+                    num_features=self._num_fourier_features,
+                )
+            else:  # use exact Thompson sampler
+                sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])

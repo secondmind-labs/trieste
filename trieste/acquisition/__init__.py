@@ -65,6 +65,6 @@ from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
-    RandomFourierFeatureThompsonSampler,
     IndependentReparametrizationSampler,
+    RandomFourierFeatureThompsonSampler,
 )

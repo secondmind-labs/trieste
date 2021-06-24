@@ -43,6 +43,14 @@ def test_gumbel_sampler_raises_for_invalid_sample_size(
         GumbelSampler(sample_size, QuadraticMeanAndRBFKernel(), sample_min_value=True)
 
 
+@pytest.mark.parametrize("sample_size", [0, -2])
+def test_gumbel_sampler_raises_when_trying_sample_minimisers(
+    sample_size: int,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        GumbelSampler(10, QuadraticMeanAndRBFKernel(), sample_min_value=False)
+
+
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
 def test_gumbel_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
@@ -63,8 +71,14 @@ def test_gumbel_sampler_returns_correctly_shaped_samples(sample_size: int) -> No
 
 
 def test_gumbel_samples_are_minima() -> None:
-    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
     model = QuadraticMeanAndRBFKernel()
     gumbel_sampler = GumbelSampler(5, model, sample_min_value=True)
 
@@ -77,7 +91,7 @@ def test_gumbel_samples_are_minima() -> None:
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
-def test_discrete_thompson_sampler_raises_for_invalid_sample_size(
+def test_exact_thompson_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -85,7 +99,7 @@ def test_discrete_thompson_sampler_raises_for_invalid_sample_size(
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
-def test_discrete_thompson_sampler_sample_raises_for_invalid_at_shape(
+def test_exact_thompson_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
 ) -> None:
     sampler = ExactThompsonSampler(1, QuadraticMeanAndRBFKernel())
@@ -94,13 +108,55 @@ def test_discrete_thompson_sampler_sample_raises_for_invalid_at_shape(
         sampler.sample(tf.zeros(shape))
 
 
+@pytest.mark.parametrize("sample_min_value", [True, False])
 @pytest.mark.parametrize("sample_size", [10, 100])
-def test_discrete_thompson_sampler_returns_correctly_shaped_samples(sample_size: int) -> None:
+def test_exact_thompson_sampler_returns_correctly_shaped_samples(
+    sample_min_value: bool, sample_size: int
+) -> None:
     search_space = Box([0, 0], [1, 1])
-    thompson_sampler = ExactThompsonSampler(sample_size, QuadraticMeanAndRBFKernel())
-    query_points = search_space.sample(100)
+    thompson_sampler = ExactThompsonSampler(
+        sample_size, QuadraticMeanAndRBFKernel(), sample_min_value=sample_min_value
+    )
+    query_points = search_space.sample(500)
     thompson_samples = thompson_sampler.sample(query_points)
-    tf.debugging.assert_shapes([(thompson_samples, ["N", 2])])
+    if sample_min_value:
+        tf.debugging.assert_shapes([(thompson_samples, [sample_size, 1])])
+    else:
+        tf.debugging.assert_shapes([(thompson_samples, [sample_size, 2])])
+
+
+def test_exact_thompson_samples_are_minima() -> None:
+    search_space = Box([0, 0], [1, 1])
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    model = QuadraticMeanAndRBFKernel()
+    gumbel_sampler = ExactThompsonSampler(5, model, sample_min_value=True)
+
+    query_points = search_space.sample(100)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    gumbel_samples = gumbel_sampler.sample(query_points)
+
+    fmean, _ = model.predict(dataset.query_points)
+    assert max(gumbel_samples) < min(fmean)
+
+
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        BatchReparametrizationSampler,
+        IndependentReparametrizationSampler,
+    ],
+)
+def test_reparametrization_sampler_reprs(sampler) -> None:
+    assert (
+        repr(sampler(20, QuadraticMeanAndRBFKernel()))
+        == f"{sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
+    )
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -259,48 +315,36 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
         sampler.sample(tf.constant([[0.0], [1.0]]))
 
 
-@pytest.mark.parametrize(
-    "discrete_sampler",
-    [
-        BatchReparametrizationSampler,
-        ExactThompsonSampler,
-        GumbelSampler,
-        IndependentReparametrizationSampler,
-    ],
-)
-def test_discrete_sampler_reprs(discrete_sampler) -> None:
-    assert (
-        repr(discrete_sampler(20, QuadraticMeanAndRBFKernel()))
-        == f"{discrete_sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
-    )
-
-
-def test_rff_sampler_repr_includes_class_name() -> None:
+@pytest.mark.parametrize("sample_size", [0, -2])
+def test_rff_sampler_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
     model = QuadraticMeanAndRBFKernel()
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
-    sampler = RandomFourierFeatureThompsonSampler(1, model, dataset, num_features=100)
-    assert type(sampler).__name__ in repr(sampler)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        RandomFourierFeatureThompsonSampler(sample_size, model, dataset)
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
 def test_rff_sampler_raises_for_invalid_number_of_features(
     num_features: int,
 ) -> None:
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        RandomFourierFeatureThompsonSampler(1, model, dataset, num_features)
+        RandomFourierFeatureThompsonSampler(1, model, dataset, num_features=num_features)
 
 
 def test_rff_sampler_raises_for_a_non_gpflow_kernel() -> None:
     model = QuadraticMeanAndRBFKernel()
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     with pytest.raises(AssertionError):
-        sampler = RandomFourierFeatureThompsonSampler(1,  model, dataset, num_features=100)
-
+        RandomFourierFeatureThompsonSampler(1, model, dataset, num_features=100)
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -351,7 +395,7 @@ def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> No
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
 
-    sampler = RandomFourierFeatureThompsonSampler(1, model,dataset, num_features=100)
+    sampler = RandomFourierFeatureThompsonSampler(1, model, dataset, num_features=100)
     sampler.get_trajectory()
 
     posterior_1 = sampler._prepare_theta_posterior_in_design_space()
@@ -361,5 +405,73 @@ def test_rff_sampler_returns_same_posterior_from_each_calculation_method() -> No
     npt.assert_allclose(posterior_1.scale_tril, posterior_2.scale_tril, rtol=0.02)
 
 
+@pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
+def test_rff_sampler_sample_raises_for_invalid_at_shape(
+    shape: ShapeLike,
+) -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    sampler = RandomFourierFeatureThompsonSampler(1, model, dataset, num_features=100)
 
-#test input output shapes, test valid new inputs, test sampler for RFF
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        sampler.sample(tf.zeros(shape))
+
+
+@pytest.mark.parametrize("sample_min_value", [True, False])
+@pytest.mark.parametrize("sample_size", [10, 100])
+def test_rff_sampler_returns_correctly_shaped_samples(
+    sample_min_value: bool, sample_size: int
+) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler = RandomFourierFeatureThompsonSampler(
+        sample_size, model, dataset, num_features=100, sample_min_value=sample_min_value
+    )
+
+    query_points = search_space.sample(100)
+    thompson_samples = sampler.sample(query_points)
+    if sample_min_value:
+        tf.debugging.assert_shapes([(thompson_samples, [sample_size, 1])])
+    else:
+        tf.debugging.assert_shapes([(thompson_samples, [sample_size, 2])])
+
+
+@random_seed
+def test_rff_thompson_samples_are_minima() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-5, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler = RandomFourierFeatureThompsonSampler(
+        1, model, dataset, num_features=100, sample_min_value=True
+    )
+
+    query_points = search_space.sample(100)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    thompson_samples = sampler.sample(query_points)
+
+    fmean, _ = model.predict(dataset.query_points)
+    assert max(thompson_samples) < min(fmean)
