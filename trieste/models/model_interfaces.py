@@ -352,8 +352,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
         self._model.data = (
-            tf.Variable(self._model.data[0], trainable=False, shape=tf.TensorShape(None)),
-            tf.Variable(self._model.data[1], trainable=False, shape=tf.TensorShape(None)),
+            tf.Variable(
+                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
+            ),
+            tf.Variable(
+                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
+            ),
         )
 
     def __repr__(self) -> str:

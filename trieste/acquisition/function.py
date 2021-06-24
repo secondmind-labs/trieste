@@ -77,7 +77,7 @@ class AcquisitionFunctionBuilder(ABC):
     ) -> AcquisitionFunction:
         """
         Update an acquisition function. To avoid retracing every optimization loop, use this
-        to update the acquistion function variables rather than generating a new function.
+        to update the acquisition function variables rather than generating a new function.
         By default this generates a new acquisition function each time.
 
         :param function: The acquisition function to update.
@@ -320,7 +320,7 @@ class augmented_expected_improvement:
                 """
             )
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
@@ -789,9 +789,8 @@ def expected_hv_improvement(
             r"""
             Calculate the ehvi based on cell i.
             """
-
             lb_points, ub_points = pareto.hypercell_bounds(
-                tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
+                tf.fill([tf.shape(neg_pred_mean)[-1]], tf.cast(-inf, x.dtype)), reference_point
             )
 
             neg_lb_points, neg_ub_points = -ub_points, -lb_points
