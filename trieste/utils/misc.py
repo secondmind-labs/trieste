@@ -103,7 +103,7 @@ class Result(Generic[T_co], ABC):
     @property
     @abstractmethod
     def is_ok(self) -> bool:
-        """ `True` if this :class:`Result` contains a value, else `False`. """
+        """`True` if this :class:`Result` contains a value, else `False`."""
 
     @property
     def is_err(self) -> bool:
@@ -123,7 +123,7 @@ class Result(Generic[T_co], ABC):
 
 @final
 class Ok(Result[T_co]):
-    """ Wraps the result of a successful evaluation. """
+    """Wraps the result of a successful evaluation."""
 
     def __init__(self, value: T_co):
         """
@@ -137,7 +137,7 @@ class Ok(Result[T_co]):
 
     @property
     def is_ok(self) -> bool:
-        """ `True` always. """
+        """`True` always."""
         return True
 
     def unwrap(self) -> T_co:
@@ -149,7 +149,7 @@ class Ok(Result[T_co]):
 
 @final
 class Err(Result[NoReturn]):
-    """ Wraps the exception that occurred during a failed evaluation. """
+    """Wraps the exception that occurred during a failed evaluation."""
 
     def __init__(self, exc: Exception):
         """
@@ -163,7 +163,7 @@ class Err(Result[NoReturn]):
 
     @property
     def is_ok(self) -> bool:
-        """ `False` always. """
+        """`False` always."""
         return False
 
     def unwrap(self) -> NoReturn:
@@ -174,7 +174,7 @@ class Err(Result[NoReturn]):
 
 
 class DEFAULTS:
-    """ Default constants used in Trieste. """
+    """Default constants used in Trieste."""
 
     JITTER: Final[float] = 1e-6
     """
