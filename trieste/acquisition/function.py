@@ -284,11 +284,11 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
 
-        if type(num_fourier_features) is int:
+        if num_fourier_features is not None:
             if not use_thompson:
                 raise ValueError(
                     f"""
-                    Fourier features approximation can only be applied to thompson sampling
+                    Fourier features approximation can only be applied to Thompson sampling
                     however `use_thompson` is {use_thompson}.
                     """
                 )
@@ -313,20 +313,17 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
 
         if not self._use_thompson:  # use Gumbel sampler
-            sampler: ThompsonSampler = GumbelSampler(
-                self._num_samples, model, sample_min_value=True
+            sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+        elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+            sampler = RandomFourierFeatureThompsonSampler(
+                self._num_samples,
+                model,
+                dataset,
+                sample_min_value=True,
+                num_features=self._num_fourier_features,
             )
-        else:
-            if type(self._num_fourier_features) is int:  # use approximate Thompson sampler
-                sampler = RandomFourierFeatureThompsonSampler(
-                    self._num_samples,
-                    model,
-                    dataset,
-                    sample_min_value=True,
-                    num_features=self._num_fourier_features,
-                )
-            else:  # use exact Thompson sampler
-                sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
+        else:  # use exact Thompson sampler
+            sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])

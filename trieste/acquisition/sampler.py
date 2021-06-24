@@ -64,7 +64,7 @@ class Sampler(ABC):
 class ThompsonSampler(Sampler, ABC):
     r"""
     A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
-    modelled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
+    modeled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
 
     """
 
@@ -85,13 +85,6 @@ class ThompsonSampler(Sampler, ABC):
         {self._sample_size!r},
         {self._model!r},
         {self._sample_min_value})
-        """
-
-    @abstractmethod
-    def sample(self, at: TensorType) -> TensorType:
-        """
-        :param at: Input points that define the sampler.
-        :return: Samples.
         """
 
 
@@ -123,11 +116,11 @@ class ExactThompsonSampler(ThompsonSampler):
 
         if self._sample_min_value:
             thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
-
         else:
             samples_2d = tf.squeeze(samples, -1)  # [S, N]
             indices = tf.math.argmin(samples_2d, axis=1)
             thompson_samples = tf.gather(at, indices)  # [S, D]
+
         return thompson_samples
 
 
@@ -144,29 +137,17 @@ class GumbelSampler(ThompsonSampler):
     :math:`[0, 1]` and applying the inverse probability integral transform
     :math:`y = \mathcal G^{-1}(r; a, b)`.
 
-
     Note that the :class:`GumbelSampler` can only sample a function's minimal value and not
     its minimiser.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
-        :sample_min_value: If True then sample from the minimum value of the function,
-            else sample the function's minimiser.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive or
-            if ``sample_min_value`` is False.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
-        if not sample_min_value:
-            raise ValueError(
-                f"""
-                Gumbel sampler only provides samples of the minimum value of a function,
-                however, `sample_min_value` is {sample_min_value}
-                """
-            )
-
-        super().__init__(sample_size, model, sample_min_value)
+        super().__init__(sample_size, model, True)
 
     def sample(self, at: TensorType) -> TensorType:
         """

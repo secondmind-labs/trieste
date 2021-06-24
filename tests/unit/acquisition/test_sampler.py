@@ -40,22 +40,14 @@ def test_gumbel_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        GumbelSampler(sample_size, QuadraticMeanAndRBFKernel(), sample_min_value=True)
-
-
-@pytest.mark.parametrize("sample_size", [0, -2])
-def test_gumbel_sampler_raises_when_trying_sample_minimisers(
-    sample_size: int,
-) -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        GumbelSampler(10, QuadraticMeanAndRBFKernel(), sample_min_value=False)
+        GumbelSampler(sample_size, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
 def test_gumbel_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
 ) -> None:
-    sampler = GumbelSampler(1, QuadraticMeanAndRBFKernel(), sample_min_value=True)
+    sampler = GumbelSampler(1, QuadraticMeanAndRBFKernel())
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.zeros(shape))
@@ -64,7 +56,7 @@ def test_gumbel_sampler_sample_raises_for_invalid_at_shape(
 @pytest.mark.parametrize("sample_size", [10, 100])
 def test_gumbel_sampler_returns_correctly_shaped_samples(sample_size: int) -> None:
     search_space = Box([0, 0], [1, 1])
-    gumbel_sampler = GumbelSampler(sample_size, QuadraticMeanAndRBFKernel(), sample_min_value=True)
+    gumbel_sampler = GumbelSampler(sample_size, QuadraticMeanAndRBFKernel())
     query_points = search_space.sample(5)
     gumbel_samples = gumbel_sampler.sample(query_points)
     tf.debugging.assert_shapes([(gumbel_samples, [sample_size, 1])])
@@ -80,7 +72,7 @@ def test_gumbel_samples_are_minima() -> None:
     dataset = Dataset(xs, ys)
 
     model = QuadraticMeanAndRBFKernel()
-    gumbel_sampler = GumbelSampler(5, model, sample_min_value=True)
+    gumbel_sampler = GumbelSampler(5, model)
 
     query_points = search_space.sample(100)
     query_points = tf.concat([dataset.query_points, query_points], 0)

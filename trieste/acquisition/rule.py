@@ -233,8 +233,9 @@ class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :num_fourier_features: The number of features used to approximate the kernel. We recommend
-            first trying 1000 features, as this typically perfoms well for a wide range of kernels.
+        :num_fourier_features: The number of features used to approximate the kernel. We
+            recommend first trying 1000 features, as this typically perfoms well for a wide
+            range of kernels. If None, then we perfom exact Thompson sampling.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -244,7 +245,7 @@ class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
-        if (type(num_fourier_features) is int) and (num_fourier_features <= 0):
+        if num_fourier_features is not None and num_fourier_features <= 0:
             raise ValueError(
                 f"Number of fourier features must be greater than 0, got {num_query_points}"
             )
