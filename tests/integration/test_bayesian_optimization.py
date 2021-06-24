@@ -25,8 +25,8 @@ from trieste.acquisition.function import (
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
-    EfficientGlobalOptimization,
     DiscreteThompsonSampling,
+    EfficientGlobalOptimization,
     TrustRegion,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
