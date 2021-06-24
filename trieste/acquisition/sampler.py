@@ -34,7 +34,7 @@ from ..utils import DEFAULTS
 
 class Sampler(ABC):
     r"""
-    An :class:`Sampler` samples a specific quantity across a discrete set of points
+    A :class:`Sampler` samples a specific quantity across a discrete set of points
     according to an underlying :class:`ProbabilisticModel`.
     """
 
@@ -63,7 +63,9 @@ class Sampler(ABC):
 
 class ThompsonSampler(Sampler, ABC):
     r"""
-    TODO
+    A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
+    modelled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
+
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
@@ -95,10 +97,13 @@ class ThompsonSampler(Sampler, ABC):
 
 class ExactThompsonSampler(ThompsonSampler):
     r"""
-    This sampler provides approximate Thompson samples of the objective function's
+    This sampler provides exact Thompson samples of the objective function's
     maximiser :math:`x^*` over a discrete set of input locations.
 
-    TODO SAY OUTPUT and exact (still approx)
+    Although exact Thompson sampling is costly (incuring with an :math:`O(N^3)` complexity to
+    sample over a set of `N` locations), this method can be used for any probabilistic model
+    with a sampling method.
+
     """
 
     def sample(self, at: TensorType) -> TensorType:
@@ -140,7 +145,8 @@ class GumbelSampler(ThompsonSampler):
     :math:`y = \mathcal G^{-1}(r; a, b)`.
 
 
-    TODO, only output samples
+    Note that the :class:`GumbelSampler` can only sample a function's minimal value and not
+    its minimiser.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
@@ -148,8 +154,9 @@ class GumbelSampler(ThompsonSampler):
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :sample_min_value: If True then sample from the minimum value of the function,
-            else sample the function's minimiser. TODO only output
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+            else sample the function's minimiser.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive or
+            if ``sample_min_value`` is False.
         """
         if not sample_min_value:
             raise ValueError(
@@ -399,16 +406,13 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         num_features: int = 1000,
     ):
         """
-        TODO, to initilzie we calculate the posterior distributions for
-        the feature weights.
-
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :param dataset: The data from the observer. Must be populated.
         :sample_min_value: If True then sample from the minimum value of the function,
             else sample the function's minimiser.
         :param num_features: The number of features used to approximate the kernel. We use a default
-            of 1000 as it typically perfoms well for a wide range of kernel. Note that very smooth
+            of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
         :raise ValueError: If ``dataset`` is empty.
         """

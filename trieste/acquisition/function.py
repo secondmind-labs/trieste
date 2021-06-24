@@ -249,7 +249,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     of the objective minimum that would be gained by evaluating the objective at a given point.
 
     This implementation largely follows :cite:`wang2017max` and samples the objective's minimum
-    :math:`y^*` via a Gumbel sampler. TODO talk about costs of sampling
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate.
+
     """
 
     def __init__(

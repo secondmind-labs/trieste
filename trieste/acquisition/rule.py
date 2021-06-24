@@ -213,7 +213,16 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
 
 class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """Implements Thompson sampling for choosing optimal points. TODO SAY DISCRETE"""
+    r"""
+    Implements Thompson sampling for choosing optimal points over a discrete set of
+    candidate points.
+
+    The model is sampled either exactly (with an :math:`O(N^3)` complexity for a set of `N`
+    candidate points), or sampled approximately through a random Fourier feature decompisition
+    (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points and
+    using `M` features).
+
+    """
 
     def __init__(
         self,
@@ -224,7 +233,8 @@ class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :num_fourier_features: TODO
+        :num_fourier_features: The number of features used to approximate the kernel. We recommend
+            first trying 1000 features, as this typically perfoms well for a wide range of kernels.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
