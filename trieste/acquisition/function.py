@@ -1177,10 +1177,17 @@ def gibbon(
     if len(samples) == 0:
         raise ValueError("Gumbel samples must be populated.")
 
-    if not isinstance(model, GaussianProcessRegression):
+    try:
+        noise_variance = model.get_observation_noise()
+        model.predict_joint
+    except NotImplementedError:
         raise ValueError(
-            f"GIBBON requires a GaussianProcessRegression surrogate model but receved {model}."
+            """
+            GIBBON only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
         )
+
 
     if pending_points is not None:
         tf.debugging.assert_shapes(
@@ -1196,7 +1203,6 @@ def gibbon(
         )
 
         fmean, fvar = model.predict(tf.squeeze(x, -2))
-        noise_variance = model.model.likelihood.variance
         yvar = fvar + noise_variance  # need predictive variance of observations
 
         rho_squared = fvar / yvar  # squared correlation between observations and latent function
