@@ -214,13 +214,14 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
 class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
     r"""
-    Implements Thompson sampling for choosing optimal points over a discrete set of
-    candidate points.
+    Implements Thompson sampling for choosing optimal points.
 
-    The model is sampled either exactly (with an :math:`O(N^3)` complexity for a set of `N`
-    candidate points), or sampled approximately through a random Fourier feature decompisition
-    (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points and
-    using `M` features).
+    This rule returns the minimizers of functions sampled from our model and evaluated across
+    a discretization of the search space (containing `N` candidate points).
+
+    The model is sampled either exactly (with an :math:`O(N^3)` complexity), or sampled
+    approximately through a random Fourier `M` feature decompisition
+    (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points).
 
     """
 
