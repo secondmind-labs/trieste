@@ -704,8 +704,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+        function = expected_improvement(objective_model, eta)
 
-        return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
+        return lambda at: function(at) * constraint_fn(at)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
