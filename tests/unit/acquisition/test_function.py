@@ -19,6 +19,7 @@ import unittest.mock
 from collections.abc import Mapping
 from typing import Callable
 
+import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -251,33 +252,73 @@ def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
-def test_min_value_entropy_search_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+@pytest.mark.parametrize("param", [-2, 0])
+def test_min_value_entropy_search_builder_raises_for_invalid_init_params(param: int) -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        MinValueEntropySearch(search_space, num_samples=-5)
+        MinValueEntropySearch(search_space, num_samples=param)
     with pytest.raises(ValueError):
-        MinValueEntropySearch(search_space, grid_size=-5)
+        MinValueEntropySearch(search_space, grid_size=param)
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, num_fourier_features=param)
+
+
+def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gumbel() -> None:
+    # cannot do feature-based approx of Gumbel sampler
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, num_fourier_features=10)
 
 
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
-def test_min_value_entropy_search_builder_gumbel_samples(mocked_mves) -> None:
+@pytest.mark.parametrize("use_thompson", [True, False])
+def test_min_value_entropy_search_builder_builds_min_value_samples(
+    mocked_mves, use_thompson
+) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = MinValueEntropySearch(search_space)
+    builder = MinValueEntropySearch(search_space, use_thompson=use_thompson)
     model = QuadraticMeanAndRBFKernel()
     builder.prepare_acquisition_function(dataset, model)
     mocked_mves.assert_called_once()
 
     # check that the Gumbel samples look sensible
-    gumbel_samples = mocked_mves.call_args[0][1]
+    min_value_samples = mocked_mves.call_args[0][1]
     query_points = builder._search_space.sample(num_samples=builder._grid_size)
     query_points = tf.concat([dataset.query_points, query_points], 0)
     fmean, _ = model.predict(query_points)
-    assert max(gumbel_samples) < min(fmean)
+    assert max(min_value_samples) < min(fmean)
+
+
+@random_seed
+@unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
+def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    builder = MinValueEntropySearch(search_space, use_thompson=True, num_fourier_features=100)
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_mves.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    min_value_samples = mocked_mves.call_args[0][1]
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(min_value_samples) < min(fmean)
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
-def test_min_value_entropy_search_raises_for_gumbel_samples_with_invalid_shape(
+def test_min_value_entropy_search_raises_for_min_values_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
     with pytest.raises(ValueError):
@@ -294,9 +335,9 @@ def test_min_value_entropy_search_raises_for_invalid_batch_size(at: TensorType) 
 
 def test_min_value_entropy_search_returns_correct_shape() -> None:
     model = QuadraticMeanAndRBFKernel()
-    gumbel_samples = tf.constant([[1.0], [2.0]])
+    min_value_samples = tf.constant([[1.0], [2.0]])
     query_at = tf.linspace([[-10.0]], [[10.0]], 5)
-    evals = min_value_entropy_search(model, gumbel_samples)(query_at)
+    evals = min_value_entropy_search(model, min_value_samples)(query_at)
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
@@ -313,11 +354,11 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
-    gumbel_sample = tf.constant([[1.0]], dtype=tf.float64)
-    mes_evals = min_value_entropy_search(model, gumbel_sample)(xs[..., None, :])
+    min_value_sample = tf.constant([[1.0]], dtype=tf.float64)
+    mes_evals = min_value_entropy_search(model, min_value_sample)(xs[..., None, :])
 
     mean, variance = model.predict(xs)
-    gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
+    gamma = (tf.cast(min_value_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
     norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
     pi_evals = norm.cdf(gamma)
     npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
