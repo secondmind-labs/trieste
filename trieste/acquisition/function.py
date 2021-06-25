@@ -419,38 +419,69 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         return min_value_entropy_search(model, min_value_samples)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+        if not isinstance(function, min_value_entropy_search):
+            raise ValueError("Acquisition function is not min_value_entropy_search")
 
-def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
-    r"""
-    Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
-    modified for objective minimisation. This function calculates the information gain (or change in
-    entropy) in the distribution over the objective minimum :math:`y^*`, if we were to evaluate the
-    objective at a given point.
+        gumbel_sampler = GumbelSampler(self._num_samples, model)
 
-    :param model: The model of the objective function.
-    :param samples: Samples from the distribution over :math:`y^*`.
-    :return: The max-value entropy search acquisition function modified for objective
-        minimisation. This function will raise :exc:`ValueError` or
-        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-    """
-    tf.debugging.assert_rank(samples, 2)
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        gumbel_samples = gumbel_sampler.sample(query_points)
+        function.update(gumbel_samples)
+        return function
 
-    if len(samples) == 0:
+
+class min_value_entropy_search:
+    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+        r"""
+        Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+        modified for objective minimisation. This function calculates the information gain (or
+        change in entropy) in the distribution over the objective minimum :math:`y^*`, if we were
+        to evaluate the objective at a given point.
+
+        :param model: The model of the objective function.
+        :param samples: Samples from the distribution over :math:`y^*`.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        """
+        tf.debugging.assert_rank(samples, 2)
+
+        if len(samples) == 0:
         raise ValueError("Min value samples must be populated.")
 
-    def acquisition(x: TensorType) -> TensorType:
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType):
+        """Update the acquisition function with new samples."""
+        self._samples.assign(samples)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        fmean, fvar = self._model.predict(tf.squeeze(x, -2))
         fsd = tf.math.sqrt(fvar)
         fsd = tf.clip_by_value(
             fsd, 1.0e-8, fmean.dtype.max
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-        gamma = (tf.squeeze(samples) - fmean) / fsd
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
 
         minus_cdf = 1 - normal.cdf(gamma)
         minus_cdf = tf.clip_by_value(
@@ -459,8 +490,6 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
-
-    return acquisition
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
