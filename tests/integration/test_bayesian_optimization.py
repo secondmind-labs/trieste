@@ -69,7 +69,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
         (
             10,
             EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(OBJECTIVE),
+                GIBBON(Box([0, 0], [1, 1]), grid_size=500, num_samples=5).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),

@@ -101,7 +101,7 @@ from trieste.acquisition import GIBBON
 
 gibbon_acq = GIBBON(search_space, grid_size=1000, num_samples=10)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=50, builder=gibbon_acq)
+    num_query_points=10, builder=gibbon_acq)
 points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(
     search_space, initial_data, model)
 
@@ -123,6 +123,17 @@ plt.scatter(
     label="gibbon",
     marker="+",
 )
+
+
+plt.scatter(
+    points_chosen_by_local_penalization[:, 0],
+    points_chosen_by_local_penalization[:, 1],
+    color="red",
+    lw=25,
+    label="LP",
+    marker="+",
+)
+
 
 
 
@@ -158,9 +169,6 @@ plt.scatter(
 
 
 # %%
-points_chosen_by_gibbon
-
-# %%
 x = points_chosen_by_gibbon
 ei =GIBBON(search_space,grid_size=1000)
 ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
@@ -181,8 +189,6 @@ plt.scatter(
 
 
 cbar = plt.colorbar()
-
-# %%
 
 # %%
 

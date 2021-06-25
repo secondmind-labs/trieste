@@ -40,6 +40,8 @@ from .sampler import (
     ThompsonSampler,
 )
 
+from IPython import embed
+
 CLAMP_LB = 1e-8
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
@@ -1219,6 +1221,9 @@ def gibbon(
     Note that when using GIBBON for purely sequential optimization, the repulsion term is
     not required.
 
+
+    SAY ONLY CALC IMPR
+
     :param model: The model of the objective function. GIBBON requires a model with
         a :method:covariance_between_points method and so GIBBON only
         supports :class:`GaussianProcessRegression` models.
@@ -1270,45 +1275,43 @@ def gibbon(
         ) -> TensorType:  # calculate GIBBON's quality term
             normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
             minus_cdf = 1 - normal.cdf(gamma)
-            # minus_cdf = tf.clip_by_value(
-            #     minus_cdf, CLAMP_LB, 1
-            # )  # clip below to improve numerical stability
+            minus_cdf = tf.clip_by_value(
+                minus_cdf, CLAMP_LB, 1
+            )  # clip below to improve numerical stability
             ratio = normal.prob(gamma) / minus_cdf
             inner_log = 1 + rho_squared * ratio * (gamma - ratio)
 
-            acq = tf.math.log(inner_log)#tf.clip_by_value(inner_log, CLAMP_LB, fmean.dtype.max))
+            acq = tf.clip_by_value(inner_log, CLAMP_LB, fmean.dtype.max)
             acq = -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True)
 
-            return acq  # [..., 1]
+            return acq  # [N, 1]
 
         def repulsion_term(
             x: TensorType, pending_points: TensorType, yvar: TensorType
         ) -> TensorType:  # calculate GIBBON's repulsion term
             A = tf.expand_dims(
                 model.covariance_between_points(tf.squeeze(x,-2), pending_points), -1
-            )  # [..., m, 1]
+            )  # [N, m, 1]
             
-            _, B = model.predict_joint(pending_points)  # [m x m]
+
+            _, B = model.predict_joint(pending_points)  # [1, m, m]
             B = B + noise_variance * tf.eye(
                 len(pending_points), dtype=B.dtype
             )  # need predictive variance of observations
-
-            L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # [..., m, 1]
-            
-
+            L = tf.linalg.cholesky(B)
+            B_inv = tf.linalg.cholesky_solve(L, tf.eye(len(pending_points), dtype=L.dtype))
+            B_det = 2.0 * tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(L,0))))
 
 
             V_determinant = yvar - tf.squeeze(
-                tf.linalg.matmul(L, L, transpose_a=True), 1
+                tf.matmul(A, tf.matmul(B_inv, A), transpose_a=True), 1
             )  # equation for determinant of block matricies
-            V_determinant = V_determinant * tf.linalg.det(B)
+            V_determinant = V_determinant * B_det # [N, 1]
 
 
             C_log_determinant = (
                 tf.math.log(V_determinant)
-                - tf.math.log(yvar)
-                - tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(B, 0))))
-            )  # [..., 1]
+                - tf.math.log(yvar)) # [..., 1]
             # C_log_determinant = tf.clip_by_value(
             #     C_log_determinant, -inf, -CLAMP_LB
             # )  # log det of correlation matrix should be less than zero
@@ -1318,6 +1321,6 @@ def gibbon(
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
-            return quality_term(rho_squared, gamma) + (1/100.0)*repulsion_term(x, pending_points, yvar)
+            return quality_term(rho_squared, gamma) + (1/(tf.shape(pending_points)[0]+1)**(tf.shape(pending_points)[1]))*repulsion_term(x, pending_points, yvar)
 
     return acquisition
