@@ -286,7 +286,7 @@ class Box(SearchSpace):
     def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
         """
         Sample a diverse set from the space using a Sobol sequence.
-        If ``skip`` is specified, the the resulting samples are reproducible.
+        If ``skip`` is specified, then the resulting samples are reproducible.
 
         :param num_samples: The number of points to sample from this search space.
         :param skip: The number of initial points of the Sobol sequence to skip
