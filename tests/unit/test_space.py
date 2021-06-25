@@ -359,6 +359,20 @@ def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> Non
     npt.assert_allclose(halton_samples_1, halton_samples_2)
 
 
+def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    sobol_samples_1 = box.sample_sobol(num_samples=100)
+    sobol_samples_2 = box.sample_sobol(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, sobol_samples_1, sobol_samples_2)
+
+
+def test_box_haltom_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    halton_samples_1 = box.sample_halton(num_samples=100)
+    halton_samples_2 = box.sample_halton(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, halton_samples_1, halton_samples_2)
+
+
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
 def test_box_discretize_returns_search_space_with_only_points_contained_within_box(
     num_samples: int,
