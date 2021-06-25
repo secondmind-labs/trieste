@@ -269,7 +269,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
             objective function.
-        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
@@ -1138,15 +1138,18 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000, use_thompson: bool=False, num_fourier_features: Optional[int]=None):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
             objective function.
-        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
+        :param use_thompson: If True then use Thompson sampling to sample the objective's
+            minimum, else use Gumbel sampling.
+        :param num_fourier_features: Number of fourier features used for approximate Thompson
+            sampling. If None, then do exact Thompson sampling.
         """
-
         self._search_space = search_space
 
         if num_samples <= 0:
@@ -1157,7 +1160,20 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
 
-        self._gumbel_samples = None
+        if num_fourier_features is not None:
+            if not use_thompson:
+                raise ValueError(
+                    f"""
+                    Fourier features approximation can only be applied to Thompson sampling
+                    however `use_thompson` is {use_thompson}.
+                    """
+                )
+            if num_fourier_features <= 0:
+                raise ValueError(
+                    f"num_fourier_features must be positive, got {num_fourier_features}"
+                )
+        self._use_thompson = use_thompson
+        self._num_fourier_features = num_fourier_features
 
     def prepare_acquisition_function(
         self,
@@ -1176,22 +1192,34 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
-        if pending_points is None:  # only collect Gumbel samples once per optimization step
+        if pending_points is None:  # only collect min-value samples once per optimization step
+           if not self._use_thompson:  # use Gumbel sampler
+                    sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+                elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+                    sampler = RandomFourierFeatureThompsonSampler(
+                        self._num_samples,
+                        model,
+                        dataset,
+                        sample_min_value=True,
+                        num_features=self._num_fourier_features,
+                    )
+                else:  # use exact Thompson sampler
+                    sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
-            gumbel_sampler = GumbelSampler(self._num_samples, model)
+
             query_points = self._search_space.sample(num_samples=self._grid_size)
             tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
             query_points = tf.concat([dataset.query_points, query_points], 0)
-            self._gumbel_samples = gumbel_sampler.sample(query_points)
+            self._min_value_samples = sampler.sample(query_points)
 
-        if self._gumbel_samples is None:
+        if self._min_value_samples is None:
             raise ValueError("GIBBON must be first called with no pending_points.")
 
-        return gibbon(model, self._gumbel_samples, pending_points)
+        return gibbon(model, self._min_value_samples, pending_points)
 
 
 def gibbon(
-    model: GaussianProcessRegression,
+    model: ProbabilisticModel,
     samples: TensorType,
     pending_points: Optional[TensorType] = None,
 ) -> AcquisitionFunction:
@@ -1221,7 +1249,7 @@ def gibbon(
     """
     tf.debugging.assert_rank(samples, 2)
     if len(samples) == 0:
-        raise ValueError("Gumbel samples must be populated.")
+        raise ValueError("Min-value samples must be populated.")
 
     try:
         noise_variance = model.get_observation_noise()
@@ -1245,7 +1273,7 @@ def gibbon(
 
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
-            message="This acquisition function only supports batch sizes of one.",
+            message="This acquisition function only supports batches through greedy batch design.",
         )
 
         fmean, fvar = model.predict(tf.squeeze(x, -2))
