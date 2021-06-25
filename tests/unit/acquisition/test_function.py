@@ -235,11 +235,14 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
 
-    _, variance = model.predict(tf.squeeze(xs, -2))
-    augmentation = 1.0 - (tf.math.sqrt(observation_noise)) / (
-        tf.math.sqrt(observation_noise + variance)
-    )
-    npt.assert_allclose(acq_fn(xs), ei * augmentation)
+    @tf.function
+    def augmentation():
+        _, variance = model.predict(tf.squeeze(xs, -2))
+        return 1.0 - (tf.math.sqrt(observation_noise)) / (
+            tf.math.sqrt(observation_noise + variance)
+        )
+
+    npt.assert_allclose(acq_fn(xs), ei * augmentation(), rtol=1e-6)
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:

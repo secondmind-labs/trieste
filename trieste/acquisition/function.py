@@ -297,7 +297,7 @@ class augmented_expected_improvement:
         self._eta = tf.Variable(eta)
 
         try:
-            self._noise_variance = model.get_observation_noise()
+            self._noise_variance = tf.Variable(model.get_observation_noise())
         except NotImplementedError:
             raise ValueError(
                 """
@@ -309,16 +309,7 @@ class augmented_expected_improvement:
     def update(self, eta: TensorType):
         """Update the acquisition function with a new eta value and noise variance."""
         self._eta.assign(eta)
-
-        try:
-            self._noise_variance = self._model.get_observation_noise()
-        except NotImplementedError:
-            raise ValueError(
-                """
-                Augmented expected improvement only currently supports homoscedastic gpflow models
-                with a likelihood.variance attribute.
-                """
-            )
+        self._noise_variance.assign(self._model.get_observation_noise())
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -335,7 +326,6 @@ class augmented_expected_improvement:
         augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
             tf.math.sqrt(self._noise_variance + variance)
         )
-
         return expected_improvement * augmentation
 
 
