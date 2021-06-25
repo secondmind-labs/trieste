@@ -975,6 +975,8 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
 
 #GIBBON
 
+#ADD IN TESTS FOR DIFFERNET MAXVLAUE SAMPLES
+#check chooses same as MES in degenerate case
 
 
 
@@ -1054,29 +1056,6 @@ def test_gibbon_returns_correct_shape() -> None:
 
 
 
-
-
-def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -> None:
-    """
-    When based on a single max-value sample, MES should choose the same point that probability of
-    improvement would when calcualted with the max-value as its threshold (See :cite:`wang2017max`).
-    """
-
-    kernel = tfp.math.psd_kernels.MaternFiveHalves()
-    model = GaussianProcess([branin], [kernel])
-
-    x_range = tf.linspace(0.0, 1.0, 11)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-
-    gumbel_sample = tf.constant([[1.0]], dtype=tf.float64)
-    mes_evals = min_value_entropy_search(model, gumbel_sample)(xs[..., None, :])
-
-    mean, variance = model.predict(xs)
-    gamma = (tf.cast(gumbel_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
-    norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
-    pi_evals = norm.cdf(gamma)
-    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
 
 
 
