@@ -1150,30 +1150,9 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :param num_fourier_features: Number of fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
         """
-        self._search_space = search_space
 
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
-        self._num_samples = num_samples
+        MinValueEntropySearch.__init__(self,search_space, num_samples,grid_size,use_thompson,num_fourier_features)
 
-        if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
-        self._grid_size = grid_size
-
-        if num_fourier_features is not None:
-            if not use_thompson:
-                raise ValueError(
-                    f"""
-                    Fourier features approximation can only be applied to Thompson sampling
-                    however `use_thompson` is {use_thompson}.
-                    """
-                )
-            if num_fourier_features <= 0:
-                raise ValueError(
-                    f"num_fourier_features must be positive, got {num_fourier_features}"
-                )
-        self._use_thompson = use_thompson
-        self._num_fourier_features = num_fourier_features
 
     def prepare_acquisition_function(
         self,
@@ -1193,18 +1172,19 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
 
         if pending_points is None:  # only collect min-value samples once per optimization step
-           if not self._use_thompson:  # use Gumbel sampler
-                    sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
-                elif self._num_fourier_features is not None:  # use approximate Thompson sampler
-                    sampler = RandomFourierFeatureThompsonSampler(
-                        self._num_samples,
-                        model,
-                        dataset,
-                        sample_min_value=True,
-                        num_features=self._num_fourier_features,
-                    )
-                else:  # use exact Thompson sampler
-                    sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
+
+            if not self._use_thompson:  # use Gumbel sampler
+                sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+            elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+                sampler = RandomFourierFeatureThompsonSampler(
+                    self._num_samples,
+                    model,
+                    dataset,
+                    sample_min_value=True,
+                    num_features=self._num_fourier_features,
+                )
+            else:  # use exact Thompson sampler
+                sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
 
             query_points = self._search_space.sample(num_samples=self._grid_size)
@@ -1290,13 +1270,13 @@ def gibbon(
         ) -> TensorType:  # calculate GIBBON's quality term
             normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
             minus_cdf = 1 - normal.cdf(gamma)
-            minus_cdf = tf.clip_by_value(
-                minus_cdf, CLAMP_LB, 1
-            )  # clip below to improve numerical stability
+            # minus_cdf = tf.clip_by_value(
+            #     minus_cdf, CLAMP_LB, 1
+            # )  # clip below to improve numerical stability
             ratio = normal.prob(gamma) / minus_cdf
             inner_log = 1 + rho_squared * ratio * (gamma - ratio)
 
-            acq = tf.math.log(tf.clip_by_value(inner_log, CLAMP_LB, fmean.dtype.max))
+            acq = tf.math.log(inner_log)#tf.clip_by_value(inner_log, CLAMP_LB, fmean.dtype.max))
             acq = -0.5 * tf.math.reduce_mean(acq, axis=1, keepdims=True)
 
             return acq  # [..., 1]
@@ -1305,33 +1285,39 @@ def gibbon(
             x: TensorType, pending_points: TensorType, yvar: TensorType
         ) -> TensorType:  # calculate GIBBON's repulsion term
             A = tf.expand_dims(
-                model.covariance_between_points(tf.squeeze(x, 1), pending_points), -1
+                model.covariance_between_points(tf.squeeze(x,-2), pending_points), -1
             )  # [..., m, 1]
+            
             _, B = model.predict_joint(pending_points)  # [m x m]
             B = B + noise_variance * tf.eye(
                 len(pending_points), dtype=B.dtype
             )  # need predictive variance of observations
 
             L = tf.linalg.triangular_solve(tf.linalg.cholesky(B), A, lower=True)  # [..., m, 1]
+            
+
+
+
             V_determinant = yvar - tf.squeeze(
                 tf.linalg.matmul(L, L, transpose_a=True), 1
             )  # equation for determinant of block matricies
             V_determinant = V_determinant * tf.linalg.det(B)
+
 
             C_log_determinant = (
                 tf.math.log(V_determinant)
                 - tf.math.log(yvar)
                 - tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(B, 0))))
             )  # [..., 1]
-            C_log_determinant = tf.clip_by_value(
-                C_log_determinant, -inf, -CLAMP_LB
-            )  # log det of correlation matrix should be less than zero
+            # C_log_determinant = tf.clip_by_value(
+            #     C_log_determinant, -inf, -CLAMP_LB
+            # )  # log det of correlation matrix should be less than zero
 
             return 0.5 * C_log_determinant
 
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
-            return quality_term(rho_squared, gamma) + repulsion_term(x, pending_points, yvar)
+            return quality_term(rho_squared, gamma) + (1/100.0)*repulsion_term(x, pending_points, yvar)
 
     return acquisition
