@@ -275,7 +275,7 @@ class Box(SearchSpace):
 
         tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
-            return []
+            return tf.constant([])
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
         dim = tf.shape(self._lower)[-1]
@@ -295,7 +295,7 @@ class Box(SearchSpace):
         """
         tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
-            return []
+            return tf.constant([])
         if skip is None:  # generate random skip
             skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
