@@ -93,7 +93,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def generate_continuous_optimizer(
-    num_samples: int = 1000, sigmoid: bool = False, num_restarts: int = 1
+    num_samples: int = 1000, sigmoid: bool = True, num_restarts: int = 10
 ) -> AcquisitionOptimizer[Box]:
     """
     Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
