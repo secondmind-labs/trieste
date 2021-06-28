@@ -127,7 +127,7 @@ def generate_continuous_optimizer(
     if not sigmoid and num_restarts > 1:
         raise NotImplementedError(
             """
-            Must have  `sigmoid=True` for `num_resarts>1`, as L-BFGS-B does not
+            Must have  `sigmoid=True` for `num_restarts>1`, as L-BFGS-B does not
             yet support parallel evaluations."
             """
         )

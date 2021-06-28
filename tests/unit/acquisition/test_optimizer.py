@@ -131,7 +131,6 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(),
         generate_continuous_optimizer(sigmoid=True),
         generate_continuous_optimizer(sigmoid=True, num_restarts=10),
-        generate_continuous_optimizer(sigmoid=False, num_restarts=3),
     ],
 )
 def test_continuous_optimizer(
