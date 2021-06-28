@@ -1072,7 +1072,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: Callable[[ProbabilisticModel, TensorType, TensorType, TensorType], PenalizationFunction] = None,
+        penalizer: Callable[
+            [ProbabilisticModel, TensorType, TensorType, TensorType], PenalizationFunction
+        ] = None,
         base_acquisition_function_builder: Optional[
             Union[ExpectedImprovement, MinValueEntropySearch]
         ] = None,
@@ -1165,7 +1167,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             message="pending_points must be of shape [N,D]",
         )
 
-        if self._penalized_acquisition is not None and isinstance(self._penalization, UpdatablePenalizationFunction):
+        if self._penalized_acquisition is not None and isinstance(
+            self._penalization, UpdatablePenalizationFunction
+        ):
             # if possible, just update the penalization function variables
             self._penalization.update(pending_points, self._lipschitz_constant, self._eta)
         else:
@@ -1234,20 +1238,23 @@ leading dimensions, an :const:`PenalizationFunction` takes input
 shape `[..., 1, D]` and returns shape `[..., 1]`.
 """
 
+
 class UpdatablePenalizationFunction(ABC):
     """An :class:`UpdatablePenalizationFunction` builds and updates a penalization function.
-    Allowing a penalization function to be updated avoids having to retrace on every call."""
+    Defining a penalization function that can be updated avoids having to retrace on every call."""
 
     @abstractmethod
     def __call__(self, x: TensorType) -> TensorType:
-        """ Call penalization function.. """
+        """Call penalization function.."""
 
     @abstractmethod
-    def update(self, pending_points: TensorType,
+    def update(
+        self,
+        pending_points: TensorType,
         lipschitz_constant: TensorType,
         eta: TensorType,
     ) -> None:
-        """ Update penalization function. """
+        """Update penalization function."""
 
 
 class soft_local_penalizer(UpdatablePenalizationFunction):
@@ -1282,6 +1289,7 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
             greater than one.
         """
         self._model = model
+
         mean_pending, variance_pending = model.predict(pending_points)
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
         self._radius = tf.Variable(
@@ -1322,7 +1330,7 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-# TODO + type def
+# TODO: make this into an UpdatablePenalizationFunction
 def hard_local_penalizer(
     model: ProbabilisticModel,
     pending_points: TensorType,
