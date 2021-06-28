@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -969,7 +969,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(datasets, models)
+        return self.prepare_acquisition_function(datasets, models, pending_points=pending_points)
 
 
 class SingleModelGreedyAcquisitionBuilder(ABC):
@@ -1073,7 +1073,8 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[
-            [ProbabilisticModel, TensorType, TensorType, TensorType], PenalizationFunction
+            [ProbabilisticModel, TensorType, TensorType, TensorType],
+            Union[PenalizationFunction, UpdatablePenalizationFunction],
         ] = None,
         base_acquisition_function_builder: Optional[
             Union[ExpectedImprovement, MinValueEntropySearch]
@@ -1115,7 +1116,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self._lipschitz_constant = None
         self._eta = None
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
-        self._penalization: Optional[PenalizationFunction] = None
+        self._penalization: Optional[PenalizationFunction | UpdatablePenalizationFunction] = None
         self._penalized_acquisition: Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
@@ -1158,6 +1159,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
 
+        if self._base_acquisition_function is None:
+            raise ValueError("Local penalization must be first prepared with no pending_points.")
+
         if pending_points is None:
             # update penalization params and base acquisition once per optimization step
             return self._update_base_acquisition_function(dataset, model)
@@ -1172,6 +1176,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         ):
             # if possible, just update the penalization function variables
             self._penalization.update(pending_points, self._lipschitz_constant, self._eta)
+            return self._penalized_acquisition
         else:
             # otherwise construct a new penalized acquisition function
             self._penalization = self._lipschitz_penalizer(
@@ -1180,14 +1185,13 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
             @tf.function
             def penalized_acquisition(x: TensorType) -> TensorType:
-                log_acq = tf.math.log(self._base_acquisition_function(x)) + tf.math.log(
-                    self._penalization(x)
-                )
+                log_acq = tf.math.log(
+                    cast(AcquisitionFunction, self._base_acquisition_function)(x)
+                ) + tf.math.log(cast(PenalizationFunction, self._penalization)(x))
                 return tf.math.exp(log_acq)
 
             self._penalized_acquisition = penalized_acquisition
-
-        return self._penalized_acquisition
+            return penalized_acquisition
 
     @tf.function(experimental_relax_shapes=True)
     def _get_lipschitz_estimate(
@@ -1220,7 +1224,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
                 self._base_acquisition_function, dataset, model
             )
         elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
-            self._base_acquisition_function = expected_improvement(model, self._eta)
+            self._base_acquisition_function = cast(
+                AcquisitionFunction, expected_improvement(model, self._eta)
+            )
         else:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
                 dataset, model
