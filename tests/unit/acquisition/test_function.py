@@ -921,8 +921,8 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     acq_builder = LocalPenalizationAcquisitionFunction(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
-    acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.prepare_acquisition_function(data, model, pending_points)
+    lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 

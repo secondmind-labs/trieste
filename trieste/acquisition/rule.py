@@ -197,10 +197,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
-        if self._acquisition_function is None or isinstance(
-            self._builder, GreedyAcquisitionFunctionBuilder
-        ):
-            # TODO: support updating greedy acquisition functions
+        if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
                 datasets, models
             )
@@ -215,10 +212,10 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             for _ in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
-                greedy_acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, pending_points=points
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function, datasets, models, pending_points=points
                 )
-                chosen_point = self._optimizer(search_space, greedy_acquisition_function)
+                chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
         return points, None

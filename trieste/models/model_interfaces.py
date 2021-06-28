@@ -105,7 +105,7 @@ class ProbabilisticModel(ABC):
 
         :return: The kernel.
         """
-        return NotImplementedError(f"Model {self!r} does have an accessible kernel")
+        raise NotImplementedError(f"Model {self!r} does have an accessible kernel")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
