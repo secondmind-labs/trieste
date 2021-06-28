@@ -112,10 +112,11 @@ def generate_continuous_optimizer(
     The default behaviour of this method is to return a L-BFGS optimizer that perfoms
     10 optimizations in parallel.
 
-    :param num_samples: The number of random points to sample. TODO
+    :param num_samples: The size of the random sample used to find the starting point(s) of
+        the optimization.
     :param sigmoid: If True then use Tensorflow's L-BFGS optimizer, otherwise use
         Scipy's L-BFGS-B optimizer.
-    :param num_restarts: TODO
+    :param num_restarts: The number of optimizations ran in parallel.
     :return: The acquisition optimizer.
     """
     if num_samples <= 0:
