@@ -1224,6 +1224,8 @@ def gibbon(
 
     SAY ONLY CALC IMPR
 
+    TALK ABOUT WEIGHT
+
     :param model: The model of the objective function. GIBBON requires a model with
         a :method:covariance_between_points method and so GIBBON only
         supports :class:`GaussianProcessRegression` models.
@@ -1242,19 +1244,15 @@ def gibbon(
     except NotImplementedError:
         raise ValueError(
             """
-            GIBBON only currently supports homoscedastic gpflow models
-            with a likelihood.variance attribute.
+            GIBBON only currently supports homoscedastic Gaussian process models.
             """
         )
 
 
     if pending_points is not None:
-        tf.debugging.assert_shapes(
-            [(pending_points, ["N", None])],
-            message="pending_points must be of shape [N,D]",
-        )
+        tf.debugging.assert_rank(pending_points, [2], message="pending_points must be of rank 2")
 
-    def acquisition(x: TensorType) -> TensorType:
+    def acquisition(x: TensorType) -> TensorType: # [N, D] -> [N, 1]
 
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
@@ -1268,7 +1266,7 @@ def gibbon(
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
-        gamma = (tf.squeeze(samples) - fmean) / fsd
+        gamma = (tf.squeeze(samples) - fmean) / fsd 
 
         def quality_term(
             rho_squared: TensorType, gamma: TensorType
@@ -1292,8 +1290,6 @@ def gibbon(
             A = tf.expand_dims(
                 model.covariance_between_points(tf.squeeze(x,-2), pending_points), -1
             )  # [N, m, 1]
-            
-
             _, B = model.predict_joint(pending_points)  # [1, m, m]
             B = B + noise_variance * tf.eye(
                 len(pending_points), dtype=B.dtype
@@ -1301,7 +1297,6 @@ def gibbon(
             L = tf.linalg.cholesky(B)
             B_inv = tf.linalg.cholesky_solve(L, tf.eye(len(pending_points), dtype=L.dtype))
             B_det = 2.0 * tf.reduce_sum(tf.math.log(tf.linalg.tensor_diag_part(tf.squeeze(L,0))))
-
 
             V_determinant = yvar - tf.squeeze(
                 tf.matmul(A, tf.matmul(B_inv, A), transpose_a=True), 1
@@ -1312,15 +1307,16 @@ def gibbon(
             C_log_determinant = (
                 tf.math.log(V_determinant)
                 - tf.math.log(yvar)) # [..., 1]
-            # C_log_determinant = tf.clip_by_value(
-            #     C_log_determinant, -inf, -CLAMP_LB
-            # )  # log det of correlation matrix should be less than zero
+            C_log_determinant = tf.clip_by_value(
+                C_log_determinant, -inf, -CLAMP_LB
+            )  # log det of correlation matrix should be less than zero
 
             return 0.5 * C_log_determinant
 
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
-            return quality_term(rho_squared, gamma) + (1/(tf.shape(pending_points)[0]+1)**(tf.shape(pending_points)[1]))*repulsion_term(x, pending_points, yvar)
+            repulsion_weight = (1/(tf.shape(pending_points)[0]+1)**(tf.shape(pending_points)[1])) 
+            return quality_term(rho_squared, gamma) + repulsion_weight*repulsion_term(x, pending_points, yvar)
 
     return acquisition

@@ -42,30 +42,30 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        # (20, EfficientGlobalOptimization()),
-        # (20, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-        # (
-        #     15,
-        #     EfficientGlobalOptimization(
-        #         MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(
-        #             OBJECTIVE
-        #         )
-        #     ),
-        # ),
-        # (
-        #     15,
-        #     EfficientGlobalOptimization(
-        #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-        #         num_query_points=2,
-        #     ),
-        # ),
-        # (
-        #     10,
-        #     EfficientGlobalOptimization(
-        #         LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
-        #         num_query_points=3,
-        #     ),
-        # ),
+        (20, EfficientGlobalOptimization()),
+        (20, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        (
+            15,
+            EfficientGlobalOptimization(
+                MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(
+                    OBJECTIVE
+                )
+            ),
+        ),
+        (
+            15,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                num_query_points=2,
+            ),
+        ),
+        (
+            10,
+            EfficientGlobalOptimization(
+                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
         (
             10,
             EfficientGlobalOptimization(
@@ -73,9 +73,9 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
                 num_query_points=3,
             ),
         ),
-        # (15, TrustRegion()),
-        # (17, DiscreteThompsonSampling(500, 3)),
-        # (15, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
+        (15, TrustRegion()),
+        (17, DiscreteThompsonSampling(500, 3)),
+        (15, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
     ],
 )
 def test_optimizer_finds_minima_of_the_branin_function(
