@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Callable, TypeVar
 
 import gpflow
+import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -58,7 +59,8 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, Box):
-        return optimize_continuous(space, target_func)
+        num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
+        return generate_continuous_optimizer(num_samples)(space, target_func)
 
     else:
         raise NotImplementedError(
@@ -90,31 +92,96 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     return space.points[max_value_idx : max_value_idx + 1]
 
 
-def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
+def generate_continuous_optimizer(
+    num_samples: int = 1000, sigmoid: bool = False, num_restarts: int = 1
+) -> AcquisitionOptimizer[Box]:
     """
-    An gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
-    of size of 1.
+    Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
+    of size of 1. We perfom gradient-based optimization starting from the best location
+    across a sample of `num_samples` random points.
 
-    :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-            [..., 1].
-    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    This optimizer supports either Tensorflow's L-BFGS or Scipy's L-BFGS-B optimizers. We
+    constrain L-BFGS's search with a sigmoid bijector that maps an unconstrained space into
+    the search space. In contrast, L-BFGS-B optimizes directly within the bounds of the
+    search space.
+
+    If using Tensorflow's L-BFGS, then we can run `num_restarts` optimizations in parallel
+    (each starting from one of the top  `num_restarts` initial query points ). Note that
+    Scipy's L-BFGS-B does not yet support parallel evaluations.
+
+    The default behaviour of this method is to return a L-BFGS optimizer that perfoms
+    10 optimizations in parallel.
+
+    :param num_samples: The number of random points to sample. TODO
+    :param sigmoid: If True then use Tensorflow's L-BFGS optimizer, otherwise use
+        Scipy's L-BFGS-B optimizer.
+    :param num_restarts: TODO
+    :return: The acquisition optimizer.
     """
+    if num_samples <= 0:
+        raise ValueError(f"num_samples must be positive, got {num_samples}")
 
-    num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
+    if num_restarts <= 0:
+        raise ValueError(f"num_parallel must be positive, got {num_restarts}")
 
-    trial_search_space = space.discretize(num_samples)
-    initial_point = optimize_discrete(trial_search_space, target_func)  # [1, D]
+    if not sigmoid and num_restarts > 1:
+        raise NotImplementedError(
+            """
+            Must have  `sigmoid=True` for `num_resarts>1`, as L-BFGS-B does not
+            yet support parallel evaluations."
+            """
+        )
 
-    bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
-    variable = tf.Variable(bijector.inverse(initial_point))  # [1, D]
+    def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
+        """
+        A gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
+        of size of 1.
 
-    def _objective() -> TensorType:
-        return -target_func(bijector.forward(variable[:, None, :]))  # [1]
+        :param space: The space over which to search.
+        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+                [..., 1].
+        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        """
 
-    gpflow.optimizers.Scipy().minimize(_objective, (variable,))
+        trial_search_space = space.sample(num_samples)  # [num_samples, D]
+        target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
+        _, top_k_indicies = tf.math.top_k(
+            tf.squeeze(target_func_values), k=num_restarts
+        )  # [num_restarts]
+        initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_restarts, D]
 
-    return bijector.forward(variable)  # [1, D]
+        if sigmoid:  # use tensorflow's L-BFGS optimizer
+            bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
+            unconstrained_initial_points = bijector.inverse(initial_points)  # [num_restarts, D]
+            unconstrained_initial_points += 0  # fix for tensorflow bug #1182
+
+            def _objective_tf(x: TensorType) -> TensorType:  # [N, D] -> [N]
+                x_new = tf.expand_dims(x, -2)  # [N, 1, D]
+                return tf.squeeze(-target_func(bijector.forward(x_new)), -1)  # [N]
+
+            optim_results = tfp.optimizer.lbfgs_minimize(
+                lambda x: tfp.math.value_and_gradient(_objective_tf, x),
+                initial_position=unconstrained_initial_points,
+                stopping_condition=tfp.optimizer.converged_all,
+            )
+
+            best_found_point = tf.gather(
+                optim_results.position, tf.argmin(optim_results.objective_value)
+            )  # [D]
+            return bijector(tf.expand_dims(best_found_point, 0))  # [1, D]
+
+        else:  # use scipy's L-BFGS-B optimizer
+            opt_kwargs = {"bounds": spo.Bounds(space.lower, space.upper)}
+            variable = tf.Variable(initial_points[0:1])  # [1, D]
+
+            def _objective_scipy() -> TensorType:
+                return -target_func(variable[:, None, :])  # [1]
+
+            gpflow.optimizers.Scipy().minimize(_objective_scipy, (variable,), **opt_kwargs)
+
+            return variable  # [1, D]
+
+    return optimize_continuous
 
 
 def batchify(
@@ -159,7 +226,7 @@ def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOpti
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 
-    def optimizer(space: SP, target_func: AcquisitionFunction) -> TensorType:
+    def optimize_random(space: SP, target_func: AcquisitionFunction) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for
         any :class:'SearchSpace' with a :meth:`sample` and for batches of size of 1.
@@ -182,4 +249,4 @@ def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOpti
         max_value_idx = tf.argmax(target_func_values, axis=0)[0]
         return samples[max_value_idx : max_value_idx + 1]
 
-    return optimizer
+    return optimize_random
