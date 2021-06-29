@@ -95,8 +95,6 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(num_samples=-5)
     with pytest.raises(ValueError):
         generate_continuous_optimizer(num_restarts=-5)
-    with pytest.raises(NotImplementedError):
-        generate_continuous_optimizer(sigmoid=False, num_restarts=5)
 
 
 @random_seed
@@ -129,8 +127,9 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
     "optimizer",
     [
         generate_continuous_optimizer(),
+        generate_continuous_optimizer(num_restarts=3),
         generate_continuous_optimizer(sigmoid=True),
-        generate_continuous_optimizer(sigmoid=True, num_restarts=10),
+        generate_continuous_optimizer(sigmoid=True, num_restarts=3),
     ],
 )
 def test_continuous_optimizer(
@@ -141,7 +140,7 @@ def test_continuous_optimizer(
 ) -> None:
 
     maximizer = optimizer(search_space, _quadratic_sum(shift))
-    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 
 def test_optimize_batch_raises_with_invalid_batch_size() -> None:

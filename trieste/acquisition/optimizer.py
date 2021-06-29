@@ -59,7 +59,7 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, Box):
-        num_samples = tf.minimum(2000, 500 * tf.shape(space.lower)[-1])
+        num_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
         return generate_continuous_optimizer(num_samples)(space, target_func)
 
     else:
@@ -93,29 +93,27 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def generate_continuous_optimizer(
-    num_samples: int = 1000, sigmoid: bool = True, num_restarts: int = 10
+    num_samples: int = 1000, sigmoid: bool = False, num_restarts: int = 1
 ) -> AcquisitionOptimizer[Box]:
     """
     Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
     of size of 1. We perfom gradient-based optimization starting from the best location
     across a sample of `num_samples` random points.
 
-    This optimizer supports either Tensorflow's L-BFGS or Scipy's L-BFGS-B optimizers. We
+    This optimizer supports Scipy's L-BFGS-B and LBFGS optimizers. We
     constrain L-BFGS's search with a sigmoid bijector that maps an unconstrained space into
     the search space. In contrast, L-BFGS-B optimizes directly within the bounds of the
     search space.
 
-    If using Tensorflow's L-BFGS, then we can run `num_restarts` optimizations in parallel
-    (each starting from one of the top  `num_restarts` initial query points ). Note that
-    Scipy's L-BFGS-B does not yet support parallel evaluations.
+    For challenging acquisiton function optimizations, we run `num_restarts` separate
+    optimizations, each starting from one of the top  `num_restarts` initial query points.
 
-    The default behaviour of this method is to return a L-BFGS optimizer that perfoms
-    10 optimizations in parallel.
+    The default behaviour of this method is to return a L-BFGS-B optimizer that perfoms
+    a single optimization.
 
     :param num_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
-    :param sigmoid: If True then use Tensorflow's L-BFGS optimizer, otherwise use
-        Scipy's L-BFGS-B optimizer.
+    :param sigmoid: If True then use L-BFGS, otherwise use L-BFGS-B.
     :param num_restarts: The number of optimizations ran in parallel.
     :return: The acquisition optimizer.
     """
@@ -124,14 +122,6 @@ def generate_continuous_optimizer(
 
     if num_restarts <= 0:
         raise ValueError(f"num_parallel must be positive, got {num_restarts}")
-
-    if not sigmoid and num_restarts > 1:
-        raise NotImplementedError(
-            """
-            Must have  `sigmoid=True` for `num_restarts>1`, as L-BFGS-B does not
-            yet support parallel evaluations."
-            """
-        )
 
     def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
         """
@@ -151,36 +141,29 @@ def generate_continuous_optimizer(
         )  # [num_restarts]
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_restarts, D]
 
-        if sigmoid:  # use tensorflow's L-BFGS optimizer
+        if sigmoid:  # use scipy's L-BFGS optimizer with a sigmoid transform
             bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
-            unconstrained_initial_points = bijector.inverse(initial_points)  # [num_restarts, D]
-            unconstrained_initial_points += 0  # fix for tensorflow bug #1182
-
-            def _objective_tf(x: TensorType) -> TensorType:  # [N, D] -> [N]
-                x_new = tf.expand_dims(x, -2)  # [N, 1, D]
-                return tf.squeeze(-target_func(bijector.forward(x_new)), -1)  # [N]
-
-            optim_results = tfp.optimizer.lbfgs_minimize(
-                lambda x: tfp.math.value_and_gradient(_objective_tf, x),
-                initial_position=unconstrained_initial_points,
-                stopping_condition=tfp.optimizer.converged_all,
-            )
-
-            best_found_point = tf.gather(
-                optim_results.position, tf.argmin(optim_results.objective_value)
-            )  # [D]
-            return bijector(tf.expand_dims(best_found_point, 0))  # [1, D]
-
-        else:  # use scipy's L-BFGS-B optimizer
+            opt_kwargs = {}
+        else:
+            bijector = tfp.bijectors.Identity()
             opt_kwargs = {"bounds": spo.Bounds(space.lower, space.upper)}
-            variable = tf.Variable(initial_points[0:1])  # [1, D]
 
-            def _objective_scipy() -> TensorType:
-                return -target_func(variable[:, None, :])  # [1]
+        variable = tf.Variable(bijector.inverse(initial_points[0:1]))  # [1, D]
 
-            gpflow.optimizers.Scipy().minimize(_objective_scipy, (variable,), **opt_kwargs)
+        def _objective() -> TensorType:
+            return -target_func(bijector.forward(variable[:, None, :]))  # [1]
 
-            return variable  # [1, D]
+        chosen_points = tf.ones([0, len(space.lower)], dtype=trial_search_space.dtype)  # [0, D]
+        for i in tf.range(num_restarts):  # restart optimization
+            variable.assign(bijector.inverse(initial_points[i : i + 1]))  # [1, D]
+            gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
+            chosen_points = tf.concat(
+                [chosen_points, bijector.forward(variable)], axis=0
+            )  # [i+1, D]
+
+        chosen_func_values = target_func(chosen_points[:, None, :])  # [num_restarts, 1]
+
+        return tf.gather(chosen_points, tf.argmax(chosen_func_values))  # [1, D]
 
     return optimize_continuous
 
