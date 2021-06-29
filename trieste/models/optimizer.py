@@ -161,8 +161,7 @@ class TFKerasOptimizer:
             x = tf.convert_to_tensor(dataset.query_points)
             y = tf.convert_to_tensor(dataset.observations)
         else:
-            x = self.dataset_builder(dataset)
-            y = None
+            x, y = self.dataset_builder(dataset)
 
         return x, y
 
