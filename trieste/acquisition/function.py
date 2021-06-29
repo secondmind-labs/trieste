@@ -1166,10 +1166,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             # update penalization params and base acquisition once per optimization step
             return self._update_base_acquisition_function(dataset, model)
 
-        tf.debugging.assert_shapes(
-            [(pending_points, ["N", len(self._search_space.upper)])],
-            message="pending_points must be of shape [N,D]",
-        )
+        tf.debugging.assert_rank(pending_points, 2)
 
         if self._penalized_acquisition is not None and isinstance(
             self._penalization, UpdatablePenalizationFunction
