@@ -74,7 +74,7 @@ model = create_model(model_spec)
 from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000)
+batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=batch_ei_acq)
 points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
