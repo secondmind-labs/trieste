@@ -28,13 +28,6 @@ from ..type import TensorType
 from ..utils import DEFAULTS
 from .optimizer import Optimizer
 
-RANDOM_INIT_SUPPORTED_KERNELS = (
-    gpflow.kernels.SquaredExponential,
-    gpflow.kernels.Matern12,
-    gpflow.kernels.Matern32,
-    gpflow.kernels.Matern52,
-)
-
 
 class ProbabilisticModel(ABC):
     """A probabilistic model."""
