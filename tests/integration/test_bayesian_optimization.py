@@ -67,7 +67,7 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
         ),
         (15, TrustRegion()),
         (17, DiscreteThompsonSampling(500, 3)),
-        (20, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
+        (15, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
     ],
 )
 def test_optimizer_finds_minima_of_the_branin_function(
