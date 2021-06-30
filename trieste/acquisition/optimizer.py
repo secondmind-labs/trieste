@@ -93,12 +93,12 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def generate_continuous_optimizer(
-    num_samples: int = 1000, sigmoid: bool = False, num_restarts: int = 1
+    num_initial_samples: int = 1000, sigmoid: bool = False, num_restarts: int = 1
 ) -> AcquisitionOptimizer[Box]:
     """
     Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
     of size of 1. We perfom gradient-based optimization starting from the best location
-    across a sample of `num_samples` random points.
+    across a sample of `num_initial_samples` random points.
 
     This optimizer supports Scipy's L-BFGS-B and LBFGS optimizers. We
     constrain L-BFGS's search with a sigmoid bijector that maps an unconstrained space into
@@ -111,14 +111,14 @@ def generate_continuous_optimizer(
     The default behaviour of this method is to return a L-BFGS-B optimizer that perfoms
     a single optimization.
 
-    :param num_samples: The size of the random sample used to find the starting point(s) of
+    :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
     :param sigmoid: If True then use L-BFGS, otherwise use L-BFGS-B.
-    :param num_restarts: The number of optimizations ran in parallel.
+    :param num_restarts: The number of separate optimizations to run.
     :return: The acquisition optimizer.
     """
-    if num_samples <= 0:
-        raise ValueError(f"num_samples must be positive, got {num_samples}")
+    if num_initial_samples <= 0:
+        raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_restarts <= 0:
         raise ValueError(f"num_parallel must be positive, got {num_restarts}")
@@ -134,7 +134,7 @@ def generate_continuous_optimizer(
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
 
-        trial_search_space = space.sample(num_samples)  # [num_samples, D]
+        trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
         _, top_k_indicies = tf.math.top_k(
             tf.squeeze(target_func_values), k=num_restarts
