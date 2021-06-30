@@ -41,7 +41,7 @@ from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
-    optimize_continuous,
+    generate_continuous_optimizer,
 )
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
@@ -366,7 +366,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             builder = builder.using(OBJECTIVE)
 
         if optimizer is None:
-            optimizer = optimize_continuous
+            optimizer = generate_continuous_optimizer()
 
         self._builder = builder
         self._beta = beta
