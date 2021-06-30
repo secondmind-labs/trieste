@@ -460,12 +460,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         for _ in tf.range(num_prior_samples):
             randomize_model_hyperparameters(self.model)
             try:
-                likelihood = evaluate_likelihood_of_model_parameters()
+                log_likelihood = evaluate_likelihood_of_model_parameters()
             except tf.errors.InvalidArgumentError:  # allow badly specified priors
-                likelihood = -1e100
+                log_likelihood = -1e100
 
-            if likelihood > max_log_likelihood:  # only keep best kernel params
-                max_log_likelihood = likelihood
+            if log_likelihood > max_log_likelihood:  # only keep best kernel params
+                max_log_likelihood = log_likelihood
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
