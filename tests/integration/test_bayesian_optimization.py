@@ -41,10 +41,10 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (25, EfficientGlobalOptimization()),
-        (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        (20, EfficientGlobalOptimization()),
+        (20, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
-            25,
+            15,
             EfficientGlobalOptimization(
                 MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(
                     OBJECTIVE
@@ -52,20 +52,20 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
             ),
         ),
         (
-            20,
+            15,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                 num_query_points=2,
             ),
         ),
         (
-            15,
+            10,
             EfficientGlobalOptimization(
                 LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
-        (20, TrustRegion()),
+        (15, TrustRegion()),
         (17, DiscreteThompsonSampling(500, 3)),
         (20, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
     ],
