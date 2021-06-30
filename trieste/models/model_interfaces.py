@@ -432,7 +432,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
 
         num_trainable_params_with_priors = tf.reduce_sum(
-            [tf.size(param) for param in self.model.kernel.trainable_parameters if param.prior]
+            [
+                tf.size(param)
+                for param in self.model.kernel.trainable_parameters
+                if param.prior is not None
+            ]
         )
 
         if num_trainable_params_with_priors >= 1:  # Find a promising kernel initialization
