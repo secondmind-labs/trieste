@@ -378,9 +378,8 @@ def test_gaussian_process_regression_correctly_counts_num_trainable_params_with_
         loc=tf.cast(-2.0, dtype=tf.float64), scale=tf.cast(5.0, dtype=tf.float64)
     )
 
-    print(model.model.kernel.lengthscales)
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_kernel_initialization is only implemented for the GPR models.")
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
 
     dataset = Dataset(x, tf.cast(_3x_plus_10(x), dtype=tf.float64))
     model.optimize(dataset)
@@ -398,7 +397,7 @@ def test_find_best_model_initialization_only_changes_params_with_priors(
     model.model.kernel = gpflow.kernels.RBF()
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_kernel_initialization is only implemented for the GPR models.")
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
 
     model.model.kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(model.model.kernel.lengthscales), scale=1.0
@@ -419,7 +418,7 @@ def test_find_best_model_initialization_improves_likelihood(gpr_interface_factor
     model.model.kernel = gpflow.kernels.RBF()
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_kernel_initialization is only implemented for the GPR models.")
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
 
     model.model.kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(model.model.kernel.lengthscales), scale=1.0
