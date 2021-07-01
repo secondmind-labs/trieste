@@ -96,5 +96,6 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     relative_minimizer_err = tf.abs(best_x - MINIMIZER)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
+
     assert tf.reduce_all(relative_minimizer_err < 0.03, axis=-1)
-    npt.assert_allclose(best_y, MINIMUM, rtol=0.03)
+    npt.assert_allclose(best_y, MINIMUM, rtol=0.005)

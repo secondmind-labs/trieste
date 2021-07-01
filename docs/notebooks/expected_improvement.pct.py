@@ -15,13 +15,13 @@ tf.random.set_seed(1793)
 #
 
 # %%
-from trieste.utils.objectives import branin
+from trieste.utils.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
 
-fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -30,29 +30,37 @@ fig.show()
 #
 # Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, an observer can output a number of datasets. In our case, we only have one dataset, the objective. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
 #
-# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
+# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample a five point space-filling design from the search space and evaluate it with the observer. For continuous search spaces, Trieste supports random, Sobol and Halton initial designs.
 
 # %%
 import trieste
 
-observer = trieste.utils.objectives.mk_observer(branin)
+observer = trieste.utils.objectives.mk_observer(scaled_branin)
 
 num_initial_points = 5
-initial_query_points = search_space.sample(num_initial_points)
+initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian process regression for this, provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+#
+# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of random sample from the kernel parameter priors.  
+#
+# If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 
 # %%
 import gpflow
+import tensorflow_probability as tfp
 
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -104,9 +112,11 @@ print(f"observation: {observations[arg_min_idx, :]}")
 from util.plotting import plot_bo_points, plot_function_2d
 
 _, ax = plot_function_2d(
-    branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
 )
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+ax[0, 0].set_xlabel(r'$x_1$')
+ax[0, 0].set_xlabel(r'$x_2$')
 
 # %% [markdown]
 # ... or as a three-dimensional plot
@@ -114,7 +124,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=500, width=500)
 
 fig = add_bo_points_plotly(
@@ -136,9 +146,15 @@ fig.show()
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
 
+suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
 _, ax = plt.subplots(1, 2)
-plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+plot_regret(suboptimality, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
 plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+
+ax[0].set_yscale("log")
+ax[0].set_ylabel("Regret")
+ax[0].set_ylim(0.001, 100)
+ax[0].set_xlabel("# evaluations")
 
 # %% [markdown]
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
@@ -163,7 +179,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-
 fig.show()
 
 # %% [markdown]
@@ -174,14 +189,31 @@ gpflow.utilities.print_summary(
     result.try_get_final_model().model  # type: ignore
 )
 
+variance_list = [
+    step.model.model.kernel.variance.numpy()  # type: ignore
+    for step in result.history + [result.final_result.unwrap()]
+]
+
 ls_list = [
     step.model.model.kernel.lengthscales.numpy()  # type: ignore
     for step in result.history + [result.final_result.unwrap()]
 ]
 
+variance = np.array(variance_list)
 ls = np.array(ls_list)
-plt.plot(ls[:, 0])
-plt.plot(ls[:, 1])
+
+fig, ax = plt.subplots(1, 2)
+ax[0].plot(variance, label="Kernel variance")
+ax[0].legend(loc="upper left")
+ax[0].set_xlabel("# Evaluations")
+ax[0].set_xlabel("Parameter Value")
+
+ax[1].plot(ls[:, 0], label="Kernel lengthscale 1")
+ax[1].plot(ls[:, 1], label="Kernel lengthscale 2")
+ax[1].legend(loc="upper left")
+ax[1].set_xlabel("# Evaluations")
+
+fig.tight_layout()
 
 # %% [markdown]
 # ## Run the optimizer for more steps
@@ -194,7 +226,7 @@ dataset = result.try_get_final_dataset()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 _, ax = plot_function_2d(
-    branin, search_space.lower, search_space.upper, grid_density=40, contour=True
+    scaled_branin, search_space.lower, search_space.upper, grid_density=40, contour=True
 )
 
 plot_bo_points(
@@ -203,6 +235,9 @@ plot_bo_points(
     num_init=len(dataset.query_points),
     idx_best=arg_min_idx,
 )
+
+ax[0, 0].set_xlabel(r'$x_1$')
+ax[0, 0].set_xlabel(r'$x_2$')
 
 # %% [markdown]
 # ## LICENSE
