@@ -23,10 +23,10 @@ tf.random.set_seed(42)
 # We begin our optimization after collecting five function evaluations from random locations in the search space.
 
 # %%
-from trieste.utils.objectives import branin, mk_observer, BRANIN_MINIMUM
+from trieste.utils.objectives import scaled_branin, mk_observer, SCALED_BRANIN_MINIMUM
 from trieste.space import Box
 
-observer = mk_observer(branin)
+observer = mk_observer(scaled_branin)
 search_space = Box([0, 0], [1, 1])
 
 num_initial_points = 5
@@ -41,11 +41,15 @@ initial_data = observer(initial_query_points)
 import gpflow
 from trieste.models import create_model
 from trieste.utils import map_values
+import tensorflow_probability as tfp
 
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.09, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -164,26 +168,28 @@ local_penalization_result = bo.optimize(
 # %%
 from util.plotting import plot_regret
 
-qei_observations = qei_result.try_get_final_dataset().observations - BRANIN_MINIMUM
+qei_observations = qei_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
 qei_min_idx = tf.squeeze(tf.argmin(qei_observations, axis=0))
 local_penalization_observations = (
-    local_penalization_result.try_get_final_dataset().observations - BRANIN_MINIMUM
+    local_penalization_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
 )
 local_penalization_min_idx = tf.squeeze(tf.argmin(local_penalization_observations, axis=0))
 
-_, ax = plt.subplots(1, 2)
+fig, ax = plt.subplots(1, 2)
 plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
-ax[0].set_ylim(0.01, 100)
+ax[0].set_ylim(0.00001, 100)
 ax[0].set_xlabel("# evaluations")
 ax[0].set_title("Batch-EI")
 
 plot_regret(local_penalization_observations.numpy(), ax[1], num_init=5, idx_best=local_penalization_min_idx)
 ax[1].set_yscale("log")
 ax[1].set_xlabel("# evaluations")
-ax[1].set_ylim(0.01, 100)
+ax[1].set_ylim(0.00001, 100)
 ax[1].set_title("Local Penalization")
+
+fig.tight_layout()
 
 # %% [markdown]
 # ## LICENSE
