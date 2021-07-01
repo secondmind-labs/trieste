@@ -1152,10 +1152,31 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :param num_fourier_features: Number of fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
         """
+        self._search_space = search_space
 
-        MinValueEntropySearch.__init__(self,search_space, num_samples,grid_size,use_thompson,num_fourier_features)
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
 
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
 
+        if num_fourier_features is not None:
+            if not use_thompson:
+                raise ValueError(
+                    f"""
+                    Fourier features approximation can only be applied to Thompson sampling
+                    however `use_thompson` is {use_thompson}.
+                    """
+                )
+            if num_fourier_features <= 0:
+                raise ValueError(
+                    f"num_fourier_features must be positive, got {num_fourier_features}"
+                )
+        self._use_thompson = use_thompson
+        self._num_fourier_features = num_fourier_features
+   
     def prepare_acquisition_function(
         self,
         dataset: Dataset,
@@ -1316,7 +1337,6 @@ def gibbon(
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
-            repulsion_weight = (1/(tf.shape(pending_points)[0]+1)**(tf.shape(pending_points)[1])) 
-            return quality_term(rho_squared, gamma) + repulsion_weight*repulsion_term(x, pending_points, yvar)
+            return quality_term(rho_squared, gamma) + repulsion_term(x, pending_points, yvar)
 
     return acquisition

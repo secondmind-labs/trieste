@@ -15,6 +15,7 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
@@ -42,40 +43,40 @@ from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, 
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (20, EfficientGlobalOptimization()),
-        (20, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        # (25, EfficientGlobalOptimization()),
+        # (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        # (
+        #     25,
+        #     EfficientGlobalOptimization(
+        #         MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=5).using(
+        #             OBJECTIVE
+        #         )
+        #     ),
+        # ),
+        # (
+        #     20,
+        #     EfficientGlobalOptimization(
+        #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+        #         num_query_points=2,
+        #     ),
+        # ),
+        # (
+        #     15,
+        #     EfficientGlobalOptimization(
+        #         LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
+        #         num_query_points=3,
+        #     ),
+        # ),
         (
             15,
-            EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=10).using(
-                    OBJECTIVE
-                )
-            ),
-        ),
-        (
-            15,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=2,
-            ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
-                num_query_points=3,
-            ),
-        ),
-        (
-            10,
             EfficientGlobalOptimization(
                 GIBBON(Box([0, 0], [1, 1]), grid_size=500, num_samples=5).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
-        (15, TrustRegion()),
-        (17, DiscreteThompsonSampling(500, 3)),
-        (15, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
+        # (20, TrustRegion()),
+        # (17, DiscreteThompsonSampling(500, 3)),
+        # (15, DiscreteThompsonSampling(1000, 3, num_fourier_features=1000)),
     ],
 )
 def test_optimizer_finds_minima_of_the_branin_function(
@@ -86,11 +87,18 @@ def test_optimizer_finds_minima_of_the_branin_function(
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+        scale = tf.constant(1.0, dtype=tf.float64)
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.constant(-2.0, dtype=tf.float64), scale
+        )
+        kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            tf.math.log(kernel.lengthscales), scale
+        )
         gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         return GaussianProcessRegression(gpr)
 
-    initial_query_points = search_space.sample(5)
+    initial_query_points = search_space.sample(10)
     observer = mk_observer(branin)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)

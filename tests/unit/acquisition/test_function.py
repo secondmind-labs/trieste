@@ -1031,13 +1031,13 @@ def test_gibbon_raises_for_gumbel_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
     with pytest.raises(ValueError):
-        model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+        model =QuadraticMeanAndRBFKernel()
         gibbon(model, samples)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_raises_for_invalid_batch_size(at: TensorType) -> None:
-    model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+    model = QuadraticMeanAndRBFKernel()
     mes = gibbon(model, tf.constant([[1.0], [2.0]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -1045,7 +1045,7 @@ def test_gibbon_raises_for_invalid_batch_size(at: TensorType) -> None:
 
 
 def test_gibbon_returns_correct_shape() -> None:
-    model = GaussianProcessRegression(QuadraticMeanAndRBFKernel())
+    model = QuadraticMeanAndRBFKernel()
     gumbel_samples = tf.constant([[1.0], [2.0]])
     query_at = tf.linspace([[-10.0]], [[10.0]], 5)
     evals = gibbon(model, gumbel_samples)(query_at)

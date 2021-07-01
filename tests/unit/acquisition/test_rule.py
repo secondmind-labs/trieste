@@ -184,7 +184,9 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
             return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
         else:
             best_pending_score = tf.reduce_max(model.predict(pending_points)[0])
-            return lambda at: -tf.math.maximum(model.predict(at)[0][0], best_pending_score)
+            return lambda at: -tf.math.maximum(
+                tf.reduce_max(model.predict(at)[0], axis=-2), best_pending_score
+            )
 
 
 @random_seed
