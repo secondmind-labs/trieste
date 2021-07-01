@@ -29,7 +29,7 @@ from ..observer import MultiObserver, Observer, SingleObserver
 from ..type import TensorType
 
 
-def branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
+def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
     x0 = x[..., :1] * 15.0 - 5.0
     x1 = x[..., 1:] * 15.0
 
@@ -44,7 +44,7 @@ def branin_internals(x: TensorType, scale: TensorType, translate: TensorType) ->
 
 def branin(x: TensorType) -> TensorType:
     """
-    The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
+    The Branin-Hoo function over :math:`[0, 1]^2`. See
     :cite:`Picheny2013` for details.
 
     :param x: The points at which to evaluate the function, with shape [..., 2].
@@ -53,7 +53,7 @@ def branin(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
 
-    return branin_internals(x, 1, 10)
+    return _branin_internals(x, 1, 10)
 
 
 def scaled_branin(x: TensorType) -> TensorType:
@@ -67,7 +67,7 @@ def scaled_branin(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
 
-    return branin_internals(x, 1 / 51.95, -44.81)
+    return _branin_internals(x, 1 / 51.95, -44.81)
 
 
 _ORIGINAL_BRANIN_MINIMIZERS = tf.constant(
