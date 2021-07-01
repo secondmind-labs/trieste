@@ -133,6 +133,7 @@ def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
     # Evaluate objective function
     Fmean, Fvar = model.predict_f(Xplot)
 
+    print(Fvar)
     n_output = Fmean.shape[1]
 
     fig = make_subplots(
@@ -142,7 +143,6 @@ def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
     for k in range(n_output):
         fmean = Fmean[:, k].numpy()
         fvar = Fvar[:, k].numpy()
-
         lcb = fmean - 2 * np.sqrt(fvar)
         ucb = fmean + 2 * np.sqrt(fvar)
 
