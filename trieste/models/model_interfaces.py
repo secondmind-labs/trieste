@@ -21,6 +21,7 @@ from typing import Any, TypeVar
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
+from gpflow.utilities import multiple_assign, read_values
 
 from ..data import Dataset
 from ..type import TensorType
@@ -419,6 +420,56 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         return noise_variance
 
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        If any of the kernel's trainable parameters have priors, then we begin model optimization
+        from the best of a random sample from these parameters' priors. For trainable parameters
+        without priors, we begin optimization from their initial values.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
+
+        num_trainable_params_with_priors = tf.reduce_sum(
+            [tf.size(param) for param in self.model.trainable_parameters if param.prior is not None]
+        )
+
+        if num_trainable_params_with_priors >= 1:  # Find a promising kernel initialization
+            num_prior_samples = tf.minimum(1000, 100 * num_trainable_params_with_priors)
+            self.find_best_model_initialization(num_prior_samples)
+
+        self.optimizer.optimize(self.model, dataset)
+
+    def find_best_model_initialization(self, num_prior_samples) -> None:
+        """
+        Test `num_prior_samples` models with kernel parameters sampled from their
+        priors. The model's kernel parameters are then set to those achieving maximal
+        likelihood across the sample.
+
+        :param num_prior_samples: Number of randomly sampled kernels to evaluate.
+        """
+
+        @tf.function
+        def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
+            randomize_model_hyperparameters(self.model)
+            return self.model.maximum_log_likelihood_objective()
+
+        current_best_parameters = read_values(self.model)
+        max_log_likelihood = self.model.maximum_log_likelihood_objective()
+
+        for _ in tf.range(num_prior_samples):
+            try:
+                log_likelihood = evaluate_likelihood_of_model_parameters()
+            except tf.errors.InvalidArgumentError:  # allow badly specified priors
+                log_likelihood = -1e100
+
+            if log_likelihood > max_log_likelihood:  # only keep best kernel params
+                max_log_likelihood = log_likelihood
+                current_best_parameters = read_values(self.model)
+
+        multiple_assign(self.model, current_best_parameters)
+
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
@@ -532,3 +583,14 @@ def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> Non
             f" shape {existing_data.observations.shape} of existing observations. Trailing"
             f" dimensions must match."
         )
+
+
+def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
+    """
+    Sets hyperparameters to random samples from their prior distributions.
+
+    :param model: Any GPModel from gpflow.
+    """
+    for parameter in model.trainable_parameters:
+        if parameter.prior is not None:
+            parameter.assign(parameter.prior.sample())
