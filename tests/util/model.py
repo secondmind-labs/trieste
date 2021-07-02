@@ -21,7 +21,11 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, TrainableProbabilisticModel, GaussianProcessRegression
+from trieste.models import (
+    ProbabilisticModel,
+    TrainableProbabilisticModel,
+    GaussianProcessRegression,
+)
 from trieste.type import TensorType
 
 
@@ -80,6 +84,14 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 
     def get_observation_noise(self) -> TensorType:
         return tf.constant(self._noise_variance)
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        covs = [
+            k.tensor(query_points_1, query_points_2, 1, 1)[..., None, :, :] for k in self._kernels
+        ]
+        return tf.squeeze(tf.concat(covs, axis=-3))
 
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):

@@ -48,33 +48,33 @@ from trieste.utils.objectives import (
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        # (7, EfficientGlobalOptimization()),
-        # (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-        # (
-        #     14,
-        #     EfficientGlobalOptimization(
-        #         MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=5).using(
-        #             OBJECTIVE
-        #         )
-        #     ),
-        # ),
-        # (
-        #     6,
-        #     EfficientGlobalOptimization(
-        #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-        #         num_query_points=2,
-        #     ),
-        # ),
+        (7, EfficientGlobalOptimization()),
+        (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
-            10,
+            7,
             EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1]), grid_size=1000, num_samples=5, use_thompson=True).using(OBJECTIVE),
+                MinValueEntropySearch(Box([0, 0], [1, 1])).using(
+                    OBJECTIVE
+                )
+            ),
+        ),
+        (
+            6,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                 num_query_points=2,
             ),
         ),
-        # (7, TrustRegion()),
-        # (7, DiscreteThompsonSampling(500, 3)),
-        # (8, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+        (
+            8,
+            EfficientGlobalOptimization(
+                GIBBON(Box([0, 0], [1, 1]), num_fourier_features=1000).using(OBJECTIVE),
+                num_query_points=2,
+            ),
+        ),
+        (7, TrustRegion()),
+        (7, DiscreteThompsonSampling(500, 3)),
+        (8, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
 
     ],
 )

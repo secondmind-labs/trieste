@@ -37,6 +37,7 @@ from tests.util.misc import (
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
+    GIBBON,
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
@@ -44,7 +45,6 @@ from trieste.acquisition.function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    GIBBON,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
@@ -56,15 +56,15 @@ from trieste.acquisition.function import (
     augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,
+    gibbon,
     hard_local_penalizer,
     lower_confidence_bound,
-    gibbon,
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, GaussianProcessRegression
+from trieste.models import ProbabilisticModel
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils import DEFAULTS
@@ -267,7 +267,7 @@ def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gum
     # cannot do feature-based approx of Gumbel sampler
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        MinValueEntropySearch(search_space, num_fourier_features=10)
+        MinValueEntropySearch(search_space, use_thompson=False, num_fourier_features=10)
 
 
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
@@ -314,7 +314,7 @@ def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mv
     query_points = builder._search_space.sample(num_samples=builder._grid_size)
     query_points = tf.concat([dataset.query_points, query_points], 0)
     fmean, _ = model.predict(query_points)
-    assert max(min_value_samples) < min(fmean)
+    assert max(min_value_samples) < min(fmean) + 1e-4
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
@@ -361,6 +361,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
     gamma = (tf.cast(min_value_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
     norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
     pi_evals = norm.cdf(gamma)
+
     npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))
 
 
@@ -971,17 +972,6 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
         soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
 
 
-
-
-#GIBBON
-
-#ADD IN TESTS FOR DIFFERNET MAXVLAUE SAMPLES
-#check chooses same as MES in degenerate case
-
-
-
-
-
 def test_gibbon_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     search_space = Box([0, 0], [1, 1])
@@ -990,40 +980,22 @@ def test_gibbon_builder_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
-def test_gibbon_builder_raises_for_invalid_gumbel_sample_sizes() -> None:
+@pytest.mark.parametrize("param", [-2, 0])
+def test_gibbon_builder_raises_for_invalid_init_params(param: int) -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
-        GIBBON(search_space, num_samples=-5)
+        GIBBON(search_space, num_samples=param)
     with pytest.raises(ValueError):
-        GIBBON(search_space, grid_size=-5)
+        GIBBON(search_space, grid_size=param)
+    with pytest.raises(ValueError):
+        GIBBON(search_space, num_fourier_features=param)
 
 
-
-
-
-
-
-
-
-@unittest.mock.patch("trieste.acquisition.function.gibbon")
-def test_gibbon_builder_gumbel_samples(mocked_gibbon) -> None:
-    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+def test_gibbon_builder_raises_when_given_num_features_and_gumbel() -> None:
+    # cannot do feature-based approx of Gumbel sampler
     search_space = Box([0, 0], [1, 1])
-    builder = GIBBON(search_space)
-    model = QuadraticMeanAndRBFKernel()
-    builder.prepare_acquisition_function(dataset, model)
-    mocked_gibbon.assert_called_once()
-
-    # check that the Gumbel samples look sensible
-    gumbel_samples = mocked_gibbon.call_args[0][1]
-    query_points = builder._search_space.sample(num_samples=builder._grid_size)
-    query_points = tf.concat([dataset.query_points, query_points], 0)
-    fmean, _ = model.predict(query_points)
-    assert max(gumbel_samples) < min(fmean)
-
-
-
-
+    with pytest.raises(ValueError):
+        GIBBON(search_space, use_thompson=False, num_fourier_features=10)
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
@@ -1031,17 +1003,81 @@ def test_gibbon_raises_for_gumbel_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
     with pytest.raises(ValueError):
-        model =QuadraticMeanAndRBFKernel()
+        model = QuadraticMeanAndRBFKernel()
         gibbon(model, samples)
+
+
+@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+def test_gibbon_builder_raises_for_invalid_pending_points_shape(
+    pending_points,
+) -> None:
+    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space=space)
+    builder.prepare_acquisition_function(
+        data, QuadraticMeanAndRBFKernel(), None
+    )  # first initialize
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
+
+
+def test_gibbon_raises_when_called_before_initialization() -> None:
+    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    pending_points = tf.zeros([1, 2])
+    with pytest.raises(ValueError):
+        GIBBON(search_space).prepare_acquisition_function(
+            data, QuadraticMeanAndRBFKernel(), pending_points
+        )
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_raises_for_invalid_batch_size(at: TensorType) -> None:
     model = QuadraticMeanAndRBFKernel()
-    mes = gibbon(model, tf.constant([[1.0], [2.0]]))
+    gibbon_acq = gibbon(model, tf.constant([[1.0], [2.0]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        mes(at)
+        gibbon_acq(at)
+
+
+def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
+    class dummy_model_without_likelihood(ProbabilisticModel):
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
+            return None
+
+        def covariance_between_points(
+            self, query_points_1: TensorType, query_points_2: TensorType
+        ) -> None:
+            return None
+
+    with pytest.raises(ValueError):
+        model_without_likelihood = dummy_model_without_likelihood()
+        gibbon(model_without_likelihood, tf.constant([1.0]))
+
+
+def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
+    class dummy_model_without_covariance_between_points(ProbabilisticModel):
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
+            return None
+
+        def get_observation_noise(self) -> None:
+            return None
+
+    with pytest.raises(ValueError):
+        model_without_likelihood = dummy_model_without_covariance_between_points()
+        gibbon(model_without_likelihood, tf.constant([1.0]))
 
 
 def test_gibbon_returns_correct_shape() -> None:
@@ -1052,21 +1088,107 @@ def test_gibbon_returns_correct_shape() -> None:
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
+@unittest.mock.patch("trieste.acquisition.function.gibbon")
+@pytest.mark.parametrize("use_thompson", [True, False])
+def test_gibbon_builder_builds_min_value_samples(mocked_mves, use_thompson) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space, use_thompson=use_thompson)
+    model = QuadraticMeanAndRBFKernel()
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_mves.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    min_value_samples = mocked_mves.call_args[0][1]
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(min_value_samples) < min(fmean)
 
 
+@random_seed
+@unittest.mock.patch("trieste.acquisition.function.gibbon")
+def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    builder = GIBBON(search_space, use_thompson=True, num_fourier_features=100)
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_mves.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    min_value_samples = mocked_mves.call_args[0][1]
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(min_value_samples) < min(fmean) + 1e-4
 
 
+def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
+    """
+    When based on a single max-value sample, GIBBON should choose the same point as
+    MES (See :cite:`Moss:2021`).
+    """
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+
+    x_range = tf.linspace(-1.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    min_value_sample = tf.constant([[1.0]], dtype=tf.float64)
+    mes_evals = min_value_entropy_search(model, min_value_sample)(xs[..., None, :])
+    gibbon_evals = gibbon(model, min_value_sample)(xs[..., None, :])
+
+    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(gibbon_evals))
 
 
+@pytest.mark.parametrize("big_batch", [True, False])
+def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(big_batch) -> None:
+    noise_variance = tf.constant(0.1, dtype=tf.float64)
+    model = QuadraticMeanAndRBFKernel(noise_variance=noise_variance)
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
 
+    x_range = tf.linspace(0.0, 1.0, 4)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
+    pending_points = tf.constant([[0.1, 0.5], [0.2, 0.3], [0.01, 0.9]], dtype=tf.float64)
+    min_value_sample = tf.constant([[0.1]], dtype=tf.float64)
 
-#standard sequential tests
-#cehck same as MES under no noise and one gumbel sample
+    gibbon_of_new_points = gibbon(model, min_value_sample)(xs[..., None, :])
+    mean, var = model.predict(xs)
+    var += noise_variance
+    _, pending_var = model.predict_joint(pending_points)
+    pending_var += noise_variance * tf.eye(len(pending_points), dtype=pending_var.dtype)
 
+    for i in tf.range(len(xs)):
+        candidate_and_pending = tf.concat([xs[i : i + 1], pending_points], axis=0)
+        _, A = model.predict_joint(candidate_and_pending)
+        A = A + noise_variance * tf.eye(len(pending_points) + 1, dtype=A.dtype)
+        repulsion = (
+            tf.math.log(tf.linalg.det(A))
+            - tf.math.log(var[i : i + 1])
+            - tf.math.log(tf.linalg.det(pending_var))
+        )
 
+        calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, big_batch)(
+            xs[i : i + 1][..., None, :]
+        )
+        if big_batch:
+            batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=repulsion.dtype)
+            repulsion = repulsion * ((1 / batch_size) ** (tf.math.log(search_space_dim)))
 
-#batch tests (check needs to be ran with no pending points etc)
+        reconstructed_batch_gibbon = 0.5 * repulsion + gibbon_of_new_points[i : i + 1]
 
-
-
+        npt.assert_array_almost_equal(calculated_batch_gibbon, reconstructed_batch_gibbon)
