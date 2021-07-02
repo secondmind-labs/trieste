@@ -876,7 +876,11 @@ def test_locally_penalized_expected_improvement_raises_when_called_with_invalid_
 
 @random_seed
 @pytest.mark.parametrize(
-    "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
+    "base_builder",
+    [
+        ExpectedImprovement(),
+        MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=10000, num_samples=10),
+    ],
 )
 def test_locally_penalized_acquisitions_match_base_acquisition(
     base_builder,
@@ -907,7 +911,8 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
 @random_seed
 @pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
 @pytest.mark.parametrize(
-    "base_builder", [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]))]
+    "base_builder",
+    [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=5000)],
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalizer: Callable[..., PenalizationFunction],

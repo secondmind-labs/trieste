@@ -27,7 +27,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import GaussianProcessRegression, ProbabilisticModel
+from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
@@ -1145,7 +1145,15 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 5, grid_size: int = 1000, use_thompson: bool=True, num_fourier_features: Optional[int]=None, big_batch: bool=False):
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        use_thompson: bool = True,
+        num_fourier_features: Optional[int] = None,
+        big_batch: bool = False,
+    ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
@@ -1185,7 +1193,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         self._big_batch = big_batch
 
         self._min_value_samples = None
-   
+
     def prepare_acquisition_function(
         self,
         dataset: Dataset,
@@ -1217,7 +1225,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
                 )
             else:  # use exact Thompson sampler
                 sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
-
 
             query_points = self._search_space.sample(num_samples=self._grid_size)
             tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
@@ -1280,11 +1287,10 @@ def gibbon(
             """
         )
 
-
     if pending_points is not None:
         tf.debugging.assert_rank(pending_points, 2)
 
-    def acquisition(x: TensorType) -> TensorType: # [N, D] -> [N, 1]
+    def acquisition(x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
 
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
@@ -1298,7 +1304,7 @@ def gibbon(
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
-        gamma = (tf.squeeze(samples) - fmean) / fsd 
+        gamma = (tf.squeeze(samples) - fmean) / fsd
 
         def quality_term(
             rho_squared: TensorType, gamma: TensorType
@@ -1320,28 +1326,34 @@ def gibbon(
             x: TensorType, pending_points: TensorType, yvar: TensorType
         ) -> TensorType:  # calculate GIBBON's repulsion term
             _, B = model.predict_joint(pending_points)  # [1, m, m]
-            L = tf.linalg.cholesky(B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)) # need predictive variance of observations
-
+            L = tf.linalg.cholesky(
+                B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)
+            )  # need predictive variance of observations
 
             A = tf.expand_dims(
-                model.covariance_between_points(tf.squeeze(x,-2), pending_points), -1
+                model.covariance_between_points(tf.squeeze(x, -2), pending_points),  # type: ignore
+                -1,
             )  # [N, m, 1]
 
             L_inv_A = tf.linalg.triangular_solve(L, A)
 
-            V_det = yvar - tf.squeeze(tf.matmul(L_inv_A,L_inv_A, transpose_a=True), -1) # equation for determinant of block matricies
-            repulsion = 0.5*(tf.math.log(V_det) - tf.math.log(yvar)) 
+            V_det = yvar - tf.squeeze(
+                tf.matmul(L_inv_A, L_inv_A, transpose_a=True), -1
+            )  # equation for determinant of block matricies
+            repulsion = 0.5 * (tf.math.log(V_det) - tf.math.log(yvar))
 
-            return repulsion # [N, 1]
+            return repulsion  # [N, 1]
 
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
             if big_batch:
                 batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=fmean.dtype)
-                repulsion_weight = (1 / batch_size)**(tf.math.log(search_space_dim))
+                repulsion_weight = (1 / batch_size) ** (tf.math.log(search_space_dim))
             else:
                 repulsion_weight = 1.0
-            return quality_term(rho_squared, gamma) + repulsion_weight*repulsion_term(x, pending_points, yvar)
+            return quality_term(rho_squared, gamma) + repulsion_weight * repulsion_term(
+                x, pending_points, yvar
+            )
 
     return acquisition

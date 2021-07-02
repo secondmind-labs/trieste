@@ -53,7 +53,7 @@ from trieste.utils.objectives import (
         (
             7,
             EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1]),num_fourier_features=1000).using(
+                MinValueEntropySearch(Box([0, 0], [1, 1]), num_fourier_features=1000).using(
                     OBJECTIVE
                 )
             ),
@@ -68,21 +68,24 @@ from trieste.utils.objectives import (
         (
             4,
             EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1]), ).using(OBJECTIVE),
+                LocalPenalizationAcquisitionFunction(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
         (
             5,
             EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1]), ).using(OBJECTIVE),
+                GIBBON(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
         (7, TrustRegion()),
         (7, DiscreteThompsonSampling(500, 3)),
         (8, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
-
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
