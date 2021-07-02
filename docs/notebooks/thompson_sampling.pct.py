@@ -4,6 +4,7 @@
 # %%
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -17,7 +18,7 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.utils.objectives import branin
+from trieste.utils.objectives import branin, BRANIN_MINIMUM
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 

@@ -29,7 +29,34 @@ from ..observer import MultiObserver, Observer, SingleObserver
 from ..type import TensorType
 
 
+def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
+    x0 = x[..., :1] * 15.0 - 5.0
+    x1 = x[..., 1:] * 15.0
+
+    b = 5.1 / (4 * math.pi ** 2)
+    c = 5 / math.pi
+    r = 6
+    s = 10
+    t = 1 / (8 * math.pi)
+
+    return scale * ((x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + translate)
+
+
 def branin(x: TensorType) -> TensorType:
+    """
+    The Branin-Hoo function over :math:`[0, 1]^2`. See
+    :cite:`Picheny2013` for details.
+
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+
+    return _branin_internals(x, 1, 10)
+
+
+def scaled_branin(x: TensorType) -> TensorType:
     """
     The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
     :cite:`Picheny2013` for details.
@@ -40,17 +67,7 @@ def branin(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
 
-    x0 = x[..., :1] * 15.0 - 5.0
-    x1 = x[..., 1:] * 15.0
-
-    a = 1
-    b = 5.1 / (4 * math.pi ** 2)
-    c = 5 / math.pi
-    r = 6
-    s = 10
-    t = 1 / (8 * math.pi)
-
-    return a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s
+    return _branin_internals(x, 1 / 51.95, -44.81)
 
 
 _ORIGINAL_BRANIN_MINIMIZERS = tf.constant(
@@ -63,7 +80,12 @@ The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`
 and dtype float64.
 """
 
+
 BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
+""" The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
+
+
+SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
