@@ -53,7 +53,7 @@ from trieste.utils.objectives import (
         (
             7,
             EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1])).using(
+                MinValueEntropySearch(Box([0, 0], [1, 1]),num_fourier_features=1000).using(
                     OBJECTIVE
                 )
             ),
@@ -66,10 +66,10 @@ from trieste.utils.objectives import (
             ),
         ),
         (
-            8,
+            5,
             EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1]), num_fourier_features=1000).using(OBJECTIVE),
-                num_query_points=2,
+                GIBBON(Box([0, 0], [1, 1]), ).using(OBJECTIVE),
+                num_query_points=5,
             ),
         ),
         (7, TrustRegion()),
