@@ -40,8 +40,6 @@ from .sampler import (
     ThompsonSampler,
 )
 
-from IPython import embed
-
 CLAMP_LB = 1e-8
 
 AcquisitionFunction = Callable[[TensorType], TensorType]

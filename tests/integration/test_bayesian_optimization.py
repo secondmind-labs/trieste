@@ -66,10 +66,17 @@ from trieste.utils.objectives import (
             ),
         ),
         (
+            4,
+            EfficientGlobalOptimization(
+                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1]), ).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
+        (
             5,
             EfficientGlobalOptimization(
                 GIBBON(Box([0, 0], [1, 1]), ).using(OBJECTIVE),
-                num_query_points=5,
+                num_query_points=3,
             ),
         ),
         (7, TrustRegion()),
