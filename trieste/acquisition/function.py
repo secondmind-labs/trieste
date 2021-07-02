@@ -1271,7 +1271,7 @@ def gibbon(
 
 
     if pending_points is not None:
-        tf.debugging.assert_rank(pending_points, [2], message="pending_points must be of rank 2")
+        tf.debugging.assert_rank(pending_points, 2)
 
     def acquisition(x: TensorType) -> TensorType: # [N, D] -> [N, 1]
 
