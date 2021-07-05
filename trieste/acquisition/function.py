@@ -62,7 +62,7 @@ class AcquisitionFunctionBuilder(ABC):
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
-        Build an acquisition function.
+        Prepare an acquisition function.
 
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
@@ -76,9 +76,10 @@ class AcquisitionFunctionBuilder(ABC):
         models: Mapping[str, ProbabilisticModel],
     ) -> AcquisitionFunction:
         """
-        Update an acquisition function. To avoid retracing every optimization loop, use this
-        to update the acquisition function variables rather than generating a new function.
-        By default this generates a new acquisition function each time.
+        Update an acquisition function. By default this generates a new acquisition function each
+        time. However, if the function is decorated with`@tf.function`, then you can override
+        this method to update its variables instead and avoid retracing the acquisition function on
+        every optimization loop.
 
         :param function: The acquisition function to update.
         :param datasets: The data from the observer.
@@ -958,9 +959,10 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
-        Update an acquisition function. To avoid retracing every optimization loop, use this
-        to update the acquisition function variables and pending points rather than generating
-        a new function. By default this generates a new acquisition function each time.
+        Update an acquisition function. By default this generates a new acquisition function each
+        time. However, if the function is decorated with`@tf.function`, then you can override
+        this method to update its variables instead and avoid retracing the acquisition function on
+        every optimization loop.
 
         :param function: The acquisition function to update.
         :param datasets: The data from the observer.
