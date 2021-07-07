@@ -499,23 +499,6 @@ class SVGPWrapper(SVGP):
     def num_data(self, value: Optional[TensorType]):
         self._num_data.assign(value or 0)
 
-    # def elbo(self, data) -> tf.Tensor:
-    #     """
-    #     This gives a variational bound (the evidence lower bound or ELBO) on
-    #     the log marginal likelihood of the model.
-    #     """
-    #     X, Y = data
-    #     kl = self.prior_kl()
-    #     f_mean, f_var = self.predict_f(X, full_cov=False, full_output_cov=False)
-    #     var_exp = self.likelihood.variational_expectations(f_mean, f_var, Y)
-    #     if self.num_data > 0:
-    #         num_data = tf.cast(self.num_data, kl.dtype)
-    #         minibatch_size = tf.cast(tf.shape(X)[0], kl.dtype)
-    #         scale = num_data / minibatch_size
-    #     else:
-    #         scale = tf.cast(1.0, kl.dtype)
-    #     return tf.reduce_sum(var_exp) * scale - kl
-
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
@@ -536,7 +519,9 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property (ugh!).
         if not isinstance(self._model, SVGPWrapper):
-            self._model._num_data = tf.Variable(model.num_data or 0, trainable=False, dtype=tf.float64)
+            self._model._num_data = tf.Variable(
+                model.num_data or data.query_points.shape[0], trainable=False, dtype=tf.float64
+            )
             self._model.__class__ = SVGPWrapper
 
         self._data = data

@@ -460,7 +460,7 @@ class min_value_entropy_search:
         tf.debugging.assert_rank(samples, 2)
 
         if len(samples) == 0:
-        raise ValueError("Min value samples must be populated.")
+            raise ValueError("Min value samples must be populated.")
 
         self._model = model
         self._samples = tf.Variable(samples)
