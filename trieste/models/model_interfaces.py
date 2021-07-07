@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -488,7 +488,7 @@ class SVGPWrapper(SVGP):
     it as a property."""
 
     def __init__(self, *args, **kwargs):
-        self._num_data = tf.Variable(0, dtype=tf.float64)
+        self._num_data = tf.Variable(0, dtype=tf.float64, trainable=False)
         super().__init__(*args, **kwargs)
 
     @property
@@ -496,8 +496,25 @@ class SVGPWrapper(SVGP):
         return self._num_data.value()
 
     @num_data.setter
-    def num_data(self, value: TensorType):
+    def num_data(self, value: Optional[TensorType]):
         self._num_data.assign(value or 0)
+
+    # def elbo(self, data) -> tf.Tensor:
+    #     """
+    #     This gives a variational bound (the evidence lower bound or ELBO) on
+    #     the log marginal likelihood of the model.
+    #     """
+    #     X, Y = data
+    #     kl = self.prior_kl()
+    #     f_mean, f_var = self.predict_f(X, full_cov=False, full_output_cov=False)
+    #     var_exp = self.likelihood.variational_expectations(f_mean, f_var, Y)
+    #     if self.num_data > 0:
+    #         num_data = tf.cast(self.num_data, kl.dtype)
+    #         minibatch_size = tf.cast(tf.shape(X)[0], kl.dtype)
+    #         scale = num_data / minibatch_size
+    #     else:
+    #         scale = tf.cast(1.0, kl.dtype)
+    #     return tf.reduce_sum(var_exp) * scale - kl
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
@@ -518,9 +535,9 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property (ugh!).
-        if not isinstance(model, SVGPWrapper):
-            model._num_data = tf.Variable(model.num_data or 0, dtype=tf.float64)
-            model.__class__ = SVGPWrapper
+        if not isinstance(self._model, SVGPWrapper):
+            self._model._num_data = tf.Variable(model.num_data or 0, trainable=False, dtype=tf.float64)
+            self._model.__class__ = SVGPWrapper
 
         self._data = data
 
@@ -546,7 +563,7 @@ class VGPWrapper(VGP):
     it as a property."""
 
     def __init__(self, *args, **kwargs):
-        self._num_data = tf.Variable(0, dtype=tf.float64)
+        self._num_data = tf.Variable(0, dtype=tf.float64, trainable=False)
         super().__init__(*args, **kwargs)
 
     @property
@@ -554,7 +571,7 @@ class VGPWrapper(VGP):
         return self._num_data.value()
 
     @num_data.setter
-    def num_data(self, value: TensorType):
+    def num_data(self, value: Optional[TensorType]):
         self._num_data.assign(value or 0)
 
 
@@ -575,9 +592,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property (ugh!).
-        if not isinstance(model, VGPWrapper):
-            model._num_data = tf.Variable(model.num_data or 0, dtype=tf.float64)
-            model.__class__ = VGPWrapper
+        if not isinstance(self._model, VGPWrapper):
+            self._model._num_data = tf.Variable(
+                model.num_data or 0, trainable=False, dtype=tf.float64
+            )
+            self._model.__class__ = VGPWrapper
 
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
