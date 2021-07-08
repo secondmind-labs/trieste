@@ -253,11 +253,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     This implementation largely follows :cite:`wang2017max` and samples the objective's minimum
     :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
     Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
-    Gumbel sampler being the cheapest but least accurate.
-
-
-    TODO SAY THAT DEFAULT IS ... but to make cheaper do...
-
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
     """
 
     def __init__(
@@ -276,7 +273,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of fourier features used for approximate Thompson
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
         """
         self._search_space = search_space
@@ -891,13 +888,13 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acqusition function. All that we require is that the acquisition function takes strictly
+    acquisition function. All that we require is that the acquisition function takes strictly
     positive values. By iteratively building a batch of points though sequentially maximizing
     this acquisition function but down-weighted around locations close to the already
     chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
-    improve numerical stability, we perfom additive penalization in a log space.
+    improve numerical stability, we perform additive penalization in a log space.
 
     The Lipschitz constant and additional penalization parameters are estimated once
     when first preparing the acquisition function with no pending points. These estimates
@@ -1137,12 +1134,14 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     evaluating a batch of candidate points. Batches are built in a greedy manner.
 
     This implementation follows :cite:`Moss:2021` but is modified for function
-    minimisation (rather than maximisation).
+    minimisation (rather than maximisation). We sample the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
 
-    TODO say default
-
-    TODO say big batch
-
+    When performing BO with large batches (i.e. much larger than 10), we recommend the big batch
+    formulation of GIBBON, as accessed through :param:`big_batch`.
     """
 
     def __init__(
@@ -1156,15 +1155,16 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
-        :param num_samples: Number of samples to draw from the distribution over the minimum of the
-            objective function.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of
+            the objective function.
         :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of fourier features used for approximate Thompson
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
-        :param big_batch: TODO
+        :param big_batch: If True, then use the GIBBON formulation for BO with large
+            batches (i.e. larger than 10).
         """
         self._search_space = search_space
 
@@ -1246,7 +1246,7 @@ def gibbon(
     r"""
     Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function
     of :cite:`Moss:2021`.The GIBBON acquisition function consists of two terms --- a quality term
-    and a diversity term. The quality term measures the ammount of information that each individual
+    and a diversity term. The quality term measures the amount of information that each individual
     batch element provides about the objective function's minimal value :math:`y^*` (ensuring that
     evaluations are targeted in promising areas of the space), whereas the repulsion term encourages
     diversity within the batch (achieving high values for points with low predictive correlation).
@@ -1254,22 +1254,27 @@ def gibbon(
     GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive
     correlation matrix :math:`C` between the `m` pending points and the current candidate.
     The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
-    tensor :math:`B` with shape [`m`,`m`] and so we can efficientely calculate :math:`|V|` using the
-    formula for the determinant of block matricies, i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
+    tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using the
+    formula for the determinant of block matrices, i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
     Note that when using GIBBON for purely sequential optimization, the repulsion term is
     not required.
 
+    As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a set
+    of `m` pending points, we need only ever calculate the entropy reduction provided by adding the
+    current candidate point to the current pending points, not the full information gain provided by
+    evaluating all the pending points. This allows for a modest computational saving.
 
-    SAY ONLY CALC IMPR
-
-    TALK ABOUT WEIGHT (big batch)
+    When performing BO with large batches (i.e. much larger than 10), GIBBON's approximations become
+    less accurate and its repulsion term dominates. Therefore, for large batch BO, we follow the
+    arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{log B}`. This
+    behavior is accessed though :param:`big_batch`.
 
     :param model: The model of the objective function. GIBBON requires a model with
         a :method:covariance_between_points method and so GIBBON only
         supports :class:`GaussianProcessRegression` models.
     :param samples: Samples from the distribution over :math:`y^*`.
     :param pending_points: The points already chosen in the current batch.
-    :param big_batch: TODO
+    :param big_batch: If True, then use the GIBBON formulation for BO with large batches.
     :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
@@ -1279,7 +1284,7 @@ def gibbon(
 
     try:
         noise_variance = model.get_observation_noise()
-        model.predict_joint
+        model.covariance_between_points # type: ignore
     except NotImplementedError:
         raise ValueError(
             """
@@ -1316,9 +1321,7 @@ def gibbon(
             )  # clip below to improve numerical stability
             ratio = normal.prob(gamma) / minus_cdf
             inner_log = 1 + rho_squared * ratio * (gamma - ratio)
-
-            acq = tf.clip_by_value(inner_log, CLAMP_LB, fmean.dtype.max)
-            acq = -0.5 * tf.math.reduce_mean(tf.math.log(acq), axis=1, keepdims=True)
+            acq = -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)
 
             return acq  # [N, 1]
 
@@ -1329,17 +1332,14 @@ def gibbon(
             L = tf.linalg.cholesky(
                 B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)
             )  # need predictive variance of observations
-
             A = tf.expand_dims(
                 model.covariance_between_points(tf.squeeze(x, -2), pending_points),  # type: ignore
                 -1,
             )  # [N, m, 1]
-
             L_inv_A = tf.linalg.triangular_solve(L, A)
-
             V_det = yvar - tf.squeeze(
                 tf.matmul(L_inv_A, L_inv_A, transpose_a=True), -1
-            )  # equation for determinant of block matricies
+            )  # equation for determinant of block matrices
             repulsion = 0.5 * (tf.math.log(V_det) - tf.math.log(yvar))
 
             return repulsion  # [N, 1]
@@ -1352,6 +1352,7 @@ def gibbon(
                 repulsion_weight = (1 / batch_size) ** (tf.math.log(search_space_dim))
             else:
                 repulsion_weight = 1.0
+
             return quality_term(rho_squared, gamma) + repulsion_weight * repulsion_term(
                 x, pending_points, yvar
             )

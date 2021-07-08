@@ -1141,7 +1141,7 @@ def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves) -> None:
 def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
     """
     When based on a single max-value sample, GIBBON should choose the same point as
-    MES (See :cite:`Moss:2021`).
+    MES (see :cite:`Moss:2021`).
     """
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
 
@@ -1157,43 +1157,46 @@ def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
 
 
 @pytest.mark.parametrize("big_batch", [True, False])
-def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(big_batch) -> None:
-    noise_variance = tf.constant(0.1, dtype=tf.float64)
+@pytest.mark.parametrize("noise_variance", [0.1, 1e-10])
+def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
+    big_batch, noise_variance
+) -> None:
+    """
+    Check that batch GIBBON can be decomposed into the sum of sequential GIBBONs and a repulsion
+    term (see :cite:`Moss:2021`).
+    """
+    noise_variance = tf.constant(noise_variance, dtype=tf.float64)
     model = QuadraticMeanAndRBFKernel(noise_variance=noise_variance)
     model.kernel = (
         gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
+    )  # need a gpflow kernel object for random feature decomposition
 
     x_range = tf.linspace(0.0, 1.0, 4)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
-    pending_points = tf.constant([[0.1, 0.5], [0.2, 0.3], [0.01, 0.9]], dtype=tf.float64)
-    min_value_sample = tf.constant([[0.1]], dtype=tf.float64)
+    pending_points = tf.constant([[0.11, 0.51], [0.21, 0.31], [0.41, 0.91]], dtype=tf.float64)
+    min_value_sample = tf.constant([[-0.1, 0.1]], dtype=tf.float64)
 
     gibbon_of_new_points = gibbon(model, min_value_sample)(xs[..., None, :])
     mean, var = model.predict(xs)
-    var += noise_variance
     _, pending_var = model.predict_joint(pending_points)
     pending_var += noise_variance * tf.eye(len(pending_points), dtype=pending_var.dtype)
 
-    for i in tf.range(len(xs)):
+    calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, big_batch)(
+        xs[..., None, :]
+    )
+
+    for i in tf.range(len(xs)):  # check across a set of candidate points
         candidate_and_pending = tf.concat([xs[i : i + 1], pending_points], axis=0)
         _, A = model.predict_joint(candidate_and_pending)
-        A = A + noise_variance * tf.eye(len(pending_points) + 1, dtype=A.dtype)
-        repulsion = (
-            tf.math.log(tf.linalg.det(A))
-            - tf.math.log(var[i : i + 1])
-            - tf.math.log(tf.linalg.det(pending_var))
-        )
-
-        calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, big_batch)(
-            xs[i : i + 1][..., None, :]
-        )
-        if big_batch:
-            batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=repulsion.dtype)
+        A += noise_variance * tf.eye(len(pending_points) + 1, dtype=A.dtype)
+        repulsion = tf.linalg.logdet(A) - tf.math.log(A[0, 0, 0]) - tf.linalg.logdet(pending_var)
+        if big_batch:  # down-weight repulsion term
+            batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=mean.dtype)
             repulsion = repulsion * ((1 / batch_size) ** (tf.math.log(search_space_dim)))
 
         reconstructed_batch_gibbon = 0.5 * repulsion + gibbon_of_new_points[i : i + 1]
-
-        npt.assert_array_almost_equal(calculated_batch_gibbon, reconstructed_batch_gibbon)
+        npt.assert_array_almost_equal(
+            calculated_batch_gibbon[i : i + 1], reconstructed_batch_gibbon
+        )
