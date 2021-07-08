@@ -1141,7 +1141,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     exact Thompson sampler.
 
     When performing BO with large batches (i.e. much larger than 10), we recommend the big batch
-    formulation of GIBBON, as accessed through :param:`big_batch`.
+    formulation of GIBBON, as accessed through setting `big_batch` to be True.
     """
 
     def __init__(
@@ -1267,7 +1267,7 @@ def gibbon(
     When performing BO with large batches (i.e. much larger than 10), GIBBON's approximations become
     less accurate and its repulsion term dominates. Therefore, for large batch BO, we follow the
     arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{log B}`. This
-    behavior is accessed though :param:`big_batch`.
+    behavior is accessed though setting `big_batch` to True.
 
     :param model: The model of the objective function. GIBBON requires a model with
         a :method:covariance_between_points method and so GIBBON only
