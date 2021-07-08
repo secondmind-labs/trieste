@@ -1284,11 +1284,17 @@ def gibbon(
 
     try:
         noise_variance = model.get_observation_noise()
-        model.covariance_between_points  # type: ignore
     except NotImplementedError:
         raise ValueError(
             """
             GIBBON only currently supports homoscedastic Gaussian process models.
+            """
+        )
+
+    if not hasattr(model, "covariance_between_points"):
+        raise AttributeError(
+            """
+            GIBBON only supports models with a covariance_between_points method.
             """
         )
 

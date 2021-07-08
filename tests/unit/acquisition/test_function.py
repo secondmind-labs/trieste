@@ -1063,7 +1063,7 @@ def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
 
     with pytest.raises(ValueError):
         model_without_likelihood = dummy_model_without_likelihood()
-        gibbon(model_without_likelihood, tf.constant([1.0]))
+        gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
 
 def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
@@ -1080,9 +1080,9 @@ def test_gibbon_raises_for_model_without_covariance_between_points_method() -> N
         def get_observation_noise(self) -> None:
             return None
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         model_without_likelihood = dummy_model_without_covariance_between_points()
-        gibbon(model_without_likelihood, tf.constant([1.0]))
+        gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
 
 def test_gibbon_returns_correct_shape() -> None:
