@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -492,6 +492,8 @@ class NumDataPropertyMixin:
 
     This should be removed once GPFlow is updated to support Variables as num_data.
     """
+
+    _num_data: tf.Variable
 
     @property
     def num_data(self) -> TensorType:
