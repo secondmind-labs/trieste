@@ -602,7 +602,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = pof >= self._min_feasibility_probability
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
