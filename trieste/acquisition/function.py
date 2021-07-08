@@ -607,8 +607,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        mean, _ = objective_model.predict(objective_dataset.query_points)
-        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, axis=0)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        eta = tf.reduce_min(feasible_mean)
 
         return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
 
