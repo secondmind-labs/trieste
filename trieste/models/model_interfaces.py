@@ -369,7 +369,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        x, y = map(lambda var: var.value(), self.model.data)
+        x, y = self.model.data[0].value(), self.model.data[1].value()
 
         _assert_data_is_compatible(dataset, Dataset(x, y))
 
@@ -483,21 +483,28 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
 
-class SVGPWrapper(SVGP):
-    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
+class NumDataPropertyMixin:
+    """Mixin class for exposing num_data as a property, stored in a tf.Variable. This is to work
+    around GPFlow storing it as a number, which prevents us from updating it without retracing.
+    The property is required due to the way num_data is used in the model elbo methods.
 
-    def __init__(self, *args, **kwargs):
-        self._num_data = tf.Variable(0, dtype=tf.float64, trainable=False)
-        super().__init__(*args, **kwargs)
+    Note that this doesn't support a num_data value of None.
+
+    This should be removed once GPFlow is updated to support Variables as num_data.
+    """
 
     @property
     def num_data(self) -> TensorType:
         return self._num_data.value()
 
     @num_data.setter
-    def num_data(self, value: Optional[TensorType]):
-        self._num_data.assign(value or 0)
+    def num_data(self, value: TensorType):
+        self._num_data.assign(value)
+
+
+class SVGPWrapper(SVGP, NumDataPropertyMixin):
+    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
+    it as a property."""
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
@@ -517,7 +524,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property (ugh!).
+        # So that the elbo method doesn't fail we also need to turn it into a property.
         if not isinstance(self._model, SVGPWrapper):
             self._model._num_data = tf.Variable(
                 model.num_data or data.query_points.shape[0], trainable=False, dtype=tf.float64
@@ -543,21 +550,9 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self.model.num_data = num_data
 
 
-class VGPWrapper(VGP):
+class VGPWrapper(VGP, NumDataPropertyMixin):
     """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and exposes
     it as a property."""
-
-    def __init__(self, *args, **kwargs):
-        self._num_data = tf.Variable(0, dtype=tf.float64, trainable=False)
-        super().__init__(*args, **kwargs)
-
-    @property
-    def num_data(self) -> TensorType:
-        return self._num_data.value()
-
-    @num_data.setter
-    def num_data(self, value: Optional[TensorType]):
-        self._num_data.assign(value or 0)
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
@@ -576,7 +571,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property (ugh!).
+        # So that the elbo method doesn't fail we also need to turn it into a property.
         if not isinstance(self._model, VGPWrapper):
             self._model._num_data = tf.Variable(
                 model.num_data or 0, trainable=False, dtype=tf.float64
@@ -612,7 +607,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         model = self.model
 
-        x, y = map(lambda var: var.value(), self.model.data)
+        x, y = self.model.data[0].value(), self.model.data[1].value()
 
         _assert_data_is_compatible(dataset, Dataset(x, y))
 
