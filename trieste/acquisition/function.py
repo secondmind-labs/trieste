@@ -1284,7 +1284,7 @@ def gibbon(
 
     try:
         noise_variance = model.get_observation_noise()
-        model.covariance_between_points # type: ignore
+        model.covariance_between_points  # type: ignore
     except NotImplementedError:
         raise ValueError(
             """
