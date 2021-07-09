@@ -8,7 +8,12 @@ import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, plot_mobo_points_in_obj_space
+from util.plotting import (
+    plot_bo_points,
+    plot_function_2d,
+    plot_mobo_history,
+    plot_mobo_points_in_obj_space,
+)
 
 # %%
 import trieste
@@ -32,6 +37,8 @@ tf.random.set_seed(1793)
 
 # %%
 vlmop2 = VLMOP2().objective()
+
+
 class Sim:
     threshold = 0.5
 
@@ -45,10 +52,12 @@ class Sim:
         z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
         return z[:, None]
 
+
 class Sim1(Sim):
     @staticmethod
     def objective(input_data):
         return vlmop2(input_data)[:, 0:1]
+
 
 class Sim2(Sim):
     @staticmethod
@@ -59,11 +68,13 @@ class Sim2(Sim):
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
+
 def observer(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 # %%
 mins = [-2, -2]
@@ -80,6 +91,7 @@ initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 from util.inequality_constraints_utils import plot_init_query_points
+
 plot_init_query_points(
     search_space,
     Sim1,
@@ -134,24 +146,36 @@ plt.show()
 
 # %%
 def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
-        gprs =[]
-        for idx in range(num_output):
-            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance)
-            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            gprs.append((create_model({
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)}}}), 1))
+    gprs = []
+    for idx in range(num_output):
+        single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+        variance = tf.math.reduce_variance(single_obj_data.observations)
+        kernel = gpflow.kernels.Matern52(variance)
+        gpr = gpflow.models.GPR(
+            (single_obj_data.query_points, single_obj_data.observations),
+            kernel,
+            noise_variance=1e-5,
+        )
+        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        gprs.append(
+            (
+                create_model(
+                    {
+                        "model": gpr,
+                        "optimizer": gpflow.optimizers.Scipy(),
+                        "optimizer_args": {"minimize_args": {"options": dict(maxiter=100)}},
+                    }
+                ),
+                1,
+            )
+        )
 
-        return ModelStack(*gprs)
+    return ModelStack(*gprs)
 
 
 # %%
 objective_model = build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)
+
 
 def create_constraint_model(data):
     variance = tf.math.reduce_variance(data.observations)
@@ -160,13 +184,17 @@ def create_constraint_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model({
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    })
+    return trieste.models.create_model(
+        {
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+        }
+    )
+
+
 constraint_model = create_constraint_model(initial_data[CONSTRAINT])
 
 model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}

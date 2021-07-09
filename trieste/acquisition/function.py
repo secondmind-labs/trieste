@@ -787,7 +787,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         objective_mean, _ = objective_model.predict(objective_dataset.query_points)
 
-        _pf = Pareto(tf.boolean_mask(objective_mean, is_feasible[:,0]))
+        _pf = Pareto(tf.boolean_mask(objective_mean, is_feasible[:, 0]))
         _reference_pt = get_reference_point(_pf.front)
         ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
         return lambda at: ehvi(at) * constraint_fn(at)
