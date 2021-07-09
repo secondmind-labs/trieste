@@ -15,9 +15,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence, TypeVar, overload
+from typing import Optional, Sequence, TypeVar, overload
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from .type import TensorType
 from .utils import shapes_equal
@@ -173,7 +174,11 @@ class Box(SearchSpace):
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType):
+    def __init__(
+        self,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
+    ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
         they will be converted to tensors of dtype `tf.float64`.
@@ -188,6 +193,7 @@ class Box(SearchSpace):
             - ``lower`` and ``upper`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
+
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
@@ -241,10 +247,61 @@ class Box(SearchSpace):
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
+        """
+        Sample randomly from the space.
+
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
         )
+
+    def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        Sample from the space using a Halton sequence. The resulting samples are guaranteed to be
+        diverse and are reproducible by using the same choice of ``seed``.
+
+        :param num_samples: The number of points to sample from this search space.
+        :param seed: Random seed for the halton sequence
+        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        """
+
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
+        ) + self._lower
+
+    def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
+        """
+        Sample a diverse set from the space using a Sobol sequence.
+        If ``skip`` is specified, then the resulting samples are reproducible.
+
+        :param num_samples: The number of points to sample from this search space.
+        :param skip: The number of initial points of the Sobol sequence to skip
+        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if skip is None:  # generate random skip
+            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tf.math.sobol_sample(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
+        ) + self._lower
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
         """
