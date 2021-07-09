@@ -40,7 +40,7 @@ vlmop2 = VLMOP2().objective()
 
 
 class Sim:
-    threshold = 0.5
+    threshold = 0.75
 
     @staticmethod
     def objective(input_data):
@@ -83,56 +83,30 @@ search_space = Box(mins, maxs)
 num_objective = 2
 
 # %% [markdown]
-# Let's randomly sample some initial data from the observer ...
+# Let's randomly sample some initial data from the observer and visualise the data across the design space: each figure contains the contour lines of each objective function...
 
 # %%
-num_initial_points = 20
+num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 from util.inequality_constraints_utils import plot_init_query_points
 
-plot_init_query_points(
-    search_space,
-    Sim1,
-    initial_data[OBJECTIVE].astuple(),
-    initial_data[CONSTRAINT].astuple(),
-)
-plt.show()
-
-plot_init_query_points(
-    search_space,
-    Sim2,
-    initial_data[OBJECTIVE].astuple(),
-    initial_data[CONSTRAINT].astuple(),
-)
-plt.show()
+for sim in [Sim1, Sim2]:
+    plot_init_query_points(
+        search_space,
+        sim,
+        initial_data[OBJECTIVE].astuple(),
+        initial_data[CONSTRAINT].astuple(),
+    )
+    plt.show()
 
 # %% [markdown]
-# ... and visualise the data across the design space: each figure contains the contour lines of each objective function.
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
 
 # %%
-_, ax = plot_function_2d(
-    vlmop2,
-    mins,
-    maxs,
-    grid_density=100,
-    contour=True,
-    title=["Obj 1", "Obj 2"],
-    figsize=(12, 6),
-    colorbar=True,
-    xlabel="$X_1$",
-    ylabel="$X_2$",
-)
-plot_bo_points(initial_query_points, ax=ax[0, 0], num_init=num_initial_points)
-plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
-plt.show()
-
-# %% [markdown]
-# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple.
-
-# %%
-plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
+mask_fail = initial_data[CONSTRAINT].observations.numpy() > Sim.threshold
+plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])
 plt.show()
 
 
@@ -230,17 +204,19 @@ constraint_dataset = result.final_result.unwrap().datasets[CONSTRAINT]
 data_query_points = objective_dataset.query_points
 data_observations = objective_dataset.observations
 
-plot_init_query_points(
-    search_space,
-    Sim1,
-    objective_dataset.astuple(),
-    constraint_dataset.astuple(),
-)
-plt.show()
+for sim in [Sim1, Sim2]:
+    plot_init_query_points(
+        search_space,
+        sim,
+        objective_dataset.astuple(),
+        constraint_dataset.astuple(),
+    )
+    plt.show()
 
 # %% [markdown]
-# Visualize in objective space. Purple dots denote the non-dominated points.
+# Visualize in objective space. Purple dots denote the non-dominated points, and red ones the points that violate the constraint.
 
 # %%
-plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
+mask_fail = constraint_dataset.observations.numpy() > Sim.threshold
+plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points, mask_fail=mask_fail[:, 0])
 plt.show()
