@@ -138,6 +138,27 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
     npt.assert_allclose(acq_fn(xs), expected)
 
 
+def test_expected_improvement_builder_updates_expected_improvement_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_improvement(model, tf.constant([1.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+
+    new_dataset = Dataset(
+        tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
+        tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
+    )
+    updated_acq_fn = ExpectedImprovement().update_acquisition_function(acq_fn, new_dataset, model)
+    assert updated_acq_fn == acq_fn
+    expected = expected_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+
+
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
@@ -155,6 +176,7 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
 
 @random_seed
 @pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
+@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
@@ -165,7 +187,12 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
     ],
 )
 def test_expected_improvement(
-    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
+    variance_scale: float,
+    num_samples_per_point: int,
+    best: tf.Tensor,
+    rtol: float,
+    atol: float,
+    test_update: bool,
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)
@@ -182,7 +209,12 @@ def test_expected_improvement(
     samples_improvement = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_mean(samples_improvement, axis=0)
 
-    ei = expected_improvement(model, best)(xs[..., None, :])
+    if test_update:
+        eif = expected_improvement(model, tf.constant([100.0], dtype=tf.float64))
+        eif.update(best)
+    else:
+        eif = expected_improvement(model, best)
+    ei = eif(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -243,6 +275,35 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
         )
 
     npt.assert_allclose(acq_fn(xs), ei * augmentation(), rtol=1e-6)
+
+
+@pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
+def test_augmented_expected_improvement_builder_updates_acquisition_function(
+    observation_noise: float,
+) -> None:
+    partial_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    full_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel(noise_variance=observation_noise)
+
+    partial_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        partial_dataset, model
+    )
+    updated_acq_fn = AugmentedExpectedImprovement().update_acquisition_function(
+        partial_data_acq_fn, full_dataset, model
+    )
+    assert updated_acq_fn == partial_data_acq_fn
+    full_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        full_dataset, model
+    )
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    npt.assert_allclose(updated_acq_fn(xs), full_data_acq_fn(xs))
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
