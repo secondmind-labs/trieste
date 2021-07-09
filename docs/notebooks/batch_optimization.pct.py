@@ -1,8 +1,8 @@
 # %% [markdown]
-# # Batch Bayesian Optimization with Batch Expected Improvement and Local Penalization
+# # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization and GIBBON
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates two ways to perfom batch Bayesian optimization with `trieste`.
+# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with `trieste`.
 
 # %%
 import numpy as np
@@ -12,8 +12,8 @@ from util.plotting_plotly import plot_function_plotly
 import matplotlib.pyplot as plt
 import trieste
 
-np.random.seed(42)
-tf.random.set_seed(42)
+np.random.seed(1234)
+tf.random.set_seed(1234)
 
 # %% [markdown]
 # ## Describe the problem
@@ -70,6 +70,9 @@ model = create_model(model_spec)
 # To perform batch BO, we must define a batch acquisition function. Two popular batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement` and the `LocalPenalizationAcquisitionFunction`. Although both of these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, the `LocalPenalizationAcquisitionFunction` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. In practice, `BatchMonteCarloExpectedImprovement` can be expected to have superior performance for small batches (`batch_size`<10) but scales poorly for larger batches.
 #
 # Note that both of these acquisition functions have controllable parameters. In particular, `BatchMonteCarloExpectedImprovement` is computed using a Monte-Carlo method (so it requires a `sample_size`), but uses a reparametrisation trick to make it deterministic. The `LocalPenalizationAcquisitionFunction` has parameters controlling the degree of penalization that must be estimated from a random sample of `num_samples` model predictions.
+#
+#
+# TODO GIBBON
 
 # %% [markdown]
 # First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
@@ -84,7 +87,7 @@ batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
 points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
-# and then do the same with `LocalPenalizationAcquisitionFunction`.
+# then we do the same with `LocalPenalizationAcquisitionFunction`.
 
 # %%
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
@@ -96,7 +99,21 @@ points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_sin
     search_space, initial_data, model)
 
 # %% [markdown]
+# and finally we use `GIBBON`.
+
+# %%
+from trieste.acquisition import GIBBON
+
+gibbon_acq = GIBBON(search_space)
+gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=10, builder=gibbon_acq)
+points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(
+    search_space, initial_data, model)
+
+# %% [markdown]
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas the `LocalPenalizationAcquisitionFunction` focuses evaluations in the most promising areas of the space.
+#
+# TODO
 
 # %%
 from trieste.acquisition import ExpectedImprovement
@@ -123,6 +140,15 @@ plt.scatter(
     label="Local \nPenalization",
     marker="+",
 )
+plt.scatter(
+    points_chosen_by_gibbon[:, 0],
+    points_chosen_by_gibbon[:, 1],
+    color="purple",
+    lw=10,
+    label="GIBBON",
+    marker="X",
+)
+
 
 plt.legend(bbox_to_anchor=(1.2, 1), loc="upper left")
 plt.xlabel(r"$x_1$")
@@ -161,9 +187,22 @@ local_penalization_result = bo.optimize(
 )
 
 # %% [markdown]
+# TODO
+
+# %%
+gibbon_rule = EfficientGlobalOptimization(  # type: ignore
+    num_query_points=3, builder=gibbon_acq
+)
+gibbon_result = bo.optimize(
+    10, initial_data, model, acquisition_rule=gibbon_rule
+)
+
+# %% [markdown]
 # We can visualize the performance of each of these methods by plotting the trajectory of the regret (suboptimality) of the best observed solution as the optimization progresses. We denote this trajectory with the orange line, the start of the optimization loop with the blue line and the best overall point as a purple dot.
 #
 # For this particular problem (and random seed), we see that the`LocalPenalizationAcquisitionFunction` provides more effective batch optimization, finding a solution with a magnitude smaller regret than `BatchMonteCarloExpectedImprovement` under the same optimization budget.
+#
+# TODO
 
 # %%
 from util.plotting import plot_regret
@@ -174,8 +213,13 @@ local_penalization_observations = (
     local_penalization_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
 )
 local_penalization_min_idx = tf.squeeze(tf.argmin(local_penalization_observations, axis=0))
+gibbon_observations = gibbon_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+gibbon_min_idx = tf.squeeze(tf.argmin(gibbon_observations, axis=0))
 
-fig, ax = plt.subplots(1, 2)
+
+
+
+fig, ax = plt.subplots(1, 3)
 plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -188,6 +232,13 @@ ax[1].set_yscale("log")
 ax[1].set_xlabel("# evaluations")
 ax[1].set_ylim(0.00001, 100)
 ax[1].set_title("Local Penalization")
+
+plot_regret(gibbon_observations.numpy(), ax[2], num_init=5, idx_best=gibbon_min_idx)
+ax[2].set_yscale("log")
+ax[2].set_ylabel("Regret")
+ax[2].set_ylim(0.00001, 100)
+ax[2].set_xlabel("# evaluations")
+ax[2].set_title("GIBBON")
 
 fig.tight_layout()
 
