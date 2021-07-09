@@ -226,7 +226,7 @@ class BayesianOptimizer(Generic[SP]):
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[S] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
