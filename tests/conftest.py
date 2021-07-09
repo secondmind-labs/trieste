@@ -84,7 +84,7 @@ def _bootstrap_data_fixture(request):
     return request.param
 
 
-def _branin_example_data(num_query_points = 100) -> Dataset:
+def _branin_example_data(num_query_points = 20000) -> Dataset:
 
     search_space = Box([0, 0], [1, 1])
     query_points = search_space.sample(num_query_points)
@@ -95,7 +95,7 @@ def _branin_example_data(num_query_points = 100) -> Dataset:
     return data[OBJECTIVE]
 
 @pytest.fixture(name="branin_example_data", scope="session")
-def _branin_example_data_fixture(num_query_points = 100) -> Dataset:
+def _branin_example_data_fixture(num_query_points = 20000) -> Dataset:
     return _branin_example_data(num_query_points)
 
 

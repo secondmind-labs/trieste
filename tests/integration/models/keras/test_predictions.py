@@ -56,7 +56,7 @@ tf.keras.backend.set_floatx('float64')
 #     assert history.history["loss"][-1] < history.history["loss"][0]
 
 
-@pytest.mark.parametrize("example_data", [hartmann_6_example_data])
+# @pytest.mark.parametrize("example_data", [hartmann_6_example_data])
 def test_ensemble_model_close_to_actuals(example_data):
     
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
@@ -82,10 +82,10 @@ def test_ensemble_model_close_to_actuals(example_data):
     # breakpoint()
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        'batch_size': 50,
+        'batch_size': 256,
         'epochs': 100,
         'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-        'validation_split': 0.1,
+        'validation_split': 0.2,
         'verbose': 1,
     }
     dataset_builder = EnsembleDataTransformer(networks)
