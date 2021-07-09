@@ -802,7 +802,7 @@ def batch_ehvi(
 
     """
     :param sampler: The posterior sampler, which given query points `at`, is able to sample
-    the possible observations at 'at'.
+        the possible observations at 'at'.
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
     :param pareto: a Pareto class instance containing the current obtained pareto points.
@@ -849,7 +849,9 @@ def batch_ehvi(
             return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
 
         for j in range(1, _batch_size + 1):  # Inclusion-Exclusion loop
-            q_choose_j = q_subset_indices[j - 1]  # choose j combination from q batch points (Cq_j)
+            q_choose_j = q_subset_indices[
+                j - 1
+            ]  # gather all combinations having j points from q batch points (Cq_j)
             j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
             hv_contrib += (-1) ** (j + 1) * hv_contrib_on_samples(j_sub_samples)
 
