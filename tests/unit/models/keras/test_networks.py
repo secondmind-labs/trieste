@@ -15,103 +15,105 @@
 import numpy as np
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from trieste.models.keras.networks import (
-    LinearNetwork,
     DiagonalGaussianNetwork,
     GaussianNetwork,
     MultilayerFcNetwork,
 )
-from trieste.models.keras.utils import get_tensor_spec_from_data
+from trieste.models.keras.utils import get_tensor_spec_from_data, size
 
 
-def test_network_output_shape(neural_network, example_data):
+def test_network_output_shape_matches_observations(neural_network, example_data):
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
     network = neural_network(
         input_tensor_spec,
         output_tensor_spec,
     )
     network_output = network.build_model()
-    breakpoint()
+    # breakpoint()
     assert example_data.observations.shape[-1] == network_output[0].type_spec.shape[-1]
 
 
-# @pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
-# @pytest.mark.parametrize("num_hidden_nodes", [1, 10])
-# def test_multilayer_network_nparams(
-#     observation_space, action_space, num_hidden_layers, num_hidden_nodes
-# ):
-#     """
-#     Ensure we have a correct number of nodes/parameters in the network.
-#     """
-#     concatenated_network_inputs, raw_inputs = create_concatenated_inputs(
-#         [observation_space, action_space], ""
-#     )
-#     input_nodes = np.prod(concatenated_network_inputs.shape[1:])
-#     output_nodes = np.prod(observation_space.shape)
-#     network = MultilayerFcTransitionNetwork(
-#         observation_space,
-#         num_hidden_layers,
-#         [num_hidden_nodes] * num_hidden_layers,
-#     )
-#     network_output = network.build_model(concatenated_network_inputs)
-#     model = tf.keras.Model(inputs=raw_inputs, outputs=network_output)
+@pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
+@pytest.mark.parametrize("num_hidden_nodes", [1, 10])
+def test_multilayer_fc_network_nparams(
+    input_tensor_spec, output_tensor_spec, num_hidden_layers, num_hidden_nodes
+):
+    """
+    Ensure we have a correct number of nodes/parameters in the network.
+    """
 
-#     # number of parameters
-#     nparams = model.count_params()
+    network = MultilayerFcNetwork(
+        input_tensor_spec,
+        output_tensor_spec,
+        num_hidden_layers,
+        [num_hidden_nodes] * num_hidden_layers,
+    )
+    input_tensor = network.gen_input_tensor()
+    input_layer = tf.keras.layers.Flatten(dtype=input_tensor_spec.dtype)(input_tensor)
+    network_output = network.build_model(input_layer)
+    model = tf.keras.Model(inputs=input_tensor, outputs=network_output)
 
-#     # expected number of parameters
-#     if num_hidden_layers == 0:
-#         nparams_exp = input_nodes * output_nodes + output_nodes
-#     elif num_hidden_layers > 0:
-#         nparams_exp = (
-#             (input_nodes + 1) * num_hidden_nodes
-#             + (num_hidden_layers - 1) * num_hidden_nodes * (num_hidden_nodes + 1)
-#             + output_nodes * (num_hidden_nodes + 1)
-#         )
+    # number of parameters
+    nparams = model.count_params()
 
-#     assert nparams == nparams_exp
+    # expected number of parameters
+    input_nodes = size(input_tensor_spec)
+    output_nodes = size(output_tensor_spec)
+    if num_hidden_layers == 0:
+        nparams_exp = input_nodes * output_nodes + output_nodes
+    elif num_hidden_layers > 0:
+        nparams_exp = (
+            (input_nodes + 1) * num_hidden_nodes
+            + (num_hidden_layers - 1) * num_hidden_nodes * (num_hidden_nodes + 1)
+            + output_nodes * (num_hidden_nodes + 1)
+        )
+
+    assert nparams == nparams_exp
 
 
-# @pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
-# @pytest.mark.parametrize("num_hidden_nodes", [1, 10])
-# @pytest.mark.parametrize(
-#     "prob_network", [GaussianTransitionNetwork, DiagonalGaussianTransitionNetwork]
-# )
-# def test_probabilistic_network_nparams(
-#     observation_space, action_space, num_hidden_layers, num_hidden_nodes, prob_network
-# ):
-#     """
-#     Ensure we have a correct number of nodes/parameters in the network.
-#     """
-#     concatenated_network_inputs, raw_inputs = create_concatenated_inputs(
-#         [observation_space, action_space], ""
-#     )
-#     input_nodes = int(np.prod(concatenated_network_inputs.shape[1:]))
-#     output_nodes = int(np.prod(observation_space.shape))
-#     if prob_network == GaussianTransitionNetwork:
-#         output_nodes = tfpl.MultivariateNormalTriL.params_size(output_nodes)
-#     elif prob_network == DiagonalGaussianTransitionNetwork:
-#         output_nodes = tfpl.IndependentNormal.params_size(output_nodes)
-#     network = prob_network(
-#         observation_space,
-#         num_hidden_layers,
-#         [num_hidden_nodes] * num_hidden_layers,
-#     )
-#     network_output = network.build_model(concatenated_network_inputs)
-#     model = tf.keras.Model(inputs=raw_inputs, outputs=network_output)
+@pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
+@pytest.mark.parametrize("num_hidden_nodes", [1, 10])
+@pytest.mark.parametrize(
+    "prob_network", [GaussianNetwork]  #, DiagonalGaussianNetwork]
+)
+def test_multilayer_fc_probabilistic_network_nparams(
+    input_tensor_spec, output_tensor_spec, num_hidden_layers, num_hidden_nodes, prob_network
+):
+    """
+    Ensure we have a correct number of nodes/parameters in a probabilistic network.
+    """
+    
+    network = prob_network(
+        input_tensor_spec,
+        output_tensor_spec,
+        num_hidden_layers,
+        [num_hidden_nodes] * num_hidden_layers,
+    )
+    input_tensor = network.gen_input_tensor()
+    input_layer = tf.keras.layers.Flatten(dtype=input_tensor_spec.dtype)(input_tensor)
+    network_output = network.build_model(input_layer)
+    model = tf.keras.Model(inputs=input_tensor, outputs=network_output)
 
-#     # number of parameters
-#     nparams = model.count_params()
+    # number of parameters
+    nparams = model.count_params()
 
-#     # expected number of parameters
-#     if num_hidden_layers == 0:
-#         nparams_exp = input_nodes * output_nodes + output_nodes
-#     elif num_hidden_layers > 0:
-#         nparams_exp = (
-#             (input_nodes + 1) * num_hidden_nodes
-#             + (num_hidden_layers - 1) * num_hidden_nodes * (num_hidden_nodes + 1)
-#             + output_nodes * (num_hidden_nodes + 1)
-#         )
+    # expected number of parameters
+    input_nodes = size(input_tensor_spec)
+    output_nodes = size(output_tensor_spec)
+    if isinstance(network, GaussianNetwork):
+        output_nodes = tfp.layers.MultivariateNormalTriL.params_size(output_nodes)
+    elif isinstance(network, DiagonalGaussianNetwork):
+        output_nodes = tfp.layers.IndependentNormal.params_size(output_nodes)
+    if num_hidden_layers == 0:
+        nparams_exp = input_nodes * output_nodes + output_nodes
+    elif num_hidden_layers > 0:
+        nparams_exp = (
+            (input_nodes + 1) * num_hidden_nodes
+            + (num_hidden_layers - 1) * num_hidden_nodes * (num_hidden_nodes + 1)
+            + output_nodes * (num_hidden_nodes + 1)
+        )
 
-#     assert nparams == nparams_exp
+    assert nparams == nparams_exp

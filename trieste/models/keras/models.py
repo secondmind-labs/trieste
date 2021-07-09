@@ -16,13 +16,14 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, List, TypeVar
+from typing import Any, Dict, List, TypeVar
 
 import tensorflow as tf
 
 from ...data import Dataset
 from ...type import TensorType
 from ...utils import DEFAULTS
+from .data import EnsembleDataTransformer
 from .networks import KerasNetwork
 from ..optimizer import Optimizer, TFOptimizer, TFKerasOptimizer
 from ..model_interfaces import ProbabilisticModel, TrainableProbabilisticModel
@@ -76,41 +77,7 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(self.model, dataset)
-
-    # __deepcopy__ = module_deepcopy
-
-
-# class EnsembleSampler:
-
-#     def __init__(self, num_search_space_samples: int, num_query_points: int):
-#         """
-#         :param num_search_space_samples: The number of points at which to sample the posterior.
-#         :param num_query_points: The number of points to acquire at each point.
-#         """
-#         if not num_search_space_samples > 0:
-#             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
-
-#         if not num_query_points > 0:
-#             raise ValueError(
-#                 f"Number of query points must be greater than 0, got {num_query_points}"
-#             )
-
-#         self._ensemble_size = ensemble_size
-#         self._num_search_space_samples = num_search_space_samples
-#         self._num_query_points = num_query_points
-#         self._indices = tf.Variable(
-#             0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
-#         )
-
-#     def resample_indices(self):
-#         self._indices.assign(
-#             tf.random.uniform(
-#                 shape=(self._num_search_space_samples, self._num_query_points),
-#                 maxval=self._ensemble_size,
-#                 dtype=tf.int32,  # pylint: disable=all
-#             )
-#         )
+        history = self.optimizer.optimize(self.model, dataset)
 
 
 class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
@@ -122,8 +89,8 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
     def __init__(
         self,
         networks: List[KerasNetwork],
+        dataset_transformer: EnsembleDataTransformer,
         optimizer: TFKerasOptimizer | None = None,
-        # ensemble_sampler: EnsembleSampler | None = None,
     ):
         """
         :param networks: A list of `KerasNetwork` objects. The ensemble
@@ -140,19 +107,17 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
 
         super().__init__(optimizer)
 
-        # if ensemble_sampler is None:
-        #     ensemble_sampler = EnsembleSampler(100,1)
-        # self._ensemble_sampler = ensemble_sampler
-
         self._networks = networks
         self._ensemble_size = len(networks)
+        self._dataset_transformer = dataset_transformer
 
         self._indices = tf.Variable(
             0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
         )
-        self._resample_indices(500)
+        self._resample_indices(5)
 
         self._model = self._build_ensemble()
+        self.set_input_output_names_data_transformer()
         self._compile_ensemble()
 
     def __repr__(self) -> str:
@@ -163,15 +128,16 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
     def model(self) -> tf.keras.Model:
         return self._model
 
-    # def _resample_indices(self, num_search_space_samples: int, num_query_points: int):
-    #     # self._indices.assign(
-    #     indices = tf.random.uniform(
-    #             shape=(num_search_space_samples, num_query_points),
-    #             maxval=self._ensemble_size,
-    #             dtype=tf.int32,  # pylint: disable=all
-    #         )
-    #     # )
-    #     return indices
+    def get_input_output_names_from_model(self) -> Dict[str, List[str]]:
+        names = {'inputs':[], 'outputs': []}
+        for i in range(self._ensemble_size):
+             names['inputs'].append(self.model.layers[i].name)
+             names['outputs'].append(self.model.layers[-(self._ensemble_size-i)].name)
+        return names
+
+    def set_input_output_names_data_transformer(self) -> None:
+        names = self.get_input_output_names_from_model()
+        self._dataset_transformer.input_output_names = names
 
     def _resample_indices(self, num_search_space_samples: int):
         self._indices.assign(
@@ -181,16 +147,6 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
                 dtype=tf.int32,  # pylint: disable=all
             )
         )
-
-    # def _resample_indices(self, num_search_space_samples: int):
-    #     # self._indices.assign(
-    #     indices = tf.random.uniform(
-    #             shape=(num_search_space_samples,),
-    #             maxval=self._ensemble_size,
-    #             dtype=tf.int32,  # pylint: disable=all
-    #         )
-    #     # )
-    #     return indices
 
     def _build_ensemble(self) -> tf.keras.Model:
         """
@@ -212,9 +168,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
             )
             output_layer = network.build_model(input_layer)
             outputs.append(output_layer)
-            # breakpoint()
-            # example_model=tf.keras.Model(inputs=input_tensor, outputs=output_layer)
-            # tf.keras.utils.plot_model(example_model, show_shapes=True, to_file='model.png'    )
+
         return tf.keras.Model(inputs=inputs, outputs=outputs)
 
     def _compile_ensemble(self) -> tf.keras.Model:
@@ -233,7 +187,6 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
             ``query_points``.
         """
         ensemble_predictions = self._model.predict(query_points)
-        breakpoint()
         predicted_means = tf.math.reduce_mean(ensemble_predictions, axis=0)
         predicted_vars = tf.math.reduce_variance(ensemble_predictions, axis=0)
         return (predicted_means, predicted_vars)

@@ -29,17 +29,18 @@ def size(tensor_spec: tf.TensorSpec) -> int:
 def get_tensor_spec_from_data(data: Dataset) -> tuple(tf.TensorSpec, tf.TensorSpec):
     """
     Extract tensor specifications for neural network inputs and outputs based on the data.
+    TODO:
+    - Potentially dtype needs to be converted to 64?
+    - shapes are not generic enough
     """
     input_tensor_spec = tf.TensorSpec(
         shape=(data.query_points.shape[-1],),
         dtype=data.query_points.dtype,
-        # dtype=tf.float32,
         name="query_points",
     )
     output_tensor_spec = tf.TensorSpec(
         shape=(data.observations.shape[-1],),
         dtype=data.observations.dtype,
-        # dtype=tf.float32,
         name="observations",
     )
     return input_tensor_spec, output_tensor_spec
@@ -52,7 +53,6 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
     :param dataset: The data whose observations should be sampled.
     :return: A (new) ``dataset`` with sampled data.
     """
-    # transition.observation has shape [batch_size,] + observation_space_spec.shape
     n_rows = dataset.observations.shape[0]
 
     index_tensor = tf.random.uniform(

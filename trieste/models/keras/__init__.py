@@ -32,3 +32,5 @@ from .utils import (
     get_tensor_spec_from_data,
     size,
 )
+
+# tf.keras.backend.set_floatx('float64')

@@ -32,7 +32,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.models.keras.data import EnsembleDataTransformer
-from trieste.models.optimizer import TFKerasOptimizer, TrainingData
+from trieste.models.optimizer import TFKerasOptimizer
 from trieste.models.keras.models import NeuralNetworkEnsemble
 from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
@@ -119,24 +119,33 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
             MultilayerFcNetwork(
                 input_tensor_spec,
                 output_tensor_spec,
-                num_hidden_layers=0,
+                num_hidden_layers=1,
+                units=[10],
+                # activation=[None],
+                # use_bias=[None],
+                # kernel_initializer=[None],
+                # bias_initializer=[None],
+                # kernel_regularizer=[None],
+                # bias_regularizer=[None],
+                # activity_regularizer=[None],
+                # kernel_constraint=[None],
+                # bias_constraint=[None],
                 bootstrap_data=False,
             )
             for _ in range(ensemble_size)
         ]
-        # breakpoint()
         optimizer = tf.keras.optimizers.Adam()
         fit_args = {
-            'batch_size': 16,
-            'epochs': 10,
+            'batch_size': 40,
+            'epochs': 100,
             'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
             'validation_split': 0.1,
-            'verbose': 1,
+            'verbose': 0,
         }
         dataset_builder = EnsembleDataTransformer(networks)
-        return NeuralNetworkEnsemble(networks, TFKerasOptimizer(optimizer, fit_args, dataset_builder))
+        return NeuralNetworkEnsemble(networks, dataset_builder, TFKerasOptimizer(optimizer, fit_args, dataset_builder))
 
-    initial_query_points = search_space.sample(16)
+    initial_query_points = search_space.sample(160)
     observer = mk_observer(branin, OBJECTIVE)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
@@ -145,7 +154,6 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
         .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule, track_state=False)
         .try_get_final_datasets()[OBJECTIVE]
     )
-
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
     best_y = dataset.observations[arg_min_idx]
@@ -155,4 +163,3 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
-    npt.assert_allclose(best_y, BRANIN_MINIMUM, rtol=0.03)

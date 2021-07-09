@@ -28,57 +28,39 @@ from trieste.utils.objectives import branin, hartmann_6, mk_observer
 
 
 
-# @pytest.fixture(name="gym_space_bound", params=[1.0, 2.5], scope="session")
-# def _gym_space_bound_fixture(request):
+# @pytest.fixture(name="input_output_space_bound", params=[1.0, 2.5], scope="session")
+# def _input_output_space_bound_fixture(request):
 #     return request.param
 
 
-# @pytest.fixture(name="gym_space_shape", params=[tuple(), (1,), (5, 10)], scope="session")
-# def _gym_space_shape_fixture(request):
-#     return request.param
+@pytest.fixture(name="input_space_shape", params=[tuple(), (1,), (2,), (2, 5)], scope="session")
+def _input_space_shape_fixture(request):
+    return request.param
 
 
-# @pytest.fixture(name="gym_space_shape_latent_obs", params=[(2, 3), (5, 10)], scope="session")
-# def _gym_space_shape_latent_obs_fixture(request):
-#     return request.param
+@pytest.fixture(name="output_space_shape", params=[(1,), (2,)], scope="session")
+def _output_space_shape_fixture(request):
+    return request.param
 
 
-# @pytest.fixture(name="observation_space", scope="session")
-# def _observation_space_fixture(gym_space_bound, gym_space_shape):
-#     gym_space = gym.spaces.Box(
-#         low=-gym_space_bound, high=gym_space_bound, shape=gym_space_shape, dtype=np.float32
-#     )
-#     return tensor_spec.from_spec(spec_from_gym_space(gym_space, name="observation"))
+@pytest.fixture(name="input_tensor_spec", scope="session")
+def _input_tensor_spec_fixture(input_space_shape):
+    input_tensor_spec = tf.TensorSpec(
+        shape=input_space_shape,
+        dtype=tf.float64,
+        name="query_points",
+    )
+    return input_tensor_spec
 
 
-# @pytest.fixture(name="action_space", scope="session")
-# def _action_space_fixture(gym_space_bound, gym_space_shape):
-#     gym_space = gym.spaces.Box(
-#         low=-gym_space_bound, high=gym_space_bound, shape=gym_space_shape, dtype=np.float32
-#     )
-#     return tensor_spec.from_spec(spec_from_gym_space(gym_space, name="action"))
-
-
-# @pytest.fixture(name="observation_space_latent_obs", scope="session")
-# def _observation_space_latent_obs_fixture(gym_space_bound, gym_space_shape_latent_obs):
-#     gym_space = gym.spaces.Box(
-#         low=-gym_space_bound,
-#         high=gym_space_bound,
-#         shape=gym_space_shape_latent_obs,
-#         dtype=np.float32,
-#     )
-#     return tensor_spec.from_spec(spec_from_gym_space(gym_space, name="observation"))
-
-
-# @pytest.fixture(name="action_space_latent_obs", scope="session")
-# def _action_space_latent_obs_fixture(gym_space_bound, gym_space_shape_latent_obs):
-#     gym_space = gym.spaces.Box(
-#         low=-gym_space_bound,
-#         high=gym_space_bound,
-#         shape=gym_space_shape_latent_obs,
-#         dtype=np.float32,
-#     )
-#     return tensor_spec.from_spec(spec_from_gym_space(gym_space, name="action"))
+@pytest.fixture(name="output_tensor_spec", scope="session")
+def _output_tensor_spec_fixture(output_space_shape):
+    output_tensor_spec = tf.TensorSpec(
+        shape=output_space_shape,
+        dtype=tf.float64,
+        name="observations",
+    )
+    return output_tensor_spec
 
 
 @pytest.fixture(name="ensemble_size", params=[1, 3])
@@ -117,7 +99,7 @@ def _branin_example_data_fixture(num_query_points = 100) -> Dataset:
     return _branin_example_data(num_query_points)
 
 
-def _hartmann_6_example_data(num_query_points = 1000) -> Dataset:
+def _hartmann_6_example_data(num_query_points = 20000) -> Dataset:
 
     search_space = Box([0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1])
     query_points = search_space.sample(num_query_points)
@@ -128,7 +110,7 @@ def _hartmann_6_example_data(num_query_points = 1000) -> Dataset:
     return data[OBJECTIVE]
 
 @pytest.fixture(name="hartmann_6_example_data", scope="session")
-def _hartmann_6_example_data_fixture(num_query_points = 100) -> Dataset:
+def _hartmann_6_example_data_fixture(num_query_points = 20000) -> Dataset:
     return _hartmann_6_example_data(num_query_points)
 
 
