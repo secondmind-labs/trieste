@@ -172,6 +172,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
+        fit_intial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -185,6 +186,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
+        fit_intial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 
@@ -196,6 +198,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
+        fit_intial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -209,6 +212,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
+        fit_intial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 

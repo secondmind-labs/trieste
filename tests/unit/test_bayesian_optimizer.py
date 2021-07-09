@@ -155,9 +155,9 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
     final_model = final_opt_state.unwrap().model
 
     if fit_intial_model:  # optimized at start and end of first BO step
-        assert final_model._optimize_count == 2
+        assert final_model._optimize_count == 2  # type: ignore
     else:  # optimized just at end of first BO step
-        assert final_model._optimize_count == 1
+        assert final_model._optimize_count == 1  # type: ignore
 
 
 @pytest.mark.parametrize(
