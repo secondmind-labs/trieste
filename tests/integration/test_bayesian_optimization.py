@@ -19,6 +19,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
+    GIBBON,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
@@ -50,9 +51,9 @@ from trieste.utils.objectives import (
         (7, EfficientGlobalOptimization()),
         (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
-            14,
+            7,
             EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=5).using(
+                MinValueEntropySearch(Box([0, 0], [1, 1]), num_fourier_features=1000).using(
                     OBJECTIVE
                 )
             ),
@@ -67,7 +68,18 @@ from trieste.utils.objectives import (
         (
             4,
             EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                LocalPenalizationAcquisitionFunction(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
+        (
+            5,
+            EfficientGlobalOptimization(
+                GIBBON(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
