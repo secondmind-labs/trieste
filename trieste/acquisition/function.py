@@ -754,7 +754,8 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
     def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
         """
-        :param sample_size: The number of samples for each batch of points.
+        :param sample_size: The number of samples from model predicted distribution for
+            each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
@@ -798,11 +799,14 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 def batch_ehvi(
     sampler, sampler_jitter: float, pareto: Pareto, reference_point: TensorType
 ) -> AcquisitionFunction:
+
     """
-    :param sampler: The posterior sampler to sample the possible observations @ query points `at`
-    :param sampler_jitter: The size of the jitter to use in sampler
-    :param pareto: Pareto class
-    :param reference_point: The reference point for calculating hypervolume
+    :param sampler: The posterior sampler, which given query points `at`, is able to sample
+    the possible observations at 'at'.
+    :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
+        decomposition of the covariance matrix.
+    :param pareto: a Pareto class instance containing the current obtained pareto points.
+    :param reference_point: The reference point for calculating hypervolume.
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
     """
@@ -823,7 +827,9 @@ def batch_ehvi(
             tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
         )
 
-        def hv_contrib_on_samples(obj_samples: TensorType) -> TensorType:
+        def hv_contrib_on_samples(
+            obj_samples: TensorType,
+        ) -> TensorType:  # calculate samples overlapped area's hvi for obj_samples
             # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
             overlap_vertices = tf.reduce_max(obj_samples, axis=-2)
 
@@ -842,10 +848,10 @@ def batch_ehvi(
 
             return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
 
-        for j in range(_batch_size):  # Inclusion-Exclusion loop
-            q_choose_j = q_subset_indices[j]
+        for j in range(1, _batch_size + 1):  # Inclusion-Exclusion loop
+            q_choose_j = q_subset_indices[j - 1]  # choose j combination from q batch points (Cq_j)
             j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
-            hv_contrib += (-1) ** j * hv_contrib_on_samples(j_sub_samples)
+            hv_contrib += (-1) ** (j + 1) * hv_contrib_on_samples(j_sub_samples)
 
         return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
 

@@ -7,7 +7,7 @@ from trieste.utils import DEFAULTS
 
 
 class PseudoBatchReparametrizationSampler(ABC):
-    """A Sampler that takes the specified sample as deterministic samples`."""
+    """A Sampler that return the specified sample as deterministic samples`."""
 
     def __init__(self, samples: TensorType):
         """
@@ -17,7 +17,8 @@ class PseudoBatchReparametrizationSampler(ABC):
         """
         tf.debugging.assert_shapes(
             [(samples, ["S", "B", "L"])],
-            message="This acquisition function only supports batch sizes of one.",
+            message="This sampler takes samples of shape "
+            "[sample_size, batch_points, output_dimension].",
         )
         self.samples = samples  # [S, B, L]
 

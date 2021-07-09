@@ -47,7 +47,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=2
             ),
-            -3.49,
+            -3.44,
             id="qehvi_vlmop2_q_2",
         ),
         pytest.param(
@@ -55,7 +55,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=4
             ),
-            -3.27,
+            -3.21,
             id="qehvi_vlmop2_q_4",
         ),
     ],
