@@ -783,14 +783,15 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = pof >= self._min_feasibility_probability
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        objective_mean, _ = objective_model.predict(objective_dataset.query_points)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
 
-        _pf = Pareto(tf.boolean_mask(objective_mean, is_feasible[:, 0]))
+        _pf = Pareto(tf.boolean_mask(feasible_mean))
         _reference_pt = get_reference_point(_pf.front)
         ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
         return lambda at: ehvi(at) * constraint_fn(at)

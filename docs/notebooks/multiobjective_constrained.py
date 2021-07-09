@@ -218,5 +218,7 @@ for sim in [Sim1, Sim2]:
 
 # %%
 mask_fail = constraint_dataset.observations.numpy() > Sim.threshold
-plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points, mask_fail=mask_fail[:, 0])
+plot_mobo_points_in_obj_space(
+    data_observations, num_init=num_initial_points, mask_fail=mask_fail[:, 0]
+)
 plt.show()
