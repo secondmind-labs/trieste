@@ -89,7 +89,7 @@ from trieste.utils.objectives import (
 )
 @pytest.mark.parametrize("trust_region", [TrustRegion(), None])
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule, trust_region: TrustRegion
+    num_steps: int, acquisition_rule: AcquisitionRule, trust_region: TrustRegion | None
 ) -> None:
     search_space = Box([0, 0], [1, 1])
 
