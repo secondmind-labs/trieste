@@ -179,9 +179,22 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[SP],
+        acquisition_rule: AcquisitionRule[Box],
         trust_region: TrustRegion | None = None,
         trust_region_state: TrustRegion.State | None = None,
+        *,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        acquisition_rule: AcquisitionRule[SP],
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -206,9 +219,22 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[SP],
+        acquisition_rule: AcquisitionRule[Box],
         trust_region: TrustRegion | None = None,
         trust_region_state: TrustRegion.State | None = None,
+        *,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[SP],
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -331,11 +357,11 @@ class BayesianOptimizer(Generic[SP]):
                         model.optimize(dataset)
 
                 if trust_region is None:
+                    acquisition_space = self._search_space
+                else:
                     acquisition_space, trust_region_state = trust_region.acquire(
                         self._search_space, datasets, models
                     )(trust_region_state)
-                else:
-                    acquisition_space = self._search_space
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 
