@@ -336,10 +336,8 @@ class BayesianOptimizer(Generic[SP]):
                 if search_space_generator is None:
                     acquisition_space = self._search_space
                 else:
-                    (
-                        search_space_generator_state,
-                        acquisition_space,
-                    ) = search_space_generator.acquire(self._search_space, datasets, models)(
+                    stateful = search_space_generator.acquire(self._search_space, datasets, models)
+                    search_space_generator_state, acquisition_space = stateful(
                         search_space_generator_state
                     )
 

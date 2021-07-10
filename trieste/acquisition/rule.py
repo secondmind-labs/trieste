@@ -88,8 +88,8 @@ class AcquisitionRule(Acquisition[SP_contra, TensorType], ABC):
             to this method, and the state returned, must both be of that type.
 
 
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        :param search_space:  The :class:`~trieste.space.SearchSpace` over which to search for
+            optimal points.
         :param datasets: The known observer query points and observations for each tag.
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
@@ -110,8 +110,8 @@ class AcquisitionRule(Acquisition[SP_contra, TensorType], ABC):
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
 
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        :param search_space:  The :class:`~trieste.space.SearchSpace` over which to search for
+            optimal points.
         :param dataset: The known observer query points and observations.
         :param models: The model to use for the dataset.
         :param state: The acquisition state from the previous step, if there was a previous step,
@@ -197,8 +197,8 @@ class EfficientGlobalOptimization(AcquisitionRule[SP_contra]):
         Return the query point that optimizes the acquisition function produced by ``builder`` (see
         :meth:`__init__`).
 
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
+        :param search_space: The :class:`~trieste.space.SearchSpace` over which to search for
+            optimal points.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param state: Unused.
@@ -282,8 +282,7 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         ``search_space``. Of those points, return the `num_query_points` points at which
         random samples yield the **minima** of the model posterior.
 
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
+        :param search_space:  The search space over which to search for optimal points.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param state: Unused.
@@ -323,8 +322,10 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
 
 
 S = TypeVar("S")
+""" Unbound type variable. """
 
 Stateful = Callable[[Optional[S]], Tuple[S, T]]
+""" A `Stateful` represents a stateful function, with state of type `S` and output of type `T`. """
 
 
 class TrustRegion(Acquisition[Box, Stateful["TrustRegion.State", Box]]):
@@ -394,6 +395,7 @@ class TrustRegion(Acquisition[Box, Stateful["TrustRegion.State", Box]]):
         ``search_space``. For a local search, the actual search space will be the
         intersection of the trust region and ``search_space``.
 
+        :search_space:  The search space from which to construct an acquisition space.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
