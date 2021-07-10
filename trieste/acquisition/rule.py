@@ -388,9 +388,9 @@ class TrustRegion:
         global_lower = search_space.lower
         global_upper = search_space.upper
 
-        def go(state: State) -> tuple[State, Box]:
-            y_min = tf.reduce_min(dataset.observations, axis=0)
+        y_min = tf.reduce_min(dataset.observations, axis=0)
 
+        def go(state: State) -> tuple[State, Box]:
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
                 is_global = True
