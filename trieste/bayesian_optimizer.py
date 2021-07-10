@@ -32,15 +32,12 @@ from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
-S = TypeVar("S")
-""" Unbound type variable. """
-
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
 
 @dataclass(frozen=True)
-class Record(Generic[S]):
+class Record:
     """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[str, Dataset]
@@ -49,7 +46,7 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    acquisition_state: S | None
+    trust_region_state: TrustRegion.State | None
     """ The acquisition state. """
 
     @property
@@ -72,23 +69,23 @@ class Record(Generic[S]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[S]):
+class OptimizationResult:
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[S]]
+    final_result: Result[Record]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[S]]
+    history: list[Record]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
     :attr:`final_result`.
     """
 
-    def astuple(self) -> tuple[Result[Record[S]], list[Record[S]]]:
+    def astuple(self) -> tuple[Result[Record], list[Record]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -173,7 +170,7 @@ class BayesianOptimizer(Generic[SP]):
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -182,12 +179,13 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[S, SP],
-        acquisition_state: S | None = None,
+        acquisition_rule: AcquisitionRule[SP],
+        trust_region: TrustRegion | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -199,7 +197,7 @@ class BayesianOptimizer(Generic[SP]):
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -208,12 +206,13 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP],
-        acquisition_state: S | None = None,
+        acquisition_rule: AcquisitionRule[SP],
+        trust_region: TrustRegion | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult:
         ...
 
     def optimize(
@@ -221,12 +220,13 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP] | None = None,
-        acquisition_state: S | None = None,
+        acquisition_rule: AcquisitionRule[SP] | None = None,
+        trust_region: TrustRegion | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S] | OptimizationResult[None]:
+    ) -> OptimizationResult:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -251,8 +251,6 @@ class BayesianOptimizer(Generic[SP]):
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
               :class:`~trieste.space.SearchSpace` as specified in :meth:`__init__`.
-            - The ``acquisition_state`` must be of the type expected by the ``acquisition_rule``.
-              Any acquisition state in the optimization result will also be of this type.
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
@@ -264,7 +262,7 @@ class BayesianOptimizer(Generic[SP]):
             arguments. Note that if the default is used, this implies the tags must be
             `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
-        :param acquisition_state: The acquisition state to use on the first optimization step.
+        :param trust_region_state: The acquisition state to use on the first optimization step.
             This argument allows the caller to restore the optimization process from an existing
             :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
@@ -319,12 +317,12 @@ class BayesianOptimizer(Generic[SP]):
 
         for step in range(num_steps):
             if track_state:
-                history.append(Record(datasets, models, acquisition_state))
+                history.append(Record(datasets, models, trust_region_state))
 
             try:
                 if track_state:
                     models = copy.deepcopy(models)
-                    acquisition_state = copy.deepcopy(acquisition_state)
+                    trust_region_state = copy.deepcopy(trust_region_state)
 
                 if step == 0 and fit_intial_model:
                     for tag, model in models.items():
@@ -332,9 +330,14 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                query_points, acquisition_state = acquisition_rule.acquire(
-                    self._search_space, datasets, models, acquisition_state
-                )
+                if trust_region is None:
+                    acquisition_space, trust_region_state = trust_region.acquire(
+                        self._search_space, datasets, models
+                    )(trust_region_state)
+                else:
+                    acquisition_space = self._search_space
+
+                query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 
                 observer_output = self._observer(query_points)
 
@@ -364,5 +367,5 @@ class BayesianOptimizer(Generic[SP]):
 
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
-        record = Record(datasets, models, acquisition_state)
+        record = Record(datasets, models, trust_region_state)
         return OptimizationResult(Ok(record), history)

@@ -113,7 +113,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+class FixedAcquisitionRule(AcquisitionRule[SearchSpace]):
     """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):
@@ -131,16 +131,15 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: None = None,
-    ) -> tuple[TensorType, None]:
+    ) -> TensorType:
         """
         :param search_space: Unused.
         :param datasets: Unused.
         :param models: Unused.
         :param state: Unused.
-        :return: The fixed value specified on initialisation, and `None`.
+        :return: The fixed value specified on initialisation.
         """
-        return self._qp, None
+        return self._qp
 
 
 ShapeLike = Union[tf.TensorShape, Sequence[int]]
