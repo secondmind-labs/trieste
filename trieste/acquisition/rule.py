@@ -87,7 +87,7 @@ class AcquisitionRule(Acquisition[SP_contra, TensorType], ABC):
             to this method, and the state returned, must both be of that type.
 
 
-        :param search_space:  The :class:`~trieste.space.SearchSpace` over which to search for
+        :param search_space: The :class:`~trieste.space.SearchSpace` over which to search for
             optimal points.
         :param datasets: The known observer query points and observations for each tag.
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
@@ -109,7 +109,7 @@ class AcquisitionRule(Acquisition[SP_contra, TensorType], ABC):
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
 
-        :param search_space:  The :class:`~trieste.space.SearchSpace` over which to search for
+        :param search_space: The :class:`~trieste.space.SearchSpace` over which to search for
             optimal points.
         :param dataset: The known observer query points and observations.
         :param models: The model to use for the dataset.
@@ -281,7 +281,7 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         ``search_space``. Of those points, return the `num_query_points` points at which
         random samples yield the **minima** of the model posterior.
 
-        :param search_space:  The search space over which to search for optimal points.
+        :param search_space: The search space over which to search for optimal points.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param state: Unused.
@@ -394,7 +394,7 @@ class TrustRegion(Acquisition[Box, Stateful["TrustRegion.State", Box]]):
         ``search_space``. For a local search, the actual search space will be the
         intersection of the trust region and ``search_space``.
 
-        :search_space:  The search space from which to construct an acquisition space.
+        :search_space: The search space from which to construct an acquisition space.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
