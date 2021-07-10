@@ -49,7 +49,7 @@ from trieste.utils.objectives import (
     "num_steps, acquisition_rule",
     [
         (20, EfficientGlobalOptimization()),
-        (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        (26, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
             15,
             EfficientGlobalOptimization(
