@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union, Tuple
+from typing import Callable, Generic, Optional, Tuple, TypeVar, Union
 
 import tensorflow as tf
 
@@ -44,7 +44,6 @@ from .optimizer import (
     generate_continuous_optimizer,
 )
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
-
 
 T = TypeVar("T")
 """ Unbound type variable. """

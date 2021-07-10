@@ -29,7 +29,7 @@ from .acquisition.rule import Acquisition, AcquisitionRule, EfficientGlobalOptim
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
-from .space import SearchSpace, Box
+from .space import Box, SearchSpace
 from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
