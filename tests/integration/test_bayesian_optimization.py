@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -114,7 +116,9 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, model, acquisition_rule, trust_region)
+        .optimize(
+            num_steps, initial_data, model, acquisition_rule, search_space_generator=trust_region
+        )
         .try_get_final_dataset()
     )
 
