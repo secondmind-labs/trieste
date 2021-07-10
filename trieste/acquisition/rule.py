@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union, Tuple
 
 import tensorflow as tf
 
@@ -349,7 +349,7 @@ class TrustRegion:
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> Callable[[State], tuple[Box, State]]:
+    ) -> Callable[[State | None], tuple[Box, State]]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
@@ -390,7 +390,7 @@ class TrustRegion:
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: State) -> tuple[State, Box]:
+        def go(state: TrustRegion.State | None) -> tuple[Box, TrustRegion.State]:
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
                 is_global = True

@@ -25,11 +25,11 @@ from typing import Dict, Generic, TypeVar, cast, overload
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegion
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
-from .space import SearchSpace
+from .space import SearchSpace, Box
 from .utils import Err, Ok, Result, map_values
 
 SP = TypeVar("SP", bound=SearchSpace)
@@ -167,21 +167,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        *,
-        track_state: bool = True,
-        fit_intial_model: bool = True,
-    ) -> OptimizationResult:
-        ...
-
-    @overload
-    def optimize(
-        self,
-        num_steps: int,
-        datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[Box],
-        trust_region: TrustRegion | None = None,
-        trust_region_state: TrustRegion.State | None = None,
+        
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -207,21 +193,6 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        *,
-        track_state: bool = True,
-        fit_intial_model: bool = True,
-    ) -> OptimizationResult:
-        ...
-
-    @overload
-    def optimize(
-        self,
-        num_steps: int,
-        datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[Box],
-        trust_region: TrustRegion | None = None,
-        trust_region_state: TrustRegion.State | None = None,
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -247,8 +218,6 @@ class BayesianOptimizer(Generic[SP]):
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
-        trust_region: TrustRegion | None = None,
-        trust_region_state: TrustRegion.State | None = None,
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -336,10 +305,10 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
+            acquisition_rule = cast(AcquisitionRule[SP], EfficientGlobalOptimization())
 
         models = map_values(create_model, model_specs)
-        history: list[Record[S]] = []
+        history: list[Record] = []
 
         for step in range(num_steps):
             if track_state:
