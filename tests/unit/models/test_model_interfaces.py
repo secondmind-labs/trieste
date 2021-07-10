@@ -49,7 +49,7 @@ from trieste.models.model_interfaces import (
     module_deepcopy,
     randomize_model_hyperparameters,
 )
-from trieste.models.optimizer import Optimizer, create_optimizer
+from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
 from trieste.type import TensorType
 
 
@@ -312,6 +312,18 @@ def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
     return 2.0 * tf.math.sin(x / 3.0)
 
 
+def test_gaussian_process_raises(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+    reference_model = _reference_gpr(x, _3x_plus_10(x))
+    internal_model = model.model
+    npt.assert_allclose(
+        internal_model.training_loss(), -reference_model.log_marginal_likelihood(), rtol=1e-6
+    )
+
+
+
+
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_10(x))
@@ -357,6 +369,15 @@ def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) 
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
+def test_gpr_raises_for_invalid_init() -> None:
+    x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
+    x = tf.convert_to_tensor(x_np, x_np.dtype)
+    y = _3x_plus_10(x)
+
+    with pytest.raises(ValueError):
+        GaussianProcessRegression(_gpr(x, y), num_prior_samples= -1)
+
+
 @random_seed
 @unittest.mock.patch(
     "trieste.models.model_interfaces.GaussianProcessRegression.find_best_model_initialization"
@@ -386,7 +407,7 @@ def test_gaussian_process_regression_correctly_counts_num_trainable_params_with_
 
     mocked_model_initializer.assert_called_once()
     num_samples = mocked_model_initializer.call_args[0][0]
-    npt.assert_array_equal(num_samples, tf.minimum(1000, 100 * (d + 1)))
+    npt.assert_array_equal(num_samples, 10 * (d + 1))
 
 
 def test_find_best_model_initialization_only_changes_params_with_priors(
@@ -440,6 +461,19 @@ def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
 
     npt.assert_allclose(mean_f, mean_y)
     npt.assert_array_less(variance_f, variance_y)
+
+
+def test_vgp_raises_for_invalid_init() -> None:
+    x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
+    x = tf.convert_to_tensor(x_np, x_np.dtype)
+    y = _3x_plus_10(x)
+
+    with pytest.raises(ValueError):
+        VariationalGaussianProcess(_vgp(x, y), natgrad_gamma=1)
+
+    with pytest.raises(ValueError):
+        optimizer = Optimizer(gpflow.optimizers.Scipy())
+        VariationalGaussianProcess(_vgp(x, y), optimizer=optimizer, use_natgrads=True)
 
 
 def test_vgp_update_updates_num_data() -> None:
@@ -651,12 +685,66 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
 
     optimizer = create_optimizer(
         tf.optimizers.Adam(),
-        dict(max_iter=20, batch_size=10, dataset_builder=batcher, compile=compile),
+        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
     )
     model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
     assert model.model.training_loss(data) < loss
+
+
+@pytest.mark.parametrize("use_natgrads", [True, False])
+@pytest.mark.parametrize("compile", [True, False])
+@pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
+def test_vgp_optimize_with_and_without_natgrads(batcher, compile: bool, use_natgrads: bool) -> None:
+    x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    data = x_observed, y_observed
+    dataset = Dataset(*data)
+
+    optimizer = create_optimizer(
+        tf.optimizers.Adam(),
+        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
+    )
+    model = VariationalGaussianProcess(
+        _vgp(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=use_natgrads
+    )
+    loss = model.model.training_loss()
+    model.optimize(dataset)
+    assert model.model.training_loss() < loss
+
+
+@pytest.mark.parametrize("compile", [True, False])
+def test_vgp_optimize_natgrads_only_updates_variational_params(compile: bool) -> None:
+    x_observed = np.linspace(0, 100, 10).reshape((-1, 1))
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    data = x_observed, y_observed
+    dataset = Dataset(*data)
+
+    class DummyTFOptimizer(TFOptimizer):
+        def optimize(self, model: tf.Module, dataset: Dataset) -> None:
+            pass
+
+    optimizer = DummyTFOptimizer(tf.optimizers.Adam(), compile=compile, max_iter=10)
+
+    model = VariationalGaussianProcess(
+        _vgp_matern(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
+    )
+
+    old_kernel_params = model.get_kernel().parameters[0].numpy()
+    old_q_mu = model.model.q_mu.numpy()
+    old_q_sqrt = model.model.q_sqrt.numpy()
+
+    model.optimize(dataset)
+
+    new_kernel_params = model.get_kernel().parameters[0].numpy()
+    new_q_mu = model.model.q_mu.numpy()
+    new_q_sqrt = model.model.q_sqrt.numpy()
+
+    npt.assert_allclose(old_kernel_params, new_kernel_params, atol=1e-3)
+
+    npt.assert_raises(AssertionError, npt.assert_allclose, old_q_mu, new_q_mu)
+    npt.assert_raises(AssertionError, npt.assert_allclose, old_q_sqrt, new_q_sqrt)
 
 
 @random_seed

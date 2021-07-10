@@ -1282,14 +1282,15 @@ def gibbon(
     if len(samples) == 0:
         raise ValueError("Min-value samples must be populated.")
 
-    try:
-        noise_variance = model.get_observation_noise()
-    except NotImplementedError:
-        raise ValueError(
+    if not hasattr(model, "get_observation_noise"):
+        raise AttributeError(
             """
             GIBBON only currently supports homoscedastic Gaussian process models.
             """
         )
+    else:
+        noise_variance = model.get_observation_noise()
+   
 
     if not hasattr(model, "covariance_between_points"):
         raise AttributeError(
