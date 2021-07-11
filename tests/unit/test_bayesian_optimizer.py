@@ -124,8 +124,8 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-@pytest.mark.parametrize("fit_intial_model", [True, False])
-def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> None:
+@pytest.mark.parametrize("fit_initial_model", [True, False])
+def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):
         _optimize_count = 0
 
@@ -142,13 +142,13 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": model},
             rule,
-            fit_intial_model=fit_intial_model,
+            fit_initial_model=fit_initial_model,
         )
         .astuple()
     )
     final_model = final_opt_state.unwrap().model
 
-    if fit_intial_model:  # optimized at start and end of first BO step
+    if fit_initial_model:  # optimized at start and end of first BO step
         assert final_model._optimize_count == 2  # type: ignore
     else:  # optimized just at end of first BO step
         assert final_model._optimize_count == 1  # type: ignore
@@ -208,7 +208,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": _UncopyableModel()},
             rule,
-            fit_intial_model=False,
+            fit_initial_model=False,
         )
         .astuple()
     )
