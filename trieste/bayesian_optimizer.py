@@ -185,7 +185,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_rule: AcquisitionRule[SP],
         *,
         trust_region_def: TrustRegionDef[SP] | None = None,
-        acquisition_space_def_state: TrustRegion.State | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult:
@@ -212,7 +212,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_rule: AcquisitionRule[SP],
         *,
         trust_region_def: TrustRegionDef[SP] | None = None,
-        acquisition_space_def_state: TrustRegion.State | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult:
@@ -226,7 +226,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
         trust_region_def: TrustRegionDef[SP] | None = None,
-        acquisition_space_def_state: TrustRegion.State | None = None,
+        trust_region_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult:
@@ -267,7 +267,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
         :param trust_region_def: Defines how to construct the acquisition space from the global
             space on each step. Defaults to using the global space.
-        :param acquisition_space_def_state: Starting state for the ``trust_region_def``.
+        :param trust_region_state: Starting state for the ``trust_region_def``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_intial_model: If `False`, this method assumes that the initial models have
@@ -320,12 +320,12 @@ class BayesianOptimizer(Generic[SP]):
 
         for step in range(num_steps):
             if track_state:
-                history.append(Record(datasets, models, acquisition_space_def_state))
+                history.append(Record(datasets, models, trust_region_state))
 
             try:
                 if track_state:
                     models = copy.deepcopy(models)
-                    acquisition_space_def_state = copy.deepcopy(acquisition_space_def_state)
+                    trust_region_state = copy.deepcopy(trust_region_state)
 
                 if step == 0 and fit_intial_model:
                     for tag, model in models.items():
@@ -337,8 +337,8 @@ class BayesianOptimizer(Generic[SP]):
                     acquisition_space = self._search_space
                 else:
                     stateful = trust_region_def(self._search_space).acquire(datasets, models)
-                    acquisition_space_def_state, acquisition_space = stateful(
-                        acquisition_space_def_state
+                    trust_region_state, acquisition_space = stateful(
+                        trust_region_state
                     )
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
@@ -371,5 +371,5 @@ class BayesianOptimizer(Generic[SP]):
 
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
-        record = Record(datasets, models, acquisition_space_def_state)
+        record = Record(datasets, models, trust_region_state)
         return OptimizationResult(Ok(record), history)
