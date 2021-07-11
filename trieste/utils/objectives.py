@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
-from ..types import TensorType
+from ..type import TensorType
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:

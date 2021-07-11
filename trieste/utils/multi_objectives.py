@@ -23,7 +23,7 @@ from functools import partial
 
 import tensorflow as tf
 
-from ..types import TensorType
+from ..type import TensorType
 
 
 class MultiObjectiveTestProblem(ABC):

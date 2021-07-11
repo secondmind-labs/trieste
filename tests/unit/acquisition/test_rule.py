@@ -40,7 +40,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.type import TensorType
 
 
 def _line_search_maximize(

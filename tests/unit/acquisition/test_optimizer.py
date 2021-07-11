@@ -28,7 +28,7 @@ from trieste.acquisition.optimizer import (
     optimize_discrete,
 )
 from trieste.space import Box, DiscreteSearchSpace
-from trieste.types import TensorType
+from trieste.type import TensorType
 
 
 def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:

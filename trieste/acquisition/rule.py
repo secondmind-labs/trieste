@@ -25,12 +25,12 @@ from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
-from .. import types
+from .. import type as type_
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..types import TensorType
+from ..type import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     Empiric,
@@ -311,7 +311,7 @@ S = TypeVar("S")
 
 SP = TypeVar("SP", bound=SearchSpace)
 
-TrustRegion = Callable[[SP], Empiric[types.State[S, SP]]]
+TrustRegion = Callable[[SP], Empiric[type_.State[S, SP]]]
 
 
 @dataclass(frozen=True)
@@ -340,7 +340,7 @@ class TrustRegionState:
         return TrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
 
 
-class _ContinuousTrustRegionImpl(Empiric[types.State[TrustRegionState, Box]]):
+class _ContinuousTrustRegionImpl(Empiric[type_.State[TrustRegionState, Box]]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         """
         :param beta: The inverse of the trust region contraction factor.
@@ -353,7 +353,7 @@ class _ContinuousTrustRegionImpl(Empiric[types.State[TrustRegionState, Box]]):
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> types.State[TrustRegionState, Box]:
+    ) -> type_.State[TrustRegionState, Box]:
         dataset = datasets[OBJECTIVE]
 
         global_lower = self._global_search_space.lower

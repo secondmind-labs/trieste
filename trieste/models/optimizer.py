@@ -24,7 +24,7 @@ import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
-from ..types import TensorType
+from ..type import TensorType
 from ..utils import jit
 
 TrainingData = Union[Tuple[TensorType, TensorType], Iterable[Tuple[TensorType, TensorType]]]

@@ -20,7 +20,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from .data import Dataset
-from .types import TensorType
+from .type import TensorType
 
 SingleObserver = Callable[[TensorType], Dataset]
 """

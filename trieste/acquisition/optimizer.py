@@ -25,7 +25,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
-from ..types import TensorType
+from ..type import TensorType
 from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)

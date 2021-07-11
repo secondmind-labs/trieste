@@ -66,7 +66,7 @@ from trieste.acquisition.function import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.type import TensorType
 from trieste.utils import DEFAULTS
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 from trieste.utils.pareto import Pareto, get_reference_point

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import tensorflow as tf
 
-from .types import TensorType
+from .type import TensorType
 
 
 @dataclass(frozen=True)

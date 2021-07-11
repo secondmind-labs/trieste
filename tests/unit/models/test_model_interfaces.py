@@ -51,7 +51,7 @@ from trieste.models.model_interfaces import (
     squeeze_hyperparameters,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
-from trieste.types import TensorType
+from trieste.type import TensorType
 
 
 class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
