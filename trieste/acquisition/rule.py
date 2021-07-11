@@ -47,8 +47,6 @@ from .optimizer import (
 )
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
-T = TypeVar("T")
-""" Unbound type variable. """
 
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
@@ -315,10 +313,11 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
 
 
 S = TypeVar("S")
+""" Unbound type variable. """
 
 SP = TypeVar("SP", bound=SearchSpace)
 
-AcquisitionSpaceDef = Callable[[SP], Empiric[types.State[S, SP]]]
+TrustRegionDef = Callable[[SP], Empiric[types.State["TrustRegion.State", SP]]]
 
 
 class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
@@ -363,7 +362,7 @@ class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
         self._kappa = kappa
 
     @classmethod
-    def as_space_def(self, beta: float = 0.7, kappa: float = 1e-4) -> AcquisitionSpaceDef[Box, State]:
+    def as_space_def(self, beta: float = 0.7, kappa: float = 1e-4) -> TrustRegionDef[Box]:
         return lambda box: TrustRegion(box, beta, kappa)
 
     def acquire(

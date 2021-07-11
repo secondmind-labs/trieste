@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import NoReturn, cast
+from typing import NoReturn
 
 import numpy.testing as npt
 import pytest
@@ -56,7 +56,7 @@ class _Whoops(Exception):
 
 
 def test_optimization_result_astuple() -> None:
-    opt_result: OptimizationResult[None] = OptimizationResult(
+    opt_result = OptimizationResult(
         Err(_Whoops()), [Record({}, {}, None)]
     )
     final_result, history = opt_result.astuple()
@@ -66,7 +66,7 @@ def test_optimization_result_astuple() -> None:
 
 def test_optimization_result_try_get_final_datasets_for_successful_optimization() -> None:
     data = {"foo": empty_dataset([1], [1])}
-    result: OptimizationResult[None] = OptimizationResult(
+    result = OptimizationResult(
         Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
     )
     assert result.try_get_final_datasets() is data
@@ -76,21 +76,21 @@ def test_optimization_result_try_get_final_datasets_for_successful_optimization(
 def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
     data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
     models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    result = OptimizationResult(Ok(Record(data, models, None)), [])
     assert result.try_get_final_datasets() is data
     with pytest.raises(ValueError):
         result.try_get_final_dataset()
 
 
 def test_optimization_result_try_get_final_datasets_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_datasets()
 
 
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
     models = {"foo": _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(
+    result = OptimizationResult(
         Ok(Record({"foo": empty_dataset([1], [1])}, models, None)), []
     )
     assert result.try_get_final_models() is models
@@ -100,14 +100,14 @@ def test_optimization_result_try_get_final_models_for_successful_optimization() 
 def test_optimization_result_try_get_final_models_for_multiple_models() -> None:
     data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
     models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    result = OptimizationResult(Ok(Record(data, models, None)), [])
     assert result.try_get_final_models() is models
     with pytest.raises(ValueError):
         result.try_get_final_model()
 
 
 def test_optimization_result_try_get_final_models_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_models()
 
@@ -141,16 +141,15 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
     rule = FixedAcquisitionRule([[0.0]])
     model = _CountingOptimizerModel()
 
-    final_opt_state, _ = cast(
-        OptimizationResult[None],
+    final_opt_state, _ = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
             1,
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": model},
             rule,
             fit_intial_model=fit_intial_model,
-        ),
-    ).astuple()
+        ).astuple()
+    )
 
     final_model = final_opt_state.unwrap().model
 
@@ -207,16 +206,15 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
             return self
 
     rule = FixedAcquisitionRule([[0.0]])
-    result, history = cast(
-        OptimizationResult[None],
+    result, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
             10,
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": _UncopyableModel()},
             rule,
             fit_intial_model=False,
-        ),
-    ).astuple()
+        ).astuple()
+    )
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -256,9 +254,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
-    result, history = cast(
-        OptimizationResult[None], optimizer.optimize(3, data, models, rule)
-    ).astuple()
+    result, history = optimizer.optimize(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -305,12 +301,11 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         assert False
 
     data = {"": mk_dataset([[0.0]], [[0.0]])}
-    result, history = cast(
-        OptimizationResult[None],
+    result, history = (
         BayesianOptimizer(_unusable_observer, Box([-1], [1])).optimize(
             0, data, {"": _UnusableModel()}, _UnusableRule()
-        ),
-    ).astuple()
+        ).astuple()
+    )
 
     assert history == []
     final_data = result.unwrap().datasets

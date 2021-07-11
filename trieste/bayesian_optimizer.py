@@ -25,7 +25,7 @@ from typing import Dict, Generic, TypeVar, cast, overload
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, AcquisitionSpaceDef
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegionDef, TrustRegion
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
@@ -40,7 +40,7 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 
 @dataclass(frozen=True)
-class Record(Generic[S]):
+class Record:
     """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[str, Dataset]
@@ -49,7 +49,7 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    acquisition_space_def_state: S | None
+    trust_region_state: TrustRegion.State | None
     """ The state of the acquisition space definition (if there is one). """
 
     @property
@@ -72,23 +72,23 @@ class Record(Generic[S]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[S]):
+class OptimizationResult:
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[S]]
+    final_result: Result[Record]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[S]]
+    history: list[Record]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
     :attr:`final_result`.
     """
 
-    def astuple(self) -> tuple[Result[Record[S]], list[Record[S]]]:
+    def astuple(self) -> tuple[Result[Record], list[Record]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -173,7 +173,7 @@ class BayesianOptimizer(Generic[SP]):
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -184,11 +184,11 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
-        acquisition_space_def_state: S | None = None,
+        trust_region_def: TrustRegionDef[SP] | None = None,
+        acquisition_space_def_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -200,7 +200,7 @@ class BayesianOptimizer(Generic[SP]):
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult:
         ...
 
     @overload
@@ -211,11 +211,11 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
-        acquisition_space_def_state: S | None = None,
+        trust_region_def: TrustRegionDef[SP] | None = None,
+        acquisition_space_def_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult:
         ...
 
     def optimize(
@@ -225,11 +225,11 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
-        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
-        acquisition_space_def_state: S | None = None,
+        trust_region_def: TrustRegionDef[SP] | None = None,
+        acquisition_space_def_state: TrustRegion.State | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -265,9 +265,9 @@ class BayesianOptimizer(Generic[SP]):
             arguments. Note that if the default is used, this implies the tags must be
             `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
-        :param acquisition_space_def: Defines how to construct the acquisition space from the global
+        :param trust_region_def: Defines how to construct the acquisition space from the global
             space on each step. Defaults to using the global space.
-        :param acquisition_space_def_state: Starting state for the ``acquisition_space_def``.
+        :param acquisition_space_def_state: Starting state for the ``trust_region_def``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_intial_model: If `False`, this method assumes that the initial models have
@@ -333,10 +333,10 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                if acquisition_space_def is None:
+                if trust_region_def is None:
                     acquisition_space = self._search_space
                 else:
-                    stateful = acquisition_space_def(self._search_space).acquire(datasets, models)
+                    stateful = trust_region_def(self._search_space).acquire(datasets, models)
                     acquisition_space_def_state, acquisition_space = stateful(
                         acquisition_space_def_state
                     )

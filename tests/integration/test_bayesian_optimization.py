@@ -29,10 +29,10 @@ from trieste.acquisition.function import (
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
-    AcquisitionSpaceDef,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
+    TrustRegionDef,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
@@ -92,7 +92,7 @@ from trieste.utils.objectives import (
 )
 @pytest.mark.parametrize("trust_region", [TrustRegion.as_space_def(), None])
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule, trust_region: AcquisitionSpaceDef[Box, TrustRegion.State] | None
+    num_steps: int, acquisition_rule: AcquisitionRule, trust_region: TrustRegionDef[Box] | None
 ) -> None:
     search_space = Box([0, 0], [1, 1])
 
@@ -118,7 +118,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     dataset = (
         BayesianOptimizer(observer, search_space)
         .optimize(
-            num_steps, initial_data, model, acquisition_rule, acquisition_space_def=trust_region
+            num_steps, initial_data, model, acquisition_rule, trust_region_def=trust_region
         )
         .try_get_final_dataset()
     )
