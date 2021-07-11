@@ -210,10 +210,9 @@ def test_greedy_batch_acquisition_rule_acquire() -> None:
 def test_trust_region_raises_for_missing_datasets_key(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
-    search_space = Box([-1], [1])
-    rule = TrustRegion()
+    rule = TrustRegion(Box([-1], [1]))
     with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(datasets, models)
 
 
 def test_trust_region_for_default_state() -> None:
@@ -222,8 +221,8 @@ def test_trust_region_for_default_state() -> None:
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    state, new_acquisition_space = TrustRegion().acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    state, new_acquisition_space = TrustRegion(search_space).acquire(
+        {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )(None)
 
     npt.assert_array_equal(state.acquisition_space.lower, new_acquisition_space.lower)
@@ -246,8 +245,8 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     is_global = True
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
-    current_state, new_acquisition_space = TrustRegion().acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    current_state, new_acquisition_space = TrustRegion(search_space).acquire(
+        {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )(previous_state)
 
     npt.assert_array_equal(current_state.acquisition_space.lower, new_acquisition_space.lower)
@@ -271,8 +270,8 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     acquisition_space = search_space
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    current_state, new_acquisition_space = TrustRegion().acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    current_state, new_acquisition_space = TrustRegion(search_space).acquire(
+        {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )(previous_state)
 
     npt.assert_array_equal(current_state.acquisition_space.lower, new_acquisition_space.lower)
@@ -296,8 +295,8 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    current_state, new_acquisition_space = TrustRegion().acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    current_state, new_acquisition_space = TrustRegion(search_space).acquire(
+        {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )(previous_state)
 
     npt.assert_array_equal(current_state.acquisition_space.lower, new_acquisition_space.lower)
@@ -321,8 +320,8 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    current_state, new_acquisition_space = TrustRegion().acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    current_state, new_acquisition_space = TrustRegion(search_space).acquire(
+        {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     )(previous_state)
 
     npt.assert_array_equal(current_state.acquisition_space.lower, new_acquisition_space.lower)

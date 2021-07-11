@@ -18,18 +18,18 @@ from __future__ import annotations
 
 import copy
 import traceback
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
 
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import Acquisition, AcquisitionRule, EfficientGlobalOptimization, Stateful
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, AcquisitionSpaceDef
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
-from .space import Box, SearchSpace
+from .space import SearchSpace
 from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
@@ -184,7 +184,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
         acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -211,7 +211,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
         acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -225,7 +225,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
-        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def: AcquisitionSpaceDef[SP, S] | None = None,
         acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -336,9 +336,9 @@ class BayesianOptimizer(Generic[SP]):
                 if acquisition_space_def is None:
                     acquisition_space = self._search_space
                 else:
-                    stateful = acquisition_space_def.acquire(self._search_space, datasets, models)
-                    search_space_generator_state, acquisition_space = stateful(
-                        search_space_generator_state
+                    stateful = acquisition_space_def(self._search_space).acquire(datasets, models)
+                    acquisition_space_def_state, acquisition_space = stateful(
+                        acquisition_space_def_state
                     )
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)

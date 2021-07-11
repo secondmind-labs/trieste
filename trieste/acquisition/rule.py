@@ -37,6 +37,7 @@ from .function import (
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    Empiric,
 )
 from .optimizer import (
     AcquisitionOptimizer,
@@ -53,25 +54,7 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-class Empiric(ABC, Generic[SP_contra, T]):
-    """
-    An :class:`Empiric` constructs a value of any type `T` from the current data and models on an
-    objective function and a space of interest.
-    """
-    @abstractmethod
-    def acquire(
-        self,
-        # todo i suggest we pass the global search space to trust region's constructor. The
-        #   AcquisitionRules will either need access to the local search space, or return a
-        #   Callable[[SearchSpace], Tensor]
-        search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-    ) -> T:
-        """ Construct a value from the current data and models, over a specified search space. """
-
-
-class AcquisitionRule(Empiric[SP_contra, TensorType], ABC):
+class AcquisitionRule(Generic[SP_contra], ABC):
     """
     An :class:`AcquisitionRule` finds optimal points within a search space from the current data and
     models of an objective function on that search space.
@@ -331,7 +314,14 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         return thompson_samples
 
 
-class TrustRegion(Empiric[Box, types.State["TrustRegion.State", Box]]):
+S = TypeVar("S")
+
+SP = TypeVar("SP", bound=SearchSpace)
+
+AcquisitionSpaceDef = Callable[[SP], Empiric[types.State[S, SP]]]
+
+
+class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
     """
     Implements the *trust region* algorithm for constructing a local acquisition space from a global
     search space.
@@ -362,18 +352,22 @@ class TrustRegion(Empiric[Box, types.State["TrustRegion.State", Box]]):
             box_copy = copy.deepcopy(self.acquisition_space, memo)
             return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
-    def __init__(self, beta: float = 0.7, kappa: float = 1e-4):
+    def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         """
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
         """
+        self._global_search_space = global_search_space
         self._beta = beta
         self._kappa = kappa
 
+    @classmethod
+    def as_space_def(self, beta: float = 0.7, kappa: float = 1e-4) -> AcquisitionSpaceDef[Box, State]:
+        return lambda box: TrustRegion(box, beta, kappa)
+
     def acquire(
         self,
-        search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
     ) -> types.State[State, Box]:
@@ -413,8 +407,8 @@ class TrustRegion(Empiric[Box, types.State["TrustRegion.State", Box]]):
         """
         dataset = datasets[OBJECTIVE]
 
-        global_lower = search_space.lower
-        global_upper = search_space.upper
+        global_lower = self._global_search_space.lower
+        global_upper = self._global_search_space.upper
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
@@ -439,7 +433,7 @@ class TrustRegion(Empiric[Box, types.State["TrustRegion.State", Box]]):
                 is_global = step_is_success or not state.is_global
 
             if is_global:
-                acquisition_space = search_space
+                acquisition_space = self._global_search_space
             else:
                 xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
                 acquisition_space = Box(
