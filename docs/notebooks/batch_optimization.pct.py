@@ -142,12 +142,16 @@ cbar.set_label("EI", rotation=270)
 # First we run ten steps of `BatchMonteCarloExpectedImprovement`
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
+
+bo = BayesianOptimizer(observer, search_space)
 
 batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
-qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
+qei_result: OptimizationResult = bo.optimize(
+    10, initial_data, model, acquisition_rule=batch_ei_rule
+)
 
 # %% [markdown]
 # and then repeat the same optimization with `LocalPenalizationAcquisitionFunction`.
@@ -156,7 +160,7 @@ qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=local_penalization_acq
 )
-local_penalization_result = bo.optimize(
+local_penalization_result: OptimizationResult = bo.optimize(
     10, initial_data, model, acquisition_rule=local_penalization_rule
 )
 

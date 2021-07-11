@@ -21,7 +21,6 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-import re
 from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
@@ -34,20 +33,14 @@ from ..space import Box, SearchSpace
 from ..types import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
+    Empiric,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
-    Empiric,
 )
-from .optimizer import (
-    AcquisitionOptimizer,
-    automatic_optimizer_selector,
-    batchify,
-    generate_continuous_optimizer,
-)
+from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
-
 
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
@@ -319,6 +312,7 @@ S = TypeVar("S")
 SP = TypeVar("SP", bound=SearchSpace)
 
 TrustRegion = Callable[[SP], Empiric[types.State[S, SP]]]
+
 
 @dataclass(frozen=True)
 class TrustRegionState:

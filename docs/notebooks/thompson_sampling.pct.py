@@ -64,9 +64,11 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 # All that remains is to pass the Thompson sampling rule to the `BayesianOptimizer`. Once the optimization loop is complete, the optimizer will return `num_query_points` new query points for every step in the loop. With five steps, that's fifty points.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 
-result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
+bo = BayesianOptimizer(observer, search_space)
+
+result: OptimizationResult = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]

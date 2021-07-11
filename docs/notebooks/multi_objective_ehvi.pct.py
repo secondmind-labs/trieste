@@ -20,6 +20,7 @@ from trieste.space import Box
 from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
 from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.bayesian_optimizer import OptimizationResult
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -122,7 +123,7 @@ rule = EfficientGlobalOptimization(builder=ehvi)  # type: ignore
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
+result: OptimizationResult = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
 # To conclude, we visualize the queried data across the design space.  

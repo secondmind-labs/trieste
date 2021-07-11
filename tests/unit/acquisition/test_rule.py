@@ -26,7 +26,6 @@ from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    NegativeLowerConfidenceBound,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
 )
@@ -34,7 +33,6 @@ from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
-    TrustRegion,
     TrustRegionState,
     continuous_trust_region,
 )

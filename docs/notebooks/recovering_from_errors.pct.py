@@ -2,6 +2,7 @@
 # # Recovering from errors during optimization
 
 # %%
+from trieste.space import Box
 import numpy as np
 import tensorflow as tf
 import random
@@ -41,14 +42,15 @@ observer = FaultyBranin()
 
 # %% [markdown]
 # ## Set up the problem
-# We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`, which (with non-trivial state) will better illustrate how to recover.
+# We'll use the same set up as before, except we'll also use a `TrustRegion`, which (with non-trivial state) will better illustrate how to recover.
 
 # %%
 import gpflow
-
-search_space = trieste.space.Box(
-    tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64)
+from trieste.acquisition.rule import (
+    AcquisitionRule, EfficientGlobalOptimization, continuous_trust_region
 )
+
+search_space = trieste.space.Box([0.0, 0.0], [1.0, 1.0])
 initial_data = observer(search_space.sample(5))
 
 variance = tf.math.reduce_variance(initial_data.observations)
@@ -59,7 +61,8 @@ gpr = gpflow.models.GPR(
 gpflow.set_trainable(gpr.likelihood, False)
 model = trieste.models.GaussianProcessRegression(gpr)
 
-acquisition_rule = trieste.acquisition.rule.TrustRegion()
+acquisition_rule: AcquisitionRule[Box] = EfficientGlobalOptimization()
+trust_region = continuous_trust_region()
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -74,7 +77,9 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, history = bo.optimize(15, initial_data, model, acquisition_rule).astuple()
+result, history = bo.optimize(
+    15, initial_data, model, acquisition_rule, trust_region=trust_region
+).astuple()
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.
@@ -107,7 +112,8 @@ if result.is_err:
         history[-1].dataset,
         history[-1].model,
         acquisition_rule,
-        history[-1].acquisition_state
+        trust_region=trust_region,
+        trust_region_state=history[-1].trust_region_state
     ).astuple()
 
     history.extend(new_history)

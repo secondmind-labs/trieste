@@ -172,9 +172,12 @@ rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 # Now, we run the Bayesian optimization loop for twenty steps, and print the location of the query point corresponding to the minimum observation.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult
 
-result = bo.optimize(20, initial_data, models, rule).final_result.unwrap()
+opt: OptimizationResult = BayesianOptimizer(observer, search_space).optimize(
+    20, initial_data, models, rule
+)
+result = opt.final_result.unwrap()
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")

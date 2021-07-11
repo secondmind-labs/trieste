@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains type aliases."""
-from typing import Union
+from typing import Callable, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
-from typing import Callable, Optional, Tuple, TypeVar
 
 TensorType = Union[np.ndarray, tf.Tensor]
 """Type alias for tensor-like types."""
