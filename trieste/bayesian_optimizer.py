@@ -346,7 +346,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition_rule = cast(AcquisitionRule[SP], EfficientGlobalOptimization())
 
         models = map_values(create_model, model_specs)
-        history: list[Record] = []
+        history: list[Record[S]] = []
 
         for step in range(num_steps):
             if track_state:

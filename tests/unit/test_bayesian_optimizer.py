@@ -16,7 +16,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import NoReturn
 
-import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
@@ -27,12 +26,7 @@ from tests.util.misc import (
     mk_dataset,
     quadratic,
 )
-from tests.util.model import (
-    GaussianProcess,
-    PseudoTrainableProbModel,
-    QuadraticMeanAndRBFKernel,
-    rbf,
-)
+from tests.util.model import PseudoTrainableProbModel, QuadraticMeanAndRBFKernel
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
