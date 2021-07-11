@@ -21,6 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
+import re
 from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
@@ -317,40 +318,35 @@ S = TypeVar("S")
 
 SP = TypeVar("SP", bound=SearchSpace)
 
-TrustRegionDef = Callable[[SP], Empiric[types.State["TrustRegion.State", SP]]]
+TrustRegion = Callable[[SP], Empiric[types.State[S, SP]]]
 
+@dataclass(frozen=True)
+class TrustRegionState:
+    """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
-class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
+    acquisition_space: Box
+    """ The search space. """
+
+    eps: TensorType
     """
-    Implements the *trust region* algorithm for constructing a local acquisition space from a global
-    search space.
+    The (maximum) vector from the current best point to each bound of the acquisition space.
     """
 
-    @dataclass(frozen=True)
-    class State:
-        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
+    y_min: TensorType
+    """ The minimum observed value. """
 
-        acquisition_space: Box
-        """ The search space. """
+    is_global: bool | TensorType
+    """
+    `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+    `TensorType` instead of a `bool`.
+    """
 
-        eps: TensorType
-        """
-        The (maximum) vector from the current best point to each bound of the acquisition space.
-        """
+    def __deepcopy__(self, memo: dict[int, object]) -> TrustRegionState:
+        box_copy = copy.deepcopy(self.acquisition_space, memo)
+        return TrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
 
-        y_min: TensorType
-        """ The minimum observed value. """
 
-        is_global: bool | TensorType
-        """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `TensorType` instead of a `bool`.
-        """
-
-        def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
-            box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
-
+class _ContinuousTrustRegionImpl(Empiric[types.State[TrustRegionState, Box]]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         """
         :param beta: The inverse of the trust region contraction factor.
@@ -361,49 +357,9 @@ class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
         self._beta = beta
         self._kappa = kappa
 
-    @classmethod
-    def as_space_def(self, beta: float = 0.7, kappa: float = 1e-4) -> TrustRegionDef[Box]:
-        return lambda box: TrustRegion(box, beta, kappa)
-
     def acquire(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[State, Box]:
-        """
-        Acquire one new query point according the trust region algorithm. Return the new query point
-        along with the final acquisition state from this step.
-
-        If no ``state`` is specified (it is `None`), ``search_space`` is used as
-        the search space for this step.
-
-        If a ``state`` is specified, and the new optimum improves over the previous optimum
-        by some threshold (that scales linearly with ``kappa``), the previous acquisition is
-        considered successful.
-
-        If the previous acquisition was successful, ``search_space`` is used as the new
-        search space. If the previous step was unsuccessful, the search space is changed to the
-        trust region if it was global, and vice versa.
-
-        If the previous acquisition was over the trust region, the size of the trust region is
-        modified. If the previous acquisition was successful, the size is increased by a factor
-        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
-        ``beta``.
-
-        **Note:** The acquisition search space will never extend beyond the boundary of the
-        ``search_space``. For a local search, the actual search space will be the
-        intersection of the trust region and ``search_space``.
-
-        :search_space: The search space from which to construct an acquisition space.
-        :param datasets: The known observer query points and observations. Uses the data for key
-            `OBJECTIVE` to calculate the new trust region.
-        :param models: The models of the specified ``datasets``.
-        :param state: The acquisition state from the previous step, if there was a previous step,
-            else `None`.
-        :return: A function which takes the current state, and returns a two-tuple of the local
-            acquisition space and the new state.
-        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
-        """
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> types.State[TrustRegionState, Box]:
         dataset = datasets[OBJECTIVE]
 
         global_lower = self._global_search_space.lower
@@ -411,7 +367,7 @@ class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: TrustRegion.State | None) -> tuple[TrustRegion.State, Box]:
+        def go(state: TrustRegionState | None) -> tuple[TrustRegionState, Box]:
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
                 is_global = True
@@ -440,6 +396,57 @@ class TrustRegion(Empiric[types.State["TrustRegion.State", Box]]):
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            return TrustRegion.State(acquisition_space, eps, y_min, is_global), acquisition_space
+            return TrustRegionState(acquisition_space, eps, y_min, is_global), acquisition_space
 
         return go
+
+
+def continuous_trust_region(
+    beta: float = 0.7, kappa: float = 1e-4
+) -> TrustRegion[Box, TrustRegionState]:
+    """
+    Implements the *trust region* algorithm for constructing a local acquisition space from a global
+    search space.
+
+    :param beta: The inverse of the trust region contraction factor.
+    :param kappa: Scales the threshold for the minimal improvement required for a step to be
+        considered a success.
+    :return: todo
+    """
+    return lambda box: _ContinuousTrustRegionImpl(box, beta, kappa)
+
+
+"""
+    Acquire one new query point according the trust region algorithm. Return the new query point
+    along with the final acquisition state from this step.
+
+    If no ``state`` is specified (it is `None`), ``search_space`` is used as
+    the search space for this step.
+
+    If a ``state`` is specified, and the new optimum improves over the previous optimum
+    by some threshold (that scales linearly with ``kappa``), the previous acquisition is
+    considered successful.
+
+    If the previous acquisition was successful, ``search_space`` is used as the new
+    search space. If the previous step was unsuccessful, the search space is changed to the
+    trust region if it was global, and vice versa.
+
+    If the previous acquisition was over the trust region, the size of the trust region is
+    modified. If the previous acquisition was successful, the size is increased by a factor
+    ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+    ``beta``.
+
+    **Note:** The acquisition search space will never extend beyond the boundary of the
+    ``search_space``. For a local search, the actual search space will be the
+    intersection of the trust region and ``search_space``.
+
+    :search_space: The search space from which to construct an acquisition space.
+    :param datasets: The known observer query points and observations. Uses the data for key
+        `OBJECTIVE` to calculate the new trust region.
+    :param models: The models of the specified ``datasets``.
+    :param state: The acquisition state from the previous step, if there was a previous step,
+        else `None`.
+    :return: A function which takes the current state, and returns a two-tuple of the local
+        acquisition space and the new state.
+    :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
+"""
