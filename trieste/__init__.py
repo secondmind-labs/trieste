@@ -22,4 +22,4 @@ Bibliography
 
 .. bibliography::
 """
-from . import acquisition, bayesian_optimizer, data, models, observer, space, type, utils
+from . import acquisition, bayesian_optimizer, data, models, observer, space, types, utils
