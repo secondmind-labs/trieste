@@ -61,16 +61,17 @@ T = TypeVar("T")
 
 
 class Empiric(ABC, Generic[T]):
-    """
-    An :class:`Empiric` constructs a value of any type `T` from the current data and models on an
-    objective function.
-    """
+    """An :class:`Empiric` constructs a value of some type `T` from the current data and models."""
 
     @abstractmethod
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> T:
-        """Construct a value from the current data and models."""
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: A value of type `T`.
+        """
 
 
 class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
@@ -80,7 +81,11 @@ class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
-        ...
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: An acquisition function.
+        """
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]

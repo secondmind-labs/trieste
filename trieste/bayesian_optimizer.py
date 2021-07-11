@@ -172,7 +172,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -187,7 +187,7 @@ class BayesianOptimizer(Generic[SP]):
         trust_region: None = None,
         trust_region_state: None = None,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -202,7 +202,7 @@ class BayesianOptimizer(Generic[SP]):
         trust_region: TrustRegion[SP, S],
         trust_region_state: S | None = None,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 
@@ -214,7 +214,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -229,7 +229,7 @@ class BayesianOptimizer(Generic[SP]):
         trust_region: None = None,
         trust_region_state: None = None,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -244,7 +244,7 @@ class BayesianOptimizer(Generic[SP]):
         trust_region: TrustRegion[SP, S],
         trust_region_state: S | None = None,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 
@@ -258,7 +258,7 @@ class BayesianOptimizer(Generic[SP]):
         trust_region: TrustRegion[SP, S] | None = None,
         trust_region_state: S | None = None,
         track_state: bool = True,
-        fit_intial_model: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[S]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -300,7 +300,7 @@ class BayesianOptimizer(Generic[SP]):
         :param trust_region_state: Initial state for ``trust_region``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
-        :param fit_intial_model: If `False`, this method assumes that the initial models have
+        :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
@@ -357,7 +357,7 @@ class BayesianOptimizer(Generic[SP]):
                     models = copy.deepcopy(models)
                     trust_region_state = copy.deepcopy(trust_region_state)
 
-                if step == 0 and fit_intial_model:
+                if step == 0 and fit_initial_model:
                     for tag, model in models.items():
                         dataset = datasets[tag]
                         model.update(dataset)
