@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import NoReturn, cast
+from typing import NoReturn
 
 import numpy.testing as npt
 import pytest
