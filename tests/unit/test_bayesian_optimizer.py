@@ -141,16 +141,15 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
     rule = FixedAcquisitionRule([[0.0]])
     model = _CountingOptimizerModel()
 
-    final_opt_state, _ = cast(
-        OptimizationResult[None],
+    final_opt_state, _ = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
             1,
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": model},
             rule,
             fit_intial_model=fit_intial_model,
-        )
-    ).astuple()
+        ).astuple()
+    )
 
     final_model = final_opt_state.unwrap().model
 
@@ -207,16 +206,15 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
             return self
 
     rule = FixedAcquisitionRule([[0.0]])
-    result, history = cast(
-        OptimizationResult[None],
+    result, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
             10,
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": _UncopyableModel()},
             rule,
             fit_intial_model=False,
-        )
-    ).astuple()
+        ).astuple()
+    )
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -256,9 +254,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
-    result, history = cast(
-        OptimizationResult[None], optimizer.optimize(3, data, models, rule)
-    ).astuple()
+    result, history = optimizer.optimize(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
         result.unwrap()
@@ -305,11 +301,8 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         assert False
 
     data = {"": mk_dataset([[0.0]], [[0.0]])}
-    result, history = cast(
-        OptimizationResult[None],
-        BayesianOptimizer(_unusable_observer, Box([-1], [1])).optimize(
-            0, data, {"": _UnusableModel()}, _UnusableRule()
-        )
+    result, history = BayesianOptimizer(_unusable_observer, Box([-1], [1])).optimize(
+        0, data, {"": _UnusableModel()}, _UnusableRule()
     ).astuple()
 
     assert history == []

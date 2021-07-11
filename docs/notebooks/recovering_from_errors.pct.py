@@ -2,7 +2,6 @@
 # # Recovering from errors during optimization
 
 # %%
-from trieste.space import Box
 import numpy as np
 import tensorflow as tf
 import random
@@ -46,9 +45,7 @@ observer = FaultyBranin()
 
 # %%
 import gpflow
-from trieste.acquisition.rule import (
-    AcquisitionRule, EfficientGlobalOptimization, continuous_trust_region
-)
+from trieste.acquisition.rule import EfficientGlobalOptimization, continuous_trust_region
 
 search_space = trieste.space.Box([0.0, 0.0], [1.0, 1.0])
 initial_data = observer(search_space.sample(5))
@@ -61,7 +58,7 @@ gpr = gpflow.models.GPR(
 gpflow.set_trainable(gpr.likelihood, False)
 model = trieste.models.GaussianProcessRegression(gpr)
 
-acquisition_rule: AcquisitionRule[Box] = EfficientGlobalOptimization()
+acquisition_rule: EfficientGlobalOptimization = EfficientGlobalOptimization()
 trust_region = continuous_trust_region()
 
 # %% [markdown]

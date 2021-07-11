@@ -184,7 +184,22 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S] | None = None,
+        trust_region: None = None,
+        trust_region_state: None = None,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        acquisition_rule: AcquisitionRule[SP],
+        *,
+        trust_region: TrustRegion[SP, S],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -211,7 +226,22 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S] | None = None,
+        trust_region: None = None,
+        trust_region_state: None = None,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[SP],
+        *,
+        trust_region: TrustRegion[SP, S],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,

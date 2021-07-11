@@ -83,7 +83,7 @@ class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> T:
+    ) -> AcquisitionFunction:
         return self.prepare_acquisition_function(datasets, models)
 
 
