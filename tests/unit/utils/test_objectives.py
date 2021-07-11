@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.type import TensorType
 from trieste.utils.objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_MINIMUM,

@@ -152,7 +152,6 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
         )
         .astuple()
     )
-
     final_model = final_opt_state.unwrap().model
 
     if fit_intial_model:  # optimized at start and end of first BO step

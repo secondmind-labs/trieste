@@ -295,8 +295,8 @@ class BayesianOptimizer(Generic[SP]):
             arguments. Note that if the default is used, this implies the tags must be
             `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
-        :param trust_region_def: Defines how to construct the acquisition space from the global
-            space on each step. Defaults to using the global space.
+        :param trust_region: Defines how to construct the acquisition space from the global space on
+            each step. Defaults to using the global space.
         :param trust_region_state: Starting state for the ``trust_region_def``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
@@ -367,9 +367,7 @@ class BayesianOptimizer(Generic[SP]):
                     acquisition_space = self._search_space
                 else:
                     stateful = trust_region(self._search_space).acquire(datasets, models)
-                    trust_region_state, acquisition_space = stateful(
-                        trust_region_state
-                    )
+                    trust_region_state, acquisition_space = stateful(trust_region_state)
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 
