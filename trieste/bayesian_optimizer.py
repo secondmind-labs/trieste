@@ -297,7 +297,7 @@ class BayesianOptimizer(Generic[SP]):
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
         :param trust_region: Defines how to construct the acquisition space from the global space on
             each step. Defaults to using the global space.
-        :param trust_region_state: Starting state for the ``trust_region_def``.
+        :param trust_region_state: Initial state for ``trust_region``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_intial_model: If `False`, this method assumes that the initial models have
