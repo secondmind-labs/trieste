@@ -63,13 +63,13 @@ T = TypeVar("T")
 class Empiric(ABC, Generic[T]):
     """
     An :class:`Empiric` constructs a value of any type `T` from the current data and models on an
-    objective function and a space of interest.
+    objective function.
     """
     @abstractmethod
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> T:
-        """ Construct a value from the current data and models, over a specified search space. """
+        """ Construct a value from the current data and models. """
 
 
 class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
