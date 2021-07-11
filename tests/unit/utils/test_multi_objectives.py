@@ -16,7 +16,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem, vlmop2
 
 

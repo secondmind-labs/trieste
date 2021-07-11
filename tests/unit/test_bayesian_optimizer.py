@@ -39,7 +39,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import Err, Ok
 
 

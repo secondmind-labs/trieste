@@ -16,6 +16,16 @@ from typing import Union
 
 import numpy as np
 import tensorflow as tf
+from typing import Callable, Optional, Tuple, TypeVar
 
 TensorType = Union[np.ndarray, tf.Tensor]
 """Type alias for tensor-like types."""
+
+S = TypeVar("S")
+""" Unbound type variable. """
+
+T = TypeVar("T")
+""" Unbound type variable. """
+
+State = Callable[[Optional[S]], Tuple[S, T]]
+""" A `State` represents a stateful function, with state of type `S` and output of type `T`. """

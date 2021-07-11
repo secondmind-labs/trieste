@@ -25,7 +25,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from gpflow.utilities import multiple_assign, read_values
 
 from ..data import Dataset
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 from .optimizer import Optimizer
 

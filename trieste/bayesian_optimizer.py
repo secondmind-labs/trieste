@@ -49,8 +49,8 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    search_space_generator_state: S | None
-    """ The state of the search space generator (if there is one). """
+    acquisition_space_def_state: S | None
+    """ The state of the acquisition space definition (if there is one). """
 
     @property
     def dataset(self) -> Dataset:
@@ -184,8 +184,8 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        search_space_generator: Acquisition[SP, Stateful[S, SP]] | None = None,
-        search_space_generator_state: S | None = None,
+        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult[S]:
@@ -211,8 +211,8 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        search_space_generator: Acquisition[SP, Stateful[S, SP]] | None = None,
-        search_space_generator_state: S | None = None,
+        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult[S]:
@@ -225,8 +225,8 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
-        search_space_generator: Acquisition[SP, Stateful[S, SP]] | None = None,
-        search_space_generator_state: S | None = None,
+        acquisition_space_def: Acquisition[SP, Stateful[S, SP]] | None = None,
+        acquisition_space_def_state: S | None = None,
         track_state: bool = True,
         fit_intial_model: bool = True,
     ) -> OptimizationResult[S]:
@@ -265,9 +265,9 @@ class BayesianOptimizer(Generic[SP]):
             arguments. Note that if the default is used, this implies the tags must be
             `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
-        :param trust_region_state: The acquisition state to use on the first optimization step.
-            This argument allows the caller to restore the optimization process from an existing
-            :class:`Record`.
+        :param acquisition_space_def: Defines how to construct the acquisition space from the global
+            space on each step. Defaults to using the global space.
+        :param acquisition_space_def_state: Starting state for the ``acquisition_space_def``.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_intial_model: If `False`, this method assumes that the initial models have
@@ -320,12 +320,12 @@ class BayesianOptimizer(Generic[SP]):
 
         for step in range(num_steps):
             if track_state:
-                history.append(Record(datasets, models, search_space_generator_state))
+                history.append(Record(datasets, models, acquisition_space_def_state))
 
             try:
                 if track_state:
                     models = copy.deepcopy(models)
-                    search_space_generator_state = copy.deepcopy(search_space_generator_state)
+                    acquisition_space_def_state = copy.deepcopy(acquisition_space_def_state)
 
                 if step == 0 and fit_intial_model:
                     for tag, model in models.items():
@@ -333,10 +333,10 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                if search_space_generator is None:
+                if acquisition_space_def is None:
                     acquisition_space = self._search_space
                 else:
-                    stateful = search_space_generator.acquire(self._search_space, datasets, models)
+                    stateful = acquisition_space_def.acquire(self._search_space, datasets, models)
                     search_space_generator_state, acquisition_space = stateful(
                         search_space_generator_state
                     )
@@ -371,5 +371,5 @@ class BayesianOptimizer(Generic[SP]):
 
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
-        record = Record(datasets, models, search_space_generator_state)
+        record = Record(datasets, models, acquisition_space_def_state)
         return OptimizationResult(Ok(record), history)

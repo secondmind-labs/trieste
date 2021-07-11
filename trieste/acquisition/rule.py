@@ -21,15 +21,16 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, Tuple, TypeVar, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
+from .. import types
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     ExpectedImprovement,
@@ -52,19 +53,29 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-class Acquisition(ABC, Generic[SP_contra, T]):
+class Empiric(ABC, Generic[SP_contra, T]):
+    """
+    An :class:`Empiric` constructs a value of any type `T` from the current data and models on an
+    objective function and a space of interest.
+    """
     @abstractmethod
     def acquire(
         self,
+        # todo i suggest we pass the global search space to trust region's constructor. The
+        #   AcquisitionRules will either need access to the local search space, or return a
+        #   Callable[[SearchSpace], Tensor]
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
     ) -> T:
-        ...
+        """ Construct a value from the current data and models, over a specified search space. """
 
 
-class AcquisitionRule(Acquisition[SP_contra, TensorType], ABC):
-    """The central component of the acquisition API."""
+class AcquisitionRule(Empiric[SP_contra, TensorType], ABC):
+    """
+    An :class:`AcquisitionRule` finds optimal points within a search space from the current data and
+    models of an objective function on that search space.
+    """
 
     @abstractmethod
     def acquire(
@@ -320,15 +331,11 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         return thompson_samples
 
 
-S = TypeVar("S")
-""" Unbound type variable. """
-
-Stateful = Callable[[Optional[S]], Tuple[S, T]]
-""" A `Stateful` represents a stateful function, with state of type `S` and output of type `T`. """
-
-
-class TrustRegion(Acquisition[Box, Stateful["TrustRegion.State", Box]]):
-    """Implements the *trust region* acquisition algorithm."""
+class TrustRegion(Empiric[Box, types.State["TrustRegion.State", Box]]):
+    """
+    Implements the *trust region* algorithm for constructing a local acquisition space from a global
+    search space.
+    """
 
     @dataclass(frozen=True)
     class State:
@@ -369,7 +376,7 @@ class TrustRegion(Acquisition[Box, Stateful["TrustRegion.State", Box]]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> Stateful[State, Box]:
+    ) -> types.State[State, Box]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
