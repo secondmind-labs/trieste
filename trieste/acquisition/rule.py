@@ -341,7 +341,7 @@ class ContinuousTrustRegionState:
     The (maximum) vector from the current best point to each bound of the acquisition space.
     """
 
-    y_min: TensorType
+    y_min: TensorType | float
     """ The minimum observed value. """
 
     is_global: bool | TensorType
@@ -366,7 +366,7 @@ class _ContinuousTrustRegion(DefaultStateEmpiric[ContinuousTrustRegionState, Box
         space = self._global_search_space
         eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
         # todo is y_min correct?
-        return ContinuousTrustRegionState(space, eps, tf.constant(math.inf), True)
+        return ContinuousTrustRegionState(space, eps, math.inf, True)
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
