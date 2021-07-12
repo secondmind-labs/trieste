@@ -315,6 +315,7 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 class DefaultStateEmpiric(Empiric[State[S, SP]]):
     """A :class:`DefaultStateEmpiric` is an empirical stateful value with a default state."""
+
     @property
     @abstractmethod
     def default_state(self) -> S:
