@@ -26,12 +26,11 @@ from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
-from .. import type as type_
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..type import TensorType
+from ..type import State, TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     Empiric,
@@ -314,7 +313,7 @@ SP = TypeVar("SP", bound=SearchSpace)
 """Type variable bound to :class:`SearchSpace`."""
 
 
-class DefaultStateEmpiric(Empiric[type_.State[S, SP]]):
+class DefaultStateEmpiric(Empiric[State[S, SP]]):
     """A :class:`DefaultStateEmpiric` is an empirical stateful value with a default state."""
     @property
     @abstractmethod
@@ -370,7 +369,7 @@ class _ContinuousTrustRegion(DefaultStateEmpiric[ContinuousTrustRegionState, Box
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> type_.State[ContinuousTrustRegionState, Box]:
+    ) -> State[ContinuousTrustRegionState, Box]:
         dataset = datasets[OBJECTIVE]
 
         global_lower = self._global_search_space.lower
