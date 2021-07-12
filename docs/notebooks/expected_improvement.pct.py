@@ -66,6 +66,9 @@ def build_model(data):
 
     return {
             "model": gpr,
+            "model_args": {
+                "num_prior_samples": 100,
+            },
             "optimizer": gpflow.optimizers.Scipy(),
             "optimizer_args": {
                 "minimize_args": {"options": dict(maxiter=100)},
