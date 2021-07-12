@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains type aliases."""
-from typing import Callable, Optional, Tuple, TypeVar, Union
+from typing import Callable, Tuple, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -26,5 +26,5 @@ S = TypeVar("S")
 T = TypeVar("T")
 """ Unbound type variable. """
 
-State = Callable[[Optional[S]], Tuple[S, T]]
+State = Callable[[S], Tuple[S, T]]
 """ A `State` represents a stateful function, with state of type `S` and output of type `T`. """
