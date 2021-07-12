@@ -33,7 +33,6 @@ from ..space import Box, SearchSpace
 from ..type import State, TensorType
 from .function import (
     AcquisitionFunctionBuilder,
-    Empiric,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
@@ -309,12 +308,22 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
 S = TypeVar("S")
 """Unbound type variable."""
 
-SP = TypeVar("SP", bound=SearchSpace)
-"""Type variable bound to :class:`SearchSpace`."""
+T = TypeVar("T")
+""" Unbound type variable. """
 
 
-class DefaultStateEmpiric(Empiric[State[S, SP]]):
+class EmpiricStateful(Generic[S, T]):
     """A :class:`DefaultStateEmpiric` is an empirical stateful value with a default state."""
+
+    @abstractmethod
+    def acquire(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> State[S, T]:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: A stateful value of type `T`, with state of type `S`.
+        """
 
     @property
     @abstractmethod
@@ -322,7 +331,10 @@ class DefaultStateEmpiric(Empiric[State[S, SP]]):
         """The default state."""
 
 
-TrustRegion = Callable[[SP], DefaultStateEmpiric[S, SP]]
+SP = TypeVar("SP", bound=SearchSpace)
+"""Type variable bound to :class:`SearchSpace`."""
+
+TrustRegion = Callable[[SP], EmpiricStateful[S, SP]]
 """
 A `TrustRegion` constructs a local acquisition space from a global space, data and models, and
 a history of metadata from previous steps.
@@ -355,7 +367,7 @@ class ContinuousTrustRegionState:
         return ContinuousTrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
 
 
-class _ContinuousTrustRegion(DefaultStateEmpiric[ContinuousTrustRegionState, Box]):
+class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         self._global_search_space = global_search_space
         self._beta = beta

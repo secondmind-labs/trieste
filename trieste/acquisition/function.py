@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable, Generic, Optional, TypeVar, Union
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -56,25 +56,7 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
-T = TypeVar("T")
-""" Unbound type variable. """
-
-
-class Empiric(ABC, Generic[T]):
-    """An :class:`Empiric` constructs a value of some type `T` from the current data and models."""
-
-    @abstractmethod
-    def acquire(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> T:
-        """
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        :return: A value of type `T`.
-        """
-
-
-class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
+class AcquisitionFunctionBuilder(ABC):
     """An :class:`AcquisitionFunctionBuilder` builds an acquisition function."""
 
     @abstractmethod
@@ -86,11 +68,6 @@ class AcquisitionFunctionBuilder(Empiric[AcquisitionFunction], ABC):
         :param models: The models over each dataset in ``datasets``.
         :return: An acquisition function.
         """
-
-    def acquire(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
-        return self.prepare_acquisition_function(datasets, models)
 
 
 class SingleModelAcquisitionBuilder(ABC):
