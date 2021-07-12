@@ -1290,7 +1290,6 @@ def gibbon(
         )
     else:
         noise_variance = model.get_observation_noise()
-   
 
     if not hasattr(model, "covariance_between_points"):
         raise AttributeError(

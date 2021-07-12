@@ -322,8 +322,6 @@ def test_gaussian_process_raises(gpr_interface_factory) -> None:
     )
 
 
-
-
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_10(x))
@@ -375,7 +373,7 @@ def test_gpr_raises_for_invalid_init() -> None:
     y = _3x_plus_10(x)
 
     with pytest.raises(ValueError):
-        GaussianProcessRegression(_gpr(x, y), num_prior_samples= -1)
+        GaussianProcessRegression(_gpr(x, y), num_prior_samples=-1)
 
 
 @random_seed
@@ -731,18 +729,20 @@ def test_vgp_optimize_natgrads_only_updates_variational_params(compile: bool) ->
         _vgp_matern(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
     )
 
+    old_num_trainable_params = len(model.trainable_variables)
     old_kernel_params = model.get_kernel().parameters[0].numpy()
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
 
     model.optimize(dataset)
 
+    new_num_trainable_params = len(model.trainable_variables)
     new_kernel_params = model.get_kernel().parameters[0].numpy()
     new_q_mu = model.model.q_mu.numpy()
     new_q_sqrt = model.model.q_sqrt.numpy()
 
     npt.assert_allclose(old_kernel_params, new_kernel_params, atol=1e-3)
-
+    npt.assert_equal(old_num_trainable_params, new_num_trainable_params)
     npt.assert_raises(AssertionError, npt.assert_allclose, old_q_mu, new_q_mu)
     npt.assert_raises(AssertionError, npt.assert_allclose, old_q_sqrt, new_q_sqrt)
 

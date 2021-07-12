@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, TypeVar, Optional
+from typing import Any, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -87,6 +87,17 @@ class ProbabilisticModel(ABC):
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
+
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise.
+
+        Note that this is not supported by all models.
+
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        raise NotImplementedError("Model {self!r} does not have scalar observation noise")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
@@ -334,18 +345,23 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     or :class:`~gpflow.models.SGPR`.
     """
 
-    def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_prior_samples: int = 10):
+    def __init__(
+        self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_prior_samples: int = 10
+    ):
         """
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
-        :param num_prior_samples: TODO
+        :param num_prior_samples: Number of randomly sampled kernels to evaluate before beginning
+            model optimization.
         """
         super().__init__(optimizer)
         self._model = model
 
         if num_prior_samples <= 0:
-            raise ValueError(f"num_prior_samples must be greater or equal to zero but got {num_prior_samples}.")
+            raise ValueError(
+                f"num_prior_samples must be greater or equal to zero but got {num_prior_samples}."
+            )
         self._num_prior_samples = num_prior_samples
 
     def __repr__(self) -> str:
@@ -406,8 +422,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         return cov
 
-
-
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize the model with the specified `dataset`.
@@ -423,8 +437,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             [tf.size(param) for param in self.model.trainable_parameters if param.prior is not None]
         )
 
-        if min(num_trainable_params_with_priors, self._num_prior_samples) >= 1:  # Find a promising kernel initialization
-            self.find_best_model_initialization(self._num_prior_samples * num_trainable_params_with_priors)
+        if (
+            min(num_trainable_params_with_priors, self._num_prior_samples) >= 1
+        ):  # Find a promising kernel initialization
+            self.find_best_model_initialization(
+                self._num_prior_samples * num_trainable_params_with_priors
+            )
 
         self.optimizer.optimize(self.model, dataset)
 
@@ -458,77 +476,66 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
 
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    """
-    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
-    """
-
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
-        """
-        :param model: The underlying GPflow sparse variational model.
-        :param data: The initial training data.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
-        """
-        super().__init__(optimizer)
-        self._model = model
-        self._data = data
-
-    def __repr__(self) -> str:
-        """"""
-        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
-
-    @property
-    def model(self) -> SVGP:
-        return self._model
-
-    def update(self, dataset: Dataset) -> None:
-        _assert_data_is_compatible(dataset, self._data)
-
-        self._data = dataset
-
-        num_data = dataset.query_points.shape[0]
-        self.model.num_data = num_data
-
-
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
-    """A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
+    r"""
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
 
-    TODO SAY WHAT THIS IS!
+    A Variational Gaussian Process (VGP) approximates the posterior of a GP
+    using the multivariate Gaussian closest to the posterior of the GP by minimzing the
+    KL divergence between approximated and exact posteriors. See :cite:`opper2009variational`
+    for details.
+
+    The VGP provides (approximate) GP modelling under non-Gaussian likelihoods, for example
+    when fitting a classification model over binary data.
+
+    A whitened representation and (optional) natural gradient steps are used to aid
+    model optimization.
     """
 
-    def __init__(self, model: VGP, optimizer: Optimizer | None = None, use_natgrads: bool = False, natgrad_gamma: Optional[float] = None):
+    def __init__(
+        self,
+        model: VGP,
+        optimizer: Optimizer | None = None,
+        use_natgrads: bool = False,
+        natgrad_gamma: Optional[float] = None,
+    ):
         """
-        TODO ADD TEST FOR ALL THE INPUTS
-
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`. TODO (chagned default)
-        :param use_natgrads: TODO (say requires tf opt)
-        :natgrad_gamma: TODO
-        :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3.
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :param use_natgrads: If True then alternate model optimization steps with natural
+            gradient updates. Note that natural gradients requires
+            an :class:`~trieste.models.optimizer.Optimizer` optimizer.
+        :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
+        :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
+            or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
+            optimizer.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
-
-        if optimizer is None:
-            optimzer  = TFOptimizer(tf.optimizers.Adam(1e-3))
-        
         super().__init__(optimizer)
-
         self._model = model
 
         if use_natgrads:
             if not isinstance(self._optimizer, TFOptimizer):
-                raise ValueError(f"TODO")             
+                raise ValueError(
+                    f"""
+                    Natgrads can only be used alongside an optimizer from tf.optimizers however
+                    received f{self._optimizer}
+                    """
+                )
 
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
             if natgrad_gamma is not None:
-                raise ValueError(f"natgrad_gamma is only to be specified when use_natgrads is True")
+                raise ValueError(
+                    f"""
+                    natgrad_gamma is only to be specified when use_natgrads is True
+                    but received {natgrad_gamma}
+                    """
+                )
 
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
-
 
     def __repr__(self) -> str:
         """"""
@@ -569,40 +576,80 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
 
-
-
     def optimize(self, dataset: Dataset) -> None:
         """
+        :class:`VariationalGaussianProcess` has a custom `optimize` method that (optionally) permits
+        alternating between standard optimization steps (for kernel parameters) and natural gradient
+        steps for the variational parameters (`q_mu` and `q_sqrt`). See :cite:`salimbeni2018natural`
+        for details. Using natural gradients can dramatically speed up model fitting, especially for
+        ill-conditioned posteriors.
 
-        SAY COPY PROPERTIES OF base optimizer(e.g batch) (requires tf one)
+        If using natural gradients, our optimizer inherits the mini-batch behavior and number
+        of optimization steps as the base optimizer specified when initializing
+        the :class:`VariationalGaussianProcess`.
         """
         model = self.model
 
-        if self._use_natgrads:
+        if self._use_natgrads:  # optimize variational params with natgrad optimizer
 
-            loss_fn = self.optimizer.create_loss(model, dataset)
             natgrad_optimizer = gpflow.optimizers.NaturalGradient(gamma=self._natgrad_gamma)
+            base_optimizer: TFOptimizer = self.optimizer
 
-            gpflow.set_trainable(model.q_mu, False) 
+            gpflow.set_trainable(model.q_mu, False)  # variational params optimized by natgrad
             gpflow.set_trainable(model.q_sqrt, False)
             variational_params = [(model.q_mu, model.q_sqrt)]
             model_params = model.trainable_variables
 
-            @jit(apply=self.optimizer.compile)
-            def perfom_optimization_step() -> None:
-                natgrad_optimizer.minimize(loss_fn, variational_params)
-                self.optimizer.optimizer.minimize(loss_fn, model_params, **self.optimizer.minimize_args)
+            loss_fn = base_optimizer.create_loss(model, dataset)
 
-            for _ in range(self.optimizer.max_iter):
+            @jit(apply=self.optimizer.compile)
+            def perfom_optimization_step() -> None:  # alternate with natgrad optimizations
+                natgrad_optimizer.minimize(loss_fn, variational_params)
+                base_optimizer.optimizer.minimize(
+                    loss_fn, model_params, **base_optimizer.minimize_args
+                )
+
+            for _ in range(base_optimizer.max_iter):
                 perfom_optimization_step()
 
+            gpflow.set_trainable(model.q_mu, True)  # revert varitional params to trainable
+            gpflow.set_trainable(model.q_sqrt, True)
 
         else:
             self.optimizer.optimize(model, dataset)
 
 
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+    """
 
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
+        """
+        :param model: The underlying GPflow sparse variational model.
+        :param data: The initial training data.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        """
+        super().__init__(optimizer)
+        self._model = model
+        self._data = data
 
+    def __repr__(self) -> str:
+        """"""
+        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
+
+    @property
+    def model(self) -> SVGP:
+        return self._model
+
+    def update(self, dataset: Dataset) -> None:
+        _assert_data_is_compatible(dataset, self._data)
+
+        self._data = dataset
+
+        num_data = dataset.query_points.shape[0]
+        self.model.num_data = num_data
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
