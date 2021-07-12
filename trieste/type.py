@@ -21,10 +21,10 @@ TensorType = Union[np.ndarray, tf.Tensor]
 """Type alias for tensor-like types."""
 
 S = TypeVar("S")
-""" Unbound type variable. """
+"""Unbound type variable."""
 
 T = TypeVar("T")
-""" Unbound type variable. """
+"""Unbound type variable."""
 
 State = Callable[[S], Tuple[S, T]]
-""" A `State` represents a stateful function, with state of type `S` and output of type `T`. """
+"""A `State` represents a stateful value of type `T`, with state of type `S`."""

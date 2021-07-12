@@ -309,11 +309,11 @@ S = TypeVar("S")
 """Unbound type variable."""
 
 T = TypeVar("T")
-""" Unbound type variable. """
+"""Unbound type variable."""
 
 
-class EmpiricStateful(Generic[S, T]):
-    """A :class:`DefaultStateEmpiric` is an empirical stateful value with a default state."""
+class EmpiricStateful(ABC, Generic[S, T]):
+    """A :class:`EmpiricStateful` is an empirical stateful value with a default state."""
 
     @abstractmethod
     def acquire(
@@ -346,7 +346,7 @@ class ContinuousTrustRegionState:
     """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
     acquisition_space: Box
-    """ The search space. """
+    """The search space."""
 
     eps: TensorType
     """
@@ -354,7 +354,7 @@ class ContinuousTrustRegionState:
     """
 
     y_min: TensorType | float
-    """ The minimum observed value. """
+    """The minimum observed value."""
 
     is_global: bool | TensorType
     """
