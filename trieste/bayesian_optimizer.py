@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import copy
 import traceback
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
 
@@ -184,7 +184,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: None = None,
+        mk_trust_region: None = None,
         trust_region_state: None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -199,7 +199,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S],
+        mk_trust_region: Callable[[SP], TrustRegion[S, SP]],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -226,7 +226,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: None = None,
+        mk_trust_region: None = None,
         trust_region_state: None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -241,7 +241,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S],
+        mk_trust_region: Callable[[SP], TrustRegion[S, SP]],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -255,7 +255,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
-        trust_region: TrustRegion[SP, S] | None = None,
+        mk_trust_region: Callable[[SP], TrustRegion[S, SP]] | None = None,
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -348,6 +348,9 @@ class BayesianOptimizer(Generic[SP]):
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
 
+        if mk_trust_region is not None:
+            trust_region = mk_trust_region(self._search_space)
+
         for step in range(num_steps):
             if track_state:
                 history.append(Record(datasets, models, trust_region_state))
@@ -363,11 +366,12 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                if trust_region is None:
+                if mk_trust_region is None:
                     acquisition_space = self._search_space
                 else:
-                    stateful = trust_region(self._search_space).acquire(datasets, models)
-                    trust_region_state, acquisition_space = stateful(trust_region_state)
+                    trust_region_state, acquisition_space = trust_region.acquire(datasets, models)(
+                        trust_region_state or trust_region.default_state
+                    )
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 

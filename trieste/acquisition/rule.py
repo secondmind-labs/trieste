@@ -18,10 +18,11 @@ the Bayesian optimization process.
 from __future__ import annotations
 
 import copy
+import math
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
@@ -311,36 +312,40 @@ S = TypeVar("S")
 
 SP = TypeVar("SP", bound=SearchSpace)
 
-TrustRegion = Callable[[SP], Empiric[type_.State[S, SP]]]
+
+class TrustRegion(Empiric[type_.State[S, SP]]):
+    @property
+    @abstractmethod
+    def default_state(self) -> S:
+        ...
 
 
-@dataclass(frozen=True)
-class TrustRegionState:
-    """The acquisition state for the :class:`TrustRegion` acquisition rule."""
+class ContinuousTrustRegion(TrustRegion["ContinuousTrustRegion.State", Box]):
+    @dataclass(frozen=True)
+    class State:
+        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
-    acquisition_space: Box
-    """ The search space. """
+        acquisition_space: Box
+        """ The search space. """
 
-    eps: TensorType
-    """
-    The (maximum) vector from the current best point to each bound of the acquisition space.
-    """
+        eps: TensorType
+        """
+        The (maximum) vector from the current best point to each bound of the acquisition space.
+        """
 
-    y_min: TensorType
-    """ The minimum observed value. """
+        y_min: TensorType
+        """ The minimum observed value. """
 
-    is_global: bool | TensorType
-    """
-    `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-    `TensorType` instead of a `bool`.
-    """
+        is_global: bool | TensorType
+        """
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+        `TensorType` instead of a `bool`.
+        """
 
-    def __deepcopy__(self, memo: dict[int, object]) -> TrustRegionState:
-        box_copy = copy.deepcopy(self.acquisition_space, memo)
-        return TrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
+        def __deepcopy__(self, memo: dict[int, object]) -> ContinuousTrustRegion.State:
+            box_copy = copy.deepcopy(self.acquisition_space, memo)
+            return ContinuousTrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
-
-class _ContinuousTrustRegionImpl(Empiric[type_.State[TrustRegionState, Box]]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         """
         :param beta: The inverse of the trust region contraction factor.
@@ -351,9 +356,16 @@ class _ContinuousTrustRegionImpl(Empiric[type_.State[TrustRegionState, Box]]):
         self._beta = beta
         self._kappa = kappa
 
+    @property
+    def default_state(self) -> State:
+        space = self._global_search_space
+        eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
+        # todo is y_min correct?
+        return ContinuousTrustRegion.State(space, eps, tf.constant(math.inf), True)
+
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> type_.State[TrustRegionState, Box]:
+    ) -> type_.State[State, Box]:
         dataset = datasets[OBJECTIVE]
 
         global_lower = self._global_search_space.lower
@@ -361,25 +373,21 @@ class _ContinuousTrustRegionImpl(Empiric[type_.State[TrustRegionState, Box]]):
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: TrustRegionState | None) -> tuple[TrustRegionState, Box]:
-            if state is None:
-                eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
-                is_global = True
-            else:
-                tr_volume = tf.reduce_prod(
-                    state.acquisition_space.upper - state.acquisition_space.lower
-                )
-                step_is_success = y_min < state.y_min - self._kappa * tr_volume
+        def go(state: ContinuousTrustRegion.State) -> tuple[ContinuousTrustRegion.State, Box]:
+            tr_volume = tf.reduce_prod(
+                state.acquisition_space.upper - state.acquisition_space.lower
+            )
+            step_is_success = y_min < state.y_min - self._kappa * tr_volume
 
-                eps = (
-                    state.eps
-                    if state.is_global
-                    else state.eps / self._beta
-                    if step_is_success
-                    else state.eps * self._beta
-                )
+            eps = (
+                state.eps
+                if state.is_global
+                else state.eps / self._beta
+                if step_is_success
+                else state.eps * self._beta
+            )
 
-                is_global = step_is_success or not state.is_global
+            is_global = step_is_success or not state.is_global
 
             if is_global:
                 acquisition_space = self._global_search_space
@@ -390,14 +398,17 @@ class _ContinuousTrustRegionImpl(Empiric[type_.State[TrustRegionState, Box]]):
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            return TrustRegionState(acquisition_space, eps, y_min, is_global), acquisition_space
+            return (
+                ContinuousTrustRegion.State(acquisition_space, eps, y_min, is_global),
+                acquisition_space,
+            )
 
         return go
 
 
 def continuous_trust_region(
     beta: float = 0.7, kappa: float = 1e-4
-) -> TrustRegion[Box, TrustRegionState]:
+) -> Callable[[Box], TrustRegion[ContinuousTrustRegion.State, Box]]:
     """
     Implements the *trust region* algorithm for constructing a local acquisition space from a global
     search space.
@@ -407,7 +418,7 @@ def continuous_trust_region(
         considered a success.
     :return: todo
     """
-    return lambda box: _ContinuousTrustRegionImpl(box, beta, kappa)
+    return lambda box: ContinuousTrustRegion(box, beta, kappa)
 
 
 """

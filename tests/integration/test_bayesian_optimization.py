@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -29,10 +31,10 @@ from trieste.acquisition.function import (
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
+    ContinuousTrustRegion,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
-    TrustRegionState,
     continuous_trust_region,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -94,8 +96,8 @@ from trieste.utils.objectives import (
 @pytest.mark.parametrize("trust_region", [continuous_trust_region(), None])
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule,
-    trust_region: TrustRegion[Box, TrustRegionState] | None,
+    acquisition_rule: AcquisitionRule[Box],
+    trust_region: Callable[[Box], TrustRegion[ContinuousTrustRegion.State, Box]] | None,
 ) -> None:
     search_space = Box([0, 0], [1, 1])
 
@@ -120,7 +122,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
     dataset = (
         BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, model, acquisition_rule, trust_region=trust_region)
+        .optimize(num_steps, initial_data, model, acquisition_rule, mk_trust_region=trust_region)
         .try_get_final_dataset()
     )
 
