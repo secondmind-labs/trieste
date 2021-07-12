@@ -560,9 +560,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         else:
             if natgrad_gamma is not None:
                 raise ValueError(
-                    f"""
-                    natgrad_gamma is only to be specified when use_natgrads is True
-                    but received {natgrad_gamma}
+                    """
+                    natgrad_gamma is only to be specified when use_natgrads is True.
                     """
                 )
 
