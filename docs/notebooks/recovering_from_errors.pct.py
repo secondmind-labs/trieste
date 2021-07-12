@@ -41,7 +41,7 @@ observer = FaultyBranin()
 
 # %% [markdown]
 # ## Set up the problem
-# We'll use the same set up as before, with the addition of a `TrustRegion`. A `TrustRegion` is stateful, and its latest state must be passed to the optimizer to recover from a failed loop. We include it here so you can see how that works.
+# We'll use the same set up as before, with the addition of a `TrustRegion`. A `TrustRegion` is stateful, and we need to ensure its latest state from a failed optimization attempt is used as the starting state when we recover. We include it here so you can see how that works.
 
 # %%
 import gpflow
