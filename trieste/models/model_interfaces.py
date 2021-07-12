@@ -475,6 +475,39 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
 
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+    """
+
+    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
+        """
+        :param model: The underlying GPflow sparse variational model.
+        :param data: The initial training data.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        """
+        super().__init__(optimizer)
+        self._model = model
+        self._data = data
+
+    def __repr__(self) -> str:
+        """"""
+        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
+
+    @property
+    def model(self) -> SVGP:
+        return self._model
+
+    def update(self, dataset: Dataset) -> None:
+        _assert_data_is_compatible(dataset, self._data)
+
+        self._data = dataset
+
+        num_data = dataset.query_points.shape[0]
+        self.model.num_data = num_data
+
+
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
@@ -616,39 +649,6 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         else:
             self.optimizer.optimize(model, dataset)
-
-
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
-    """
-    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
-    """
-
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
-        """
-        :param model: The underlying GPflow sparse variational model.
-        :param data: The initial training data.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
-        """
-        super().__init__(optimizer)
-        self._model = model
-        self._data = data
-
-    def __repr__(self) -> str:
-        """"""
-        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
-
-    @property
-    def model(self) -> SVGP:
-        return self._model
-
-    def update(self, dataset: Dataset) -> None:
-        _assert_data_is_compatible(dataset, self._data)
-
-        self._data = dataset
-
-        num_data = dataset.query_points.shape[0]
-        self.model.num_data = num_data
 
 
 supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
