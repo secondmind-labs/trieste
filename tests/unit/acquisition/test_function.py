@@ -217,7 +217,8 @@ def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
         def sample(self, query_points: TensorType, num_samples: int) -> None:
             return None
 
-    with pytest.raises(AttributeError):
+
+    with pytest.raises(ValueError):
         model_without_likelihood = dummy_model_without_likelihood()
         augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
 
@@ -1061,7 +1062,7 @@ def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
         ) -> None:
             return None
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         model_without_likelihood = dummy_model_without_likelihood()
         gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
