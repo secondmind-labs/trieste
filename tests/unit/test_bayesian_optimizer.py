@@ -28,7 +28,12 @@ from tests.util.misc import (
     quadratic,
     random_seed,
 )
-from tests.util.model import GaussianProcess, PseudoTrainableProbModel, QuadraticMeanAndRBFKernel, rbf
+from tests.util.model import (
+    GaussianProcess,
+    PseudoTrainableProbModel,
+    QuadraticMeanAndRBFKernel,
+    rbf,
+)
 from trieste.acquisition.rule import AcquisitionRule, EmpiricStateful
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
@@ -217,7 +222,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             models,
             FixedAcquisitionRule([[0.0]]),
             trust_region=Fibonacci,
-            trust_region_state=starting_state
+            trust_region_state=starting_state,
         )
         .astuple()
     )
@@ -457,18 +462,14 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
     model = DecreasingVarianceModel(initial_data)
     _, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(
-            3, {"": initial_data}, {"": model}, UpperBoundRule(), trust_region=DecreasingLine
-        )
+        .optimize(3, {"": initial_data}, {"": model}, UpperBoundRule(), trust_region=DecreasingLine)
         .astuple()
     )
 
     assert [record.trust_region_state for record in history] == [1, 2, 4]
 
     assert_datasets_allclose(history[0].datasets[""], initial_data)
-    assert_datasets_allclose(
-        history[1].datasets[""], mk_dataset([[0.0], [1.0]], [[0.0], [1.0]])
-    )
+    assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [1.0]], [[0.0], [1.0]]))
     assert_datasets_allclose(
         history[2].datasets[""], mk_dataset([[0.0], [1.0], [0.5]], [[0.0], [1.0], [0.25]])
     )
