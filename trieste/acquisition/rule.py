@@ -20,9 +20,9 @@ from __future__ import annotations
 import copy
 import math
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
@@ -308,64 +308,69 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
 
 
 S = TypeVar("S")
-""" Unbound type variable. """
+"""Unbound type variable."""
 
 SP = TypeVar("SP", bound=SearchSpace)
+"""Type variable bound to :class:`SearchSpace`."""
 
 
-class TrustRegion(Empiric[type_.State[S, SP]]):
+class DefaultStateEmpiric(Empiric[type_.State[S, SP]]):
+    """A :class:`DefaultStateEmpiric` is an empirical stateful value with a default state."""
     @property
     @abstractmethod
     def default_state(self) -> S:
-        ...
+        """The default state."""
 
 
-class ContinuousTrustRegion(TrustRegion["ContinuousTrustRegion.State", Box]):
-    @dataclass(frozen=True)
-    class State:
-        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
+TrustRegion = Callable[[SP], DefaultStateEmpiric[S, SP]]
+"""
+A `TrustRegion` constructs a local acquisition space from a global space, data and models, and
+a history of metadata from previous steps.
+"""
 
-        acquisition_space: Box
-        """ The search space. """
 
-        eps: TensorType
-        """
-        The (maximum) vector from the current best point to each bound of the acquisition space.
-        """
+@dataclass(frozen=True)
+class ContinuousTrustRegionState:
+    """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
-        y_min: TensorType
-        """ The minimum observed value. """
+    acquisition_space: Box
+    """ The search space. """
 
-        is_global: bool | TensorType
-        """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `TensorType` instead of a `bool`.
-        """
+    eps: TensorType
+    """
+    The (maximum) vector from the current best point to each bound of the acquisition space.
+    """
 
-        def __deepcopy__(self, memo: dict[int, object]) -> ContinuousTrustRegion.State:
-            box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return ContinuousTrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
+    y_min: TensorType
+    """ The minimum observed value. """
 
+    is_global: bool | TensorType
+    """
+    `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+    `TensorType` instead of a `bool`.
+    """
+
+    def __deepcopy__(self, memo: dict[int, object]) -> ContinuousTrustRegionState:
+        box_copy = copy.deepcopy(self.acquisition_space, memo)
+        return ContinuousTrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
+
+
+class _ContinuousTrustRegion(DefaultStateEmpiric[ContinuousTrustRegionState, Box]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
-        """
-        :param beta: The inverse of the trust region contraction factor.
-        :param kappa: Scales the threshold for the minimal improvement required for a step to be
-            considered a success.
-        """
         self._global_search_space = global_search_space
         self._beta = beta
         self._kappa = kappa
 
     @property
-    def default_state(self) -> State:
+    def default_state(self) -> ContinuousTrustRegionState:
         space = self._global_search_space
         eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
         # todo is y_min correct?
-        return ContinuousTrustRegion.State(space, eps, tf.constant(math.inf), True)
+        return ContinuousTrustRegionState(space, eps, tf.constant(math.inf), True)
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> type_.State[State, Box]:
+    ) -> type_.State[ContinuousTrustRegionState, Box]:
         dataset = datasets[OBJECTIVE]
 
         global_lower = self._global_search_space.lower
@@ -373,7 +378,7 @@ class ContinuousTrustRegion(TrustRegion["ContinuousTrustRegion.State", Box]):
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: ContinuousTrustRegion.State) -> tuple[ContinuousTrustRegion.State, Box]:
+        def go(state: ContinuousTrustRegionState) -> tuple[ContinuousTrustRegionState, Box]:
             tr_volume = tf.reduce_prod(
                 state.acquisition_space.upper - state.acquisition_space.lower
             )
@@ -398,17 +403,15 @@ class ContinuousTrustRegion(TrustRegion["ContinuousTrustRegion.State", Box]):
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            return (
-                ContinuousTrustRegion.State(acquisition_space, eps, y_min, is_global),
-                acquisition_space,
-            )
+            new_state = ContinuousTrustRegionState(acquisition_space, eps, y_min, is_global)
+            return new_state, acquisition_space
 
         return go
 
 
 def continuous_trust_region(
     beta: float = 0.7, kappa: float = 1e-4
-) -> Callable[[Box], TrustRegion[ContinuousTrustRegion.State, Box]]:
+) -> TrustRegion[Box, ContinuousTrustRegionState]:
     """
     Implements the *trust region* algorithm for constructing a local acquisition space from a global
     search space.
@@ -418,7 +421,7 @@ def continuous_trust_region(
         considered a success.
     :return: todo
     """
-    return lambda box: ContinuousTrustRegion(box, beta, kappa)
+    return lambda box: _ContinuousTrustRegion(box, beta, kappa)
 
 
 """

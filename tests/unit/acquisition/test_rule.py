@@ -31,7 +31,7 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
-    ContinuousTrustRegion,
+    ContinuousTrustRegionState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     continuous_trust_region,
@@ -244,7 +244,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = True
-    previous_state = ContinuousTrustRegion.State(search_space, eps, previous_y_min, is_global)
+    previous_state = ContinuousTrustRegionState(search_space, eps, previous_y_min, is_global)
 
     current_state, new_acquisition_space = continuous_trust_region()(search_space).acquire(
         {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
@@ -269,7 +269,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     previous_y_min = dataset.observations[0]
     is_global = True
     acquisition_space = search_space
-    previous_state = ContinuousTrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = ContinuousTrustRegionState(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, new_acquisition_space = continuous_trust_region()(search_space).acquire(
         {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
@@ -294,7 +294,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = ContinuousTrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = ContinuousTrustRegionState(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, new_acquisition_space = continuous_trust_region()(search_space).acquire(
         {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
@@ -319,7 +319,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = ContinuousTrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = ContinuousTrustRegionState(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, new_acquisition_space = continuous_trust_region()(search_space).acquire(
         {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
@@ -334,7 +334,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
 
 
 def test_trust_region_state_deepcopy() -> None:
-    tr_state = ContinuousTrustRegion.State(
+    tr_state = ContinuousTrustRegionState(
         Box(tf.constant([1.2]), tf.constant([3.4])), tf.constant(5.6), tf.constant(7.8), False
     )
     tr_state_copy = copy.deepcopy(tr_state)

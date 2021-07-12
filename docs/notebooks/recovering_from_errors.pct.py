@@ -75,7 +75,7 @@ trust_region = continuous_trust_region()
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result, history = bo.optimize(
-    15, initial_data, model, acquisition_rule, mk_trust_region=trust_region
+    15, initial_data, model, acquisition_rule, trust_region=trust_region
 ).astuple()
 
 # %% [markdown]
@@ -109,7 +109,7 @@ if result.is_err:
         history[-1].dataset,
         history[-1].model,
         acquisition_rule,
-        mk_trust_region=trust_region,
+        trust_region=trust_region,
         trust_region_state=history[-1].trust_region_state
     ).astuple()
 
