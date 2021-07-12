@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import List, NoReturn
 
+import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
@@ -25,8 +26,9 @@ from tests.util.misc import (
     empty_dataset,
     mk_dataset,
     quadratic,
+    random_seed,
 )
-from tests.util.model import PseudoTrainableProbModel, QuadraticMeanAndRBFKernel
+from tests.util.model import GaussianProcess, PseudoTrainableProbModel, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.rule import AcquisitionRule, EmpiricStateful
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
@@ -346,8 +348,59 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     assert_datasets_allclose(final_data[""], data[""])
 
 
+@random_seed
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
-    ...
+    class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self):
+            super().__init__([lambda x: tf.exp(-x)], [rbf()])
+
+    class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self):
+            super().__init__([lambda x: 2 * x], [rbf()])
+
+    LINEAR = "linear"
+    EXPONENTIAL = "exponential"
+
+    class AdditionRule(AcquisitionRule[Box]):
+        def acquire(
+            self,
+            search_space: Box,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+        ) -> TensorType:
+            candidate_query_points = search_space.sample(10)
+            linear_predictions, _ = models[LINEAR].predict(candidate_query_points)
+            exponential_predictions, _ = models[EXPONENTIAL].predict(candidate_query_points)
+
+            target = linear_predictions + exponential_predictions
+
+            return candidate_query_points[None, tf.argmin(target, axis=0)[0], ...]
+
+    def linear_and_exponential(query_points: tf.Tensor) -> dict[str, Dataset]:
+        return {
+            LINEAR: Dataset(query_points, 2 * query_points),
+            EXPONENTIAL: Dataset(query_points, tf.exp(-query_points)),
+        }
+
+    data: Mapping[str, Dataset] = {
+        LINEAR: Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+        EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]])),
+    }
+
+    models: Mapping[str, TrainableProbabilisticModel] = {
+        LINEAR: LinearWithUnitVariance(),
+        EXPONENTIAL: ExponentialWithUnitVariance(),
+    }
+
+    data = (
+        BayesianOptimizer(linear_and_exponential, Box(tf.constant([-2.0]), tf.constant([2.0])))
+        .optimize(25, data, models, AdditionRule())
+        .try_get_final_datasets()
+    )
+
+    objective_values = data[LINEAR].observations + data[EXPONENTIAL].observations
+    min_idx = tf.argmin(objective_values, axis=0)[0]
+    npt.assert_allclose(data[LINEAR].query_points[min_idx], -tf.math.log(2.0), rtol=0.01)
 
 
 def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None:
