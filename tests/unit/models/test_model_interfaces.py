@@ -312,16 +312,6 @@ def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
     return 2.0 * tf.math.sin(x / 3.0)
 
 
-def test_gaussian_process_raises(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_10(x))
-    reference_model = _reference_gpr(x, _3x_plus_10(x))
-    internal_model = model.model
-    npt.assert_allclose(
-        internal_model.training_loss(), -reference_model.log_marginal_likelihood(), rtol=1e-6
-    )
-
-
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_10(x))

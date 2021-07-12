@@ -2,10 +2,6 @@
 # # EGO with a failure region
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
-
-# %%
 from __future__ import annotations
 
 import numpy as np
@@ -116,9 +112,9 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # %% [markdown]
 # ## Build Trieste models
 #
-# The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
+# We now specify how Trieste will use our GPflow models within the BO loop.
 #
-# TODO
+# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using altenate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
 
 # %% [markdown]
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.

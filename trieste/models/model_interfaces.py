@@ -95,9 +95,8 @@ class ProbabilisticModel(ABC):
         Note that this is not supported by all models.
 
         :return: The observation noise.
-        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
         """
-        raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+        raise NotImplementedError("Model {self!r} does not provide observation noise")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
