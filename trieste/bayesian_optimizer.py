@@ -351,6 +351,9 @@ class BayesianOptimizer(Generic[SP]):
         if trust_region is not None:
             trust_region_applied = trust_region(self._search_space)
 
+            if trust_region_state is None:
+                trust_region_state = trust_region_applied.default_state
+
         for step in range(num_steps):
             if track_state:
                 history.append(Record(datasets, models, trust_region_state))
@@ -371,7 +374,7 @@ class BayesianOptimizer(Generic[SP]):
                 else:
                     trust_region_state, acquisition_space = trust_region_applied.acquire(
                         datasets, models
-                    )(trust_region_state or trust_region_applied.default_state)
+                    )(cast(S, trust_region_state))
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import NoReturn
+from typing import List, NoReturn
 
 import pytest
 import tensorflow as tf
@@ -27,13 +27,13 @@ from tests.util.misc import (
     quadratic,
 )
 from tests.util.model import PseudoTrainableProbModel, QuadraticMeanAndRBFKernel
-from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.rule import AcquisitionRule, EmpiricStateful
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.type import TensorType
+from trieste.type import State, TensorType
 from trieste.utils import Err, Ok
 
 
@@ -183,8 +183,45 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_ac
         optimizer.optimize(3, data, models)
 
 
-def test_bayesian_optimizer_uses_specified_state() -> None:
-    ...
+@pytest.mark.parametrize(
+    "starting_state, expected_state_history, final_state",
+    [
+        (None, [[0, 1], [0, 1, 1], [0, 1, 1, 2]], [0, 1, 1, 2, 3]),
+        ([3, -2], [[3, -2], [3, -2, 1], [3, -2, 1, -1]], [3, -2, 1, -1, 0]),
+    ],
+)
+def test_bayesian_optimizer_uses_specified_acquisition_state(
+    starting_state: list[int] | None,
+    expected_state_history: list[list[int]],
+    final_state: int | None,
+) -> None:
+    class Fibonacci(EmpiricStateful[List[int], Box]):
+        default_state = [0, 1]
+
+        def __init__(self, line: Box):
+            self.line = line
+
+        def acquire(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> State[list[int], Box]:
+            return lambda s: (s + [s[-1] + s[-2]], self.line)
+
+    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
+    result, history = (
+        BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1]))
+        .optimize(
+            3,
+            data,
+            models,
+            FixedAcquisitionRule([[0.0]]),
+            trust_region=Fibonacci,
+            trust_region_state=starting_state
+        )
+        .astuple()
+    )
+
+    assert result.unwrap().trust_region_state == final_state
+    assert [record.trust_region_state  for record in history] == expected_state_history
 
 
 def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
