@@ -221,7 +221,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     )
 
     assert result.unwrap().trust_region_state == final_state
-    assert [record.trust_region_state  for record in history] == expected_state_history
+    assert [record.trust_region_state for record in history] == expected_state_history
 
 
 def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
