@@ -418,4 +418,66 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
-    ...
+    class DecreasingLine(EmpiricStateful[int, Box]):
+        def __init__(self, line: Box):
+            self._line = line
+
+        default_state = 1
+
+        def acquire(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> State[int, Box]:
+            return lambda s: (s * 2, Box(self._line.lower, self._line.upper / s))
+
+    class UpperBoundRule(AcquisitionRule[Box]):
+        def acquire(
+            self,
+            search_space: Box,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+        ) -> TensorType:
+            return search_space.upper[None]
+
+    class DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
+        def __init__(self, data: Dataset):
+            super().__init__()
+            self._data = data
+
+        def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+            mean, var = super().predict(query_points)
+            return mean, var / len(self._data)
+
+        def update(self, dataset: Dataset) -> None:
+            self._data = dataset
+
+        def optimize(self, dataset: Dataset) -> None:
+            pass
+
+    initial_data = mk_dataset([[0.0]], [[0.0]])
+    model = DecreasingVarianceModel(initial_data)
+    _, history = (
+        BayesianOptimizer(_quadratic_observer, Box([0], [1]))
+        .optimize(
+            3, {"": initial_data}, {"": model}, UpperBoundRule(), trust_region=DecreasingLine
+        )
+        .astuple()
+    )
+
+    assert [record.trust_region_state for record in history] == [1, 2, 4]
+
+    assert_datasets_allclose(history[0].datasets[""], initial_data)
+    assert_datasets_allclose(
+        history[1].datasets[""], mk_dataset([[0.0], [1.0]], [[0.0], [1.0]])
+    )
+    assert_datasets_allclose(
+        history[2].datasets[""], mk_dataset([[0.0], [1.0], [0.5]], [[0.0], [1.0], [0.25]])
+    )
+
+    for step in range(3):
+        assert history[step].model == history[step].models[""]
+        assert history[step].dataset == history[step].datasets[""]
+
+        _, variance_from_saved_model = (
+            history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+        )
+        npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
