@@ -17,6 +17,7 @@ import copy
 from collections.abc import Mapping
 
 import gpflow
+import math
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -229,10 +230,25 @@ def test_trust_region_for_default_state() -> None:
     npt.assert_array_equal(state.acquisition_space.lower, new_acquisition_space.lower)
     npt.assert_array_equal(state.acquisition_space.upper, new_acquisition_space.upper)
 
+    npt.assert_array_equal(trust_region.default_state.eps, state.eps)
     npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(state.acquisition_space.upper, upper_bound)
     npt.assert_array_almost_equal(state.y_min, [0.012])
     assert state.is_global
+
+
+@pytest.mark.parametrize("dataset", [
+    Dataset(tf.ones([0, 2]), tf.ones([0, 1])),
+    Dataset(tf.constant([[0.0, 0.0]]), tf.constant([[math.inf]]))
+])
+def test_trust_region_raises_for_invalid_data(dataset: Dataset) -> None:
+    lower_bound = tf.constant([-2.2, -1.0])
+    upper_bound = tf.constant([1.3, 3.3])
+    search_space = Box(lower_bound, upper_bound)
+    trust_region = continuous_trust_region()(search_space)
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        trust_region.acquire({OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})
 
 
 def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:

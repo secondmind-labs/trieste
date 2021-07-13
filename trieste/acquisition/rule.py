@@ -353,7 +353,7 @@ class ContinuousTrustRegionState:
     The (maximum) vector from the current best point to each bound of the acquisition space.
     """
 
-    y_min: TensorType | float
+    y_min: TensorType
     """The minimum observed value."""
 
     is_global: bool | TensorType
@@ -377,8 +377,7 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
     def default_state(self) -> ContinuousTrustRegionState:
         space = self._global_search_space
         eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
-        # todo is y_min correct?
-        return ContinuousTrustRegionState(space, eps, math.inf, True)
+        return ContinuousTrustRegionState(space, eps, tf.constant([math.inf]), True)
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -389,6 +388,10 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
         global_upper = self._global_search_space.upper
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
+
+        tf.debugging.assert_all_finite(
+            y_min, message="objective dataset must contain at least one finite observation"
+        )
 
         def go(state: ContinuousTrustRegionState) -> tuple[ContinuousTrustRegionState, Box]:
             tr_volume = tf.reduce_prod(
@@ -452,6 +455,8 @@ def continuous_trust_region(
 
     **Note:** Uses the data for key :const:`~trieste.observer.OBJECTIVE`. The
         :meth:`EmpiricStateful.acquire` method will raise a :exc:`KeyError` if this key is missing.
+        It will raise a :exc:`tf.errors.InvalidArgumentError` if the dataset contains no finite
+        observations.
 
     :param beta: The inverse of the trust region contraction factor.
     :param kappa: Scales the threshold for the minimal improvement required for a step to be
