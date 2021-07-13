@@ -50,10 +50,11 @@ from trieste.utils.objectives import (
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
+    "num_steps, acquisition_rule, trust_region",
     [
-        (20, EfficientGlobalOptimization()),
-        (26, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        (20, EfficientGlobalOptimization(), None),
+        (20, EfficientGlobalOptimization(), continuous_trust_region()),
+        (26, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)), None),
         (
             15,
             EfficientGlobalOptimization(
@@ -61,6 +62,7 @@ from trieste.utils.objectives import (
                     OBJECTIVE
                 )
             ),
+            None,
         ),
         (
             10,
@@ -68,6 +70,7 @@ from trieste.utils.objectives import (
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                 num_query_points=3,
             ),
+            None,
         ),
         (
             10,
@@ -77,6 +80,7 @@ from trieste.utils.objectives import (
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
+            None,
         ),
         (
             10,
@@ -86,12 +90,13 @@ from trieste.utils.objectives import (
                 ).using(OBJECTIVE),
                 num_query_points=2,
             ),
+            None,
         ),
-        (10, DiscreteThompsonSampling(500, 3)),
-        (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+        (10, DiscreteThompsonSampling(500, 3), None),
+        (10, DiscreteThompsonSampling(500, 3), continuous_trust_region()),
+        (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000), None),
     ],
 )
-@pytest.mark.parametrize("trust_region", [continuous_trust_region(), None])
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[Box],
