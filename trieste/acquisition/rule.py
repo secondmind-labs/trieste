@@ -377,7 +377,7 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
     def default_state(self) -> ContinuousTrustRegionState:
         space = self._global_search_space
         eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
-        return ContinuousTrustRegionState(space, eps, tf.constant([math.inf]), True)
+        return ContinuousTrustRegionState(space, eps, [math.inf], True)
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
