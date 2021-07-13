@@ -145,7 +145,7 @@ def generate_continuous_optimizer(
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
         _, top_k_indicies = tf.math.top_k(
-            tf.squeeze(target_func_values), k=num_restarts
+            target_func_values[:, 0], k=num_restarts
         )  # [num_restarts]
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_restarts, D]
 

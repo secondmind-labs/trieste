@@ -132,6 +132,7 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(num_restarts=3),
         generate_continuous_optimizer(sigmoid=True),
         generate_continuous_optimizer(sigmoid=True, num_restarts=3),
+        generate_continuous_optimizer(sigmoid=True, num_restarts=1, num_initial_samples=1),
     ],
 )
 def test_continuous_optimizer(
@@ -168,7 +169,6 @@ def test_optimize_batch(
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
     for point in points:
-        print(point)
         npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
 
 
