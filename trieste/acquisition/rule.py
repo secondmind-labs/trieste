@@ -332,7 +332,7 @@ class EmpiricStateful(ABC, Generic[S, T]):
 
 
 SP = TypeVar("SP", bound=SearchSpace)
-"""Type variable bound to :class:`SearchSpace`."""
+"""Type variable bound to :class:`~trieste.space.SearchSpace`."""
 
 TrustRegion = Callable[[SP], EmpiricStateful[S, SP]]
 """
@@ -450,8 +450,8 @@ def continuous_trust_region(
     global search space. For a local search, the actual search space will be the
     intersection of the trust region and global search space.
 
-    **Note:** Uses the data for key :const:`OBJECTIVE`. The :meth:`EmpiricStateful.acquire` method
-        will raise a :exc:`KeyError` if this key is missing.
+    **Note:** Uses the data for key :const:`~trieste.observer.OBJECTIVE`. The
+        :meth:`EmpiricStateful.acquire` method will raise a :exc:`KeyError` if this key is missing.
 
     :param beta: The inverse of the trust region contraction factor.
     :param kappa: Scales the threshold for the minimal improvement required for a step to be
