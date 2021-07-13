@@ -121,7 +121,7 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_restarts <= 0:
-        raise ValueError(f"num_parallel must be positive, got {num_restarts}")
+        raise ValueError(f"num_restarts must be positive, got {num_restarts}")
 
     if num_initial_samples < num_restarts:
         raise ValueError(
