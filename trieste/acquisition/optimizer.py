@@ -123,6 +123,14 @@ def generate_continuous_optimizer(
     if num_restarts <= 0:
         raise ValueError(f"num_parallel must be positive, got {num_restarts}")
 
+    if num_initial_samples < num_restarts:
+        raise ValueError(
+            f"""
+            num_initial_samples {num_initial_samples} must be at
+            least num_restarts {num_restarts}
+            """
+        )
+
     def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches

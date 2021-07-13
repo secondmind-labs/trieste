@@ -95,6 +95,8 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(num_initial_samples=-5)
     with pytest.raises(ValueError):
         generate_continuous_optimizer(num_restarts=-5)
+    with pytest.raises(ValueError):
+        generate_continuous_optimizer(num_restarts=5, num_initial_samples=4)
 
 
 @random_seed
