@@ -367,7 +367,11 @@ def test_min_value_entropy_search_builder_updates_acquisition_function(use_thomp
     partial_dataset = Dataset(xs[:10], ys[:10])
     full_dataset = Dataset(xs, ys)
 
-    builder = MinValueEntropySearch(search_space, use_thompson=bool(use_thompson), num_fourier_features=None if isinstance(use_thompson, bool) else use_thompson)
+    builder = MinValueEntropySearch(
+        search_space,
+        use_thompson=bool(use_thompson),
+        num_fourier_features=None if isinstance(use_thompson, bool) else use_thompson,
+    )
     xs = tf.cast(tf.linspace([[0.0]], [[1.0]], 10), tf.float64)
 
     old_acq_fn = builder.prepare_acquisition_function(partial_dataset, model)
