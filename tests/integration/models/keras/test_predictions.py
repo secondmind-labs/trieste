@@ -65,8 +65,8 @@ def test_ensemble_model_close_to_actuals(example_data):
             input_tensor_spec,
             output_tensor_spec,
             num_hidden_layers=3,
-            units=[250,250,250],
-            # activation=[None],
+            units=[64, 64, 64],
+            activation=['relu', 'relu', 'relu'],
             # use_bias=[None],
             # kernel_initializer=[None],
             # bias_initializer=[None],
@@ -82,10 +82,10 @@ def test_ensemble_model_close_to_actuals(example_data):
     # breakpoint()
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        'batch_size': 256,
-        'epochs': 100,
-        'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-        'validation_split': 0.2,
+        'batch_size': 64,
+        'epochs': 200,
+        'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=20)],
+        'validation_split': 0.1,
         'verbose': 1,
     }
     dataset_builder = EnsembleDataTransformer(networks)
@@ -94,7 +94,6 @@ def test_ensemble_model_close_to_actuals(example_data):
         dataset_builder,
         TFKerasOptimizer(optimizer, fit_args, dataset_builder)
     )
-    # breakpoint()
 
     history = model.optimize(example_data)
 
@@ -102,8 +101,6 @@ def test_ensemble_model_close_to_actuals(example_data):
     predicted_means, predicted_vars = model.predict(x)
 
     observations = y[list(y)[0]]
-    breakpoint()
-    # mean_absolute_error = tf.reduce_mean(tf.abs(predicted_means - observations))
     np.testing.assert_allclose(
         predicted_means, observations, atol=1e-1, rtol=2e-1
     )
