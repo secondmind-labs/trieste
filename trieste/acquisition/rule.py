@@ -426,47 +426,37 @@ def continuous_trust_region(
 ) -> TrustRegion[Box, ContinuousTrustRegionState]:
     """
     Implements the *trust region* algorithm for constructing a local acquisition space from a global
-    search space.
+    continuous search space. The algorithm is as follows:
 
-    :param beta: The inverse of the trust region contraction factor.
-    :param kappa: Scales the threshold for the minimal improvement required for a step to be
-        considered a success.
-    :return: todo
-    """
-    return lambda box: _ContinuousTrustRegion(box, beta, kappa)
+    The local acquisition space is the space constructed on each step by this `TrustRegion`,
+    and can be either the global search space, or a trust region which is typically smaller than
+    the global search space and changes on each step.
 
+    If no state is specified (it is `None`), the :attr:`default_state` is used.
 
-"""
-    Acquire one new query point according the trust region algorithm. Return the new query point
-    along with the final acquisition state from this step.
+    If the new optimum improves over the previous optimum by some threshold (that scales linearly
+    with ``kappa``), the previous acquisition is considered successful.
 
-    If no ``state`` is specified (it is `None`), ``search_space`` is used as
-    the search space for this step.
+    If the previous acquisition was successful, the global search space is used as the local
+    acquisition space. If the previous step was unsuccessful, the trust region is used as the local
+    acquisition space if the previous step was global, and vice versa.
 
-    If a ``state`` is specified, and the new optimum improves over the previous optimum
-    by some threshold (that scales linearly with ``kappa``), the previous acquisition is
-    considered successful.
-
-    If the previous acquisition was successful, ``search_space`` is used as the new
-    search space. If the previous step was unsuccessful, the search space is changed to the
-    trust region if it was global, and vice versa.
-
-    If the previous acquisition was over the trust region, the size of the trust region is
+    If the previous local acquisition space was the trust region, the size of the trust region is
     modified. If the previous acquisition was successful, the size is increased by a factor
     ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
     ``beta``.
 
     **Note:** The acquisition search space will never extend beyond the boundary of the
-    ``search_space``. For a local search, the actual search space will be the
-    intersection of the trust region and ``search_space``.
+    global search space. For a local search, the actual search space will be the
+    intersection of the trust region and global search space.
 
-    :search_space: The search space from which to construct an acquisition space.
-    :param datasets: The known observer query points and observations. Uses the data for key
-        `OBJECTIVE` to calculate the new trust region.
-    :param models: The models of the specified ``datasets``.
-    :param state: The acquisition state from the previous step, if there was a previous step,
-        else `None`.
-    :return: A function which takes the current state, and returns a two-tuple of the local
-        acquisition space and the new state.
-    :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
-"""
+    **Note:** Uses the data for key :const:`OBJECTIVE`. The :meth:`EmpiricStateful.acquire` method
+        will raise a :exc:`KeyError` if this key is missing.
+
+    :param beta: The inverse of the trust region contraction factor.
+    :param kappa: Scales the threshold for the minimal improvement required for a step to be
+        considered a success.
+    :return: A function from the global search space to the trust region algorithm for
+        continuous search spaces.
+    """
+    return lambda box: _ContinuousTrustRegion(box, beta, kappa)
