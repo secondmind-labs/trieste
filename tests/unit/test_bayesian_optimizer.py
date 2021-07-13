@@ -130,6 +130,36 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
+@pytest.mark.parametrize("fit_intial_model", [True, False])
+def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> None:
+    class _CountingOptimizerModel(_PseudoTrainableQuadratic):
+        _optimize_count = 0
+
+        def optimize(self, dataset: Dataset) -> None:
+            self._optimize_count += 1
+
+    rule = FixedAcquisitionRule([[0.0]])
+    model = _CountingOptimizerModel()
+
+    final_opt_state, _ = (
+        BayesianOptimizer(_quadratic_observer, Box([0], [1]))
+        .optimize(
+            1,
+            {"": mk_dataset([[0.0]], [[0.0]])},
+            {"": model},
+            rule,
+            fit_intial_model=fit_intial_model,
+        )
+        .astuple()
+    )
+    final_model = final_opt_state.unwrap().model
+
+    if fit_intial_model:  # optimized at start and end of first BO step
+        assert final_model._optimize_count == 2  # type: ignore
+    else:  # optimized just at end of first BO step
+        assert final_model._optimize_count == 1  # type: ignore
+
+
 @pytest.mark.parametrize(
     "datasets, models",
     [
@@ -216,7 +246,13 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
     rule = FixedAcquisitionRule([[0.0]])
     result, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(10, {"": mk_dataset([[0.0]], [[0.0]])}, {"": _UncopyableModel()}, rule)
+        .optimize(
+            10,
+            {"": mk_dataset([[0.0]], [[0.0]])},
+            {"": _UncopyableModel()},
+            rule,
+            fit_intial_model=False,
+        )
         .astuple()
     )
 

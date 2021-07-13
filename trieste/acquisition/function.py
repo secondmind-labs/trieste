@@ -40,6 +40,8 @@ from .sampler import (
     ThompsonSampler,
 )
 
+CLAMP_LB = 1e-8
+
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for acquisition functions.
@@ -339,27 +341,27 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     This implementation largely follows :cite:`wang2017max` and samples the objective's minimum
     :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
     Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
-    Gumbel sampler being the cheapest but least accurate.
-
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
     """
 
     def __init__(
         self,
         search_space: SearchSpace,
-        num_samples: int = 10,
-        grid_size: int = 5000,
-        use_thompson: bool = False,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        use_thompson: bool = True,
         num_fourier_features: Optional[int] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
             objective function.
-        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of fourier features used for approximate Thompson
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
         """
         self._search_space = search_space
@@ -489,7 +491,7 @@ class min_value_entropy_search:
         fmean, fvar = self._model.predict(tf.squeeze(x, -2))
         fsd = tf.math.sqrt(fvar)
         fsd = tf.clip_by_value(
-            fsd, 1.0e-8, fmean.dtype.max
+            fsd, CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
@@ -497,7 +499,7 @@ class min_value_entropy_search:
 
         minus_cdf = 1 - normal.cdf(gamma)
         minus_cdf = tf.clip_by_value(
-            minus_cdf, 1.0e-8, 1
+            minus_cdf, CLAMP_LB, 1
         )  # clip below to improve numerical stability
         f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
 
@@ -728,13 +730,14 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = pof >= self._min_feasibility_probability
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        mean, _ = objective_model.predict(objective_dataset.query_points)
-        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        eta = tf.reduce_min(feasible_mean, axis=0)
         function = expected_improvement(objective_model, eta)
 
         return lambda at: function(at) * constraint_fn(at)
@@ -1074,7 +1077,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
-    improve numerical stability, we perfom additive penalization in a log space.
+    improve numerical stability, we perform additive penalization in a log space.
 
     The Lipschitz constant and additional penalization parameters are estimated once
     when first preparing the acquisition function with no pending points. These estimates
@@ -1391,3 +1394,244 @@ def hard_local_penalizer(
         return tf.reduce_prod(penalization, axis=-1)
 
     return penalization_function
+
+
+class GIBBON(SingleModelGreedyAcquisitionBuilder):
+    r"""
+
+    The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
+    of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
+    information gained about (i.e the change in entropy of) the objective function's minimum by
+    evaluating a batch of candidate points. Batches are built in a greedy manner.
+
+    This implementation follows :cite:`Moss:2021` but is modified for function
+    minimisation (rather than maximisation). We sample the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
+
+    When performing BO with large batches (i.e. much larger than 10), we recommend the big batch
+    formulation of GIBBON, as accessed through setting `big_batch` to be True.
+    """
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        use_thompson: bool = True,
+        num_fourier_features: Optional[int] = None,
+        big_batch: bool = False,
+    ):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of
+            the objective function.
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
+            scaling this with search space dimension.
+        :param use_thompson: If True then use Thompson sampling to sample the objective's
+            minimum, else use Gumbel sampling.
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
+            sampling. If None, then do exact Thompson sampling.
+        :param big_batch: If True, then use the GIBBON formulation for BO with large
+            batches (i.e. larger than 10).
+        """
+        self._search_space = search_space
+
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+        if num_fourier_features is not None:
+            if not use_thompson:
+                raise ValueError(
+                    f"""
+                    Fourier features approximation can only be applied to Thompson sampling
+                    however `use_thompson` is {use_thompson}.
+                    """
+                )
+            if num_fourier_features <= 0:
+                raise ValueError(
+                    f"num_fourier_features must be positive, got {num_fourier_features}"
+                )
+        self._use_thompson = use_thompson
+        self._num_fourier_features = num_fourier_features
+        self._big_batch = big_batch
+
+        self._min_value_samples = None
+
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The GIBBON acquisition function modified for objective minimisation.
+        :raise ValueError: if the first call does not have pending_points=None.
+        """
+
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        if pending_points is None:  # only collect min-value samples once per optimization step
+
+            if not self._use_thompson:  # use Gumbel sampler
+                sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+            elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+                sampler = RandomFourierFeatureThompsonSampler(
+                    self._num_samples,
+                    model,
+                    dataset,
+                    sample_min_value=True,
+                    num_features=self._num_fourier_features,
+                )
+            else:  # use exact Thompson sampler
+                sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
+
+            query_points = self._search_space.sample(num_samples=self._grid_size)
+            tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+            query_points = tf.concat([dataset.query_points, query_points], 0)
+            self._min_value_samples = sampler.sample(query_points)
+
+        if self._min_value_samples is None:
+            raise ValueError("GIBBON must be first called with no pending_points.")
+
+        return gibbon(model, self._min_value_samples, pending_points, self._big_batch)
+
+
+def gibbon(
+    model: ProbabilisticModel,
+    samples: TensorType,
+    pending_points: Optional[TensorType] = None,
+    big_batch: bool = False,
+) -> AcquisitionFunction:
+    r"""
+    Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function
+    of :cite:`Moss:2021`.The GIBBON acquisition function consists of two terms --- a quality term
+    and a diversity term. The quality term measures the amount of information that each individual
+    batch element provides about the objective function's minimal value :math:`y^*` (ensuring that
+    evaluations are targeted in promising areas of the space), whereas the repulsion term encourages
+    diversity within the batch (achieving high values for points with low predictive correlation).
+
+    GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive
+    correlation matrix :math:`C` between the `m` pending points and the current candidate.
+    The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
+    tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using the
+    formula for the determinant of block matrices, i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
+    Note that when using GIBBON for purely sequential optimization, the repulsion term is
+    not required.
+
+    As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a set
+    of `m` pending points, we need only ever calculate the entropy reduction provided by adding the
+    current candidate point to the current pending points, not the full information gain provided by
+    evaluating all the pending points. This allows for a modest computational saving.
+
+    When performing BO with large batches (i.e. much larger than 10), GIBBON's approximations become
+    less accurate and its repulsion term dominates. Therefore, for large batch BO, we follow the
+    arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{log B}`. This
+    behavior is accessed though setting `big_batch` to True.
+
+    :param model: The model of the objective function. GIBBON requires a model with
+        a :method:covariance_between_points method and so GIBBON only
+        supports :class:`GaussianProcessRegression` models.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :param pending_points: The points already chosen in the current batch.
+    :param big_batch: If True, then use the GIBBON formulation for BO with large batches.
+    :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    """
+    tf.debugging.assert_rank(samples, 2)
+    if len(samples) == 0:
+        raise ValueError("Min-value samples must be populated.")
+
+    try:
+        noise_variance = model.get_observation_noise()
+    except NotImplementedError:
+        raise ValueError(
+            """
+            GIBBON only currently supports homoscedastic Gaussian process models.
+            """
+        )
+
+    if not hasattr(model, "covariance_between_points"):
+        raise AttributeError(
+            """
+            GIBBON only supports models with a covariance_between_points method.
+            """
+        )
+
+    if pending_points is not None:
+        tf.debugging.assert_rank(pending_points, 2)
+
+    def acquisition(x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
+
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batches through greedy batch design.",
+        )
+
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        yvar = fvar + noise_variance  # need predictive variance of observations
+
+        rho_squared = fvar / yvar  # squared correlation between observations and latent function
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+        gamma = (tf.squeeze(samples) - fmean) / fsd
+
+        def quality_term(
+            rho_squared: TensorType, gamma: TensorType
+        ) -> TensorType:  # calculate GIBBON's quality term
+            normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            minus_cdf = 1 - normal.cdf(gamma)
+            minus_cdf = tf.clip_by_value(
+                minus_cdf, CLAMP_LB, 1
+            )  # clip below to improve numerical stability
+            ratio = normal.prob(gamma) / minus_cdf
+            inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+            acq = -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)
+
+            return acq  # [N, 1]
+
+        def repulsion_term(
+            x: TensorType, pending_points: TensorType, yvar: TensorType
+        ) -> TensorType:  # calculate GIBBON's repulsion term
+            _, B = model.predict_joint(pending_points)  # [1, m, m]
+            L = tf.linalg.cholesky(
+                B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)
+            )  # need predictive variance of observations
+            A = tf.expand_dims(
+                model.covariance_between_points(tf.squeeze(x, -2), pending_points),  # type: ignore
+                -1,
+            )  # [N, m, 1]
+            L_inv_A = tf.linalg.triangular_solve(L, A)
+            V_det = yvar - tf.squeeze(
+                tf.matmul(L_inv_A, L_inv_A, transpose_a=True), -1
+            )  # equation for determinant of block matrices
+            repulsion = 0.5 * (tf.math.log(V_det) - tf.math.log(yvar))
+
+            return repulsion  # [N, 1]
+
+        if pending_points is None:  # no repulsion term required if no pending_points
+            return quality_term(rho_squared, gamma)  # [..., 1]
+        else:
+            if big_batch:
+                batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=fmean.dtype)
+                repulsion_weight = (1 / batch_size) ** (tf.math.log(search_space_dim))
+            else:
+                repulsion_weight = 1.0
+
+            return quality_term(rho_squared, gamma) + repulsion_weight * repulsion_term(
+                x, pending_points, yvar
+            )
+
+    return acquisition
