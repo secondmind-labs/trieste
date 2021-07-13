@@ -1310,11 +1310,11 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
         self._radius = tf.Variable(
             tf.transpose((mean_pending - eta) / lipschitz_constant),
-            shape=[*mean_pending.shape[:-1], None],
+            shape=[1, None],
         )
         self._scale = tf.Variable(
             tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant),
-            shape=[*variance_pending.shape[:-1], None],
+            shape=[1, None],
         )
 
     def update(

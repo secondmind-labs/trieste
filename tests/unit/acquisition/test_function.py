@@ -1008,13 +1008,16 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
-    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
     acq_builder = LocalPenalizationAcquisitionFunction(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
     lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
+    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    if penalizer == soft_local_penalizer:
+        assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 
