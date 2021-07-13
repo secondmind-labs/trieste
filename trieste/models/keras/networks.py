@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from itertools import repeat
 from typing import List, Optional
 
 import numpy as np
@@ -203,39 +204,35 @@ class MultilayerFcNetwork(KerasNetwork):
         self._output_tensor_spec = output_tensor_spec
         self._num_hidden_layers = num_hidden_layers
         self._units = units
-        self._activation = activation
-        self._use_bias = use_bias
-        self._kernel_initializer = kernel_initializer
-        self._bias_initializer = bias_initializer
-        self._kernel_regularizer = kernel_regularizer
-        self._bias_regularizer = bias_regularizer
-        self._activity_regularizer = activity_regularizer
-        self._kernel_constraint = kernel_constraint
-        self._bias_constraint = bias_constraint
+
+        self._activation = activation or repeat(None, num_hidden_layers)
+        self._use_bias = use_bias or repeat(True, num_hidden_layers)
+        self._kernel_initializer = kernel_initializer or repeat('glorot_uniform', num_hidden_layers)
+        self._bias_initializer = bias_initializer or repeat('zeros', num_hidden_layers)
+        self._kernel_regularizer = kernel_regularizer or repeat(None, num_hidden_layers)
+        self._bias_regularizer = bias_regularizer or repeat(None, num_hidden_layers)
+        self._activity_regularizer = activity_regularizer or repeat(None, num_hidden_layers)
+        self._kernel_constraint = kernel_constraint or repeat(None, num_hidden_layers)
+        self._bias_constraint = bias_constraint or repeat(None, num_hidden_layers)
 
     def gen_hidden_dense_layers(self, hidden_layer):
         """Generate a sequence of dense Keras layers"""
         if self._num_hidden_layers > 0:
-            for id_layer in range(self._num_hidden_layers):
-                hidden_layer = tf.keras.layers.Dense(units=self._units[id_layer])(hidden_layer)
-                if self._activation is not None:
-                    hidden_layer.activation = self._activation[id_layer]
-                if self._use_bias is not None:
-                    hidden_layer.use_bias = self._use_bias[id_layer]
-                if self._kernel_initializer is not None:
-                    hidden_layer.kernel_initializer = self._kernel_initializer[id_layer]
-                if self._bias_initializer is not None:
-                    hidden_layer.bias_initializer = self._bias_initializer[id_layer]
-                if self._kernel_regularizer is not None:
-                    hidden_layer.kernel_regularizer = self._kernel_regularizer[id_layer]
-                if self._bias_regularizer is not None:
-                    hidden_layer.bias_regularizer = self._bias_regularizer[id_layer]
-                if self._activity_regularizer is not None:
-                    hidden_layer.activity_regularizer = self._activity_regularizer[id_layer]
-                if self._kernel_constraint is not None:
-                    hidden_layer.kernel_constraint = self._kernel_constraint[id_layer]
-                if self._bias_constraint is not None:
-                    hidden_layer.bias_constraint = self._bias_constraint[id_layer]
+            layer_args = zip(
+                self._units,
+                self._activation,
+                self._use_bias,
+                self._kernel_initializer,
+                self._bias_initializer,
+                self._activity_regularizer,
+                self._kernel_constraint,
+                self._bias_constraint
+            )
+
+            for dense_layer_args in layer_args:
+                layer = tf.keras.layers.Dense(*dense_layer_args)
+                hidden_layer = layer(hidden_layer)
+
         return hidden_layer
     
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
