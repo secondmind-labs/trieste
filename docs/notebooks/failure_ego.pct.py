@@ -156,13 +156,10 @@ from trieste.acquisition import (
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
-        @tf.function
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
         return acquisition
-    def update_acquisition_function(self, acquisition, dataset, model):
-        return acquisition  # no variables to update
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
