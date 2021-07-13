@@ -377,7 +377,7 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
     def default_state(self) -> ContinuousTrustRegionState:
         space = self._global_search_space
         eps = 0.5 * (space.upper - space.lower) / (5.0 ** (1.0 / space.lower.shape[-1]))
-        return ContinuousTrustRegionState(space, eps, [math.inf], True)
+        return ContinuousTrustRegionState(space, eps, tf.constant([math.inf]), True)
 
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -397,7 +397,7 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
             tr_volume = tf.reduce_prod(
                 state.acquisition_space.upper - state.acquisition_space.lower
             )
-            step_is_success = y_min < state.y_min - self._kappa * tr_volume
+            step_is_success = y_min < tf.cast(state.y_min, y_min.dtype) - self._kappa * tr_volume
 
             eps = (
                 state.eps
