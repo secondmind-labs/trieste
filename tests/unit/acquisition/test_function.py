@@ -352,6 +352,37 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)
 
 
+@pytest.mark.parametrize("use_thompson", [True, False, 100])
+def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    partial_dataset = Dataset(xs[:10], ys[:10])
+    full_dataset = Dataset(xs, ys)
+
+    builder = MinValueEntropySearch(search_space, use_thompson=bool(use_thompson), num_fourier_features=None if isinstance(use_thompson, bool) else use_thompson)
+    xs = tf.cast(tf.linspace([[0.0]], [[1.0]], 10), tf.float64)
+
+    old_acq_fn = builder.prepare_acquisition_function(partial_dataset, model)
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    updated_acq_fn = builder.update_acquisition_function(old_acq_fn, full_dataset, model)
+    assert updated_acq_fn == old_acq_fn
+    updated_values = updated_acq_fn(xs)
+
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    new_acq_fn = builder.prepare_acquisition_function(full_dataset, model)
+    new_values = new_acq_fn(xs)
+
+    npt.assert_allclose(updated_values, new_values)
+
+
 @random_seed
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
 def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mves) -> None:

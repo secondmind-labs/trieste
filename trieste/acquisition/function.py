@@ -433,13 +433,24 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         if not isinstance(function, min_value_entropy_search):
             raise ValueError("Acquisition function is not min_value_entropy_search")
 
-        gumbel_sampler = GumbelSampler(self._num_samples, model)
+        if not self._use_thompson:  # use Gumbel sampler
+            sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+        elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+            sampler = RandomFourierFeatureThompsonSampler(
+                self._num_samples,
+                model,
+                dataset,
+                sample_min_value=True,
+                num_features=self._num_fourier_features,
+            )
+        else:  # use exact Thompson sampler
+            sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        gumbel_samples = gumbel_sampler.sample(query_points)
-        function.update(gumbel_samples)
+        min_value_samples = sampler.sample(query_points)
+        function.update(min_value_samples)
         return function
 
 
