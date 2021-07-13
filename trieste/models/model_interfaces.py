@@ -398,7 +398,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
         x = self.model.data[0].value()
-        num_data = x.shape[0]
+        num_data = tf.shape(x)[0]
         s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
 
         K = self.model.kernel(x)
