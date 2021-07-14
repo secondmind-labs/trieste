@@ -340,42 +340,47 @@ class Box(SearchSpace):
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
 
+
 class OrdinalSearchSpace(Box):
     r"""
     Ordinal search space representing a :math:`D`-dimensional box in
     :math:`\mathbb{R}^D`. This class inherit :class:`Box`
     """
 
-    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, stepsizes: Sequence[float] | TensorType):
+    def __init__(
+        self,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
+        stepsizes: Sequence[float] | TensorType,
+    ):
 
         r"""
-        If ``lower``, ``upper`` and ``stepsize``  are `Sequence`\ s of floats (such as lists or tuples),
-        they will be converted to tensors of dtype `tf.float64`.
+        If ``lower``, ``upper`` and ``stepsize`` are `Sequence`\ s of floats
+        (such as lists or tuples), they will be converted to tensors of dtype `tf.float64`.
 
-        :param lower: The lower (inclusive) bounds of the Ordinal Space. Must have shape [D] for positive D,
-            and if a tensor, must have float type.
-        :param upper: The upper (inclusive) bounds of the Ordinal Space. Must have shape [D] for positive D,
-            and if a tensor, must have float type.
-        :param stepsizes: The step size of each dimension of the Ordinal Space. Must have shape [D] for positive D,
-            and if a tensor, must have float type.
+        :param lower: The lower (inclusive) bounds of the Ordinal Space. Must have shape [D]
+            for positive D, and if a tensor, must have float type.
+        :param upper: The upper (inclusive) bounds of the Ordinal Space. Must have shape [D]
+            for positive D, and if a tensor, must have float type.
+        :param stepsizes: The step size of each dimension of the Ordinal Space. Must have
+            shape [D] for positive D, and if a tensor, must have float type.
         :raise ValueError (or InvalidArgumentError): If any of the following are true:
 
             - ``lower``, ``upper`` and ``stepsizes`` have invalid shapes.
             - ``lower``, ``upper`` and ``stepsizes`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
-        
+
         tf.debugging.assert_shapes([(stepsizes, ["D"])])
         tf.assert_rank(lower, 1)
-        
+
         if isinstance(stepsizes, Sequence):
             self._stepsizes = tf.constant(stepsizes, dtype=tf.float64)
         else:
-            self._stepsizes = tf.convert_to_tensor(stepsizes) 
+            self._stepsizes = tf.convert_to_tensor(stepsizes)
 
             tf.debugging.assert_same_float_dtype([self._lower, self._stepsizes])
 
-        
         super().__init__(lower, upper)
 
     def __repr__(self) -> str:
@@ -420,9 +425,9 @@ class OrdinalSearchSpace(Box):
         """ the step sizes of the ordinal space"""
         return self._stepsizes
 
-    def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace: # type: ignore[override]
+    def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace:  # type: ignore[override]
         r"""
-        Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating 
+        Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating
         their respective lower and upper bounds). For example:
 
             >>> unit_interval = OrdinalSearchSpace([0.0], [1.0])
@@ -433,10 +438,11 @@ class OrdinalSearchSpace(Box):
             >>> new_ordinal_space.upper.numpy()
             array([1., 2., 2.])
 
-        :param other: A :class:`OrdinalSearchSpace` with bounds of the same type as this :class:`OrdinalSearchSpace`.
+        :param other: A :class:`OrdinalSearchSpace` with bounds of the same type as
+            this :class:`OrdinalSearchSpace`.
         :return: The Cartesian product of the two :class:`OrdinalSearchSpace`\ es.
-        :raise TypeError: If the bounds of one :class:`OrdinalSearchSpace` have different dtypes to those of
-            the other :class:`OrdinalSearchSpace`.
+        :raise TypeError: If the bounds of one :class:`OrdinalSearchSpace` have different
+            dtypes to those of the other :class:`OrdinalSearchSpace`.
         """
         if self.lower.dtype is not other.lower.dtype:
             return NotImplemented
@@ -446,4 +452,3 @@ class OrdinalSearchSpace(Box):
         product_stepsizes = tf.concat([self._stepsizes, other.stepsizes], axis=-1)
 
         return OrdinalSearchSpace(product_lower_bound, product_upper_bound, product_stepsizes)
-
