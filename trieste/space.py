@@ -422,7 +422,7 @@ class OrdinalSearchSpace(Box):
 
     @property
     def stepsizes(self) -> TensorType:
-        """ the step sizes of the ordinal space"""
+        """the step sizes of the ordinal space"""
         return self._stepsizes
 
     def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace:  # type: ignore[override]
