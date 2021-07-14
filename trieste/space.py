@@ -420,7 +420,6 @@ class OrdinalSearchSpace(Box):
         """ the step sizes of the ordinal space"""
         return self._stepsizes
 
-    @overload
     def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace: # type: ignore[override]
         r"""
         Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating 
