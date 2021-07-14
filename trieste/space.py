@@ -430,13 +430,15 @@ class OrdinalSearchSpace(Box):
         Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating
         their respective lower and upper bounds). For example:
 
-            >>> unit_interval = OrdinalSearchSpace([0.0], [1.0])
-            >>> square_at_origin = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0])
+            >>> unit_interval = OrdinalSearchSpace([0.0], [1.0], [0.1])
+            >>> square_at_origin = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
             >>> new_ordinal_space = unit_interval * square_at_origin
             >>> new_ordinal_space.lower.numpy()
             array([ 0., -2., -2.])
             >>> new_ordinal_space.upper.numpy()
             array([1., 2., 2.])
+            >>> new_ordinal_space.stepsize.numpy()
+            array([0.1, 0.2, 0.3])
 
         :param other: A :class:`OrdinalSearchSpace` with bounds of the same type as
             this :class:`OrdinalSearchSpace`.
