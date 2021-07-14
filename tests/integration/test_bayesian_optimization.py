@@ -19,6 +19,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
+    GIBBON,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
@@ -47,33 +48,44 @@ from trieste.utils.objectives import (
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (7, EfficientGlobalOptimization()),
-        (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+        (20, EfficientGlobalOptimization()),
+        (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
         (
-            14,
+            15,
             EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=1000, num_samples=5).using(
+                MinValueEntropySearch(Box([0, 0], [1, 1]), num_fourier_features=1000).using(
                     OBJECTIVE
                 )
             ),
         ),
         (
-            6,
+            10,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=2,
-            ),
-        ),
-        (
-            4,
-            EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(Box([0, 0], [1, 1])).using(OBJECTIVE),
                 num_query_points=3,
             ),
         ),
-        (7, TrustRegion()),
-        (7, DiscreteThompsonSampling(500, 3)),
-        (8, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+        (
+            10,
+            EfficientGlobalOptimization(
+                LocalPenalizationAcquisitionFunction(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
+                num_query_points=3,
+            ),
+        ),
+        (
+            10,
+            EfficientGlobalOptimization(
+                GIBBON(
+                    Box([0, 0], [1, 1]),
+                ).using(OBJECTIVE),
+                num_query_points=2,
+            ),
+        ),
+        (15, TrustRegion()),
+        (10, DiscreteThompsonSampling(500, 3)),
+        (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
@@ -95,7 +107,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         return GaussianProcessRegression(gpr)
 
-    initial_query_points = search_space.sample_sobol(5)
+    initial_query_points = search_space.sample(5)
     observer = mk_observer(scaled_branin)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)

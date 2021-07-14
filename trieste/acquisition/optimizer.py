@@ -121,7 +121,15 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_restarts <= 0:
-        raise ValueError(f"num_parallel must be positive, got {num_restarts}")
+        raise ValueError(f"num_restarts must be positive, got {num_restarts}")
+
+    if num_initial_samples < num_restarts:
+        raise ValueError(
+            f"""
+            num_initial_samples {num_initial_samples} must be at
+            least num_restarts {num_restarts}
+            """
+        )
 
     def optimize_continuous(space: Box, target_func: AcquisitionFunction) -> TensorType:
         """
@@ -137,7 +145,7 @@ def generate_continuous_optimizer(
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
         _, top_k_indicies = tf.math.top_k(
-            tf.squeeze(target_func_values), k=num_restarts
+            target_func_values[:, 0], k=num_restarts
         )  # [num_restarts]
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_restarts, D]
 

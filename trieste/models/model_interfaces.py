@@ -453,10 +453,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         @tf.function
         def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
             randomize_model_hyperparameters(self.model)
-            return self.model.maximum_log_likelihood_objective()
+            return self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
 
         current_best_parameters = read_values(self.model)
-        max_log_likelihood = self.model.maximum_log_likelihood_objective()
+        max_log_likelihood = (
+            self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
+        )
 
         for _ in tf.range(num_prior_samples):
             try:
