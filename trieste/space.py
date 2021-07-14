@@ -421,7 +421,7 @@ class OrdinalSearchSpace(Box):
         return self._stepsizes
 
     @overload
-    def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace:
+    def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace: # type: ignore[override]
         r"""
         Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating 
         their respective lower and upper bounds). For example:
