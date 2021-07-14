@@ -381,6 +381,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self._beta = beta
         self._kappa = kappa
         self._optimizer = optimizer
+        self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -462,8 +463,15 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
                 tf.reduce_min([global_upper, xmin + eps], axis=0),
             )
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        point = self._optimizer(acquisition_space, acquisition_function)
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                datasets, models
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function, datasets, models
+            )
+        point = self._optimizer(acquisition_space, self._acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_
