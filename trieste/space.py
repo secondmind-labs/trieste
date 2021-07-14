@@ -339,3 +339,111 @@ class Box(SearchSpace):
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
+
+class OrdinalSearchSpace(Box):
+    r"""
+    Ordinal search space representing a :math:`D`-dimensional box in
+    :math:`\mathbb{R}^D`. This class inherit :class:`Box`
+    """
+
+    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType, stepsizes: Sequence[float] | TensorType):
+
+        r"""
+        If ``lower``, ``upper`` and ``stepsize``  are `Sequence`\ s of floats (such as lists or tuples),
+        they will be converted to tensors of dtype `tf.float64`.
+
+        :param lower: The lower (inclusive) bounds of the Ordinal Space. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :param upper: The upper (inclusive) bounds of the Ordinal Space. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :param stepsizes: The step size of each dimension of the Ordinal Space. Must have shape [D] for positive D,
+            and if a tensor, must have float type.
+        :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+            - ``lower``, ``upper`` and ``stepsizes`` have invalid shapes.
+            - ``lower``, ``upper`` and ``stepsizes`` do not have the same floating point type.
+            - ``upper`` is not greater than ``lower`` across all dimensions.
+        """
+        
+        tf.debugging.assert_shapes([(stepsizes, ["D"])])
+        tf.assert_rank(lower, 1)
+        
+        if isinstance(stepsizes, Sequence):
+            self._stepsizes = tf.constant(stepsizes, dtype=tf.float64)
+        else:
+            self._stepsizes = tf.convert_to_tensor(stepsizes) 
+
+            tf.debugging.assert_same_float_dtype([self._lower, self._stepsizes])
+
+        
+        super().__init__(lower, upper)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"OrdinalSearchSpace({self._lower!r}, {self._upper!r}, {self._stepsizes!r})"
+
+    def sample(self, num_samples: int) -> TensorType:
+        """
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space. Rounded by the ``stepsize``.
+        """
+        samples = super().sample(num_samples)
+        samples = tf.round(samples / self._stepsizes) * self._stepsizes
+
+        return samples
+
+    def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension. Rounded by the ``stepsize``.
+        """
+        samples = super().sample_halton(num_samples, seed)
+        samples = tf.round(samples / self._stepsizes) * self._stepsizes
+
+        return samples
+
+    def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
+        """
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension. Rounded by the ``stepsize``.
+        """
+        samples = super().sample_sobol(num_samples, skip)
+        samples = tf.round(samples / self._stepsizes) * self._stepsizes
+
+        return samples
+
+    @property
+    def stepsizes(self) -> TensorType:
+        """ the step sizes of the ordinal space"""
+        return self._stepsizes
+
+    def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace:
+        r"""
+        Return the Cartesian product of the two :class:`OrdinalSearchSpace`\ es (concatenating 
+        their respective lower and upper bounds). For example:
+
+            >>> unit_interval = OrdinalSearchSpace([0.0], [1.0])
+            >>> square_at_origin = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0])
+            >>> new_ordinal_space = unit_interval * square_at_origin
+            >>> new_ordinal_space.lower.numpy()
+            array([ 0., -2., -2.])
+            >>> new_ordinal_space.upper.numpy()
+            array([1., 2., 2.])
+
+        :param other: A :class:`OrdinalSearchSpace` with bounds of the same type as this :class:`OrdinalSearchSpace`.
+        :return: The Cartesian product of the two :class:`OrdinalSearchSpace`\ es.
+        :raise TypeError: If the bounds of one :class:`OrdinalSearchSpace` have different dtypes to those of
+            the other :class:`OrdinalSearchSpace`.
+        """
+        if self.lower.dtype is not other.lower.dtype:
+            return NotImplemented
+
+        product_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
+        product_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
+        product_stepsizes = tf.concat([self._stepsizes, other.stepsizes], axis=-1)
+
+        return OrdinalSearchSpace(product_lower_bound, product_upper_bound, product_stepsizes)
+
