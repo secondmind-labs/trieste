@@ -200,7 +200,7 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_ac
 def test_bayesian_optimizer_uses_specified_acquisition_state(
     starting_state: list[int] | None,
     expected_state_history: list[list[int]],
-    final_state: int | None,
+    final_state: list[int],
 ) -> None:
     class Fibonacci(EmpiricStateful[List[int], Box]):
         default_state = [0, 1]
