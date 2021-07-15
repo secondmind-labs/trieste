@@ -370,7 +370,8 @@ class OrdinalSearchSpace(Box):
             - ``lower``, ``upper`` and ``stepsizes`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
-
+        
+        super().__init__(lower, upper)
         tf.debugging.assert_shapes([(stepsizes, ["D"])])
         tf.assert_rank(lower, 1)
 
@@ -381,7 +382,7 @@ class OrdinalSearchSpace(Box):
 
             tf.debugging.assert_same_float_dtype([self._lower, self._stepsizes])
 
-        super().__init__(lower, upper)
+        
 
     def __repr__(self) -> str:
         """"""
