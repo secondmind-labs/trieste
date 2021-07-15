@@ -29,6 +29,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/inequality_constraints
    notebooks/failure_ego
    notebooks/multi_objective_ehvi
+   notebooks/active_learning
 
 Frequently asked questions
 --------------------------
