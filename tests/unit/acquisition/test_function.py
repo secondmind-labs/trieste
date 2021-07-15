@@ -51,6 +51,7 @@ from trieste.acquisition.function import (
     NegativePredictiveMean,
     PenalizationFunction,
     ProbabilityOfFeasibility,
+    PredictiveVariance,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     augmented_expected_improvement,
@@ -1200,3 +1201,13 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
         npt.assert_array_almost_equal(
             calculated_batch_gibbon[i : i + 1], reconstructed_batch_gibbon
         )
+
+def test_predictive_variance_builder_builds_predictive_variance() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = PredictiveVariance().prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    _,  covariance= model.predict_joint(query_at)
+    expected = tf.linalg.det(covariance)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
