@@ -88,23 +88,6 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def covariance_between_points(
-        self, query_points_1: TensorType, query_points_2: TensorType
-    ) -> TensorType:
-        r"""
-        Compute the posterior covariance between sets of query points.
-
-        Note that this is not supported by all models.
-
-        :param query_points_1: Set of query points with shape [N, D]
-        :param query_points_2: Sets of query points with shape [M, D]
-
-        :return: Covariance matrix between the sets of query points with shape [N, M]
-        """
-        return NotImplementedError(
-            "Model {self!r} does not have a covariance_between_points method"
-        )
-
     def get_observation_noise(self):
         """
         Return the variance of observation noise.
