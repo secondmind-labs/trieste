@@ -90,6 +90,22 @@ class Dataset:
         return tf.shape(self.observations)[0]
 
     def __idx__(self, idx: slice) -> Dataset:
+        """
+        Return a slice of the :class:`Dataset`. For example:
+
+        >>> dataset = Dataset(
+        ...     tf.constant([[0.0], [1.0], [2.0], [3.0]]),
+        ...     tf.constant([[0.0, 0.0], [0.1, 0.01], [0.2, 0.02], [0.3, 0.03]])
+        ... )
+        >>> dataset[1:3].query_points.numpy()
+        array([[1.0],
+               [2.0], dtype=float32)
+        >>> dataset[1:3].observations.numpy()
+        array([[0.1, 0.01],
+               [0.2, 0.02], dtype=float32)
+
+        **Note:** Does **not** support indexing with integers e.g. `dataset[0]`.
+        """
         return Dataset(self.query_points[idx], self.observations[idx])
 
     def __deepcopy__(self, memo: dict[int, object]) -> Dataset:
