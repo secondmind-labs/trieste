@@ -79,7 +79,7 @@ class ModelConfig:
 
         for model_type, model_interface in supported_models.items():
             if isinstance(self.model, model_type):
-                return model_interface(self.model, optimizer, **self.model_args)
+                return model_interface(self.model, optimizer, **self.model_args) # type: ignore
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 

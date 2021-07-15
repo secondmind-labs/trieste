@@ -1340,7 +1340,7 @@ def gibbon(
                 B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)
             )  # need predictive variance of observations
             A = tf.expand_dims(
-                model.covariance_between_points(tf.squeeze(x, -2), pending_points),  # type: ignore
+                model.covariance_between_points(tf.squeeze(x, -2), pending_points), 
                 -1,
             )  # [N, m, 1]
             L_inv_A = tf.linalg.triangular_solve(L, A)
