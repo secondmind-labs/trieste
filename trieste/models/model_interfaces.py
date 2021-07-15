@@ -436,7 +436,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         For trainable parameters without constraints but with priors, we begin model optimization
         from the best of a random sample from these parameters' priors.
 
-        For trainable parameters with neither priors or constraints, we begin optimization from
+        For trainable parameters with neither priors nor constraints, we begin optimization from
         their initial values.
 
         :param dataset: The data with which to optimize the `model`.
