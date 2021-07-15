@@ -36,7 +36,7 @@ class Dataset:
 
     def __post_init__(self) -> None:
         """
-        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have
+        :raise tf.errors.InvalidArgumentError: If ``query_points`` or ``observations`` have
             rank less than two, or they have unequal shape in any but their first dimension.
         """
         tf.debugging.assert_rank_at_least(self.query_points, 2)
@@ -89,7 +89,7 @@ class Dataset:
         """
         return tf.shape(self.observations)[0]
 
-    def __idx__(self, idx: slice) -> Dataset:
+    def __getitem__(self, idx: slice) -> Dataset:
         """
         Return a slice of the :class:`Dataset`. For example:
 
@@ -99,10 +99,10 @@ class Dataset:
         ... )
         >>> dataset[1:3].query_points.numpy()
         array([[1.0],
-               [2.0], dtype=float32)
+               [2.0]], dtype=float32)
         >>> dataset[1:3].observations.numpy()
         array([[0.1, 0.01],
-               [0.2, 0.02], dtype=float32)
+               [0.2, 0.02]], dtype=float32)
 
         **Note:** Does **not** support indexing with integers e.g. `dataset[0]`.
         """

@@ -34,7 +34,7 @@ from trieste.utils import shapes_equal
 def test_dataset_raises_for_zero_dimensional_data(
     query_points: tf.Tensor, observations: tf.Tensor
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         Dataset(query_points, observations)
 
 
@@ -43,7 +43,6 @@ def test_dataset_raises_for_zero_dimensional_data(
     [
         ((1,), (2,)),
         ((2,), (1,)),
-        ((5, 6), (5, 4)),
         ((5, 6), (4, 6)),
         ((5, 6), (4, 4)),
     ],
@@ -57,7 +56,7 @@ def test_dataset_raises_for_different_leading_shapes(
     query_points = tf.zeros(query_points_leading_shape + (last_dim_size,))
     observations = tf.ones(observations_leading_shape + (last_dim_size,))
 
-    with pytest.raises(ValueError, match="(L|l)eading"):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         Dataset(query_points, observations)
 
 
@@ -65,7 +64,6 @@ def test_dataset_raises_for_different_leading_shapes(
     "query_points_shape, observations_shape",
     [
         ((1, 2), (1,)),
-        ((1, 2), (1, 2, 3)),
     ],
 )
 def test_dataset_raises_for_different_ranks(
@@ -85,7 +83,6 @@ def test_dataset_raises_for_different_ranks(
         ((), (10,)),
         ((10,), (10,)),
         ((1, 2), (1,)),
-        ((1, 2), (1, 2, 3)),
     ],
 )
 def test_dataset_raises_for_invalid_ranks(
@@ -179,11 +176,22 @@ def test_dataset_concatentation_raises_for_incompatible_data(lhs: Dataset, rhs: 
     [
         (Dataset(tf.ones((7, 8, 10)), tf.ones((7, 8, 13))), 7),
         (Dataset(tf.ones([0, 2]), tf.ones([0, 1])), 0),
-        (Dataset(tf.ones([1, 0, 2]), tf.ones([1, 0, 1])), 1),
     ],
 )
 def test_dataset_length(data: Dataset, length: int) -> None:
     assert len(data) == length
+
+
+def test_dataset_indexing() -> None:
+    dataset = Dataset(
+        tf.constant([[0.0], [1.0], [2.0], [3.0]]),
+        tf.constant([[0.0, 0.0], [0.1, 0.01], [0.2, 0.02], [0.3, 0.03]])
+    )
+    expected = Dataset(
+        tf.constant([[1.0], [2.0]]),
+        tf.constant([[0.1, 0.01], [0.2, 0.02]])
+    )
+    assert_datasets_allclose(dataset[1:3], expected)
 
 
 def test_dataset_deepcopy() -> None:
