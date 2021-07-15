@@ -88,14 +88,12 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-
-
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""
         Compute the posterior covariance between sets of query points.
-        
+
         Note that this is not supported by all models.
 
         :param query_points_1: Set of query points with shape [N, D]
@@ -103,8 +101,9 @@ class ProbabilisticModel(ABC):
 
         :return: Covariance matrix between the sets of query points with shape [N, M]
         """
-        return NotImplementedError("Model {self!r} does not have a covariance_between_points method")
-
+        return NotImplementedError(
+            "Model {self!r} does not have a covariance_between_points method"
+        )
 
     def get_observation_noise(self):
         """
@@ -642,7 +641,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         if self._use_natgrads:  # optimize variational params with natgrad optimizer
 
             natgrad_optimizer = gpflow.optimizers.NaturalGradient(gamma=self._natgrad_gamma)
-            base_optimizer = self.optimizer 
+            base_optimizer = self.optimizer
 
             gpflow.set_trainable(model.q_mu, False)  # variational params optimized by natgrad
             gpflow.set_trainable(model.q_sqrt, False)
@@ -658,7 +657,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     loss_fn, model_params, **base_optimizer.minimize_args
                 )
 
-            for _ in range(base_optimizer.max_iter): # type: ignore
+            for _ in range(base_optimizer.max_iter):  # type: ignore
                 perfom_optimization_step()
 
             gpflow.set_trainable(model.q_mu, True)  # revert varitional params to trainable
