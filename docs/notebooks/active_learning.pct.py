@@ -1,5 +1,6 @@
 # # Active Learning
-# Sometimes rather than optimizing the blackbox function, we want to learn the function better by reducing our model uncertainty by doing sampling in unknown inputs region (active learning). This notebook demonstrates to perform Bayesian active learning using `trieste`..
+
+# Sometimes rather than optimizing the blackbox function, we want to learn the function better by reducing our model uncertainty by doing sampling in unknown inputs region (active learning). This notebook demonstrates to perform Bayesian active learning using `trieste`.
 
 # +
 # %matplotlib inline
