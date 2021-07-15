@@ -1385,9 +1385,9 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :return: The determinant of the predictive function.
         """
-        return lambda at: self.acquisition(model, at)
 
-    @staticmethod
-    def acquisition(model: ProbabilisticModel, at: TensorType) -> TensorType:
-        _, covariance = model.predict_joint(at)
-        return tf.linalg.det(covariance)
+        def determinantcovariance(model: ProbabilisticModel, at: TensorType) -> TensorType:
+            _, covariance = model.predict_joint(at)
+            return tf.linalg.det(covariance)
+
+        return lambda at: determinantcovariance(model, at)
