@@ -17,7 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from itertools import repeat
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -149,7 +149,7 @@ class MultilayerFcNetwork(KerasNetwork):
         output_tensor_spec: tf.TensorSpec,
         num_hidden_layers: int = 0,
         units: Optional[List[int]] = None,
-        activation: Optional[List[Callable]] = None,
+        activation: Optional[List[Union[Callable, str]]] = None,
         use_bias: Optional[List[bool]] = None,
         kernel_initializer: Optional[List[Callable]] = None,
         bias_initializer: Optional[List[Callable]] = None,

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import numpy as np
 import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
 
 from trieste.data import Dataset
 from trieste.models.keras.data import EnsembleDataTransformer
@@ -58,8 +58,14 @@ tf.keras.backend.set_floatx('float64')
 
 # @pytest.mark.parametrize("example_data", [hartmann_6_example_data])
 def test_ensemble_model_close_to_actuals(example_data):
-    
-    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
+    transformer_x = StandardScaler().fit(example_data.query_points)
+    transformer_y = StandardScaler().fit(example_data.observations)
+    transformed_data = Dataset(
+        transformer_x.transform(example_data.query_points),
+        transformer_y.transform(example_data.observations)
+    )
+
+    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(transformed_data)
     networks = [
         MultilayerFcNetwork(
             input_tensor_spec,
@@ -95,9 +101,9 @@ def test_ensemble_model_close_to_actuals(example_data):
         TFKerasOptimizer(optimizer, fit_args, dataset_builder)
     )
 
-    history = model.optimize(example_data)
+    history = model.optimize(transformed_data)
 
-    x, y = dataset_builder(example_data)
+    x, y = dataset_builder(transformed_data)
     predicted_means, predicted_vars = model.predict(x)
 
     observations = y[list(y)[0]]
