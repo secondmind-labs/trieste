@@ -187,7 +187,7 @@ class Box(SearchSpace):
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
 
-        tf.debugging.assert_positive(len(lower), message=f"bounds cannot be empty")
+        tf.debugging.assert_positive(len(lower), message="bounds cannot be empty")
 
         if isinstance(lower, Sequence):
             self._lower = tf.constant(lower, dtype=tf.float64)
@@ -229,7 +229,7 @@ class Box(SearchSpace):
         tf.debugging.assert_equal(
             shapes_equal(value, self._lower),
             True,
-            message="value must have same dimensionality as search space"
+            message="value must have same dimensionality as search space",
         )
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
