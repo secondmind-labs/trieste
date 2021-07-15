@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import pytest
+from collections.abc import Callable
+
 import tensorflow as tf
 
 from trieste.models.keras.networks import (
@@ -21,11 +23,7 @@ from trieste.models.keras.networks import (
     GaussianNetwork,
     MultilayerFcNetwork,
 )
-from trieste.acquisition.rule import OBJECTIVE
-from trieste.data import Dataset
-from trieste.space import Box
-from trieste.utils.objectives import branin, hartmann_6, mk_observer
-
+from tests.util.trieste.utils.objectives import hartmann_6_dataset, branin_dataset
 
 
 # @pytest.fixture(name="input_output_space_bound", params=[1.0, 2.5], scope="session")
@@ -84,40 +82,20 @@ def _bootstrap_data_fixture(request):
     return request.param
 
 
-def _branin_example_data(num_query_points = 20000) -> Dataset:
-
-    search_space = Box([0, 0], [1, 1])
-    query_points = search_space.sample(num_query_points)
-    
-    observer = mk_observer(branin, OBJECTIVE)
-    data = observer(query_points)
-
-    return data[OBJECTIVE]
-
-@pytest.fixture(name="branin_example_data", scope="session")
-def _branin_example_data_fixture(num_query_points = 20000) -> Dataset:
-    return _branin_example_data(num_query_points)
+@pytest.fixture(name="branin_dataset_function", scope="session")
+def _branin_dataset_function_fixture() -> Callable:
+    return branin_dataset
 
 
-def _hartmann_6_example_data(num_query_points = 20000) -> Dataset:
-
-    search_space = Box([0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1])
-    query_points = search_space.sample(num_query_points)
-    
-    observer = mk_observer(hartmann_6, OBJECTIVE)
-    data = observer(query_points)
-
-    return data[OBJECTIVE]
-
-@pytest.fixture(name="hartmann_6_example_data", scope="session")
-def _hartmann_6_example_data_fixture(num_query_points = 20000) -> Dataset:
-    return _hartmann_6_example_data(num_query_points)
+@pytest.fixture(name="hartmann_6_dataset_function", scope="session")
+def _hartmann_6_dataset_function_fixture() -> Callable:
+    return hartmann_6_dataset
 
 
-_EXAMPLE_DATA = [
-    _branin_example_data(),
-    _hartmann_6_example_data(),
+_EXAMPLE_DATASET = [
+    branin_dataset(2000),
+    hartmann_6_dataset(2000),
 ]
-@pytest.fixture(name="example_data", params=_EXAMPLE_DATA, scope="session")
-def _example_data_fixture(request):
+@pytest.fixture(name="example_data", params=_EXAMPLE_DATASET, scope="session")
+def _example_dataset_fixture(request):
     return request.param
