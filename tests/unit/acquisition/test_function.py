@@ -1212,3 +1212,20 @@ def test_predictive_variance_builder_builds_predictive_variance() -> None:
     _, covariance = model.predict_joint(query_at)
     expected = tf.linalg.det(covariance)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+
+@pytest.mark.parametrize(
+    "at, acquisition_shape",
+    [
+        (tf.constant([[[1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0]], [[10.0]], 5), tf.constant([5, 1])),
+        (tf.constant([[[1.0, 1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
+    ],
+)
+def test_predictive_variance_returns_correct_shape(at, acquisition_shape) -> None:
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = PredictiveVariance().prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
