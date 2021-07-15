@@ -137,17 +137,12 @@ data = bo.optimize(
 # To conclude this section, we visualise the resulting data. Orange dots show the new points queried during optimization. Notice the concentration of these points in regions near the local minima.
 
 # %%
-constraint_data = data[CONSTRAINT]
-new_query_points = constraint_data.query_points[-num_steps:]
-new_observations = constraint_data.observations[-num_steps:]
-new_data = (new_query_points, new_observations)
-
 plot_init_query_points(
     search_space,
     Sim,
     initial_data[OBJECTIVE].astuple(),
     initial_data[CONSTRAINT].astuple(),
-    new_data,
+    data[CONSTRAINT][-num_steps:].astuple(),
 )
 plt.show()
 
@@ -223,18 +218,12 @@ batch_data = bo.optimize(
 # We visualise the resulting data as before.
 
 # %%
-batch_constraint_data = batch_data[CONSTRAINT]
-new_batch_data = (
-    batch_constraint_data.query_points[-num_query_points * num_steps:],
-    batch_constraint_data.observations[-num_query_points * num_steps:]
-)
-
 plot_init_query_points(
     search_space,
     Sim,
     initial_data[OBJECTIVE].astuple(),
     initial_data[CONSTRAINT].astuple(),
-    new_batch_data,
+    batch_data[CONSTRAINT][-num_query_points * num_steps:].astuple(),
 )
 plt.show()
 
@@ -245,8 +234,8 @@ plt.show()
 # %%
 from util.plotting import plot_regret
 
-mask_fail = constraint_data.observations.numpy() > Sim.threshold
-batch_mask_fail = batch_constraint_data.observations.numpy() > Sim.threshold
+mask_fail = data[CONSTRAINT].observations.numpy() > Sim.threshold
+batch_mask_fail = batch_data[CONSTRAINT].observations.numpy() > Sim.threshold
 
 fig, ax = plt.subplots(1, 2, sharey="all")
 plot_regret(

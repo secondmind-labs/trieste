@@ -36,23 +36,19 @@ class Dataset:
 
     def __post_init__(self) -> None:
         """
-        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have \
-            rank less than two, or they have unequal shape in any but their last dimension.
+        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have
+            rank less than two, or they have unequal shape in any but their first dimension.
         """
         tf.debugging.assert_rank_at_least(self.query_points, 2)
         tf.debugging.assert_rank_at_least(self.observations, 2)
 
-        if 0 in (self.query_points.shape[-1], self.observations.shape[-1]):
-            raise ValueError(
-                f"query_points and observations cannot have dimension 0, got shapes"
-                f" {self.query_points.shape} and {self.observations.shape}."
+        for x, name in ((self.query_points, "query_points"), (self.observations, "observations")):
+            tf.debugging.assert_positive(
+                x.shape[1:],
+                message=f"{name} cannot have empty trailing dimensions, got shape {x.shape}",
             )
 
-        if self.query_points.shape[:-1] != self.observations.shape[:-1]:
-            raise ValueError(
-                f"Leading shapes of query_points and observations must match. Got shapes"
-                f" {self.query_points.shape}, {self.observations.shape}."
-            )
+        tf.debugging.assert_equal(len(self.query_points), len(self.observations))
 
     def __add__(self, rhs: Dataset) -> Dataset:
         r"""
@@ -92,6 +88,9 @@ class Dataset:
         :return: The number of query points, or equivalently the number of observations.
         """
         return tf.shape(self.observations)[0]
+
+    def __idx__(self, idx: slice) -> Dataset:
+        return Dataset(self.query_points[idx], self.observations[idx])
 
     def __deepcopy__(self, memo: dict[int, object]) -> Dataset:
         return self
