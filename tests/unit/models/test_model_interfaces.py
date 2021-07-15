@@ -361,7 +361,7 @@ def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) 
 @unittest.mock.patch(
     "trieste.models.model_interfaces.GaussianProcessRegression.find_best_model_initialization"
 )
-@pytest.mark.parametrize("d", [1, 10])
+@pytest.mark.parametrize("d", [1, 3])
 @pytest.mark.parametrize("prior_for_lengthscale", [True, False])
 def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled(
     mocked_model_initializer, d, prior_for_lengthscale, gpr_interface_factory
