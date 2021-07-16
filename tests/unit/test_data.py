@@ -185,12 +185,9 @@ def test_dataset_length(data: Dataset, length: int) -> None:
 def test_dataset_slice() -> None:
     dataset = Dataset(
         tf.constant([[0.0], [1.0], [2.0], [3.0]]),
-        tf.constant([[0.0, 0.0], [0.1, 0.01], [0.2, 0.02], [0.3, 0.03]])
+        tf.constant([[0.0, 0.0], [0.1, 0.01], [0.2, 0.02], [0.3, 0.03]]),
     )
-    expected = Dataset(
-        tf.constant([[1.0], [2.0]]),
-        tf.constant([[0.1, 0.01], [0.2, 0.02]])
-    )
+    expected = Dataset(tf.constant([[1.0], [2.0]]), tf.constant([[0.1, 0.01], [0.2, 0.02]]))
     assert_datasets_allclose(dataset[1:3], expected)
 
 
