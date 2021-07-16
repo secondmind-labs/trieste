@@ -37,7 +37,15 @@ from trieste.models.keras.models import NeuralNetworkEnsemble
 from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 from trieste.space import Box
-from trieste.utils.objectives import BRANIN_MINIMIZERS, BRANIN_MINIMUM, branin, mk_observer
+from trieste.utils.objectives import (
+    BRANIN_MINIMIZERS,
+    BRANIN_MINIMUM,
+    branin,
+    hartmann_6,
+    HARTMANN_6_MINIMIZER,
+    HARTMANN_6_MINIMUM,
+    mk_observer,
+)
 
 
 tf.keras.backend.set_floatx('float64')
@@ -104,14 +112,14 @@ tf.keras.backend.set_floatx('float64')
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (17, ThompsonSampling(500, 3)),
+        (40, ThompsonSampling(500, 1)),
     ],
 )
-def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
+def test_neuralnetworkensemble_optimizer_finds_minima_of_the_hartmann_6_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
-    search_space = Box([0, 0], [1, 1])
-    ensemble_size = 5
+    search_space = Box([0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1])
+    ensemble_size = 20
 
     def build_model(data: Dataset) -> NeuralNetworkEnsemble:
         input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(data)
@@ -119,34 +127,31 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
             MultilayerFcNetwork(
                 input_tensor_spec,
                 output_tensor_spec,
-                num_hidden_layers=1,
-                units=[10],
-                # activation=[None],
-                # use_bias=[None],
-                # kernel_initializer=[None],
-                # bias_initializer=[None],
-                # kernel_regularizer=[None],
-                # bias_regularizer=[None],
-                # activity_regularizer=[None],
-                # kernel_constraint=[None],
-                # bias_constraint=[None],
+                num_hidden_layers=3,
+                units=[32, 32, 32],
+                activation=['relu', 'relu', 'relu'],
                 bootstrap_data=False,
             )
             for _ in range(ensemble_size)
         ]
         optimizer = tf.keras.optimizers.Adam()
         fit_args = {
-            'batch_size': 40,
+            'batch_size': 32,
             'epochs': 100,
-            'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
+            'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=20)],
             'validation_split': 0.1,
             'verbose': 0,
         }
         dataset_builder = EnsembleDataTransformer(networks)
-        return NeuralNetworkEnsemble(networks, dataset_builder, TFKerasOptimizer(optimizer, fit_args, dataset_builder))
+        model = NeuralNetworkEnsemble(
+            networks,
+            TFKerasOptimizer(optimizer, fit_args, dataset_builder),
+            dataset_builder,
+        )
+        return model
 
-    initial_query_points = search_space.sample(160)
-    observer = mk_observer(branin, OBJECTIVE)
+    initial_query_points = search_space.sample(1000)
+    observer = mk_observer(hartmann_6, OBJECTIVE)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
     dataset = (
@@ -159,7 +164,8 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+    relative_minimizer_err = tf.abs((best_x - HARTMANN_6_MINIMIZER) / HARTMANN_6_MINIMIZER)
+    breakpoint()
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)

@@ -61,8 +61,8 @@ tf.keras.backend.set_floatx('float64')
 #     dataset_builder = EnsembleDataTransformer(networks)
 #     model = NeuralNetworkEnsemble(
 #         networks,
+#         TFKerasOptimizer(optimizer, fit_args, dataset_builder),
 #         dataset_builder,
-#         TFKerasOptimizer(optimizer, fit_args, dataset_builder)
 #     )
 #     model.optimize(example_data)
 #     loss = model.model.history.history["loss"]
@@ -102,8 +102,8 @@ def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
     dataset_builder = EnsembleDataTransformer(networks)
     model = NeuralNetworkEnsemble(
         networks,
+        TFKerasOptimizer(optimizer, fit_args, dataset_builder),
         dataset_builder,
-        TFKerasOptimizer(optimizer, fit_args, dataset_builder)
     )
     model.optimize(example_data)
 
@@ -151,8 +151,8 @@ def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_functi
     dataset_builder = EnsembleDataTransformer(networks)
     trieste_model = NeuralNetworkEnsemble(
         networks,
+        TFKerasOptimizer(optimizer, fit_args, dataset_builder),
         dataset_builder,
-        TFKerasOptimizer(optimizer, fit_args, dataset_builder)
     )
     trieste_model.optimize(example_data)
     x, _ = dataset_builder(example_data)

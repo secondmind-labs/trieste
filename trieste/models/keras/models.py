@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 import copy
@@ -77,7 +78,7 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
 
         :param dataset: The data with which to optimize the `model`.
         """
-        history = self.optimizer.optimize(self.model, dataset)
+        self.optimizer.optimize(self.model, dataset)
 
 
 class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
@@ -89,8 +90,8 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
     def __init__(
         self,
         networks: List[KerasNetwork],
-        dataset_transformer: EnsembleDataTransformer,
         optimizer: TFKerasOptimizer | None = None,
+        dataset_transformer: EnsembleDataTransformer = None,
     ):
         """
         :param networks: A list of `KerasNetwork` objects. The ensemble
@@ -107,9 +108,12 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
 
         super().__init__(optimizer)
 
+        if dataset_transformer is None:
+            self._dataset_transformer = EnsembleDataTransformer(networks)
+        else:
+            self._dataset_transformer = dataset_transformer
         self._networks = networks
         self._ensemble_size = len(networks)
-        self._dataset_transformer = dataset_transformer
 
         self._indices = tf.Variable(
             0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
@@ -182,10 +186,17 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
+        Returns means and variance over predictions of all members of the ensemble.
+        Note that raw `query_points` need to be transformed to be used in the ensemble,
+        `dataset_transformer` is used for that purpose, which essentially replicates the input such
+        that each network in the ensemble receives appropriate inputs.
+
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
+        # query_points_transformed = self._dataset_transformer(query_points)
+        # ensemble_predictions = self._model.predict(query_points_transformed)
         ensemble_predictions = self._model.predict(query_points)
         predicted_means = tf.math.reduce_mean(ensemble_predictions, axis=0)
         predicted_vars = tf.math.reduce_variance(ensemble_predictions, axis=0)
