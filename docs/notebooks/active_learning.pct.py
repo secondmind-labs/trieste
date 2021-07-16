@@ -91,22 +91,13 @@ rule = EfficientGlobalOptimization(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
-# To capture the contour of variance of our model at each step we will call `bo.optimize` at 1 step once per iteration.
+# To plot the contour of variance of our model at each step we will set `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iterations.
 
 # %%
-import copy
-
-dataset = copy.deepcopy(initial_data)
-model_evolution = []
-model_temp = model
 bo_iter = 5
 
-# optimize bo once at iteration for capturing the model
-for i in range(bo_iter):
-    result = bo.optimize(1, dataset, model_temp, rule)
-    dataset = result.try_get_final_dataset()
-    model_temp = copy.deepcopy(result.try_get_final_model())
-    model_evolution.append(model_temp)
+result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
+dataset = result.try_get_final_dataset()
 
 # %% [markdown]
 # Then we can retrieve our final dataset from the active learning steps
@@ -124,7 +115,7 @@ from util.plotting import plot_bo_points, plot_function_2d
 for i in range(bo_iter):
 
     def pred_var(x):
-        _, var = model_evolution[i].model.predict_f(x)
+        _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
         return var
 
     _, ax = plot_function_2d(
@@ -139,7 +130,7 @@ for i in range(bo_iter):
         xlabel="$X_1$",
         ylabel="$X_2$",
     )
-    plot_bo_points(query_points[: num_initial_points + i + 1], ax[0, 0], num_initial_points)
+    plot_bo_points(query_points[: num_initial_points + i], ax[0, 0], num_initial_points)
 
 
 # %% [markdown]
@@ -148,6 +139,7 @@ for i in range(bo_iter):
 # For batch active learning using `PredictiveVariance`, we can set the `num_query_points` with the size of batch we want on the `EfficientGLobalOptimization` rule. The rest step is the same with the single query point of `PredictiveVariance` acquisiiton function.
 
 # %%
+bo_iter = 5
 num_query = 3
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
@@ -155,19 +147,8 @@ rule = EfficientGlobalOptimization(
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-import copy
-
-dataset = copy.deepcopy(initial_data)
-model_evolution = []
-model_temp = model
-bo_iter = 5
-
-# optimize bo once at iteration for capturing model
-for i in range(bo_iter):
-    result = bo.optimize(1, dataset, model_temp, rule)
-    dataset = result.try_get_final_dataset()
-    model_temp = copy.deepcopy(result.try_get_final_model())
-    model_evolution.append(model_temp)
+result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
+dataset = result.try_get_final_dataset()
 
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
@@ -177,7 +158,7 @@ from util.plotting import plot_bo_points, plot_function_2d
 for i in range(bo_iter):
 
     def pred_var(x):
-        _, var = model_evolution[i].model.predict_f(x)
+        _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
         return var
 
     _, ax = plot_function_2d(
@@ -193,5 +174,5 @@ for i in range(bo_iter):
         ylabel="$X_2$",
     )
     plot_bo_points(
-        query_points[: num_initial_points + (i + 1) * num_query], ax[0, 0], num_initial_points
+        query_points[: num_initial_points + (i * num_query)], ax[0, 0], num_initial_points
     )
