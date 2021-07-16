@@ -66,6 +66,16 @@ def _ensemble_size_fixture(request):
     return request.param
 
 
+@pytest.fixture(name="num_hidden_layers", params=[0, 1, 3])
+def _num_hidden_layers_fixture(request):
+    return request.param
+
+
+@pytest.fixture(name="num_hidden_nodes", params=[1, 10])
+def _num_hidden_nodes_fixture(request):
+    return request.param
+
+
 _NEURAL_NETWORK_CLASSES = [
     LinearNetwork,
     DiagonalGaussianNetwork,
@@ -93,8 +103,8 @@ def _hartmann_6_dataset_function_fixture() -> Callable:
 
 
 _EXAMPLE_DATASET = [
-    branin_dataset(2000),
-    hartmann_6_dataset(2000),
+    branin_dataset(200),
+    hartmann_6_dataset(200),
 ]
 @pytest.fixture(name="example_data", params=_EXAMPLE_DATASET, scope="session")
 def _example_dataset_fixture(request):

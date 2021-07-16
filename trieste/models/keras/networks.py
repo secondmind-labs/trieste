@@ -17,7 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from itertools import repeat
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -29,7 +29,7 @@ from .utils import sample_with_replacement, size
 
 class KerasNetwork(ABC):
     """
-    This class defines the structure and essential methods for a neural network using Keras. It
+    This class defines the structure and essential methods for neural networks using Keras. It
     also includes a method that facilitates creating ensembles where data is bootstrapped for each
     network in an ensemble.
 
@@ -68,8 +68,7 @@ class KerasNetwork(ABC):
 
     def gen_input_tensor(self, name: str = None, batch_size: int = None) -> tf.keras.Input:
         """
-        Generate input tensor based on input tensor specification.Define the layers of the sequential, feed-forward neural network from the layer
-        `input_layer`.
+        Generate input tensor based on input tensor specification.
 
         :param name: Optional name for the input layer.
         :param batch_size: Optional batch size for the input layer.
@@ -108,11 +107,11 @@ class KerasNetwork(ABC):
 
     def metrics(self) -> tf.keras.metrics.Metric:
         """
-        Defines metrics for monitoring the training of the network. Uses Root mean square error
+        Defines metrics for monitoring the performance of the network. Uses Root mean square error
         (RMSE) and Mean absolute error (MAE) as a default. Method should be overwritten for custom
         metrics.
 
-        :return: Return the metrics for this network.
+        :return: Return a list of metrics for the network.
         """
         metrics = [
             tf.keras.metrics.RootMeanSquaredError(name="RMSE"),
@@ -140,7 +139,7 @@ class MultilayerFcNetwork(KerasNetwork):
     This class defines a multilayer fully-connected feed-forward network. If defined
     with zero layers (default) we obtain a network equivalent of a linear regression.
     If number of hidden layers is one or more then all arguments to the dense Keras layer
-    should be set individually for each layer.
+    should be set individually for each layer. Defaults are the same ones as in Keras Dense layer.
     """
 
     def __init__(
@@ -149,15 +148,15 @@ class MultilayerFcNetwork(KerasNetwork):
         output_tensor_spec: tf.TensorSpec,
         num_hidden_layers: int = 0,
         units: Optional[List[int]] = None,
-        activation: Optional[List[Callable]] = None,
+        activation: Optional[List[Union[Callable, str]]] = None,
         use_bias: Optional[List[bool]] = None,
-        kernel_initializer: Optional[List[Callable]] = None,
-        bias_initializer: Optional[List[Callable]] = None,
-        kernel_regularizer: Optional[List[Callable]] = None,
-        bias_regularizer: Optional[List[Callable]] = None,
-        activity_regularizer: Optional[List[Callable]] = None,
-        kernel_constraint: Optional[List[Callable]] = None,
-        bias_constraint: Optional[List[Callable]] = None,
+        kernel_initializer: Optional[List[Union[Callable, str]]] = None,
+        bias_initializer: Optional[List[Union[Callable, str]]] = None,
+        kernel_regularizer: Optional[List[Union[Callable, str]]] = None,
+        bias_regularizer: Optional[List[Union[Callable, str]]] = None,
+        activity_regularizer: Optional[List[Union[Callable, str]]] = None,
+        kernel_constraint: Optional[List[Union[Callable, str]]] = None,
+        bias_constraint: Optional[List[Union[Callable, str]]] = None,
         bootstrap_data: bool = False,
     ):
         """
@@ -215,7 +214,9 @@ class MultilayerFcNetwork(KerasNetwork):
         self._kernel_constraint = kernel_constraint or repeat(None, num_hidden_layers)
         self._bias_constraint = bias_constraint or repeat(None, num_hidden_layers)
 
-    def gen_hidden_dense_layers(self, hidden_layer):
+    def gen_hidden_dense_layers(
+        self, hidden_layer: tf.keras.layers.Layer
+    ) -> : tf.keras.layers.Layer:
         """Generate a sequence of dense Keras layers"""
         if self._num_hidden_layers > 0:
             layer_args = zip(
@@ -228,7 +229,6 @@ class MultilayerFcNetwork(KerasNetwork):
                 self._kernel_constraint,
                 self._bias_constraint
             )
-
             for dense_layer_args in layer_args:
                 layer = tf.keras.layers.Dense(*dense_layer_args)
                 hidden_layer = layer(hidden_layer)
@@ -236,16 +236,14 @@ class MultilayerFcNetwork(KerasNetwork):
         return hidden_layer
     
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
+        """Generate the final output layer, with linear activation as hard-coded default."""
         output_layer = tf.keras.layers.Dense(
             self._flattened_output_shape, activation="linear"
         )(input_layer)
-        # output_layer_reshaped = tf.keras.layers.Reshape(
-        #     self._output_tensor_spec.shape
-        # )(output_layer)
-        # return output_layer_reshaped
         return output_layer
 
     def build_model(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
+        """Stich together inputs and all the layers."""
         if input_layer is None:
             input_tensor = self.gen_input_tensor()
             input_layer = tf.keras.layers.Flatten(dtype=self._input_tensor_spec.dtype)(input_tensor)
@@ -260,7 +258,6 @@ class LinearNetwork(MultilayerFcNetwork):
     This class defines a linear network using Keras, i.e. a neural network with no
     hidden layers, equivalent to a linear regression.
     """
-
     def __init__(
         self,
         input_tensor_spec: tf.TensorSpec,
@@ -283,7 +280,6 @@ class GaussianNetwork(MultilayerFcNetwork):
     This class defines a probabilistic neural network using Keras, with Gaussian distributed
     outputs.
     """
-
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         mvn_shape = tfp.layers.MultivariateNormalTriL.params_size(self._flattened_output_shape)
         output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)
@@ -306,7 +302,6 @@ class DiagonalGaussianNetwork(GaussianNetwork):
     This class defines a probabilistic neural network using Keras, with Gaussian distributed
     outputs, but modelling only variances on the diagonal and assuming zero covariances elsewhere.
     """
-
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         mvn_shape = tfp.layers.IndependentNormal.params_size(self._flattened_output_shape)
         output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)
