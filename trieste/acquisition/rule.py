@@ -45,7 +45,7 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-class AcquisitionRule(Generic[SP_contra], ABC):
+class AcquisitionRule(ABC, Generic[SP_contra]):
     """
     An :class:`AcquisitionRule` finds optimal points within a search space from the current data and
     models of an objective function on that search space.
@@ -313,7 +313,11 @@ T = TypeVar("T")
 
 
 class EmpiricStateful(ABC, Generic[S, T]):
-    """A :class:`EmpiricStateful` is an empirical stateful value with a default state."""
+    """
+    A :class:`EmpiricStateful` produces a value (of type `T`) from data and models of that data.
+    The value produced is typically stateful, in the sense that producing the value will use and
+    update some state (of type `S`).
+    """
 
     @abstractmethod
     def acquire(
@@ -322,7 +326,8 @@ class EmpiricStateful(ABC, Generic[S, T]):
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :return: A stateful value of type `T`, with state of type `S`.
+        :return: A function that produces a value of type `T`. Calling this function can use and
+            update a state of type `S`.
         """
 
     @property
@@ -434,8 +439,6 @@ def continuous_trust_region(
     The local acquisition space is the space constructed on each step by this `TrustRegion`,
     and can be either the global search space, or a trust region which is typically smaller than
     the global search space and changes on each step.
-
-    If no state is specified (it is `None`), the :attr:`default_state` is used.
 
     If the new optimum improves over the previous optimum by some threshold (that scales linearly
     with ``kappa``), the previous acquisition is considered successful.

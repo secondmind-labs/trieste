@@ -297,7 +297,9 @@ class BayesianOptimizer(Generic[SP]):
             acquisition state returned in the :class:`OptimizationResult` will be `None`.
         :param trust_region: Defines how to construct the acquisition space from the global space on
             each step. Defaults to using the global space.
-        :param trust_region_state: Initial state for ``trust_region``.
+        :param trust_region_state: Initial state for ``trust_region``. Defaults to the
+            :attr:`~trieste.acquisition.rule.EmpiricStateful.default_state` of ``trust_region``
+            (given the search space specified on ``__init__``).
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
@@ -349,10 +351,7 @@ class BayesianOptimizer(Generic[SP]):
         history: list[Record[S]] = []
 
         if trust_region is not None:
-            trust_region_applied = trust_region(self._search_space)
-
-            if trust_region_state is None:
-                trust_region_state = trust_region_applied.default_state
+            trust_region_with_space = trust_region(self._search_space)
 
         for step in range(num_steps):
             if track_state:
@@ -372,9 +371,13 @@ class BayesianOptimizer(Generic[SP]):
                 if trust_region is None:
                     acquisition_space = self._search_space
                 else:
-                    trust_region_state, acquisition_space = trust_region_applied.acquire(
+                    trust_region_state, acquisition_space = trust_region_with_space.acquire(
                         datasets, models
-                    )(cast(S, trust_region_state))
+                    )(
+                        trust_region_with_space.default_state
+                        if trust_region_state is None
+                        else trust_region_state
+                    )
 
                 query_points = acquisition_rule.acquire(acquisition_space, datasets, models)
 

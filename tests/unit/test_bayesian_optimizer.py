@@ -193,7 +193,7 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_ac
 @pytest.mark.parametrize(
     "starting_state, expected_state_history, final_state",
     [
-        (None, [[0, 1], [0, 1, 1], [0, 1, 1, 2]], [0, 1, 1, 2, 3]),
+        (None, [None, [0, 1, 1], [0, 1, 1, 2]], [0, 1, 1, 2, 3]),
         ([3, -2], [[3, -2], [3, -2, 1], [3, -2, 1, -1]], [3, -2, 1, -1, 0]),
     ],
 )
@@ -466,7 +466,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         .astuple()
     )
 
-    assert [record.trust_region_state for record in history] == [1, 2, 4]
+    assert [record.trust_region_state for record in history] == [None, 2, 4]
 
     assert_datasets_allclose(history[0].datasets[""], initial_data)
     assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [1.0]], [[0.0], [1.0]]))
