@@ -2,7 +2,7 @@
 # # Active Learning
 
 # %% [markdown]
-# Sometimes rather than optimizing the blackbox function, we want to learn the function better by reducing our model uncertainty by doing sampling in unknown inputs region (active learning). This notebook demonstrates to perform Bayesian active learning using `trieste`.
+# Sometimes rather than optimizing a black-box function, we want to learn the function better by reducing our model uncertainty. The one way to do this is by doing sampling in unknown inputs regions (active learning). This notebook demonstrates to perform Bayesian active learning using `trieste`.
 
 # %%
 # %matplotlib inline
@@ -16,7 +16,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 #
-# In this example we will consider doing active learning on log branin function.
+# In this example, we will consider doing active learning for the log branin function.
 
 
 # %%
@@ -36,7 +36,7 @@ fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
-# We begin our active learning after collecting two function evaluations from random locations in the search space.
+# We begin our Bayesian active learning steps after evaluating two initial points sampled by Halton sequence.
 
 # %%
 import trieste
@@ -77,7 +77,7 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Active learning using predictive variance
 #
-# To do our first active learning example we will use `PredictiveVariance`, one of the simplest active learning acquisition function. the `PredictiveVariance` sample a point on highest determinant of the precitive covariance of our model. Here we will consider single query point using `PredictiveVariance`, the batch case will be shown later. We can utilize trieste's `BayesianOptimizer` to do the active learning
+# To do our first active learning example, we will use `PredictiveVariance`, one of the simplest active learning acquisition function. the `PredictiveVariance` sample a point on highest determinant of the predictive covariance of our model. Here, we will consider single query point using `PredictiveVariance`, the batch case will be shown later. We can utilize trieste's `BayesianOptimizer` to do the active learning steps.
 
 # %%
 from trieste.acquisition.optimizer import generate_continuous_optimizer
@@ -91,23 +91,22 @@ rule = EfficientGlobalOptimization(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
-# To plot the contour of variance of our model at each step we will set `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iterations.
+# To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iteration.
 
 # %%
 bo_iter = 5
-
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
-dataset = result.try_get_final_dataset()
 
 # %% [markdown]
 # Then we can retrieve our final dataset from the active learning steps
 
 # %%
+dataset = result.try_get_final_dataset()
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 
 # %% [markdown]
-# Finally we can check how our `PredictiveVariance` active learning acquisition function performs by plotting the predictive variance lanscape of our model. We can see how it samples on regions with high variance value.
+# Finally, we can check the performance of our `PredictiveVariance` active learning acquisition function by plotting the predictive variance landscape of our model. We can see how it samples on regions with high variance value.
 
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
@@ -136,7 +135,7 @@ for i in range(bo_iter):
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For batch active learning using `PredictiveVariance`, we can set the `num_query_points` with the size of batch we want on the `EfficientGLobalOptimization` rule. The rest step is the same with the single query point of `PredictiveVariance` acquisiiton function.
+# For batch active learning using `PredictiveVariance`, we can set the `num_query_points` with the size of batch we want on the `EfficientGLobalOptimization` rule. The rest step is the same with the single query point of `PredictiveVariance` acquisition function.
 
 # %%
 bo_iter = 5
