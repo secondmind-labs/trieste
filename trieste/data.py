@@ -91,7 +91,7 @@ class Dataset:
 
     def __getitem__(self, idx: slice) -> Dataset:
         """
-        Return a slice of the :class:`Dataset`. For example:
+        Slice the :class:`Dataset` along the first axis. For example:
 
         >>> dataset = Dataset(
         ...     tf.constant([[0.0], [1.0], [2.0], [3.0]]),
@@ -104,7 +104,11 @@ class Dataset:
         array([[0.1, 0.01],
                [0.2, 0.02]], dtype=float32)
 
-        **Note:** Does **not** support indexing with integers e.g. `dataset[0]`.
+        **Note:** Indexing with integers, like `data[0]`, is not supported.
+
+        :param idx: The `slice` of indices to return.
+        :return: The points specified by ``idx`` from this :class:`Dataset`.
+        :raise tf.errors.InvalidArgumentError: If the slice bounds extend beyond the data.
         """
         return Dataset(self.query_points[idx], self.observations[idx])
 
