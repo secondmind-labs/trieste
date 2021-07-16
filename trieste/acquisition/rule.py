@@ -67,9 +67,6 @@ class AcquisitionRule(ABC, Generic[SP_contra]):
           - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
             of :class:`~trieste.space.SearchSpace` depends on the specific
             :class:`AcquisitionRule`.
-          - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
-            state (if the rule is stateless, this type can be `None`). The ``state`` passed
-            to this method, and the state returned, must both be of that type.
 
 
         :param search_space: The :class:`~trieste.space.SearchSpace` over which to search for
@@ -77,9 +74,7 @@ class AcquisitionRule(ABC, Generic[SP_contra]):
         :param datasets: The known observer query points and observations for each tag.
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
-        :param state: The acquisition state from the previous step, if there was a previous step,
-            else `None`.
-        :return: The optimal points and the acquisition state for this step.
+        :return: The optimal points.
         """
 
     def acquire_single(
@@ -97,10 +92,8 @@ class AcquisitionRule(ABC, Generic[SP_contra]):
         :param search_space: The :class:`~trieste.space.SearchSpace` over which to search for
             optimal points.
         :param dataset: The known observer query points and observations.
-        :param models: The model to use for the dataset.
-        :param state: The acquisition state from the previous step, if there was a previous step,
-            else `None`.
-        :return: The optimal points and the acquisition state for this step.
+        :param model: The model to use for the dataset.
+        :return: The optimal points.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
             raise ValueError(
@@ -185,8 +178,7 @@ class EfficientGlobalOptimization(AcquisitionRule[SP_contra]):
             optimal points.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
-        :param state: Unused.
-        :return: The single (or batch of) points to query, and `None`.
+        :return: The single (or batch of) points to query.
         """
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
@@ -269,8 +261,7 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         :param search_space: The search space over which to search for optimal points.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
-        :param state: Unused.
-        :return: The `num_query_points` points to query, and `None`.
+        :return: The `num_query_points` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
         """
