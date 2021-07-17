@@ -26,8 +26,8 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
-from ..type import TensorType
 from ..space import Box
+from ..type import TensorType
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
@@ -90,7 +90,7 @@ SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
-BRANIN_SEARCH_SPACE = Box([0.0], [1.0])*2
+BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) * 2
 """ The search space for the :func:`branin` function. """
 
 
@@ -160,7 +160,7 @@ float64.
 """
 
 
-LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0])*2
+LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0]) * 2
 """ The search space for the :func:`logarithmic_goldstein_price` function. """
 
 
@@ -202,7 +202,7 @@ float64.
 """
 
 
-HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0])*3
+HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0]) * 3
 """ The search space for the :func:`hartmann_3` function. """
 
 
@@ -248,7 +248,7 @@ float64.
 """
 
 
-SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0])*4
+SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) * 4
 """ The search space for the :func:`shekel_4` function. """
 
 
@@ -286,7 +286,7 @@ float64.
 """
 
 
-ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0])*4
+ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0]) * 4
 """ The search space for the :func:`rosenbrock_4` function. """
 
 
@@ -333,7 +333,7 @@ float64.
 """
 
 
-ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0])*5
+ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) * 5
 """ The search space for the :func:`ackley_5` function. """
 
 
@@ -383,7 +383,7 @@ float64.
 """
 
 
-HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0])*6
+HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) * 6
 """ The search space for the :func:`hartmann_6` function. """
 
 

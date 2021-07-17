@@ -37,8 +37,8 @@ from trieste.models import GaussianProcessRegression
 from trieste.observer import OBJECTIVE
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
-    SCALED_BRANIN_MINIMUM,
     BRANIN_SEARCH_SPACE,
+    SCALED_BRANIN_MINIMUM,
     mk_observer,
     scaled_branin,
 )
