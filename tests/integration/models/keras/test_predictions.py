@@ -27,49 +27,6 @@ from tests.util.misc import random_seed
 tf.keras.backend.set_floatx('float64')
 
 
-# @random_seed
-# def test_fit_hartmann_6_data(
-#     hartmann_6_dataset_function, neural_network, bootstrap_data, ensemble_size
-# ):
-#     """
-#     Ensure that fit improves with several epochs of optimization.
-#     """
-
-#     dataset_size = 3000
-#     example_data = hartmann_6_dataset_function(dataset_size)
-#     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
-    
-#     networks = [
-#         neural_network(
-#             input_tensor_spec,
-#             output_tensor_spec,
-#             num_hidden_layers=3,
-#             units=[32, 32, 32],
-#             activation=['relu', 'relu', 'relu'],
-#             # bootstrap_data=bootstrap_data,
-#             bootstrap_data=False,
-#         )
-#         for _ in range(ensemble_size)
-#     ]
-#     optimizer = tf.keras.optimizers.Adam()
-#     fit_args = {
-#         'batch_size': 256,
-#         'epochs': 10,
-#         'callbacks': [],
-#         'verbose': 0,
-#     }
-#     dataset_builder = EnsembleDataTransformer(networks)
-#     model = NeuralNetworkEnsemble(
-#         networks,
-#         TFKerasOptimizer(optimizer, fit_args, dataset_builder),
-#         dataset_builder,
-#     )
-#     model.optimize(example_data)
-#     loss = model.model.history.history["loss"]
-
-#     assert loss[-1] < loss[0]
-
-
 @random_seed
 def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
     """

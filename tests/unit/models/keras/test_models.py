@@ -23,157 +23,73 @@ from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 
 _ENSEMBLE_SIZE = 5
+_DATASET_SIZE = 3000
 
 
+def _create_neural_network_ensemble_model(
+	example_data, neural_network, ensemble_size
+):
 
-# def test_step_call_shape(
-#     transition_network,
-#     observation_space,
-#     action_space,
-#     batch_size,
-#     ensemble_size,
-# ):
-#     network_list = [
-#         transition_network(observation_space, bootstrap_data=True)
-#         for _ in range(ensemble_size)
-#     ]
-#     transition_model = KerasTransitionModel(
-#         network_list,
-#         observation_space,
-#         action_space,
-#         predict_state_difference=True,
-#         trajectory_sampling_strategy=OneStepTrajectorySampling(batch_size, ensemble_size),
-#     )
-#     observation_distribution = create_uniform_distribution_from_spec(observation_space)
-#     observations = observation_distribution.sample((batch_size,))
-#     action_distribution = create_uniform_distribution_from_spec(action_space)
-#     actions = action_distribution.sample((batch_size,))
+	input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
+	
+	networks = [
+	    neural_network(
+	        input_tensor_spec,
+	        output_tensor_spec,
+	        num_hidden_layers=3,
+	        units=[32, 32, 32],
+	        activation=['relu', 'relu', 'relu'],
+	        # bootstrap_data=bootstrap_data,
+	        bootstrap_data=False,
+	    )
+	    for _ in range(ensemble_size)
+	]
+	optimizer = tf.keras.optimizers.Adam()
+	fit_args = {
+	    'batch_size': 256,
+	    'epochs': 10,
+	    'callbacks': [],
+	    'verbose': 0,
+	}
+	dataset_builder = EnsembleDataTransformer(networks)
+	model = NeuralNetworkEnsemble(
+	    networks,
+	    TFKerasOptimizer(optimizer, fit_args, dataset_builder),
+	    dataset_builder,
+	)
 
-#     next_observations = transition_model.step(observations, actions)
-
-#     assert next_observations.shape == (batch_size,) + observation_space.shape
-#     assert observation_space.is_compatible_with(next_observations[0])
-
-
-# def test_step_call_goal_state_transform(
-#     transition_network,
-#     observation_space_latent_obs,
-#     action_space_latent_obs,
-#     batch_size,
-#     ensemble_size,
-# ):
-#     latent_observation_space_spec = BoundedTensorSpec(
-#         shape=observation_space_latent_obs.shape[:-1]
-#         + [observation_space_latent_obs.shape[-1] - 1],
-#         dtype=observation_space_latent_obs.dtype,
-#         minimum=observation_space_latent_obs.minimum,
-#         maximum=observation_space_latent_obs.maximum,
-#         name=observation_space_latent_obs.name,
-#     )
-#     network_list = [
-#         transition_network(latent_observation_space_spec, bootstrap_data=True)
-#         for _ in range(ensemble_size)
-#     ]
-#     observation_transformation = GoalStateObservationTransformation(
-#         latent_observation_space_spec=latent_observation_space_spec,
-#         goal_state_start_index=-1,
-#     )
-#     transition_model = KerasTransitionModel(
-#         network_list,
-#         observation_space_latent_obs,
-#         action_space_latent_obs,
-#         predict_state_difference=True,
-#         trajectory_sampling_strategy=OneStepTrajectorySampling(batch_size, ensemble_size),
-#         observation_transformation=observation_transformation,
-#     )
-#     observation_distribution = create_uniform_distribution_from_spec(
-#         observation_space_latent_obs
-#     )
-#     observations = observation_distribution.sample((batch_size,))
-#     action_distribution = create_uniform_distribution_from_spec(action_space_latent_obs)
-#     actions = action_distribution.sample((batch_size,))
-
-#     next_observations = transition_model.step(observations, actions)
-
-#     assert next_observations.shape == (batch_size,) + observation_space_latent_obs.shape
-#     assert observation_space_latent_obs.is_compatible_with(next_observations[0])
-#     tf.assert_equal(next_observations[..., -1], observations[..., -1])
+	return model
 
 
+def test_neural_network_ensemble_predict_call_shape(
+    hartmann_6_dataset_function, neural_network, ensemble_size
+):
+    example_data = hartmann_6_dataset_function(_DATASET_SIZE)
+    model = _create_neural_network_ensemble_model(example_data, neural_network, ensemble_size)
+    x, y = dataset_builder(example_data)
 
-# def test_mismatch_ensemble_size(
-#     observation_space, action_space, trajectory_sampling_strategy_factory, batch_size
-# ):
-#     """
-#     Ensure that the ensemble size specified in the trajectory sampling strategy is equal to the
-#     number of networks in the models.
-#     """
-#     strategy = trajectory_sampling_strategy_factory(batch_size, 2)
-#     if isinstance(strategy, SingleFunction):
-#         pytest.skip("SingleFunction strategy is not an ensemble strategy.")
+    # model.predict(example_data.query_points)
+    predicted_means, predicted_vars = model.predict(x)
+    ensemble_predictions = model.model.predict(x)
 
-#     with pytest.raises(AssertionError):
-#         KerasTransitionModel(
-#             [LinearTransitionNetwork(observation_space)],
-#             observation_space,
-#             action_space,
-#             trajectory_sampling_strategy=strategy,
-#         )
+    if ensemble_size == 1:
+    	assert predicted_vars is None	
+    assert predicted_means.shape == (batch_size,) + y.shape
+    assert len(ensemble_predictions) == ensemble_size
 
 
-# def test_fit_improves(training_data: Dataset):
-    
-#     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(training_data)
-#     networks = [
-#         MultilayerFcNetwork(
-#             input_tensor_spec,
-#             output_tensor_spec,
-#             num_hidden_layers=0,
-#             bootstrap_data=False,
-#         )
-#         for _ in range(ensemble_size)
-#     ]
-#     breakpoint()
-#     optimizer = tf.keras.optimizers.Adam()
-#     fit_args = {
-#         'batch_size': 16,
-#         'epochs': 10,
-#         'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-#         'validation_split': 0.1,
-#         'verbose': 1,
-#     }
-#     model = NeuralNetworkEnsemble(networks, TFKerasOptimizer(optimizer, fit_args))
+@random_seed
+def test_neural_network_ensemble_fit_improves(
+    hartmann_6_dataset_function, neural_network, bootstrap_data, ensemble_size
+):
+    """
+    Ensure that fit improves with several epochs of optimization.
+    """
 
-#     history = model.optimize(dataset)
+    example_data = hartmann_6_dataset_function(_DATASET_SIZE)
+    model = _create_neural_network_ensemble_model(example_data, neural_network, ensemble_size)
 
-#     assert history.history["loss"][-1] < history.history["loss"][0]
+    model.optimize(example_data)
+    loss = model.model.history.history["loss"]
 
-
-# @pytest.mark.parametrize("training_data", [branin_training_data, hartmann_6_training_data])
-# def test_ensemble_model_close_to_actuals(training_data: Dataset):
-    
-#     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(training_data)
-#     networks = [
-#         MultilayerFcNetwork(
-#             input_tensor_spec,
-#             output_tensor_spec,
-#             num_hidden_layers=0,
-#             bootstrap_data=False,
-#         )
-#         for _ in range(ensemble_size)
-#     ]
-#     breakpoint()
-#     optimizer = tf.keras.optimizers.Adam()
-#     fit_args = {
-#         'batch_size': 16,
-#         'epochs': 10,
-#         'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-#         'validation_split': 0.1,
-#         'verbose': 1,
-#     }
-#     model = NeuralNetworkEnsemble(networks, TFKerasOptimizer(optimizer, fit_args))
-
-
-#     model.optimize(dataset)
-
-#     assert_rollouts_are_close_to_actuals(model, max_steps=1)
+    assert loss[-1] < loss[0]
