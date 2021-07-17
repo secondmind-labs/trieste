@@ -35,10 +35,10 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.observer import OBJECTIVE
-from trieste.space import Box
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
     SCALED_BRANIN_MINIMUM,
+    BRANIN_SEARCH_SPACE,
     mk_observer,
     scaled_branin,
 )
@@ -53,7 +53,7 @@ from trieste.utils.objectives import (
         (
             15,
             EfficientGlobalOptimization(
-                MinValueEntropySearch(Box([0, 0], [1, 1]), num_fourier_features=1000).using(
+                MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
                     OBJECTIVE
                 )
             ),
@@ -69,7 +69,7 @@ from trieste.utils.objectives import (
             10,
             EfficientGlobalOptimization(
                 LocalPenalizationAcquisitionFunction(
-                    Box([0, 0], [1, 1]),
+                    BRANIN_SEARCH_SPACE,
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
@@ -78,7 +78,7 @@ from trieste.utils.objectives import (
             10,
             EfficientGlobalOptimization(
                 GIBBON(
-                    Box([0, 0], [1, 1]),
+                    BRANIN_SEARCH_SPACE,
                 ).using(OBJECTIVE),
                 num_query_points=2,
             ),
@@ -91,7 +91,7 @@ from trieste.utils.objectives import (
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int, acquisition_rule: AcquisitionRule
 ) -> None:
-    search_space = Box([0, 0], [1, 1])
+    search_space = BRANIN_SEARCH_SPACE
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)

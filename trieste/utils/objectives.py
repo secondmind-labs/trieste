@@ -27,6 +27,7 @@ import tensorflow as tf
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
 from ..type import TensorType
+from ..space import Box
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
@@ -89,6 +90,10 @@ SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
+BRANIN_SEARCH_SPACE = Box([0.0]*2, [1.0]*2)
+""" The search space for the :func:`branin` function. """
+
+
 def gramacy_lee(x: TensorType) -> TensorType:
     """
     The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
@@ -108,11 +113,16 @@ The global minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`
 and dtype float64.
 """
 
+
 GRAMACY_LEE_MINIMUM = tf.constant([-0.869011], tf.float64)
 """
 The global minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and
 dtype float64.
 """
+
+
+GRAMACY_LEE_SEARCH_SPACE = Box([0.5], [2.5])
+""" The search space for the :func:`gramacy_lee` function. """
 
 
 def logarithmic_goldstein_price(x: TensorType) -> TensorType:
@@ -142,11 +152,16 @@ The global minimizer for the :func:`logarithmic_goldstein_price` function, with 
 dtype float64.
 """
 
+
 LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM = tf.constant([-3.12913], tf.float64)
 """
 The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
 float64.
 """
+
+
+LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0]*2, [1.0]*2)
+""" The search space for the :func:`logarithmic_goldstein_price` function. """
 
 
 def hartmann_3(x: TensorType) -> TensorType:
@@ -185,6 +200,10 @@ HARTMANN_3_MINIMUM = tf.constant([-3.86278], tf.float64)
 The global minimum for the :func:`hartmann_3` function, with shape [1] and dtype
 float64.
 """
+
+
+HARTMANN_3_SEARCH_SPACE = Box([0.0]*3, [1.0]*3)
+""" The search space for the :func:`hartmann_3` function. """
 
 
 def shekel_4(x: TensorType) -> TensorType:
@@ -229,6 +248,10 @@ float64.
 """
 
 
+SHEKEL_4_SEARCH_SPACE = Box([0.0]*4, [1.0]*4)
+""" The search space for the :func:`shekel_4` function. """
+
+
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
@@ -261,6 +284,10 @@ ROSENBROCK_4_MINIMUM = tf.constant([-1.01917], tf.float64)
 The global minimum for the :func:`rosenbrock_4` function, with shape [1] and dtype
 float64.
 """
+
+
+ROSENBROCK_4_SEARCH_SPACE = Box([0.0]*4, [1.0]*4)
+""" The search space for the :func:`rosenbrock_4` function. """
 
 
 def ackley_5(x: TensorType) -> TensorType:
@@ -304,6 +331,10 @@ ACKLEY_5_MINIMUM = tf.constant([0.0], tf.float64)
 The global minimum for the :func:`ackley_5` function, with shape [1] and dtype
 float64.
 """
+
+
+ACKLEY_5_SEARCH_SPACE = Box([0.0]*5, [1.0]*5)
+""" The search space for the :func:`ackley_5` function. """
 
 
 def hartmann_6(x: TensorType) -> TensorType:
@@ -350,6 +381,10 @@ HARTMANN_6_MINIMUM = tf.constant([-3.32237], tf.float64)
 The global minimum for the :func:`hartmann_6` function, with shape [1] and dtype
 float64.
 """
+
+
+HARTMANN_6_SEARCH_SPACE = Box([0.0]*6, [1.0]*6)
+""" The search space for the :func:`hartmann_6` function. """
 
 
 @overload
