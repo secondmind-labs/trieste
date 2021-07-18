@@ -34,7 +34,7 @@ from tests.util.model import (
     QuadraticMeanAndRBFKernel,
     rbf,
 )
-from trieste.acquisition.rule import AcquisitionRule, EmpiricStateful
+from trieste.acquisition.rule import AcquisitionRule, TrustRegion
 from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
@@ -202,7 +202,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     expected_state_history: list[list[int]],
     final_state: list[int],
 ) -> None:
-    class Fibonacci(EmpiricStateful[List[int], Box]):
+    class Fibonacci(TrustRegion[List[int], Box]):
         default_state = [0, 1]
 
         def __init__(self, line: Box):
@@ -213,13 +213,12 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         ) -> State[list[int], Box]:
             return lambda s: (s + [s[-1] + s[-2]], self.line)
 
-    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
     result, history = (
         BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1]))
         .optimize(
             3,
-            data,
-            models,
+            {"": mk_dataset([[0.0]], [[0.0]])},
+            {"": _PseudoTrainableQuadratic()},
             FixedAcquisitionRule([[0.0]]),
             trust_region=Fibonacci,
             trust_region_state=starting_state,
@@ -423,7 +422,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
-    class DecreasingLine(EmpiricStateful[int, Box]):
+    class DecreasingLine(TrustRegion[int, Box]):
         def __init__(self, line: Box):
             self._line = line
 

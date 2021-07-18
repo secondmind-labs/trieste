@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import traceback
+from collections import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
@@ -199,7 +200,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S],
+        trust_region: Callable[[SP], TrustRegion[S, SP]],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -241,7 +242,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         acquisition_rule: AcquisitionRule[SP],
         *,
-        trust_region: TrustRegion[SP, S],
+        trust_region: Callable[[SP], TrustRegion[S, SP]],
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -255,7 +256,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[SP] | None = None,
         *,
-        trust_region: TrustRegion[SP, S] | None = None,
+        trust_region: Callable[[SP], TrustRegion[S, SP]] | None = None,
         trust_region_state: S | None = None,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -374,7 +375,7 @@ class BayesianOptimizer(Generic[SP]):
                     trust_region_state, acquisition_space = trust_region_with_space.acquire(
                         datasets, models
                     )(
-                        trust_region_with_space.default_state
+                        cast(S, trust_region_with_space.default_state)
                         if trust_region_state is None
                         else trust_region_state
                     )

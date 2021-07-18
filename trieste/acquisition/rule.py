@@ -20,9 +20,9 @@ from __future__ import annotations
 import copy
 import math
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
 
@@ -296,14 +296,11 @@ class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
         return thompson_samples
 
 
-S = TypeVar("S")
-"""Unbound type variable."""
-
 T = TypeVar("T")
 """Unbound type variable."""
 
 
-class EmpiricStateful(ABC, Generic[S, T]):
+class Empiric(ABC, Generic[T]):
     """
     A :class:`EmpiricStateful` produces a value (of type `T`) from data and models of that data.
     The value produced is typically stateful, in the sense that producing the value will use and
@@ -313,7 +310,7 @@ class EmpiricStateful(ABC, Generic[S, T]):
     @abstractmethod
     def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> State[S, T]:
+    ) -> T:
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
@@ -321,20 +318,19 @@ class EmpiricStateful(ABC, Generic[S, T]):
             update a state of type `S`.
         """
 
-    @property
-    @abstractmethod
-    def default_state(self) -> S:
-        """The default state."""
 
+S = TypeVar("S")
+"""Unbound type variable."""
 
 SP = TypeVar("SP", bound=SearchSpace)
 """Type variable bound to :class:`~trieste.space.SearchSpace`."""
 
-TrustRegion = Callable[[SP], EmpiricStateful[S, SP]]
-"""
-A `TrustRegion` constructs a local acquisition space from a global space, data and models, and
-a history of metadata from previous steps.
-"""
+
+class TrustRegion(Empiric[State[S, SP]]):
+    @property
+    @abstractmethod
+    def default_state(self) -> S:
+        """The default state."""
 
 
 @dataclass(frozen=True)
@@ -363,7 +359,7 @@ class ContinuousTrustRegionState:
         return ContinuousTrustRegionState(box_copy, self.eps, self.y_min, self.is_global)
 
 
-class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
+class _ContinuousTrustRegion(TrustRegion[ContinuousTrustRegionState, Box]):
     def __init__(self, global_search_space: Box, beta: float = 0.7, kappa: float = 1e-4):
         self._global_search_space = global_search_space
         self._beta = beta
@@ -422,7 +418,7 @@ class _ContinuousTrustRegion(EmpiricStateful[ContinuousTrustRegionState, Box]):
 
 def continuous_trust_region(
     beta: float = 0.7, kappa: float = 1e-4
-) -> TrustRegion[Box, ContinuousTrustRegionState]:
+) -> Callable[[Box], TrustRegion[ContinuousTrustRegionState, Box]]:
     """
     Implements the *trust region* algorithm for constructing a local acquisition space from a global
     continuous search space. The algorithm is as follows:

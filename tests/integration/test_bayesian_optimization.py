@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -100,7 +102,7 @@ from trieste.utils.objectives import (
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[Box],
-    trust_region: TrustRegion[Box, ContinuousTrustRegionState] | None,
+    trust_region: Callable[[Box], TrustRegion[ContinuousTrustRegionState, Box]] | None,
 ) -> None:
     search_space = Box([0, 0], [1, 1])
 
