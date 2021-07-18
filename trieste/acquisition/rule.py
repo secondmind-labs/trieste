@@ -301,7 +301,7 @@ T = TypeVar("T")
 
 
 class Empiric(ABC, Generic[T]):
-    """ An :class:`Empiric` produces a value (of type `T`) from data and models of that data. """
+    """ An :class:`Empiric` produces a value from data and models. """
 
     @abstractmethod
     def acquire(
@@ -325,7 +325,7 @@ class TrustRegion(Empiric[State[S, SP]]):
     """
     A :class:`TrustRegion` computes a :class:`~trieste.space.SearchSpace` from data and models. It
     is stateful in the sense that computing the :class:`~trieste.space.SearchSpace` can use and
-    updates a state (of type `S`).
+    update a state (of type `S`).
     """
 
     @property
