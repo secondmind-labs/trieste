@@ -301,11 +301,7 @@ T = TypeVar("T")
 
 
 class Empiric(ABC, Generic[T]):
-    """
-    A :class:`EmpiricStateful` produces a value (of type `T`) from data and models of that data.
-    The value produced is typically stateful, in the sense that producing the value will use and
-    update some state (of type `S`).
-    """
+    """ An :class:`Empiric` produces a value (of type `T`) from data and models of that data. """
 
     @abstractmethod
     def acquire(
@@ -314,8 +310,7 @@ class Empiric(ABC, Generic[T]):
         """
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :return: A function that produces a value of type `T`. Calling this function can use and
-            update a state of type `S`.
+        :return: A value of type `T`.
         """
 
 
@@ -327,6 +322,12 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 
 class TrustRegion(Empiric[State[S, SP]]):
+    """
+    A :class:`TrustRegion` computes a :class:`~trieste.space.SearchSpace` from data and models. It
+    is stateful in the sense that computing the :class:`~trieste.space.SearchSpace` can use and
+    updates a state (of type `S`).
+    """
+
     @property
     @abstractmethod
     def default_state(self) -> S:
