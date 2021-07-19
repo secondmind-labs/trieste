@@ -36,7 +36,7 @@ class Dataset:
 
     def __post_init__(self) -> None:
         """
-        :raise tf.errors.InvalidArgumentError: If ``query_points`` or ``observations`` have
+        :raise tf.errors.InvalidArgumentError: If ``query_points`` or ``observations`` have \
             rank less than two, or they have unequal shape in any but their first dimension.
         """
         tf.debugging.assert_rank_at_least(self.query_points, 2)
@@ -104,7 +104,9 @@ class Dataset:
         array([[0.1 , 0.01],
                [0.2 , 0.02]], dtype=float32)
 
-        :param idx: The `slice` of indices to return.
+        **Note:** Indexing with integers, like `data[0]`, is not supported.
+
+        :param idx: The :class:`slice` of indices to return.
         :return: The points specified by ``idx`` from this :class:`Dataset`.
         :raise tf.errors.InvalidArgumentError: If the slice bounds extend beyond the data.
         """
