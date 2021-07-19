@@ -623,7 +623,8 @@ def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
         elif param.prior is not None:
             param.assign(param.prior.sample())
 
-def squeeze_hyperparameters(model: gpflow.models.GPModel, epsilon: float=1e-8) -> None:
+
+def squeeze_hyperparameters(model: gpflow.models.GPModel, epsilon: float = 1e-8) -> None:
     for param in model.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
             squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
