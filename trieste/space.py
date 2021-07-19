@@ -117,7 +117,7 @@ class DiscreteSearchSpace(SearchSpace):
         tf.debugging.assert_less_equal(
             num_samples,
             len(self._points),
-            message="Number of samples cannot be greater than the number of points in search space"
+            message="Number of samples cannot be greater than the number of points in search space",
         )
         return tf.random.shuffle(self._points)[:num_samples, :]
 
