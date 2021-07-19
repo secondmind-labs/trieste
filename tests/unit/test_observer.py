@@ -73,7 +73,6 @@ def test_filter_finite(query_points: tf.Tensor, expected: Dataset) -> None:
         ([3, 4], [3, 2]),  # observations not N x 1
         ([3, 4], [4, 1]),  # different leading dims
         ([3], [3, 1]),  # query_points missing a dimension
-        ([3, 4, 2], [3, 1]),  # query_points have too many dimensions
     ],
 )
 def test_filter_finite_raises_for_invalid_shapes(qp_shape: ShapeLike, obs_shape: ShapeLike) -> None:

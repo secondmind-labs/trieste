@@ -98,8 +98,8 @@ class Dataset:
         ...     tf.constant([[0.0, 0.0], [0.1, 0.01], [0.2, 0.02], [0.3, 0.03]])
         ... )
         >>> dataset[1:3].query_points.numpy()
-        array([[1.0],
-               [2.0]], dtype=float32)
+        array([[1.],
+               [2.]], dtype=float32)
         >>> dataset[1:3].observations.numpy()
         array([[0.1, 0.01],
                [0.2, 0.02]], dtype=float32)
