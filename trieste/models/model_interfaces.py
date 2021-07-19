@@ -469,30 +469,26 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
 
         @tf.function
-        def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
+        def evaluate_loss_of_model_parameters() -> tf.Tensor:
             randomize_model_hyperparameters(self.model)
-            return -self.model.training_loss()
-            # return self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
+            return self.model.training_loss()
 
         current_best_parameters = read_values(self.model)
-        max_log_likelihood = -self.model.training_loss()
-        # max_log_likelihood = (
-        #     self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
-        # )
+        min_loss = self.model.training_loss()
 
         found_better = False
         for _ in tf.range(num_kernel_samples):
             try:
-                log_likelihood = evaluate_likelihood_of_model_parameters()
+                train_loss = evaluate_loss_of_model_parameters()
             except tf.errors.InvalidArgumentError:  # allow badly specified kernel params
-                log_likelihood = -1e100
+                train_loss = 1e100
 
-            if log_likelihood > max_log_likelihood:  # only keep best kernel params
-                max_log_likelihood = log_likelihood
+            if train_loss < min_loss:  # only keep best kernel params
+                min_loss = train_loss
                 current_best_parameters = read_values(self.model)
                 found_better = True
 
-        if found_better:
+        if found_better:  # trick to avoid issues with Sigmoid
             multiple_assign(self.model, current_best_parameters)
 
 
