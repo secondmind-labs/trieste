@@ -101,8 +101,8 @@ class Dataset:
         array([[1.],
                [2.]], dtype=float32)
         >>> dataset[1:3].observations.numpy()
-        array([[0.1, 0.01],
-               [0.2, 0.02]], dtype=float32)
+        array([[0.1 , 0.01],
+               [0.2 , 0.02]], dtype=float32)
 
         **Note:** Indexing with integers, like `data[0]`, is not supported.
 
