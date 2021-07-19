@@ -473,6 +473,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             randomize_model_hyperparameters(self.model)
             return self.model.training_loss()
 
+        squeeze_hyperparameters(self.model)
         current_best_parameters = read_values(self.model)
         min_loss = self.model.training_loss()
 
@@ -621,3 +622,10 @@ def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
             param.assign(sample)
         elif param.prior is not None:
             param.assign(param.prior.sample())
+
+def squeeze_hyperparameters(model: gpflow.models.GPModel, epsilon: float=1e-8) -> None:
+    for param in model.trainable_parameters:
+        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
+            param.assign(squeezed_param)
