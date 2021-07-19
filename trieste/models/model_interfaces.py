@@ -471,13 +471,16 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         @tf.function
         def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
             randomize_model_hyperparameters(self.model)
-            return self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
+            return -self.model.training_loss()
+            # return self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
 
         current_best_parameters = read_values(self.model)
-        max_log_likelihood = (
-            self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
-        )
+        max_log_likelihood = -self.model.training_loss()
+        # max_log_likelihood = (
+        #     self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
+        # )
 
+        found_better = False
         for _ in tf.range(num_kernel_samples):
             try:
                 log_likelihood = evaluate_likelihood_of_model_parameters()
@@ -487,8 +490,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             if log_likelihood > max_log_likelihood:  # only keep best kernel params
                 max_log_likelihood = log_likelihood
                 current_best_parameters = read_values(self.model)
+                found_better = True
 
-        multiple_assign(self.model, current_best_parameters)
+        if found_better:
+            multiple_assign(self.model, current_best_parameters)
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
@@ -615,7 +620,7 @@ def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
     for param in model.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
             sample = tf.random.uniform(
-                [1],
+                param.bijector.low.shape,
                 minval=param.bijector.low,
                 maxval=param.bijector.high,
                 dtype=param.bijector.low.dtype,
