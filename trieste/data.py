@@ -104,8 +104,6 @@ class Dataset:
         array([[0.1 , 0.01],
                [0.2 , 0.02]], dtype=float32)
 
-        **Note:** Indexing with integers, like `data[0]`, is not supported.
-
         :param idx: The `slice` of indices to return.
         :return: The points specified by ``idx`` from this :class:`Dataset`.
         :raise tf.errors.InvalidArgumentError: If the slice bounds extend beyond the data.
