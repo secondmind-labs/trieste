@@ -471,7 +471,7 @@ def test_find_best_model_initialization_improves_likelihood(
     )
 
     pre_init_likelihood = -model.model.training_loss()
-    model.find_best_model_initialization(10)
+    model.find_best_model_initialization(100)
     post_init_likelihood = -model.model.training_loss()
 
     npt.assert_array_less(pre_init_likelihood, post_init_likelihood)
