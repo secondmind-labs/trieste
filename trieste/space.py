@@ -114,7 +114,11 @@ class DiscreteSearchSpace(SearchSpace):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space.
         """
-        tf.debugging.assert_less_equal(num_samples, len(self._points))
+        tf.debugging.assert_less_equal(
+            num_samples,
+            len(self._points),
+            message="Number of samples cannot be greater than the number of points"
+        )
         return tf.random.shuffle(self._points)[:num_samples, :]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
