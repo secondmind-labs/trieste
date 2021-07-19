@@ -476,7 +476,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         current_best_parameters = read_values(self.model)
         min_loss = self.model.training_loss()
 
-        found_better = False
         for _ in tf.range(num_kernel_samples):
             try:
                 train_loss = evaluate_loss_of_model_parameters()
@@ -486,10 +485,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             if train_loss < min_loss:  # only keep best kernel params
                 min_loss = train_loss
                 current_best_parameters = read_values(self.model)
-                found_better = True
 
-        if found_better:  # trick to avoid issues with Sigmoid
-            multiple_assign(self.model, current_best_parameters)
+        multiple_assign(self.model, current_best_parameters)
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
