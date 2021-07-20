@@ -452,6 +452,31 @@ def test_find_best_model_initialization_changes_params_with_sigmoid_bjectors(
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
+def test_find_best_model_initialization_without_priors_improves_training_loss(
+    gpr_interface_factory, dim: int
+) -> None:
+    x = tf.constant(np.arange(1, 10).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+
+    pre_init_likelihood = -model.model.training_loss()
+    model.find_best_model_initialization(10)
+    post_init_likelihood = -model.model.training_loss()
+
+    npt.assert_array_less(pre_init_likelihood, post_init_likelihood)
+
+
+@random_seed
+@pytest.mark.parametrize("dim", [1, 10])
 def test_find_best_model_initialization_improves_likelihood(
     gpr_interface_factory, dim: int
 ) -> None:
@@ -476,6 +501,25 @@ def test_find_best_model_initialization_improves_likelihood(
     post_init_likelihood = -model.model.training_loss()
 
     npt.assert_array_less(pre_init_likelihood, post_init_likelihood)
+
+
+@random_seed
+def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
+
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2])
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
+    upper = tf.cast([0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    model.model.kernel.lengthscales.assign(0.5)
+    model.find_best_model_initialization(2)
 
 
 def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
