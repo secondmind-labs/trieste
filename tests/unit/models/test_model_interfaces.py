@@ -504,11 +504,11 @@ def test_find_best_model_initialization_improves_likelihood(
         model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
 
-    pre_init_likelihood = -model.model.training_loss()
-    model.find_best_model_initialization(10)
-    post_init_likelihood = -model.model.training_loss()
+    pre_init_loss = model.model.training_loss()
+    model.find_best_model_initialization(100)
+    post_init_loss = model.model.training_loss()
 
-    npt.assert_array_less(pre_init_likelihood, post_init_likelihood)
+    npt.assert_array_less(post_init_loss, pre_init_loss)
 
 
 @random_seed
