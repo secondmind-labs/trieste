@@ -841,4 +841,4 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
     squeeze_hyperparameters(kernel, 0.1)
-    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
+    npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
