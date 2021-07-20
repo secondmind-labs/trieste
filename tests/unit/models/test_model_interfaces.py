@@ -507,7 +507,7 @@ def test_find_best_model_initialization_improves_likelihood(
 def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
 
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x) * 0.)
+    model = gpr_interface_factory(x, _3x_plus_10(x) * 0.0)
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2])
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
