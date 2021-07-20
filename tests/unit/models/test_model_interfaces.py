@@ -834,11 +834,11 @@ def test_randomize_hyperparameters_samples_different_values_for_multi_dimensiona
 
 @random_seed
 def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
-    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1, 0.5])
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1 + 1e-3, 0.5 - 1e-3])
     upper = tf.cast([0.5, 0.5], dtype=tf.float64)
     lower = upper / 5.0
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    squeeze_hyperparameters(kernel, 1e-2)
-    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-3, 0.5 - 4e-3])
+    squeeze_hyperparameters(kernel, 0.1)
+    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
