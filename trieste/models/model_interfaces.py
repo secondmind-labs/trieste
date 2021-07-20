@@ -626,8 +626,8 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
 
 def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
     """
-    Sets hyperparameters to random samples from their constrained domains or (if not constraints
-    are available) their prior distributions.
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
+    This avoids having NaN of Inf unconstrained values when the parameters are exactly at the boundary.
 
     :param object: Any gpflow Module.
     :param alpha: the proportion of the range with which to squeeze
