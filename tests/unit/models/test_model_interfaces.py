@@ -513,7 +513,7 @@ def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) 
     model.model.kernel.lengthscales = gpflow.Parameter(
         model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    model.optimize(Dataset(model.model.data[0], model.model.data[1]))
+    model.optimize(Dataset(x, _3x_plus_10(x) * 0.0))
     model.find_best_model_initialization(2)
 
 
