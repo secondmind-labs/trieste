@@ -505,15 +505,15 @@ def test_find_best_model_initialization_improves_likelihood(
 
 @random_seed
 def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x) * 0.0)
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
+    model = gpr_interface_factory(x, tf.zeros_like(x))
     model.model.kernel = gpflow.kernels.RBF(lengthscales=0.45)
     upper = tf.cast([0.5], dtype=tf.float64)
     lower = upper / 5.0
     model.model.kernel.lengthscales = gpflow.Parameter(
         model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    model.optimize(Dataset(x, _3x_plus_10(x) * 0.0))
+    model.optimize(Dataset(x, tf.zeros_like(x)))
     model.find_best_model_initialization(2)
 
 
