@@ -404,8 +404,8 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
 def test_find_best_model_initialization_changes_params_with_priors(
     gpr_interface_factory, dim: int
 ) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    x = tf.constant(np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float())  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -428,8 +428,8 @@ def test_find_best_model_initialization_changes_params_with_priors(
 def test_find_best_model_initialization_changes_params_with_sigmoid_bjectors(
     gpr_interface_factory, dim: int
 ) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    x = tf.constant(np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float())  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -455,8 +455,8 @@ def test_find_best_model_initialization_changes_params_with_sigmoid_bjectors(
 def test_find_best_model_initialization_without_priors_improves_training_loss(
     gpr_interface_factory, dim: int
 ) -> None:
-    x = tf.constant(np.arange(1, 10).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    x = tf.constant(np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float())  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -480,8 +480,8 @@ def test_find_best_model_initialization_without_priors_improves_training_loss(
 def test_find_best_model_initialization_improves_likelihood(
     gpr_interface_factory, dim: int
 ) -> None:
-    x = tf.constant(np.arange(1, 10).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    x = tf.constant(np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float())  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -507,6 +507,10 @@ def test_find_best_model_initialization_improves_likelihood(
 def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
     model = gpr_interface_factory(x, tf.zeros_like(x))
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.45])
     upper = tf.cast([0.5], dtype=tf.float64)
     lower = upper / 5.0
