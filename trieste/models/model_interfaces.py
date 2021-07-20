@@ -627,7 +627,7 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
 def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
     """
     Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
-    This avoids having NaN of Inf unconstrained values when the parameters are exactly at the boundary.
+    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
 
     :param object: Any gpflow Module.
     :param alpha: the proportion of the range with which to squeeze
@@ -635,7 +635,7 @@ def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
     """
 
     if not (0 < alpha < 1):
-        raise ValueError(f"squeeze factor alpha must be in (0, 1)")
+        raise ValueError(f"squeeze factor alpha must be in (0, 1), given value is {alpha}")
 
     for param in object.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
