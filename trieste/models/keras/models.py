@@ -18,6 +18,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Dict, List, TypeVar
+from warnings import warn
 
 import tensorflow as tf
 from numpy import inf
@@ -114,7 +115,13 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         else:
             self._dataset_transformer = dataset_transformer
         self._networks = networks
+
         self._ensemble_size = len(networks)
+        if self._ensemble_size == 1:
+            warn(
+                f"""A single network was passed to the class while ensemble as a rule should
+                consist of more than a single models, results are unlikely to be meaningful."""
+            )
 
         self._indices = tf.Variable(
             0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
