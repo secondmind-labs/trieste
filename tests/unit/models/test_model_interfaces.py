@@ -507,7 +507,7 @@ def test_find_best_model_initialization_improves_likelihood(
 def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
     model = gpr_interface_factory(x, tf.zeros_like(x))
-    model.model.kernel = gpflow.kernels.RBF(lengthscales=0.45)
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.45])
     upper = tf.cast([0.5], dtype=tf.float64)
     lower = upper / 5.0
     model.model.kernel.lengthscales = gpflow.Parameter(
