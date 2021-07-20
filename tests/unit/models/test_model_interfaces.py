@@ -513,7 +513,7 @@ def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) 
     model.model.kernel.lengthscales = gpflow.Parameter(
         model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    model.optimize(Dataset(model.model.X, model.model.Y))
+    model.optimize(Dataset((model.model.data[0], model.model.data[1])))
     model.find_best_model_initialization(2)
 
 
@@ -841,4 +841,4 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
     squeeze_hyperparameters(kernel, 1e-2)
-    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
+    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-3, 0.5 - 4e-3])
