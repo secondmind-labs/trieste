@@ -47,8 +47,8 @@ from trieste.models.model_interfaces import (
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
     module_deepcopy,
-    randomize_model_hyperparameters,
-    squeeze_model_hyperparameters,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
