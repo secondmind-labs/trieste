@@ -301,7 +301,7 @@ T = TypeVar("T")
 
 
 class Empiric(ABC, Generic[T]):
-    """ An :class:`Empiric` produces a value from data and models. """
+    """An :class:`Empiric` produces a value from data and models."""
 
     @abstractmethod
     def acquire(
