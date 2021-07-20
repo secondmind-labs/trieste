@@ -20,6 +20,7 @@ from collections.abc import Callable
 from typing import Any, Dict, List, TypeVar
 
 import tensorflow as tf
+from numpy import inf
 
 from ...data import Dataset
 from ...type import TensorType
@@ -186,7 +187,10 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
-        Returns means and variance over predictions of all members of the ensemble.
+        Returns means and variance over predictions of all members of the ensemble. In case ensemble
+        consists of a single network, predicted means will be equal to the predictions from that
+        network, while predicted variances will be set to infinity.
+
         Note that raw `query_points` need to be transformed to be used in the ensemble,
         `dataset_transformer` is used for that purpose, which essentially replicates the input such
         that each network in the ensemble receives appropriate inputs.
@@ -198,8 +202,12 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         # query_points_transformed = self._dataset_transformer(query_points)
         # ensemble_predictions = self._model.predict(query_points_transformed)
         ensemble_predictions = self._model.predict(query_points)
-        predicted_means = tf.math.reduce_mean(ensemble_predictions, axis=0)
-        predicted_vars = tf.math.reduce_variance(ensemble_predictions, axis=0)
+        if self._ensemble_size == 1:
+            predicted_means = tf.convert_to_tensor(ensemble_predictions)
+            predicted_vars = tf.constant(inf, shape=predicted_means.shape)
+        else:
+            predicted_means = tf.math.reduce_mean(ensemble_predictions, axis=0)
+            predicted_vars = tf.math.reduce_variance(ensemble_predictions, axis=0)
         return (predicted_means, predicted_vars)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:

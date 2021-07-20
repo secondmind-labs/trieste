@@ -216,7 +216,7 @@ class MultilayerFcNetwork(KerasNetwork):
 
     def gen_hidden_dense_layers(
         self, hidden_layer: tf.keras.layers.Layer
-    ) -> : tf.keras.layers.Layer:
+    ) -> tf.keras.layers.Layer:
         """Generate a sequence of dense Keras layers"""
         if self._num_hidden_layers > 0:
             layer_args = zip(
