@@ -299,7 +299,7 @@ class BayesianOptimizer(Generic[SP]):
         :param trust_region: Defines how to construct the acquisition space from the global space on
             each step. Defaults to using the global space.
         :param trust_region_state: Initial state for ``trust_region``. Defaults to the
-            :attr:`~trieste.acquisition.rule.EmpiricStateful.default_state` of ``trust_region``
+            :attr:`~trieste.acquisition.rule.TrustRegion.default_state` of ``trust_region``
             (given the search space specified on ``__init__``).
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.

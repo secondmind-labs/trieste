@@ -445,7 +445,7 @@ def continuous_trust_region(
     intersection of the trust region and global search space.
 
     **Note:** Uses the data for key :const:`~trieste.observer.OBJECTIVE`. The
-        :meth:`EmpiricStateful.acquire` method will raise a :exc:`KeyError` if this key is missing.
+        :meth:`Empiric.acquire` method will raise a :exc:`KeyError` if this key is missing.
         It will raise a :exc:`tf.errors.InvalidArgumentError` if the dataset contains no finite
         observations.
 
