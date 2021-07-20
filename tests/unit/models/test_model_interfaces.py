@@ -48,6 +48,7 @@ from trieste.models.model_interfaces import (
     VariationalGaussianProcess,
     module_deepcopy,
     randomize_model_hyperparameters,
+    squeeze_model_hyperparameters,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
@@ -776,3 +777,29 @@ def test_randomize_model_hyperparameters_samples_from_constraints_when_given_pri
 
     npt.assert_array_less(kernel.lengthscales, [0.5] * dim)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
+def test_randomize_model_hyperparameters_samples_different_values_for_multi_dimensional_params() -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+    upper = tf.cast([10.0] * 2, dtype=tf.float64)
+    lower = upper / 100
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    randomize_model_hyperparameters(kernel)
+    npt.assert_raises(
+        AssertionError, npt.assert_allclose, kernel.lengthscales[0], kernel.lengthscales[1]
+    )
+
+
+@random_seed
+def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1, 0.5])
+    upper = tf.cast([0.5, 0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    squeeze_model_hyperparameters(kernel, 1e-2)
+    npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
