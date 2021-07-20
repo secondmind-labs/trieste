@@ -752,12 +752,12 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
-def test_randomize_model_hyperparameters_randomize_kernel_parameters_with_priors(dim: int) -> None:
+def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(kernel.lengthscales), scale=1.0
     )
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
 
     npt.assert_allclose(1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
@@ -774,7 +774,7 @@ def test_randomize_model_hyperparameters_randomizes_constrained_kernel_parameter
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
 
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
 
     npt.assert_allclose(1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
@@ -783,7 +783,7 @@ def test_randomize_model_hyperparameters_randomizes_constrained_kernel_parameter
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
-def test_randomize_model_hyperparameters_randomizes_kernel_parameters_with_constraints_or_priors(
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_constraints_or_priors(
     dim: int,
 ) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
@@ -794,7 +794,7 @@ def test_randomize_model_hyperparameters_randomizes_kernel_parameters_with_const
     )
     kernel.variance.prior = tfp.distributions.LogNormal(loc=np.float64(-2.0), scale=np.float64(1.0))
 
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
 
     npt.assert_raises(AssertionError, npt.assert_allclose, 1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
@@ -803,7 +803,7 @@ def test_randomize_model_hyperparameters_randomizes_kernel_parameters_with_const
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
-def test_randomize_model_hyperparameters_samples_from_constraints_when_given_prior_and_constraint(
+def test_randomize_hyperparameters_samples_from_constraints_when_given_prior_and_constraint(
     dim: int,
 ) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
@@ -817,21 +817,21 @@ def test_randomize_model_hyperparameters_samples_from_constraints_when_given_pri
 
     kernel.variance.prior = tfp.distributions.LogNormal(loc=np.float64(-2.0), scale=np.float64(1.0))
 
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
 
     npt.assert_array_less(kernel.lengthscales, [0.5] * dim)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
 
 
 @random_seed
-def test_randomize_model_hyperparameters_samples_different_values_for_multi_dimensional_params() -> None:
+def test_randomize_hyperparameters_samples_different_values_for_multi_dimensional_params() -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
     upper = tf.cast([10.0] * 2, dtype=tf.float64)
     lower = upper / 100
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
     npt.assert_raises(
         AssertionError, npt.assert_allclose, kernel.lengthscales[0], kernel.lengthscales[1]
     )
@@ -845,5 +845,5 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    squeeze_model_hyperparameters(kernel, 1e-2)
+    squeeze_hyperparameters(kernel, 1e-2)
     npt.assert_array_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
