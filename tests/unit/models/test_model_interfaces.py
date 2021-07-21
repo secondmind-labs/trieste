@@ -868,4 +868,4 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
 
     lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
     squeeze_hyperparameters(lik, 0.1)
-    npt.assert_array_almost_equal(lik.variance, 0.1 + lik.variance_lower_bound)
+    npt.assert_array_almost_equal(lik.variance, 1.1 + lik.variance_lower_bound)
