@@ -176,9 +176,7 @@ class TFKerasOptimizer:
         """
 
         x, y = self.get_data(dataset)
-        history = model.fit(x=x, y=y, **self.fit_args)
-
-        return history
+        model.fit(x=x, y=y, **self.fit_args)
 
 
 @singledispatch

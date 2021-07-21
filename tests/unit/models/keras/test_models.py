@@ -23,6 +23,9 @@ from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 from trieste.models.keras.data import EnsembleDataTransformer
 from trieste.models.keras.networks import LinearNetwork
+from tests.util.misc import random_seed
+
+tf.keras.backend.set_floatx('float64')
 
 _ENSEMBLE_SIZE = 3
 _DATASET_SIZE = 1000
@@ -96,18 +99,23 @@ def test_neural_network_ensemble_predict_call_shape(
     assert predicted_means.shape == example_data.observations.shape
 
 
-# @random_seed
-# def test_neural_network_ensemble_fit_improves(
-#     hartmann_6_dataset_function, neural_network, bootstrap_data, ensemble_size
-# ):
-#     """
-#     Ensure that fit improves with several epochs of optimization.
-#     """
+@random_seed
+def test_neural_network_ensemble_fit_improves(
+    hartmann_6_dataset_function, neural_network, ensemble_size, bootstrap_data
+):
+    """
+    Ensure that fit improves with several epochs of optimization.
+    """
 
-#     example_data = hartmann_6_dataset_function(_DATASET_SIZE)
-#     model = _create_neural_network_ensemble_model(example_data, neural_network, ensemble_size)
+    example_data = hartmann_6_dataset_function(_DATASET_SIZE)
+    model, dataset_builder = _create_neural_network_ensemble_model(
+        example_data,
+        neural_network,
+        ensemble_size,
+        bootstrap_data
+    )   
 
-#     model.optimize(example_data)
-#     loss = model.model.history.history["loss"]
+    model.optimize(example_data)
+    loss = model.model.history.history["loss"]
 
-#     assert loss[-1] < loss[0]
+    assert loss[-1] < loss[0]
