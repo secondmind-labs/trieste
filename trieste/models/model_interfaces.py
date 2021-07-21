@@ -656,7 +656,5 @@ def squeeze_hyperparameters(
             if param.bijector.low is not None:
                 squeezed_param = tf.math.maximum(param, param.bijector.low + epsilon)
             else:
-                squeezed_param = tf.math.maximum(
-                    param, epsilon * tf.ones_like(param)
-                )
+                squeezed_param = tf.math.maximum(param, epsilon * tf.ones_like(param))
             param.assign(squeezed_param)
