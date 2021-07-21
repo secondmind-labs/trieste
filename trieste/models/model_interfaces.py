@@ -645,16 +645,17 @@ def squeeze_hyperparameters(
     if not (0 < epsilon):
         raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
-    for param in object.trainable_parameters:
-        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
-            epsilon = (param.bijector.high - param.bijector.low) * alpha
-            squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
-            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
-            param.assign(squeezed_param)
+    print("squeeze")
 
-        if isinstance(param.bijector, tfp.bijectors.Softplus):
-            if param.bijector.low is not None:
-                squeezed_param = tf.math.maximum(param, param.bijector.low + epsilon)
-            else:
-                squeezed_param = tf.math.maximum(param, epsilon * tf.ones_like(param))
+    for param in object.trainable_parameters:
+
+        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            delta = (param.bijector.high - param.bijector.low) * alpha
+            squeezed_param = tf.math.minimum(param, param.bijector.high - delta)
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + delta)
             param.assign(squeezed_param)
+        elif isinstance(param.bijector, tfp.bijectors.Chain):
+            if isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift) and isinstance(param.bijector.bijectors[1], tfp.bijectors.Softplus):
+                low = param.bijector.bijectors[0].shift
+                squeezed_param = tf.math.maximum(param, low + epsilon * tf.ones_like(param))
+                param.assign(squeezed_param)
