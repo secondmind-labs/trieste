@@ -469,23 +469,22 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
 
         @tf.function
-        def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
-            randomize_model_hyperparameters(self.model)
-            return self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
+        def evaluate_loss_of_model_parameters() -> tf.Tensor:
+            randomize_hyperparameters(self.model)
+            return self.model.training_loss()
 
+        squeeze_hyperparameters(self.model)
         current_best_parameters = read_values(self.model)
-        max_log_likelihood = (
-            self.model.maximum_log_likelihood_objective() + self.model.log_prior_density()
-        )
+        min_loss = self.model.training_loss()
 
         for _ in tf.range(num_kernel_samples):
             try:
-                log_likelihood = evaluate_likelihood_of_model_parameters()
+                train_loss = evaluate_loss_of_model_parameters()
             except tf.errors.InvalidArgumentError:  # allow badly specified kernel params
-                log_likelihood = -1e100
+                train_loss = 1e100
 
-            if log_likelihood > max_log_likelihood:  # only keep best kernel params
-                max_log_likelihood = log_likelihood
+            if train_loss < min_loss:  # only keep best kernel params
+                min_loss = train_loss
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
@@ -605,17 +604,17 @@ def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> Non
         )
 
 
-def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
+def randomize_hyperparameters(object: gpflow.Module) -> None:
     """
     Sets hyperparameters to random samples from their constrained domains or (if not constraints
     are available) their prior distributions.
 
-    :param model: Any GPModel from gpflow.
+    :param object: Any gpflow Module.
     """
-    for param in model.trainable_parameters:
+    for param in object.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
             sample = tf.random.uniform(
-                [1],
+                param.bijector.low.shape,
                 minval=param.bijector.low,
                 maxval=param.bijector.high,
                 dtype=param.bijector.low.dtype,
@@ -623,3 +622,24 @@ def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
             param.assign(sample)
         elif param.prior is not None:
             param.assign(param.prior.sample())
+
+
+def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
+    """
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
+    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+
+    :param object: Any gpflow Module.
+    :param alpha: the proportion of the range with which to squeeze
+    :raise ValueError: If ``alpha`` is not in (0,1).
+    """
+
+    if not (0 < alpha < 1):
+        raise ValueError(f"squeeze factor alpha must be in (0, 1), given value is {alpha}")
+
+    for param in object.trainable_parameters:
+        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            epsilon = (param.bijector.high - param.bijector.low) * alpha
+            squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
+            param.assign(squeezed_param)
