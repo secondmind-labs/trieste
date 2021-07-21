@@ -206,9 +206,8 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        # query_points_transformed = self._dataset_transformer(query_points)
-        # ensemble_predictions = self._model.predict(query_points_transformed)
-        ensemble_predictions = self._model.predict(query_points)
+        query_points_transformed = self._dataset_transformer.ensemblise_inputs(query_points, True)
+        ensemble_predictions = self._model.predict(query_points_transformed)
         if self._ensemble_size == 1:
             predicted_means = tf.convert_to_tensor(ensemble_predictions)
             predicted_vars = tf.constant(inf, shape=predicted_means.shape)

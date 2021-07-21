@@ -24,14 +24,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from .utils import sample_with_replacement, size
+from .utils import size
 
 
 class KerasNetwork(ABC):
     """
-    This class defines the structure and essential methods for neural networks using Keras. It
-    also includes a method that facilitates creating ensembles where data is bootstrapped for each
-    network in an ensemble.
+    This class defines the structure and essential methods for neural networks using Keras.
 
     Subclasses of this class should define the structure of the network by implementing the
     `build_model` method. The loss function of the network should be specified by implementing the
@@ -43,12 +41,10 @@ class KerasNetwork(ABC):
         self,
         input_tensor_spec: tf.TensorSpec,
         output_tensor_spec: tf.TensorSpec,
-        bootstrap_data: bool = False,
     ):
         """
         :param input_tensor_spec: Input tensor specification.
         :param output_tensor_spec: Output tensor specification.
-        :param bootstrap_data: Resample data with replacement.
         """
         assert isinstance(input_tensor_spec, tf.TensorSpec)
         assert isinstance(output_tensor_spec, tf.TensorSpec)
@@ -56,7 +52,6 @@ class KerasNetwork(ABC):
         self._input_tensor_spec = input_tensor_spec
         self._output_tensor_spec = output_tensor_spec
         self._flattened_output_shape = size(output_tensor_spec)
-        self._bootstrap_data = bootstrap_data
 
     @property
     def input_tensor_spec(self) -> tf.TensorSpec:
@@ -119,19 +114,20 @@ class KerasNetwork(ABC):
         ]
         return metrics
 
-    def transform_training_data(self, dataset: Dataset) -> Dataset:
+    def transform_data(
+        self, data: Union[Dataset, TensorType], inputs_only: bool = False
+    ) -> Union[Dataset, TensorType]:
         """
-        This method ensures the training data can be transformed before it is used in training.
-        Also, when ensembles are used this method can use the `bootstrap_data` flag to use
-        bootstrap samples of the data for each model in the ensemble.
+        This method ensures the data can be transformed before it is used in training.
 
-        :param dataset: A `Dataset` object consisting of `query_points` and `observations`. 
-        :return: Return a (new) `Dataset` object.
+        :param dataset: Either a `Dataset` object consisting of `query_points` and `observations`
+            or `query_points` tensor only. 
+        :return: Return a (new) `Dataset` object or `query_points` tensor.
         """
-        if self._bootstrap_data:
-            return sample_with_replacement(dataset)
+        if inputs_only:
+            return data
         else:
-            return dataset
+            return data
 
 
 class MultilayerFcNetwork(KerasNetwork):
@@ -157,7 +153,6 @@ class MultilayerFcNetwork(KerasNetwork):
         activity_regularizer: Optional[List[Union[Callable, str]]] = None,
         kernel_constraint: Optional[List[Union[Callable, str]]] = None,
         bias_constraint: Optional[List[Union[Callable, str]]] = None,
-        bootstrap_data: bool = False,
     ):
         """
         :param input_tensor_spec: Environment observation specifications.
@@ -174,7 +169,6 @@ class MultilayerFcNetwork(KerasNetwork):
         :param activity_regularizer: Regularizer function applied to the output of the layer.
         :param kernel_constraint: Constraint function applied to the kernel weights matrix.
         :param bias_constraint: Constraint function applied to the bias vector.
-        :param bootstrap_data: Re-sample data with replacement.
         """
         assert num_hidden_layers >= 0, "num_hidden_layers must be an integer >= 0"
         if num_hidden_layers > 0:
@@ -197,7 +191,7 @@ class MultilayerFcNetwork(KerasNetwork):
                 if i is not None:
                     assert num_hidden_layers == len(i)
 
-        super().__init__(input_tensor_spec, output_tensor_spec, bootstrap_data)
+        super().__init__(input_tensor_spec, output_tensor_spec)
 
         self._input_tensor_spec = input_tensor_spec
         self._output_tensor_spec = output_tensor_spec
@@ -262,13 +256,11 @@ class LinearNetwork(MultilayerFcNetwork):
         self,
         input_tensor_spec: tf.TensorSpec,
         output_tensor_spec: tf.TensorSpec,
-        bootstrap_data: bool = False,
     ):
         super().__init__(
             input_tensor_spec,
             output_tensor_spec,
             num_hidden_layers=0,
-            bootstrap_data=bootstrap_data
         )
 
 

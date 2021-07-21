@@ -39,7 +39,6 @@ def _create_neural_network_ensemble_model(
             neural_network(
                 input_tensor_spec,
                 output_tensor_spec,
-                bootstrap_data=bootstrap_data,
             )
             for _ in range(ensemble_size)
         ]
@@ -51,7 +50,6 @@ def _create_neural_network_ensemble_model(
                 num_hidden_layers=2,
                 units=[32, 32],
                 activation=['relu', 'relu'],
-                bootstrap_data=bootstrap_data,
             )
             for _ in range(ensemble_size)
         ]
@@ -62,7 +60,7 @@ def _create_neural_network_ensemble_model(
         'callbacks': [],
         'verbose': 0,
     }
-    dataset_builder = EnsembleDataTransformer(networks)
+    dataset_builder = EnsembleDataTransformer(networks, bootstrap_data)
     model = NeuralNetworkEnsemble(
         networks,
         TFKerasOptimizer(optimizer, fit_args, dataset_builder),
@@ -76,12 +74,16 @@ def test_neural_network_ensemble_predict_call_shape(
     hartmann_6_dataset_function, neural_network, ensemble_size, bootstrap_data
 ):
     example_data = hartmann_6_dataset_function(int(_DATASET_SIZE/10))
-    model, dataset_builder = _create_neural_network_ensemble_model(example_data, neural_network, ensemble_size, bootstrap_data)
-    x, y = dataset_builder(example_data)
-
-    # model.predict(example_data.query_points)
-    predicted_means, predicted_vars = model.predict(x)
-    ensemble_predictions = model.model.predict(x)
+    model, dataset_builder = _create_neural_network_ensemble_model(
+        example_data,
+        neural_network,
+        ensemble_size,
+        bootstrap_data
+    )
+    query_points_for_internal_predict = dataset_builder.ensemblise_inputs(example_data.query_points)
+    
+    predicted_means, predicted_vars = model.predict(example_data.query_points)
+    ensemble_predictions = model.model.predict(query_points_for_internal_predict)
     if ensemble_size == 1:
         assert tf.reduce_all(tf.math.is_inf(predicted_vars))
         assert ensemble_predictions.shape == example_data.observations.shape

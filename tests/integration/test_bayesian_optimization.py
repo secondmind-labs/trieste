@@ -130,7 +130,6 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_hartmann_6_function
                 num_hidden_layers=3,
                 units=[32, 32, 32],
                 activation=['relu', 'relu', 'relu'],
-                bootstrap_data=False,
             )
             for _ in range(ensemble_size)
         ]
@@ -142,7 +141,7 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_hartmann_6_function
             'validation_split': 0.1,
             'verbose': 0,
         }
-        dataset_builder = EnsembleDataTransformer(networks)
+        dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
         model = NeuralNetworkEnsemble(
             networks,
             TFKerasOptimizer(optimizer, fit_args, dataset_builder),
@@ -163,9 +162,8 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_hartmann_6_function
 
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
-
     relative_minimizer_err = tf.abs((best_x - HARTMANN_6_MINIMIZER) / HARTMANN_6_MINIMIZER)
-    breakpoint()
+
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.03, axis=-1), axis=0)
