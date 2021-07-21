@@ -624,7 +624,7 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             param.assign(param.prior.sample())
 
 
-def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
+def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-7) -> None:
     """
     Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
     or strictly greater than the limit defined by the Softplus.
