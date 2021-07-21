@@ -511,33 +511,6 @@ def test_find_best_model_initialization_improves_likelihood(
     npt.assert_array_less(post_init_loss, pre_init_loss)
 
 
-@random_seed
-def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
-    model = gpr_interface_factory(x, tf.zeros_like(x))
-
-    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
-
-    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.49])
-    upper = tf.cast([0.5], dtype=tf.float64)
-    lower = upper / 5.0
-    model.model.kernel.lengthscales = gpflow.Parameter(
-        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
-    )
-    gpflow.set_trainable(model.model.kernel.variance, False)
-    gpflow.set_trainable(model.model.likelihood.variance, False)
-
-    model.optimize(Dataset(x, tf.zeros_like(x)))
-    npt.assert_array_almost_equal(model.model.kernel.lengthscales, upper)
-    model.find_best_model_initialization(2)
-
-    gpflow.set_trainable(model.model.likelihood.variance, True)
-    model.optimize(Dataset(x, tf.zeros_like(x)))
-    npt.assert_array_almost_equal(model.model.likelihood.variance, 1e-6)
-    model.find_best_model_initialization(2)
-
-
 def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
