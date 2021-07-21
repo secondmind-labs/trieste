@@ -863,9 +863,9 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    squeeze_hyperparameters(kernel, 0.1)
+    squeeze_hyperparameters(kernel, alpha=0.1)
     npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
 
     lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
-    squeeze_hyperparameters(lik, 0.1)
-    npt.assert_array_almost_equal(lik.variance, 1.1 + lik.variance_lower_bound)
+    squeeze_hyperparameters(lik, epsilon=0.1)
+    npt.assert_array_almost_equal(lik.variance, .1 + lik.variance_lower_bound)
