@@ -643,3 +643,7 @@ def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
             squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
             squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
             param.assign(squeezed_param)
+
+        elif isinstance(param.bijector, tfp.bijectors.Softplus):
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low * (1 + alpha))
+            param.assign(squeezed_param)
