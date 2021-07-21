@@ -45,7 +45,6 @@ def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
             num_hidden_layers=3,
             units=[32, 32, 32],
             activation=['relu', 'relu', 'relu'],
-            bootstrap_data=False,
         )
         for _ in range(ensemble_size)
     ]
@@ -56,20 +55,16 @@ def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
         'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
         'verbose': 0,
     }
-    dataset_builder = EnsembleDataTransformer(networks)
+    dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
     model = NeuralNetworkEnsemble(
         networks,
         TFKerasOptimizer(optimizer, fit_args, dataset_builder),
         dataset_builder,
     )
     model.optimize(example_data)
+    predicted_means, predicted_vars = model.predict(example_data.query_points)
 
-    x, y = dataset_builder(example_data)
-    # model.predict(example_data.query_points)
-    predicted_means, predicted_vars = model.predict(x)
-    observations = y[list(y)[0]]
-
-    np.testing.assert_allclose(predicted_means, observations, atol=0.1, rtol=0.2)
+    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.1, rtol=0.2)
 
 
 @random_seed
@@ -94,7 +89,6 @@ def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_functi
             num_hidden_layers=3,
             units=[32, 32, 32],
             activation=['relu', 'relu', 'relu'],
-            bootstrap_data=False,
         )
         for _ in range(ensemble_size)
     ]
@@ -105,15 +99,14 @@ def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_functi
         'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
         'verbose': 0,
     }
-    dataset_builder = EnsembleDataTransformer(networks)
+    dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
     trieste_model = NeuralNetworkEnsemble(
         networks,
         TFKerasOptimizer(optimizer, fit_args, dataset_builder),
         dataset_builder,
     )
     trieste_model.optimize(example_data)
-    x, _ = dataset_builder(example_data)
-    trieste_model_predictions = trieste_model.model.predict(x)
+    trieste_model_predictions, _ = trieste_model.predict(example_data.query_points)
 
     # simpler but equal implementation
     simple_model = tf.keras.models.Sequential([
