@@ -473,7 +473,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             randomize_hyperparameters(self.model)
             return self.model.training_loss()
 
-        squeeze_hyperparameters(self.model)
+        squeeze_sigmoid_hyperparameters(self.model)
+        squeeze_softplus_hyperparameters(self.model)
         current_best_parameters = read_values(self.model)
         min_loss = self.model.training_loss()
 
@@ -624,7 +625,7 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             param.assign(param.prior.sample())
 
 
-def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-7) -> None:
+def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2, epsilon: float = 1e-7) -> None:
     """
     Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
     or strictly greater than the limit defined by the Softplus.
@@ -633,11 +634,15 @@ def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-7) -> None:
     :param object: Any gpflow Module.
     :param alpha: the proportion of the range with which to squeeze (or the absolute value
     with which to translate the parameter for Softplus without lower bound)
-    :raise ValueError: If ``alpha`` is not in (0,1).
+    :param epsilon: the value with which to offset the parameter
+    :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
 
     if not (0 < alpha < 1):
-        raise ValueError(f"squeeze factor alpha must be in (0, 1), given value is {alpha}")
+        raise ValueError(f"squeeze factor alpha must be in (0, 1), found {alpha}")
+
+    if not (0 < epsilon):
+        raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
     for param in object.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
@@ -645,9 +650,10 @@ def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-7) -> None:
             squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
             squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
             param.assign(squeezed_param)
-        elif isinstance(param.bijector, tfp.bijectors.Softplus):
+
+        if isinstance(param.bijector, tfp.bijectors.Softplus):
             if param.bijector.low is not None:
-                squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low * (1 + alpha))
+                squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
             else:
-                squeezed_param = tf.math.maximum(squeezed_param, squeezed_param + alpha)
+                squeezed_param = tf.math.maximum(squeezed_param, epsilon * tf.ones_like(squeezed_param))
             param.assign(squeezed_param)
