@@ -529,6 +529,14 @@ def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) 
     gpflow.set_trainable(model.model.likelihood.variance, False)
 
     model.optimize(Dataset(x, tf.zeros_like(x)))
+    npt.assert_array_almost_equal(model.model.kernel.lengthscales, upper)
+    model.find_best_model_initialization(2)
+
+    gpflow.set_trainable(model.model.likelihood.variance, True)
+    model.optimize(Dataset(x, tf.zeros_like(x)))
+    npt.assert_array_almost_equal(
+        model.model.likelihood.variance, model.model.likelihood.variance_lower_bound
+    )
     model.find_best_model_initialization(2)
 
 
