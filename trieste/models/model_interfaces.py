@@ -473,8 +473,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             randomize_hyperparameters(self.model)
             return self.model.training_loss()
 
-        squeeze_sigmoid_hyperparameters(self.model)
-        squeeze_softplus_hyperparameters(self.model)
+        squeeze_hyperparameters(self.model)
         current_best_parameters = read_values(self.model)
         min_loss = self.model.training_loss()
 
