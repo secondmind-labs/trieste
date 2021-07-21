@@ -352,8 +352,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
-        :param num_kernel_samples: Number of randomly sampled kernels to evaluate before beginning
-            model optimization.
+        :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
+            evaluate before beginning model optimization. Therefore, for a kernel with `p`
+            parameters, we evaluate `p * num_kernel_samples` kernels.
         """
         super().__init__(optimizer)
         self._model = model
@@ -454,7 +455,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if (
             min(num_trainable_params_with_priors_or_constraints, self._num_kernel_samples) >= 1
         ):  # Find a promising kernel initialization
-            self.find_best_model_initialization(self._num_kernel_samples)
+            self.find_best_model_initialization(
+                self._num_kernel_samples * num_trainable_params_with_priors_or_constraints
+            )
 
         self.optimizer.optimize(self.model, dataset)
 
