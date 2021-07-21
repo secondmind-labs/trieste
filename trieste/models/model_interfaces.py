@@ -20,6 +20,7 @@ from typing import Any, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
+import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from gpflow.utilities import multiple_assign, read_values
 
@@ -88,7 +89,7 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def get_observation_noise(self):
+    def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise.
 
@@ -345,23 +346,23 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     """
 
     def __init__(
-        self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_prior_samples: int = 10
+        self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_kernel_samples: int = 10
     ):
         """
         :param model: The GPflow model to wrap.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
-        :param num_prior_samples: Number of randomly sampled kernels to evaluate before beginning
+        :param num_kernel_samples: Number of randomly sampled kernels to evaluate before beginning
             model optimization.
         """
         super().__init__(optimizer)
         self._model = model
 
-        if num_prior_samples <= 0:
+        if num_kernel_samples <= 0:
             raise ValueError(
-                f"num_prior_samples must be greater or equal to zero but got {num_prior_samples}."
+                f"num_kernel_samples must be greater or equal to zero but got {num_kernel_samples}."
             )
-        self._num_prior_samples = num_prior_samples
+        self._num_kernel_samples = num_kernel_samples
 
     def __repr__(self) -> str:
         """"""
@@ -425,51 +426,63 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         Optimize the model with the specified `dataset`.
 
-        If any of the kernel's trainable parameters have priors, then we begin model optimization
-        from the best of a random sample from these parameters' priors. For trainable parameters
-        without priors, we begin optimization from their initial values.
+        For :class:`GaussianProcessRegression`, we (optionally) try multiple randomly sampled
+        kernel parameter configurations as well as the configuration specified when initializing
+        the kernel. The best configuration is used as the starting point for model optimization.
+
+        For trainable parameters constrained to lie in a finite interval (through a sigmoid
+        bijector), we begin model optimization from the best of a random sample from these
+        parameters' acceptable domains.
+
+        For trainable parameters without constraints but with priors, we begin model optimization
+        from the best of a random sample from these parameters' priors.
+
+        For trainable parameters with neither priors nor constraints, we begin optimization from
+        their initial values.
 
         :param dataset: The data with which to optimize the `model`.
         """
 
-        num_trainable_params_with_priors = tf.reduce_sum(
-            [tf.size(param) for param in self.model.trainable_parameters if param.prior is not None]
+        num_trainable_params_with_priors_or_constraints = tf.reduce_sum(
+            [
+                tf.size(param)
+                for param in self.model.trainable_parameters
+                if param.prior is not None or isinstance(param.bijector, tfp.bijectors.Sigmoid)
+            ]
         )
 
         if (
-            min(num_trainable_params_with_priors, self._num_prior_samples) >= 1
+            min(num_trainable_params_with_priors_or_constraints, self._num_kernel_samples) >= 1
         ):  # Find a promising kernel initialization
-            self.find_best_model_initialization(
-                self._num_prior_samples * num_trainable_params_with_priors
-            )
+            self.find_best_model_initialization(self._num_kernel_samples)
 
         self.optimizer.optimize(self.model, dataset)
 
-    def find_best_model_initialization(self, num_prior_samples) -> None:
+    def find_best_model_initialization(self, num_kernel_samples) -> None:
         """
-        Test `num_prior_samples` models with kernel parameters sampled from their
-        priors. The model's kernel parameters are then set to those achieving maximal
-        likelihood across the sample.
+        Test `num_kernel_samples` models with sampled kernel parameters. The model's kernel
+        parameters are then set to the sample achieving maximal likelihood.
 
-        :param num_prior_samples: Number of randomly sampled kernels to evaluate.
+        :param num_kernel_samples: Number of randomly sampled kernels to evaluate.
         """
 
         @tf.function
-        def evaluate_likelihood_of_model_parameters() -> tf.Tensor:
-            randomize_model_hyperparameters(self.model)
-            return self.model.maximum_log_likelihood_objective()
+        def evaluate_loss_of_model_parameters() -> tf.Tensor:
+            randomize_hyperparameters(self.model)
+            return self.model.training_loss()
 
+        squeeze_hyperparameters(self.model)
         current_best_parameters = read_values(self.model)
-        max_log_likelihood = self.model.maximum_log_likelihood_objective()
+        min_loss = self.model.training_loss()
 
-        for _ in tf.range(num_prior_samples):
+        for _ in tf.range(num_kernel_samples):
             try:
-                log_likelihood = evaluate_likelihood_of_model_parameters()
-            except tf.errors.InvalidArgumentError:  # allow badly specified priors
-                log_likelihood = -1e100
+                train_loss = evaluate_loss_of_model_parameters()
+            except tf.errors.InvalidArgumentError:  # allow badly specified kernel params
+                train_loss = 1e100
 
-            if log_likelihood > max_log_likelihood:  # only keep best kernel params
-                max_log_likelihood = log_likelihood
+            if train_loss < min_loss:  # only keep best kernel params
+                min_loss = train_loss
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
@@ -513,7 +526,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
 
     A Variational Gaussian Process (VGP) approximates the posterior of a GP
-    using the multivariate Gaussian closest to the posterior of the GP by minimzing the
+    using the multivariate Gaussian closest to the posterior of the GP by minimizing the
     KL divergence between approximated and exact posteriors. See :cite:`opper2009variational`
     for details.
 
@@ -581,7 +594,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         Update the model given the specified ``dataset``. Does not train the model.
 
         :param dataset: The data with which to update the model.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+        :param jitter: The size of the jitter to use when stabilizing the Cholesky decomposition of
             the covariance matrix.
         """
         model = self.model
@@ -677,12 +690,42 @@ def _assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> Non
         )
 
 
-def randomize_model_hyperparameters(model: gpflow.models.GPModel) -> None:
+def randomize_hyperparameters(object: gpflow.Module) -> None:
     """
-    Sets hyperparameters to random samples from their prior distributions.
+    Sets hyperparameters to random samples from their constrained domains or (if not constraints
+    are available) their prior distributions.
 
-    :param model: Any GPModel from gpflow.
+    :param object: Any gpflow Module.
     """
-    for parameter in model.trainable_parameters:
-        if parameter.prior is not None:
-            parameter.assign(parameter.prior.sample())
+    for param in object.trainable_parameters:
+        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            sample = tf.random.uniform(
+                param.bijector.low.shape,
+                minval=param.bijector.low,
+                maxval=param.bijector.high,
+                dtype=param.bijector.low.dtype,
+            )
+            param.assign(sample)
+        elif param.prior is not None:
+            param.assign(param.prior.sample())
+
+
+def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
+    """
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
+    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+
+    :param object: Any gpflow Module.
+    :param alpha: the proportion of the range with which to squeeze
+    :raise ValueError: If ``alpha`` is not in (0,1).
+    """
+
+    if not (0 < alpha < 1):
+        raise ValueError(f"squeeze factor alpha must be in (0, 1), given value is {alpha}")
+
+    for param in object.trainable_parameters:
+        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            epsilon = (param.bijector.high - param.bijector.low) * alpha
+            squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
+            param.assign(squeezed_param)
