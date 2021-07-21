@@ -23,7 +23,8 @@ tf.random.set_seed(42)
 # We begin our optimization after collecting five function evaluations from random locations in the search space.
 
 # %%
-from trieste.utils.objectives import scaled_branin, mk_observer, SCALED_BRANIN_MINIMUM
+from trieste.objectives.single_objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives.observer import mk_observer
 from trieste.space import Box
 
 observer = mk_observer(scaled_branin)

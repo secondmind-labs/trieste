@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -35,13 +36,13 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.observer import OBJECTIVE
-from trieste.utils.objectives import (
+from trieste.objectives.single_objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
     SCALED_BRANIN_MINIMUM,
-    mk_observer,
     scaled_branin,
 )
+from trieste.objectives.observer import mk_observer
 
 
 @random_seed

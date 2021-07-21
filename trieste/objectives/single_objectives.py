@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 This module contains toy objective functions, useful for experimentation. A number of them have been
 taken from `this Virtual Library of Simulation Experiments
 <https://www.sfu.ca/~ssurjano/optimization.html>`_.
 """
+
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
-from typing import Optional, cast, overload
 
 import tensorflow as tf
 
-from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
 from ..space import Box
 from ..type import TensorType
 
@@ -385,27 +383,3 @@ float64.
 
 HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
 """ The search space for the :func:`hartmann_6` function. """
-
-
-@overload
-def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
-    ...
-
-
-@overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
-    ...
-
-
-def mk_observer(
-    objective: Callable[[TensorType], TensorType], key: Optional[str] = None
-) -> Observer:
-    """
-    :param objective: An objective function designed to be used with a single data set and model.
-    :param key: An optional key to use to access the data from the observer result.
-    :return: An observer returning the data from ``objective``.
-    """
-    if key is not None:
-        return lambda qp: {cast(str, key): Dataset(qp, objective(qp))}
-    else:
-        return lambda qp: Dataset(qp, objective(qp))
