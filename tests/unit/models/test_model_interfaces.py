@@ -48,7 +48,8 @@ from trieste.models.model_interfaces import (
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
     module_deepcopy,
-    randomize_model_hyperparameters,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
 )
 from trieste.models.optimizer import Optimizer, create_optimizer
 from trieste.type import TensorType
@@ -362,9 +363,10 @@ def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) 
 @unittest.mock.patch(
     "trieste.models.model_interfaces.GaussianProcessRegression.find_best_model_initialization"
 )
-@pytest.mark.parametrize("d", [1, 2])
-def test_gaussian_process_regression_correctly_counts_num_trainable_params_with_priors(
-    mocked_model_initializer, d, gpr_interface_factory
+@pytest.mark.parametrize("d", [1, 3])
+@pytest.mark.parametrize("prior_for_lengthscale", [True, False])
+def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled(
+    mocked_model_initializer, d, prior_for_lengthscale, gpr_interface_factory
 ) -> None:
     x = tf.constant(np.arange(1, 5 * d + 1).reshape(-1, d), dtype=tf.float64)  # shape: [5, d]
     model = gpr_interface_factory(x, _3x_plus_10(x))
@@ -372,9 +374,18 @@ def test_gaussian_process_regression_correctly_counts_num_trainable_params_with_
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
 
-    model.model.kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        loc=tf.math.log(model.model.kernel.lengthscales), scale=tf.cast(1.0, dtype=tf.float64)
-    )
+    if prior_for_lengthscale:
+        model.model.kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            loc=tf.math.log(model.model.kernel.lengthscales), scale=1.0
+        )
+
+    else:
+        upper = tf.cast([10.0] * d, dtype=tf.float64)
+        lower = upper / 100
+        model.model.kernel.lengthscales = gpflow.Parameter(
+            model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+        )
+
     model.model.likelihood.variance.prior = tfp.distributions.LogNormal(
         loc=tf.cast(-2.0, dtype=tf.float64), scale=tf.cast(5.0, dtype=tf.float64)
     )
@@ -390,12 +401,15 @@ def test_gaussian_process_regression_correctly_counts_num_trainable_params_with_
     npt.assert_array_equal(num_samples, tf.minimum(1000, 100 * (d + 1)))
 
 
-def test_find_best_model_initialization_only_changes_params_with_priors(
-    gpr_interface_factory,
+@pytest.mark.parametrize("dim", [1, 10])
+def test_find_best_model_initialization_changes_params_with_priors(
+    gpr_interface_factory, dim: int
 ) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
-    model.model.kernel = gpflow.kernels.RBF()
+    x = tf.constant(
+        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
+    )  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
         pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
@@ -407,29 +421,116 @@ def test_find_best_model_initialization_only_changes_params_with_priors(
     model.find_best_model_initialization(2)
 
     npt.assert_allclose(1.0, model.model.kernel.variance)
+    npt.assert_array_equal(dim, model.model.kernel.lengthscales.shape)
+    npt.assert_raises(
+        AssertionError, npt.assert_allclose, [0.2, 0.2], model.model.kernel.lengthscales
+    )
+
+
+@pytest.mark.parametrize("dim", [1, 10])
+def test_find_best_model_initialization_changes_params_with_sigmoid_bjectors(
+    gpr_interface_factory, dim: int
+) -> None:
+    x = tf.constant(
+        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
+    )  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+
+    model.find_best_model_initialization(2)
+
+    npt.assert_allclose(1.0, model.model.kernel.variance)
+    npt.assert_array_equal(dim, model.model.kernel.lengthscales.shape)
     npt.assert_raises(
         AssertionError, npt.assert_allclose, [0.2, 0.2], model.model.kernel.lengthscales
     )
 
 
 @random_seed
-def test_find_best_model_initialization_improves_likelihood(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(1, 10).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
-    model.model.kernel = gpflow.kernels.RBF()
+@pytest.mark.parametrize("dim", [1, 10])
+def test_find_best_model_initialization_without_priors_improves_training_loss(
+    gpr_interface_factory, dim: int
+) -> None:
+    x = tf.constant(
+        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
+    )  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
         pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
 
-    model.model.kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        loc=tf.math.log(model.model.kernel.lengthscales), scale=1.0
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
 
-    pre_init_likelihood = model.model.maximum_log_likelihood_objective()
+    pre_init_likelihood = -model.model.training_loss()
     model.find_best_model_initialization(10)
-    post_init_likelihood = model.model.maximum_log_likelihood_objective()
+    post_init_likelihood = -model.model.training_loss()
 
     npt.assert_array_less(pre_init_likelihood, post_init_likelihood)
+
+
+@random_seed
+@pytest.mark.parametrize("dim", [1, 10])
+def test_find_best_model_initialization_improves_likelihood(
+    gpr_interface_factory, dim: int
+) -> None:
+    x = tf.constant(
+        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
+    )  # shape: [10, dim]
+    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
+    model.model.kernel.variance.prior = tfp.distributions.LogNormal(
+        loc=np.float64(-2.0), scale=np.float64(1.0)
+    )
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+
+    pre_init_loss = model.model.training_loss()
+    model.find_best_model_initialization(100)
+    post_init_loss = model.model.training_loss()
+
+    npt.assert_array_less(post_init_loss, pre_init_loss)
+
+
+@random_seed
+def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
+    model = gpr_interface_factory(x, tf.zeros_like(x))
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
+
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.49])
+    upper = tf.cast([0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    model.model.kernel.lengthscales = gpflow.Parameter(
+        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    gpflow.set_trainable(model.model.kernel.variance, False)
+    gpflow.set_trainable(model.model.likelihood.variance, False)
+
+    model.optimize(Dataset(x, tf.zeros_like(x)))
+    model.find_best_model_initialization(2)
 
 
 def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
@@ -661,16 +762,102 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
 
 
 @random_seed
-def test_randomize_model_hyperparameters_only_randomize_kernel_parameters_with_priors() -> None:
-    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+@pytest.mark.parametrize("dim", [1, 10])
+def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: int) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(kernel.lengthscales), scale=1.0
     )
-
-    randomize_model_hyperparameters(kernel)
+    randomize_hyperparameters(kernel)
 
     npt.assert_allclose(1.0, kernel.variance)
-    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2, 0.2], kernel.lengthscales)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
+@pytest.mark.parametrize("dim", [1, 10])
+def test_randomize_model_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+
+    randomize_hyperparameters(kernel)
+
+    npt.assert_allclose(1.0, kernel.variance)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
+@pytest.mark.parametrize("dim", [1, 10])
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_constraints_or_priors(
+    dim: int,
+) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    upper = tf.cast([10.0] * dim, dtype=tf.float64)
+    lower = upper / 100
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    kernel.variance.prior = tfp.distributions.LogNormal(loc=np.float64(-2.0), scale=np.float64(1.0))
+
+    randomize_hyperparameters(kernel)
+
+    npt.assert_raises(AssertionError, npt.assert_allclose, 1.0, kernel.variance)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
+@pytest.mark.parametrize("dim", [1, 10])
+def test_randomize_hyperparameters_samples_from_constraints_when_given_prior_and_constraint(
+    dim: int,
+) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    upper = tf.cast([0.5] * dim, dtype=tf.float64)
+
+    lower = upper / 100
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    kernel.lengthscales.prior = tfp.distributions.Uniform(low=10.0, high=100.0)
+
+    kernel.variance.prior = tfp.distributions.LogNormal(loc=np.float64(-2.0), scale=np.float64(1.0))
+
+    randomize_hyperparameters(kernel)
+
+    npt.assert_array_less(kernel.lengthscales, [0.5] * dim)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
+def test_randomize_hyperparameters_samples_different_values_for_multi_dimensional_params() -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+    upper = tf.cast([10.0] * 2, dtype=tf.float64)
+    lower = upper / 100
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    randomize_hyperparameters(kernel)
+    npt.assert_raises(
+        AssertionError, npt.assert_allclose, kernel.lengthscales[0], kernel.lengthscales[1]
+    )
+
+
+@random_seed
+def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1 + 1e-3, 0.5 - 1e-3])
+    upper = tf.cast([0.5, 0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    squeeze_hyperparameters(kernel, 0.1)
+    npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
 
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
