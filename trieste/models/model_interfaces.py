@@ -626,11 +626,13 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
 
 def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
     """
-    Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
+    or strictly greater than the limit defined by the Softplus.
     This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
 
     :param object: Any gpflow Module.
-    :param alpha: the proportion of the range with which to squeeze
+    :param alpha: the proportion of the range with which to squeeze (or the absolute value
+    with which to translate the parameter for Softplus without lower bound)
     :raise ValueError: If ``alpha`` is not in (0,1).
     """
 
@@ -642,8 +644,9 @@ def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
             epsilon = (param.bijector.high - param.bijector.low) * alpha
             squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
             squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
-            param.assign(squeezed_param)
-
         elif isinstance(param.bijector, tfp.bijectors.Softplus):
-            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low * (1 + alpha))
-            param.assign(squeezed_param)
+            if param.bijector.low is not None:
+                squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low * (1 + alpha))
+            else:
+                squeezed_param = tf.math.maximum(squeezed_param, squeezed_param + alpha)
+        param.assign(squeezed_param)
