@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy.testing as npt
-import pytest
 import tensorflow as tf
 
 from trieste.objectives.observer import mk_observer

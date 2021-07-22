@@ -18,8 +18,6 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.space import Box
-from trieste.type import TensorType
 from trieste.objectives.single_objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_MINIMUM,
@@ -56,6 +54,8 @@ from trieste.objectives.single_objectives import (
     scaled_branin,
     shekel_4,
 )
+from trieste.space import Box
+from trieste.type import TensorType
 
 
 @pytest.mark.parametrize(
