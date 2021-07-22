@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """
-This module contains toy objective functions, useful for experimentation. A number of them have been
-taken from `this Virtual Library of Simulation Experiments
-<https://www.sfu.ca/~ssurjano/optimization.html>`_.
+This module contains functions convenient for creating :class:`Observer` objects that return data
+from objective functions, appropriately formatted for usage with the toolbox.
 """
 
 from __future__ import annotations
