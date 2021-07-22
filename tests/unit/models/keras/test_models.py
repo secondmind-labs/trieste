@@ -119,3 +119,34 @@ def test_neural_network_ensemble_fit_improves(
     loss = model.model.history.history["loss"]
 
     assert loss[-1] < loss[0]
+
+
+
+
+
+
+# @random_seed
+# def test_gpflow_predictor_sample() -> None:
+#     model = _QuadraticPredictor()
+#     num_samples = 20_000
+#     samples = model.sample(tf.constant([[2.5]], gpflow.default_float()), num_samples)
+
+#     assert samples.shape == [num_samples, 1, 1]
+
+#     sample_mean = tf.reduce_mean(samples, axis=0)
+#     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
+
+#     linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+#     npt.assert_allclose(sample_mean, [[6.25]], rtol=linear_error)
+#     npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
+
+
+# def test_gpflow_predictor_sample_no_samples() -> None:
+#     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
+#     assert samples.shape == (0, 1, 1)
+
+
+# def test_sparse_variational_model_attribute() -> None:
+#     model = _svgp(_mock_data()[0])
+#     sv = SparseVariational(model, Dataset(*_mock_data()))
+#     assert sv.model is model
