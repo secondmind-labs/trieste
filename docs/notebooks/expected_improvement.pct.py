@@ -15,8 +15,8 @@ tf.random.set_seed(1793)
 #
 
 # %%
-from trieste.objectives.single_objectives import scaled_branin, SCALED_BRANIN_MINIMUM
-from trieste.objectives.observer import mk_observer
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
@@ -36,7 +36,7 @@ fig.show()
 # %%
 import trieste
 
-observer = trieste.objectives.observer.mk_observer(scaled_branin)
+observer = trieste.objectives.utils.mk_observer(scaled_branin)
 
 num_initial_points = 5
 initial_query_points = search_space.sample_sobol(num_initial_points)

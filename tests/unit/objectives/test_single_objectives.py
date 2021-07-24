@@ -18,7 +18,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.objectives.single_objectives import (
+from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_MINIMUM,
     ACKLEY_5_SEARCH_SPACE,

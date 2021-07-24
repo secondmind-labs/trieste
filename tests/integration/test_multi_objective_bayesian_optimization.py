@@ -24,7 +24,7 @@ from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.models.model_interfaces import ModelStack
 from trieste.objectives.multi_objectives import VLMOP2
-from trieste.objectives.observer import mk_observer
+from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.utils.pareto import Pareto, get_reference_point

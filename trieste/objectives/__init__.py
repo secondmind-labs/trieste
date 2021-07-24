@@ -16,4 +16,5 @@
 This package contains examples of popular objective functions used in (Bayesian) optimization.
 """
 
-from . import multi_objectives, observer, single_objectives
+from .single_objectives import *
+from . import multi_objectives, utils

@@ -35,8 +35,8 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
-from trieste.objectives.observer import mk_observer
-from trieste.objectives.single_objectives import (
+from trieste.objectives.utils import mk_observer
+from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
     SCALED_BRANIN_MINIMUM,

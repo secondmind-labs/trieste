@@ -15,7 +15,7 @@
 import numpy.testing as npt
 import tensorflow as tf
 
-from trieste.objectives.observer import mk_observer
+from trieste.objectives.utils import mk_observer
 
 
 def test_mk_observer() -> None:
