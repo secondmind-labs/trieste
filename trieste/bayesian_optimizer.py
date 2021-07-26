@@ -361,12 +361,12 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                acquisition = acquisition_rule.acquire(self._search_space, datasets, models)
+                state_or_points = acquisition_rule.acquire(self._search_space, datasets, models)
 
-                if callable(acquisition):
-                    acquisition_state, query_points = acquisition(acquisition_state)
+                if callable(state_or_points):
+                    acquisition_state, query_points = state_or_points(acquisition_state)
                 else:
-                    query_points = acquisition
+                    query_points = state_or_points
 
                 observer_output = self._observer(query_points)
 
