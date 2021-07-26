@@ -1407,7 +1407,8 @@ def gibbon(
     except NotImplementedError:
         raise ValueError(
             """
-            GIBBON only currently supports homoscedastic Gaussian process models.
+            GIBBON only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
             """
         )
 
