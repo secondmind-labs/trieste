@@ -354,7 +354,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
             evaluate before beginning model optimization. Therefore, for a kernel with `p`
-            parameters, we evaluate `p * num_kernel_samples` kernels.
+            (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
         """
         super().__init__(optimizer)
         self._model = model

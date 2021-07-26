@@ -114,7 +114,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 #
 # We now specify how Trieste will use our GPflow models within the BO loop.
 #
-# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using altenate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
+# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
 
 # %% [markdown]
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
