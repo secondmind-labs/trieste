@@ -1,8 +1,12 @@
+"""This module contains functions of different methods for partitioning the dominated/non-dominated
+ region in multi-objective optimization, assuming a front is given upfront """
 from __future__ import annotations
 
 import tensorflow as tf
 from ..type import TensorType
+from .misc import DEFAULTS
 from typing_extensions import Final
+from abc import ABC
 import numpy as np
 
 
@@ -25,8 +29,48 @@ class _BoundedVolumes:
         self.upper_idx: Final[TensorType] = upper_idx
 
 
+class _Partition(ABC):
+    """
+    Base class of partition
+    """
+
+
+class ExactHvPartition2d(_Partition):
+    def __call__(self, front: TensorType):
+        return exact_hv_partition_2d(front)
+
+
+def exact_hv_partition_2d(front: TensorType):
+
+    # Compute the cells covering the non-dominated region for 2 dimension case
+    # this assumes the Pareto set has been sorted in ascending order on the first
+    # objective, which implies the second objective is sorted in descending order
+    len_front, number_of_objectives = front.shape
+    pseudo_front_idx = tf.concat(
+        [
+            tf.zeros([1, number_of_objectives], dtype=tf.int32),
+            tf.argsort(front, axis=0) + 1,
+            tf.ones([1, number_of_objectives], dtype=tf.int32) * len_front + 1,
+        ],
+        axis=0,
+    )
+    range_ = tf.range(len_front + 1)[:, None]
+    lower_result = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
+    upper_result = tf.concat(
+        [range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1
+    )
+    return _BoundedVolumes(lower_result, upper_result)
+
+
+class DividedAndConqure(_Partition):
+    def __call__(self, front: TensorType, jitter: float = DEFAULTS.JITTER,
+                 threshold: TensorType | float = 0
+    ):
+        return divided_and_conqure(front, jitter, threshold)
+
+
 # TODO: Add reference point
-def divided_and_conqure(front: TensorType, jitter: float, threshold: TensorType | float = 0
+def divided_and_conqure(front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
     ) -> _BoundedVolumes:
     """
     Branch and bound procedure to compute the cells covering the non-dominated region.
@@ -190,6 +234,18 @@ def divided_and_conqure_numpy_ver(front: TensorType, jitter: float, threshold: T
     Divide and conquer strategy to compute the cells covering the non-dominated region.
     Generic version: works for an arbitrary number of objectives.
     """
+    def _is_test_required(smaller):
+        """
+        Tests if a point augments or dominates the Pareto set.
+        :param smaller: a boolean ndarray storing test point < Pareto front
+        :return: True if the test point dominates or augments the Pareto front (boolean)
+        """
+        # if and only if the test point is at least in one dimension smaller for every point in the Pareto set
+        idx_dom_augm = np.any(smaller, axis=1)
+        is_dom_augm = np.all(idx_dom_augm)
+
+        return is_dom_augm
+
     outdim = front.shape[1]
     # The divide and conquer algorithm operates on a pseudo Pareto set
     # that is a mapping of the real Pareto set to discrete values
@@ -198,12 +254,12 @@ def divided_and_conqure_numpy_ver(front: TensorType, jitter: float, threshold: T
     min_pf = np.min(front, axis=0) - 1
     max_pf = np.max(front, axis=0) + 1
     pf_ext = np.vstack((min_pf, front, max_pf))  # Needed for early stopping check (threshold)
-    pf_ext_idx = np.vstack((np.zeros(outdim, dtype=np_int_type),
+    pf_ext_idx = np.vstack((np.zeros(outdim),
                             pseudo_pf,
-                            np.ones(outdim, dtype=np_int_type) * front.shape[0] + 1))
+                            np.ones(outdim) * front.shape[0] + 1))
     # Start with one cell covering the whole front
-    dc = [(np.zeros(outdim, dtype=np_int_type),
-           (int(pf_ext_idx.shape[0]) - 1) * np.ones(outdim, dtype=np_int_type))]
+    dc = [(np.zeros(outdim),
+           (int(pf_ext_idx.shape[0]) - 1) * np.ones(outdim))]
     total_size = np.prod(max_pf - min_pf)
     # Start divide and conquer until we processed all cells
     while dc:
@@ -213,18 +269,18 @@ def divided_and_conqure_numpy_ver(front: TensorType, jitter: float, threshold: T
         lb = pf_ext[pf_ext_idx[cell[0], arr], arr]
         ub = pf_ext[pf_ext_idx[cell[1], arr], arr]
         # Acceptance test:
-        if self._is_test_required((ub - jitter) < front):
+        if _is_test_required((ub - jitter) < front):
             # Cell is a valid integral bound: store
             self.bounds.append(pf_ext_idx[cell[0], np.arange(outdim)],
                                pf_ext_idx[cell[1], np.arange(outdim)])
         # Reject test:
-        elif self._is_test_required((lb + jitter) < front):
+        elif _is_test_required((lb + jitter) < front):
             # Cell can not be discarded: calculate the size of the cell
             dc_dist = cell[1] - cell[0]
             hc = _BoundedVolumes(pf_ext[pf_ext_idx[cell[0], np.arange(outdim)], np.arange(outdim)],
                                 pf_ext[pf_ext_idx[cell[1], np.arange(outdim)], np.arange(outdim)])
             # Only divide when it is not an unit cell and the volume is above the approx. threshold
-            if np.any(dc_dist > 1) and np.all((hc.size()[0] / total_size) > self.threshold):
+            if np.any(dc_dist > 1) and np.all((hc.size()[0] / total_size) > threshold):
                 # Divide the test cell over its largest dimension
                 edge_size, idx = np.max(dc_dist), np.argmax(dc_dist)
                 edge_size1 = int(np.round(edge_size / 2.0))

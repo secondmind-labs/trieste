@@ -14,13 +14,13 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 import tensorflow as tf
 from typing import Callable
-from typing_extensions import Final
 
 from ..type import TensorType
-from .misc import DEFAULTS
-from trieste.utils.partition import divided_and_conqure, _BoundedVolumes
+from trieste.utils.partition import _BoundedVolumes, ExactHvPartition2d, DividedAndConqure
 
 
 def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
@@ -49,7 +49,54 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     return tf.boolean_mask(observations, dominance == 0), dominance
 
 
-class Pareto:
+def pareto_frontier(observations: TensorType) -> TensorType:
+    """
+    Get the pareto frontier from observations
+
+    :param observations: set of points with shape [N,D]
+    :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
+        P is the number of points in pareto front
+        dominances gives the number of dominating points for each data point
+
+    """
+    pfront, _ = non_dominated(observations)
+    return tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
+
+
+class _Pareto(ABC):
+    """
+    A :class:`_Pareto` prepare the necessary functionality for calculation of Pareto.
+    """
+
+    @abstractmethod
+    def hypervolume_indicator(
+            self, reference: TensorType) -> TensorType:
+        """
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: An acquisition function.
+        """
+
+    @abstractmethod
+    def hypercell_bounds(
+            self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get the partitioned hypercell's lower and upper bounds.
+
+        :param anti_reference: a worst point to use with shape [D].
+            Defines the lower bound of the hypercell
+        :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
+            Should be equal to or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: lower, upper bounds of the partitioned cell
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        """
+
+
+class Pareto(_Pareto):
     """
     A :class:`Pareto` Construct a Pareto set.
     Stores a Pareto set and calculates the cell bounds covering the non-dominated region.
@@ -61,53 +108,40 @@ class Pareto:
     """
 
     def __init__(self, observations: TensorType, *, partition: [str, Callable] = 'default',
-                 jitter: float = DEFAULTS.JITTER):
+                 reference_point: [TensorType, None] = None):
         """
         :param observations: The observations for all objectives, with shape [N, D].
+        :param partition: method of partitioning based on the (screened) pareto frontier
+        :param reference_point: The reference point used to screen out not interested frontier in
+          observations.
+
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
         tf.debugging.assert_rank(observations, 2)
         tf.debugging.assert_greater_equal(tf.shape(observations)[-1], 2)
         self._partition = partition
 
-        pfront, _ = non_dominated(observations)
-        self.front: Final[TensorType] = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
-        self._bounds = self._get_bounds(self.front, jitter)
+        # get screened front according to sort of concentration: the 1st step
+        if reference_point is None:
+            pfront, _ = non_dominated(observations)
+        else:  # screen possible not interested points
+            screen_mask = tf.reduce_any(observations <= reference_point, -1)
+            pfront, _ = non_dominated(observations[screen_mask])
 
-    def _get_bounds(self, front: TensorType, jitter: float) -> _BoundedVolumes:
+        # get front from partition: in case any approximation has been made
+        orded_pfront = tf.gather_nd(pfront, tf.argsort(pfront[:, :1], axis=0))
+        self._bounds, self.front = self._get_partitioned_bounds(orded_pfront)
+
+    def _get_partitioned_bounds(self, front: TensorType) -> _BoundedVolumes:
         if self._partition == 'default':
             if front.shape[-1] > 2:
-                return divided_and_conqure(front, jitter)
+                return DividedAndConqure()(front)
             else:
-                return self._bounds_2d(front)
+                return ExactHvPartition2d()(front)
         elif isinstance(self._partition, Callable):
             return self._partition(front)
         else:
-            raise TypeError (f' Specified partition method : {self._partition} not understood')
-
-    @staticmethod
-    def _bounds_2d(front: TensorType) -> _BoundedVolumes:
-        # Compute the cells covering the non-dominated region for 2 dimension case
-        # this assumes the Pareto set has been sorted in ascending order on the first
-        # objective, which implies the second objective is sorted in descending order
-        len_front, number_of_objectives = front.shape
-
-        pseudo_front_idx = tf.concat(
-            [
-                tf.zeros([1, number_of_objectives], dtype=tf.int32),
-                tf.argsort(front, axis=0) + 1,
-                tf.ones([1, number_of_objectives], dtype=tf.int32) * len_front + 1,
-            ],
-            axis=0,
-        )
-
-        range_ = tf.range(len_front + 1)[:, None]
-        lower_result = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
-        upper_result = tf.concat(
-            [range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1
-        )
-
-        return _BoundedVolumes(lower_result, upper_result)
+            raise TypeError(f' Specified partition method : {self._partition} not understood')
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
@@ -153,7 +187,7 @@ class Pareto:
         return tf.reduce_prod(reference[None] - min_front) - hypervolume
 
     def hypercell_bounds(
-        self, anti_reference: TensorType, reference: TensorType
+            self, anti_reference: TensorType, reference: TensorType
     ) -> tuple[TensorType, TensorType]:
         """
         Get the partitioned hypercell's lower and upper bounds.
