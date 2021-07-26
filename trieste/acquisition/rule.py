@@ -72,14 +72,11 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
             to this method, and the state returned, must both be of that type.
 
 
-        :param search_space: The global search space over which the optimization problem
-            is defined.
+        :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations for each tag.
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
-        :param state: The acquisition state from the previous step, if there was a previous step,
-            else `None`.
-        :return: The optimal points and the acquisition state for this step.
+        :return: A value of type `T_co`.
         """
 
     def acquire_single(
@@ -97,10 +94,8 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param dataset: The known observer query points and observations.
-        :param models: The model to use for the dataset.
-        :param state: The acquisition state from the previous step, if there was a previous step,
-            else `None`.
-        :return: The optimal points and the acquisition state for this step.
+        :param model: The model to use for the dataset.
+        :return: A value of type `T_co`.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
             raise ValueError(
@@ -181,11 +176,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         Return the query point that optimizes the acquisition function produced by ``builder`` (see
         :meth:`__init__`).
 
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
+        :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
-        :return: The single (or batch of) points to query, and `None`.
+        :return: The single (or batch of) points to query.
         """
 
         acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
@@ -265,12 +259,10 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         ``search_space``. Of those points, return the `num_query_points` points at which
         random samples yield the **minima** of the model posterior.
 
-        :param search_space: The global :class:`~trieste.space.SearchSpace` over which the
-            optimization problem is defined.
+        :param search_space: The local acquisition search space for *this step*.
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
-        :param state: Unused.
-        :return: The `num_query_points` points to query, and `None`.
+        :return: The ``num_query_points`` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
         """
@@ -340,7 +332,8 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         kappa: float = 1e-4,
     ):
         """
-        :param rule: ...
+        :param rule: The acquisition rule that defines how to search for a new query point in a
+            given search space.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
@@ -360,8 +353,10 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         models: Mapping[str, ProbabilisticModel],
     ) -> types.State[State | None, TensorType]:
         """
-        Acquire one new query point according the trust region algorithm. Return the new query point
-        along with the final acquisition state from this step.
+        Construct a local search space from ``search_space`` according the trust region algorithm,
+        and use that with the ``rule`` specified at :meth:`~TrustRegion.__init__` to find new
+        query points. Return a function that constructs these points given a previous trust region
+        state.
 
         If no ``state`` is specified (it is `None`), ``search_space`` is used as
         the search space for this step.
@@ -383,12 +378,12 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         ``search_space``. For a local search, the actual search space will be the
         intersection of the trust region and ``search_space``.
 
-        :param search_space: The global  :class:`~trieste.space.SearchSpace` for the optimization
-            problem.
+        :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
-        :return: A 2-tuple of the query point and the acquisition state for this step.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
         dataset = datasets[OBJECTIVE]
