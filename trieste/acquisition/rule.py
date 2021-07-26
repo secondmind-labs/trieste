@@ -41,8 +41,8 @@ from .function import (
 from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
-T_co = TypeVar("T_co")
-""" Unbound type variable. """
+T_co = TypeVar("T_co", covariant=True)
+""" Unbound covariant type variable. """
 
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
