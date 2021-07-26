@@ -120,7 +120,7 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    query_points, _ = ts.acquire_single(search_space, dataset, model)
+    query_points = ts.acquire_single(search_space, dataset, model)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
@@ -146,9 +146,9 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point, _ = ego.acquire_single(search_space, data, model)
+    query_point = ego.acquire_single(search_space, data, model)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
-    query_point, _ = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
+    query_point = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
@@ -168,7 +168,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
 
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
@@ -198,7 +198,7 @@ def test_greedy_batch_acquisition_rule_acquire() -> None:
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
 
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 

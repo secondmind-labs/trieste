@@ -208,13 +208,13 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
         ) -> State[int | None, TensorType]:
-            def go(state: int | None) -> tuple[TensorType, int | None]:
+            def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)
 
                 if state is None:
                     state = 0
 
-                return tf.constant([[0.0]], tf.float64), state + 1
+                return state + 1, tf.constant([[0.0]], tf.float64)
 
             return go
 
@@ -273,7 +273,7 @@ class _BrokenModel(_PseudoTrainableQuadratic):
         raise _Whoops
 
 
-class _BrokenRule(AcquisitionRule[None, SearchSpace]):
+class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
@@ -331,7 +331,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         def optimize(self, dataset: Dataset) -> NoReturn:
             assert False
 
-    class _UnusableRule(AcquisitionRule[None, Box]):
+    class _UnusableRule(AcquisitionRule[NoReturn, Box]):
         def acquire(
             self,
             search_space: Box,
@@ -443,7 +443,7 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 new_state = 0 if state is None else state + 1
-                return tf.constant([[10.0]], tf.float64) + new_state, new_state
+                return new_state, tf.constant([[10.0]], tf.float64) + new_state
 
             return go
 

@@ -431,6 +431,6 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
             points = self._rule.acquire(acquisition_space, datasets, models)
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
-            return points, state_
+            return state_, points
 
         return go
