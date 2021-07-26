@@ -45,14 +45,14 @@ from .optimizer import (
 )
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
-T = TypeVar("T")
+T_co = TypeVar("T_co")
 """ Unbound type variable. """
 
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-class AcquisitionRule(ABC, Generic[T, SP_contra]):
+class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
     """The central component of the acquisition API."""
 
     @abstractmethod
@@ -61,7 +61,7 @@ class AcquisitionRule(ABC, Generic[T, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> T:
+    ) -> T_co:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
         by the acquisition rule.
@@ -91,7 +91,7 @@ class AcquisitionRule(ABC, Generic[T, SP_contra]):
         search_space: SP_contra,
         dataset: Dataset,
         model: ProbabilisticModel,
-    ) -> T:
+    ) -> T_co:
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
 
@@ -309,17 +309,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         return thompson_samples
 
 
-S = TypeVar("S")
-
-
-class StatefulAcquisitionRule(AcquisitionRule[types.State[S, TensorType], SP_contra]):
-    @property
-    @abstractmethod
-    def default_state(self) -> S:
-        ...
-
-
-class TrustRegion(AcquisitionRule[types.State["TrustRegion.State", TensorType], Box]):
+class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box]):
     """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
@@ -372,7 +362,7 @@ class TrustRegion(AcquisitionRule[types.State["TrustRegion.State", TensorType], 
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[State, TensorType]:
+    ) -> types.State[State | None, TensorType]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point
         along with the final acquisition state from this step.
@@ -412,7 +402,7 @@ class TrustRegion(AcquisitionRule[types.State["TrustRegion.State", TensorType], 
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: TrustRegion.State) -> tuple[TrustRegion.State, TensorType]:
+        def go(state: TrustRegion.State | None) -> tuple[TrustRegion.State | None, TensorType]:
 
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))

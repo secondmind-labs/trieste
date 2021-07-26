@@ -213,18 +213,19 @@ def test_trust_region_raises_for_missing_datasets_key(
     search_space = Box([-1], [1])
     rule = TrustRegion()
     with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+        rule.acquire(search_space, datasets, models)
 
 
 def test_trust_region_for_default_state() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0))
+    tr = TrustRegion(EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)))
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    query_point, state = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel(), None)
+    state, query_point = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())(None)
 
+    assert state is not None
     npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
     npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(state.acquisition_space.upper, upper_bound)
@@ -233,7 +234,7 @@ def test_trust_region_for_default_state() -> None:
 
 
 def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -244,10 +245,11 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     is_global = True
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
+    current_state, query_point = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
     )
 
+    assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
     assert current_state.is_global
     npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
@@ -256,7 +258,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
 
 
 def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -268,10 +270,11 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     acquisition_space = search_space
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
+    current_state, query_point = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
     )
 
+    assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
     assert not current_state.is_global
     npt.assert_array_less(lower_bound, current_state.acquisition_space.lower)
@@ -280,7 +283,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
 
 
 def test_trust_region_for_successful_local_to_global_trust_region_increased() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -292,10 +295,11 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
+    current_state, _ = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
     )
 
+    assert current_state is not None
     npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
@@ -303,7 +307,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
 
 
 def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+    tr = TrustRegion(EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)))
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -315,10 +319,13 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
+    current_state, _ = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(
+        previous_state
     )
 
+    assert current_state is not None
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
