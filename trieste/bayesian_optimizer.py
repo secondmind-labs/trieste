@@ -30,7 +30,7 @@ from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
-from .type import TensorType, State
+from .type import State, TensorType
 from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
@@ -248,7 +248,8 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP] | None = None,
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        | None = None,
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,

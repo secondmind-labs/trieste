@@ -39,7 +39,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.type import TensorType, State
+from trieste.type import State, TensorType
 from trieste.utils import Err, Ok
 
 
@@ -208,7 +208,6 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
         ) -> State[int | None, TensorType]:
-
             def go(state: int | None) -> tuple[TensorType, int | None]:
                 self.states_received.append(state)
 

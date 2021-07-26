@@ -38,11 +38,7 @@ from .function import (
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
 )
-from .optimizer import (
-    AcquisitionOptimizer,
-    automatic_optimizer_selector,
-    batchify,
-)
+from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co")

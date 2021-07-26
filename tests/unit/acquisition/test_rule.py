@@ -246,8 +246,8 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
-    )
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
     assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -271,8 +271,8 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
-    )
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
     assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
@@ -296,8 +296,8 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, _ = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()})(previous_state
-    )
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
     assert current_state is not None
     npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
@@ -321,9 +321,7 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
 
     current_state, _ = tr.acquire(
         search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    )(
-        previous_state
-    )
+    )(previous_state)
 
     assert current_state is not None
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
