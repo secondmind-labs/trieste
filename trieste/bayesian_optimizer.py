@@ -30,6 +30,7 @@ from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
+from .type import TensorType, State
 from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
@@ -182,7 +183,20 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP],
+        *,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        acquisition_rule: AcquisitionRule[State[S, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -208,7 +222,20 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP],
+        *,
+        track_state: bool = True,
+        fit_intial_model: bool = True,
+    ) -> OptimizationResult[None]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[State[S, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -221,7 +248,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP] | None = None,
+        acquisition_rule: AcquisitionRule[TensorType | State[S, TensorType], SP] | None = None,
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -312,7 +339,7 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
+            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
 
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
@@ -332,9 +359,12 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                query_points, acquisition_state = acquisition_rule.acquire(
-                    self._search_space, datasets, models, acquisition_state
-                )
+                acquisition = acquisition_rule.acquire(self._search_space, datasets, models)
+
+                if callable(acquisition):
+                    acquisition_state, query_points = acquisition(acquisition_state)
+                else:
+                    query_points = acquisition
 
                 observer_output = self._observer(query_points)
 
