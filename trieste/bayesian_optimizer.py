@@ -248,7 +248,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        acquisition_rule: AcquisitionRule[TensorType, SP] | AcquisitionRule[State[S | None, TensorType], SP]
         | None = None,
         acquisition_state: S | None = None,
         *,

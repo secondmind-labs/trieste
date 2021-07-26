@@ -279,7 +279,6 @@ class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: None = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -337,7 +336,6 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: None = None,
         ) -> NoReturn:
             assert False
 
