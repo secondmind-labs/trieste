@@ -55,7 +55,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=4
             ),
-            -3.21,
+            -3.2095,
             id="qehvi_vlmop2_q_4",
         ),
     ],
