@@ -1,12 +1,12 @@
-from abc import ABC
-
 import tensorflow as tf
 
+from tests.util.model import QuadraticMeanAndRBFKernel
+from trieste.acquisition.sampler import BatchReparametrizationSampler
 from trieste.type import TensorType
 from trieste.utils import DEFAULTS
 
 
-class PseudoBatchReparametrizationSampler(ABC):
+class PseudoBatchReparametrizationSampler(BatchReparametrizationSampler):
     """A Sampler that return the specified sample as deterministic samples`."""
 
     def __init__(self, samples: TensorType):
@@ -20,7 +20,12 @@ class PseudoBatchReparametrizationSampler(ABC):
             message="This sampler takes samples of shape "
             "[sample_size, batch_points, output_dimension].",
         )
-        self.samples = samples  # [S, B, L]
+        self._samples = samples  # [S, B, L]
+        super().__init__(1, QuadraticMeanAndRBFKernel())
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._samples!r})"
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -38,5 +43,5 @@ class PseudoBatchReparametrizationSampler(ABC):
         batch_size = at.shape[-2]
 
         tf.debugging.assert_positive(batch_size)
-        tf.assert_equal(batch_size, self.samples.shape[-2])  # assert B is equivalent
-        return tf.broadcast_to(self.samples, [*at.shape[:-2], *self.samples.shape])
+        tf.assert_equal(batch_size, self._samples.shape[-2])  # assert B is equivalent
+        return tf.broadcast_to(self._samples, [*at.shape[:-2], *self._samples.shape])

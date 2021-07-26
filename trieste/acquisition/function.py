@@ -773,7 +773,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     def __repr__(self) -> str:
         """"""
         return (
-            f"BatchMonteCarloHypervolumeExpectedImprovement({self._sample_size!r},"
+            f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
             f" jitter={self._jitter!r})"
         )
 
@@ -798,7 +798,10 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
 
 def batch_ehvi(
-    sampler, sampler_jitter: float, pareto: Pareto, reference_point: TensorType
+    sampler: BatchReparametrizationSampler,
+    sampler_jitter: float,
+    pareto: Pareto,
+    reference_point: TensorType,
 ) -> AcquisitionFunction:
 
     """
@@ -817,13 +820,13 @@ def batch_ehvi(
 
         def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
-            return [tf.constant(list(combinations(indices, i))) for i in range(1, q + 1)]
+            return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
         samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
-        hv_contrib = 0.0
+        hv_contrib = tf.zeros(samples.shape[:-2], dtype=samples.dtype)
         lb_points, ub_points = pareto.hypercell_bounds(
             tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
         )
@@ -849,12 +852,13 @@ def batch_ehvi(
 
             return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
 
-        for j in range(1, _batch_size + 1):  # Inclusion-Exclusion loop
-            q_choose_j = q_subset_indices[
-                j - 1
-            ]  # gather all combinations having j points from q batch points (Cq_j)
+        for j in tf.range(1, _batch_size + 1):  # Inclusion-Exclusion loop
+            q_choose_j = tf.gather(q_subset_indices, j - 1).to_tensor()
+            # gather all combinations having j points from q batch points (Cq_j)
             j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
-            hv_contrib += (-1) ** (j + 1) * hv_contrib_on_samples(j_sub_samples)
+            hv_contrib += tf.cast((-1) ** (j + 1), dtype=samples.dtype) * hv_contrib_on_samples(
+                j_sub_samples
+            )
 
         return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
 
