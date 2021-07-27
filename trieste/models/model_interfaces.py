@@ -629,13 +629,12 @@ def squeeze_hyperparameters(
 ) -> None:
     """
     Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
-    or strictly greater than the limit defined by the Softplus.
+    or strictly greater than the limit defined by the Shift+Softplus.
     This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
 
     :param object: Any gpflow Module.
-    :param alpha: the proportion of the range with which to squeeze (or the absolute value
-            with which to translate the parameter for Softplus without lower bound)
-    :param epsilon: the value with which to offset the Softplus limit.
+    :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
+    :param epsilon: the value with which to offset the shift for the Softplus case.
     :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
 
