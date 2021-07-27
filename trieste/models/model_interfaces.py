@@ -634,7 +634,7 @@ def squeeze_hyperparameters(
 
     :param object: Any gpflow Module.
     :param alpha: the proportion of the range with which to squeeze (or the absolute value
-    with which to translate the parameter for Softplus without lower bound)
+            with which to translate the parameter for Softplus without lower bound)
     :param epsilon: the value with which to offset the Softplus limit.
     :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
