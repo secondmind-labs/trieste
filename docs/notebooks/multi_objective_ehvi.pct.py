@@ -279,7 +279,7 @@ constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
 # We store both sets of models in a dictionary:
 
-model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
+models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -300,7 +300,7 @@ rule = EfficientGlobalOptimization(builder=echvi)  # type: ignore
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
-result = bo.optimize(num_steps, initial_data_with_cst, model, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data_with_cst, models, acquisition_rule=rule)
 
 # %% [markdown]
 # As previously, we visualize the queried data across the design space.
