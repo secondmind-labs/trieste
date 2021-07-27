@@ -843,3 +843,22 @@ def test_squeeze_softplus_hyperparameters() -> None:
     lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
     squeeze_hyperparameters(lik, epsilon=0.2)
     npt.assert_array_almost_equal(lik.variance, 0.2 + 1e-6)
+
+    
+@random_seed
+def test_squeeze_raises_for_invalid_epsilon() -> None:
+    lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(lik, epsilon=-1.)
+        
+        
+@pytest.mark.parametrize("alpha", [-0.1, 0., 1.1])
+def test_squeeze_raises_for_invalid_alpha(alpha) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+    upper = tf.cast([0.5, 0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(kernel, alpha)
