@@ -219,21 +219,22 @@ class Sim:
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
-
 def observer_cst(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
 
-
-# %% [markdown]
-# As previously, we randomly sample some initial data from the observer and visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
-
-# %%
 num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
 initial_data_with_cst = observer_cst(initial_query_points)
+
+
+
+# %% [markdown]
+# As previously, we visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
+
+# %%
 
 from util.inequality_constraints_utils import plot_2obj_cst_query_points
 
