@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.9.1
+#   kernelspec:
+#     display_name: trieste
+#     language: python
+#     name: trieste
+# ---
+
 # %% [markdown]
 # # Inequality constraints
 
