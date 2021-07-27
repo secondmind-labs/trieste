@@ -740,10 +740,10 @@ def squeeze_hyperparameters(
             squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + delta)
             param.assign(squeezed_param)
         elif (
-            isinstance(param.bijector, tfp.bijectors.Chain) and
-            len(param.bijector.bijectors) == 2 and
-            isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift) and
-            isinstance(param.bijector.bijectors[1], tfp.bijectors.Softplus)
+            isinstance(param.bijector, tfp.bijectors.Chain)
+            and len(param.bijector.bijectors) == 2
+            and isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift)
+            and isinstance(param.bijector.bijectors[1], tfp.bijectors.Softplus)
         ):
             if isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift) and isinstance(
                 param.bijector.bijectors[1], tfp.bijectors.Softplus
