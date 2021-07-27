@@ -100,3 +100,25 @@ def plot_init_query_points(
     ax.set_ylim(lower_bound[1], upper_bound[1])
 
     return fig
+
+
+def plot_2obj_cst_query_points(
+    search_space, simulation, objective_data, constraint_data
+):
+    class Sim1(simulation):
+        @staticmethod
+        def objective(input_data):
+            return simulation.objective(input_data)[:, 0:1]
+
+    class Sim2(simulation):
+        @staticmethod
+        def objective(input_data):
+            return simulation.objective(input_data)[:, 1:2]
+
+    for sim in [Sim1, Sim2]:
+        plot_init_query_points(
+            search_space,
+            sim,
+            objective_data,
+            constraint_data,
+        )
