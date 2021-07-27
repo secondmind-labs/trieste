@@ -299,12 +299,12 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 from trieste.acquisition.combination import Product
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
-pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))
+pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 
 # %% [markdown]
 # We can now run the BO loop as before, and visualize the results:
 
-eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)
+eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
 rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 num_steps = 20
