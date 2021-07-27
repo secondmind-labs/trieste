@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import gpflow
 import numpy.testing as npt
@@ -43,6 +44,7 @@ from trieste.objectives import (
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
+from trieste.space import Box, SearchSpace
 
 
 @random_seed
@@ -90,7 +92,8 @@ from trieste.observer import OBJECTIVE
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[None, SearchSpace] | AcquisitionRule[TrustRegion.State, Box],
 ) -> None:
     search_space = BRANIN_SEARCH_SPACE
 

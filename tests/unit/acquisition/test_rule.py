@@ -66,7 +66,7 @@ def _line_search_maximize(
     ],
 )
 def test_discrete_thompson_sampling_raises_for_invalid_init_params(
-    num_search_space_samples, num_query_points, num_fourier_features
+    num_search_space_samples: int, num_query_points: int, num_fourier_features: int
 ) -> None:
     with pytest.raises(ValueError):
         DiscreteThompsonSampling(num_search_space_samples, num_query_points, num_fourier_features)

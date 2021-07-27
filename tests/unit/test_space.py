@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import itertools
+from collections import Sequence
 from collections.abc import Container
 
 import numpy.testing as npt
@@ -189,7 +190,9 @@ def test_discrete_search_space_deepcopy() -> None:
         pytest.param(range(2), range(1, 3), id="ranges"),
     ],
 )
-def test_box_converts_sequences_to_float64_tensors(lower, upper) -> None:
+def test_box_converts_sequences_to_float64_tensors(
+    lower: Sequence[float], upper: Sequence[float]
+) -> None:
     box = Box(lower, upper)
     assert tf.as_dtype(box.lower.dtype) is tf.float64
     assert tf.as_dtype(box.upper.dtype) is tf.float64

@@ -57,7 +57,7 @@ class MultiObjectiveTestProblem(ABC):
         """
 
     @abstractmethod
-    def gen_pareto_optimal_points(self, n: int, seed=None) -> tf.Tensor:
+    def gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> TensorType:
         """
         Generate `n` Pareto optimal points.
 
@@ -79,10 +79,10 @@ class VLMOP2(MultiObjectiveTestProblem):
     bounds = [[-2.0] * 2, [2.0] * 2]
     dim = 2
 
-    def objective(self):
+    def objective(self) -> Callable[[TensorType], TensorType]:
         return vlmop2
 
-    def gen_pareto_optimal_points(self, n: int, seed=None):
+    def gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> TensorType:
         tf.debugging.assert_greater(n, 0)
         _x = tf.linspace([-1 / tf.sqrt(2.0)], [1 / tf.sqrt(2.0)], n)
         return vlmop2(tf.concat([_x, _x], axis=1))
@@ -121,14 +121,14 @@ class DTLZ(MultiObjectiveTestProblem):
         self._dim = input_dim
         self.M = num_objective
         self.k = self._dim - self.M + 1
-        self._bounds = [[0] * input_dim, [1] * input_dim]
+        self._bounds = [[0.0] * input_dim, [1.0] * input_dim]
 
     @property
-    def dim(self):
+    def dim(self) -> int:
         return self._dim
 
     @property
-    def bounds(self):
+    def bounds(self) -> list[list[float]]:
         return self._bounds
 
 
@@ -138,10 +138,10 @@ class DTLZ1(DTLZ):
     See :cite:deb2002scalable for details.
     """
 
-    def objective(self):
+    def objective(self) -> Callable[[TensorType], TensorType]:
         return partial(dtlz1, m=self.M, k=self.k, d=self.dim)
 
-    def gen_pareto_optimal_points(self, n: int, seed=None):
+    def gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> TensorType:
         tf.debugging.assert_greater_equal(self.M, 2)
         rnd = tf.random.uniform([n, self.M - 1], minval=0, maxval=1, seed=seed)
         strnd = tf.sort(rnd, axis=-1)
@@ -166,7 +166,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
-    def g(xM):
+    def g(xM: TensorType) -> TensorType:
         return 100 * (
             k
             + tf.reduce_sum(
@@ -192,10 +192,10 @@ class DTLZ2(DTLZ):
     See :cite:deb2002scalable for details.
     """
 
-    def objective(self):
+    def objective(self) -> Callable[[TensorType], TensorType]:
         return partial(dtlz2, m=self.M, d=self.dim)
 
-    def gen_pareto_optimal_points(self, n: int, seed=None):
+    def gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> TensorType:
         tf.debugging.assert_greater_equal(self.M, 2)
         rnd = tf.random.normal([n, self.M], seed=seed)
         samples = tf.abs(rnd / tf.norm(rnd, axis=-1, keepdims=True))
@@ -218,7 +218,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
-    def g(xM):
+    def g(xM: TensorType) -> TensorType:
         z = (xM - 0.5) ** 2
         return tf.reduce_sum(z, axis=-1, keepdims=True)
 

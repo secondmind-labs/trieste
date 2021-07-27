@@ -406,7 +406,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
     the objective function. The negative predictive mean is therefore maximised.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(beta=0.0)
 
     def __repr__(self) -> str:
@@ -809,7 +809,8 @@ def batch_ehvi(
     def acquisition(at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
-        def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
+        def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
+            # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
@@ -1123,7 +1124,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             samples = tf.concat([dataset.query_points, samples], 0)
 
             def get_lipschitz_estimate(
-                sampled_points,
+                sampled_points: TensorType,
             ) -> tf.Tensor:  # use max norm of posterior mean gradients
                 with tf.GradientTape() as g:
                     g.watch(sampled_points)

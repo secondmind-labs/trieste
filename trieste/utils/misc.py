@@ -14,8 +14,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Generic, NoReturn, TypeVar
+from typing import Any, Callable, Generic, NoReturn, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -23,11 +22,11 @@ from typing_extensions import Final, final
 
 from ..types import TensorType
 
-C = TypeVar("C", bound=Callable)
+C = TypeVar("C", bound=Callable[..., object])
 """ A type variable bound to `typing.Callable`. """
 
 
-def jit(apply: bool = True, **optimize_kwargs) -> Callable[[C], C]:
+def jit(apply: bool = True, **optimize_kwargs: Any) -> Callable[[C], C]:
     """
     A decorator that conditionally wraps a function with `tf.function`.
 
