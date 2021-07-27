@@ -277,7 +277,7 @@ class Sim2(Sim):
 
 CONSTRAINT2 = "CONSTRAINT2"
 
-def observer(query_points):
+def observer_two_constraints(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim2.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim2.constraint(query_points)),
@@ -285,7 +285,7 @@ def observer(query_points):
     }
 
 num_initial_points = 10
-initial_data = observer(search_space.sample(num_initial_points))
+initial_data = observer_two_constraints(search_space.sample(num_initial_points))
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
@@ -303,7 +303,7 @@ eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)
 rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 num_steps = 20
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)
 
 data = bo.optimize(
     num_steps, initial_data, initial_models, rule, track_state=False
