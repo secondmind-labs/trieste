@@ -25,7 +25,7 @@ from typing import Dict, Generic, TypeVar, cast, overload
 import tensorflow as tf
 from absl import logging
 
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, StatefulAcquisitionRule
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
@@ -183,7 +183,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        acquisition_rule: AcquisitionRule[SP],
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -196,7 +196,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        acquisition_rule: StatefulAcquisitionRule[S | None, SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -222,7 +222,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        acquisition_rule: AcquisitionRule[SP],
         *,
         track_state: bool = True,
         fit_intial_model: bool = True,
@@ -235,7 +235,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        acquisition_rule: StatefulAcquisitionRule[S | None, SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -248,7 +248,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        acquisition_rule: AcquisitionRule[SP] | StatefulAcquisitionRule[S | None, SP]
         | None = None,
         acquisition_state: S | None = None,
         *,
@@ -340,7 +340,7 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
+            acquisition_rule = cast(AcquisitionRule[SP], EfficientGlobalOptimization())
 
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []

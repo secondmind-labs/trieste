@@ -48,8 +48,12 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
-class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
-    """The central component of the acquisition API."""
+class Acquisition(ABC, Generic[T_co, SP_contra]):
+    """
+    An :class:`Acquisition` produces some value given a search space and historic data and models.
+    It is used solely as a common root class for acquisition rules, see e.g.
+    :class:`AcquisitionRule`.
+    """
 
     @abstractmethod
     def acquire(
@@ -59,18 +63,10 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         models: Mapping[str, ProbabilisticModel],
     ) -> T_co:
         """
-        Return the optimal points within the specified ``search_space``, where optimality is defined
-        by the acquisition rule.
-
-
         **Type hints:**
           - The global search space must be a :class:`~trieste.space.SearchSpace`. The exact type
             of :class:`~trieste.space.SearchSpace` depends on the specific
             :class:`AcquisitionRule`.
-          - Each :class:`AcquisitionRule` must define the type of its corresponding acquisition
-            state (if the rule is stateless, this type can be `None`). The ``state`` passed
-            to this method, and the state returned, must both be of that type.
-
 
         :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations for each tag.
@@ -88,9 +84,6 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
 
-        Return the optimal points within the specified ``search_space``, where optimality is defined
-        by the acquisition rule.
-
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param dataset: The known observer query points and observations.
@@ -105,7 +98,14 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model})
 
 
-class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
+AcquisitionRule = Acquisition[TensorType, SP_contra]
+"""
+An :class:`AcquisitionRule` finds new query points from a search space given historic data and
+models over that data.
+"""
+
+
+class EfficientGlobalOptimization(AcquisitionRule[SP_contra]):
     """Implements the Efficient Global Optimization, or EGO, algorithm."""
 
     def __init__(
@@ -198,7 +198,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         return points
 
 
-class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
+class DiscreteThompsonSampling(AcquisitionRule[SearchSpace]):
     r"""
     Implements Thompson sampling for choosing optimal points.
 
@@ -297,7 +297,18 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         return thompson_samples
 
 
-class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box]):
+S = TypeVar("S")
+"""Unbound type variable."""
+
+StatefulAcquisitionRule = Acquisition[types.State[S, TensorType], SP_contra]
+"""
+A :class:`StatefulAcquisitionRule` finds new query points from a search space given historic data
+and models over that data. Unlike in an :class:`AcquisitionRule`, the computation of new query
+points can additionally use and update some state.
+"""
+
+
+class TrustRegion(StatefulAcquisitionRule[Optional["TrustRegion.State"], Box]):
     """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
@@ -327,7 +338,7 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
     def __init__(
         self,
-        rule: AcquisitionRule[TensorType, Box] = EfficientGlobalOptimization(),
+        rule: AcquisitionRule[Box] = EfficientGlobalOptimization(),
         beta: float = 0.7,
         kappa: float = 1e-4,
     ):
