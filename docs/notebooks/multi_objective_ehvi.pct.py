@@ -255,6 +255,7 @@ objective_model = build_stacked_independent_objectives_model(initial_data[OBJECT
 
 # We also create a single model of the constraint:
 
+
 def create_constraint_model(data):
     variance = tf.math.reduce_variance(data.observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
@@ -272,12 +273,13 @@ def create_constraint_model(data):
         }
     )
 
+
 constraint_model = create_constraint_model(initial_data[CONSTRAINT])
 
 
 # We store both sets of models in a dictionary:
 
-model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
+model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}  # type: ignore
 
 # %% [markdown]
 # ## Define the acquisition function
