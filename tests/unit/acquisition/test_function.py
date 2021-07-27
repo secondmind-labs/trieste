@@ -147,7 +147,7 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         ExpectedImprovement().prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
@@ -196,7 +196,7 @@ def test_expected_improvement(
 def test_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         AugmentedExpectedImprovement().prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel()
         )
@@ -252,25 +252,25 @@ def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
 def test_min_value_entropy_search_builder_raises_for_invalid_init_params(param: int) -> None:
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         MinValueEntropySearch(search_space, num_samples=param)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         MinValueEntropySearch(search_space, grid_size=param)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         MinValueEntropySearch(search_space, num_fourier_features=param)
 
 
 def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gumbel() -> None:
     # cannot do feature-based approx of Gumbel sampler
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         MinValueEntropySearch(search_space, use_thompson=False, num_fourier_features=10)
 
 
@@ -325,7 +325,7 @@ def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mv
 def test_min_value_entropy_search_raises_for_min_values_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         min_value_entropy_search(QuadraticMeanAndRBFKernel(), samples)
 
 
@@ -382,7 +382,7 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
 
 @pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)
 
 
@@ -435,7 +435,7 @@ def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.
 @pytest.mark.parametrize("shape", various_shapes() - {()})
 def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
     threshold = tf.ones(shape)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
 
 
@@ -452,7 +452,7 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
     shape: ShapeLike,
 ) -> None:
     threshold = tf.ones(shape)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ProbabilityOfFeasibility(threshold)
 
 
@@ -465,7 +465,7 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
 )
 def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         function("", pof, tf.constant([0.0]))
 
 
@@ -478,7 +478,7 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function
 )
 def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(function) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         function("", pof, 1.5)
 
 
@@ -575,7 +575,7 @@ def test_expected_constrained_improvement_raises_for_empty_data(function) -> Non
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
     builder = function("foo", _Constraint())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(data, models_)
 
 
@@ -635,7 +635,7 @@ def test_ehvi_builder_raises_for_empty_data() -> None:
     dataset = empty_dataset([2], [num_obj])
     model = QuadraticMeanAndRBFKernel()
 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
 
 
@@ -974,12 +974,12 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
 def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         BatchMonteCarloExpectedImprovement(sample_size)
 
 
 def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter() -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         BatchMonteCarloExpectedImprovement(100, jitter=-1.0)
 
 
@@ -987,7 +987,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
     builder = BatchMonteCarloExpectedImprovement(100)
     data = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     model = QuadraticMeanAndRBFKernel()
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(data, model)
 
 
@@ -1064,7 +1064,7 @@ def test_single_model_acquisition_function_builder_reprs(function, function_repr
 def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel()
         )
@@ -1072,7 +1072,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
 
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         LocalPenalizationAcquisitionFunction(search_space, num_samples=-5)
 
 
@@ -1094,18 +1094,9 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     pending_points = tf.zeros([1, 2])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         LocalPenalizationAcquisitionFunction(search_space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel(), pending_points
-        )
-
-
-def test_locally_penalized_expected_improvement_raises_when_called_with_invalid_base() -> None:
-    search_space = Box([0, 0], [1, 1])
-    base_builder = NegativeLowerConfidenceBound()
-    with pytest.raises(ValueError):
-        LocalPenalizationAcquisitionFunction(
-            search_space, base_acquisition_function_builder=base_builder  # type: ignore
         )
 
 
@@ -1216,25 +1207,25 @@ def test_gibbon_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
 def test_gibbon_builder_raises_for_invalid_init_params(param: int) -> None:
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         GIBBON(search_space, num_samples=param)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         GIBBON(search_space, grid_size=param)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         GIBBON(search_space, num_fourier_features=param)
 
 
 def test_gibbon_builder_raises_when_given_num_features_and_gumbel() -> None:
     # cannot do feature-based approx of Gumbel sampler
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         GIBBON(search_space, use_thompson=False, num_fourier_features=10)
 
 
@@ -1265,7 +1256,7 @@ def test_gibbon_raises_when_called_before_initialization() -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     pending_points = tf.zeros([1, 2])
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         GIBBON(search_space).prepare_acquisition_function(
             data, QuadraticMeanAndRBFKernel(), pending_points
         )
