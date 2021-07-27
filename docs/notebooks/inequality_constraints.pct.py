@@ -266,6 +266,8 @@ plot_regret(
 # ## Multiple constraints
 #
 # We'll now show how to use a reducer to combine multiple constraints. We start by adding an output to our observer, and create a set of three models.
+
+
 class Sim2(Sim):
     threshold2 = 0.5
 
@@ -275,7 +277,9 @@ class Sim2(Sim):
         z = tf.sin(x) * tf.cos(y) - tf.cos(x) * tf.sin(y)
         return z[:, None]
 
+
 CONSTRAINT2 = "CONSTRAINT2"
+
 
 def observer_two_constraints(query_points):
     return {
@@ -283,6 +287,7 @@ def observer_two_constraints(query_points):
         CONSTRAINT: Dataset(query_points, Sim2.constraint(query_points)),
         CONSTRAINT2: Dataset(query_points, Sim2.constraint2(query_points)),
     }
+
 
 num_initial_points = 10
 initial_data = observer_two_constraints(search_space.sample(num_initial_points))
