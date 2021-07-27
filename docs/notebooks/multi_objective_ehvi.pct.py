@@ -199,7 +199,8 @@ plt.show()
 # %% [markdown]
 # ## Multi-objective optimization with constraints
 #
-# EHVI can be adapted to the case of constraints, as we show below.
+# EHVI can be adapted to the case of constraints, as we show below. We start by defining a problem with the same objectives as above, but with an inequality constraint, and we define the corresponding `Observer`.
+
 
 class Sim:
     threshold = 0.75
@@ -219,7 +220,7 @@ OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
 
-def observer(query_points):
+def observer_cst(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
@@ -227,12 +228,12 @@ def observer(query_points):
 
 
 # %% [markdown]
-# As above, we randomly sample some initial data from the observer and visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
+# As previously, we randomly sample some initial data from the observer and visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
 
 # %%
 num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
-initial_data = observer(initial_query_points)
+initial_data = observer_cst(initial_query_points)
 
 from util.inequality_constraints_utils import plot_2obj_cst_query_points
 
@@ -296,7 +297,7 @@ rule = EfficientGlobalOptimization(builder=echvi)  # type: ignore
 
 # %%
 num_steps = 30
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
