@@ -749,13 +749,15 @@ def expected_hv_improvement(
 class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
-    This function essentially combines ExpectedConstrainedImprovement and ExpectedHypervolumeImprovement.
+    This function essentially combines ExpectedConstrainedImprovement and
+    ExpectedHypervolumeImprovement.
     """
 
     def __repr__(self) -> str:
         """"""
         return (
-            f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
+            f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+            f"{self._constraint_builder!r},"
             f" {self._min_feasibility_probability!r})"
         )
 
@@ -765,7 +767,8 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         :param datasets: The data from the observer. Must be populated.
         :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained hypervolume improvement acquisition function. This function will raise
+        :return: The expected constrained hypervolume improvement acquisition function.
+            This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
@@ -777,8 +780,8 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         if len(objective_dataset) == 0:
             raise ValueError(
-                "Expected hypervolume improvement is defined with respect to existing points in the objective"
-                " data, but the objective data is empty."
+                "Expected hypervolume improvement is defined with respect to existing points in"
+                "  the objective data, but the objective data is empty."
             )
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
