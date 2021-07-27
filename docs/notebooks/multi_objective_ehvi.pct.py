@@ -245,8 +245,8 @@ plot_2obj_cst_query_points(
 )
 plt.show()
 
-mask_fail = initial_data[CONSTRAINT].observations.numpy() > Sim.threshold
-plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])
+mask_fail = initial_data[CONSTRAINT].observations.numpy() > Sim.threshold  # type: ignore
+plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])  # type: ignore
 plt.show()
 
 # We use the same model wrapper to build and stack the two GP models of the objective:
@@ -279,7 +279,7 @@ constraint_model = create_constraint_model(initial_data[CONSTRAINT])
 
 # We store both sets of models in a dictionary:
 
-model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}  # type: ignore
+model = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 
 # %% [markdown]
 # ## Define the acquisition function
