@@ -233,25 +233,25 @@ def observer_cst(query_points):
 # %%
 num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
-initial_data = observer_cst(initial_query_points)
+initial_data_with_cst = observer_cst(initial_query_points)
 
 from util.inequality_constraints_utils import plot_2obj_cst_query_points
 
 plot_2obj_cst_query_points(
     search_space,
     Sim,
-    initial_data[OBJECTIVE].astuple(),
-    initial_data[CONSTRAINT].astuple(),
+    initial_data_with_cst[OBJECTIVE].astuple(),
+    initial_data_with_cst[CONSTRAINT].astuple(),
 )
 plt.show()
 
-mask_fail = initial_data[CONSTRAINT].observations.numpy() > Sim.threshold  # type: ignore
-plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])  # type: ignore
+mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold  # type: ignore
+plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])  # type: ignore
 plt.show()
 
 # We use the same model wrapper to build and stack the two GP models of the objective:
 
-objective_model = build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)
+objective_model = build_stacked_independent_objectives_model(initial_data_with_cst[OBJECTIVE], num_objective)
 
 # We also create a single model of the constraint:
 
@@ -274,7 +274,7 @@ def create_constraint_model(data):
     )
 
 
-constraint_model = create_constraint_model(initial_data[CONSTRAINT])
+constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
 
 # We store both sets of models in a dictionary:
@@ -300,7 +300,7 @@ rule = EfficientGlobalOptimization(builder=echvi)  # type: ignore
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
-result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data_with_cst, model, acquisition_rule=rule)
 
 # %% [markdown]
 # As previously, we visualize the queried data across the design space.
