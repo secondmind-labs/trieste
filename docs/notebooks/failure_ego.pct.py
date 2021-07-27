@@ -80,7 +80,7 @@ num_init_points = 15
 initial_data = observer(search_space.sample(num_init_points))
 
 # %% [markdown]
-# ## Model the data
+# ## Build GPflow models
 #
 # We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
 
@@ -110,23 +110,11 @@ regression_model = create_regression_model(initial_data[OBJECTIVE])
 classification_model = create_classification_model(initial_data[FAILURE])
 
 # %% [markdown]
-# ## Create a custom optimize method
+# ## Build Trieste models
 #
-# The new `NatGradTrainedVGP` class has a custom `optimize` method that alternates between Adam steps to optimize the lengthscales and NatGrad steps to optimize the variational parameters:
-
-# %%
-class NatGradTrainedVGP(trieste.models.VariationalGaussianProcess):
-    def optimize(self, dataset):
-        gpflow.set_trainable(self.model.q_mu, False)
-        gpflow.set_trainable(self.model.q_sqrt, False)
-        variational_params = [(self.model.q_mu, self.model.q_sqrt)]
-        adam_opt = tf.optimizers.Adam(1e-3)
-        natgrad_opt = gpflow.optimizers.NaturalGradient(gamma=0.1)
-
-        for step in range(50):
-            loss = self.model.training_loss
-            natgrad_opt.minimize(loss, variational_params)
-            adam_opt.minimize(loss, self.model.trainable_variables)
+# We now specify how Trieste will use our GPflow models within the BO loop.
+#
+# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
 
 # %% [markdown]
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
@@ -136,11 +124,17 @@ models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: {
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
     },
-    FAILURE: NatGradTrainedVGP(classification_model),
+    FAILURE: {
+        "model": classification_model,
+        "model_args": {
+            "use_natgrads": True,
+        },
+        "optimizer": tf.optimizers.Adam(1e-3),
+        "optimizer_args": {
+            "max_iter": 50,
+        },       
+    },
 }
 
 # %% [markdown]
