@@ -254,11 +254,13 @@ mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.thresho
 plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])  # type: ignore
 plt.show()
 
+# %% [markdown]
 # We use the same model wrapper to build and stack the two GP models of the objective:
 
 # %%
 objective_model = build_stacked_independent_objectives_model(initial_data_with_cst[OBJECTIVE], num_objective)
 
+# %% [markdown]
 # We also create a single model of the constraint:
 
 # %%
@@ -282,7 +284,7 @@ def create_constraint_model(data):
 
 constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
-
+# %% [markdown]
 # We store both sets of models in a dictionary:
 
 # %%
@@ -300,8 +302,6 @@ echvi = ExpectedConstrainedHypervolumeImprovement(OBJECTIVE, pof.using(CONSTRAIN
 rule = EfficientGlobalOptimization(builder=echvi)  # type: ignore
 
 # %% [markdown]
-# ## Run the optimization loop
-#
 # We can now run the optimization loop
 
 # %%
