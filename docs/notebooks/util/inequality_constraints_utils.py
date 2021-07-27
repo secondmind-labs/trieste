@@ -102,9 +102,7 @@ def plot_init_query_points(
     return fig
 
 
-def plot_2obj_cst_query_points(
-    search_space, simulation, objective_data, constraint_data
-):
+def plot_2obj_cst_query_points(search_space, simulation, objective_data, constraint_data):
     class Sim1(simulation):
         @staticmethod
         def objective(input_data):
