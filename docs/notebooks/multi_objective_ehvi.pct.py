@@ -289,7 +289,7 @@ constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 
 # %% [markdown]
-# ## Define the acquisition function
+# ## Acquisition function for multiple objectives and constraints
 # We utilize the `ExpectedConstrainedHypervolumeImprovement` acquisition function, which is the product of EHVI (based on the feasible Pareto set) with the probability of feasibility:
 
 # %%
