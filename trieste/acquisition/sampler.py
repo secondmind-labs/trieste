@@ -412,7 +412,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
 
         try:
             self._noise_variance = model.get_observation_noise()
-            self._kernel = model.get_kernel()
+            self._kernel = model.get_kernel()  # type: ignore
         except (NotImplementedError, AttributeError):
             raise ValueError(
                 """
