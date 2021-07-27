@@ -827,7 +827,7 @@ def test_randomize_hyperparameters_samples_different_values_for_multi_dimensiona
 
 
 @random_seed
-def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
+def test_squeeze_sigmoid_hyperparameters() -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1 + 1e-3, 0.5 - 1e-3])
     upper = tf.cast([0.5, 0.5], dtype=tf.float64)
     lower = upper / 5.0
@@ -837,6 +837,9 @@ def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
     squeeze_hyperparameters(kernel, alpha=0.1)
     npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
 
+
+@random_seed
+def test_squeeze_softplus_hyperparameters() -> None:
     lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
     squeeze_hyperparameters(lik, epsilon=0.2)
     npt.assert_array_almost_equal(lik.variance, 0.2 + 1e-6)
