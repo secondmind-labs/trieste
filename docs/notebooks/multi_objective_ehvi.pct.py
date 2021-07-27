@@ -4,22 +4,28 @@
 
 # %%
 import math
+
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, plot_mobo_points_in_obj_space
+from util.plotting import (
+    plot_bo_points,
+    plot_function_2d,
+    plot_mobo_history,
+    plot_mobo_points_in_obj_space,
+)
 
 # %%
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
+from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
 from trieste.utils.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
-from trieste.acquisition.rule import EfficientGlobalOptimization
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -201,7 +207,7 @@ plt.show()
 #
 # EHVI can be adapted to the case of constraints, as we show below. We start by defining a problem with the same objectives as above, but with an inequality constraint, and we define the corresponding `Observer`.
 
-
+# %%
 class Sim:
     threshold = 0.75
 
@@ -230,12 +236,10 @@ initial_query_points = search_space.sample(num_initial_points)
 initial_data_with_cst = observer_cst(initial_query_points)
 
 
-
 # %% [markdown]
 # As previously, we visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
 
 # %%
-
 from util.inequality_constraints_utils import plot_2obj_cst_query_points
 
 plot_2obj_cst_query_points(
@@ -252,11 +256,12 @@ plt.show()
 
 # We use the same model wrapper to build and stack the two GP models of the objective:
 
+# %%
 objective_model = build_stacked_independent_objectives_model(initial_data_with_cst[OBJECTIVE], num_objective)
 
 # We also create a single model of the constraint:
 
-
+# %%
 def create_constraint_model(data):
     variance = tf.math.reduce_variance(data.observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
@@ -280,6 +285,7 @@ constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
 # We store both sets of models in a dictionary:
 
+# %%
 models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 
 # %% [markdown]
