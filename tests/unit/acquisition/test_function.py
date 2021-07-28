@@ -1156,10 +1156,10 @@ def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
     npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(gibbon_evals))
 
 
-@pytest.mark.parametrize("big_batch", [True, False])
+@pytest.mark.parametrize("rescaled_repulsion", [True, False])
 @pytest.mark.parametrize("noise_variance", [0.1, 1e-10])
 def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
-    big_batch, noise_variance
+    rescaled_repulsion, noise_variance
 ) -> None:
     """
     Check that batch GIBBON can be decomposed into the sum of sequential GIBBONs and a repulsion
@@ -1183,7 +1183,7 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
     _, pending_var = model.predict_joint(pending_points)
     pending_var += noise_variance * tf.eye(len(pending_points), dtype=pending_var.dtype)
 
-    calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, big_batch)(
+    calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, rescaled_repulsion)(
         xs[..., None, :]
     )
 
@@ -1192,9 +1192,9 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
         _, A = model.predict_joint(candidate_and_pending)
         A += noise_variance * tf.eye(len(pending_points) + 1, dtype=A.dtype)
         repulsion = tf.linalg.logdet(A) - tf.math.log(A[0, 0, 0]) - tf.linalg.logdet(pending_var)
-        if big_batch:  # down-weight repulsion term
+        if rescaled_repulsion:  # down-weight repulsion term
             batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=mean.dtype)
-            repulsion = repulsion * ((1 / batch_size) ** (tf.math.log(search_space_dim)))
+            repulsion = repulsion * ((1 / batch_size) ** (2))
 
         reconstructed_batch_gibbon = 0.5 * repulsion + gibbon_of_new_points[i : i + 1]
         npt.assert_array_almost_equal(
