@@ -23,13 +23,8 @@ import tensorflow as tf
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.model import QuadraticMeanAndRBFKernel
-from trieste.acquisition import (
-    AcquisitionFunction,
-    AcquisitionFunctionBuilder,
-    NegativeLowerConfidenceBound,
-    SingleModelAcquisitionBuilder,
-    SingleModelGreedyAcquisitionBuilder,
-)
+from trieste.acquisition import AcquisitionFunction, NegativeLowerConfidenceBound, empiric, optimizer
+from trieste.acquisition.empiric import SingleModelEmpiric, Empiric
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
@@ -125,26 +120,16 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
 
-def test_efficient_global_optimization_raises_for_no_query_points() -> None:
-    with pytest.raises(ValueError):
-        EfficientGlobalOptimization(num_query_points=0)
-
-
-def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_points() -> None:
-    with pytest.raises(ValueError):
-        EfficientGlobalOptimization(num_query_points=2)
-
-
-@pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
+@pytest.mark.parametrize("optimizer", [_line_search_maximize, optimizer.default(1)])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
-    class NegQuadratic(SingleModelAcquisitionBuilder):
-        def prepare_acquisition_function(
+    class NegQuadratic(SingleModelEmpiric[AcquisitionFunction]):
+        def acquire(
             self, dataset: Dataset, model: ProbabilisticModel
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
     search_space = Box([-10], [10])
-    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
+    ego = EfficientGlobalOptimization(NegQuadratic(), empiric.unit(optimizer))
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
     query_point, _ = ego.acquire_single(search_space, data, model)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
@@ -152,8 +137,8 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
 
 
-class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
-    def prepare_acquisition_function(
+class _JointBatchModelMinusMeanMaximumSingleBuilder(Empiric[AcquisitionFunction]):
+    def acquire(
         self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
@@ -165,7 +150,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
     num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
     ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-        acq, num_query_points=num_query_points
+        acq, optimizer=empiric.unit(optimizer.default(num_query_points))
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
@@ -174,7 +159,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
 
 
 class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitionBuilder):
-    def prepare_acquisition_function(
+    def acquire(
         self,
         dataset: Dataset,
         model: ProbabilisticModel,

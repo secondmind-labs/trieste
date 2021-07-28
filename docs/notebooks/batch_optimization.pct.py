@@ -7,8 +7,9 @@
 # %%
 import numpy as np
 import tensorflow as tf
-from util.plotting import create_grid, plot_acq_function_2d
-from util.plotting_plotly import plot_function_plotly
+
+from trieste.acquisition.optimizer import batchify
+from util.plotting import plot_acq_function_2d
 import matplotlib.pyplot as plt
 import trieste
 
@@ -40,7 +41,6 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 from trieste.models import create_model
-from trieste.utils import map_values
 import tensorflow_probability as tfp
 
 
@@ -75,23 +75,23 @@ model = create_model(model_spec)
 # First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-from trieste.acquisition import BatchMonteCarloExpectedImprovement
+from trieste.acquisition import BatchMonteCarloExpectedImprovement, empiric, optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
-batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=batch_ei_acq)
+batch_ei_acq_rule = EfficientGlobalOptimization(
+    batch_ei_acq, empiric.unit(optimizer.default(10))
+)
 points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
 # and then do the same with `LocalPenalizationAcquisitionFunction`.
 
 # %%
-from trieste.acquisition import LocalPenalizationAcquisitionFunction
+from trieste.acquisition.optimizer import LocalPenalization
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=1000)
-local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=local_penalization_acq)
+local_penalization = LocalPenalization(optimizer.default(1), batch_size=10, sample_size=1000)
+local_penalization_acq_rule = EfficientGlobalOptimization(optimizer=local_penalization)
 points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_single(
     search_space, initial_data, model)
 
@@ -103,7 +103,7 @@ from trieste.acquisition import ExpectedImprovement
 
 # plot standard EI acquisition function
 ei = ExpectedImprovement()
-ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
+ei_acq_function = ei.acquire(initial_data, model)
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100)
 
 plt.scatter(
@@ -144,8 +144,8 @@ cbar.set_label("EI", rotation=270)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=3, builder=batch_ei_acq
+batch_ei_rule = EfficientGlobalOptimization(
+    batch_ei_acq, empiric.unit(optimizer.default(3))
 )
 qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
 
@@ -153,9 +153,8 @@ qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule
 # and then repeat the same optimization with `LocalPenalizationAcquisitionFunction`.
 
 # %%
-local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=3, builder=local_penalization_acq
-)
+local_penalization = LocalPenalization(optimizer.default(1), batch_size=3, sample_size=1000)
+local_penalization_rule = EfficientGlobalOptimization(optimizer=local_penalization)
 local_penalization_result = bo.optimize(
     10, initial_data, model, acquisition_rule=local_penalization_rule
 )

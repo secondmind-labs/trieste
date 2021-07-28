@@ -18,13 +18,14 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
+from trieste.acquisition import optimizer, empiric
 from trieste.acquisition.function import (
     GIBBON,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
 )
+from trieste.acquisition.optimizer import LocalPenalization
 from trieste.acquisition.rule import (
     AcquisitionRule,
     DiscreteThompsonSampling,
@@ -62,25 +63,20 @@ from trieste.utils.objectives import (
             10,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=3,
+                optimizer=empiric.unit(optimizer.default(3)),
             ),
         ),
         (
             10,
             EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(
-                    Box([0, 0], [1, 1]),
-                ).using(OBJECTIVE),
-                num_query_points=3,
+                optimizer=LocalPenalization(optimizer.default(1), batch_size=3)
             ),
         ),
         (
             10,
             EfficientGlobalOptimization(
-                GIBBON(
-                    Box([0, 0], [1, 1]),
-                ).using(OBJECTIVE),
-                num_query_points=2,
+                GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE),
+                optimizer=empiric.unit(optimizer.default(2)),
             ),
         ),
         (15, TrustRegion()),

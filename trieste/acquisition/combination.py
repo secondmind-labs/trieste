@@ -18,13 +18,14 @@ from collections.abc import Mapping, Sequence
 
 import tensorflow as tf
 
+from .empiric import Empiric
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..type import TensorType
-from .function import AcquisitionFunction, AcquisitionFunctionBuilder
+from .function import AcquisitionFunction
 
 
-class Reducer(AcquisitionFunctionBuilder):
+class Reducer(Empiric[AcquisitionFunction]):
     r"""
     A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
@@ -32,7 +33,7 @@ class Reducer(AcquisitionFunctionBuilder):
     by the method :meth:`_reduce`.
     """
 
-    def __init__(self, *builders: AcquisitionFunctionBuilder):
+    def __init__(self, *builders: Empiric[AcquisitionFunction]):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
@@ -46,7 +47,7 @@ class Reducer(AcquisitionFunctionBuilder):
     def _repr_builders(self) -> str:
         return ", ".join(map(repr, self._acquisitions))
 
-    def prepare_acquisition_function(
+    def acquire(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         r"""
@@ -61,7 +62,7 @@ class Reducer(AcquisitionFunctionBuilder):
         :return: The reduced acquisition function.
         """
         functions = tuple(
-            acq.prepare_acquisition_function(datasets, models) for acq in self.acquisitions
+            acq.acquire(datasets, models) for acq in self.acquisitions
         )
 
         def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
@@ -70,7 +71,7 @@ class Reducer(AcquisitionFunctionBuilder):
         return evaluate_acquisition_function_fn
 
     @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:
+    def acquisitions(self) -> Sequence[Empiric[AcquisitionFunction]]:
         """The acquisition function builders specified at class initialisation."""
         return self._acquisitions
 

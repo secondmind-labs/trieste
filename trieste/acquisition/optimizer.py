@@ -24,6 +24,9 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from .empiric import SingleModelEmpiric
+from ..data import Dataset
+from ..models import ProbabilisticModel
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
 from .function import AcquisitionFunction
@@ -41,9 +44,8 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 """
 
 
-def automatic_optimizer_selector(
-    space: SearchSpace, target_func: AcquisitionFunction
-) -> TensorType:
+# todo should this return an Empiric?
+def default(batch_size: int) -> AcquisitionOptimizer[SearchSpace]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
     an :const:`AcquisitionOptimizer` appropriate for the
@@ -54,20 +56,22 @@ def automatic_optimizer_selector(
             [..., 1].
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
+    def optimizer(space: SearchSpace, target_func: AcquisitionFunction) -> TensorType:
+        if isinstance(space, DiscreteSearchSpace):
+            return optimize_discrete(space, target_func)
 
-    if isinstance(space, DiscreteSearchSpace):
-        return optimize_discrete(space, target_func)
+        elif isinstance(space, Box):
+            num_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
+            return generate_continuous_optimizer(num_samples)(space, target_func)
 
-    elif isinstance(space, Box):
-        num_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
-        return generate_continuous_optimizer(num_samples)(space, target_func)
+        else:
+            raise NotImplementedError(
+                f""" No optimizer currentely supports acquisition function
+                        maximisation over search spaces of type {space}.
+                        Try specifying the optimize_random optimizer"""
+            )
 
-    else:
-        raise NotImplementedError(
-            f""" No optimizer currentely supports acquisition function
-                    maximisation over search spaces of type {space}.
-                    Try specifying the optimize_random optimizer"""
-        )
+    return batchify(optimizer, batch_size)
 
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
@@ -242,3 +246,180 @@ def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOpti
         return samples[max_value_idx : max_value_idx + 1]
 
     return optimize_random
+
+
+Penalizer = Callable[
+    [ProbabilisticModel, TensorType, TensorType, TensorType],
+    Callable[[TensorType], TensorType]
+]
+
+
+def soft_local_penalizer(
+    model: ProbabilisticModel,
+    pending_points: TensorType,
+    lipschitz_constant: TensorType,
+    eta: TensorType,
+) -> Callable[[TensorType], TensorType]:
+    r"""
+    Return the soft local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Gonzalez:2016`.
+
+    Soft penalization returns the probability that a candidate point does not belong
+    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
+    posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
+    estimated Lipschitz constant :math:`L`,the penalization from a set of pending point :math:`x'`
+    on a candidate point :math:`x` is given by
+    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+
+    The penalization from a set of pending points is just product of the individual penalizations.
+    See :cite:`Gonzalez:2016` for a full derivation.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(
+            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+        )
+        standardised_distances = (pairwise_distances - radius) / scale
+
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        penalization = normal.cdf(standardised_distances)
+        return tf.reduce_prod(penalization, axis=-1)
+
+    return penalization_function
+
+
+def hard_local_penalizer(
+    model: ProbabilisticModel,
+    pending_points: TensorType,
+    lipschitz_constant: TensorType,
+    eta: TensorType,
+) -> Callable[[TensorType], TensorType]:
+    r"""
+    Return the hard local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Alvi:2019`.
+
+    Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective
+    See :cite:`Alvi:2019` for details. Our implementation follows theirs, with the penalization from
+    a set of pending points being the product of the individual penalizations.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
+
+    mean_pending, variance_pending = model.predict(pending_points)
+    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
+    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+
+    def penalization_function(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This penalization function cannot be calculated for batches of points.",
+        )
+
+        pairwise_distances = tf.norm(
+            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+        )
+
+        p = -5  # following experiments of :cite:`Alvi:2019`.
+        penalization = ((pairwise_distances / (radius + scale)) ** p + 1) ** (1 / p)
+
+        return tf.reduce_prod(penalization, axis=-1)
+
+    return penalization_function
+
+
+class LocalPenalization(SingleModelEmpiric[AcquisitionOptimizer[SP]]):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches by local
+    penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
+    points and returns a base acquisition function penalized around those points.
+    An estimate of the objective function's Lipschitz constant is used to control the size
+    of penalization.
+
+    Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
+    acquisition function. All that we require is that the acquisition function takes strictly
+    positive values. By iteratively building a batch of points though sequentially maximizing
+    this acquisition function but down-weighted around locations close to the already
+    chosen (pending) points, local penalization provides diverse batches of candidate points.
+
+    Local penalization is applied to the acquisition function multiplicatively. However, to
+    improve numerical stability, we perform additive penalization in a log space.
+
+    The Lipschitz constant and additional penalization parameters are estimated once
+    when first preparing the acquisition function with no pending points. These estimates
+    are reused for all subsequent function calls.
+    """
+    def __init__(
+        self,
+        optimizer: AcquisitionOptimizer[SP],
+        *,
+        batch_size: int,
+        sample_size: int = 500,
+        penalizer: Penalizer = soft_local_penalizer,
+    ):
+        tf.debugging.assert_positive(batch_size)
+        tf.debugging.assert_positive(sample_size)
+
+        self._optimizer = optimizer
+        self._batch_size = batch_size
+        self._sample_size = sample_size
+        self._lipschitz_penalizer = penalizer
+
+    def acquire(self, dataset: Dataset, model: ProbabilisticModel) -> AcquisitionOptimizer[SP]:
+        tf.debugging.assert_positive(len(dataset))
+
+        def optimize(search_space: SP, acq: AcquisitionFunction) -> TensorType:
+            search_space_samples = search_space.sample(self._sample_size)
+            samples = tf.concat([dataset.query_points, search_space_samples], 0)
+
+            with tf.GradientTape() as g:
+                g.watch(samples)
+                mean, _ = model.predict(samples)
+
+            grads = g.gradient(mean, samples)
+            grads_norm = tf.norm(grads, axis=1)
+            max_grads_norm = tf.reduce_max(grads_norm)
+            lipschitz_constant = 10 if max_grads_norm < 1e-5 else max_grads_norm
+            eta = tf.reduce_min(mean, axis=0)
+
+            def loop(points: list[TensorType]) -> list[TensorType]:
+                if len(points) == self._batch_size:
+                    return points
+
+                # todo might it be cheaper to iteratively modify the acquisition function on each
+                #  single new point than modify the base acquisition on all points?
+                penalization = self._lipschitz_penalizer(model, points, lipschitz_constant, eta)
+
+                def acq_penalized(x: TensorType) -> TensorType:
+                    return tf.exp(tf.math.log(acq(x)) + tf.math.log(penalization(x)))
+
+                # todo this assumes local penalization works with batch optimizers. Does it?
+                #  looks like stopping condition is wrong in that case
+                return loop(points + [self._optimizer(search_space, acq_penalized)])
+
+            return tf.concat(loop([]), axis=0)
+
+        return optimize

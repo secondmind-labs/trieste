@@ -5,6 +5,10 @@
 import numpy as np
 import tensorflow as tf
 
+from trieste.acquisition import empiric
+from trieste.acquisition.empiric import Empiric
+from trieste.acquisition import optimizer
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -118,7 +122,7 @@ pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule = EfficientGlobalOptimization(eci)  # type: ignore
+rule: EfficientGlobalOptimization = EfficientGlobalOptimization(eci)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -158,14 +162,12 @@ plt.show()
 # We'll now look at a batch-sequential approach to the same problem. Sometimes it's beneficial to query several points at a time instead of one. The acquisition function we used earlier, built by `ExpectedConstrainedImprovement`, only supports a batch size of 1, so we'll need a new acquisition function builder for larger batch sizes. We can implement this using the reparametrization trick with the Monte-Carlo sampler `BatchReparametrizationSampler`. Note that when we do this, we must initialise the sampler *outside* the acquisition function (here `batch_efi`). This is crucial: a given instance of a sampler produces repeatable, continuous samples, and we can use this to create a repeatable continuous acquisition function. Using a new sampler on each call would not result in a repeatable continuous acquisition function.
 
 # %%
-class BatchExpectedConstrainedImprovement(
-    trieste.acquisition.AcquisitionFunctionBuilder
-):
+class BatchExpectedConstrainedImprovement(Empiric):
     def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
         self._threshold = threshold
 
-    def prepare_acquisition_function(self, datasets, models):
+    def acquire(self, datasets, models):
         objective_model = models[OBJECTIVE]
         objective_dataset = datasets[OBJECTIVE]
 
@@ -204,8 +206,8 @@ class BatchExpectedConstrainedImprovement(
 
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
-batch_rule = EfficientGlobalOptimization(  # type: ignore
-    batch_eci, num_query_points=num_query_points
+batch_rule = EfficientGlobalOptimization(
+    batch_eci, empiric.unit(optimizer.default(num_query_points))
 )
 
 # %% [markdown]
@@ -299,13 +301,13 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 from trieste.acquisition.combination import Product
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
-pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
+pof_ = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))
 
 # %% [markdown]
 # We can now run the BO loop as before, and visualize the results:
 
-eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
-rule = EfficientGlobalOptimization(eci)  # type: ignore
+eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof_)
+rule = EfficientGlobalOptimization(eci)
 
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)

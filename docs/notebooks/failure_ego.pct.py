@@ -7,6 +7,8 @@ from __future__ import annotations
 import numpy as np
 import tensorflow as tf
 
+from trieste.acquisition.empiric import SingleModelEmpiric
+
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
@@ -144,12 +146,10 @@ models: dict[str, trieste.models.ModelSpec] = {
 
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
-)
+from trieste.acquisition import ExpectedImprovement, Product
 
-class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
-    def prepare_acquisition_function(self, dataset, model):
+class ProbabilityOfValidity(SingleModelEmpiric):
+    def acquire(self, dataset, model):
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
@@ -158,7 +158,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
 acq_fn = Product(ei.using(OBJECTIVE), pov.using(FAILURE))
-rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
+rule: EfficientGlobalOptimization = EfficientGlobalOptimization(acq_fn)
 
 # %% [markdown]
 # ## Run the optimizer

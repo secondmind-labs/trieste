@@ -30,19 +30,10 @@ from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..type import TensorType
-from .function import (
-    AcquisitionFunctionBuilder,
-    ExpectedImprovement,
-    GreedyAcquisitionFunctionBuilder,
-    SingleModelAcquisitionBuilder,
-    SingleModelGreedyAcquisitionBuilder,
-)
-from .optimizer import (
-    AcquisitionOptimizer,
-    automatic_optimizer_selector,
-    batchify,
-    generate_continuous_optimizer,
-)
+from . import empiric, optimizer
+from .empiric import Empiric, SingleModelEmpiric
+from .function import ExpectedImprovement, AcquisitionFunction
+from .optimizer import AcquisitionOptimizer, generate_continuous_optimizer
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
 S = TypeVar("S")
@@ -121,14 +112,10 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
     def __init__(
         self,
-        builder: Optional[
-            AcquisitionFunctionBuilder
-            | GreedyAcquisitionFunctionBuilder
-            | SingleModelAcquisitionBuilder
-            | SingleModelGreedyAcquisitionBuilder
-        ] = None,
-        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
-        num_query_points: int = 1,
+        acquisition: Empiric[AcquisitionFunction]
+                 | SingleModelEmpiric[AcquisitionFunction] = ExpectedImprovement(),
+        optimizer: Empiric[AcquisitionOptimizer[SP_contra]]
+                   | SingleModelEmpiric[AcquisitionOptimizer[SP_contra]] = empiric.unit(optimizer.default(1)),
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -137,45 +124,19 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
-        :param num_query_points: The number of points to acquire.
         """
+        if isinstance(acquisition, SingleModelEmpiric):
+            acquisition = acquisition.using(OBJECTIVE)
 
-        if num_query_points <= 0:
-            raise ValueError(
-                f"Number of query points must be greater than 0, got {num_query_points}"
-            )
+        if isinstance(optimizer, SingleModelEmpiric):
+            optimizer = optimizer.using(OBJECTIVE)
 
-        if builder is None:
-            if num_query_points == 1:
-                builder = ExpectedImprovement()
-            else:
-                raise ValueError(
-                    """Need to specify a batch acquisition function when number of query points
-                    is greater than 1"""
-                )
-
-        if optimizer is None:
-            optimizer = automatic_optimizer_selector
-
-        if isinstance(
-            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
-        ):
-            builder = builder.using(OBJECTIVE)
-
-        if isinstance(builder, AcquisitionFunctionBuilder):
-            # Joint batch acquisitions require batch optimizers
-            optimizer = batchify(optimizer, num_query_points)
-
-        self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
+        self._acquisition = acquisition
         self._optimizer = optimizer
-        self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
         """"""
-        return f"""EfficientGlobalOptimization(
-        {self._builder!r},
-        {self._optimizer!r},
-        {self._num_query_points!r})"""
+        return f"""EfficientGlobalOptimization({self._acquisition!r}, {self._optimizer!r})"""
 
     def acquire(
         self,
@@ -196,18 +157,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :return: The single (or batch of) points to query, and `None`.
         """
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        points = self._optimizer(search_space, acquisition_function)
-
-        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
-            for _ in range(
-                self._num_query_points - 1
-            ):  # greedily allocate remaining batch elements
-                greedy_acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, pending_points=points
-                )
-                chosen_point = self._optimizer(search_space, greedy_acquisition_function)
-                points = tf.concat([points, chosen_point], axis=0)
+        acquisition_function = self._acquisition.acquire(datasets, models)
+        optimizer = self._optimizer.acquire(datasets, models)
+        points = optimizer(search_space, acquisition_function)
 
         return points, None
 
@@ -344,7 +296,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     def __init__(
         self,
-        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
+        builder: Optional[Empiric[AcquisitionFunction] | SingleModelEmpiric[AcquisitionFunction]] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         optimizer: AcquisitionOptimizer[Box] | None = None,
@@ -362,7 +314,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         if builder is None:
             builder = ExpectedImprovement()
 
-        if isinstance(builder, SingleModelAcquisitionBuilder):
+        if isinstance(builder, SingleModelEmpiric):
             builder = builder.using(OBJECTIVE)
 
         if optimizer is None:
@@ -453,7 +405,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
                 tf.reduce_min([global_upper, xmin + eps], axis=0),
             )
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
+        acquisition_function = self._builder.acquire(datasets, models)
         point = self._optimizer(acquisition_space, acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 

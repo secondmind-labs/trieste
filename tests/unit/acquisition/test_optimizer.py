@@ -17,16 +17,17 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import quadratic, random_seed
-from trieste.acquisition import AcquisitionFunction
+from tests.util.misc import quadratic, random_seed, TF_DEBUGGING_ERROR_TYPES
+from tests.util.model import QuadraticMeanAndRBFKernel
+from trieste.acquisition import AcquisitionFunction, MinValueEntropySearch, ExpectedImprovement
 from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
-    automatic_optimizer_selector,
     batchify,
     generate_continuous_optimizer,
     generate_random_search_optimizer,
-    optimize_discrete,
+    optimize_discrete, default, soft_local_penalizer, Penalizer, hard_local_penalizer, LocalPenalization,
 )
+from trieste.data import Dataset
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
 
@@ -185,11 +186,123 @@ def test_optimize_batch(
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
-def test_automatic_optimizer_selector(
+def test_default_optimizer(
     search_space: Box,
     acquisition: AcquisitionFunction,
     maximizer: TensorType,
 ) -> None:
-    optimizer = automatic_optimizer_selector
+    optimizer = default(1)
     point = optimizer(search_space, acquisition)
     npt.assert_allclose(point, maximizer, rtol=2e-4)
+
+
+def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() -> None:
+    lp = LocalPenalization(default(1), batch_size=1)
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    with pytest.raises(ValueError):
+        lp.acquire(data, QuadraticMeanAndRBFKernel())
+
+
+def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
+    with pytest.raises(ValueError):
+        LocalPenalization(default(1), batch_size=1, sample_size=-5)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "base_builder",
+    [
+        ExpectedImprovement(),
+        MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=10000, num_samples=10),
+    ],
+)
+def test_locally_penalized_acquisitions_match_base_acquisition(
+    base_builder,
+) -> None:
+    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    model = QuadraticMeanAndRBFKernel()
+
+    lp_acq_builder = LocalPenalization(
+        search_space, base_acquisition_function_builder=base_builder
+    )
+    lp_acq = lp_acq_builder.acquire(data, model, None)
+
+    base_acq = base_builder.acquire(data, model)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    lp_acq_values = lp_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
+
+    if isinstance(base_builder, ExpectedImprovement):
+        npt.assert_array_equal(lp_acq_values, base_acq_values)
+    else:  # check sampling-based acquisition functions are close
+        npt.assert_allclose(lp_acq_values, base_acq_values, atol=0.001)
+
+
+@random_seed
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
+@pytest.mark.parametrize(
+    "base_builder",
+    [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=5000)],
+)
+def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
+    penalizer: Penalizer, base_builder,
+):
+    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    model = QuadraticMeanAndRBFKernel()
+    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+
+    acq_builder = LocalPenalization(
+        search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
+    )
+    acq_builder.acquire(data, model, None)  # initialize
+    lp_acq = acq_builder.acquire(data, model, pending_points)
+
+    base_acq = base_builder.acquire(data, model)
+
+    best = acq_builder._eta
+    lipshitz_constant = acq_builder._lipschitz_constant
+    penalizer = penalizer(model, pending_points, lipshitz_constant, best)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    lp_acq_values = lp_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
+    penal_values = penalizer(xs[..., None, :])
+    penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penal_values))
+
+    if isinstance(base_builder, ExpectedImprovement):
+        npt.assert_array_equal(lp_acq_values, penalized_base_acq)
+    else:  # check sampling-based acquisition functions are close
+        npt.assert_allclose(lp_acq_values, penalized_base_acq, atol=0.001)
+
+
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_lipschitz_penalizers_raises_for_invalid_batch_size(
+    at: TensorType, penalizer: Penalizer,
+) -> None:
+    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    best = tf.constant([0], dtype=tf.float64)
+    lipshitz_constant = tf.constant([1], dtype=tf.float64)
+    lp = penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        lp(at)
+
+
+@pytest.mark.parametrize("penalizer", [soft_local_penalizer, hard_local_penalizer])
+@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
+    pending_points: TensorType, penalizer: Penalizer,
+) -> None:
+    best = tf.constant([0], dtype=tf.float64)
+    lipshitz_constant = tf.constant([1], dtype=tf.float64)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
