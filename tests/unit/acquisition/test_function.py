@@ -1270,7 +1270,7 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
     npt.assert_allclose(echvi(at), ehvi(at))
 
 
-def test_expected_constrained_hypervolume_improvement_is_constraint_when_no_feasible_points() -> None:
+def test_echvi_is_constraint_when_no_feasible_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
