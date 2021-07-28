@@ -42,6 +42,7 @@ from trieste.acquisition.function import (
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
@@ -62,7 +63,6 @@ from trieste.acquisition.function import (
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
-    ExpectedConstrainedHypervolumeImprovement,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
