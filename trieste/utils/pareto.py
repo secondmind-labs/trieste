@@ -20,7 +20,7 @@ import tensorflow as tf
 from typing import Callable
 
 from ..type import TensorType
-from trieste.utils.partition import _BoundedVolumes, ExactHvPartition2d, DividedAndConqure
+from trieste.utils.partition import _BoundedVolumes, ExactHvPartition2d, DividedAndConquerNonDominated
 
 
 def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
@@ -135,7 +135,7 @@ class Pareto(_Pareto):
     def _get_partitioned_bounds(self, front: TensorType) -> _BoundedVolumes:
         if self._partition == 'default':
             if front.shape[-1] > 2:
-                return DividedAndConqure()(front)
+                return DividedAndConquerNonDominated()(front)
             else:
                 return ExactHvPartition2d()(front)
         elif isinstance(self._partition, Callable):

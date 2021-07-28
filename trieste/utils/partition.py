@@ -35,9 +35,21 @@ class _Partition(ABC):
     """
 
 
+class _NonDominatedPartition(_Partition):
+    """
+    Partition methods focusing on partitioning non-dominated regions
+    """
+
+
+class _DominatedPartition(_Partition):
+    """
+    Partition methods focusing on partitioning dominated-regions
+    """
+
+
 class ExactHvPartition2d(_Partition):
     def __call__(self, front: TensorType):
-        return exact_hv_partition_2d(front)
+        return exact_hv_partition_2d(front), front
 
 
 def exact_hv_partition_2d(front: TensorType):
@@ -62,16 +74,16 @@ def exact_hv_partition_2d(front: TensorType):
     return _BoundedVolumes(lower_result, upper_result)
 
 
-class DividedAndConqure(_Partition):
+class DividedAndConquerNonDominated(_Partition):
     def __call__(self, front: TensorType, jitter: float = DEFAULTS.JITTER,
                  threshold: TensorType | float = 0
     ):
-        return divided_and_conqure(front, jitter, threshold)
+        return divided_and_conquer_non_dominated(front, jitter, threshold), front
 
 
 # TODO: Add reference point
-def divided_and_conqure(front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
-    ) -> _BoundedVolumes:
+def divided_and_conquer_non_dominated(front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
+                                      ) -> _BoundedVolumes:
     """
     Branch and bound procedure to compute the cells covering the non-dominated region.
     Generic version: works for an arbitrary number of objectives.
@@ -228,69 +240,26 @@ def divided_and_conqure(front: TensorType, jitter: float = DEFAULTS.JITTER, thre
     return _BoundedVolumes(lower_result_final, upper_result_final)
 
 
-def divided_and_conqure_numpy_ver(front: TensorType, jitter: float, threshold: TensorType | float = 0
-    ) -> _BoundedVolumes:
+class HypervolumeBoxDecompositionNonIncremental(_DominatedPartition):
     """
-    Divide and conquer strategy to compute the cells covering the non-dominated region.
-    Generic version: works for an arbitrary number of objectives.
+    A method of partitioning the dominated region.
+
+    The main idea is of using a sort of auxiliary points assosiating to existing Pareto points to
+    describe the Pareto frontier, (which is referred to as local upper bounds in the original context)
+    then, we could use an alternative partition as an replacement of original partition.
+
+    Main reference: Section 2.2.2 of lacour2017box
+    Assumptions
+    One of the assumption made here is no any points have the same value in any dimension
+
+    An implementation of
+    Also noted as LKF17
     """
-    def _is_test_required(smaller):
-        """
-        Tests if a point augments or dominates the Pareto set.
-        :param smaller: a boolean ndarray storing test point < Pareto front
-        :return: True if the test point dominates or augments the Pareto front (boolean)
-        """
-        # if and only if the test point is at least in one dimension smaller for every point in the Pareto set
-        idx_dom_augm = np.any(smaller, axis=1)
-        is_dom_augm = np.all(idx_dom_augm)
 
-        return is_dom_augm
 
-    outdim = front.shape[1]
-    # The divide and conquer algorithm operates on a pseudo Pareto set
-    # that is a mapping of the real Pareto set to discrete values
-    pseudo_pf = np.argsort(front, axis=0) + 1  # +1 as index zero is reserved for the ideal point
-    # Extend front with the ideal and anti-ideal point
-    min_pf = np.min(front, axis=0) - 1
-    max_pf = np.max(front, axis=0) + 1
-    pf_ext = np.vstack((min_pf, front, max_pf))  # Needed for early stopping check (threshold)
-    pf_ext_idx = np.vstack((np.zeros(outdim),
-                            pseudo_pf,
-                            np.ones(outdim) * front.shape[0] + 1))
-    # Start with one cell covering the whole front
-    dc = [(np.zeros(outdim),
-           (int(pf_ext_idx.shape[0]) - 1) * np.ones(outdim))]
-    total_size = np.prod(max_pf - min_pf)
-    # Start divide and conquer until we processed all cells
-    while dc:
-        # Process test cell
-        cell = dc.pop()
-        arr = np.arange(outdim)
-        lb = pf_ext[pf_ext_idx[cell[0], arr], arr]
-        ub = pf_ext[pf_ext_idx[cell[1], arr], arr]
-        # Acceptance test:
-        if _is_test_required((ub - jitter) < front):
-            # Cell is a valid integral bound: store
-            self.bounds.append(pf_ext_idx[cell[0], np.arange(outdim)],
-                               pf_ext_idx[cell[1], np.arange(outdim)])
-        # Reject test:
-        elif _is_test_required((lb + jitter) < front):
-            # Cell can not be discarded: calculate the size of the cell
-            dc_dist = cell[1] - cell[0]
-            hc = _BoundedVolumes(pf_ext[pf_ext_idx[cell[0], np.arange(outdim)], np.arange(outdim)],
-                                pf_ext[pf_ext_idx[cell[1], np.arange(outdim)], np.arange(outdim)])
-            # Only divide when it is not an unit cell and the volume is above the approx. threshold
-            if np.any(dc_dist > 1) and np.all((hc.size()[0] / total_size) > threshold):
-                # Divide the test cell over its largest dimension
-                edge_size, idx = np.max(dc_dist), np.argmax(dc_dist)
-                edge_size1 = int(np.round(edge_size / 2.0))
-                edge_size2 = edge_size - edge_size1
-                # Store divided cells
-                ub = np.copy(cell[1])
-                ub[idx] -= edge_size1
-                dc.append((np.copy(cell[0]), ub))
-                lb = np.copy(cell[0])
-                lb[idx] += edge_size2
-                dc.append((lb, np.copy(cell[1])))
-        # else: cell can be discarded
+class CoperatePartition(_NonDominatedPartition):
+    """
+    Main refer Algorithm 2, Algorithm 3 of yang2019efficient
+    as well as https://github.com/pytorch/botorch/blob/ddc97bb4dc5de8ea1cf0f0d11519b826f6a56868/botorch/utils/multi_objective/box_decompositions/non_dominated.py#L371
+    """
 
