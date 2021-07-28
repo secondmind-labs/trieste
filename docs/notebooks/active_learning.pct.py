@@ -2,7 +2,7 @@
 # # Active Learning
 
 # %% [markdown]
-# Sometimes rather than optimizing a black-box function, we want to learn the function better by reducing our model uncertainty. The one way to do this is by doing sampling in unknown inputs regions (active learning). This notebook demonstrates to perform Bayesian active learning using `trieste`.
+# Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates to perform Bayesian active learning using `trieste`.
 
 # %%
 # %matplotlib inline
@@ -16,7 +16,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 #
-# In this example, we will consider doing active learning for the log branin function.
+# In this example, we will perform active learning for the log Branin function.
 
 
 # %%
@@ -36,7 +36,7 @@ fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
-# We begin our Bayesian active learning steps after evaluating two initial points sampled by Halton sequence.
+# We begin our Bayesian active learning from a two-point initial design built from a space-filling Halton sequence.
 
 # %%
 import trieste
@@ -77,7 +77,10 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Active learning using predictive variance
 #
-# To do our first active learning example, we will use `PredictiveVariance`, one of the simplest active learning acquisition function. the `PredictiveVariance` sample a point on highest determinant of the predictive covariance of our model. Here, we will consider single query point using `PredictiveVariance`, the batch case will be shown later. We can utilize trieste's `BayesianOptimizer` to do the active learning steps.
+# For our first active learning example, we will use a simple acquisition function known as `PredictiveVariance` which chooses points for which we are highly uncertain (i.e. the predictive posterior covariance matrix at these points has large determinant).
+#
+# We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize trieste's `BayesianOptimizer` to do the active learning steps.
+#
 
 # %%
 from trieste.acquisition.optimizer import generate_continuous_optimizer
@@ -106,7 +109,7 @@ query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 
 # %% [markdown]
-# Finally, we can check the performance of our `PredictiveVariance` active learning acquisition function by plotting the predictive variance landscape of our model. We can see how it samples on regions with high variance value.
+# Finally, we can check the performance of our `PredictiveVariance` active learning acquisition function by plotting the predictive variance landscape of our model. We can see how it samples regions for which our model is highly uncertain.
 
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
@@ -135,7 +138,7 @@ for i in range(bo_iter):
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For batch active learning using `PredictiveVariance`, we can set the `num_query_points` with the size of batch we want on the `EfficientGLobalOptimization` rule. The rest step is the same with the single query point of `PredictiveVariance` acquisition function.
+# For batch active learning, we must pass a num_query_points input to our `EfficientGLobalOptimization` rule.
 
 # %%
 bo_iter = 5
@@ -147,11 +150,21 @@ rule = EfficientGlobalOptimization(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
-dataset = result.try_get_final_dataset()
 
+
+# %% [markdown]
+# After that, we can retrieve our final dataset.
+
+# %%
+dataset = result.try_get_final_dataset()
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 
+
+# %% [markdown]
+# Now we can visualize the batch predictive variance using our plotting function.
+
+# %%
 from util.plotting import plot_bo_points, plot_function_2d
 
 for i in range(bo_iter):
