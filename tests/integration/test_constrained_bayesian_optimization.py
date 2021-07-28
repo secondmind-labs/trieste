@@ -66,7 +66,7 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
             CONSTRAINT: Dataset(query_points, constraint(query_points)),
         }
 
-    num_initial_points = 5
+    num_initial_points = 6
     initial_data = observer(search_space.sample(num_initial_points))
 
     def build_model(data):

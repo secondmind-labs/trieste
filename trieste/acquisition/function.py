@@ -602,13 +602,14 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = pof >= self._min_feasibility_probability
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        mean, _ = objective_model.predict(objective_dataset.query_points)
-        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        eta = tf.reduce_min(feasible_mean, axis=0)
 
         return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
 
@@ -1287,7 +1288,8 @@ def gibbon(
     except NotImplementedError:
         raise ValueError(
             """
-            GIBBON only currently supports homoscedastic Gaussian process models.
+            GIBBON only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
             """
         )
 
