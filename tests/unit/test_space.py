@@ -23,7 +23,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.space import Box, DiscreteSearchSpace, OrdinalSearchSpace, SearchSpace
 
 
 class Integers(SearchSpace):
@@ -423,3 +423,29 @@ def test_box_deepcopy() -> None:
     box_copy = copy.deepcopy(box)
     npt.assert_allclose(box.lower, box_copy.lower)
     npt.assert_allclose(box.upper, box_copy.upper)
+
+@pytest.mark.parametrize(
+    "lower, upper", "stepsizes",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2], id="lists"),
+        pytest.param((0.0, 1.0), (1.0, 2.0), (0.1, 0.2), id="tuples"),
+        pytest.param(range(2), range(1, 3), [0.1, 0.2], id="ranges"),
+    ],
+)
+def test_ordinalsearchspace_converts_sequences_to_float64_tensors(lower, upper, stepsizes) -> None:
+    box = OrdinalSearchSpace(lower, upper, stepsizes)
+    assert tf.as_dtype(box.lower.dtype) is tf.float64
+    assert tf.as_dtype(box.upper.dtype) is tf.float64
+    assert tf.as_dtype(box.stepsizes.dtype) is tf.float64
+    npt.assert_array_equal(box.lower, [0.0, 1.0])
+    npt.assert_array_equal(box.upper, [1.0, 2.0])
+    npt.assert_array_equal(box.stepsizes, [0.1, 0.2])
+
+def test_ordinalsearchspace_sampling_return_correct_rounded_points():
+    raise NotImplementedError
+
+def test_ordinalsearchspace_sobol_sampling_return_correct_rounded_points():
+    raise NotImplementedError
+
+def test_ordinalsearchspace_halton_sampling_return_correct_rounded_points():
+    raise NotImplementedError
