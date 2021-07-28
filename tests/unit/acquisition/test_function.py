@@ -847,8 +847,8 @@ def test_single_model_acquisition_function_builder_reprs(function, function_repr
         == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
     )
     assert (
-            repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
-            == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+        repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
+        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
     )
 
 
@@ -1229,7 +1229,9 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_size(
+    at: TensorType,
+) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     builder = ExpectedConstrainedHypervolumeImprovement("", pof, tf.constant(0.5))
     initial_query_points = tf.constant([[-1.0]])
@@ -1272,9 +1274,9 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
     data = {"foo": Dataset(train_x, model_pred_observation)}
     models_ = {"foo": obj_model}
 
-    echvi = ExpectedConstrainedHypervolumeImprovement("foo", _Certainty(), 0).prepare_acquisition_function(
-        data, models_
-    )
+    echvi = ExpectedConstrainedHypervolumeImprovement(
+        "foo", _Certainty(), 0
+    ).prepare_acquisition_function(data, models_)
 
     ehvi = ExpectedHypervolumeImprovement().using("foo").prepare_acquisition_function(data, models_)
 
@@ -1295,9 +1297,9 @@ def test_expected_constrained_hypervolume_improvement_is_constraint_when_no_feas
 
     data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    echvi = ExpectedConstrainedHypervolumeImprovement("foo", _Constraint()).prepare_acquisition_function(
-        data, models_
-    )
+    echvi = ExpectedConstrainedHypervolumeImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(data, models_)
 
     constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
 
