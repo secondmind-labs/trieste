@@ -1244,20 +1244,6 @@ def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_s
         echvi(at)
 
 
-@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
-    num_obj = 2
-    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
-
-    model = _mo_test_model(num_obj, *[None] * num_obj)
-    model_pred_observation = model.predict(train_x)[0]
-    _prt = Pareto(model_pred_observation)
-    ehvi = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ehvi(at)
-
-
 def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
