@@ -37,8 +37,8 @@ Frequently asked questions
 The following tutorials (or sections thereof) explain how to use and extend specific Trieste functionality.
 
 * :doc:`How do I set up a basic Bayesian optimization routine?<notebooks/expected_improvement>`
+* :doc:`How do I set up a batch Bayesian optimization routine?<notebooks/batch_optimization>`
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
-* :ref:`How do I customize the model optimization routine?<notebooks/failure_ego:Create a custom optimize method>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 
 .. toctree::
