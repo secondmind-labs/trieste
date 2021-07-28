@@ -1388,6 +1388,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
         def determinantcovariance(at: TensorType) -> TensorType:
             _, covariance = model.predict_joint(at)
-            return tf.linalg.det(covariance + jitter)
+            return tf.exp(tf.linalg.logdet(covariance + jitter))
 
         return determinantcovariance
