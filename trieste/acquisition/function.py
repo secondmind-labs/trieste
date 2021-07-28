@@ -1378,7 +1378,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         return "PredictiveVariance()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, dataset: Dataset, model: ProbabilisticModel, jitter: float = DEFAULTS.JITTER
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -1388,6 +1388,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
         def determinantcovariance(at: TensorType) -> TensorType:
             _, covariance = model.predict_joint(at)
-            return tf.linalg.det(covariance)
+            return tf.linalg.det(covariance + jitter)
 
         return determinantcovariance
