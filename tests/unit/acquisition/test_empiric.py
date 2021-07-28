@@ -23,9 +23,9 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 
 
-class _ArbitrarySingleModelEmpiric(SingleModelEmpiric[NoReturn]):
-    def acquire(self, dataset: Dataset, model: ProbabilisticModel) -> AcquisitionFunction:
-        return raise_exc
+class _ArbitrarySingleModelEmpiric(SingleModelEmpiric[object]):
+    def acquire(self, dataset: Dataset, model: ProbabilisticModel) -> object:
+        return object()
 
 
 def test_single_model_empiric_raises_immediately_for_wrong_key() -> None:

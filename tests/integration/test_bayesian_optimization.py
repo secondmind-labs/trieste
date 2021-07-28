@@ -63,7 +63,7 @@ from trieste.utils.objectives import (
             10,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                optimizer=empiric.unit(optimizer.default(3)),
+                optimizer.default(3),
             ),
         ),
         (
@@ -75,8 +75,7 @@ from trieste.utils.objectives import (
         (
             10,
             EfficientGlobalOptimization(
-                GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE),
-                optimizer=empiric.unit(optimizer.default(2)),
+                GIBBON(Box([0, 0], [1, 1])).using(OBJECTIVE), optimizer.default(2),
             ),
         ),
         (15, TrustRegion()),

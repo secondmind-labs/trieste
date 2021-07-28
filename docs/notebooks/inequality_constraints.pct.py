@@ -5,7 +5,6 @@
 import numpy as np
 import tensorflow as tf
 
-from trieste.acquisition import empiric
 from trieste.acquisition.empiric import Empiric
 from trieste.acquisition import optimizer
 
@@ -207,7 +206,7 @@ class BatchExpectedConstrainedImprovement(Empiric):
 num_query_points = 4
 batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
 batch_rule = EfficientGlobalOptimization(
-    batch_eci, empiric.unit(optimizer.default(num_query_points))
+    batch_eci, optimizer.default(num_query_points)
 )
 
 # %% [markdown]

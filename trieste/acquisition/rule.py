@@ -115,21 +115,23 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         acquisition: Empiric[AcquisitionFunction]
         | SingleModelEmpiric[AcquisitionFunction] = ExpectedImprovement(),
         optimizer: Empiric[AcquisitionOptimizer[SP_contra]]
-        | SingleModelEmpiric[AcquisitionOptimizer[SP_contra]] = empiric.unit(optimizer.default(1)),
+        | SingleModelEmpiric[AcquisitionOptimizer[SP_contra]]
+        | AcquisitionOptimizer[SP_contra] = optimizer.default(1),
     ):
         """
-        :param builder: The acquisition function builder to use. Defaults to
+        :param acquisition: The acquisition function to use. Defaults to
             :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param optimizer: The optimizer with which to optimize the acquisition function built by
-            ``builder``. This should *maximize* the acquisition function, and must be compatible
-            with the global search space. Defaults to
-            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        :param optimizer: The optimizer with which to optimize the acquisition function.
+            This should *maximize* the acquisition function, and must be compatible
+            with the global search space.
         """
         if isinstance(acquisition, SingleModelEmpiric):
             acquisition = acquisition.using(OBJECTIVE)
 
         if isinstance(optimizer, SingleModelEmpiric):
             optimizer = optimizer.using(OBJECTIVE)
+        elif not isinstance(optimizer, Empiric):
+            optimizer = empiric.unit(optimizer)
 
         self._acquisition = acquisition
         self._optimizer = optimizer

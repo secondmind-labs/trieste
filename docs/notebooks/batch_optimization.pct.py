@@ -75,13 +75,11 @@ model = create_model(model_spec)
 # First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-from trieste.acquisition import BatchMonteCarloExpectedImprovement, empiric, optimizer
+from trieste.acquisition import BatchMonteCarloExpectedImprovement, optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
-batch_ei_acq_rule = EfficientGlobalOptimization(
-    batch_ei_acq, empiric.unit(optimizer.default(10))
-)
+batch_ei_acq_rule = EfficientGlobalOptimization(batch_ei_acq, optimizer.default(10))
 points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
@@ -144,9 +142,7 @@ cbar.set_label("EI", rotation=270)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule = EfficientGlobalOptimization(
-    batch_ei_acq, empiric.unit(optimizer.default(3))
-)
+batch_ei_rule = EfficientGlobalOptimization(batch_ei_acq, optimizer.default(3))
 qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]
