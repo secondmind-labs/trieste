@@ -23,7 +23,7 @@ from tests.util.misc import empty_dataset, raise_exc
 from tests.util.model import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.combination import Product, Reducer, Sum
-from trieste.acquisition.rule import AcquisitionFunctionBuilder
+from trieste.acquisition.empiric import Empiric
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 
@@ -44,7 +44,7 @@ def test_reducer__repr_builders() -> None:
 
         _reduce = raise_exc
 
-    class Builder(AcquisitionFunctionBuilder):
+    class Builder(Empiric[AcquisitionFunction]):
         def __init__(self, name: str):
             self._name = name
 
@@ -60,7 +60,7 @@ def test_reducer__repr_builders() -> None:
     assert repr(Dummy(Builder("foo"), Builder("bar"))) == "Dummy(Builder('foo'), Builder('bar'))"
 
 
-class _Static(AcquisitionFunctionBuilder):
+class _Static(Empiric[AcquisitionFunction]):
     def __init__(self, f: AcquisitionFunction):
         self._f = f
 

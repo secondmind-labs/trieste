@@ -17,7 +17,6 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable
 
 import gpflow
 import numpy.testing as npt
@@ -36,7 +35,7 @@ from tests.util.misc import (
     various_shapes,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from trieste.acquisition.empiric import SingleModelEmpiric, Empiric
+from trieste.acquisition.empiric import Empiric
 from trieste.acquisition.function import (
     GIBBON,
     AcquisitionFunction,
@@ -64,41 +63,6 @@ from trieste.type import TensorType
 from trieste.utils import DEFAULTS
 from trieste.utils.objectives import BRANIN_MINIMUM, branin
 from trieste.utils.pareto import Pareto, get_reference_point
-
-
-class _ArbitrarySingleBuilder(SingleModelEmpiric[AcquisitionFunction]):
-    def acquire(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        return raise_exc
-
-
-def test_single_model_acquisition_builder_raises_immediately_for_wrong_key() -> None:
-    builder = _ArbitrarySingleBuilder().using("foo")
-
-    with pytest.raises(KeyError):
-        builder.acquire(
-            {"bar": empty_dataset([1], [1])}, {"bar": QuadraticMeanAndRBFKernel()}
-        )
-
-
-def test_single_model_acquisition_builder_repr_includes_class_name() -> None:
-    builder = _ArbitrarySingleBuilder()
-    assert type(builder).__name__ in repr(builder)
-
-
-def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_model() -> None:
-    class Builder(SingleModelEmpiric[AcquisitionFunction]):
-        def acquire(
-            self, dataset: Dataset, model: ProbabilisticModel
-        ) -> AcquisitionFunction:
-            assert dataset is data["foo"]
-            assert model is models["foo"]
-            return raise_exc
-
-    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([1], [1])}
-    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
-    Builder().using("foo").acquire(data, models)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
@@ -166,9 +130,7 @@ def test_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
     with pytest.raises(ValueError):
-        AugmentedExpectedImprovement().acquire(
-            data, QuadraticMeanAndRBFKernel()
-        )
+        AugmentedExpectedImprovement().acquire(data, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -461,9 +423,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
     data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
 
-    eci = ExpectedConstrainedImprovement("foo", _Certainty(), 0).acquire(
-        data, models_
-    )
+    eci = ExpectedConstrainedImprovement("foo", _Certainty(), 0).acquire(data, models_)
 
     ei = ExpectedImprovement().using("foo").acquire(data, models_)
 
@@ -481,9 +441,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
 
     eci_data = {"foo": Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(
-        eci_data, models_
-    )
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(eci_data, models_)
 
     ei_data = {"foo": Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))}
     ei = ExpectedImprovement().using("foo").acquire(ei_data, models_)
@@ -505,9 +463,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
     data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
     models_ = {"foo": GaussianProcess([two_global_minima], [rbf()])}
 
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(
-        data, models_
-    )
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(data, models_)
 
     npt.assert_array_less(eci(tf.constant([[-1.0]])), eci(tf.constant([[1.0]])))
 
@@ -540,9 +496,7 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
     data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(
-        data, models_
-    )
+    eci = ExpectedConstrainedImprovement("foo", _Constraint()).acquire(data, models_)
 
     constraint_fn = _Constraint().acquire(data, models_)
 
@@ -841,9 +795,7 @@ def test_gibbon_builder_raises_for_invalid_pending_points_shape(
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space=space)
-    builder.acquire(
-        data, QuadraticMeanAndRBFKernel(), None
-    )  # first initialize
+    builder.acquire(data, QuadraticMeanAndRBFKernel(), None)  # first initialize
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.acquire(data, QuadraticMeanAndRBFKernel(), pending_points)
 
@@ -853,9 +805,7 @@ def test_gibbon_raises_when_called_before_initialization() -> None:
     search_space = Box([0, 0], [1, 1])
     pending_points = tf.zeros([1, 2])
     with pytest.raises(ValueError):
-        GIBBON(search_space).acquire(
-            data, QuadraticMeanAndRBFKernel(), pending_points
-        )
+        GIBBON(search_space).acquire(data, QuadraticMeanAndRBFKernel(), pending_points)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])

@@ -23,8 +23,13 @@ import tensorflow as tf
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.model import QuadraticMeanAndRBFKernel
-from trieste.acquisition import AcquisitionFunction, NegativeLowerConfidenceBound, empiric, optimizer
-from trieste.acquisition.empiric import SingleModelEmpiric, Empiric
+from trieste.acquisition import (
+    AcquisitionFunction,
+    NegativeLowerConfidenceBound,
+    empiric,
+    optimizer,
+)
+from trieste.acquisition.empiric import Empiric, SingleModelEmpiric
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
@@ -123,9 +128,7 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, optimizer.default(1)])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
     class NegQuadratic(SingleModelEmpiric[AcquisitionFunction]):
-        def acquire(
-            self, dataset: Dataset, model: ProbabilisticModel
-        ) -> AcquisitionFunction:
+        def acquire(self, dataset: Dataset, model: ProbabilisticModel) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
     search_space = Box([-10], [10])
@@ -158,34 +161,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
-class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitionBuilder):
-    def acquire(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        pending_points: TensorType = None,
-    ) -> AcquisitionFunction:
-        if pending_points is None:
-            return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
-        else:
-            best_pending_score = tf.reduce_max(model.predict(pending_points)[0])
-            return lambda at: -tf.math.maximum(
-                tf.reduce_max(model.predict(at)[0], axis=-2), best_pending_score
-            )
-
-
-@random_seed
-def test_greedy_batch_acquisition_rule_acquire() -> None:
-    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    num_query_points = 4
-    acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
-    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-        acq, num_query_points=num_query_points
-    )
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
-
-    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+# todo test rule with toy optimizer
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])

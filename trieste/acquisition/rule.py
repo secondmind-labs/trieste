@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar
 
 import tensorflow as tf
 
@@ -32,7 +32,7 @@ from ..space import Box, SearchSpace
 from ..type import TensorType
 from . import empiric, optimizer
 from .empiric import Empiric, SingleModelEmpiric
-from .function import ExpectedImprovement, AcquisitionFunction
+from .function import AcquisitionFunction, ExpectedImprovement
 from .optimizer import AcquisitionOptimizer, generate_continuous_optimizer
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
@@ -113,9 +113,9 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
     def __init__(
         self,
         acquisition: Empiric[AcquisitionFunction]
-                 | SingleModelEmpiric[AcquisitionFunction] = ExpectedImprovement(),
+        | SingleModelEmpiric[AcquisitionFunction] = ExpectedImprovement(),
         optimizer: Empiric[AcquisitionOptimizer[SP_contra]]
-                   | SingleModelEmpiric[AcquisitionOptimizer[SP_contra]] = empiric.unit(optimizer.default(1)),
+        | SingleModelEmpiric[AcquisitionOptimizer[SP_contra]] = empiric.unit(optimizer.default(1)),
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -296,7 +296,9 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     def __init__(
         self,
-        builder: Optional[Empiric[AcquisitionFunction] | SingleModelEmpiric[AcquisitionFunction]] = None,
+        builder: Optional[
+            Empiric[AcquisitionFunction] | SingleModelEmpiric[AcquisitionFunction]
+        ] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         optimizer: AcquisitionOptimizer[Box] | None = None,

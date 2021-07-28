@@ -24,11 +24,11 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from .empiric import SingleModelEmpiric
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
+from .empiric import SingleModelEmpiric
 from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
@@ -56,6 +56,7 @@ def default(batch_size: int) -> AcquisitionOptimizer[SearchSpace]:
             [..., 1].
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
+
     def optimizer(space: SearchSpace, target_func: AcquisitionFunction) -> TensorType:
         if isinstance(space, DiscreteSearchSpace):
             return optimize_discrete(space, target_func)
@@ -249,8 +250,7 @@ def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOpti
 
 
 Penalizer = Callable[
-    [ProbabilisticModel, TensorType, TensorType, TensorType],
-    Callable[[TensorType], TensorType]
+    [ProbabilisticModel, TensorType, TensorType, TensorType], Callable[[TensorType], TensorType]
 ]
 
 
@@ -372,6 +372,7 @@ class LocalPenalization(SingleModelEmpiric[AcquisitionOptimizer[SP]]):
     when first preparing the acquisition function with no pending points. These estimates
     are reused for all subsequent function calls.
     """
+
     def __init__(
         self,
         optimizer: AcquisitionOptimizer[SP],

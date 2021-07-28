@@ -18,10 +18,10 @@ from collections.abc import Mapping, Sequence
 
 import tensorflow as tf
 
-from .empiric import Empiric
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..type import TensorType
+from .empiric import Empiric
 from .function import AcquisitionFunction
 
 
@@ -61,9 +61,7 @@ class Reducer(Empiric[AcquisitionFunction]):
         :param models: The models over each dataset in ``datasets``.
         :return: The reduced acquisition function.
         """
-        functions = tuple(
-            acq.acquire(datasets, models) for acq in self.acquisitions
-        )
+        functions = tuple(acq.acquire(datasets, models) for acq in self.acquisitions)
 
         def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
             return self._reduce_acquisition_functions(at, functions)

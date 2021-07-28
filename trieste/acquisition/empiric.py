@@ -1,3 +1,16 @@
+# Copyright 2020 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Generic, TypeVar
@@ -34,7 +47,6 @@ def unit(t: T) -> Empiric[T]:
 
 
 class SingleModelEmpiric(ABC, Generic[T_co]):
-
     def using(self, tag: str) -> Empiric[T_co]:
         """
         :param tag: The tag for the model and dataset to use.
@@ -55,9 +67,7 @@ class SingleModelEmpiric(ABC, Generic[T_co]):
         return _Anon()
 
     @abstractmethod
-    def acquire(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> T_co:
+    def acquire(self, dataset: Dataset, model: ProbabilisticModel) -> T_co:
         """
         :param dataset: The observer values.
         :param model: The model over the specified ``dataset``.

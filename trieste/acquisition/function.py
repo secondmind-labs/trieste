@@ -17,22 +17,21 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
 from math import inf
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from .empiric import SingleModelEmpiric, Empiric
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
+from .empiric import Empiric, SingleModelEmpiric
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
