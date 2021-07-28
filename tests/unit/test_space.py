@@ -424,8 +424,9 @@ def test_box_deepcopy() -> None:
     npt.assert_allclose(box.lower, box_copy.lower)
     npt.assert_allclose(box.upper, box_copy.upper)
 
+
 @pytest.mark.parametrize(
-    "lower, upper", "stepsizes",
+    "lower, upper, stepsizes",
     [
         pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2], id="lists"),
         pytest.param((0.0, 1.0), (1.0, 2.0), (0.1, 0.2), id="tuples"),
@@ -433,19 +434,60 @@ def test_box_deepcopy() -> None:
     ],
 )
 def test_ordinalsearchspace_converts_sequences_to_float64_tensors(lower, upper, stepsizes) -> None:
-    box = OrdinalSearchSpace(lower, upper, stepsizes)
-    assert tf.as_dtype(box.lower.dtype) is tf.float64
-    assert tf.as_dtype(box.upper.dtype) is tf.float64
-    assert tf.as_dtype(box.stepsizes.dtype) is tf.float64
-    npt.assert_array_equal(box.lower, [0.0, 1.0])
-    npt.assert_array_equal(box.upper, [1.0, 2.0])
-    npt.assert_array_equal(box.stepsizes, [0.1, 0.2])
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    assert tf.as_dtype(ordinalsp.lower.dtype) is tf.float64
+    assert tf.as_dtype(ordinalsp.upper.dtype) is tf.float64
+    assert tf.as_dtype(ordinalsp.stepsizes.dtype) is tf.float64
+    npt.assert_array_equal(ordinalsp.lower, [0.0, 1.0])
+    npt.assert_array_equal(ordinalsp.upper, [1.0, 2.0])
+    npt.assert_array_equal(ordinalsp.stepsizes, [0.1, 0.2])
 
-def test_ordinalsearchspace_sampling_return_correct_rounded_points():
-    raise NotImplementedError
 
-def test_ordinalsearchspace_sobol_sampling_return_correct_rounded_points():
-    raise NotImplementedError
+@pytest.mark.parametrize(
+    "lower, upper, stepsizes",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
+        pytest.param([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3]),
+        pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
+    ],
+)
+def test_ordinalsearchspace_sampling_return_correct_rounded_points(lower, upper, stepsizes):
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    boxsp = Box(lower, upper)
+    tf.random.set_seed(0)
+    ordinalsample = ordinalsp.sample(5)
+    tf.random.set_seed(0)
+    boxsample = boxsp.sample(5)
+    npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
 
-def test_ordinalsearchspace_halton_sampling_return_correct_rounded_points():
-    raise NotImplementedError
+
+@pytest.mark.parametrize(
+    "lower, upper, stepsizes",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
+        pytest.param([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3]),
+        pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
+    ],
+)
+def test_ordinalsearchspace_sobol_sampling_return_correct_rounded_points(lower, upper, stepsizes):
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    box = Box(lower, upper)
+    ordinalsample = ordinalsp.sample_sobol(5, skip=0)
+    boxsample = box.sample_sobol(5, skip=0)
+    npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
+
+
+@pytest.mark.parametrize(
+    "lower, upper, stepsizes",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
+        pytest.param([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3]),
+        pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
+    ],
+)
+def test_ordinalsearchspace_halton_sampling_return_correct_rounded_points(lower, upper, stepsizes):
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    box = Box(lower, upper)
+    ordinalsample = ordinalsp.sample_halton(5, seed=0)
+    boxsample = box.sample_halton(5, seed=0)
+    npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
