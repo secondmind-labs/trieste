@@ -171,7 +171,8 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         outputs = []
         for index, network in enumerate(self._networks):
 
-            input_tensor = network.gen_input_tensor()
+            name = network.input_tensor_spec.name + "_" + str(index)
+            input_tensor = network.gen_input_tensor(name)
             inputs.append(input_tensor)
 
             input_layer = tf.keras.layers.Flatten(dtype=network.input_tensor_spec.dtype)(
