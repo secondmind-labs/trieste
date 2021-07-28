@@ -104,7 +104,7 @@ points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_sin
 # %%
 from trieste.acquisition import GIBBON
 
-gibbon_acq = GIBBON(search_space)
+gibbon_acq = GIBBON(search_space, big_batch=True)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=gibbon_acq)
 points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(

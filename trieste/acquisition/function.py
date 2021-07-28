@@ -1321,11 +1321,16 @@ def gibbon(
             rho_squared: TensorType, gamma: TensorType
         ) -> TensorType:  # calculate GIBBON's quality term
             normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            minus_cdf = 1 - normal.cdf(gamma)
-            minus_cdf = tf.clip_by_value(
-                minus_cdf, CLAMP_LB, 1
-            )  # clip below to improve numerical stability
-            ratio = normal.prob(gamma) / minus_cdf
+            log_minus_cdf = normal.log_cdf(-gamma)
+            # minus_cdf = tf.clip_by_value(
+            #     minus_cdf, CLAMP_LB, 1
+            # )  # clip below to improve numerical stability
+            ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+
+
+
+
+
             inner_log = 1 + rho_squared * ratio * (gamma - ratio)
             acq = -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)
 
@@ -1354,8 +1359,8 @@ def gibbon(
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
             if big_batch:
-                batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=fmean.dtype)
-                repulsion_weight = (1 / batch_size) ** (tf.math.log(search_space_dim))
+                batch_size = tf.cast(tf.shape(pending_points)[0], dtype=fmean.dtype)
+                repulsion_weight = (1 / batch_size) ** (2)
             else:
                 repulsion_weight = 1.0
 
