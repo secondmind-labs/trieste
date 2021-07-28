@@ -25,7 +25,7 @@ from util.plotting_plotly import plot_function_plotly
 search_space = trieste.space.Box([0, 0], [pi, pi])
 
 fig = plot_function_plotly(
-    michalewicz, search_space.lower, search_space.upper, grid_density=20
+    michalewicz, search_space.lower, search_space.upper, grid_density=100
 )
 fig.update_layout(height=1000, width=1000)
 fig.show()
@@ -113,11 +113,16 @@ from util.plotting import plot_function_2d, plot_bo_points
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
-fig, ax = plot_function_2d(
-    michalewicz, search_space.lower, search_space.upper, grid_density=30, contour=True
+_, ax = plot_function_2d(
+    michalewicz,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+    contour=True,
+    figsize=(14,10),
 )
-fig.show()
 plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
+
 
 
 # %% [markdown]
@@ -127,7 +132,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 from util.plotting_plotly import plot_keras_plotly, add_bo_points_plotly
 
 fig = plot_keras_plotly(
-    result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
+    model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30
@@ -142,6 +147,7 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
+fig.update_layout(height=1000, width=1000)
 fig.show()
 
 # %% [markdown]
