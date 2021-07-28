@@ -13,7 +13,7 @@ tf.random.set_seed(1793)
 # ## Define the problem and model
 #
 # Gaussian processes as a surrogate models are hard to beat on smaller datasets and optimization budgets. In some cases datasets might be larger, objective functions might be non-stationary or predictions need to be made quickly. Vanilla Gaussian processes scale poorly with amount of data, cannot easily capture nonstationarities and they are rather slow at prediction time. Here we show how recently developed uncertainty-aware neural networks can be used for Bayesian optimisation.
-
+#
 # In this example, we look to find the minimum value of the two-dimensional version of Michalewicz function over the hypercube $[0, \pi]^2$. We can represent the search space using a `Box`, and plot contours of the Michalewicz over this space. The Michalewicz function features sharp discountinuities that are difficult to capture with Gaussian processes.
 
 # %%

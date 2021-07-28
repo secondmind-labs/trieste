@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go

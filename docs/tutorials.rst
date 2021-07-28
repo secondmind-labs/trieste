@@ -28,6 +28,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/inequality_constraints
    notebooks/failure_ego
    notebooks/multi_objective_ehvi
+   notebooks/deep_neural_networks
 
 Frequently asked questions
 --------------------------
@@ -37,6 +38,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`How do I set up a basic Bayesian optimization routine?<notebooks/expected_improvement>`
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :ref:`How do I customize the model optimization routine?<notebooks/failure_ego:Create a custom optimize method>`
+* :ref:`Can I use neural networks instead of Gaussian processes?<notebooks/deep_neural_networks>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 
 .. toctree::
