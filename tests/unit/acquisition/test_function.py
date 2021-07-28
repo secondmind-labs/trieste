@@ -44,6 +44,7 @@ from trieste.acquisition.function import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
@@ -455,16 +456,30 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
         ProbabilityOfFeasibility(threshold)
 
 
-def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> None:
+@pytest.mark.parametrize(
+    "function",
+    [
+        ExpectedConstrainedImprovement,
+        ExpectedConstrainedHypervolumeImprovement,
+    ],
+)
+def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(ValueError):
-        ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+        function("", pof, tf.constant([0.0]))
 
 
-def test_expected_constrained_improvement_raises_for_out_of_range_min_pof() -> None:
+@pytest.mark.parametrize(
+    "function",
+    [
+        ExpectedConstrainedImprovement,
+        ExpectedConstrainedHypervolumeImprovement,
+    ],
+)
+def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(function) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(ValueError):
-        ExpectedConstrainedImprovement("", pof, 1.5)
+        function("", pof, 1.5)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -542,7 +557,14 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
     npt.assert_array_less(eci(tf.constant([[-1.0]])), eci(tf.constant([[1.0]])))
 
 
-def test_expected_constrained_improvement_raises_for_empty_data() -> None:
+@pytest.mark.parametrize(
+    "function",
+    [
+        ExpectedConstrainedImprovement,
+        ExpectedConstrainedHypervolumeImprovement,
+    ],
+)
+def test_expected_constrained_improvement_raises_for_empty_data(function) -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -551,7 +573,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
 
     data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    builder = ExpectedConstrainedImprovement("foo", _Constraint())
+    builder = function("foo", _Constraint())
 
     with pytest.raises(ValueError):
         builder.prepare_acquisition_function(data, models_)
@@ -690,7 +712,7 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
         ),
     ],
 )
-def test_expected_hypervolume_improvement(
+def test_expected_hypervolume_improvement_matches_monte_carlo(
     input_dim: int,
     num_samples_per_point: int,
     existing_observations: tf.Tensor,
@@ -1032,6 +1054,10 @@ def test_single_model_acquisition_function_builder_reprs(function, function_repr
     assert (
         repr(ExpectedConstrainedImprovement("TAG", function.using("TAG"), 0.0))
         == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+    )
+    assert (
+        repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
+        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
     )
 
 
@@ -1409,3 +1435,68 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
         npt.assert_array_almost_equal(
             calculated_batch_gibbon[i : i + 1], reconstructed_batch_gibbon
         )
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_size(
+    at: TensorType,
+) -> None:
+    pof = ProbabilityOfFeasibility(0.0).using("")
+    builder = ExpectedConstrainedHypervolumeImprovement("", pof, tf.constant(0.5))
+    initial_query_points = tf.constant([[-1.0]])
+    initial_objective_function_values = tf.constant([[1.0, 1.0]])
+    data = {"": Dataset(initial_query_points, initial_objective_function_values)}
+
+    echvi = builder.prepare_acquisition_function(data, {"": QuadraticMeanAndRBFKernel()})
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        echvi(at)
+
+
+def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+
+    obj_model = _mo_test_model(num_obj, *[None] * num_obj)
+    model_pred_observation = obj_model.predict(train_x)[0]
+
+    class _Certainty(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            return lambda x: tf.ones_like(tf.squeeze(x, -2))
+
+    data = {"foo": Dataset(train_x, model_pred_observation)}
+    models_ = {"foo": obj_model}
+
+    echvi = ExpectedConstrainedHypervolumeImprovement(
+        "foo", _Certainty(), 0
+    ).prepare_acquisition_function(data, models_)
+
+    ehvi = ExpectedHypervolumeImprovement().using("foo").prepare_acquisition_function(data, models_)
+
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
+    npt.assert_allclose(echvi(at), ehvi(at))
+
+
+def test_echvi_is_constraint_when_no_feasible_points() -> None:
+    class _Constraint(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        ) -> AcquisitionFunction:
+            def acquisition(x: TensorType) -> TensorType:
+                x_ = tf.squeeze(x, -2)
+                return tf.cast(tf.logical_and(0.0 <= x_, x_ < 1.0), x.dtype)
+
+            return acquisition
+
+    data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
+    models_ = {"foo": QuadraticMeanAndRBFKernel()}
+    echvi = ExpectedConstrainedHypervolumeImprovement(
+        "foo", _Constraint()
+    ).prepare_acquisition_function(data, models_)
+
+    constraint_fn = _Constraint().prepare_acquisition_function(data, models_)
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    npt.assert_allclose(echvi(xs), constraint_fn(xs))

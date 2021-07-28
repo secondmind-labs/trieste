@@ -865,6 +865,60 @@ def batch_ehvi(
     return acquisition
 
 
+class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
+    """
+    Builder for the constrained expected hypervolume improvement acquisition function.
+    This function essentially combines ExpectedConstrainedImprovement and
+    ExpectedHypervolumeImprovement.
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+            f"{self._constraint_builder!r},"
+            f" {self._min_feasibility_probability!r})"
+        )
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer. Must be populated.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The expected constrained hypervolume improvement acquisition function.
+            This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise ValueError: If the objective data is empty.
+        """
+
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        if len(objective_dataset) == 0:
+            raise ValueError(
+                "Expected hypervolume improvement is defined with respect to existing points in"
+                "  the objective data, but the objective data is empty."
+            )
+
+        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        if not tf.reduce_any(is_feasible):
+            return constraint_fn
+
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+
+        _pf = Pareto(feasible_mean)
+        _reference_pt = get_reference_point(_pf.front)
+        ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
+        return lambda at: ehvi(at) * constraint_fn(at)
+
+
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
