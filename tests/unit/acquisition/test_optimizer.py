@@ -40,6 +40,10 @@ def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> N
         generate_random_search_optimizer(num_samples=-5)
 
 
+def _jerky_function() -> AcquisitionFunction:
+    return lambda x: tf.random.normal([tf.shape(x)[0], 1], 0, 1, tf.float64)
+
+
 @random_seed
 @pytest.mark.parametrize(
     "search_space, shift, expected_maximizer, optimizers",
@@ -141,9 +145,27 @@ def test_continuous_optimizer(
     expected_maximizer: list[list[float]],
     optimizer: AcquisitionOptimizer,
 ) -> None:
-
     maximizer = optimizer(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "optimizer",
+    [
+        generate_continuous_optimizer(),
+        generate_continuous_optimizer(num_restarts=3),
+        generate_continuous_optimizer(sigmoid=True),
+        generate_continuous_optimizer(sigmoid=True, num_restarts=3),
+        generate_continuous_optimizer(sigmoid=True, num_restarts=1, num_initial_samples=1),
+    ],
+)
+def test_optimize_continuous_raises_for_impossible_optimization(
+    optimizer: AcquisitionOptimizer,
+) -> None:
+    search_space = Box([-1], [2])
+    with pytest.raises(ValueError):
+        optimizer(search_space, _jerky_function())
 
 
 def test_optimize_batch_raises_with_invalid_batch_size() -> None:

@@ -162,7 +162,7 @@ def generate_continuous_optimizer(
             return -target_func(bijector.forward(variable[:, None, :]))  # [1]
 
         chosen_points = tf.ones([0, len(space.lower)], dtype=trial_search_space.dtype)  # [0, D]
-        for i in tf.range(num_restarts):  # restart optimization
+        for i in tf.range(num_restarts):  # perfom optimization from chosen starting points
             variable.assign(bijector.inverse(initial_points[i : i + 1]))  # [1, D]
             gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
             chosen_points = tf.concat(
@@ -170,8 +170,23 @@ def generate_continuous_optimizer(
             )  # [i+1, D]
 
         chosen_func_values = target_func(chosen_points[:, None, :])  # [num_restarts, 1]
+        chosen_point = tf.gather(chosen_points, tf.argmax(chosen_func_values))  # [1, D]
 
-        return tf.gather(chosen_points, tf.argmax(chosen_func_values))  # [1, D]
+        fail_count = 0
+        while tf.reduce_any(tf.math.is_nan(chosen_point)):  # repeat optimization if failed
+            variable.assign(bijector.inverse(space.sample(1)[i : i + 1]))  # random start
+            gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
+            chosen_point = bijector.forward(variable)
+            fail_count += 1
+            if fail_count == 5:
+                raise ValueError(
+                    f"""
+                    Acquisition function optimization failed,
+                    even after {fail_count + num_restarts} restarts.
+                    """
+                )
+
+        return chosen_point
 
     return optimize_continuous
 
