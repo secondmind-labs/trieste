@@ -491,3 +491,61 @@ def test_ordinalsearchspace_halton_sampling_return_correct_rounded_points(lower,
     ordinalsample = ordinalsp.sample_halton(5, seed=0)
     boxsample = box.sample_halton(5, seed=0)
     npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
+
+
+@pytest.mark.parametrize(
+    "bound_shape, stepsizes_shape",
+    _pairs_of_shapes(excluding_ranks={1}) | {((1,), (2,)), ((0,), (0,))},
+)
+def test_ordinal_raises_if_stepsizes_have_invalid_shape(
+    bound_shape: ShapeLike, stepsizes_shape: ShapeLike
+) -> None:
+    lower, upper = tf.zeros(bound_shape), tf.ones(bound_shape)
+    stepsizes = tf.fill(stepsizes_shape, 0.1)
+    with pytest.raises(ValueError):
+        OrdinalSearchSpace(lower, upper, stepsizes)
+
+
+def test_ordinal_bounds_and_stepsizes_attributes() -> None:
+    lower, upper, stepsizes = tf.zeros([2]), tf.ones([2]), tf.fill([2], 0.1)
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    npt.assert_array_equal(ordinalsp.lower, lower)
+    npt.assert_array_equal(ordinalsp.upper, upper)
+    npt.assert_array_equal(ordinalsp.stepsizes, stepsizes)
+
+
+def test_ordinal_contains_point():
+    return NotImplementedError
+
+
+def test_ordinal_does_not_contain_point():
+    return NotImplementedError
+
+
+def test_ordinal___mul___bounds_are_the_concatenation_of_original_bounds() -> None:
+    ordinalsp1 = OrdinalSearchSpace(
+        tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]), tf.constant([0.1, 0.2])
+    )
+    ordinalsp2 = OrdinalSearchSpace(
+        tf.constant([4.1, 5.1, 6.1]), tf.constant([7.2, 8.2, 9.2]), tf.constant([0.3, 0.4, 0.5])
+    )
+
+    product = ordinalsp1 * ordinalsp2
+
+    npt.assert_allclose(product.lower, [0, 1, 4.1, 5.1, 6.1])
+    npt.assert_allclose(product.upper, [2, 3, 7.2, 8.2, 9.2])
+    npt.assert_allclose(product.stepsizes, [0.1, 0.2, 0.3, 0.4, 0.5])
+
+
+def test_ordinal___mul___raises_if_bounds_have_different_types() -> None:
+    ordinalsp1 = OrdinalSearchSpace(
+        tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]), tf.constant([0.1, 0.2])
+    )
+    ordinalsp2 = OrdinalSearchSpace(
+        tf.constant([4.0, 5.0], tf.float64),
+        tf.constant([6.0, 7.0], tf.float64),
+        tf.constant([0.15, 0.25], tf.float64),
+    )
+
+    with pytest.raises(TypeError):
+        _ = ordinalsp1 * ordinalsp2

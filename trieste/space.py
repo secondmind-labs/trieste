@@ -384,7 +384,8 @@ class OrdinalSearchSpace(Box):
         """
 
         super().__init__(lower, upper)
-        tf.debugging.assert_shapes([(stepsizes, ["D"])])
+        tf.debugging.assert_shapes([(lower, ["D"]), (stepsizes, ["D"])])
+        tf.assert_rank(stepsizes, 1)
 
         if isinstance(stepsizes, Sequence):
             self._stepsizes = tf.constant(stepsizes, dtype=tf.float64)
