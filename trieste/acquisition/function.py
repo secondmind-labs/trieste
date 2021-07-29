@@ -892,7 +892,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         tf.debugging.assert_positive(
             len(objective_dataset),
             message="Expected hypervolume improvement is defined with respect to existing points in"
-                    " the objective data, but the objective data is empty."
+            " the objective data, but the objective data is empty.",
         )
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
