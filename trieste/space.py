@@ -401,7 +401,7 @@ class OrdinalSearchSpace(Box):
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
-            from this search space. Rounded by the ``stepsize``.
+            from this search space.
         """
         samples = super().sample(num_samples)
         samples = tf.round(samples / self._stepsizes) * self._stepsizes
