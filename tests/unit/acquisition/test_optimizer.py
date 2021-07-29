@@ -26,6 +26,7 @@ from trieste.acquisition.optimizer import (
     generate_continuous_optimizer,
     generate_random_search_optimizer,
     optimize_discrete,
+    FailedOptimizationError,
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
@@ -41,7 +42,7 @@ def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> N
 
 
 def _jerky_function() -> AcquisitionFunction:
-    return lambda x: tf.random.normal([tf.shape(x)[0], 1], 0, 1, tf.float64)
+    return lambda x: tf.random.normal([len(x), 1], 0, 1, tf.float64)
 
 
 @random_seed
@@ -163,8 +164,8 @@ def test_continuous_optimizer(
 def test_optimize_continuous_raises_for_impossible_optimization(
     optimizer: AcquisitionOptimizer,
 ) -> None:
-    search_space = Box([-1], [2])
-    with pytest.raises(ValueError):
+    search_space = Box([-1,-1], [2,2])
+    with pytest.raises(FailedOptimizationError):
         optimizer(search_space, _jerky_function())
 
 

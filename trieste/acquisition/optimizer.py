@@ -21,8 +21,11 @@ from typing import Callable, TypeVar
 
 import gpflow
 import scipy.optimize as spo
+
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
 from ..type import TensorType
@@ -30,6 +33,11 @@ from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
+
+
+class FailedOptimizationError(Exception):
+    """Raised when an acquisition optimizer fails to optimize"""
+    pass
 
 
 AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
@@ -152,41 +160,56 @@ def generate_continuous_optimizer(
         if sigmoid:  # use scipy's L-BFGS optimizer with a sigmoid transform
             bijector = tfp.bijectors.Sigmoid(low=space.lower, high=space.upper)
             opt_kwargs = {}
-        else:
+        else: # use scipy's L-BFGS-B optimizer
             bijector = tfp.bijectors.Identity()
             opt_kwargs = {"bounds": spo.Bounds(space.lower, space.upper)}
+
 
         variable = tf.Variable(bijector.inverse(initial_points[0:1]))  # [1, D]
 
         def _objective() -> TensorType:
             return -target_func(bijector.forward(variable[:, None, :]))  # [1]
 
-        chosen_points = tf.ones([0, len(space.lower)], dtype=trial_search_space.dtype)  # [0, D]
-        for i in tf.range(num_restarts):  # perfom optimization from chosen starting points
-            variable.assign(bijector.inverse(initial_points[i : i + 1]))  # [1, D]
-            gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
-            chosen_points = tf.concat(
-                [chosen_points, bijector.forward(variable)], axis=0
-            )  # [i+1, D]
+        def _perform_optimization(starting_point: TensorType) -> OptimizeResult:
+            variable.assign(bijector.inverse(starting_point))  # [1, D]
+            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
 
-        chosen_func_values = target_func(chosen_points[:, None, :])  # [num_restarts, 1]
-        chosen_point = tf.gather(chosen_points, tf.argmax(chosen_func_values))  # [1, D]
+
+        pass_count = 0
+        chosen_point = bijector.forward(variable) # [1, D]
+        chosen_point_score =  target_func(chosen_point[:, None, :])  # [1, 1]
+
+        for i in tf.range(num_restarts):  # perform optimization for each chosen starting point
+            opt_result = _perform_optimization(initial_points[i : i + 1])
+            if opt_result.success: 
+                pass_count +=1
+
+                new_point = bijector.forward(variable) # [1, D]
+                new_point_score = target_func(new_point[:, None, :]) # [1, 1]
+                
+                if new_point_score > chosen_point_score: # if found a better point then keep
+                    chosen_point = new_point # [1, D]
+                    chosen_point_score = new_point_score  # [1, 1]
+
 
         fail_count = 0
-        while tf.reduce_any(tf.math.is_nan(chosen_point)):  # repeat optimization if failed
-            variable.assign(bijector.inverse(space.sample(1)[i : i + 1]))  # random start
-            gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
-            chosen_point = bijector.forward(variable)
-            fail_count += 1
+        while pass_count==0: # if all optimizations failed then try from random start
+            opt_result = _perform_optimization(space.sample(1)) 
+            if opt_result.success: 
+                pass_count +=1
+                chosen_point = bijector.forward(variable) # [1, D]
+            else:
+                fail_count += 1
+
             if fail_count == 5:
-                raise ValueError(
+                raise FailedOptimizationError(
                     f"""
                     Acquisition function optimization failed,
                     even after {fail_count + num_restarts} restarts.
                     """
                 )
 
-        return chosen_point
+        return chosen_point # [1, D]
 
     return optimize_continuous
 
