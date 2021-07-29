@@ -41,6 +41,7 @@ from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
+    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,

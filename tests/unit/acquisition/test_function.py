@@ -36,11 +36,13 @@ from tests.util.misc import (
     various_shapes,
 )
 from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.sampler import PseudoBatchReparametrizationSampler
 from trieste.acquisition.function import (
     GIBBON,
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
+    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedConstrainedImprovement,
@@ -55,6 +57,7 @@ from trieste.acquisition.function import (
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     augmented_expected_improvement,
+    batch_ehvi,
     expected_hv_improvement,
     expected_improvement,
     gibbon,
@@ -759,6 +762,212 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
     ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=0.01, atol=0.01)
+
+
+def test_qehvi_builder_raises_for_empty_data() -> None:
+    num_obj = 3
+    dataset = empty_dataset([2], [num_obj])
+    model = QuadraticMeanAndRBFKernel()
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size)
+
+
+def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_jitter() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(100, jitter=-1.0)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "input_dim, num_samples_per_point, training_input, obj_num, variance_scale",
+    [
+        pytest.param(
+            1,
+            50_000,
+            tf.constant([[0.3], [0.22], [0.1], [0.35]]),
+            2,
+            1.0,
+            id="1d_input_2obj_model_var_1_q_1",
+        ),
+        pytest.param(
+            1,
+            50_000,
+            tf.constant([[0.3], [0.22], [0.1], [0.35]]),
+            2,
+            2.0,
+            id="1d_input_2obj_model_var_2_q_1",
+        ),
+        pytest.param(
+            2,
+            50_000,
+            tf.constant([[0.0, 0.0], [0.2, 0.5]]),
+            2,
+            1.0,
+            id="2d_input_2obj_model_var_1_q_1",
+        ),
+        pytest.param(
+            3,
+            25_000,
+            tf.constant([[0.0, 0.0, 0.2], [-0.2, 0.5, -0.1], [0.2, -0.5, 0.2]]),
+            3,
+            1.0,
+            id="3d_input_3obj_model_var_1_q_1",
+        ),
+    ],
+)
+def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
+    input_dim: int,
+    num_samples_per_point: int,
+    training_input: tf.Tensor,
+    obj_num: int,
+    variance_scale: float,
+) -> None:
+    data_num_seg_per_dim = 10  # test data number per input dim
+
+    model = _mo_test_model(obj_num, *[variance_scale] * obj_num)
+
+    mean, _ = model.predict(training_input)  # gen prepare Pareto
+    _model_based_tr_dataset = Dataset(training_input, mean)
+
+    _model_based_pareto = Pareto(mean)
+    _reference_pt = get_reference_point(_model_based_pareto.front)
+
+    qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=num_samples_per_point)
+    qehvi_acq = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)
+    ehvi_acq = expected_hv_improvement(model, _model_based_pareto, _reference_pt)
+
+    test_xs = tf.convert_to_tensor(
+        list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)),
+        dtype=training_input.dtype,
+    )  # [test_num, input_dim]
+    test_xs = tf.expand_dims(test_xs, -2)  # add Batch dim: q=1
+
+    npt.assert_allclose(ehvi_acq(test_xs), qehvi_acq(test_xs), rtol=1e-2, atol=1e-2)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "test_input, obj_samples, pareto_front_obs, reference_point, expected_output",
+    [
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-6.5, -4.5], [-7.0, -4.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[1.75]]),
+            id="q_2, both points contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-6.5, -4.5], [-6.0, -4.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[1.5]]),
+            id="q_2, only 1 point contributes",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-2.0, -2.0], [0.0, -0.1]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[0.0]]),
+            id="q_2, neither contributes",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-6.5, -4.5], [-9.0, -2.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[2.0]]),
+            id="obj_2_q_2, test input better than current-best first objective",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-6.5, -4.5], [-6.0, -6.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[8.0]]),
+            id="obj_2_q_2, test input better than current best second objective",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 3, 1)),
+            tf.constant([[[-6.5, -4.5], [-9.0, -2.0], [-7.0, -4.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[2.25]]),
+            id="obj_2_q_3, all points contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 3, 1)),
+            tf.constant([[[-6.5, -4.5], [-9.0, -2.0], [-7.0, -5.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[3.5]]),
+            id="obj_2_q_3, not all points contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 3, 1)),
+            tf.constant([[[-0.0, -4.5], [-1.0, -2.0], [-3.0, -0.0]]]),
+            tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
+            tf.constant([0.0, 0.0]),
+            tf.constant([[0.0]]),
+            id="obj_2_q_3, none contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-1.0, -1.0, -1.0], [-2.0, -2.0, -2.0]]]),
+            tf.constant([[-4.0, -2.0, -3.0], [-3.0, -5.0, -1.0], [-2.0, -4.0, -2.0]]),
+            tf.constant([1.0, 1.0, 1.0]),
+            tf.constant([[0.0]]),
+            id="obj_3_q_2, none contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant([[[-1.0, -2.0, -6.0], [-1.0, -3.0, -4.0]]]),
+            tf.constant([[-4.0, -2.0, -3.0], [-3.0, -5.0, -1.0], [-2.0, -4.0, -2.0]]),
+            tf.constant([1.0, 1.0, 1.0]),
+            tf.constant([[22.0]]),
+            id="obj_3_q_2, all points contribute",
+        ),
+        pytest.param(
+            tf.zeros(shape=(1, 2, 1)),
+            tf.constant(
+                [[[-2.0, -3.0, -7.0], [-2.0, -4.0, -5.0]], [[-1.0, -2.0, -6.0], [-1.0, -3.0, -4.0]]]
+            ),
+            tf.constant([[-4.0, -2.0, -3.0], [-3.0, -5.0, -1.0], [-2.0, -4.0, -2.0]]),
+            tf.constant([1.0, 1.0, 1.0]),
+            tf.constant([[41.0]]),
+            id="obj_3_q_2, mc sample size=2",
+        ),
+    ],
+)
+def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified_samples(
+    test_input: TensorType,
+    obj_samples: TensorType,
+    pareto_front_obs: TensorType,
+    reference_point: TensorType,
+    expected_output: TensorType,
+) -> None:
+    npt.assert_allclose(
+        batch_ehvi(
+            PseudoBatchReparametrizationSampler(obj_samples),
+            sampler_jitter=DEFAULTS.JITTER,
+            pareto=Pareto(pareto_front_obs),
+            reference_point=reference_point,
+        )(test_input),
+        expected_output,
+        rtol=1e-5,
+        atol=1e-5,
+    )
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
