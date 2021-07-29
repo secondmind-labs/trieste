@@ -880,21 +880,20 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         :param datasets: The data from the observer. Must be populated.
         :param models: The models over each dataset in ``datasets``.
         :return: The expected constrained hypervolume improvement acquisition function.
-            This function will raise
-            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
+            This function will raise :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError`
+            if used with a batch size greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
-        :raise ValueError: If the objective data is empty.
+        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
-        if len(objective_dataset) == 0:
-            raise ValueError(
-                "Expected hypervolume improvement is defined with respect to existing points in"
-                "  the objective data, but the objective data is empty."
-            )
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected hypervolume improvement is defined with respect to existing points in"
+                    " the objective data, but the objective data is empty."
+        )
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
