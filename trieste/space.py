@@ -343,8 +343,20 @@ class Box(SearchSpace):
 
 class OrdinalSearchSpace(Box):
     r"""
-    Ordinal search space representing a :math:`D`-dimensional box in
-    :math:`\mathbb{R}^D`. This class inherit :class:`Box`
+    Ordinal search space representing a discrete :math:`D`-dimensional box in
+    :math:`\mathbb{R}^D`. This class inherit :class:`Box` and generates evenly-spaced value
+    in an interval for each dimension. For example randomly sample from this search space
+    will give:
+
+        >>> ordinalsp = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
+        >>> sample = ordinalsp.sample(5)
+        >>> sample.numpy()
+        array([ [ 0.2, -0.9],
+                [-1.4,  0.6],
+                [-2. , -1.5],
+                [ 2. , -0.3],
+                [ 0.2,  0. ]])
+
     """
 
     def __init__(
