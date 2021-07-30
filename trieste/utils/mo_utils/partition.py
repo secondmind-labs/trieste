@@ -2,11 +2,14 @@
  region in multi-objective optimization, assuming a front is given upfront """
 from __future__ import annotations
 
+from abc import ABC
+from math import inf
+
 import tensorflow as tf
+from typing_extensions import Final
+
 from trieste.type import TensorType
 from trieste.utils.misc import DEFAULTS
-from typing_extensions import Final
-from abc import ABC
 
 
 # TODO: Make sure if we need the index
@@ -143,10 +146,9 @@ class DividedAndConquerNonDominated(_Partition):
 
         return divide_conquer_cells_final
 
-    def __call__(self, front: TensorType, jitter: float = DEFAULTS.JITTER,
-                 threshold: TensorType | float = 0
-                 ):
-
+    def __call__(
+            self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
+    ):
         len_front, number_of_objectives = front.shape
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
@@ -225,7 +227,7 @@ class DividedAndConquerNonDominated(_Partition):
         return _BoundedVolumes(lower_result_final, upper_result_final), front
 
 
-class HypervolumeBoxDecompositionIncremental(_DominatedPartition):
+class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
     """
     A method of partitioning the dominated region.
 
@@ -237,36 +239,54 @@ class HypervolumeBoxDecompositionIncremental(_DominatedPartition):
     Assumptions
     One of the assumption made here is no any points have the same value in any dimension
 
-    An implementation of
-    Also referred to as HBDA-I
+
+    An implementation of incremental strategy proposed in lacour2017box, this approach support and update
+    fashion of inserting new front points with a little bit more computational effort compared to its non incremental
+    counterpart
     """
-    def __call__(self, front: TensorType, reference_point: TensorType):
-        # initialize U set and Z set with reference point
+    def __init__(self, front: TensorType, reference_point: TensorType):
+        tf.debugging.assert_shapes([(reference_point, ["D"])])
         tf.debugging.assert_greater_equal(reference_point, front)
 
-        # this assumes minimization
-        # initialize local upper bounds
-        # initialize defining points to be the dummy points \hat{z} that are
-        # defined in Sec 2.1 in [Lacour17]_. Note that in [Lacour17]_, outcomes
-        # are assumed to be between [0,1], so they used 0 rather than -inf.
-        self._Z = tf.zeros(
-            (1, front.shape[-1], front.shape[-1]),
-            dtype=front.dtype)
-        for j in range(self.ref_point.shape[-1]):
-            # use ref point for maximization as the ideal point for minimization.
-            self._Z[0, j] = float("-inf")
-            self._Z[0, j, j] = self._U[0, j]
-        # incrementally update local upper bounds and defining points
-        # for each new Pareto point
-        self._U, self._Z = update_local_upper_bounds_incremental(
-            new_front_points=front,
-            u_set=self._U,
-            z_set=self._Z,
+        self._reference_point = reference_point
+        self.U_set = reference_point[
+            tf.newaxis
+        ]  # initialize local upper bounds with reference point
+
+        # initialize defining points _Z to be the dummy points \hat{z} that are
+        # defined in Sec 2.1 in lacour2017box. Note that in lacour2017box, outcomes
+        # are assumed to be between [0,1], here we use [-1e10, reference_point]
+        self.Z_set = (
+                - 1e10 * tf.ones((1, front.shape[-1], front.shape[-1]), dtype=front.dtype)
+                + 1e10 * tf.eye(front.shape[-1], front.shape[-1], batch_shape=[1], dtype=front.dtype)
+                + tf.linalg.diag(reference_point)[tf.newaxis, ...]
+        )  # 1e-10 is a replace of inf to improve stability
+
+        (
+            self.U_set,
+            self.Z_set,
+        ) = _update_local_upper_bounds_incremental(  # incrementally update local upper
+            new_front_points=front,  # bounds and defining points for each new Pareto point
+            u_set=self.U_set,
+            z_set=self.Z_set,
         )
 
+    def update(self, new_front: TensorType):
+        """
+        Update with new front, this can be computed with the incremental method
+        """
+        self.U_set, self.Z_set = _update_local_upper_bounds_incremental(  # incrementally update local upper
+            new_front_points=new_front,  # bounds and defining points for each new Pareto point
+            u_set=self.U_set,
+            z_set=self.Z_set,
+        )
 
-def update_local_upper_bounds_incremental(
-    new_front_points: TensorType, u_set: TensorType, z_set: TensorType
+    def partition_bounds(self):
+        return _get_partition_bounds_hbda(self.Z_set, self.U_set, self._reference_point)
+
+
+def _update_local_upper_bounds_incremental(
+        new_front_points: TensorType, u_set: TensorType, z_set: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Update the current local upper with the new pareto points. (note: this does not
     require input new_front_points must be non-dominated points)
@@ -280,30 +300,44 @@ def update_local_upper_bounds_incremental(
     Returns: A new [n'', p] new local upper bounds set.
              A [n'', p, p]  contain the new local upper bounds defining points
     """
+
+    # from matplotlib import pyplot as plt
+    tf.debugging.assert_shapes([(new_front_points, ["N", "D"])])
+    # front_evalued = []
     for new_front_pt in new_front_points:  # incrementally update local upper bounds
-        u_set, z_set = compute_new_local_upper_bounds(u_set, z_set, z_bar=new_front_pt)
+        # plt.scatter(1.2, 1.2, label='ref points')
+        # front_evalued.append(new_front_pt)
+        # for front in front_evalued:
+        #     plt.scatter(front[0], front[1], label='PF points', color='b')
+        u_set, z_set = _compute_new_local_upper_bounds(u_set, z_set, z_bar=new_front_pt)
+        # plt.scatter(u_set[:, 0], u_set[:, 1], label='LUB points', color='r')
+        # plt.close()
     return u_set, z_set
 
 
-def compute_new_local_upper_bounds(
-    u_set: TensorType, z_set: TensorType, z_bar: TensorType
+def _compute_new_local_upper_bounds(
+        u_set: TensorType, z_set: TensorType, z_bar: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Compute new local upper bounds.
     This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from [Lacour17]_: Given a stable set N and
-    a new point z_bar, if z_bar dominates any of the element in local upper bounds set: u_set, we need to update
-    the set U by calculating the new local upper bounds set, and its corresponding defined set z_set
+    a new point z_bar, if z_bar (new point) dominates any of the element in existing local upper bounds set:
+    u_set, we need to:
+    1. calculating the new local upper bounds set introduced by z_bar, and its corresponding defining set z_set
+    2. remove the old local upper bounds set from U that has been dominated by z_bar and its corresponding defining
+        points from z_set
+    3. concatenate u_set, z_set with the new local upper bounds set and its corresponding defining set
 
-    such that N\cup z_bar it identifies the set A of all local upper bounds that no longer
-    satisfy property P1 with respect to z_bar (Step 4). From the set A, Step 2 generates the valid new local
-    upper bounds using the result provided in Theorem 2.2
     :param u_set: (U in the paper) with shape `[n,  p] dim tensor containing the local upper bounds.
     :param z_set: (Z in the paper) with shape `[n, p, p] dim tensor containing the local upper bounds.
     :param z_bar: with shape [p] denoting the new point
     Returns:
     tuple(U', Z') with shape [n, p] and [n', p, p].
     """
+    tf.debugging.assert_shapes([(z_bar, ["D"])])
+    tf.debugging.assert_type(z_bar, u_set.dtype)
+
     num_outcomes = u_set.shape[-1]
-    # condition check in Theorem 2.2: if not need to update
+    # condition check in Theorem 2.2: if not need to update (z_bar doesn't strict dominate anything)
     z_bar_dominates_u_set_mask = tf.reduce_all(z_bar < u_set, -1)
     if not tf.reduce_any(z_bar_dominates_u_set_mask):  # z_bar does not dominate any point in set U
         return u_set, z_set
@@ -315,46 +349,56 @@ def compute_new_local_upper_bounds(
     # Container of new local upper bound points and its defining set
     lub_new = []
     lub_new_z = []
-    mask = tf.ones(num_outcomes, dtype=torch.bool)
+
     for j in range(num_outcomes):  # update per each dimension
         # calculate for jth output dimension, if zbar_j ≥ max_{k≠j}{z_j^k(u)}
-        mask[j] = 0  # k≠j
-        z_uj_max = capital_a_z[:, mask, j].max(dim=-1).values.view(-1) # [m, p, p] -> [m, p-1, 1] -> [m, 1]
-        add_z = z_bar[j] >= z_uj_max # [m, 1]
-        if add_z.any():  # any one of m local upper bounds can be replaced
+        indices = tf.constant([dim for dim in range(num_outcomes) if dim != j], dtype=tf.int32)
+        mask_j = tf.constant(
+            [0 if dim != j else 1 for dim in range(num_outcomes)], dtype=z_bar.dtype
+        )
+        mask_not_j = tf.constant(
+            [1 if dim != j else 0 for dim in range(num_outcomes)], dtype=z_bar.dtype
+        )
+        z_uj_k = tf.gather(capital_a_z, indices, axis=1, batch_dims=0)[
+                 :, :, j
+                 ]  # [m, p, p] -> [m, p-1]
+        z_uj_max = tf.reduce_max(z_uj_k, -1)  # [m, p-1] -> [m]
+        u_mask_to_be_replaced_by_zbar_j = z_bar[j] >= z_uj_max  # [m, 1]
+        # for jth dimension, any one of m local upper bounds can be replaced
+        if tf.reduce_any(u_mask_to_be_replaced_by_zbar_j):
+            # theoretically there should be at most only 1 of add_z is true
             # add new lub: (zbar_j, u_{-j})
-            u_j = capital_a[add_z].clone()
-            u_j[:, j] = z_bar[j]
-            lub_new.append(u_j)  # add new local upper bound point: u_j
+            a_filtered = capital_a[u_mask_to_be_replaced_by_zbar_j]  # [m', p]
+            # tensorflow tricky to replace u_j's j dimension with z_bar[j]
+            u_j = a_filtered * mask_not_j + \
+                  tf.repeat((mask_j * z_bar[j])[tf.newaxis], a_filtered.shape[0], axis=0)
+            lub_new.append(u_j)  # add the new local upper bound point: u_j
+
             # add its defining point
-            A_Z_filtered = capital_a_z[add_z]  # get its original defining point
-            Z_ku = A_Z_filtered[:, mask]
-            lt_zj = Z_ku[..., j] <= z_bar[j]
-            P_uj = torch.zeros(
-                u_j.shape[0], num_outcomes, num_outcomes, dtype=u_set.dtype, device=u_set.device
-            )
-            P_uj[:, mask] = Z_ku[lt_zj].view(P_uj.shape[0], num_outcomes - 1, -1)
-            P_uj[:, ~mask] = z_bar
-            lub_new_z.append(P_uj)
-        mask[j] = 1
+            a_z_filtered = capital_a_z[
+                u_mask_to_be_replaced_by_zbar_j
+            ]  # get its original defining point
+
+            z_uj_new  = a_z_filtered * mask_not_j[..., tf.newaxis] + z_bar * mask_j[..., tf.newaxis]
+            lub_new_z.append(z_uj_new)
 
     # filter out elements of U that are in A
-    z_not_dominates_U_mask = ~z_bar_dominates_u_set_mask
-    u_set = u_set[z_not_dominates_U_mask]
+    z_not_dominates_u_set_mask = ~z_bar_dominates_u_set_mask
+    u_set = u_set[z_not_dominates_u_set_mask]
     # remaining indices
-    z_set = z_set[z_not_dominates_U_mask]
+    z_set = z_set[z_not_dominates_u_set_mask]
 
     # combine original untouched lub points with new lub points and their corresponding defining points
     if len(lub_new) > 0:
-        # add points from P_Z
-        z_set = tf.concat([z_set, *lub_new_z], dim=0)
-        # return elements in P or elements in (U that are not in A)
-        u_set = tf.concat([u_set, *lub_new], dim=-2)
+        # add points from lub_new and lub_new_z
+        u_set = tf.concat([u_set, *lub_new], axis=0)
+        z_set = tf.concat([z_set, *lub_new_z], axis=0)
     return u_set, z_set
 
 
-def get_partition_bounds_hbda(z: TensorType, u: TensorType, reference_point: TensorType) \
-        -> tuple(TensorType, TensorType):
+def _get_partition_bounds_hbda(
+        z: TensorType, u: TensorType, reference_point: TensorType
+) -> tuple(TensorType, TensorType):
     r"""Get the cell bounds given the local upper bounds and the defining points.
     Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper of lacour2017box.
 
@@ -377,7 +421,7 @@ def get_partition_bounds_hbda(z: TensorType, u: TensorType, reference_point: Ten
         l_bound_new = tf.concat([l_bound_new, z[u_idx, 0, 0][tf.newaxis]], 0)
         u_bound_new = tf.concat([u_bound_new, reference_point[0][tf.newaxis]], 0)
 
-        for j in range(1, u.shape[-1]): # get bounds on rest dim
+        for j in range(1, u.shape[-1]):  # get bounds on rest dim
             l_bound_new = tf.concat([l_bound_new, tf.reduce_max(z[u_idx, :j, j])[tf.newaxis]], 0)
             u_bound_new = tf.concat([u_bound_new, u[u_idx, j][tf.newaxis]], 0)
         l_bounds = tf.concat([l_bounds, l_bound_new[tf.newaxis]], 0)
@@ -386,26 +430,105 @@ def get_partition_bounds_hbda(z: TensorType, u: TensorType, reference_point: Ten
     # remove empty partitions
     # Note: the equality will evaluate as True if the lower and upper bound
     # are both (-inf), which could happen if the reference point is -inf.
-    empty = tf.reduce_any(l_bounds <= u_bounds, axis=-1)
-    return l_bounds[:, ~empty], u_bounds[:, ~empty]
+    empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
+    return l_bounds[~empty], u_bounds[~empty]
 
 
-class CoperatePartition(_NonDominatedPartition):
+# TODO:
+def _compute_local_upper_bounds_non_incremental():
+    r"""Compute the local upper bounds in an non-incremental fashion, mainly refer
+    Algorithm 2 in section 2.2.2 of lacour2017box. Other than the incremental version,
+    this strategy expect one of the outcome dimensionality p is sorted, which can be
+    utilized resulting a faster computation speed
+
+
+    :param new_front_points: with shape [n, p], the new Pareto frontier points.
+    :param u_set: with shape [n', p], the set containing all the local upper bounds.
+    :param z_set: with shape [n', p, p] contain the local upper bounds defining points, note though
+        numerically equivalent, the meaning of the two p is different: first p denotes for any element
+        in u_set, it has p defining points,  the second p denotes each defining points is p dimensional.
+
+    Returns: A new [n'', p] new local upper bounds set.
+             A [n'', p, p]  contain the new local upper bounds defining points
     """
-    Main refer Algorithm 2, Algorithm 3 of yang2019efficient
+
+
+class FlipTrickNonDominatedPartition(_NonDominatedPartition):
+    """
+    Main refer Algorithm 2, Algorithm 3 of yang2019efficient, a slight alter of
+    method is utilized as we are performing minimization.
     as well as https://github.com/pytorch/botorch/blob/ddc97bb4dc5de8ea1cf0f0d11519b826f6a56868/botorch/utils/multi_objective/box_decompositions/non_dominated.py#L371
+
+    The idea behind the proposed algorithm is transforming the problem of
+    partitioning a non-dominated space into the problem of partitioning the
+    dominated space.
+
+    For instance, consider minimization problem, we could use lacour2017box's methods to locate the
+    local upper bound point set (by partitioning the dominated region), given this set,
+    we can combine with a fake reference point (e.g., [-inf, ..., -inf]) and flip the problem
+    as maximization, in this case, we are able to use lacour2017box's method again to partition
+    the 'dominated' region, which will then provide us with the partition of the non-dominated region
     """
+    def __init__(self, front: TensorType, reference_point: TensorType):
+        lub_sets = HypervolumeBoxDecompositionIncrementalDominated(front, reference_point).U_set
+        fliped_partition = HypervolumeBoxDecompositionIncrementalDominated(
+            -lub_sets, 3 * tf.ones(shape=front.shape[-1], dtype=front.dtype))
+        fliped_lb_pts, fliped_ub_pts = fliped_partition.partition_bounds()
+        self.lb_pts = - fliped_ub_pts
+        self.ub_pts = - fliped_lb_pts
+
+    def partition_bounds(self):
+        return self.lb_pts, self.ub_pts
 
 
-class QuickHypervolumeII(_DominatedPartition):
-    """
-    Implementation of Quick Hypervolume II algorithm of jaszkiewicz2018improved
-    A method of partitioning the dominated region
-    """
+if __name__ == "__main__":
+    # z = tf.constant([[[0.5, 1.0], [1, 0.5]]])
+    # u = tf.constant([[0.5, 0.5]])
+    # get_partition_bounds_hbda(z, u, tf.constant([1.0, 1.0]))
+    from trieste.utils.multi_objectives import DTLZ1, VLMOP2
 
 
-if __name__ == '__main__':
-    z = tf.constant([[[0.5, 1.0], [1, 0.5]]])
-    u = tf.constant([[0.5, 0.5]])
-    get_partition_bounds_hbda(z, u, tf.constant([1.0, 1.0]))
+
+    # plot check
+    # 2d case
+    # from trieste.utils.multi_objectives import VLMOP2
+    from matplotlib import pyplot as plt
+    pf = VLMOP2().gen_pareto_optimal_points(10)
+    lb, ub = partition = FlipTrickNonDominatedPartition(pf, 2 * tf.ones(2)).partition_bounds()
+    # plt.scatter(1.2, 1.2, label='ref points')
+    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
+    plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
+    plt.legend()
+    plt.show()
+
+    # partition = HypervolumeBoxDecompositionIncremental(pf, 1.2 * tf.ones(2))
+    # from matplotlib import pyplot as plt
+    # plt.scatter(1.2, 1.2, label='ref points')
+    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    # plt.scatter(partition.U_set[:, 0], partition.U_set[:, 1], label='U set points')
+    # plt.legend()
+    # plt.show()
+#
+    # plt.figure()
+    # lb_pts, ub_pts = partition.partition_bounds()
+    # plt.scatter(1.2, 1.2, label='ref points')
+    # plt.scatter(lb_pts[:, 0], lb_pts[:, 1], label='lb points')
+    # plt.scatter(ub_pts[:, 0], ub_pts[:, 1], label='ub points')
+    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    # plt.legend()
+    # plt.show()
+
+    # 3D case
+    # pf = DTLZ1(4, 3).gen_pareto_optimal_points(50)
+    # partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(3))
+    from botorch.utils.multi_objective.box_decompositions.non_dominated import FastNondominatedPartitioning
+
+    # from botorch.test_functions.multi_objective import DTLZ1
+    # import torch
+
+    # _ = FastNondominatedPartitioning(-1.2 * torch.ones(2), -torch.Tensor(pf))
+
+
+
 
