@@ -16,24 +16,28 @@ import tensorflow as tf
 
 
 def test_raise_is_incompatible_with_tf_function() -> None:
+    err_msg = "very specific error message 13579"
+
     @tf.function
     def f(a: tf.Tensor) -> tf.Tensor:
         if a <= tf.constant(0):
-            raise ValueError
+            raise ValueError(err_msg)
 
         return a
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=err_msg):
         f(tf.constant(1))  # note that 1 should *not* trigger the error branch, but does
 
 
 def test_tf_debugging_is_compatible_with_tf_function() -> None:
+    err_msg = "very specific error message 2468"
+
     @tf.function
     def f(a: tf.Tensor) -> tf.Tensor:
-        tf.debugging.assert_positive(a)
+        tf.debugging.assert_positive(a, message=err_msg)
         return a
 
     f(tf.constant(1))
 
-    with pytest.raises(tf.errors.InvalidArgumentError):
+    with pytest.raises(tf.errors.InvalidArgumentError, match=err_msg):
         f(tf.constant(-1))
