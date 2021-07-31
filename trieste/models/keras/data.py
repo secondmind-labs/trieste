@@ -101,12 +101,3 @@ class EnsembleDataTransformer:
                 inputs[input_name] = query_points
 
         return inputs
-
-
-    # @property
-    # def input_output_names(self):
-    #     return self.__input_output_names
-
-    # @input_output_names.setter
-    # def set_input_output_names(self, names = None) -> None:
-    #     self.__input_output_names = names

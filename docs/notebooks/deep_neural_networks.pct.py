@@ -135,7 +135,7 @@ fig = plot_keras_plotly(
     model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=30
+    grid_density=100
 )
 fig = add_bo_points_plotly(
     x=query_points[:, 0],

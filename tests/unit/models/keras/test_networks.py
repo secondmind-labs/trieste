@@ -26,13 +26,17 @@ from trieste.models.keras.utils import get_tensor_spec_from_data, size
 
 
 def test_network_output_shape_matches_observations(neural_network, example_data):
-    """Ensure network output dimension is correct, matching the dataset.observations."""
+    """
+    Ensure network output dimension is correct, matching the dataset.observations.
+    """
+
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
     network = neural_network(
         input_tensor_spec,
         output_tensor_spec,
     )
     network_output = network.build_model()
+
     assert example_data.observations.shape[-1] == network_output[0].type_spec.shape[-1]
 
 
