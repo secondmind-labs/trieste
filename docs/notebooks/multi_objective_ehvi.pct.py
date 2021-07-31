@@ -24,7 +24,7 @@ from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.model_interfaces import ModelStack
 from trieste.space import Box
-from trieste.utils.multi_objectives import VLMOP2
+from trieste.objectives.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
 
 np.random.seed(1793)
@@ -39,7 +39,7 @@ tf.random.set_seed(1793)
 
 # %%
 vlmop2 = VLMOP2().objective()
-observer = trieste.utils.objectives.mk_observer(vlmop2)
+observer = trieste.objectives.utils.mk_observer(vlmop2)
 
 # %%
 mins = [-2, -2]
