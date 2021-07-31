@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -83,7 +82,7 @@ def test_multilayer_fc_probabilistic_network_nparams(
     """
     Ensure we have a correct number of nodes/parameters in a probabilistic network.
     """
-    
+
     network = prob_network(
         input_tensor_spec,
         output_tensor_spec,

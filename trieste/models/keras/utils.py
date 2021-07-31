@@ -27,7 +27,7 @@ def size(tensor_spec: tf.TensorSpec) -> int:
     return int(np.prod(tensor_spec.shape))
 
 
-def get_tensor_spec_from_data(data: Dataset) -> tuple(tf.TensorSpec, tf.TensorSpec):
+def get_tensor_spec_from_data(data: Dataset) -> tuple[tf.TensorSpec, tf.TensorSpec]:
     """
     Extract tensor specifications for neural network inputs and outputs based on the data.
     """
@@ -53,7 +53,7 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
     :return: A (new) ``dataset`` with sampled data.
     """
     tf.debugging.assert_equal(dataset.observations.shape[0], dataset.query_points.shape[0])
-    
+
     n_rows = dataset.observations.shape[0]
 
     index_tensor = tf.random.uniform(

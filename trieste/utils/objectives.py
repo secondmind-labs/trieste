@@ -352,7 +352,6 @@ float64.
 """
 
 
-<<<<<<< HEAD
 def eggholder(x: TensorType) -> TensorType:
     """
     The Eggholder function over :math:`[-512, 512]^2`. This function is difficult to optimize,
@@ -371,12 +370,12 @@ def eggholder(x: TensorType) -> TensorType:
     a = 47
     b = 2
 
-    return -(x2+a) * tf.sin(tf.math.sqrt(tf.abs(x2+x1/b+a))) -x1 * tf.sin(tf.math.sqrt(tf.abs(x1-(x2+a))))
+    return -(x2 + a) * tf.sin(tf.math.sqrt(tf.abs(x2 + x1 / b + a))) - x1 * tf.sin(
+        tf.math.sqrt(tf.abs(x1 - (x2 + a)))
+    )
 
 
-EGGHOLDER_MINIMIZER = tf.constant(
-    [512, 404.2319], tf.float64
-)
+EGGHOLDER_MINIMIZER = tf.constant([512, 404.2319], tf.float64)
 """
 The global minimizer of the :func:`eggholder` function over :math:`[-512, 512]^2`, with shape [1, 2]
 and dtype float64.
@@ -388,8 +387,11 @@ EGGHOLDER_MINIMUM = tf.constant([-959.6407], tf.float64)
 
 def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     """
-    The Michalewicz function over :math:`[0, \\pi]` for all i=1,...,d. Dimensionality is determined by the parameter ``d`` and it features steep ridges and drops. It has :math:`d!` local minima, and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See https://www.sfu.ca/~ssurjano/egg.html
-    for details.
+    The Michalewicz function over :math:`[0, \\pi]` for all i=1,...,d. Dimensionality is determined
+    by the parameter ``d`` and it features steep ridges and drops. It has :math:`d!` local minima,
+    and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a
+    larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See
+    https://www.sfu.ca/~ssurjano/egg.html for details.
 
     :param x: The points at which to evaluate the function, with shape [..., d].
     :return: The function values at ``x``, with shape [..., 1].
@@ -398,14 +400,13 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     tf.debugging.assert_greater_equal(d, 1)
     tf.debugging.assert_shapes([(x, (..., d))])
 
-    xi = tf.range(1, (d+1), delta = 1, dtype = tf.float64)*tf.pow(x, 2)
-    result = tf.reduce_sum(tf.sin(x)*tf.pow(tf.sin(xi/math.pi), 2*m), axis=1, keepdims=True)
+    xi = tf.range(1, (d + 1), delta=1, dtype=tf.float64) * tf.pow(x, 2)
+    result = tf.reduce_sum(tf.sin(x) * tf.pow(tf.sin(xi / math.pi), 2 * m), axis=1, keepdims=True)
 
     return -result
 
 
-MICHALEWICZ_2_MINIMIZER = tf.constant([2.20, 1.57], tf.float64
-)
+MICHALEWICZ_2_MINIMIZER = tf.constant([2.20, 1.57], tf.float64)
 """
 The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^2`,
 with shape [1, 2] and dtype float64.
@@ -421,8 +422,6 @@ MICHALEWICZ_10_MINIMUM = tf.constant([-9.66015], tf.float64)
 """ The global minimum of the :func:`michalewicz` function, with shape [1] and dtype float64. """
 
 
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Observer:
-=======
 @overload
 def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
     ...
@@ -436,7 +435,6 @@ def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> Mult
 def mk_observer(
     objective: Callable[[TensorType], TensorType], key: Optional[str] = None
 ) -> Observer:
->>>>>>> develop
     """
     :param objective: An objective function designed to be used with a single data set and model.
     :param key: An optional key to use to access the data from the observer result.

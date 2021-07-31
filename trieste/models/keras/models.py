@@ -14,10 +14,8 @@
 
 from __future__ import annotations
 
-import copy
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Any, Dict, List, TypeVar
+from typing import Dict, List
 from warnings import warn
 
 import tensorflow as tf
@@ -25,15 +23,14 @@ from numpy import inf
 
 from ...data import Dataset
 from ...type import TensorType
-from ...utils import DEFAULTS
 from .data import EnsembleDataTransformer
 from .networks import KerasNetwork
-from ..optimizer import Optimizer, TFOptimizer, TFKerasOptimizer
+from ..optimizer import TFKerasOptimizer
 from ..model_interfaces import ProbabilisticModel, TrainableProbabilisticModel
 
 
 class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
-    """ A trainable wrapper for a Keras neural network models. """
+    """A trainable wrapper for a Keras neural network models."""
 
     def __init__(self, optimizer: TFKerasOptimizer | None = None):
         """
@@ -44,25 +41,25 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
         super().__init__()
 
         if optimizer is None:
-            optimizer = TFKerasOptimizer()
+            optimizer = TFKerasOptimizer(tf.keras.optimizers.Adam())
 
         self._optimizer = optimizer
 
     @property
     def optimizer(self) -> TFKerasOptimizer:
-        """ The optimizer with which to train the model. """
+        """The optimizer with which to train the model."""
         return self._optimizer
 
     @property
     @abstractmethod
     def model(self) -> NeuralNetworkPredictor:
-        """ The underlying neural network model. """
+        """The underlying neural network model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise Error(
+        raise Exception(
             """
             NeuralNetworkPredictor class does not implement 'predict_joint' method. Acquisition
             rules relying on it cannot be used with this class by default. Certain types of neural
@@ -104,7 +101,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         """
 
         if optimizer is None:
-            self._optimizer_keras = tf.keras.optimizers.Adam()
+            self._optimizer_keras = TFKerasOptimizer(tf.keras.optimizers.Adam())
         else:
             self._optimizer_keras = optimizer.optimizer
 
@@ -119,7 +116,7 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         self._ensemble_size = len(networks)
         if self._ensemble_size == 1:
             warn(
-                f"""A single network was passed to the class while ensemble as a rule should
+                """A single network was passed to the class while ensemble as a rule should
                 consist of more than a single models, results are unlikely to be meaningful."""
             )
 
@@ -141,10 +138,10 @@ class NeuralNetworkEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel)
         return self._model
 
     def get_input_output_names_from_model(self) -> Dict[str, List[str]]:
-        names = {'inputs':[], 'outputs': []}
+        names = {"inputs": [], "outputs": []}
         for i in range(self._ensemble_size):
-             names['inputs'].append(self.model.layers[i].name)
-             names['outputs'].append(self.model.layers[-(self._ensemble_size-i)].name)
+            names["inputs"].append(self.model.layers[i].name)
+            names["outputs"].append(self.model.layers[-(self._ensemble_size - i)].name)
         return names
 
     def set_input_output_names_data_transformer(self) -> None:

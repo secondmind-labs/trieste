@@ -104,6 +104,8 @@ _NEURAL_NETWORK_CLASSES = [
     GaussianNetwork,
     MultilayerFcNetwork,
 ]
+
+
 @pytest.fixture(name="neural_network", params=_NEURAL_NETWORK_CLASSES)
 def _neural_network_fixture(request):
     return request.param
@@ -128,6 +130,8 @@ _EXAMPLE_DATASET = [
     branin_dataset(200),
     hartmann_6_dataset(200),
 ]
+
+
 @pytest.fixture(name="example_data", params=_EXAMPLE_DATASET, scope="session")
 def _example_dataset_fixture(request):
     return request.param

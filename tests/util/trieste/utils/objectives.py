@@ -29,7 +29,7 @@ def hartmann_6_dataset(num_query_points: int) -> Dataset:
     """
     search_space = Box([0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1])
     query_points = search_space.sample(num_query_points)
-    
+
     observer = mk_observer(hartmann_6, OBJECTIVE)
     data = observer(query_points)
 
@@ -45,7 +45,7 @@ def branin_dataset(num_query_points: int) -> Dataset:
     """
     search_space = Box([0, 0], [1, 1])
     query_points = search_space.sample(num_query_points)
-    
+
     observer = mk_observer(branin, OBJECTIVE)
     data = observer(query_points)
 

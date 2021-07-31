@@ -19,10 +19,10 @@ from collections.abc import Callable
 from itertools import repeat
 from typing import List, Optional, Union
 
-import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from ...type import TensorType
 from ...data import Dataset
 from .utils import size
 
@@ -121,7 +121,7 @@ class KerasNetwork(ABC):
         This method ensures the data can be transformed before it is used in training.
 
         :param dataset: Either a `Dataset` object consisting of `query_points` and `observations`
-            or `query_points` tensor only. 
+            or `query_points` tensor only.
         :return: Return a (new) `Dataset` object or `query_points` tensor.
         """
         if inputs_only:
@@ -200,17 +200,15 @@ class MultilayerFcNetwork(KerasNetwork):
 
         self._activation = activation or repeat(None, num_hidden_layers)
         self._use_bias = use_bias or repeat(True, num_hidden_layers)
-        self._kernel_initializer = kernel_initializer or repeat('glorot_uniform', num_hidden_layers)
-        self._bias_initializer = bias_initializer or repeat('zeros', num_hidden_layers)
+        self._kernel_initializer = kernel_initializer or repeat("glorot_uniform", num_hidden_layers)
+        self._bias_initializer = bias_initializer or repeat("zeros", num_hidden_layers)
         self._kernel_regularizer = kernel_regularizer or repeat(None, num_hidden_layers)
         self._bias_regularizer = bias_regularizer or repeat(None, num_hidden_layers)
         self._activity_regularizer = activity_regularizer or repeat(None, num_hidden_layers)
         self._kernel_constraint = kernel_constraint or repeat(None, num_hidden_layers)
         self._bias_constraint = bias_constraint or repeat(None, num_hidden_layers)
 
-    def gen_hidden_dense_layers(
-        self, hidden_layer: tf.keras.layers.Layer
-    ) -> tf.keras.layers.Layer:
+    def gen_hidden_dense_layers(self, hidden_layer: tf.keras.layers.Layer) -> tf.keras.layers.Layer:
         """Generate a sequence of dense Keras layers"""
         if self._num_hidden_layers > 0:
             layer_args = zip(
@@ -221,19 +219,19 @@ class MultilayerFcNetwork(KerasNetwork):
                 self._bias_initializer,
                 self._activity_regularizer,
                 self._kernel_constraint,
-                self._bias_constraint
+                self._bias_constraint,
             )
             for dense_layer_args in layer_args:
                 layer = tf.keras.layers.Dense(*dense_layer_args)
                 hidden_layer = layer(hidden_layer)
 
         return hidden_layer
-    
+
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         """Generate the final output layer, with linear activation as hard-coded default."""
-        output_layer = tf.keras.layers.Dense(
-            self._flattened_output_shape, activation="linear"
-        )(input_layer)
+        output_layer = tf.keras.layers.Dense(self._flattened_output_shape, activation="linear")(
+            input_layer
+        )
         return output_layer
 
     def build_model(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
@@ -252,6 +250,7 @@ class LinearNetwork(MultilayerFcNetwork):
     This class defines a linear network using Keras, i.e. a neural network with no
     hidden layers, equivalent to a linear regression.
     """
+
     def __init__(
         self,
         input_tensor_spec: tf.TensorSpec,
@@ -267,11 +266,13 @@ class LinearNetwork(MultilayerFcNetwork):
 negloglik = lambda y, p_y: -p_y.log_prob(y)
 negloglik.__doc__ = """define general log-likelihood loss for distribution Lambda"""
 
+
 class GaussianNetwork(MultilayerFcNetwork):
     """
     This class defines a probabilistic neural network using Keras, with Gaussian distributed
     outputs.
     """
+
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         mvn_shape = tfp.layers.MultivariateNormalTriL.params_size(self._flattened_output_shape)
         output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)
@@ -294,6 +295,7 @@ class DiagonalGaussianNetwork(GaussianNetwork):
     This class defines a probabilistic neural network using Keras, with Gaussian distributed
     outputs, but modelling only variances on the diagonal and assuming zero covariances elsewhere.
     """
+
     def gen_output_layer(self, input_layer: tf.keras.layers.Layer = None) -> tf.keras.layers.Layer:
         mvn_shape = tfp.layers.IndependentNormal.params_size(self._flattened_output_shape)
         output_layer = tf.keras.layers.Dense(mvn_shape)(input_layer)

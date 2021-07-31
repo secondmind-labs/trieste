@@ -104,6 +104,4 @@ def create_model(
         return ModelConfig(**config).create_model_interface()
     elif isinstance(config, TrainableProbabilisticModel):
         return config
-    raise NotImplementedError(
-        "Unknown format passed to create a TrainableProbabilisticModel."
-    )
+    raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel.")

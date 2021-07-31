@@ -139,7 +139,7 @@ class TFOptimizer(Optimizer):
 
 @dataclass
 class TFKerasOptimizer:
-    """ Optimizer for Keras models with mini-batches of training data. """
+    """Optimizer for Keras models with mini-batches of training data."""
 
     optimizer: tf.keras.optimizers.Optimizer
     """ The underlying optimizer, used for compiling the :class:`~tensorflow.keras.Model`. """
@@ -155,8 +155,8 @@ class TFKerasOptimizer:
     `tensorflow.data` dataset, a generator or `tensorflow.keras.utils.Sequence`.
     """
 
-    def get_data(self, dataset: Dataset) -> tuple(TensorType, TensorType):
-        
+    def get_data(self, dataset: Dataset) -> tuple[TensorType, TensorType]:
+
         if self.dataset_builder is None:
             x = tf.convert_to_tensor(dataset.query_points)
             y = tf.convert_to_tensor(dataset.observations)

@@ -38,14 +38,12 @@ from trieste.models import GaussianProcessRegression
 from trieste.models.keras.data import EnsembleDataTransformer
 from trieste.models.optimizer import TFKerasOptimizer
 from trieste.models.keras.models import NeuralNetworkEnsemble
-from trieste.models.keras.networks import MultilayerFcNetwork, GaussianNetwork
+from trieste.models.keras.networks import GaussianNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 from trieste.space import Box
 from trieste.utils.objectives import (
     BRANIN_MINIMIZERS,
-    BRANIN_MINIMUM,
     SCALED_BRANIN_MINIMUM,
-    branin,
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
     michalewicz,
@@ -54,7 +52,8 @@ from trieste.utils.objectives import (
 )
 from trieste.observer import OBJECTIVE
 
-tf.keras.backend.set_floatx('float64')
+tf.keras.backend.set_floatx("float64")
+
 
 @random_seed
 @pytest.mark.parametrize(
@@ -146,7 +145,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (3, ThompsonSampling(1000, 50)),
+        (3, DiscreteThompsonSampling(1000, 50)),
     ],
 )
 def test_neuralnetworkensemble_optimizer_finds_minima_of_the_michalewicz_function(
@@ -164,17 +163,17 @@ def test_neuralnetworkensemble_optimizer_finds_minima_of_the_michalewicz_functio
                 output_tensor_spec,
                 num_hidden_layers=2,
                 units=[25, 25],
-                activation=['relu', 'relu'],
+                activation=["relu", "relu"],
             )
             for _ in range(ensemble_size)
         ]
         optimizer = tf.keras.optimizers.Adam(0.1)
         fit_args = {
-            'batch_size': 16,
-            'epochs': 40,
-            'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=20)],
-            'validation_split': 0.1,
-            'verbose': 0,
+            "batch_size": 16,
+            "epochs": 40,
+            "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=20)],
+            "validation_split": 0.1,
+            "verbose": 0,
         }
         dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
         model = NeuralNetworkEnsemble(

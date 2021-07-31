@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import numpy as np
 import tensorflow as tf
 
-from trieste.data import Dataset
 from trieste.models.keras.data import EnsembleDataTransformer
 from trieste.models.optimizer import TFKerasOptimizer
 from trieste.models.keras.models import NeuralNetworkEnsemble
@@ -24,7 +22,7 @@ from trieste.models.keras.networks import MultilayerFcNetwork
 from trieste.models.keras.utils import get_tensor_spec_from_data
 from tests.util.misc import random_seed
 
-tf.keras.backend.set_floatx('float64')
+tf.keras.backend.set_floatx("float64")
 
 
 @random_seed
@@ -44,16 +42,16 @@ def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
             output_tensor_spec,
             num_hidden_layers=3,
             units=[32, 32, 32],
-            activation=['relu', 'relu', 'relu'],
+            activation=["relu", "relu", "relu"],
         )
         for _ in range(ensemble_size)
     ]
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        'batch_size': 32,
-        'epochs': 200,
-        'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-        'verbose': 0,
+        "batch_size": 32,
+        "epochs": 200,
+        "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
+        "verbose": 0,
     }
     dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
     model = NeuralNetworkEnsemble(
@@ -69,7 +67,7 @@ def test_ensemble_model_close_to_actuals(hartmann_6_dataset_function):
 
 @random_seed
 def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_function):
-    
+
     """
     Ensure that trieste implementation produces similar result to a direct keras implementation.
     """
@@ -88,16 +86,16 @@ def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_functi
             output_tensor_spec,
             num_hidden_layers=3,
             units=[32, 32, 32],
-            activation=['relu', 'relu', 'relu'],
+            activation=["relu", "relu", "relu"],
         )
         for _ in range(ensemble_size)
     ]
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        'batch_size': 32,
-        'epochs': 200,
-        'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
-        'verbose': 0,
+        "batch_size": 32,
+        "epochs": 200,
+        "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
+        "verbose": 0,
     }
     dataset_builder = EnsembleDataTransformer(networks, bootstrap_data=False)
     trieste_model = NeuralNetworkEnsemble(
@@ -109,22 +107,24 @@ def test_ensemble_model_close_to_simple_implementation(hartmann_6_dataset_functi
     trieste_model_predictions, _ = trieste_model.predict(example_data.query_points)
 
     # simpler but equal implementation
-    simple_model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(32, activation='relu', input_shape=input_tensor_spec.shape),
-        tf.keras.layers.Dense(32, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
-        tf.keras.layers.Dense(output_tensor_spec.shape[-1], activation='linear'),
-    ])
+    simple_model = tf.keras.models.Sequential(
+        [
+            tf.keras.layers.Dense(32, activation="relu", input_shape=input_tensor_spec.shape),
+            tf.keras.layers.Dense(32, activation="relu"),
+            tf.keras.layers.Dense(32, activation="relu"),
+            tf.keras.layers.Dense(output_tensor_spec.shape[-1], activation="linear"),
+        ]
+    )
     simple_model.compile(
         optimizer=optimizer,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=['mse'],
+        metrics=["mse"],
     )
     x = tf.convert_to_tensor(example_data.query_points)
     y = tf.convert_to_tensor(example_data.observations)
     simple_model.fit(x, y, **fit_args)
     simple_model_predictions = simple_model.predict(x)
-    
+
     # examine the match
     np.testing.assert_allclose(
         trieste_model_predictions,
