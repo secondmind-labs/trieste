@@ -4,6 +4,7 @@
 # %%
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -17,14 +18,13 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.utils.objectives import branin
-from trieste.acquisition.rule import OBJECTIVE
+from trieste.utils.objectives import branin, BRANIN_MINIMUM
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
-observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
+observer = trieste.utils.objectives.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
@@ -33,30 +33,28 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 
-observations = initial_data[OBJECTIVE].observations
+observations = initial_data.observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
 gpr = gpflow.models.GPR(
-    initial_data[OBJECTIVE].astuple(), kernel, noise_variance=1e-5
+    initial_data.astuple(), kernel, noise_variance=1e-5
 )
 gpflow.set_trainable(gpr.likelihood, False)
 
 model_config = {
-    OBJECTIVE: {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }
+    "model": gpr,
+    "optimizer": gpflow.optimizers.Scipy(),
+    "optimizer_args": {
+        "minimize_args": {"options": dict(maxiter=100)},
+    },
 }
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
 #
-# We achieve Bayesian optimization with Thompson sampling by specifying `ThompsonSampling` as the acquisition rule. Unlike the `EfficientGlobalOptimization` acquisition rule, `ThompsonSampling` does not use an acquisition function. Instead, in each optimization step, the rule samples `num_query_points` samples from the model posterior at `num_search_space_samples` points on the search space. It then returns the `num_query_points` points of those that minimise the model posterior.
+# We achieve Bayesian optimization with Thompson sampling by specifying `DiscreteThompsonSampling` as the acquisition rule. Unlike the `EfficientGlobalOptimization` acquisition rule, `DiscreteThompsonSampling` does not use an acquisition function. Instead, in each optimization step, the rule samples `num_query_points` samples from the model posterior at `num_search_space_samples` points on the search space. It then returns the `num_query_points` points of those that minimise the model posterior.
 
 # %%
-acq_rule = trieste.acquisition.rule.ThompsonSampling(
+acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
     num_search_space_samples=1000, num_query_points=10
 )
 
@@ -69,7 +67,7 @@ acq_rule = trieste.acquisition.rule.ThompsonSampling(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
-dataset = result.try_get_final_datasets()[OBJECTIVE]
+dataset = result.try_get_final_dataset()
 
 # %% [markdown]
 # ## Visualising the result
@@ -95,7 +93,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
+    result.try_get_final_model().model, # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=30

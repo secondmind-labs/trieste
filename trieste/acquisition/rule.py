@@ -21,27 +21,29 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tensorflow as tf
-from typing_extensions import Final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..type import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
+    SingleModelAcquisitionBuilder,
+    SingleModelGreedyAcquisitionBuilder,
 )
 from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
-    optimize_continuous,
+    generate_continuous_optimizer,
 )
-from .sampler import DiscreteThompsonSampler
+from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -51,7 +53,7 @@ SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 
 
 class AcquisitionRule(ABC, Generic[S, SP_contra]):
-    """ The central component of the acquisition API. """
+    """The central component of the acquisition API."""
 
     @abstractmethod
     def acquire(
@@ -59,7 +61,7 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: S | None,
+        state: S | None = None,
     ) -> tuple[TensorType, S]:
         """
         Return the optimal points within the specified ``search_space``, where optimality is defined
@@ -85,26 +87,52 @@ class AcquisitionRule(ABC, Generic[S, SP_contra]):
         :return: The optimal points and the acquisition state for this step.
         """
 
+    def acquire_single(
+        self,
+        search_space: SP_contra,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        state: S | None = None,
+    ) -> tuple[TensorType, S]:
+        """
+        A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
 
-OBJECTIVE: Final[str] = "OBJECTIVE"
-"""
-A tag typically used by acquisition rules to denote the data sets and models corresponding to the
-optimization objective.
-"""
+        Return the optimal points within the specified ``search_space``, where optimality is defined
+        by the acquisition rule.
+
+        :param search_space: The global search space over which the optimization problem
+            is defined.
+        :param dataset: The known observer query points and observations.
+        :param models: The model to use for the dataset.
+        :param state: The acquisition state from the previous step, if there was a previous step,
+            else `None`.
+        :return: The optimal points and the acquisition state for this step.
+        """
+        if isinstance(dataset, dict) or isinstance(model, dict):
+            raise ValueError(
+                "AcquisitionRule.acquire_single method does not support multiple datasets "
+                "or models: use acquire instead"
+            )
+        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, state)
 
 
 class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
-    """ Implements the Efficient Global Optimization, or EGO, algorithm. """
+    """Implements the Efficient Global Optimization, or EGO, algorithm."""
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | GreedyAcquisitionFunctionBuilder | None = None,
+        builder: Optional[
+            AcquisitionFunctionBuilder
+            | GreedyAcquisitionFunctionBuilder
+            | SingleModelAcquisitionBuilder
+            | SingleModelGreedyAcquisitionBuilder
+        ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
-            :class:`~trieste.acquisition.ExpectedImprovement` with tag :data:`OBJECTIVE`.
+            :class:`~trieste.acquisition.ExpectedImprovement`.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
@@ -119,7 +147,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
 
         if builder is None:
             if num_query_points == 1:
-                builder = ExpectedImprovement().using(OBJECTIVE)
+                builder = ExpectedImprovement()
             else:
                 raise ValueError(
                     """Need to specify a batch acquisition function when number of query points
@@ -130,11 +158,15 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
             optimizer = automatic_optimizer_selector
 
         if isinstance(
-            builder, AcquisitionFunctionBuilder
-        ):  # Joint batch acquisitions require batch optimizers
+            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
+        ):
+            builder = builder.using(OBJECTIVE)
+
+        if isinstance(builder, AcquisitionFunctionBuilder):
+            # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder = builder
+        self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
 
@@ -180,13 +212,31 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         return points, None
 
 
-class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """ Implements Thompson sampling for choosing optimal points. """
+class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
+    r"""
+    Implements Thompson sampling for choosing optimal points.
 
-    def __init__(self, num_search_space_samples: int, num_query_points: int):
+    This rule returns the minimizers of functions sampled from our model and evaluated across
+    a discretization of the search space (containing `N` candidate points).
+
+    The model is sampled either exactly (with an :math:`O(N^3)` complexity), or sampled
+    approximately through a random Fourier `M` feature decompisition
+    (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points).
+
+    """
+
+    def __init__(
+        self,
+        num_search_space_samples: int,
+        num_query_points: int,
+        num_fourier_features: Optional[int] = None,
+    ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
+        :num_fourier_features: The number of features used to approximate the kernel. We
+            recommend first trying 1000 features, as this typically perfoms well for a wide
+            range of kernels. If None, then we perfom exact Thompson sampling.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -196,12 +246,21 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
+        if num_fourier_features is not None and num_fourier_features <= 0:
+            raise ValueError(
+                f"Number of fourier features must be greater than 0, got {num_query_points}"
+            )
+
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+        self._num_fourier_features = num_fourier_features
 
     def __repr__(self) -> str:
         """"""
-        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
+        return f"""DiscreteThompsonSampling(
+        {self._num_search_space_samples!r},
+        {self._num_query_points!r},
+        {self._num_fourier_features!r})"""
 
     def acquire(
         self,
@@ -229,7 +288,26 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
+        if datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""
+                dict of datasets must contain the single key {OBJECTIVE},
+                got keys {datasets.keys()}
+                """
+            )
+
+        if self._num_fourier_features is None:  # Perform exact Thompson sampling
+            thompson_sampler: ThompsonSampler = ExactThompsonSampler(
+                self._num_query_points, models[OBJECTIVE]
+            )
+        else:  # Perform approximate Thompson sampling
+            thompson_sampler = RandomFourierFeatureThompsonSampler(
+                self._num_query_points,
+                models[OBJECTIVE],
+                datasets[OBJECTIVE],
+                num_features=self._num_fourier_features,
+            )
+
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = thompson_sampler.sample(query_points)
 
@@ -237,11 +315,11 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
 
 
 class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
-    """ Implements the *trust region* acquisition algorithm. """
+    """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
     class State:
-        """ The acquisition state for the :class:`TrustRegion` acquisition rule. """
+        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
 
         acquisition_space: Box
         """ The search space. """
@@ -266,7 +344,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
 
     def __init__(
         self,
-        builder: AcquisitionFunctionBuilder | None = None,
+        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         optimizer: AcquisitionOptimizer[Box] | None = None,
@@ -282,10 +360,13 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             ``builder``. This must be able optimize over a :class:`Box`.
         """
         if builder is None:
-            builder = ExpectedImprovement().using(OBJECTIVE)
+            builder = ExpectedImprovement()
+
+        if isinstance(builder, SingleModelAcquisitionBuilder):
+            builder = builder.using(OBJECTIVE)
 
         if optimizer is None:
-            optimizer = optimize_continuous
+            optimizer = generate_continuous_optimizer()
 
         self._builder = builder
         self._beta = beta
@@ -301,7 +382,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: State | None,
+        state: State | None = None,
     ) -> tuple[TensorType, State]:
         """
         Acquire one new query point according the trust region algorithm. Return the new query point

@@ -11,62 +11,71 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 # In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
+#
+#
 
 # %%
-from trieste.utils.objectives import branin
-from trieste.space import Box
+from trieste.utils.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from util.plotting_plotly import plot_function_plotly
+from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
 
-fig = plot_function_plotly(
-    branin, search_space.lower, search_space.upper, grid_density=20
-)
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
 #
-# Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, the observer outputs a number of datasets, each of which must be labelled so the optimization process knows which is which. In our case, we only have one dataset, the objective. We'll use _Trieste_'s default label for single-model setups, `OBJECTIVE`. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
+# Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, an observer can output a number of datasets. In our case, we only have one dataset, the objective. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
 #
-# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
+# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample a five point space-filling design from the search space and evaluate it with the observer. For continuous search spaces, Trieste supports random, Sobol and Halton initial designs.
 
 # %%
 import trieste
-from trieste.acquisition.rule import OBJECTIVE
 
-observer = trieste.utils.objectives.mk_observer(branin, OBJECTIVE)
+observer = trieste.utils.objectives.mk_observer(scaled_branin)
 
 num_initial_points = 5
-initial_query_points = search_space.sample(num_initial_points)
+initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian process regression for this, provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
 #
-# Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
+# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
+#
+# If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 
 # %%
 import gpflow
+import tensorflow_probability as tfp
+
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return {OBJECTIVE: {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }}
+    return {
+            "model": gpr,
+            "model_args": {
+                "num_kernel_samples": 100,
+            },
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+    }
 
-model = build_model(initial_data[OBJECTIVE])
+model = build_model(initial_data)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -77,13 +86,13 @@ model = build_model(initial_data[OBJECTIVE])
 #
 # We'll run the optimizer for fifteen steps.
 #
-# The optimization loop catches errors so as not to lose progress, which means the optimization loop might not complete and the data from the last step may not exist. Here we'll handle this crudely by asking for the data regardless, using `.try_get_final_datasets()`, which will re-raise the error if one did occur. For a review of how to handle errors systematically, there is a [dedicated tutorial](recovering_from_errors.ipynb). Finally, like the observer, the optimizer outputs labelled datasets, so we'll get the (only) dataset here by indexing with tag `OBJECTIVE`.
+# The optimization loop catches errors so as not to lose progress, which means the optimization loop might not complete and the data from the last step may not exist. Here we'll handle this crudely by asking for the data regardless, using `.try_get_final_datasets()`, which will re-raise the error if one did occur. For a review of how to handle errors systematically, there is a [dedicated tutorial](recovering_from_errors.ipynb).
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(15, initial_data, model)
-dataset = result.try_get_final_datasets()[OBJECTIVE]
+dataset = result.try_get_final_dataset()
 
 # %% [markdown]
 # ## Explore the results
@@ -103,12 +112,14 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # We can visualise how the optimizer performed by plotting all the acquired observations, along with the true function values and optima, either in a two-dimensional contour plot ...
 
 # %%
-from util.plotting import plot_function_2d, plot_bo_points
+from util.plotting import plot_bo_points, plot_function_2d
 
 _, ax = plot_function_2d(
-    branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
 )
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+ax[0, 0].set_xlabel(r'$x_1$')
+ax[0, 0].set_xlabel(r'$x_2$')
 
 # %% [markdown]
 # ... or as a three-dimensional plot
@@ -116,9 +127,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(
-    branin, search_space.lower, search_space.upper, grid_density=20
-)
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=500, width=500)
 
 fig = add_bo_points_plotly(
@@ -140,23 +149,27 @@ fig.show()
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
 
+suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
 _, ax = plt.subplots(1, 2)
-plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
-plot_bo_points(
-    query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx
-)
+plot_regret(suboptimality, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+
+ax[0].set_yscale("log")
+ax[0].set_ylabel("Regret")
+ax[0].set_ylim(0.001, 100)
+ax[0].set_xlabel("# evaluations")
 
 # %% [markdown]
-# We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_models()` and indexing with `OBJECTIVE`.
+# We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
 
 # %%
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
+    result.try_get_final_model().model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=30
+    grid_density=30,
 )
 
 fig = add_bo_points_plotly(
@@ -169,7 +182,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-
 fig.show()
 
 # %% [markdown]
@@ -177,17 +189,34 @@ fig.show()
 
 # %%
 gpflow.utilities.print_summary(
-    result.try_get_final_models()[OBJECTIVE].model  # type: ignore
+    result.try_get_final_model().model  # type: ignore
 )
 
-ls_list = [
-    step.models[OBJECTIVE].model.kernel.lengthscales.numpy()  # type: ignore
+variance_list = [
+    step.model.model.kernel.variance.numpy()  # type: ignore
     for step in result.history + [result.final_result.unwrap()]
 ]
 
+ls_list = [
+    step.model.model.kernel.lengthscales.numpy()  # type: ignore
+    for step in result.history + [result.final_result.unwrap()]
+]
+
+variance = np.array(variance_list)
 ls = np.array(ls_list)
-plt.plot(ls[:, 0])
-plt.plot(ls[:, 1])
+
+fig, ax = plt.subplots(1, 2)
+ax[0].plot(variance, label="Kernel variance")
+ax[0].legend(loc="upper left")
+ax[0].set_xlabel("# Evaluations")
+ax[0].set_xlabel("Parameter Value")
+
+ax[1].plot(ls[:, 0], label="Kernel lengthscale 1")
+ax[1].plot(ls[:, 1], label="Kernel lengthscale 2")
+ax[1].legend(loc="upper left")
+ax[1].set_xlabel("# Evaluations")
+
+fig.tight_layout()
 
 # %% [markdown]
 # ## Run the optimizer for more steps
@@ -195,14 +224,12 @@ plt.plot(ls[:, 1])
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(
-    5, result.try_get_final_datasets(), result.try_get_final_models()
-)
-dataset = result.try_get_final_datasets()[OBJECTIVE]
+result = bo.optimize(5, result.try_get_final_dataset(), result.try_get_final_model())
+dataset = result.try_get_final_dataset()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 _, ax = plot_function_2d(
-    branin, search_space.lower, search_space.upper, grid_density=40, contour=True
+    scaled_branin, search_space.lower, search_space.upper, grid_density=40, contour=True
 )
 
 plot_bo_points(
@@ -212,61 +239,8 @@ plot_bo_points(
     idx_best=arg_min_idx,
 )
 
-# %% [markdown]
-# ## Batch-sequential strategy
-#
-# Sometimes it is practically convenient to query several points at a time. We can do this in `trieste` using a `BatchAcquisitionRule` and a `BatchAcquisitionFunctionBuilder`, that together recommend a number of query points `num_query_points` (instead of one as previously). The optimizer then queries the observer at all these points simultaneously.
-# Here we use the `BatchMonteCarloExpectedImprovement` function. Note that this acquisition function is computed using a Monte-Carlo method (so it requires a `sample_size`), but with a reparametrisation trick, which makes it deterministic.
-
-# %%
-from trieste.acquisition.rule import EfficientGlobalOptimization
-
-qei = trieste.acquisition.BatchMonteCarloExpectedImprovement(sample_size=1000)
-batch_rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-    num_query_points=3, builder=qei.using(OBJECTIVE)
-)
-
-model = build_model(initial_data[OBJECTIVE])
-batch_result = bo.optimize(5, initial_data, model, acquisition_rule=batch_rule)
-
-# %% [markdown]
-# We can again visualise the GP model and query points.
-
-# %%
-batch_dataset = batch_result.try_get_final_datasets()[OBJECTIVE]
-batch_query_points = batch_dataset.query_points.numpy()
-batch_observations = batch_dataset.observations.numpy()
-fig = plot_gp_plotly(
-    batch_result.try_get_final_models()[OBJECTIVE].model,  # type: ignore
-    search_space.lower,
-    search_space.upper,
-    grid_density=30
-)
-
-batch_arg_min_idx = tf.squeeze(tf.argmin(batch_dataset.observations, axis=0))
-
-fig = add_bo_points_plotly(
-    x=batch_query_points[:, 0],
-    y=batch_query_points[:, 1],
-    z=batch_observations[:, 0],
-    num_init=num_initial_points,
-    idx_best=batch_arg_min_idx,
-    fig=fig,
-    figrow=1,
-    figcol=1,
-)
-
-fig.show()
-
-# %% [markdown]
-# We can also compare the regret between the purely sequential approach and the batch one. 
-
-# %%
-_, ax = plt.subplots(1, 2)
-plot_regret(observations, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
-plot_regret(
-    batch_observations, ax[1], num_init=num_initial_points, idx_best=batch_arg_min_idx
-)
+ax[0, 0].set_xlabel(r'$x_1$')
+ax[0, 0].set_xlabel(r'$x_2$')
 
 # %% [markdown]
 # ## LICENSE

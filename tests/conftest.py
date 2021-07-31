@@ -26,9 +26,31 @@ from trieste.models.keras.networks import (
 from tests.util.trieste.utils.objectives import hartmann_6_dataset, branin_dataset
 
 
-# @pytest.fixture(name="input_output_space_bound", params=[1.0, 2.5], scope="session")
-# def _input_output_space_bound_fixture(request):
-#     return request.param
+def pytest_addoption(parser):
+    parser.addoption(
+        "--runslow",
+        action="store",
+        default="no",
+        choices=("yes", "no", "only"),
+        help="whether to run slow tests",
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--runslow") == "no":
+        skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)
+    elif config.getoption("--runslow") == "only":
+        skip_fast = pytest.mark.skip(reason="--skipfast option set")
+        for item in items:
+            if "slow" not in item.keywords:
+                item.add_marker(skip_fast)
 
 
 @pytest.fixture(name="input_space_shape", params=[tuple(), (1,), (2,), (2, 5)], scope="session")

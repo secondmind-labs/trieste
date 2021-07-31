@@ -32,10 +32,13 @@ def _default_optimizer() -> gpflow.optimizers.Scipy:
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """ Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`. """
+    """Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`."""
 
     model: tf.Module | TrainableProbabilisticModel
     """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
+
+    model_args: dict[str, Any] = field(default_factory=lambda: {})
+    """ The keyword arguments to pass to the model wrapper. """
 
     optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer = field(
         default_factory=_default_optimizer
@@ -79,7 +82,7 @@ class ModelConfig:
 
         for model_type, model_interface in supported_models.items():
             if isinstance(self.model, model_type):
-                return model_interface(self.model, optimizer)
+                return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 

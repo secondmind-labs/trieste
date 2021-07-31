@@ -34,6 +34,7 @@ from trieste.utils.objectives import (
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     ROSENBROCK_4_MINIMIZER,
     ROSENBROCK_4_MINIMUM,
+    SCALED_BRANIN_MINIMUM,
     SHEKEL_4_MINIMIZER,
     SHEKEL_4_MINIMUM,
     ackley_5,
@@ -44,6 +45,7 @@ from trieste.utils.objectives import (
     logarithmic_goldstein_price,
     mk_observer,
     rosenbrock_4,
+    scaled_branin,
     shekel_4,
 )
 
@@ -52,6 +54,7 @@ from trieste.utils.objectives import (
     "objective, minimizers, minimum",
     [
         (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
+        (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
         (
             logarithmic_goldstein_price,
@@ -77,6 +80,7 @@ def test_objective_maps_minimizers_to_minimum(
     "objective, space, minimum",
     [
         (branin, Box([0.0, 0.0], [1.0, 1.0]), BRANIN_MINIMUM),
+        (scaled_branin, Box([0.0, 0.0], [1.0, 1.0]), SCALED_BRANIN_MINIMUM),
         (gramacy_lee, Box([0.5], [2.5]), GRAMACY_LEE_MINIMUM),
         (
             logarithmic_goldstein_price,
@@ -107,3 +111,14 @@ def test_mk_observer() -> None:
     assert ys.keys() == {"bar"}
     npt.assert_array_equal(ys["bar"].query_points, x_)
     npt.assert_array_equal(ys["bar"].observations, x_ + 1)
+
+
+def test_mk_observer_unlabelled() -> None:
+    def foo(x: tf.Tensor) -> tf.Tensor:
+        return x + 1
+
+    x_ = tf.constant([[3.0]])
+    ys = mk_observer(foo)(x_)
+
+    npt.assert_array_equal(ys.query_points, x_)
+    npt.assert_array_equal(ys.observations, x_ + 1)

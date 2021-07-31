@@ -33,7 +33,7 @@ def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
 
 
 class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
-    """ A model that does nothing on :meth:`update` and :meth:`optimize`. """
+    """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
         pass
@@ -43,7 +43,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
 
 
 class GaussianMarginal(ProbabilisticModel, ABC):
-    """ A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]. """
+    """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
@@ -53,16 +53,18 @@ class GaussianMarginal(ProbabilisticModel, ABC):
 
 
 class GaussianProcess(GaussianMarginal, ProbabilisticModel):
-    """ A (static) Gaussian process over a vector random variable. """
+    """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
         self,
         mean_functions: Sequence[Callable[[TensorType], TensorType]],
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+        noise_variance: float = 1.0,
     ):
         super().__init__()
         self._mean_functions = mean_functions
         self._kernels = kernels
+        self._noise_variance = noise_variance
 
     def __repr__(self) -> str:
         return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
@@ -76,18 +78,33 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
+    def get_observation_noise(self) -> TensorType:
+        return tf.constant(self._noise_variance)
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        covs = [
+            k.tensor(query_points_1, query_points_2, 1, 1)[..., None, :, :] for k in self._kernels
+        ]
+        return tf.squeeze(tf.concat(covs, axis=-3))
+
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):
-    r""" A Gaussian process with scalar quadratic mean and RBF kernel. """
+    r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
         self,
         *,
         x_shift: float | SequenceN[float] | TensorType = 0,
         kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
     ):
-        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([lambda x: quadratic(x - x_shift)], [kernel])
+        self.kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
+        super().__init__([lambda x: quadratic(x - x_shift)], [self.kernel], noise_variance)
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
+
+    def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
+        return self.kernel

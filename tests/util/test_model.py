@@ -102,3 +102,26 @@ def test_gaussian_process_sample() -> None:
     variance = tf.math.reduce_variance(samples, axis=-3)
     npt.assert_allclose(variance, tf.fill([2, 3, 2], 2.56), rtol=0.02)
     # fmt: on
+
+
+def test_gaussian_process_get_observation_noise() -> None:
+    noise = _example_gaussian_process().get_observation_noise()
+    npt.assert_equal(noise, tf.constant(1.0))
+
+
+def test_gaussian_process_covariance_between_points() -> None:
+    x = tf.reshape(tf.linspace(0.0, 5.0, 4), (-1, 1))
+    x = tf.cast(x, dtype=tf.float32)
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = _example_gaussian_process().predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[:, :8, 8:]
+
+    actual_covariance = _example_gaussian_process().covariance_between_points(
+        query_points_1, query_points_2
+    )
+
+    npt.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
