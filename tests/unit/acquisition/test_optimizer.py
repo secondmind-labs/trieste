@@ -21,12 +21,12 @@ from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
+    FailedOptimizationError,
     automatic_optimizer_selector,
     batchify,
     generate_continuous_optimizer,
     generate_random_search_optimizer,
     optimize_discrete,
-    FailedOptimizationError,
 )
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
@@ -36,13 +36,13 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
     return lambda x: tf.reduce_sum(0.5 - quadratic(x - shift), axis=-2)
 
 
+def _delta_function(power: float) -> AcquisitionFunction:
+    return lambda x: tf.reduce_sum((1 / (x ** power)), -1)
+
+
 def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
     with pytest.raises(ValueError):
         generate_random_search_optimizer(num_samples=-5)
-
-
-def _jerky_function() -> AcquisitionFunction:
-    return lambda x: tf.random.normal([len(x), 1], 0, 1, tf.float64)
 
 
 @random_seed
@@ -99,9 +99,11 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
     with pytest.raises(ValueError):
         generate_continuous_optimizer(num_initial_samples=-5)
     with pytest.raises(ValueError):
-        generate_continuous_optimizer(num_restarts=-5)
+        generate_continuous_optimizer(num_optimization_runs=-5)
     with pytest.raises(ValueError):
-        generate_continuous_optimizer(num_restarts=5, num_initial_samples=4)
+        generate_continuous_optimizer(num_optimization_runs=5, num_initial_samples=4)
+    with pytest.raises(ValueError):
+        generate_continuous_optimizer(num_recovery_runs=-5)
 
 
 @random_seed
@@ -134,10 +136,12 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
     "optimizer",
     [
         generate_continuous_optimizer(),
-        generate_continuous_optimizer(num_restarts=3),
+        generate_continuous_optimizer(num_optimization_runs=3),
+        generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
         generate_continuous_optimizer(sigmoid=True),
-        generate_continuous_optimizer(sigmoid=True, num_restarts=3),
-        generate_continuous_optimizer(sigmoid=True, num_restarts=1, num_initial_samples=1),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3, num_recovery_runs=0),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=1, num_initial_samples=1),
     ],
 )
 def test_continuous_optimizer(
@@ -150,23 +154,24 @@ def test_continuous_optimizer(
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 
-@random_seed
-@pytest.mark.parametrize(
-    "optimizer",
-    [
-        generate_continuous_optimizer(),
-        generate_continuous_optimizer(num_restarts=3),
-        generate_continuous_optimizer(sigmoid=True),
-        generate_continuous_optimizer(sigmoid=True, num_restarts=3),
-        generate_continuous_optimizer(sigmoid=True, num_restarts=1, num_initial_samples=1),
-    ],
-)
+@pytest.mark.parametrize("num_optimization_runs", [1, 10])
+@pytest.mark.parametrize("num_recovery_runs", [1, 10])
 def test_optimize_continuous_raises_for_impossible_optimization(
-    optimizer: AcquisitionOptimizer,
+    num_optimization_runs, num_recovery_runs
 ) -> None:
-    search_space = Box([-1,-1], [2,2])
-    with pytest.raises(FailedOptimizationError):
-        optimizer(search_space, _jerky_function())
+    search_space = Box([-1, -1], [1, 2])
+    optimizer = generate_continuous_optimizer(
+        num_optimization_runs=num_optimization_runs, num_recovery_runs=num_recovery_runs
+    )
+    with pytest.raises(FailedOptimizationError) as e:
+        optimizer(search_space, _delta_function(10))
+    assert (
+        str(e.value)
+        == f"""
+                    Acquisition function optimization failed,
+                    even after {num_recovery_runs + num_optimization_runs} restarts.
+                    """
+    )
 
 
 def test_optimize_batch_raises_with_invalid_batch_size() -> None:
