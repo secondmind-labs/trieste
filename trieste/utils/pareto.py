@@ -116,12 +116,12 @@ class Pareto(_Pareto):
         observations: TensorType,
         *,
         partition: [str, Callable] = "default",
-        reference_point: [TensorType, None] = None,
+        screen_reference_point: [TensorType, None] = None,
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :param partition: method of partitioning based on the (screened) pareto frontier
-        :param reference_point: The reference point used to screen out not interested frontier in
+        :param screen_reference_point: The reference point used to screen out not interested frontier in
           observations.
 
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
@@ -131,10 +131,10 @@ class Pareto(_Pareto):
         self._partition = partition
 
         # get screened front according to sort of concentration: the 1st step
-        if reference_point is None:
+        if screen_reference_point is None:
             pfront, _ = non_dominated(observations)
         else:  # screen possible not interested points
-            screen_mask = tf.reduce_any(observations <= reference_point, -1)
+            screen_mask = tf.reduce_any(observations <= screen_reference_point, -1)
             pfront, _ = non_dominated(observations[screen_mask])
 
         # get front from partition: in case any approximation has been made
@@ -152,6 +152,7 @@ class Pareto(_Pareto):
         else:
             raise TypeError(f" Specified partition method : {self._partition} not understood")
 
+    # TODO: Support reference point below front
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
         Calculate the hypervolume indicator
@@ -240,9 +241,12 @@ class Pareto(_Pareto):
         return lower, upper
 
 
+# FIXME: ensure front is not empty
 def get_reference_point(front: TensorType) -> TensorType:
     """
     reference point calculation method
+
+    :raise ValueError : If ``front`` is empty
     """
     f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
     return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]

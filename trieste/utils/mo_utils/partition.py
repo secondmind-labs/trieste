@@ -231,19 +231,16 @@ class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
     """
     A method of partitioning the dominated region.
 
-    The main idea is of using a sort of auxiliary points assosiating to existing Pareto points to
-    describe the Pareto frontier, (which is referred to as local upper bounds in the original context)
-    then, we could use an alternative partition as an replacement of original partition.
+    The main idea is of using a sort of auxiliary points (which is referred to as local
+    upper bounds in the original context)assosiating to existing Pareto points to
+    describe the Pareto frontier, then, one could use an alternative partition as
+    an replacement of original partition.
 
-    Main reference: Section 2.2.2 of lacour2017box
+    Main reference: Section 2.2.2 of :cite:`lacour2017box`
     Assumptions
     One of the assumption made here is no any points have the same value in any dimension
-
-
-    An implementation of incremental strategy proposed in lacour2017box, this approach support and update
-    fashion of inserting new front points with a little bit more computational effort compared to its non incremental
-    counterpart
     """
+
     def __init__(self, front: TensorType, reference_point: TensorType):
         tf.debugging.assert_shapes([(reference_point, ["D"])])
         tf.debugging.assert_greater_equal(reference_point, front)
@@ -253,14 +250,12 @@ class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
             tf.newaxis
         ]  # initialize local upper bounds with reference point
 
-        # initialize defining points _Z to be the dummy points \hat{z} that are
-        # defined in Sec 2.1 in lacour2017box. Note that in lacour2017box, outcomes
-        # are assumed to be between [0,1], here we use [-1e10, reference_point]
-        self.Z_set = (
+        self.Z_set = (  # initialize defining points _Z to be the dummy points \hat{z} that are
+            # defined in Sec 2.1
                 - 1e10 * tf.ones((1, front.shape[-1], front.shape[-1]), dtype=front.dtype)
                 + 1e10 * tf.eye(front.shape[-1], front.shape[-1], batch_shape=[1], dtype=front.dtype)
                 + tf.linalg.diag(reference_point)[tf.newaxis, ...]
-        )  # 1e-10 is a replace of inf to improve stability
+        )  # note we replace the original defined objective space [0, reference_point] by [-1e10, reference_point]
 
         (
             self.U_set,
@@ -289,12 +284,12 @@ def _update_local_upper_bounds_incremental(
         new_front_points: TensorType, u_set: TensorType, z_set: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Update the current local upper with the new pareto points. (note: this does not
-    require input new_front_points must be non-dominated points)
+    require input: new_front_points be non-dominated points)
 
     :param new_front_points: with shape [n, p], the new Pareto frontier points.
-    :param u_set: with shape [n', p], the set containing all the local upper bounds.
-    :param z_set: with shape [n', p, p] contain the local upper bounds defining points, note though
-        numerically equivalent, the meaning of the two p is different: first p denotes for any element
+    :param u_set: with shape [n', p], the set containing all the existing local upper bounds.
+    :param z_set: with shape [n', p, p] contain the existing local upper bounds defining points,
+        note the meaning of the two p is different: first p denotes for any element
         in u_set, it has p defining points,  the second p denotes each defining points is p dimensional.
 
     Returns: A new [n'', p] new local upper bounds set.
@@ -319,19 +314,17 @@ def _compute_new_local_upper_bounds(
         u_set: TensorType, z_set: TensorType, z_bar: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Compute new local upper bounds.
-    This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from [Lacour17]_: Given a stable set N and
-    a new point z_bar, if z_bar (new point) dominates any of the element in existing local upper bounds set:
-    u_set, we need to:
+    This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from :cite:`lacour2017box`: Given a new point z_bar,
+    if z_bar (new point) dominates any of the element in existing local upper bounds set: u_set, we need to:
     1. calculating the new local upper bounds set introduced by z_bar, and its corresponding defining set z_set
-    2. remove the old local upper bounds set from U that has been dominated by z_bar and its corresponding defining
-        points from z_set
+    2. remove the old local upper bounds set from u_set that has been dominated by z_bar and their corresponding
+        defining points from z_set
     3. concatenate u_set, z_set with the new local upper bounds set and its corresponding defining set
 
     :param u_set: (U in the paper) with shape `[n,  p] dim tensor containing the local upper bounds.
     :param z_set: (Z in the paper) with shape `[n, p, p] dim tensor containing the local upper bounds.
     :param z_bar: with shape [p] denoting the new point
-    Returns:
-    tuple(U', Z') with shape [n, p] and [n', p, p].
+    :return: new u_set with shape [n, p], new defining z_set with shape [n', p, p].
     """
     tf.debugging.assert_shapes([(z_bar, ["D"])])
     tf.debugging.assert_type(z_bar, u_set.dtype)
@@ -342,11 +335,11 @@ def _compute_new_local_upper_bounds(
     if not tf.reduce_any(z_bar_dominates_u_set_mask):  # z_bar does not dominate any point in set U
         return u_set, z_set
 
-    # A:elements in u that has been dominated by zbar, which needs to be replaced
+    # A: elements in u that has been dominated by zbar, which needs to be replaced
     capital_a = u_set[z_bar_dominates_u_set_mask]  # [m, p]
     capital_a_z = z_set[z_bar_dominates_u_set_mask]  # [m, p, p]
 
-    # Container of new local upper bound points and its defining set
+    # Container of new local upper bound (lub) points and its defining set
     lub_new = []
     lub_new_z = []
 
@@ -366,7 +359,6 @@ def _compute_new_local_upper_bounds(
         u_mask_to_be_replaced_by_zbar_j = z_bar[j] >= z_uj_max  # [m, 1]
         # for jth dimension, any one of m local upper bounds can be replaced
         if tf.reduce_any(u_mask_to_be_replaced_by_zbar_j):
-            # theoretically there should be at most only 1 of add_z is true
             # add new lub: (zbar_j, u_{-j})
             a_filtered = capital_a[u_mask_to_be_replaced_by_zbar_j]  # [m', p]
             # tensorflow tricky to replace u_j's j dimension with z_bar[j]
@@ -379,7 +371,7 @@ def _compute_new_local_upper_bounds(
                 u_mask_to_be_replaced_by_zbar_j
             ]  # get its original defining point
 
-            z_uj_new  = a_z_filtered * mask_not_j[..., tf.newaxis] + z_bar * mask_j[..., tf.newaxis]
+            z_uj_new = a_z_filtered * mask_not_j[..., tf.newaxis] + z_bar * mask_j[..., tf.newaxis]
             lub_new_z.append(z_uj_new)
 
     # filter out elements of U that are in A
@@ -400,15 +392,15 @@ def _get_partition_bounds_hbda(
         z: TensorType, u: TensorType, reference_point: TensorType
 ) -> tuple(TensorType, TensorType):
     r"""Get the cell bounds given the local upper bounds and the defining points.
-    Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper of lacour2017box.
+    Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper
+    of :cite:`lacour2017box`.
 
     :param u: with shape [|U(N)|, p], local upper bounds set, |U(N)| is the sets number,
        p denotes the objective dimensionality
     :param z: with shape [|U(N)|, p, p]
     :param reference_point: z^r in the paper
 
-    Returns:
-    (l_bounds, u_bounds)
+    :return: l_bounds, u_bounds
     """
     tf.debugging.assert_shapes([(reference_point, ["D"])])
     l_bounds = tf.zeros(shape=[0, u.shape[-1]], dtype=u.dtype)
@@ -434,30 +426,10 @@ def _get_partition_bounds_hbda(
     return l_bounds[~empty], u_bounds[~empty]
 
 
-# TODO:
-def _compute_local_upper_bounds_non_incremental():
-    r"""Compute the local upper bounds in an non-incremental fashion, mainly refer
-    Algorithm 2 in section 2.2.2 of lacour2017box. Other than the incremental version,
-    this strategy expect one of the outcome dimensionality p is sorted, which can be
-    utilized resulting a faster computation speed
-
-
-    :param new_front_points: with shape [n, p], the new Pareto frontier points.
-    :param u_set: with shape [n', p], the set containing all the local upper bounds.
-    :param z_set: with shape [n', p, p] contain the local upper bounds defining points, note though
-        numerically equivalent, the meaning of the two p is different: first p denotes for any element
-        in u_set, it has p defining points,  the second p denotes each defining points is p dimensional.
-
-    Returns: A new [n'', p] new local upper bounds set.
-             A [n'', p, p]  contain the new local upper bounds defining points
-    """
-
-
 class FlipTrickNonDominatedPartition(_NonDominatedPartition):
     """
-    Main refer Algorithm 2, Algorithm 3 of yang2019efficient, a slight alter of
+    Main refer Algorithm 2, Algorithm 3 of :cite:yang2019efficient, a slight alter of
     method is utilized as we are performing minimization.
-    as well as https://github.com/pytorch/botorch/blob/ddc97bb4dc5de8ea1cf0f0d11519b826f6a56868/botorch/utils/multi_objective/box_decompositions/non_dominated.py#L371
 
     The idea behind the proposed algorithm is transforming the problem of
     partitioning a non-dominated space into the problem of partitioning the
@@ -469,13 +441,14 @@ class FlipTrickNonDominatedPartition(_NonDominatedPartition):
     as maximization, in this case, we are able to use lacour2017box's method again to partition
     the 'dominated' region, which will then provide us with the partition of the non-dominated region
     """
+
     def __init__(self, front: TensorType, reference_point: TensorType):
         lub_sets = HypervolumeBoxDecompositionIncrementalDominated(front, reference_point).U_set
-        fliped_partition = HypervolumeBoxDecompositionIncrementalDominated(
+        flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
             -lub_sets, 3 * tf.ones(shape=front.shape[-1], dtype=front.dtype))
-        fliped_lb_pts, fliped_ub_pts = fliped_partition.partition_bounds()
-        self.lb_pts = - fliped_ub_pts
-        self.ub_pts = - fliped_lb_pts
+        flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
+        self.lb_pts = - flipped_ub_pts
+        self.ub_pts = - flipped_lb_pts
 
     def partition_bounds(self):
         return self.lb_pts, self.ub_pts
@@ -487,20 +460,23 @@ if __name__ == "__main__":
     # get_partition_bounds_hbda(z, u, tf.constant([1.0, 1.0]))
     from trieste.utils.multi_objectives import DTLZ1, VLMOP2
 
-
+    # TODO: Implement non incremental partitioning
+    # TODO: Visual Check
+    # TODO: Profile on jupyter notebook
+    # TODO: Write Test
 
     # plot check
     # 2d case
     # from trieste.utils.multi_objectives import VLMOP2
-    from matplotlib import pyplot as plt
-    pf = VLMOP2().gen_pareto_optimal_points(10)
-    lb, ub = partition = FlipTrickNonDominatedPartition(pf, 2 * tf.ones(2)).partition_bounds()
-    # plt.scatter(1.2, 1.2, label='ref points')
-    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
-    plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
-    plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
-    plt.legend()
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # pf = VLMOP2().gen_pareto_optimal_points(10)
+    # lb, ub = partition = FlipTrickNonDominatedPartition(pf, 2 * tf.ones(2)).partition_bounds()
+    # # plt.scatter(1.2, 1.2, label='ref points')
+    # # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    # plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
+    # plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
+    # plt.legend()
+    # plt.show()
 
     # partition = HypervolumeBoxDecompositionIncremental(pf, 1.2 * tf.ones(2))
     # from matplotlib import pyplot as plt
@@ -509,7 +485,7 @@ if __name__ == "__main__":
     # plt.scatter(partition.U_set[:, 0], partition.U_set[:, 1], label='U set points')
     # plt.legend()
     # plt.show()
-#
+    #
     # plt.figure()
     # lb_pts, ub_pts = partition.partition_bounds()
     # plt.scatter(1.2, 1.2, label='ref points')
@@ -520,15 +496,12 @@ if __name__ == "__main__":
     # plt.show()
 
     # 3D case
-    # pf = DTLZ1(4, 3).gen_pareto_optimal_points(50)
-    # partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(3))
+    outdim = 3
+    pf = DTLZ1(10, outdim).gen_pareto_optimal_points(100)
+    partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(outdim))
     from botorch.utils.multi_objective.box_decompositions.non_dominated import FastNondominatedPartitioning
 
     # from botorch.test_functions.multi_objective import DTLZ1
     # import torch
 
     # _ = FastNondominatedPartitioning(-1.2 * torch.ones(2), -torch.Tensor(pf))
-
-
-
-
