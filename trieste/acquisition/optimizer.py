@@ -127,7 +127,7 @@ def generate_continuous_optimizer(
         the optimization.
     :param sigmoid: If True then use L-BFGS, otherwise use L-BFGS-B.
     :param num_optimization_runs: The number of separate optimizations to run.
-    :param num_recovery_runs: The number of backup optimization runs.
+    :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
@@ -204,6 +204,7 @@ def generate_continuous_optimizer(
                 opt_result = _perform_optimization(space.sample(1))
                 if opt_result.success:
                     chosen_point = bijector.forward(variable)  # [1, D]
+                    successful_optimization = True
                     break
             if not successful_optimization:  # return error if still failed
                 raise FailedOptimizationError(
