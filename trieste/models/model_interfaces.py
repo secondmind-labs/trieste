@@ -97,6 +97,14 @@ class ProbabilisticModel(ABC):
 
         :return: The observation noise.
         """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
         raise NotImplementedError("Model {self!r} does not provide observation noise")
 
 
@@ -713,22 +721,41 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             param.assign(param.prior.sample())
 
 
-def squeeze_hyperparameters(object: gpflow.Module, alpha: float = 1e-2) -> None:
+def squeeze_hyperparameters(
+    object: gpflow.Module, alpha: float = 1e-2, epsilon: float = 1e-7
+) -> None:
     """
-    Squeezes the parameters to be strictly inside their range defined by the Sigmoid.
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
+    or strictly greater than the limit defined by the Shift+Softplus.
     This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
 
     :param object: Any gpflow Module.
-    :param alpha: the proportion of the range with which to squeeze
-    :raise ValueError: If ``alpha`` is not in (0,1).
+    :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
+    :param epsilon: the value with which to offset the shift for the Softplus case.
+    :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
 
     if not (0 < alpha < 1):
-        raise ValueError(f"squeeze factor alpha must be in (0, 1), given value is {alpha}")
+        raise ValueError(f"squeeze factor alpha must be in (0, 1), found {alpha}")
+
+    if not (0 < epsilon):
+        raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
     for param in object.trainable_parameters:
         if isinstance(param.bijector, tfp.bijectors.Sigmoid):
-            epsilon = (param.bijector.high - param.bijector.low) * alpha
-            squeezed_param = tf.math.minimum(param, param.bijector.high - epsilon)
-            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + epsilon)
+            delta = (param.bijector.high - param.bijector.low) * alpha
+            squeezed_param = tf.math.minimum(param, param.bijector.high - delta)
+            squeezed_param = tf.math.maximum(squeezed_param, param.bijector.low + delta)
             param.assign(squeezed_param)
+        elif (
+            isinstance(param.bijector, tfp.bijectors.Chain)
+            and len(param.bijector.bijectors) == 2
+            and isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift)
+            and isinstance(param.bijector.bijectors[1], tfp.bijectors.Softplus)
+        ):
+            if isinstance(param.bijector.bijectors[0], tfp.bijectors.Shift) and isinstance(
+                param.bijector.bijectors[1], tfp.bijectors.Softplus
+            ):
+                low = param.bijector.bijectors[0].shift
+                squeezed_param = tf.math.maximum(param, low + epsilon * tf.ones_like(param))
+                param.assign(squeezed_param)

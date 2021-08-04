@@ -18,13 +18,13 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.utils.objectives import branin, BRANIN_MINIMUM
+from trieste.objectives import branin, BRANIN_MINIMUM
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
-observer = trieste.utils.objectives.mk_observer(branin)
+observer = trieste.objectives.utils.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]

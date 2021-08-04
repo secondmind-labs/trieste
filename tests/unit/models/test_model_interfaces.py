@@ -534,27 +534,6 @@ def test_find_best_model_initialization_improves_likelihood(
     npt.assert_array_less(post_init_loss, pre_init_loss)
 
 
-@random_seed
-def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
-    model = gpr_interface_factory(x, tf.zeros_like(x))
-
-    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
-
-    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.49])
-    upper = tf.cast([0.5], dtype=tf.float64)
-    lower = upper / 5.0
-    model.model.kernel.lengthscales = gpflow.Parameter(
-        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
-    )
-    gpflow.set_trainable(model.model.kernel.variance, False)
-    gpflow.set_trainable(model.model.likelihood.variance, False)
-
-    model.optimize(Dataset(x, tf.zeros_like(x)))
-    model.find_best_model_initialization(2)
-
-
 def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
@@ -940,12 +919,38 @@ def test_randomize_hyperparameters_samples_different_values_for_multi_dimensiona
 
 
 @random_seed
-def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
+def test_squeeze_sigmoid_hyperparameters() -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1 + 1e-3, 0.5 - 1e-3])
     upper = tf.cast([0.5, 0.5], dtype=tf.float64)
     lower = upper / 5.0
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    squeeze_hyperparameters(kernel, 0.1)
+    squeeze_hyperparameters(kernel, alpha=0.1)
     npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
+
+
+@random_seed
+def test_squeeze_softplus_hyperparameters() -> None:
+    lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
+    squeeze_hyperparameters(lik, epsilon=0.2)
+    npt.assert_array_almost_equal(lik.variance, 0.2 + 1e-6)
+
+
+@random_seed
+def test_squeeze_raises_for_invalid_epsilon() -> None:
+    lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(lik, epsilon=-1.0)
+
+
+@pytest.mark.parametrize("alpha", [-0.1, 0.0, 1.1])
+def test_squeeze_raises_for_invalid_alpha(alpha) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+    upper = tf.cast([0.5, 0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(kernel, alpha)
