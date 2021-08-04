@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Callable, Sequence
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
@@ -108,3 +111,52 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
 
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
+
+
+def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
+    return (
+        tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
+        tf.constant([[1.2], [3.4], [5.6], [7.8]], gpflow.default_float()),
+    )
+
+
+def gpr_model(x: tf.Tensor, y: tf.Tensor) -> GPR:
+    return GPR((x, y), gpflow.kernels.Linear())
+
+
+def sgpr_model(x: tf.Tensor, y: tf.Tensor) -> SGPR:
+    return SGPR((x, y), gpflow.kernels.Linear(), x[: len(x) // 2])
+
+
+def svgp_model(inducing_variable: tf.Tensor) -> SVGP:
+    return SVGP(gpflow.kernels.Linear(), gpflow.likelihoods.Gaussian(), inducing_variable)
+
+
+def vgp_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Gaussian()
+    kernel = gpflow.kernels.Linear()
+    m = VGP((x, y), kernel, likelihood)
+    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
+    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
+    return m
+
+
+def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Gaussian()
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
+    m = VGP((x, y), kernel, likelihood)
+    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
+    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
+    return m
+
+
+def reference_gpr(x: tf.Tensor, y: tf.Tensor) -> gpflow.models.GPR:
+    return gpr_model(x, y)
+
+
+def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
+    return 3.0 * x + 10
+
+
+def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
+    return 2.0 * tf.math.sin(x / 3.0)
