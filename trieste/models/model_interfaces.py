@@ -97,6 +97,14 @@ class ProbabilisticModel(ABC):
 
         :return: The observation noise.
         """
+        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+
+        :return: The kernel.
+        """
         raise NotImplementedError("Model {self!r} does not provide observation noise")
 
 
