@@ -16,11 +16,7 @@ This package contains the primary interfaces for probabilistic models, :class:`P
 and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
 creating :class:`TrainableProbabilisticModel`\ s from config.
 """
-from . import optimizer, models_gpflow
-from .config import supported_models, ModelConfig, ModelSpec, create_model
-from .interfaces import (
-    ModelStack,
-    ProbabilisticModel,
-    TrainableProbabilisticModel,
-    VariationalGaussianProcess,
-)
+
+from . import gpflow, optimizer
+from .config import ModelConfig, ModelSpec, create_model, supported_models
+from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel

@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import gpflow
 import tensorflow as tf
 
 from ..data import Dataset
@@ -91,15 +91,6 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-    def get_kernel(self) -> gpflow.kernels.Kernel:
-        """
-        Return the kernel of the model.
-
-        :return: The kernel.
-        """
-        raise NotImplementedError("Model {self!r} does not provide observation noise")
-
-
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """A trainable probabilistic model."""
@@ -127,7 +118,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
 class ModelStack(TrainableProbabilisticModel):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
-    It combines the outputs of each model for predictions and sampling, and delegates training data
+  plt  It combines the outputs of each model for predictions and sampling, and delegates training data
     to each model for updates and optimization.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models

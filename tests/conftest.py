@@ -39,3 +39,8 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" not in item.keywords:
                 item.add_marker(skip_fast)
+
+
+@pytest.fixture(name="dim", params=[1, 10])
+def _dim_fixture(request):
+    return request.param

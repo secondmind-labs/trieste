@@ -20,7 +20,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, raise_exc
-from tests.util.model import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.combination import Product, Reducer, Sum
 from trieste.acquisition.rule import AcquisitionFunctionBuilder

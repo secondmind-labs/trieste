@@ -21,10 +21,9 @@ import gpflow
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, VGP
 
+from .gpflow import GaussianProcessRegression, VariationalGaussianProcess
 from .interfaces import TrainableProbabilisticModel
 from .optimizer import Optimizer, create_optimizer
-from .models_gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
-
 
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those

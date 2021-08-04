@@ -25,10 +25,10 @@ from gpflow.utilities import multiple_assign, read_values
 from ...data import Dataset
 from ...type import TensorType
 from ...utils import DEFAULTS, jit
-from ..optimizer import Optimizer, TFOptimizer
 from ..interfaces import TrainableProbabilisticModel
-from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
+from ..optimizer import Optimizer, TFOptimizer
 from .interface import GPflowPredictor
+from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
@@ -68,7 +68,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         x, y = self.model.data
 
-        _assert_data_is_compatible(dataset, Dataset(x, y))
+        assert_data_is_compatible(dataset, Dataset(x, y))
 
         if dataset.query_points.shape[-1] != x.shape[-1]:
             raise ValueError
@@ -208,7 +208,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        _assert_data_is_compatible(dataset, self._data)
+        assert_data_is_compatible(dataset, self._data)
 
         self._data = dataset
 
@@ -294,7 +294,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         model = self.model
 
-        _assert_data_is_compatible(dataset, Dataset(*model.data))
+        assert_data_is_compatible(dataset, Dataset(*model.data))
 
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
 

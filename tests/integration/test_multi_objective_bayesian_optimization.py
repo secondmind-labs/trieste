@@ -24,8 +24,8 @@ from trieste.acquisition.function import (
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.models import GaussianProcessRegression
-from trieste.models.model_interfaces import ModelStack
+from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.interfaces import ModelStack
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE

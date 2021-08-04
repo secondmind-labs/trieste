@@ -23,7 +23,6 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 
-
 M = TypeVar("M", bound=tf.Module)
 """ A type variable bound to :class:`tf.Module`. """
 
