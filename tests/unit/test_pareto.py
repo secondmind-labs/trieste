@@ -133,23 +133,41 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
         pareto.hypervolume_indicator(tf.constant(reference))
 
 
+@pytest.mark.parametrize("front, reference, screen_concentration_point",
+                         [(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]),
+                          [[0.1, -0.65], [-0.7, -0.1]],
+                          tf.constant([[-1.0, -2]])),
+                          ((tf.constant([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]]),
+                            [4.0, 4.0, 4.0],
+                            tf.constant([[0.0, 0.0, 0.0]])))])
+def test_pareto_hypervolume_indicator_raises_for_empty_front(
+    front: tf.Tensor, reference: list[float], screen_concentration_point: tf.Tensor
+) -> None:
+    pareto = Pareto(front, screen_concentration_point=screen_concentration_point)
+
+    with pytest.raises(ValueError):
+        pareto.hypervolume_indicator(tf.constant(reference))
+
+
 @pytest.mark.parametrize(
-    "objectives, reference, expected",
+    "objectives, screen_reference_point, reference, expected",
     [
-        ([[1.0, 0.5]], [2.3, 2.0], 1.95),
-        ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], [0.1, -0.1], 0.92),
+        ([[1.0, 0.5]], None, [2.3, 2.0], 1.95),
+        ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], None, [0.1, -0.1], 0.92),
         (  # reference point is equal to one pareto point in one dimension
             [[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]],
+            None,
             [0.1, -0.6],
             0.37,
         ),
-        ([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]], [4.0, 4.0, 4.0], 29.0),
+        ([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]], None, [4.0, 4.0, 4.0], 29.0),
     ],
 )
 def test_pareto_hypervolume_indicator(
-    objectives: list[list[float]], reference: list[float], expected: float
+    objectives: list[list[float]], screen_reference_point: [None, tf.Tensor],
+        reference: list[float], expected: float
 ) -> None:
-    pareto = Pareto(tf.constant(objectives))
+    pareto = Pareto(tf.constant(objectives), screen_concentration_point=screen_reference_point)
     npt.assert_allclose(pareto.hypervolume_indicator(tf.constant(reference)), expected, 1e-6)
 
 

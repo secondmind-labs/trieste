@@ -44,12 +44,12 @@ class Pareto:
         observations: TensorType,
         *,
         partition: [str, Partition] = "default",
-        screen_reference_point: [TensorType, None] = None,
+        screen_concentration_point: [TensorType, None] = None,
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :param partition: method of partitioning based on the (screened) pareto frontier
-        :param screen_reference_point: The reference point used to screen out not interested frontier in
+        :param screen_concentration_point: The reference point used to screen out not interested frontier in
           observations.
 
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
@@ -58,27 +58,27 @@ class Pareto:
         tf.debugging.assert_greater_equal(tf.shape(observations)[-1], 2)
 
         # get screened front according to sort of concentration:
-        if screen_reference_point is None:
+        if screen_concentration_point is None:
             screened_front, _ = non_dominated(observations)
         else:  # screen possible not interested points
-            screen_mask = tf.reduce_any(observations <= screen_reference_point, -1)
+            screen_mask = tf.reduce_all(observations <= screen_concentration_point, -1)
             screened_front, _ = non_dominated(observations[screen_mask])
-        # TODO: Note the screened front might be empty  
         self.front = screened_front
 
-        if partition == "default":
-            if observations.shape[-1] > 2:
+        self._prepare_partition(partition)
+
+    def _prepare_partition(self, partition_method: [str, Partition] = "default"):
+        if partition_method == "default":
+            if self.front.shape[-1] > 2:
                 self._partition = DividedAndConquerNonDominated(self.front)
-            else:
+            elif self.front.shape[-1] == 2:
                 self._partition = ExactPartition2dNonDominated(self.front)
         else:
-            assert isinstance(partition, Partition), ValueError(
+            assert isinstance(partition_method, Partition), ValueError(
                 "specified partition method must inherit from Partition abstract class but found"
             )
-            self._partition = partition
+            self._partition = partition_method
 
-    # TODO: Support reference point below front
-    # FIXME: This is not correct yet
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
         Calculate the hypervolume indicator based on self.front and a reference point
@@ -92,7 +92,12 @@ class Pareto:
             the hypervolume indicator will be zero.
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``self.front`` is empty (which can happen
+        if the concentration point is too strict so no frontier exists after the screening)
         """
+        if tf.equal(tf.size(self.front), 0):
+            raise ValueError('empty front cannot be used to calculate hypervolume indicator')
+
         # FIXME: Figure out why dummy_anti_reference cnnot use original reduce min
         dummy_anti_reference = tf.reduce_min(self.front, axis=0) - tf.ones(
             shape=1, dtype=self.front.dtype
@@ -124,8 +129,21 @@ class Pareto:
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
         """
-        assert isinstance(self._partition, NonDominatedPartition)
-        return self._partition.partition_bounds(anti_reference, reference)
+        tf.debugging.assert_greater_equal(reference, anti_reference)
+        tf.debugging.assert_type(anti_reference, reference.dtype)
+
+        tf.debugging.assert_shapes(
+            [
+                (reference, ["D"]),
+                (anti_reference, ["D"]),
+            ]
+        )
+
+        if tf.equal(tf.size(self.front), 0):
+            return anti_reference[None], reference[None]
+        else:
+            assert isinstance(self._partition, NonDominatedPartition)
+            return self._partition.partition_bounds(anti_reference, reference)
 
 
 # FIXME: ensure front is not empty
