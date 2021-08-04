@@ -13,6 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import unittest.mock
+
+import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -172,6 +175,34 @@ def test_optimize_continuous_raises_for_impossible_optimization(
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
     )
+
+
+@pytest.mark.parametrize("num_failed_runs", range(4))
+@pytest.mark.parametrize("num_recovery_runs", range(4))
+def test_optimize_continuous_recovery_runs(num_failed_runs, num_recovery_runs) -> None:
+
+    scipy_minimize = gpflow.optimizers.Scipy.minimize
+    failed_runs = 0
+
+    def mock_minimize(self, *args, **kwargs):
+        nonlocal failed_runs
+        result = scipy_minimize(self, *args, **kwargs)
+        if failed_runs < num_failed_runs:
+            failed_runs += 1
+            result.success = False
+        else:
+            result.success = True
+        return result
+
+    with unittest.mock.patch("gpflow.optimizers.Scipy.minimize", mock_minimize):
+        optimizer = generate_continuous_optimizer(
+            num_optimization_runs=1, num_recovery_runs=num_recovery_runs
+        )
+        if num_failed_runs > num_recovery_runs:
+            with pytest.raises(FailedOptimizationError):
+                optimizer(Box([-1], [1]), _quadratic_sum([0.5]))
+        else:
+            optimizer(Box([-1], [1]), _quadratic_sum([0.5]))
 
 
 def test_optimize_batch_raises_with_invalid_batch_size() -> None:
