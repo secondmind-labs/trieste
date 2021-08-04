@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import gpflow
 import pytest
 import tensorflow as tf
@@ -25,10 +26,10 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.models.model_interfaces import ModelStack
+from trieste.objectives.multi_objectives import VLMOP2
+from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.utils.multi_objectives import VLMOP2
-from trieste.utils.objectives import mk_observer
 from trieste.utils.pareto import Pareto, get_reference_point
 
 
