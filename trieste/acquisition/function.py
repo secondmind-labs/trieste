@@ -359,11 +359,9 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
         gamma = (tf.squeeze(samples) - fmean) / fsd
 
-        minus_cdf = 1 - normal.cdf(gamma)
-        minus_cdf = tf.clip_by_value(
-            minus_cdf, CLAMP_LB, 1
-        )  # clip below to improve numerical stability
-        f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+        f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
@@ -1287,7 +1285,6 @@ def hard_local_penalizer(
 
 class GIBBON(SingleModelGreedyAcquisitionBuilder):
     r"""
-
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
     information gained about (i.e the change in entropy of) the objective function's minimum by
@@ -1299,9 +1296,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
     Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
     exact Thompson sampler.
-
-    When performing BO with large batches (i.e. much larger than 10), we recommend the big batch
-    formulation of GIBBON, as accessed through setting `big_batch` to be True.
     """
 
     def __init__(
@@ -1311,7 +1305,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         grid_size: int = 1000,
         use_thompson: bool = True,
         num_fourier_features: Optional[int] = None,
-        big_batch: bool = False,
+        rescaled_repulsion: bool = True,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -1323,8 +1317,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             minimum, else use Gumbel sampling.
         :param num_fourier_features: Number of Fourier features used for approximate Thompson
             sampling. If None, then do exact Thompson sampling.
-        :param big_batch: If True, then use the GIBBON formulation for BO with large
-            batches (i.e. larger than 10).
+        :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+            batch optimization performance.
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` is not positive, or
@@ -1345,7 +1339,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
         self._use_thompson = use_thompson
         self._num_fourier_features = num_fourier_features
-        self._big_batch = big_batch
+        self._rescaled_repulsion = rescaled_repulsion
 
         self._min_value_samples = None
 
@@ -1387,14 +1381,14 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
         tf.debugging.Assert(self._min_value_samples is not None, [])
 
-        return gibbon(model, self._min_value_samples, pending_points, self._big_batch)
+        return gibbon(model, self._min_value_samples, pending_points, self._rescaled_repulsion)
 
 
 def gibbon(
     model: ProbabilisticModel,
     samples: TensorType,
     pending_points: Optional[TensorType] = None,
-    big_batch: bool = False,
+    rescaled_repulsion: bool = True,
 ) -> AcquisitionFunction:
     r"""
     Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function
@@ -1417,17 +1411,18 @@ def gibbon(
     current candidate point to the current pending points, not the full information gain provided by
     evaluating all the pending points. This allows for a modest computational saving.
 
-    When performing BO with large batches (i.e. much larger than 10), GIBBON's approximations become
-    less accurate and its repulsion term dominates. Therefore, for large batch BO, we follow the
-    arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{log B}`. This
-    behavior is accessed though setting `big_batch` to True.
+    When performing batch BO, GIBBON's approximation can sometimes become
+    less accurate as its repulsion term dominates. Therefore, we follow the
+    arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{2}`. This
+    behavior can be deactivated by setting `rescaled_repulsion` to False.
 
     :param model: The model of the objective function. GIBBON requires a model with
         a :method:covariance_between_points method and so GIBBON only
         supports :class:`GaussianProcessRegression` models.
     :param samples: Samples from the distribution over :math:`y^*`.
     :param pending_points: The points already chosen in the current batch.
-    :param big_batch: If True, then use the GIBBON formulation for BO with large batches.
+    :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+        batch optimization performance.
     :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two, or
@@ -1476,11 +1471,8 @@ def gibbon(
             rho_squared: TensorType, gamma: TensorType
         ) -> TensorType:  # calculate GIBBON's quality term
             normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-            minus_cdf = 1 - normal.cdf(gamma)
-            minus_cdf = tf.clip_by_value(
-                minus_cdf, CLAMP_LB, 1
-            )  # clip below to improve numerical stability
-            ratio = normal.prob(gamma) / minus_cdf
+            log_minus_cdf = normal.log_cdf(-gamma)
+            ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
             inner_log = 1 + rho_squared * ratio * (gamma - ratio)
             acq = -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)
 
@@ -1508,9 +1500,9 @@ def gibbon(
         if pending_points is None:  # no repulsion term required if no pending_points
             return quality_term(rho_squared, gamma)  # [..., 1]
         else:
-            if big_batch:
-                batch_size, search_space_dim = tf.cast(tf.shape(pending_points), dtype=fmean.dtype)
-                repulsion_weight = (1 / batch_size) ** (tf.math.log(search_space_dim))
+            if rescaled_repulsion:
+                batch_size = tf.cast(tf.shape(pending_points)[0], dtype=fmean.dtype)
+                repulsion_weight = (1 / batch_size) ** (2)
             else:
                 repulsion_weight = 1.0
 
