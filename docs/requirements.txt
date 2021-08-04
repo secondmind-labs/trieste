@@ -18,3 +18,6 @@ pydata-sphinx-theme
 ipython
 nbsphinx
 sphinxcontrib-bibtex
+# pin typing-extensions so we're compatible with venvs that have tensorflow installed
+typing-extensions~=3.7.4
+

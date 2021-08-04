@@ -1,5 +1,5 @@
 appdirs==1.4.4
-astroid==2.6.5
+astroid==2.6.6
 attrs==21.2.0
 black==21.7b0
 click==8.0.1
@@ -31,11 +31,11 @@ pytest-flake8==1.0.7
 pytest-isort==2.0.0
 pytest-mypy==0.8.1
 pytest-pylint==0.18.0
-regex==2021.7.6
+regex==2021.8.3
 taskipy==1.8.1
 toml==0.10.2
 tomli==1.2.0
 typed-ast==1.4.3
-typing-extensions==3.10.0.0
+typing-extensions==3.7.4.3
 wrapt==1.12.1
 zipp==3.5.0
