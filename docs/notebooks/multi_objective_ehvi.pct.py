@@ -21,8 +21,7 @@ import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import create_model
-from trieste.models.interface import ModelStack
+from trieste.models import create_model, ModelStack
 from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point

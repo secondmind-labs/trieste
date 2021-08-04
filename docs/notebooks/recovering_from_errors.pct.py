@@ -57,7 +57,7 @@ gpr = gpflow.models.GPR(
     initial_data.astuple(), kernel, noise_variance=1e-5
 )
 gpflow.set_trainable(gpr.likelihood, False)
-model = trieste.models.GaussianProcessRegression(gpr)
+model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 
 acquisition_rule = trieste.acquisition.rule.TrustRegion()
 

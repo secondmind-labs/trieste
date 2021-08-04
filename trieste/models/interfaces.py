@@ -118,7 +118,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
 class ModelStack(TrainableProbabilisticModel):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
-  plt  It combines the outputs of each model for predictions and sampling, and delegates training data
+    It combines the outputs of each model for predictions and sampling, and delegates training data
     to each model for updates and optimization.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
