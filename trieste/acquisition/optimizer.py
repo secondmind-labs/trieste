@@ -36,8 +36,6 @@ SP = TypeVar("SP", bound=SearchSpace)
 class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
 
-    pass
-
 
 AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
 """
@@ -123,7 +121,7 @@ def generate_continuous_optimizer(
 
     The default behavior of this method is to return a L-BFGS-B optimizer that performs
     a single optimization from the best of 1000 initial locations. If this optimization fails then
-    we run up to five recovery runs starting from random locations.
+    we run up to `num_recovery_runs` recovery runs starting from random locations.
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
@@ -183,7 +181,7 @@ def generate_continuous_optimizer(
             variable.assign(bijector.inverse(starting_point))  # [1, D]
             return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
 
-        pass_count = 0
+        successful_optimization = False
         chosen_point = bijector.forward(variable)  # [1, D]
         chosen_point_score = target_func(chosen_point[:, None, :])  # [1, 1]
 
@@ -192,7 +190,7 @@ def generate_continuous_optimizer(
         ):  # perform optimization for each chosen starting point
             opt_result = _perform_optimization(initial_points[i : i + 1])
             if opt_result.success:
-                pass_count += 1
+                successful_optimization = True
 
                 new_point = bijector.forward(variable)  # [1, D]
                 new_point_score = target_func(new_point[:, None, :])  # [1, 1]
@@ -201,20 +199,17 @@ def generate_continuous_optimizer(
                     chosen_point = new_point  # [1, D]
                     chosen_point_score = new_point_score  # [1, 1]
 
-        fail_count = 0
-        while pass_count == 0:  # if all optimizations failed then try from random start
-            opt_result = _perform_optimization(space.sample(1))
-            if opt_result.success:
-                pass_count += 1
-                chosen_point = bijector.forward(variable)  # [1, D]
-            else:
-                fail_count += 1
-
-            if fail_count == num_recovery_runs:
+        if not successful_optimization:  # if all optimizations failed then try from random start
+            for i in tf.range(num_recovery_runs):
+                opt_result = _perform_optimization(space.sample(1))
+                if opt_result.success:
+                    chosen_point = bijector.forward(variable)  # [1, D]
+                    break
+            if not successful_optimization:  # return error if still failed
                 raise FailedOptimizationError(
                     f"""
                     Acquisition function optimization failed,
-                    even after {fail_count + num_optimization_runs} restarts.
+                    even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
                 )
 
