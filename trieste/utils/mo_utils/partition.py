@@ -3,16 +3,61 @@
 from __future__ import annotations
 
 from abc import ABC
-from math import inf
 
 import tensorflow as tf
 from typing_extensions import Final
 
 from trieste.type import TensorType
 from trieste.utils.misc import DEFAULTS
+from trieste.utils.mo_utils.dominance import non_dominated
 
 
-# TODO: Make sure if we need the index
+class Partition(ABC):
+    """
+    Base class of partition
+    """
+
+    front: TensorType
+
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get partition bounds according to the refernece point, anti_reference point
+        as well as the self.front
+        """
+
+
+class NonDominatedPartition(Partition):
+    """
+    Partition methods focusing on partitioning non-dominated regions
+    """
+
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get partition bounds according to the refernece point, anti_reference point
+        as well as the self.front, note the returned lower and upper bounds is a partition
+        of the non-dominated region.
+        """
+
+
+class DominatedPartition(Partition):
+    """
+    Partition methods focusing on partitioning dominated-regions
+    """
+
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get partition bounds according to the refernece point, anti_reference point
+        as well as the self.front, note the returned lower and upper bounds is a partition
+        of the non-dominated region.
+        """
+
+
 class _BoundedVolumes:
     """
     A :class:`_BoundedVolumes` store the index of the Pareto front to form lower and upper
@@ -32,48 +77,95 @@ class _BoundedVolumes:
         self.upper_idx: Final[TensorType] = upper_idx
 
 
-class _Partition(ABC):
+class BoundIndexPartition(NonDominatedPartition):
     """
-    Base class of partition
+    A collection of partition strategy that is based on storing the index of pareto fronts & other auxilary points
     """
+    _bounds: _BoundedVolumes
+
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Get the partitioned hypercell's lower and upper bounds.
+
+        :param anti_reference: a worst point to use with shape [D].
+            Defines the lower bound of the hypercell
+        :param reference: a reference point to use, with shape [D].
+            Defines the upper bound of the hypervolume.
+            Should be equal to or bigger than the anti-ideal point of the Pareto set.
+            For comparing results across runs, the same reference point must be used.
+        :return: lower, upper bounds of the partitioned cell
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+            shape.
+        """
+        tf.debugging.assert_greater_equal(reference, self.front)
+        tf.debugging.assert_greater_equal(self.front, anti_reference)
+        tf.debugging.assert_type(anti_reference, self.front.dtype)
+        tf.debugging.assert_type(reference, self.front.dtype)
+
+        tf.debugging.assert_shapes(
+            [
+                (self._bounds.lower_idx, ["N", "D"]),
+                (self._bounds.upper_idx, ["N", "D"]),
+                (self.front, ["M", "D"]),
+                (reference, ["D"]),
+                (anti_reference, ["D"]),
+            ]
+        )
+
+        pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
+        N = tf.shape(self._bounds.upper_idx)[0]
+        D = tf.shape(self._bounds.upper_idx)[1]
+        idx = tf.tile(tf.range(D), (N,))
+
+        lower_idx = tf.stack((tf.reshape(self._bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(self._bounds.upper_idx, [-1]), idx), axis=1)
+
+        lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
+        upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])
+
+        return lower, upper
 
 
-class _NonDominatedPartition(_Partition):
-    """
-    Partition methods focusing on partitioning non-dominated regions
-    """
+class ExactPartition2dNonDominated(BoundIndexPartition):
+    def __init__(self, front: TensorType):
+        """
+        :param front
+        """
+        tf.debugging.assert_equal(
+            tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),
+            tf.zeros(shape=1, dtype=front.dtype),
+            message=f"\ninput {front} " f"contains dominated points",
+        )
+        self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort
+        self._bounds = self._get_bound_index()
 
-
-class _DominatedPartition(_Partition):
-    """
-    Partition methods focusing on partitioning dominated-regions
-    """
-
-
-class ExactHyperVolumePartition2d(_Partition):
-    def __call__(self, front: TensorType):
+    def _get_bound_index(self):
         # Compute the cells covering the non-dominated region for 2 dimension case
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
-        len_front, number_of_objectives = front.shape
+        len_front, number_of_objectives = self.front.shape
+
         pseudo_front_idx = tf.concat(
             [
                 tf.zeros([1, number_of_objectives], dtype=tf.int32),
-                tf.argsort(front, axis=0) + 1,
+                tf.argsort(self.front, axis=0) + 1,
                 tf.ones([1, number_of_objectives], dtype=tf.int32) * len_front + 1,
             ],
             axis=0,
         )
+
         range_ = tf.range(len_front + 1)[:, None]
         lower_result = tf.concat([range_, tf.zeros_like(range_)], axis=-1)
         upper_result = tf.concat(
             [range_ + 1, pseudo_front_idx[::-1, 1:][: pseudo_front_idx[-1, 0]]], axis=-1
         )
-        return _BoundedVolumes(lower_result, upper_result), front
+
+        return _BoundedVolumes(lower_result, upper_result)
 
 
-# TODO: Make sure to differentiate cls and self
-class DividedAndConquerNonDominated(_Partition):
+class DividedAndConquerNonDominated(BoundIndexPartition):
     @staticmethod
     def _is_test_required(smaller: TensorType) -> TensorType:
         idx_dom_augm = tf.reduce_any(smaller, axis=1)
@@ -83,10 +175,10 @@ class DividedAndConquerNonDominated(_Partition):
 
     @staticmethod
     def _accepted_test_body(
-            lower_result: TensorType,
-            upper_result: TensorType,
-            lower_idx: TensorType,
-            upper_idx: TensorType,
+        lower_result: TensorType,
+        upper_result: TensorType,
+        lower_idx: TensorType,
+        upper_idx: TensorType,
     ) -> tuple[TensorType, TensorType]:
         lower_result_accepted = tf.concat([lower_result, lower_idx[None]], axis=0)
         upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
@@ -94,13 +186,13 @@ class DividedAndConquerNonDominated(_Partition):
 
     @classmethod
     def _rejected_test_body(
-            cls,
-            cell: TensorType,
-            lower: TensorType,
-            upper: TensorType,
-            divide_conquer_cells: TensorType,
-            total_size: TensorType,
-            threshold: TensorType,
+        cls,
+        cell: TensorType,
+        lower: TensorType,
+        upper: TensorType,
+        divide_conquer_cells: TensorType,
+        total_size: TensorType,
+        threshold: TensorType,
     ) -> TensorType:
         divide_conquer_cells_dist = cell[1] - cell[0]
         hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
@@ -116,9 +208,9 @@ class DividedAndConquerNonDominated(_Partition):
 
     @staticmethod
     def _divide_body(
-            divide_conquer_cells: TensorType,
-            divide_conquer_cells_dist: TensorType,
-            cell: TensorType,
+        divide_conquer_cells: TensorType,
+        divide_conquer_cells_dist: TensorType,
+        cell: TensorType,
     ) -> TensorType:
         edge_size = tf.reduce_max(divide_conquer_cells_dist)
         idx = tf.argmax(divide_conquer_cells_dist)
@@ -146,21 +238,37 @@ class DividedAndConquerNonDominated(_Partition):
 
         return divide_conquer_cells_final
 
-    def __call__(
-            self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
+    def __init__(
+        self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
     ):
-        len_front, number_of_objectives = front.shape
+        """
+        :param front
+        :param jitter
+        :param threshold
+        """
+        tf.debugging.assert_equal(
+            tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),
+            tf.zeros(shape=1, dtype=front.dtype),
+            message=f"\ninput {front} " f"contains dominated points",
+        )
+        self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort
+        self.front = front
+        self._bounds = self._get_bound_index(jitter, threshold)
+
+    def _get_bound_index(self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0):
+        len_front, number_of_objectives = self.front.shape
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
 
-        min_front = tf.reduce_min(front, axis=0, keepdims=True) - 1
-        max_front = tf.reduce_max(front, axis=0, keepdims=True) + 1
-        pseudo_front = tf.concat([min_front, front, max_front], axis=0)
+        min_front = tf.reduce_min(self.front, axis=0, keepdims=True) - 1
+        max_front = tf.reduce_max(self.front, axis=0, keepdims=True) + 1
+        pseudo_front = tf.concat([min_front, self.front, max_front], axis=0)
 
         pseudo_front_idx = tf.concat(
             [
                 tf.zeros([1, number_of_objectives], dtype=tf.int32),
-                tf.argsort(front, axis=0) + 1,  # +1 as index zero is reserved for the ideal point
+                tf.argsort(self.front, axis=0)
+                + 1,  # +1 as index zero is reserved for the ideal point
                 tf.ones([1, number_of_objectives], dtype=tf.int32) * len_front + 1,
             ],
             axis=0,
@@ -178,9 +286,9 @@ class DividedAndConquerNonDominated(_Partition):
         total_size = tf.reduce_prod(max_front - min_front)
 
         def while_body(
-                divide_conquer_cells: TensorType,
-                lower_result: TensorType,
-                upper_result: TensorType,
+            divide_conquer_cells: TensorType,
+            lower_result: TensorType,
+            upper_result: TensorType,
         ) -> tuple[TensorType, TensorType, TensorType]:
             divide_conquer_cells_unstacked = tf.unstack(divide_conquer_cells, axis=0)
             cell = divide_conquer_cells_unstacked[-1]
@@ -196,14 +304,14 @@ class DividedAndConquerNonDominated(_Partition):
             lower = tf.gather_nd(pseudo_front, tf.stack((lower_idx, arr), -1))
             upper = tf.gather_nd(pseudo_front, tf.stack((upper_idx, arr), -1))
 
-            test_accepted = self._is_test_required((upper - jitter) < front)
+            test_accepted = self._is_test_required((upper - jitter) < self.front)
             lower_result_final, upper_result_final = tf.cond(
                 test_accepted,
                 lambda: self._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
                 lambda: (lower_result, upper_result),
             )
 
-            test_rejected = self._is_test_required((lower + jitter) < front)
+            test_rejected = self._is_test_required((lower + jitter) < self.front)
             divide_conquer_cells_final = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
                 lambda: self._rejected_test_body(
@@ -224,15 +332,15 @@ class DividedAndConquerNonDominated(_Partition):
                 tf.TensorShape([None, number_of_objectives]),
             ],
         )
-        return _BoundedVolumes(lower_result_final, upper_result_final), front
+        return _BoundedVolumes(lower_result_final, upper_result_final)
 
 
-class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
+class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
     """
     A method of partitioning the dominated region.
 
     The main idea is of using a sort of auxiliary points (which is referred to as local
-    upper bounds in the original context)assosiating to existing Pareto points to
+    upper bounds in the original context) assosiating to existing Pareto points to
     describe the Pareto frontier, then, one could use an alternative partition as
     an replacement of original partition.
 
@@ -252,9 +360,9 @@ class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
 
         self.Z_set = (  # initialize defining points _Z to be the dummy points \hat{z} that are
             # defined in Sec 2.1
-                - 1e10 * tf.ones((1, front.shape[-1], front.shape[-1]), dtype=front.dtype)
-                + 1e10 * tf.eye(front.shape[-1], front.shape[-1], batch_shape=[1], dtype=front.dtype)
-                + tf.linalg.diag(reference_point)[tf.newaxis, ...]
+            -1e10 * tf.ones((1, front.shape[-1], front.shape[-1]), dtype=front.dtype)
+            + 1e10 * tf.eye(front.shape[-1], front.shape[-1], batch_shape=[1], dtype=front.dtype)
+            + tf.linalg.diag(reference_point)[tf.newaxis, ...]
         )  # note we replace the original defined objective space [0, reference_point] by [-1e10, reference_point]
 
         (
@@ -270,18 +378,23 @@ class HypervolumeBoxDecompositionIncrementalDominated(_DominatedPartition):
         """
         Update with new front, this can be computed with the incremental method
         """
-        self.U_set, self.Z_set = _update_local_upper_bounds_incremental(  # incrementally update local upper
+        (
+            self.U_set,
+            self.Z_set,
+        ) = _update_local_upper_bounds_incremental(  # incrementally update local upper
             new_front_points=new_front,  # bounds and defining points for each new Pareto point
             u_set=self.U_set,
             z_set=self.Z_set,
         )
 
-    def partition_bounds(self):
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
         return _get_partition_bounds_hbda(self.Z_set, self.U_set, self._reference_point)
 
 
 def _update_local_upper_bounds_incremental(
-        new_front_points: TensorType, u_set: TensorType, z_set: TensorType
+    new_front_points: TensorType, u_set: TensorType, z_set: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Update the current local upper with the new pareto points. (note: this does not
     require input: new_front_points be non-dominated points)
@@ -311,7 +424,7 @@ def _update_local_upper_bounds_incremental(
 
 
 def _compute_new_local_upper_bounds(
-        u_set: TensorType, z_set: TensorType, z_bar: TensorType
+    u_set: TensorType, z_set: TensorType, z_bar: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Compute new local upper bounds.
     This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from :cite:`lacour2017box`: Given a new point z_bar,
@@ -353,8 +466,8 @@ def _compute_new_local_upper_bounds(
             [1 if dim != j else 0 for dim in range(num_outcomes)], dtype=z_bar.dtype
         )
         z_uj_k = tf.gather(capital_a_z, indices, axis=1, batch_dims=0)[
-                 :, :, j
-                 ]  # [m, p, p] -> [m, p-1]
+            :, :, j
+        ]  # [m, p, p] -> [m, p-1]
         z_uj_max = tf.reduce_max(z_uj_k, -1)  # [m, p-1] -> [m]
         u_mask_to_be_replaced_by_zbar_j = z_bar[j] >= z_uj_max  # [m, 1]
         # for jth dimension, any one of m local upper bounds can be replaced
@@ -362,8 +475,9 @@ def _compute_new_local_upper_bounds(
             # add new lub: (zbar_j, u_{-j})
             a_filtered = capital_a[u_mask_to_be_replaced_by_zbar_j]  # [m', p]
             # tensorflow tricky to replace u_j's j dimension with z_bar[j]
-            u_j = a_filtered * mask_not_j + \
-                  tf.repeat((mask_j * z_bar[j])[tf.newaxis], a_filtered.shape[0], axis=0)
+            u_j = a_filtered * mask_not_j + tf.repeat(
+                (mask_j * z_bar[j])[tf.newaxis], a_filtered.shape[0], axis=0
+            )
             lub_new.append(u_j)  # add the new local upper bound point: u_j
 
             # add its defining point
@@ -389,7 +503,7 @@ def _compute_new_local_upper_bounds(
 
 
 def _get_partition_bounds_hbda(
-        z: TensorType, u: TensorType, reference_point: TensorType
+    z: TensorType, u: TensorType, reference_point: TensorType
 ) -> tuple(TensorType, TensorType):
     r"""Get the cell bounds given the local upper bounds and the defining points.
     Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper
@@ -426,7 +540,7 @@ def _get_partition_bounds_hbda(
     return l_bounds[~empty], u_bounds[~empty]
 
 
-class FlipTrickNonDominatedPartition(_NonDominatedPartition):
+class FlipTrickNonDominatedPartition(NonDominatedPartition):
     """
     Main refer Algorithm 2, Algorithm 3 of :cite:yang2019efficient, a slight alter of
     method is utilized as we are performing minimization.
@@ -445,12 +559,15 @@ class FlipTrickNonDominatedPartition(_NonDominatedPartition):
     def __init__(self, front: TensorType, reference_point: TensorType):
         lub_sets = HypervolumeBoxDecompositionIncrementalDominated(front, reference_point).U_set
         flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
-            -lub_sets, 3 * tf.ones(shape=front.shape[-1], dtype=front.dtype))
+            -lub_sets, 3 * tf.ones(shape=front.shape[-1], dtype=front.dtype)
+        )
         flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
-        self.lb_pts = - flipped_ub_pts
-        self.ub_pts = - flipped_lb_pts
+        self.lb_pts = -flipped_ub_pts
+        self.ub_pts = -flipped_lb_pts
 
-    def partition_bounds(self):
+    def partition_bounds(
+        self, anti_reference: TensorType, reference: TensorType
+    ) -> tuple[TensorType, TensorType]:
         return self.lb_pts, self.ub_pts
 
 
@@ -464,7 +581,6 @@ if __name__ == "__main__":
     # TODO: Visual Check
     # TODO: Profile on jupyter notebook
     # TODO: Write Test
-
     # plot check
     # 2d case
     # from trieste.utils.multi_objectives import VLMOP2
@@ -477,7 +593,6 @@ if __name__ == "__main__":
     # plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
     # plt.legend()
     # plt.show()
-
     # partition = HypervolumeBoxDecompositionIncremental(pf, 1.2 * tf.ones(2))
     # from matplotlib import pyplot as plt
     # plt.scatter(1.2, 1.2, label='ref points')
@@ -494,14 +609,14 @@ if __name__ == "__main__":
     # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
     # plt.legend()
     # plt.show()
-
     # 3D case
     outdim = 3
     pf = DTLZ1(10, outdim).gen_pareto_optimal_points(100)
     partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(outdim))
-    from botorch.utils.multi_objective.box_decompositions.non_dominated import FastNondominatedPartitioning
+    from botorch.utils.multi_objective.box_decompositions.non_dominated import (
+        FastNondominatedPartitioning,
+    )
 
     # from botorch.test_functions.multi_objective import DTLZ1
     # import torch
-
     # _ = FastNondominatedPartitioning(-1.2 * torch.ones(2), -torch.Tensor(pf))
