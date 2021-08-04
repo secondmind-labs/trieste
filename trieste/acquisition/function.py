@@ -19,9 +19,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from itertools import product
+from itertools import combinations, product
 from math import inf
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,7 +32,15 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
-from .sampler import BatchReparametrizationSampler, GumbelSampler
+from .sampler import (
+    BatchReparametrizationSampler,
+    ExactThompsonSampler,
+    GumbelSampler,
+    RandomFourierFeatureThompsonSampler,
+    ThompsonSampler,
+)
+
+CLAMP_LB = 1e-8
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -117,10 +125,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
-        :raise ValueError: If ``dataset`` is empty.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
+        tf.debugging.assert_positive(len(dataset))
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return expected_improvement(model, eta)
@@ -175,10 +182,9 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
-        :raise ValueError: If ``dataset`` is empty.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
+        tf.debugging.assert_positive(len(dataset))
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return augmented_expected_improvement(model, eta)
@@ -242,27 +248,50 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
     of the objective minimum that would be gained by evaluating the objective at a given point.
 
-    This implementation largely follows :cite:`wang2017max` and samples the objective minimum
-    :math:`y^*` via a Gumbel sampler.
+    This implementation largely follows :cite:`wang2017max` and samples the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
     """
 
-    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        use_thompson: bool = True,
+        num_fourier_features: Optional[int] = None,
+    ):
         """
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Number of samples to draw from the distribution over the minimum of the
             objective function.
-        :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
+        :param use_thompson: If True then use Thompson sampling to sample the objective's
+            minimum, else use Gumbel sampling.
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
+            sampling. If None, then do exact Thompson sampling.
+        :raise tf.errors.InvalidArgumentError: If
+
+            - ``num_samples`` or ``grid_size`` are negative, or if
+            - ``num_fourier_features`` is negative or zero
+            - ``num_fourier_features`` is specified an ``use_thompson`` is `False`
         """
+        tf.debugging.assert_positive(num_samples)
+        tf.debugging.assert_positive(grid_size)
+
+        if num_fourier_features is not None:
+            tf.debugging.Assert(use_thompson, [])
+            tf.debugging.assert_positive(num_fourier_features)
+
         self._search_space = search_space
-
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
-
-        if grid_size <= 0:
-            raise ValueError(f"grid_size must be positive, got {grid_size}")
         self._grid_size = grid_size
+
+        self._use_thompson = use_thompson
+        self._num_fourier_features = num_fourier_features
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -273,18 +302,29 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :return: The max-value entropy search acquisition function modified for objective
             minimisation. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
+        tf.debugging.assert_positive(len(dataset))
 
-        gumbel_sampler = GumbelSampler(self._num_samples, model)
+        if not self._use_thompson:  # use Gumbel sampler
+            sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+        elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+            sampler = RandomFourierFeatureThompsonSampler(
+                self._num_samples,
+                model,
+                dataset,
+                sample_min_value=True,
+                num_features=self._num_fourier_features,
+            )
+        else:  # use exact Thompson sampler
+            sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        gumbel_samples = gumbel_sampler.sample(query_points)
+        min_value_samples = sampler.sample(query_points)
 
-        return min_value_entropy_search(model, gumbel_samples)
+        return min_value_entropy_search(model, min_value_samples)
 
 
 def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
@@ -299,11 +339,11 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
     :return: The max-value entropy search acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two, or
+        is empty.
     """
     tf.debugging.assert_rank(samples, 2)
-
-    if len(samples) == 0:
-        raise ValueError("Gumbel samples must be populated.")
+    tf.debugging.assert_positive(len(samples))
 
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
@@ -313,17 +353,15 @@ def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> 
         fmean, fvar = model.predict(tf.squeeze(x, -2))
         fsd = tf.math.sqrt(fvar)
         fsd = tf.clip_by_value(
-            fsd, 1.0e-8, fmean.dtype.max
+            fsd, CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
         gamma = (tf.squeeze(samples) - fmean) / fsd
 
-        minus_cdf = 1 - normal.cdf(gamma)
-        minus_cdf = tf.clip_by_value(
-            minus_cdf, 1.0e-8, 1
-        )  # clip below to improve numerical stability
-        f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+        f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
@@ -390,12 +428,11 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     :return: The lower confidence bound function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
-    :raise ValueError: If ``beta`` is negative.
+    :raise tf.errors.InvalidArgumentError: If ``beta`` is negative.
     """
-    if beta < 0:
-        raise ValueError(
-            f"Standard deviation scaling parameter beta must not be negative, got {beta}"
-        )
+    tf.debugging.assert_non_negative(
+        beta, message="Standard deviation scaling parameter beta must not be negative"
+    )
 
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
@@ -474,7 +511,7 @@ def probability_of_feasibility(
     :return: The probability of feasibility function. This function will raise
         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
         greater than one.
-    :raise ValueError: If ``threshold`` is not a scalar.
+    :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
     """
     tf.debugging.assert_scalar(threshold)
 
@@ -509,16 +546,18 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         :param constraint_builder: The builder for the constraint function.
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
-        :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
-            scalar in the unit interval :math:`[0, 1]`.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
+            is not a scalar in the unit interval :math:`[0, 1]`.
         """
         tf.debugging.assert_scalar(min_feasibility_probability)
 
-        if not 0 <= min_feasibility_probability <= 1:
-            raise ValueError(
-                f"Minimum feasibility probability must be between 0 and 1 inclusive,"
-                f" got {min_feasibility_probability}"
-            )
+        if isinstance(min_feasibility_probability, (int, float)):
+            tf.debugging.assert_greater_equal(float(min_feasibility_probability), 0.0)
+            tf.debugging.assert_less_equal(float(min_feasibility_probability), 1.0)
+        else:
+            dtype = min_feasibility_probability.dtype
+            tf.debugging.assert_greater_equal(min_feasibility_probability, tf.cast(0, dtype))
+            tf.debugging.assert_less_equal(min_feasibility_probability, tf.cast(1, dtype))
 
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
@@ -541,26 +580,27 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
-        :raise ValueError: If the objective data is empty.
+        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
-        if len(objective_dataset) == 0:
-            raise ValueError(
-                "Expected improvement is defined with respect to existing points in the objective"
-                " data, but the objective data is empty."
-            )
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected improvement is defined with respect to existing points in the"
+            " objective data, but the objective data is empty.",
+        )
 
         constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = pof >= self._min_feasibility_probability
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        mean, _ = objective_model.predict(objective_dataset.query_points)
-        eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        eta = tf.reduce_min(feasible_mean, axis=0)
 
         return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
 
@@ -697,6 +737,178 @@ def expected_hv_improvement(
     return acquisition
 
 
+class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the batch expected hypervolume improvement acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`daulton2020differentiable`
+    """
+
+    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
+        """
+        :param sample_size: The number of samples from model predicted distribution for
+            each batch of points.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
+            ``jitter`` is negative.
+        """
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
+
+        super().__init__()
+
+        self._sample_size = sample_size
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
+            f" jitter={self._jitter!r})"
+        )
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :return: The batch expected hypervolume improvement acquisition function.
+        """
+
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+
+        sampler = BatchReparametrizationSampler(self._sample_size, model)
+
+        return batch_ehvi(sampler, self._jitter, _pf, _reference_pt)
+
+
+def batch_ehvi(
+    sampler: BatchReparametrizationSampler,
+    sampler_jitter: float,
+    pareto: Pareto,
+    reference_point: TensorType,
+) -> AcquisitionFunction:
+
+    """
+    :param sampler: The posterior sampler, which given query points `at`, is able to sample
+        the possible observations at 'at'.
+    :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
+        decomposition of the covariance matrix.
+    :param pareto: a Pareto class instance containing the current obtained pareto points.
+    :param reference_point: The reference point for calculating hypervolume.
+    :return: The batch expected hypervolume improvement acquisition
+        function for objective minimisation.
+    """
+
+    def acquisition(at: TensorType) -> TensorType:
+        _batch_size = at.shape[-2]  # B
+
+        def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
+            indices = list(range(q))
+            return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
+
+        samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
+
+        q_subset_indices = gen_q_subset_indices(_batch_size)
+
+        hv_contrib = tf.zeros(samples.shape[:-2], dtype=samples.dtype)
+        lb_points, ub_points = pareto.hypercell_bounds(
+            tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
+        )
+
+        def hv_contrib_on_samples(
+            obj_samples: TensorType,
+        ) -> TensorType:  # calculate samples overlapped area's hvi for obj_samples
+            # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
+            overlap_vertices = tf.reduce_max(obj_samples, axis=-2)
+
+            overlap_vertices = tf.maximum(  # compare overlap vertices and lower bound of each cell:
+                tf.expand_dims(overlap_vertices, -3),  # expand a cell dimension
+                lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
+            )  # [..., S, K, Cq_j, num_obj]
+
+            lengths_j = tf.maximum(  # get hvi length per obj within each cell
+                (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
+            )  # [..., S, K, Cq_j, num_obj]
+
+            areas_j = tf.reduce_sum(  # sum over all subsets Cq_j -> [..., S, K]
+                tf.reduce_prod(lengths_j, axis=-1), axis=-1  # calc hvi within each K
+            )
+
+            return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
+
+        for j in tf.range(1, _batch_size + 1):  # Inclusion-Exclusion loop
+            q_choose_j = tf.gather(q_subset_indices, j - 1).to_tensor()
+            # gather all combinations having j points from q batch points (Cq_j)
+            j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
+            hv_contrib += tf.cast((-1) ** (j + 1), dtype=samples.dtype) * hv_contrib_on_samples(
+                j_sub_samples
+            )
+
+        return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
+
+    return acquisition
+
+
+class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
+    """
+    Builder for the constrained expected hypervolume improvement acquisition function.
+    This function essentially combines ExpectedConstrainedImprovement and
+    ExpectedHypervolumeImprovement.
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+            f"{self._constraint_builder!r},"
+            f" {self._min_feasibility_probability!r})"
+        )
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer. Must be populated.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The expected constrained hypervolume improvement acquisition function.
+            This function will raise :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError`
+            if used with a batch size greater than one.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
+        """
+
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected hypervolume improvement is defined with respect to existing points in"
+            " the objective data, but the objective data is empty.",
+        )
+
+        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        if not tf.reduce_any(is_feasible):
+            return constraint_fn
+
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+
+        _pf = Pareto(feasible_mean)
+        _reference_pt = get_reference_point(_pf.front)
+        ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
+        return lambda at: ehvi(at) * constraint_fn(at)
+
+
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
@@ -713,8 +925,8 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
-            ``jitter`` is negative.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter``
+            is negative.
         """
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
@@ -840,13 +1052,13 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     of penalization.
 
     Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acqusition function. All that we require is that the acquisition function takes strictly
+    acquisition function. All that we require is that the acquisition function takes strictly
     positive values. By iteratively building a batch of points though sequentially maximizing
     this acquisition function but down-weighted around locations close to the already
     chosen (pending) points, local penalization provides diverse batches of candidate points.
 
     Local penalization is applied to the acquisition function multiplicatively. However, to
-    improve numerical stability, we perfom additive penalization in a log space.
+    improve numerical stability, we perform additive penalization in a log space.
 
     The Lipschitz constant and additional penalization parameters are estimated once
     when first preparing the acquisition function with no pending points. These estimates
@@ -858,9 +1070,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 500,
         penalizer: Callable[..., PenalizationFunction] = None,
-        base_acquisition_function_builder: Optional[
-            Union[ExpectedImprovement, MinValueEntropySearch]
-        ] = None,
+        base_acquisition_function_builder: ExpectedImprovement
+        | MinValueEntropySearch
+        | None = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -870,28 +1082,19 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param base_acquisition_function_builder: Base acquisition function to be
             penalized (defaults to expected improvement). Local penalization only supports
             strictly positive acquisition functions.
-
+        :raise tf.errors.InvalidArgumentError: If ``num_samples`` is not positive.
         """
+        tf.debugging.assert_positive(num_samples)
+
         self._search_space = search_space
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
         self._num_samples = num_samples
 
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
         if base_acquisition_function_builder is None:
             self._base_builder: SingleModelAcquisitionBuilder = ExpectedImprovement()
-        elif isinstance(
-            base_acquisition_function_builder, (ExpectedImprovement, MinValueEntropySearch)
-        ):
-            self._base_builder = base_acquisition_function_builder
         else:
-            raise ValueError(
-                f"""
-                Local penalization can only be applied to strictly positive acquisition functions,
-                we got {base_acquisition_function_builder}.
-                """
-            )
+            self._base_builder = base_acquisition_function_builder
 
         self._lipschitz_constant = None
         self._eta = None
@@ -908,10 +1111,10 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: The points we penalize with respect to.
         :return: The (log) expected improvement penalized with respect to the pending points.
-        :raise ValueError: if the first call does not have pending_points=None.
+        :raise tf.errors.InvalidArgumentError: If the first call does not have pending_points=None,
+            or ``dataset`` is empty.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
+        tf.debugging.assert_positive(len(dataset))
 
         if (
             pending_points is None
@@ -947,23 +1150,26 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
                     dataset, model
                 )
 
-        if (self._lipschitz_constant is None) or (self._base_acquisition_function is None):
-            raise ValueError("Local penalization must be first called with no pending_points.")
+        tf.debugging.Assert(
+            None not in (self._lipschitz_constant, self._base_acquisition_function), []
+        )
 
         if pending_points is None:
-            return self._base_acquisition_function  # no penalization required if no pending_points.
+            # no penalization required if no pending_points.
+            return cast(AcquisitionFunction, self._base_acquisition_function)
 
         tf.debugging.assert_shapes(
-            [(pending_points, ["N", len(self._search_space.upper)])],
+            [(pending_points, [None] + dataset.query_points.shape[1:])],
             message="pending_points must be of shape [N,D]",
         )
 
-        penalization = self._lipschitz_penalizer(
+        penalization = cast(Callable[..., PenalizationFunction], self._lipschitz_penalizer)(
             model, pending_points, self._lipschitz_constant, self._eta
         )
 
         def penalized_acquisition(x: TensorType) -> TensorType:
-            log_acq = tf.math.log(self._base_acquisition_function(x)) + tf.math.log(penalization(x))
+            base_acqf = cast(AcquisitionFunction, self._base_acquisition_function)
+            log_acq = tf.math.log(base_acqf(x)) + tf.math.log(penalization(x))
             return tf.math.exp(log_acq)
 
         return penalized_acquisition
@@ -1075,3 +1281,233 @@ def hard_local_penalizer(
         return tf.reduce_prod(penalization, axis=-1)
 
     return penalization_function
+
+
+class GIBBON(SingleModelGreedyAcquisitionBuilder):
+    r"""
+    The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
+    of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
+    information gained about (i.e the change in entropy of) the objective function's minimum by
+    evaluating a batch of candidate points. Batches are built in a greedy manner.
+
+    This implementation follows :cite:`Moss:2021` but is modified for function
+    minimisation (rather than maximisation). We sample the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
+    """
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        use_thompson: bool = True,
+        num_fourier_features: Optional[int] = None,
+        rescaled_repulsion: bool = True,
+    ):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of samples to draw from the distribution over the minimum of
+            the objective function.
+        :param grid_size: Size of the grid from which to sample the min-values. We recommend
+            scaling this with search space dimension.
+        :param use_thompson: If True then use Thompson sampling to sample the objective's
+            minimum, else use Gumbel sampling.
+        :param num_fourier_features: Number of Fourier features used for approximate Thompson
+            sampling. If None, then do exact Thompson sampling.
+        :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+            batch optimization performance.
+        :raise tf.errors.InvalidArgumentError: If
+
+            - ``num_samples`` is not positive, or
+            - ``grid_size`` is not positive, or
+            - ``num_fourier_features`` is negative or zero, or
+            - ``num_fourier_features`` is specified and ``use_thompson`` is `False`
+        """
+        tf.debugging.assert_positive(num_samples)
+        tf.debugging.assert_positive(grid_size)
+
+        if num_fourier_features is not None:
+            tf.debugging.Assert(use_thompson, [])
+            tf.debugging.assert_positive(num_fourier_features)
+
+        self._search_space = search_space
+        self._num_samples = num_samples
+        self._grid_size = grid_size
+
+        self._use_thompson = use_thompson
+        self._num_fourier_features = num_fourier_features
+        self._rescaled_repulsion = rescaled_repulsion
+
+        self._min_value_samples = None
+
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The GIBBON acquisition function modified for objective minimisation.
+        :raise ValueError: if the first call does not have pending_points=None.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.assert_positive(len(dataset))
+
+        if pending_points is None:  # only collect min-value samples once per optimization step
+
+            if not self._use_thompson:  # use Gumbel sampler
+                sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+            elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+                sampler = RandomFourierFeatureThompsonSampler(
+                    self._num_samples,
+                    model,
+                    dataset,
+                    sample_min_value=True,
+                    num_features=self._num_fourier_features,
+                )
+            else:  # use exact Thompson sampler
+                sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
+
+            query_points = self._search_space.sample(num_samples=self._grid_size)
+            tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+            query_points = tf.concat([dataset.query_points, query_points], 0)
+            self._min_value_samples = sampler.sample(query_points)
+
+        tf.debugging.Assert(self._min_value_samples is not None, [])
+
+        return gibbon(model, self._min_value_samples, pending_points, self._rescaled_repulsion)
+
+
+def gibbon(
+    model: ProbabilisticModel,
+    samples: TensorType,
+    pending_points: Optional[TensorType] = None,
+    rescaled_repulsion: bool = True,
+) -> AcquisitionFunction:
+    r"""
+    Return the General-purpose Information-Based Bayesian Optimization (GIBBON) acquisition function
+    of :cite:`Moss:2021`.The GIBBON acquisition function consists of two terms --- a quality term
+    and a diversity term. The quality term measures the amount of information that each individual
+    batch element provides about the objective function's minimal value :math:`y^*` (ensuring that
+    evaluations are targeted in promising areas of the space), whereas the repulsion term encourages
+    diversity within the batch (achieving high values for points with low predictive correlation).
+
+    GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive
+    correlation matrix :math:`C` between the `m` pending points and the current candidate.
+    The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
+    tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using the
+    formula for the determinant of block matrices, i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
+    Note that when using GIBBON for purely sequential optimization, the repulsion term is
+    not required.
+
+    As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a set
+    of `m` pending points, we need only ever calculate the entropy reduction provided by adding the
+    current candidate point to the current pending points, not the full information gain provided by
+    evaluating all the pending points. This allows for a modest computational saving.
+
+    When performing batch BO, GIBBON's approximation can sometimes become
+    less accurate as its repulsion term dominates. Therefore, we follow the
+    arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{2}`. This
+    behavior can be deactivated by setting `rescaled_repulsion` to False.
+
+    :param model: The model of the objective function. GIBBON requires a model with
+        a :method:covariance_between_points method and so GIBBON only
+        supports :class:`GaussianProcessRegression` models.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :param pending_points: The points already chosen in the current batch.
+    :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+        batch optimization performance.
+    :return: The GIBBON acquisition function. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two, or
+        is empty.
+    """
+    tf.debugging.assert_rank(samples, 2)
+    tf.debugging.assert_positive(len(samples))
+
+    try:
+        noise_variance = model.get_observation_noise()
+    except NotImplementedError:
+        raise ValueError(
+            """
+            GIBBON only currently supports homoscedastic gpflow models
+            with a likelihood.variance attribute.
+            """
+        )
+
+    if not hasattr(model, "covariance_between_points"):
+        raise AttributeError(
+            """
+            GIBBON only supports models with a covariance_between_points method.
+            """
+        )
+
+    if pending_points is not None:
+        tf.debugging.assert_rank(pending_points, 2)
+
+    def acquisition(x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
+
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batches through greedy batch design.",
+        )
+
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        yvar = fvar + noise_variance  # need predictive variance of observations
+
+        rho_squared = fvar / yvar  # squared correlation between observations and latent function
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+        gamma = (tf.squeeze(samples) - fmean) / fsd
+
+        def quality_term(
+            rho_squared: TensorType, gamma: TensorType
+        ) -> TensorType:  # calculate GIBBON's quality term
+            normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_minus_cdf = normal.log_cdf(-gamma)
+            ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+            inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+            acq = -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)
+
+            return acq  # [N, 1]
+
+        def repulsion_term(
+            x: TensorType, pending_points: TensorType, yvar: TensorType
+        ) -> TensorType:  # calculate GIBBON's repulsion term
+            _, B = model.predict_joint(pending_points)  # [1, m, m]
+            L = tf.linalg.cholesky(
+                B + noise_variance * tf.eye(len(pending_points), dtype=B.dtype)
+            )  # need predictive variance of observations
+            A = tf.expand_dims(
+                model.covariance_between_points(tf.squeeze(x, -2), pending_points),  # type: ignore
+                -1,
+            )  # [N, m, 1]
+            L_inv_A = tf.linalg.triangular_solve(L, A)
+            V_det = yvar - tf.squeeze(
+                tf.matmul(L_inv_A, L_inv_A, transpose_a=True), -1
+            )  # equation for determinant of block matrices
+            repulsion = 0.5 * (tf.math.log(V_det) - tf.math.log(yvar))
+
+            return repulsion  # [N, 1]
+
+        if pending_points is None:  # no repulsion term required if no pending_points
+            return quality_term(rho_squared, gamma)  # [..., 1]
+        else:
+            if rescaled_repulsion:
+                batch_size = tf.cast(tf.shape(pending_points)[0], dtype=fmean.dtype)
+                repulsion_weight = (1 / batch_size) ** (2)
+            else:
+                repulsion_weight = 1.0
+
+            return quality_term(rho_squared, gamma) + repulsion_weight * repulsion_term(
+                x, pending_points, yvar
+            )
+
+    return acquisition

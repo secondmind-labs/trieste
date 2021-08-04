@@ -41,9 +41,9 @@ from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
     batchify,
-    optimize_continuous,
+    generate_continuous_optimizer,
 )
-from .sampler import DiscreteThompsonSampler
+from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -212,13 +212,31 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         return points, None
 
 
-class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
-    """Implements Thompson sampling for choosing optimal points."""
+class DiscreteThompsonSampling(AcquisitionRule[None, SearchSpace]):
+    r"""
+    Implements Thompson sampling for choosing optimal points.
 
-    def __init__(self, num_search_space_samples: int, num_query_points: int):
+    This rule returns the minimizers of functions sampled from our model and evaluated across
+    a discretization of the search space (containing `N` candidate points).
+
+    The model is sampled either exactly (with an :math:`O(N^3)` complexity), or sampled
+    approximately through a random Fourier `M` feature decompisition
+    (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points).
+
+    """
+
+    def __init__(
+        self,
+        num_search_space_samples: int,
+        num_query_points: int,
+        num_fourier_features: Optional[int] = None,
+    ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
+        :num_fourier_features: The number of features used to approximate the kernel. We
+            recommend first trying 1000 features, as this typically perfoms well for a wide
+            range of kernels. If None, then we perfom exact Thompson sampling.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -228,12 +246,21 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
+        if num_fourier_features is not None and num_fourier_features <= 0:
+            raise ValueError(
+                f"Number of fourier features must be greater than 0, got {num_query_points}"
+            )
+
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+        self._num_fourier_features = num_fourier_features
 
     def __repr__(self) -> str:
         """"""
-        return f"ThompsonSampling({self._num_search_space_samples!r}, {self._num_query_points!r})"
+        return f"""DiscreteThompsonSampling(
+        {self._num_search_space_samples!r},
+        {self._num_query_points!r},
+        {self._num_fourier_features!r})"""
 
     def acquire(
         self,
@@ -261,7 +288,26 @@ class ThompsonSampling(AcquisitionRule[None, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        thompson_sampler = DiscreteThompsonSampler(self._num_query_points, models[OBJECTIVE])
+        if datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""
+                dict of datasets must contain the single key {OBJECTIVE},
+                got keys {datasets.keys()}
+                """
+            )
+
+        if self._num_fourier_features is None:  # Perform exact Thompson sampling
+            thompson_sampler: ThompsonSampler = ExactThompsonSampler(
+                self._num_query_points, models[OBJECTIVE]
+            )
+        else:  # Perform approximate Thompson sampling
+            thompson_sampler = RandomFourierFeatureThompsonSampler(
+                self._num_query_points,
+                models[OBJECTIVE],
+                datasets[OBJECTIVE],
+                num_features=self._num_fourier_features,
+            )
+
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = thompson_sampler.sample(query_points)
 
@@ -320,7 +366,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
             builder = builder.using(OBJECTIVE)
 
         if optimizer is None:
-            optimizer = optimize_continuous
+            optimizer = generate_continuous_optimizer()
 
         self._builder = builder
         self._beta = beta

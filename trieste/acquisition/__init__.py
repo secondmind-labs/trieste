@@ -37,9 +37,11 @@ UCB.
 from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (
+    GIBBON,
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
+    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
@@ -55,6 +57,7 @@ from .function import (
     augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,
+    gibbon,
     hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
@@ -63,7 +66,8 @@ from .function import (
 )
 from .sampler import (
     BatchReparametrizationSampler,
-    DiscreteThompsonSampler,
+    ExactThompsonSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,
+    RandomFourierFeatureThompsonSampler,
 )

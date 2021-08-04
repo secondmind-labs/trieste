@@ -14,10 +14,13 @@
 """ This module contains implementations of various types of search space. """
 from __future__ import annotations
 
+import operator
 from abc import ABC, abstractmethod
-from typing import Sequence, TypeVar, overload
+from functools import reduce
+from typing import Optional, Sequence, TypeVar, overload
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from .type import TensorType
 from .utils import shapes_equal
@@ -44,8 +47,8 @@ class SearchSpace(ABC):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `TensorType` instead of the `bool` itself.
-        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
-            from this :class:`SearchSpace`.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+            dimensionality from this :class:`SearchSpace`.
         """
 
     @abstractmethod
@@ -64,17 +67,10 @@ class SearchSpace(ABC):
         :param other: The exponent, or number of instances of this search space to multiply
             together. Must be strictly positive.
         :return: The Cartesian product of ``other`` instances of this search space.
-        :raise ValueError: If the exponent ``other`` is less than 1.
+        :raise tf.errors.InvalidArgumentError: If the exponent ``other`` is less than 1.
         """
-        if other < 1:
-            raise ValueError(f"Exponent must be strictly positive, got {other}")
-
-        space = self
-
-        for _ in range(other - 1):
-            space *= self
-
-        return space
+        tf.debugging.assert_positive(other, message="Exponent must be strictly positive")
+        return reduce(operator.mul, [self] * other)
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -94,7 +90,7 @@ class DiscreteSearchSpace(SearchSpace):
     def __init__(self, points: TensorType):
         """
         :param points: The points that define the discrete space, with shape ('N', 'D').
-        :raise ValueError (or InvalidArgumentError): If ``points`` has an invalid shape.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.
         """
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
@@ -118,13 +114,11 @@ class DiscreteSearchSpace(SearchSpace):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space.
         """
-        num_points = self._points.shape[0]
-        if num_samples > num_points:
-            raise ValueError(
-                "Number of samples cannot be greater than the number of points"
-                f" {num_points} in discrete search space, got {num_samples}"
-            )
-
+        tf.debugging.assert_less_equal(
+            num_samples,
+            len(self._points),
+            message="Number of samples cannot be greater than the number of points in search space",
+        )
         return tf.random.shuffle(self._points)[:num_samples, :]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
@@ -173,7 +167,11 @@ class Box(SearchSpace):
     def __init__(self, lower: TensorType, upper: TensorType):
         ...
 
-    def __init__(self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType):
+    def __init__(
+        self,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
+    ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
         they will be converted to tensors of dtype `tf.float64`.
@@ -182,18 +180,18 @@ class Box(SearchSpace):
             and if a tensor, must have float type.
         :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
-        :raise ValueError (or InvalidArgumentError): If any of the following are true:
+        :raise ValueError (or tf.errors.InvalidArgumentError): If any of the following are true:
 
             - ``lower`` and ``upper`` have invalid shapes.
             - ``lower`` and ``upper`` do not have the same floating point type.
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
+
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
 
-        if len(lower) == 0:
-            raise ValueError(f"Bounds must have shape [D] for positive D, got {tf.shape(lower)}.")
+        tf.debugging.assert_positive(len(lower), message="bounds cannot be empty")
 
         if isinstance(lower, Sequence):
             self._lower = tf.constant(lower, dtype=tf.float64)
@@ -229,22 +227,73 @@ class Box(SearchSpace):
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
             scalar boolean `TensorType` instead of the `bool` itself.
-        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
-            from the search space.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+            dimensionality from the search space.
         """
-        if not shapes_equal(value, self._lower):
-            raise ValueError(
-                f"value must have same dimensionality as search space: {self._lower.shape},"
-                f" got shape {value.shape}"
-            )
+        tf.debugging.assert_equal(
+            shapes_equal(value, self._lower),
+            True,
+            message="value must have same dimensionality as search space",
+        )
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def sample(self, num_samples: int) -> TensorType:
+        """
+        Sample randomly from the space.
+
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
             (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
         )
+
+    def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        Sample from the space using a Halton sequence. The resulting samples are guaranteed to be
+        diverse and are reproducible by using the same choice of ``seed``.
+
+        :param num_samples: The number of points to sample from this search space.
+        :param seed: Random seed for the halton sequence
+        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        """
+
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
+        ) + self._lower
+
+    def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
+        """
+        Sample a diverse set from the space using a Sobol sequence.
+        If ``skip`` is specified, then the resulting samples are reproducible.
+
+        :param num_samples: The number of points to sample from this search space.
+        :param skip: The number of initial points of the Sobol sequence to skip
+        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if skip is None:  # generate random skip
+            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+        dim = tf.shape(self._lower)[-1]
+        return (self._upper - self._lower) * tf.math.sobol_sample(
+            dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
+        ) + self._lower
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
         """

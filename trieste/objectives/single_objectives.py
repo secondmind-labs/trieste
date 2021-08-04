@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,25 +11,51 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 This module contains toy objective functions, useful for experimentation. A number of them have been
 taken from `this Virtual Library of Simulation Experiments
 <https://www.sfu.ca/~ssurjano/optimization.html>`_.
 """
+
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
-from typing import Optional, cast, overload
 
 import tensorflow as tf
 
-from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
+from ..space import Box
 from ..type import TensorType
 
 
+def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
+    x0 = x[..., :1] * 15.0 - 5.0
+    x1 = x[..., 1:] * 15.0
+
+    b = 5.1 / (4 * math.pi ** 2)
+    c = 5 / math.pi
+    r = 6
+    s = 10
+    t = 1 / (8 * math.pi)
+
+    return scale * ((x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + translate)
+
+
 def branin(x: TensorType) -> TensorType:
+    """
+    The Branin-Hoo function over :math:`[0, 1]^2`. See
+    :cite:`Picheny2013` for details.
+
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+
+    return _branin_internals(x, 1, 10)
+
+
+def scaled_branin(x: TensorType) -> TensorType:
     """
     The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
     :cite:`Picheny2013` for details.
@@ -40,17 +66,7 @@ def branin(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
 
-    x0 = x[..., :1] * 15.0 - 5.0
-    x1 = x[..., 1:] * 15.0
-
-    a = 1
-    b = 5.1 / (4 * math.pi ** 2)
-    c = 5 / math.pi
-    r = 6
-    s = 10
-    t = 1 / (8 * math.pi)
-
-    return a * (x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + s
+    return _branin_internals(x, 1 / 51.95, -44.81)
 
 
 _ORIGINAL_BRANIN_MINIMIZERS = tf.constant(
@@ -63,8 +79,17 @@ The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`
 and dtype float64.
 """
 
+
 BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
+
+
+SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
+""" The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
+
+
+BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
+""" The search space for the :func:`branin` function. """
 
 
 def gramacy_lee(x: TensorType) -> TensorType:
@@ -86,11 +111,16 @@ The global minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`
 and dtype float64.
 """
 
+
 GRAMACY_LEE_MINIMUM = tf.constant([-0.869011], tf.float64)
 """
 The global minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and
 dtype float64.
 """
+
+
+GRAMACY_LEE_SEARCH_SPACE = Box([0.5], [2.5])
+""" The search space for the :func:`gramacy_lee` function. """
 
 
 def logarithmic_goldstein_price(x: TensorType) -> TensorType:
@@ -120,11 +150,16 @@ The global minimizer for the :func:`logarithmic_goldstein_price` function, with 
 dtype float64.
 """
 
+
 LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM = tf.constant([-3.12913], tf.float64)
 """
 The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
 float64.
 """
+
+
+LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
+""" The search space for the :func:`logarithmic_goldstein_price` function. """
 
 
 def hartmann_3(x: TensorType) -> TensorType:
@@ -163,6 +198,10 @@ HARTMANN_3_MINIMUM = tf.constant([-3.86278], tf.float64)
 The global minimum for the :func:`hartmann_3` function, with shape [1] and dtype
 float64.
 """
+
+
+HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0]) ** 3
+""" The search space for the :func:`hartmann_3` function. """
 
 
 def shekel_4(x: TensorType) -> TensorType:
@@ -207,6 +246,10 @@ float64.
 """
 
 
+SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
+""" The search space for the :func:`shekel_4` function. """
+
+
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
@@ -239,6 +282,10 @@ ROSENBROCK_4_MINIMUM = tf.constant([-1.01917], tf.float64)
 The global minimum for the :func:`rosenbrock_4` function, with shape [1] and dtype
 float64.
 """
+
+
+ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
+""" The search space for the :func:`rosenbrock_4` function. """
 
 
 def ackley_5(x: TensorType) -> TensorType:
@@ -282,6 +329,10 @@ ACKLEY_5_MINIMUM = tf.constant([0.0], tf.float64)
 The global minimum for the :func:`ackley_5` function, with shape [1] and dtype
 float64.
 """
+
+
+ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) ** 5
+""" The search space for the :func:`ackley_5` function. """
 
 
 def hartmann_6(x: TensorType) -> TensorType:
@@ -330,25 +381,5 @@ float64.
 """
 
 
-@overload
-def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
-    ...
-
-
-@overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
-    ...
-
-
-def mk_observer(
-    objective: Callable[[TensorType], TensorType], key: Optional[str] = None
-) -> Observer:
-    """
-    :param objective: An objective function designed to be used with a single data set and model.
-    :param key: An optional key to use to access the data from the observer result.
-    :return: An observer returning the data from ``objective``.
-    """
-    if key is not None:
-        return lambda qp: {cast(str, key): Dataset(qp, objective(qp))}
-    else:
-        return lambda qp: Dataset(qp, objective(qp))
+HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
+""" The search space for the :func:`hartmann_6` function. """

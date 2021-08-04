@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -70,6 +71,19 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :return: The kernel.
         """
         return self.model.kernel
+
+    def get_observation_noise(self):
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model.likelihood.variance
+        except AttributeError:
+            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+
+        return noise_variance
 
     def optimize(self, dataset: Dataset) -> None:
         """

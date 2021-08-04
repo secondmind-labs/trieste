@@ -45,7 +45,7 @@ class Integers(SearchSpace):
 @pytest.mark.parametrize("exponent", [0, -2])
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
     space = Integers(3)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         space ** exponent
 
 
@@ -59,7 +59,7 @@ def _points_in_2D_search_space() -> tf.Tensor:
 
 @pytest.mark.parametrize("shape", various_shapes(excluding_ranks=[2]))
 def test_discrete_search_space_raises_for_invalid_shapes(shape: ShapeLike) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DiscreteSearchSpace(tf.random.uniform(shape))
 
 
@@ -99,7 +99,7 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
     points: tf.Tensor, test_point: tf.Tensor
 ) -> None:
     space = DiscreteSearchSpace(points)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = test_point in space
 
 
@@ -127,7 +127,7 @@ def test_discrete_search_space_sampling_raises_when_too_many_samples_are_request
 ) -> None:
     search_space = DiscreteSearchSpace(_points_in_2D_search_space())
 
-    with pytest.raises(ValueError, match="samples"):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         search_space.sample(num_samples)
 
 
@@ -212,7 +212,7 @@ def test_box_raises_if_bounds_have_invalid_shape(
 ) -> None:
     lower, upper = tf.zeros(lower_shape), tf.ones(upper_shape)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 
@@ -297,15 +297,80 @@ def test_box_contains_raises_on_point_of_different_shape(
     box = Box(tf.zeros(bound_shape), tf.ones(bound_shape))
     point = tf.zeros(point_shape)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = point in box
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sampling(num_samples: int) -> None:
+def test_box_sampling_returns_correct_shape(num_samples: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     samples = box.sample(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_box_sobol_sampling_returns_correct_shape(num_samples: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    sobol_samples = box.sample_sobol(num_samples)
+    _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_box_halton_sampling_returns_correct_shape(num_samples: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    halton_samples = box.sample_halton(num_samples)
+    _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
+
+
+@pytest.mark.parametrize("num_samples", [-1, -10])
+def test_box_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        box = Box(tf.zeros((3,)), tf.ones((3,)))
+        box.sample(num_samples)
+
+
+@pytest.mark.parametrize("num_samples", [-1, -10])
+def test_box_sobol_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        box = Box(tf.zeros((3,)), tf.ones((3,)))
+        box.sample_sobol(num_samples)
+
+
+@pytest.mark.parametrize("num_samples", [-1, -10])
+def test_box_halton_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        box = Box(tf.zeros((3,)), tf.ones((3,)))
+        box.sample_halton(num_samples)
+
+
+@pytest.mark.parametrize("skip", [1, 10, 100])
+def test_box_sobol_sampling_returns_same_points_for_same_skip(skip: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    sobol_samples_1 = box.sample_sobol(num_samples=100, skip=skip)
+    sobol_samples_2 = box.sample_sobol(num_samples=100, skip=skip)
+    npt.assert_allclose(sobol_samples_1, sobol_samples_2)
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    halton_samples_1 = box.sample_halton(num_samples=100, seed=seed)
+    halton_samples_2 = box.sample_halton(num_samples=100, seed=seed)
+    npt.assert_allclose(halton_samples_1, halton_samples_2)
+
+
+def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    sobol_samples_1 = box.sample_sobol(num_samples=100)
+    sobol_samples_2 = box.sample_sobol(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, sobol_samples_1, sobol_samples_2)
+
+
+def test_box_haltom_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    halton_samples_1 = box.sample_halton(num_samples=100)
+    halton_samples_2 = box.sample_halton(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, halton_samples_1, halton_samples_2)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
@@ -331,7 +396,7 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
 
     assert len(samples) == num_samples
 
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         dss.sample(num_samples + 1)
 
 

@@ -85,8 +85,7 @@ class ProbabilisticModel(ABC):
         """
         Return the variance of observation noise.
 
-        Note that this is only supported for models with with homoscedastic noise, and so this
-        function returns a scalar.
+        Note that this is not supported by all models.
 
         :return: The observation noise.
         """
@@ -98,7 +97,8 @@ class ProbabilisticModel(ABC):
 
         :return: The kernel.
         """
-        return NotImplementedError(f"Model {self!r} does have an accessible kernel")
+        raise NotImplementedError("Model {self!r} does not provide observation noise")
+
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):

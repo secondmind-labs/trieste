@@ -172,6 +172,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -185,6 +186,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 
@@ -196,6 +198,7 @@ class BayesianOptimizer(Generic[SP]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
 
@@ -209,6 +212,7 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
+        fit_initial_model: bool = True,
     ) -> OptimizationResult[S]:
         ...
 
@@ -221,7 +225,8 @@ class BayesianOptimizer(Generic[SP]):
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
-    ) -> OptimizationResult[S]:
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[S] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -264,6 +269,9 @@ class BayesianOptimizer(Generic[SP]):
             :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
+        :param fit_initial_model: If `False`, this method assumes that the initial models have
+            already been optimized on the datasets and so do not require optimization before the
+            first optimization step.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
@@ -317,6 +325,12 @@ class BayesianOptimizer(Generic[SP]):
                 if track_state:
                     models = copy.deepcopy(models)
                     acquisition_state = copy.deepcopy(acquisition_state)
+
+                if step == 0 and fit_initial_model:
+                    for tag, model in models.items():
+                        dataset = datasets[tag]
+                        model.update(dataset)
+                        model.optimize(dataset)
 
                 query_points, acquisition_state = acquisition_rule.acquire(
                     self._search_space, datasets, models, acquisition_state

@@ -25,4 +25,6 @@ from .utils import (
     M,
     module_deepcopy,
     assert_data_is_compatible,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
 )
