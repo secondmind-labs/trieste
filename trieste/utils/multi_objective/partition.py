@@ -374,9 +374,17 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
     One of the assumption made here is no any points have the same value in any dimension
     """
 
-    def __init__(self, front: TensorType, reference_point: TensorType):
+    def __init__(self, observations: TensorType, reference_point: TensorType):
+        """
+        :param observations preferably this can be a non-dominated front, but any set is acceptable here
+        :param reference_point
+        """
+        tf.debugging.assert_type(reference_point, observations.dtype)
         tf.debugging.assert_shapes([(reference_point, ["D"])])
-        tf.debugging.assert_greater_equal(reference_point, front)
+
+        tf.debugging.assert_greater_equal(reference_point, observations)
+        tf.debugging.assert_greater_equal(
+            observations, -1e10 * tf.ones((1, observations.shape[-1]), dtype=observations.dtype))
 
         self._reference_point = reference_point
         self.U_set = reference_point[
@@ -384,17 +392,19 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
         ]  # initialize local upper bounds with reference point
 
         self.Z_set = (  # initialize defining points _Z to be the dummy points \hat{z} that are
-            # defined in Sec 2.1
-            -1e10 * tf.ones((1, front.shape[-1], front.shape[-1]), dtype=front.dtype)
-            + 1e10 * tf.eye(front.shape[-1], front.shape[-1], batch_shape=[1], dtype=front.dtype)
+            # defined in Sec 2.1. Note: 1. the original defined objective space [0, reference_point] has been replaced
+            # by [-1e10, reference_point].  2. the dummy anti reference point -1e10 will not affect lower/upper bounds
+            # of this dominated partition method
+            -1e10 * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
+            + 1e10 * tf.eye(observations.shape[-1], observations.shape[-1], batch_shape=[1], dtype=observations.dtype)
             + tf.linalg.diag(reference_point)[tf.newaxis, ...]
-        )  # note we replace the original defined objective space [0, reference_point] by [-1e10, reference_point]
+        )
 
         (
             self.U_set,
             self.Z_set,
         ) = _update_local_upper_bounds_incremental(  # incrementally update local upper
-            new_front_points=front,  # bounds and defining points for each new Pareto point
+            new_front_points=observations,  # bounds and defining points for each new Pareto point
             u_set=self.U_set,
             z_set=self.Z_set,
         )
@@ -605,16 +615,16 @@ if __name__ == "__main__":
     # plot check
     # 2d case
     # from trieste.utils.multi_objectives import VLMOP2
-    from matplotlib import pyplot as plt
-    pf = VLMOP2().gen_pareto_optimal_points(10)
-    lb, ub = partition = FlipTrickNonDominatedPartition(pf, anti_reference_point=-3 * tf.ones(2),
-                                                        reference_point=2 * tf.ones(2)).partition_bounds()
-    # plt.scatter(1.2, 1.2, label='ref points')
-    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
-    plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
-    plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
-    plt.legend()
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # pf = VLMOP2().gen_pareto_optimal_points(10)
+    # lb, ub = partition = FlipTrickNonDominatedPartition(pf, anti_reference_point=-3 * tf.ones(2),
+    #                                                     reference_point=2 * tf.ones(2)).partition_bounds()
+    # # plt.scatter(1.2, 1.2, label='ref points')
+    # # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    # plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
+    # plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
+    # plt.legend()
+    # plt.show()
     # partition = HypervolumeBoxDecompositionIncremental(pf, 1.2 * tf.ones(2))
     # from matplotlib import pyplot as plt
     # plt.scatter(1.2, 1.2, label='ref points')
@@ -633,7 +643,50 @@ if __name__ == "__main__":
     # plt.show()
     # 3D case
     # outdim = 3
-    # pf = DTLZ1(10, outdim).gen_pareto_optimal_points(100)
+    # pf = DTLZ1(10, 3).gen_pareto_optimal_points(3)
+    pf = tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0], [2.0, 3.0, 1.0], [3.5, 2.0, 1.0]])
+    lb, ub = HypervolumeBoxDecompositionIncrementalDominated(pf, tf.constant([4.0, 4.0, 4.0])).partition_bounds()
+
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+
+    def cuboid_data2(o, size=(1, 1, 1)):
+        X = [[[0, 1, 0], [0, 0, 0], [1, 0, 0], [1, 1, 0]],
+             [[0, 0, 0], [0, 0, 1], [1, 0, 1], [1, 0, 0]],
+             [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]],
+             [[0, 0, 1], [0, 0, 0], [0, 1, 0], [0, 1, 1]],
+             [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]],
+             [[0, 1, 1], [0, 0, 1], [1, 0, 1], [1, 1, 1]]]
+        X = np.array(X).astype(float)
+        for i in range(3):
+            X[:, :, i] *= size[i]
+        X += np.array(o)
+        return X
+
+
+    def plotCubeAt2(positions, sizes=None, colors=None, alpha=None, **kwargs):
+        if not isinstance(colors, (list, np.ndarray)): colors = ["C0"] * len(positions)
+        if not isinstance(sizes, (list, np.ndarray)): sizes = [(1, 1, 1)] * len(positions)
+        g = []
+        for p, s, c in zip(positions, sizes, colors):
+            g.append(cuboid_data2(p, size=s))
+        return Poly3DCollection(np.concatenate(g),
+                                facecolors=np.repeat(colors, 6), alpha=alpha, **kwargs)
+
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    for pos, size in zip(lb.numpy().tolist(), (ub - lb).numpy().tolist()):
+        pc = plotCubeAt2([pos], [size], edgecolor="k", alpha=0.2, colors='#1f77b4')
+        ax.add_collection3d(pc)
+    ax.scatter(pf[:, 0], pf[:, 1], pf[:, 2], s=20,
+               color='r', label='Pareto Front')
+    # ax.scatter(*worst_point, s=20, color='g', label='Worst Point')
+    plt.title('3D Demo of partition the dominated region')
+    plt.legend()
+    plt.show()
     # partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(outdim))
     from botorch.utils.multi_objective.box_decompositions.non_dominated import (
         FastNondominatedPartitioning,

@@ -183,3 +183,6 @@ def test_get_reference_point_raise_when_feed_empty_front(front):
     with pytest.raises(ValueError):
         get_reference_point(front)
 
+
+# TODO: Add Test for HypervolumeBoxDecompositionIncrementalDominated and FlipTrickNonDominatedPartition
+
