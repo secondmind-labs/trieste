@@ -12,6 +12,15 @@ from trieste.utils.misc import DEFAULTS
 from trieste.utils.mo_utils.dominance import non_dominated
 
 
+def prepare_default_non_dominated_partition(observations):
+    if observations.shape[-1] > 2:
+        return DividedAndConquerNonDominated(observations)
+    elif observations.shape[-1] == 2:
+        return ExactPartition2dNonDominated(observations)
+    else:
+        raise ValueError
+
+
 class Partition(ABC):
     """
     Base class of partition

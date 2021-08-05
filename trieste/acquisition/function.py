@@ -32,6 +32,7 @@ from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
+from ..utils.mo_utils.partition import prepare_default_non_dominated_partition, NonDominatedPartition
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -629,12 +630,13 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        return expected_hv_improvement(model, _pf, _reference_pt)
+        _partition = prepare_default_non_dominated_partition(_pf.front)
+        return expected_hv_improvement(model, _partition, _reference_pt)
 
 
 def expected_hv_improvement(
     model: ProbabilisticModel,
-    pareto: Pareto,
+    partition: NonDominatedPartition,
     reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
@@ -687,7 +689,7 @@ def expected_hv_improvement(
             Calculate the ehvi based on cell i.
             """
 
-            lb_points, ub_points = pareto.hypercell_bounds(
+            lb_points, ub_points = partition.partition_bounds(
                 tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
             )
 
@@ -782,16 +784,17 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
+        _partition = prepare_default_non_dominated_partition(_pf.front)
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
-        return batch_ehvi(sampler, self._jitter, _pf, _reference_pt)
+        return batch_ehvi(sampler, self._jitter, _partition, _reference_pt)
 
 
 def batch_ehvi(
     sampler: BatchReparametrizationSampler,
     sampler_jitter: float,
-    pareto: Pareto,
+    partition: NonDominatedPartition,
     reference_point: TensorType,
 ) -> AcquisitionFunction:
 
@@ -818,7 +821,7 @@ def batch_ehvi(
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
         hv_contrib = tf.zeros(samples.shape[:-2], dtype=samples.dtype)
-        lb_points, ub_points = pareto.hypercell_bounds(
+        lb_points, ub_points = partition.partition_bounds(
             tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
         )
 
