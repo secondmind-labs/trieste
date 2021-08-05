@@ -569,7 +569,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
             )
             self._model.__class__ = SVGPWrapper
 
-
     def __repr__(self) -> str:
         """"""
         return f"SparseVariational({self._model!r}, {self.optimizer!r})"
@@ -772,7 +771,7 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    SVGP: SparseVariationalGaussianProcess
+    SVGP: SparseVariational
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
