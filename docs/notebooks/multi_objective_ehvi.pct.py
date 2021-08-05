@@ -27,6 +27,7 @@ from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.utils.pareto import Pareto, get_reference_point
 
+tf.get_logger().setLevel('INFO')
 np.random.seed(1793)
 tf.random.set_seed(1793)
 

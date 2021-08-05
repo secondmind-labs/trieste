@@ -12,6 +12,7 @@ from util.plotting_plotly import plot_function_plotly
 import matplotlib.pyplot as plt
 import trieste
 
+tf.get_logger().setLevel('INFO')
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
