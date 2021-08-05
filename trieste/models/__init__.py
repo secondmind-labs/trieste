@@ -18,5 +18,5 @@ creating :class:`TrainableProbabilisticModel`\ s from config.
 """
 
 from . import gpflow, optimizer
-from .config import ModelConfig, ModelSpec, create_model, supported_models
+from .config import ModelConfig, ModelSpec, create_model
 from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel

@@ -17,7 +17,7 @@ random.seed(3)
 
 # %%
 import trieste
-from trieste.objectives.single_objectives import branin
+from trieste.objectives import branin
 
 
 class FaultyBranin:

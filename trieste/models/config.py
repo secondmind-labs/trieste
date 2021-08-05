@@ -11,38 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
+from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Union
+from typing import Any, Union
 
-import gpflow
 import tensorflow as tf
-from gpflow.models import GPR, SGPR, VGP
 
-from .gpflow import GaussianProcessRegression, VariationalGaussianProcess
 from .interfaces import TrainableProbabilisticModel
 from .optimizer import Optimizer, create_optimizer
-
-"""
-A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
-types.
-"""
-supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
-    GPR: GaussianProcessRegression,
-    SGPR: GaussianProcessRegression,
-    VGP: VariationalGaussianProcess,
-}
-
-
-def _default_optimizer() -> gpflow.optimizers.Scipy:
-    return gpflow.optimizers.Scipy()
 
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """Specification for building a :class:`~trieste.models.TrainableProbabilisticModel`."""
+    """
+    This class is a specification for building a
+    :class:`~trieste.models.TrainableProbabilisticModel`. It is not meant to be used by itself,
+    subclasses that implement the missing asbtract methods should be used instead. These abstract
+    methods define a default optimizer and all models supported by a specific model type (e.g.
+    Gaussian processes implementation). Note that subclasses should also be frozen dataclasses.
+    """
 
     model: tf.Module | TrainableProbabilisticModel
     """ The :class:`~trieste.models.TrainableProbabilisticModel`, or the model to wrap in one. """
@@ -50,16 +41,40 @@ class ModelConfig:
     model_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the model wrapper. """
 
-    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer = field(
-        default_factory=_default_optimizer
-    )
+    optimizer: Callable = field(default_factory=tf.optimizers.Adam)
     """ The optimizer with which to train the model (by minimizing its loss function). """
 
     optimizer_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the optimizer wrapper. """
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "optimizer", self.default_optimizer)
         self._check_model_type()
+
+    # @property
+    @abstractmethod
+    def default_optimizer(self) -> Callable:
+        """
+        Defines a default optimizer for the model type. This method has to be specified by a model
+        type specific subclass.
+
+        :return: An optimizer function.
+        """
+        raise NotImplementedError
+
+    # @property
+    @abstractmethod
+    def supported_models(
+        self,
+    ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
+        """
+        Defines all models supported by certain model type (e.g. Gaussian process implementation).
+        This method has to be specified by a model type specific subclass.
+
+        :return: A mapping of third-party model types to :class:`CustomTrainable` classes that wrap
+            models of those types.
+        """
+        raise NotImplementedError
 
     @staticmethod
     def create_from_dict(d: dict[str, Any]) -> ModelConfig:
@@ -75,7 +90,7 @@ class ModelConfig:
         if isinstance(self.model, TrainableProbabilisticModel):
             return
 
-        for model_type in supported_models:
+        for model_type in self.supported_models():
             if isinstance(self.model, model_type):
                 return
 
@@ -90,14 +105,14 @@ class ModelConfig:
 
         optimizer = create_optimizer(self.optimizer, self.optimizer_args)
 
-        for model_type, model_interface in supported_models.items():
+        for model_type, model_interface in self.supported_models().items():
             if isinstance(self.model, model_type):
                 return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
 
-ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
+ModelSpec = Union[ModelConfig, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
@@ -108,8 +123,6 @@ def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
     """
     if isinstance(config, ModelConfig):
         return config.create_model_interface()
-    elif isinstance(config, dict):
-        return ModelConfig(**config).create_model_interface()
     elif isinstance(config, TrainableProbabilisticModel):
         return config
     raise NotImplementedError("Unknown format passed to create a TrainableProbabilisticModel.")

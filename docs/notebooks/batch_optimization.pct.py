@@ -41,7 +41,7 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 from trieste.models import create_model
-from trieste.utils import map_values
+from trieste.models.gpflow import GPflowModelConfig
 import tensorflow_probability as tfp
 
 
@@ -54,13 +54,13 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return {
+    return GPflowModelConfig({
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
             "minimize_args": {"options": dict(maxiter=100)},
         },
-    }
+    })
 
 
 model_spec = build_model(initial_data)

@@ -13,10 +13,11 @@
 # limitations under the License.
 
 r"""
-This package contains the primary interfaces for Gaussian process models. It also contains a
+This package contains the primary interface for Gaussian process models. It also contains a
 number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 """
 
+from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 from .utils import (
