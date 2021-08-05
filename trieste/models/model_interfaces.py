@@ -499,34 +499,52 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
 
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+class SparseVariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
+    def __init__(
+        self,
+        model: SVGP,
+        optimizer: Optimizer | None = None
+    ):
         """
         :param model: The underlying GPflow sparse variational model.
-        :param data: The initial training data.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
+        :param max_num_inducing_points: The maximum number of inducing points allowed.
         """
+
+        if optimizer is None:
+            optimizer = Optimizer(tf.optimizers.Adam())
+
         super().__init__(optimizer)
         self._model = model
-        self._data = data
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
+        return f"SparseVariational({self._model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        _assert_data_is_compatible(dataset, self._data)
+        # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
+        if dataset.query_points.shape[-1] != self.model.inducing_variable.Z.shape[-1]:
+            raise ValueError(
+                f"Shape {dataset.query_points.shape} of new query points is incompatible with"
+                f" shape {self.model.inducing_variable.Z.shape} of existing query points."
+                f" Trailing dimensions must match."
+            )
 
-        self._data = dataset
+        if dataset.observations.shape[-1] != self.model.q_mu.shape[-1]:
+            raise ValueError(
+                f"Shape {dataset.observations.shape} of new observations is incompatible with"
+                f" shape {self.model.q_mu.shape} of existing observations. Trailing"
+                f" dimensions must match."
+            )
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
@@ -678,7 +696,7 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    SVGP: SparseVariational
+    SVGP: SparseVariationalGaussianProcess
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
