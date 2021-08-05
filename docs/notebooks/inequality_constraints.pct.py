@@ -267,7 +267,7 @@ plot_regret(
 #
 # We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherets from the previous one its objective and first constraint, but possess a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
-
+# %%
 class Sim2(Sim):
     threshold2 = 0.5
 
@@ -296,6 +296,7 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 # %% [markdown]
 # Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` into one quantity by using a `Product` `Reducer`:
 
+# %%
 from trieste.acquisition.combination import Product
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
@@ -304,6 +305,7 @@ pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 # %% [markdown]
 # We can now run the BO loop as before, and visualize the results:
 
+# %%
 eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
 rule = EfficientGlobalOptimization(eci)  # type: ignore
 
@@ -347,7 +349,6 @@ plot_bo_points(
     mask_fail=mask_fail,
 )
 plt.show()
-
 
 # %% [markdown]
 # ## LICENSE
