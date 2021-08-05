@@ -73,7 +73,7 @@ from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils import DEFAULTS
-from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):

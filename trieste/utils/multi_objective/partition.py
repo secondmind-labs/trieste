@@ -1,15 +1,28 @@
+# Copyright 2020 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """This module contains functions of different methods for partitioning the dominated/non-dominated
  region in multi-objective optimization, assuming a front is given upfront """
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import tensorflow as tf
 from typing_extensions import Final
 
 from trieste.type import TensorType
 from trieste.utils.misc import DEFAULTS
-from trieste.utils.mo_utils.dominance import non_dominated
+from trieste.utils.multi_objective.dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition(observations):
@@ -29,7 +42,7 @@ class Partition(ABC):
     front: TensorType
 
     def partition_bounds(
-        self, anti_reference: TensorType, reference: TensorType
+        self, *args
     ) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
@@ -42,8 +55,9 @@ class NonDominatedPartition(Partition):
     Partition methods focusing on partitioning non-dominated regions
     """
 
+    @abstractmethod
     def partition_bounds(
-        self, anti_reference: TensorType, reference: TensorType
+        self, *args
     ) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
@@ -57,8 +71,9 @@ class DominatedPartition(Partition):
     Partition methods focusing on partitioning dominated-regions
     """
 
+    @abstractmethod
     def partition_bounds(
-        self, anti_reference: TensorType, reference: TensorType
+        self, *args
     ) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
@@ -88,7 +103,8 @@ class _BoundedVolumes:
 
 class BoundIndexPartition(NonDominatedPartition):
     """
-    A collection of partition strategy that is based on storing the index of pareto fronts & other auxilary points
+    A collection of partition strategy that is based on storing the index of pareto fronts
+        & other auxilary points
     """
     _bounds: _BoundedVolumes
 
@@ -396,9 +412,7 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
             z_set=self.Z_set,
         )
 
-    def partition_bounds(
-        self, anti_reference: TensorType, reference: TensorType
-    ) -> tuple[TensorType, TensorType]:
+    def partition_bounds(self) -> tuple[TensorType, TensorType]:
         return _get_partition_bounds_hbda(self.Z_set, self.U_set, self._reference_point)
 
 
@@ -565,18 +579,16 @@ class FlipTrickNonDominatedPartition(NonDominatedPartition):
     the 'dominated' region, which will then provide us with the partition of the non-dominated region
     """
 
-    def __init__(self, front: TensorType, reference_point: TensorType):
+    def __init__(self, front: TensorType, *, anti_reference_point: TensorType, reference_point: TensorType):
         lub_sets = HypervolumeBoxDecompositionIncrementalDominated(front, reference_point).U_set
         flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
-            -lub_sets, 3 * tf.ones(shape=front.shape[-1], dtype=front.dtype)
+            -lub_sets, - anti_reference_point
         )
         flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
         self.lb_pts = -flipped_ub_pts
         self.ub_pts = -flipped_lb_pts
 
-    def partition_bounds(
-        self, anti_reference: TensorType, reference: TensorType
-    ) -> tuple[TensorType, TensorType]:
+    def partition_bounds(self) -> tuple[TensorType, TensorType]:
         return self.lb_pts, self.ub_pts
 
 
@@ -584,7 +596,7 @@ if __name__ == "__main__":
     # z = tf.constant([[[0.5, 1.0], [1, 0.5]]])
     # u = tf.constant([[0.5, 0.5]])
     # get_partition_bounds_hbda(z, u, tf.constant([1.0, 1.0]))
-    from trieste.utils.multi_objectives import DTLZ1, VLMOP2
+    from trieste.objectives.multi_objectives import DTLZ1, VLMOP2
 
     # TODO: Implement non incremental partitioning
     # TODO: Visual Check
@@ -593,15 +605,16 @@ if __name__ == "__main__":
     # plot check
     # 2d case
     # from trieste.utils.multi_objectives import VLMOP2
-    # from matplotlib import pyplot as plt
-    # pf = VLMOP2().gen_pareto_optimal_points(10)
-    # lb, ub = partition = FlipTrickNonDominatedPartition(pf, 2 * tf.ones(2)).partition_bounds()
-    # # plt.scatter(1.2, 1.2, label='ref points')
-    # # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
-    # plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
-    # plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
-    # plt.legend()
-    # plt.show()
+    from matplotlib import pyplot as plt
+    pf = VLMOP2().gen_pareto_optimal_points(10)
+    lb, ub = partition = FlipTrickNonDominatedPartition(pf, anti_reference_point=-3 * tf.ones(2),
+                                                        reference_point=2 * tf.ones(2)).partition_bounds()
+    # plt.scatter(1.2, 1.2, label='ref points')
+    # plt.scatter(pf[:, 0], pf[:, 1], label='PF points')
+    plt.scatter(lb[:, 0], lb[:, 1], label='Lower bound points')
+    plt.scatter(ub[:, 0], ub[:, 1], label='Upper bound points')
+    plt.legend()
+    plt.show()
     # partition = HypervolumeBoxDecompositionIncremental(pf, 1.2 * tf.ones(2))
     # from matplotlib import pyplot as plt
     # plt.scatter(1.2, 1.2, label='ref points')
@@ -619,9 +632,9 @@ if __name__ == "__main__":
     # plt.legend()
     # plt.show()
     # 3D case
-    outdim = 3
-    pf = DTLZ1(10, outdim).gen_pareto_optimal_points(100)
-    partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(outdim))
+    # outdim = 3
+    # pf = DTLZ1(10, outdim).gen_pareto_optimal_points(100)
+    # partition = FlipTrickNonDominatedPartition(pf, 12 * tf.ones(outdim))
     from botorch.utils.multi_objective.box_decompositions.non_dominated import (
         FastNondominatedPartitioning,
     )

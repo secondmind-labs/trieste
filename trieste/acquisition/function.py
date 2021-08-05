@@ -31,8 +31,8 @@ from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
-from ..utils.pareto import Pareto, get_reference_point
-from ..utils.mo_utils.partition import prepare_default_non_dominated_partition, NonDominatedPartition
+from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
+from ..utils.multi_objective.partition import prepare_default_non_dominated_partition, NonDominatedPartition
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,

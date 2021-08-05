@@ -18,8 +18,8 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
-from trieste.utils.mo_utils.dominance import non_dominated
-from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.utils.multi_objective.dominance import non_dominated
+from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
 
 
 @pytest.mark.parametrize(

@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import tensorflow as tf
 
-from ..type import TensorType
-from .mo_utils.dominance import non_dominated
-from .mo_utils.partition import prepare_default_non_dominated_partition
+from trieste.type import TensorType
+from .dominance import non_dominated
+from .partition import prepare_default_non_dominated_partition
 
 
 class Pareto:

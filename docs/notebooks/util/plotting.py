@@ -20,7 +20,7 @@ from matplotlib import cm
 from trieste.acquisition import AcquisitionFunction
 from trieste.type import TensorType
 from trieste.utils import to_numpy
-from trieste.utils.mo_utils.dominance import non_dominated
+from trieste.utils.multi_objective.dominance import non_dominated
 
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):

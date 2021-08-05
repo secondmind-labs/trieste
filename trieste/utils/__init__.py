@@ -16,7 +16,7 @@ from typing import Callable, Mapping, TypeVar
 
 from typing_extensions import Final
 
-from . import pareto
+from .multi_objective import pareto
 from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
 
 K = TypeVar("K")

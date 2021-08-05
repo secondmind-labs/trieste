@@ -30,7 +30,7 @@ from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
 
 
 @random_seed
