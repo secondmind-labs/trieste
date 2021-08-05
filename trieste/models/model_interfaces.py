@@ -754,6 +754,7 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
+    SVGP: SparseVariational
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
