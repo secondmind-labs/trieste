@@ -25,7 +25,7 @@ from .model_interfaces import (
     M,
     ModelStack,
     ProbabilisticModel,
-    SparseVariationalGaussianProcess,
+    SparseVariational,
     TrainableProbabilisticModel,
     VariationalGaussianProcess,
     module_deepcopy,
