@@ -560,7 +560,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # So that the elbo method doesn't fail we also need to turn it into a property.
         if not isinstance(self._model, SVGPWrapper):
             self._model._num_data = tf.Variable(
-                model.num_data or data.query_points.shape[0], trainable=False, dtype=tf.float64
+                model.num_data, trainable=False, dtype=tf.float64
             )
             self._model.__class__ = SVGPWrapper
 
