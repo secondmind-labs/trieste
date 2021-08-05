@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 import random
 
+tf.get_logger().setLevel('INFO')
 np.random.seed(1793)
 tf.random.set_seed(1793)
 random.seed(3)
