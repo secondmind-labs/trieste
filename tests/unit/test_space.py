@@ -514,12 +514,36 @@ def test_ordinal_bounds_and_stepsizes_attributes() -> None:
     npt.assert_array_equal(ordinalsp.stepsizes, stepsizes)
 
 
-def test_ordinal_contains_point():
-    return NotImplementedError
+@pytest.mark.parametrize(
+    "point",
+    [
+        tf.constant([-1.0, 0.0, -2.0]),  # lower bound
+        tf.constant([2.0, 1.0, -0.5]),  # upper bound
+        tf.constant([0.6, 0.5, -1.5]),  # approx centre
+        tf.constant([-1.0, 0.0, -1.9]),  # near the edge
+        tf.constant([-0.2, 0.3, -1.3]),  # checking step sizes
+    ],
+)
+def test_ordinal_contains_point(point: tf.Tensor) -> None:
+    assert point in OrdinalSearchSpace(
+        tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]), tf.constant([0.2, 0.1, 0.1])
+    )
 
 
-def test_ordinal_does_not_contain_point():
-    return NotImplementedError
+@pytest.mark.parametrize(
+    "point",
+    [
+        tf.constant([-1.1, 0.0, -2.0]),  # just outside
+        tf.constant([-0.5, -0.5, 1.5]),  # negative of a contained point
+        tf.constant([10.0, -10.0, 10.0]),  # well outside
+        tf.constant([0.5, 0.5, -1.5]),  # approx centre with different step size
+        tf.constant([0.5, 0.55, -1.11]),  # inside with totally different step sizes
+    ],
+)
+def test_ordinal_does_not_contain_point(point: tf.Tensor) -> None:
+    assert point not in OrdinalSearchSpace(
+        tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]), tf.constant([0.2, 0.1, 0.1])
+    )
 
 
 def test_ordinal___mul___bounds_are_the_concatenation_of_original_bounds() -> None:

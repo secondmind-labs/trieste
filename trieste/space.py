@@ -17,6 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence, TypeVar, overload
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -347,15 +348,15 @@ class OrdinalSearchSpace(Box):
     :math:`\mathbb{R}^D`. This class inherit :class:`Box` and generates evenly-spaced value
     in an interval for each dimension. For example randomly sample from this search space
     will give:
-
+        >>> tf.random.set_seed(1945)
         >>> ordinalsp = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
         >>> sample = ordinalsp.sample(5)
         >>> sample.numpy()
-        array([ [ 0.2, -0.9],
-                [-1.4,  0.6],
-                [-2. , -1.5],
-                [ 2. , -0.3],
-                [ 0.2,  0. ]])
+        array([ [ 0. , -0.6],
+                [ 0.6, -0.6],
+                [-1.2,  1.2],
+                [-0.4,  1.5],
+                [ 1.2,  0. ]])
 
     """
 
@@ -435,6 +436,34 @@ class OrdinalSearchSpace(Box):
     def stepsizes(self) -> TensorType:
         """the step sizes of the ordinal space"""
         return self._stepsizes
+
+    def __contains__(self, value: TensorType) -> bool | TensorType:
+        """
+        Return `True` if ``value`` is a member of this search space, else `False`. A point is a
+        member if all of its coordinates lie in the closed intervals bounded by the lower and upper
+        bounds and spaced by some step sizes.
+
+        :param value: A point to check for membership of this :class:`SearchSpace`.
+        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+            scalar boolean `TensorType` instead of the `bool` itself.
+        :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
+            from the search space.
+        """
+        if not shapes_equal(value, self._lower):
+            raise ValueError(
+                f"value must have same dimensionality as search space: {self._lower.shape},"
+                f" got shape {value.shape}"
+            )
+
+        isclose_array = np.vectorize(np.isclose)
+
+        return (
+            tf.reduce_all(value >= self._lower)
+            and tf.reduce_all(value <= self._upper)
+            and tf.reduce_all(
+                isclose_array(value / self._stepsizes, tf.round(value / self._stepsizes))
+            )
+        )
 
     def __mul__(self, other: OrdinalSearchSpace) -> OrdinalSearchSpace:  # type: ignore[override]
         r"""
