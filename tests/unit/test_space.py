@@ -470,7 +470,7 @@ def test_ordinal_raises_if_stepsizes_have_invalid_shape(
 ) -> None:
     lower, upper = tf.zeros(bound_shape), tf.ones(bound_shape)
     stepsizes = tf.fill(stepsizes_shape, 0.1)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         OrdinalSearchSpace(lower, upper, stepsizes)
 
 
