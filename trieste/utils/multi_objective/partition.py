@@ -19,18 +19,19 @@ from abc import ABC, abstractmethod
 
 from typing_extensions import Final
 
+import tensorflow as tf
 from trieste.type import TensorType
 from trieste.utils.misc import DEFAULTS
 from trieste.utils.multi_objective.dominance import non_dominated
 
 
-def prepare_default_non_dominated_partition(observations):
+def prepare_default_non_dominated_partition_bounds(observations, anti_reference, reference):
     if observations.shape[-1] > 2:
-        return DividedAndConquerNonDominated(observations)
+        return FlipTrickPartitionNonDominated(observations, anti_reference, reference).partition_bounds()
     elif observations.shape[-1] == 2:
-        return ExactPartition2dNonDominated(observations)
+        return ExactPartition2dNonDominated(observations).partition_bounds(anti_reference, reference)
     else:
-        raise ValueError
+        raise ValueError(f'observations: {observations} not understood')
 
 
 class Partition(ABC):
@@ -441,17 +442,9 @@ def _update_local_upper_bounds_incremental(
              A [n'', p, p]  contain the new local upper bounds defining points
     """
 
-    # from matplotlib import pyplot as plt
     tf.debugging.assert_shapes([(new_front_points, ["N", "D"])])
-    # front_evalued = []
     for new_front_pt in new_front_points:  # incrementally update local upper bounds
-        # plt.scatter(1.2, 1.2, label='ref points')
-        # front_evalued.append(new_front_pt)
-        # for front in front_evalued:
-        #     plt.scatter(front[0], front[1], label='PF points', color='b')
         u_set, z_set = _compute_new_local_upper_bounds(u_set, z_set, z_bar=new_front_pt)
-        # plt.scatter(u_set[:, 0], u_set[:, 1], label='LUB points', color='r')
-        # plt.close()
     return u_set, z_set
 
 
@@ -600,38 +593,3 @@ class FlipTrickPartitionNonDominated(NonDominatedPartition):
 
     def partition_bounds(self) -> tuple[TensorType, TensorType]:
         return self.lb_pts, self.ub_pts
-
-
-if __name__ == '__main__':
-    from trieste.objectives.multi_objectives import DTLZ1
-    import tensorflow as tf
-    import numpy as np
-    from time import time
-
-    time_profile = {}
-    exp_repeat = 5
-    for pf_size in np.arange(10, 100, 10):
-        print(f'pf_size: {pf_size}')
-        time_profile[str(pf_size)] = []
-        for repeat in range(exp_repeat):
-            pf = tf.cast(DTLZ1(4, 3).gen_pareto_optimal_points(pf_size), dtype=tf.float64)
-            best = tf.constant([-100, -100, -100], dtype=tf.float64)
-            worst = tf.constant([1e3, 1e3, 1e3], dtype=tf.float64)
-            start = time()
-            _ = FlipTrickPartitionNonDominated(pf, best, worst)
-            end = time()
-            time_profile[str(pf_size)].append(end - start)
-    from matplotlib import pyplot as plt
-    plt.figure()
-
-    plt.errorbar(np.arange(10, 100, 10), [np.mean(val) for val in time_profile.values()],
-                 [np.std(val) for val in time_profile.values()], label='Trieste Divide & Conqure')
-
-    plt.xlabel('PF Size')
-    plt.ylabel('Time: (Sec)')
-    plt.title('Profile of partition method time for different pareto size with 3obj')
-    # plt.yscale('log')
-    # plt.yticks([1e0, 1e1, 1e2])
-    plt.legend()
-    # plt.yticks([1e0, 1e2])
-    plt.show()

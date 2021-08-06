@@ -18,7 +18,7 @@ import tensorflow as tf
 
 from trieste.type import TensorType
 from .dominance import non_dominated
-from .partition import prepare_default_non_dominated_partition
+from .partition import prepare_default_non_dominated_partition_bounds
 
 
 class Pareto:
@@ -57,8 +57,6 @@ class Pareto:
             screened_front, _ = non_dominated(observations[screen_mask])
         self.front = screened_front
 
-        self._partition = prepare_default_non_dominated_partition(self.front)
-
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
         Calculate the hypervolume indicator based on self.front and a reference point
@@ -81,7 +79,7 @@ class Pareto:
         dummy_anti_reference = tf.reduce_min(self.front, axis=0) - tf.ones(
             shape=1, dtype=self.front.dtype
         )
-        lower, upper = self._partition.partition_bounds(dummy_anti_reference, reference)
+        lower, upper = prepare_default_non_dominated_partition_bounds(self.front, dummy_anti_reference, reference)
         non_dominated_hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 1))
         hypervolume_indicator = tf.reduce_prod(reference - dummy_anti_reference) - non_dominated_hypervolume
         return hypervolume_indicator
