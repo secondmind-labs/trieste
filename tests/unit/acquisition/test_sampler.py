@@ -31,8 +31,8 @@ from trieste.acquisition.sampler import (
     RandomFourierFeatureThompsonSampler,
 )
 from trieste.data import Dataset
+from trieste.objectives.single_objectives import branin
 from trieste.space import Box
-from trieste.utils.objectives import branin
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])

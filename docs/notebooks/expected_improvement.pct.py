@@ -15,7 +15,8 @@ tf.random.set_seed(1793)
 #
 
 # %%
-from trieste.utils.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
@@ -35,7 +36,7 @@ fig.show()
 # %%
 import trieste
 
-observer = trieste.utils.objectives.mk_observer(scaled_branin)
+observer = trieste.objectives.utils.mk_observer(scaled_branin)
 
 num_initial_points = 5
 initial_query_points = search_space.sample_sobol(num_initial_points)
@@ -46,7 +47,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
 #
-# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of random sample from the kernel parameter priors.  
+# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
 #
 # If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 
@@ -66,6 +67,9 @@ def build_model(data):
 
     return {
             "model": gpr,
+            "model_args": {
+                "num_kernel_samples": 100,
+            },
             "optimizer": gpflow.optimizers.Scipy(),
             "optimizer_args": {
                 "minimize_args": {"options": dict(maxiter=100)},

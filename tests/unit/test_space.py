@@ -45,7 +45,7 @@ class Integers(SearchSpace):
 @pytest.mark.parametrize("exponent", [0, -2])
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
     space = Integers(3)
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         space ** exponent
 
 
@@ -59,7 +59,7 @@ def _points_in_2D_search_space() -> tf.Tensor:
 
 @pytest.mark.parametrize("shape", various_shapes(excluding_ranks=[2]))
 def test_discrete_search_space_raises_for_invalid_shapes(shape: ShapeLike) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DiscreteSearchSpace(tf.random.uniform(shape))
 
 
@@ -99,7 +99,7 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
     points: tf.Tensor, test_point: tf.Tensor
 ) -> None:
     space = DiscreteSearchSpace(points)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = test_point in space
 
 
@@ -127,7 +127,7 @@ def test_discrete_search_space_sampling_raises_when_too_many_samples_are_request
 ) -> None:
     search_space = DiscreteSearchSpace(_points_in_2D_search_space())
 
-    with pytest.raises(ValueError, match="samples"):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         search_space.sample(num_samples)
 
 
@@ -212,7 +212,7 @@ def test_box_raises_if_bounds_have_invalid_shape(
 ) -> None:
     lower, upper = tf.zeros(lower_shape), tf.ones(upper_shape)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         Box(lower, upper)
 
 
@@ -297,7 +297,7 @@ def test_box_contains_raises_on_point_of_different_shape(
     box = Box(tf.zeros(bound_shape), tf.ones(bound_shape))
     point = tf.zeros(point_shape)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = point in box
 
 
@@ -396,7 +396,7 @@ def test_box_discretize_returns_search_space_with_correct_number_of_points(
 
     assert len(samples) == num_samples
 
-    with pytest.raises(ValueError):
+    with pytest.raises(tf.errors.InvalidArgumentError):
         dss.sample(num_samples + 1)
 
 
