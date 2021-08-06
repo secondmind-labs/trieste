@@ -344,11 +344,11 @@ class OrdinalSearchSpace(Box):
         >>> ordinalsp = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
         >>> sample = ordinalsp.sample(5)
         >>> sample.numpy()
-        array([ [ 0. , -0.6],
-                [ 0.6, -0.6],
-                [-1.2,  1.2],
-                [-0.4,  1.5],
-                [ 1.2,  0. ]])
+        array([[ 0. , -0.6],
+               [ 0.6, -0.6],
+               [-1.2,  1.2],
+               [-0.4,  1.5],
+               [ 1.2,  0. ]])
 
     """
 
