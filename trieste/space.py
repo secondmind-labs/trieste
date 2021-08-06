@@ -400,7 +400,7 @@ class OrdinalSearchSpace(Box):
             from this search space.
         """
         samples = super().sample(num_samples)
-        samples = tf.round(samples / self._stepsizes) * self._stepsizes
+        samples = tf.round(samples / self._stepsizes) * self._stepsizes + 0
 
         return samples
 
