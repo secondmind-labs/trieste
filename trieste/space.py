@@ -340,7 +340,7 @@ class OrdinalSearchSpace(Box):
     :math:`\mathbb{R}^D`. This class inherit :class:`Box` and generates evenly-spaced value
     in an interval for each dimension. For example randomly sample from this search space
     will give:
-    
+
         >>> tf.random.set_seed(1945)
         >>> ordinalsp = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
         >>> sample = ordinalsp.sample(5)
