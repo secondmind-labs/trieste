@@ -462,38 +462,6 @@ def test_ordinalsearchspace_sampling_return_correct_rounded_points(lower, upper,
 
 
 @pytest.mark.parametrize(
-    "lower, upper, stepsizes",
-    [
-        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
-        pytest.param([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3]),
-        pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
-    ],
-)
-def test_ordinalsearchspace_sobol_sampling_return_correct_rounded_points(lower, upper, stepsizes):
-    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
-    box = Box(lower, upper)
-    ordinalsample = ordinalsp.sample_sobol(5, skip=0)
-    boxsample = box.sample_sobol(5, skip=0)
-    npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
-
-
-@pytest.mark.parametrize(
-    "lower, upper, stepsizes",
-    [
-        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
-        pytest.param([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3]),
-        pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
-    ],
-)
-def test_ordinalsearchspace_halton_sampling_return_correct_rounded_points(lower, upper, stepsizes):
-    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
-    box = Box(lower, upper)
-    ordinalsample = ordinalsp.sample_halton(5, seed=0)
-    boxsample = box.sample_halton(5, seed=0)
-    npt.assert_allclose(ordinalsample, tf.round(boxsample / stepsizes) * stepsizes)
-
-
-@pytest.mark.parametrize(
     "bound_shape, stepsizes_shape",
     _pairs_of_shapes(excluding_ranks={1}) | {((1,), (2,)), ((0,), (0,))},
 )

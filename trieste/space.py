@@ -410,28 +410,6 @@ class OrdinalSearchSpace(Box):
 
         return samples
 
-    def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
-        """
-        :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
-            where D is the search space dimension. Rounded by the ``stepsize``.
-        """
-        samples = super().sample_halton(num_samples, seed)
-        samples = tf.round(samples / self._stepsizes) * self._stepsizes
-
-        return samples
-
-    def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
-        """
-        :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
-            where D is the search space dimension. Rounded by the ``stepsize``.
-        """
-        samples = super().sample_sobol(num_samples, skip)
-        samples = tf.round(samples / self._stepsizes) * self._stepsizes
-
-        return samples
-
     @property
     def stepsizes(self) -> TensorType:
         """the step sizes of the ordinal space"""
