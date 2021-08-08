@@ -28,8 +28,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
 
     For hypervolume-based multiobjective optimisation with n>2 objectives, this class
-    defaultly use . a divide and conquer method introduced
-    in :cite:`Couckuyt2012`.
+    defaultly use a flip trick partition method based on :lacour2017box:.
     """
 
     def __init__(

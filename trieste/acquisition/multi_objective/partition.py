@@ -608,8 +608,9 @@ class FlipTrickPartitionNonDominated(NonDominatedPartition):
     locate the local upper bound point set (by partitioning the dominated region), by
     treating these local upper bound as fake Pareto front, we can combine with a fake
     reference point (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in
-    this case, we are able to use lacour2017box's method again to partition the 'dominated'
-    region, which will then provide us with the partition of the non-dominated region
+    this case, we are able to use :cite:`lacour2017box`s method again to partition the
+    'dominated' region, which will then provide us with the partition of the non-dominated
+    region
     """
 
     def __init__(
