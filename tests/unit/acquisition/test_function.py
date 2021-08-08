@@ -660,7 +660,7 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
          tf.constant([-1e10] * 2), get_reference_point(_prt.front))
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_hv_improvement(model, _partition_bounds)(xs)
-    npt.assert_allclose(acq_fn(xs), expected, 1e-5)
+    npt.assert_allclose(acq_fn(xs), expected)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
