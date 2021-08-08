@@ -385,7 +385,7 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
 
     The main idea is of using a sort of auxiliary points (which is referred to as local
     upper bounds in the original context, not the same as lower bounds used in Trieste)
-    assosiating to existing Pareto points to describe the Pareto frontier, then, one could
+    associating to existing Pareto points to describe the Pareto frontier, then, one could
     use an alternative partition as an replacement of original partition.
 
     Main reference: Section 2.2.2 of :cite:`lacour2017box`
@@ -591,8 +591,6 @@ def _get_partition_bounds_hbda(
         u_bounds = tf.concat([u_bounds, u_bound_new[tf.newaxis]], 0)
 
     # remove empty partitions
-    # Note: the equality will evaluate as True if the lower and upper bound
-    # are both (-inf), which could happen if the reference point is -inf.
     empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
     return l_bounds[~empty], u_bounds[~empty]
 
