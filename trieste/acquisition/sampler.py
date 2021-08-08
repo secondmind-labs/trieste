@@ -432,14 +432,12 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
-        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
-
     def __repr__(self) -> str:
         """"""
         return f"""{self.__class__.__name__}(
         {self._sample_size!r},
         {self._model!r},
-        {self._sample_min_value},
+        {self._sample_min_value!r},
         {self._num_features!r})
         """
 
@@ -452,8 +450,6 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         # where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
         # the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
         # and observation noise variance :math:`\sigma^2`.
-        #
-        # :return: The posterior distribution for theta.
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
         D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
@@ -480,8 +476,6 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         # where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
         # matrix of feature evaluations across the training data :math:`\Phi` and
         # observation noise variance :math:`\sigma^2`.
-        #
-        # :return: The posterior distribution for theta.
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
         G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
