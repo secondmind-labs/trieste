@@ -639,7 +639,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
 
 def expected_hv_improvement(
-    model: ProbabilisticModel, partition_bounds: tuple(TensorType, TensorType)
+    model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]
 ) -> AcquisitionFunction:
     r"""
     expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -796,7 +796,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 def batch_ehvi(
     sampler: BatchReparametrizationSampler,
     sampler_jitter: float,
-    partition_bounds: tuple(TensorType, TensorType),
+    partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
 
     """

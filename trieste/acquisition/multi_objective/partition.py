@@ -15,7 +15,7 @@
  region in multi-objective optimization, assuming a front is given upfront """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import tensorflow as tf
 from typing_extensions import Final
@@ -57,41 +57,17 @@ class Partition(ABC):
     Base class of partition
     """
 
-    front: TensorType
-
-    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
-        """
-        Get partition bounds according to the refernece point, anti_reference point
-        as well as the self.front
-        """
-
 
 class NonDominatedPartition(Partition):
     """
     Partition methods focusing on partitioning non-dominated regions
     """
 
-    @abstractmethod
-    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
-        """
-        Get partition bounds according to the refernece point, anti_reference point
-        as well as the self.front, note the returned lower and upper bounds is a partition
-        of the non-dominated region.
-        """
-
 
 class DominatedPartition(Partition):
     """
     Partition methods focusing on partitioning dominated-regions
     """
-
-    @abstractmethod
-    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
-        """
-        Get partition bounds according to the refernece point, anti_reference point
-        as well as the self.front, note the returned lower and upper bounds is a partition
-        of the non-dominated region.
-        """
 
 
 class _BoundedVolumes:
@@ -213,7 +189,6 @@ class DividedAndConquerNonDominated(BoundIndexPartition):
         self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
     ):
         """
-
         :param front
         :param jitter
         :param threshold
@@ -561,7 +536,7 @@ def _compute_new_local_upper_bounds(
 
 def _get_partition_bounds_hbda(
     z: TensorType, u: TensorType, reference_point: TensorType
-) -> tuple(TensorType, TensorType):
+) -> tuple[TensorType, TensorType]:
     r"""Get the cell bounds given the local upper bounds and the defining points.
     Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper
     of :cite:`lacour2017box`.
@@ -570,7 +545,6 @@ def _get_partition_bounds_hbda(
        p denotes the objective dimensionality
     :param z: with shape [|U(N)|, p, p]
     :param reference_point: z^r in the paper
-
     :return: l_bounds, u_bounds
     """
     tf.debugging.assert_shapes([(reference_point, ["D"])])
@@ -599,11 +573,9 @@ class FlipTrickPartitionNonDominated(NonDominatedPartition):
     """
     Main refer Algorithm 3 of :cite:yang2019efficient, a slight alter of
     method is utilized as we are performing minimization.
-
     The idea behind the proposed algorithm is transforming the problem of
     partitioning a non-dominated space into the problem of partitioning the
     dominated space.
-
     For instance, consider minimization problem, we could use lacour2017box's methods to
     locate the local upper bound point set (by partitioning the dominated region), by
     treating these local upper bound as fake Pareto front, we can combine with a fake

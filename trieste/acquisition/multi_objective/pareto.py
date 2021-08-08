@@ -14,6 +14,8 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
+from typing import Optional
+
 import tensorflow as tf
 
 from ...type import TensorType
@@ -35,7 +37,7 @@ class Pareto:
         self,
         observations: TensorType,
         *,
-        concentration_point: [TensorType, None] = None,
+        concentration_point: Optional[TensorType] = None,
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].

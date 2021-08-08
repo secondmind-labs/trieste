@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -164,6 +166,7 @@ def test_pareto_hypervolume_indicator_raises_for_empty_front(
     [
         ([[1.0, 0.5]], None, [2.3, 2.0], 1.95),
         ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], None, [0.1, -0.1], 0.92),
+        ([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]], tf.constant([-0.9, -0.5]), [0.0, 0.0], 0.6),
         (  # reference point is equal to one pareto point in one dimension
             [[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]],
             None,
@@ -175,7 +178,7 @@ def test_pareto_hypervolume_indicator_raises_for_empty_front(
 )
 def test_pareto_hypervolume_indicator(
     objectives: list[list[float]],
-    screen_reference_point: [None, tf.Tensor],
+    screen_reference_point: Optional[tf.Tensor],
     reference: list[float],
     expected: float,
 ) -> None:
