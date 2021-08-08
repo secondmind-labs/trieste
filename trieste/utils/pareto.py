@@ -14,8 +14,9 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-import tensorflow as tf
 from dataclasses import dataclass
+
+import tensorflow as tf
 from typing_extensions import Final
 
 from ..types import TensorType
