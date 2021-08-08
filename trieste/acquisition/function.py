@@ -20,19 +20,21 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
-from math import inf
 from typing import Callable, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.partition import (
+    prepare_default_non_dominated_partition_bounds,
+)
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
-from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
-from ..utils.multi_objective.partition import prepare_default_non_dominated_partition_bounds, NonDominatedPartition
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -630,15 +632,14 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front,
-                tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-            )
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
+        )
         return expected_hv_improvement(model, _partition_bounds)
 
 
 def expected_hv_improvement(
-    model: ProbabilisticModel,
-    partition_bounds: tuple(TensorType, TensorType)
+    model: ProbabilisticModel, partition_bounds: tuple(TensorType, TensorType)
 ) -> AcquisitionFunction:
     r"""
     expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -659,7 +660,8 @@ def expected_hv_improvement(
     original notation and equations.
 
     :param model: The model of the objective function.
-    :param partition_bounds
+    :param partition_bounds: partitioned non-dominated hyper box bounds for
+        hypervolume improvement calculation
     :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
@@ -782,9 +784,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front,
-                tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-            )
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
+        )
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
@@ -802,7 +804,8 @@ def batch_ehvi(
         the possible observations at 'at'.
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
-    :param partition_bounds
+    :param partition_bounds: partitioned non-dominated hyper box bounds for
+        hypervolume improvement calculation
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
     """
@@ -906,9 +909,11 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front,
-                tf.constant([-1e10] * feasible_mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-            )
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front,
+            tf.constant([-1e10] * feasible_mean.shape[-1], dtype=_pf.front.dtype),
+            _reference_pt,
+        )
         ehvi = expected_hv_improvement(objective_model, _partition_bounds)
         return lambda at: ehvi(at) * constraint_fn(at)
 

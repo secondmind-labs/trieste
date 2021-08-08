@@ -18,8 +18,8 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
-from trieste.utils.multi_objective.dominance import non_dominated
-from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.dominance import non_dominated
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
 
 @pytest.mark.parametrize(
@@ -133,13 +133,23 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
         pareto.hypervolume_indicator(tf.constant(reference))
 
 
-@pytest.mark.parametrize("front, reference, screen_concentration_point",
-                         [(tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]),
-                          [[0.1, -0.65], [-0.7, -0.1]],
-                          tf.constant([[-1.0, -2]])),
-                          ((tf.constant([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]]),
-                            [4.0, 4.0, 4.0],
-                            tf.constant([[0.0, 0.0, 0.0]])))])
+@pytest.mark.parametrize(
+    "front, reference, screen_concentration_point",
+    [
+        (
+            tf.constant([[-1.0, -0.6], [-0.8, -0.7], [-0.6, -1.1]]),
+            [[0.1, -0.65], [-0.7, -0.1]],
+            tf.constant([[-1.0, -2]]),
+        ),
+        (
+            (
+                tf.constant([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]]),
+                [4.0, 4.0, 4.0],
+                tf.constant([[0.0, 0.0, 0.0]]),
+            )
+        ),
+    ],
+)
 def test_pareto_hypervolume_indicator_raises_for_empty_front(
     front: tf.Tensor, reference: list[float], screen_concentration_point: tf.Tensor
 ) -> None:
@@ -164,8 +174,10 @@ def test_pareto_hypervolume_indicator_raises_for_empty_front(
     ],
 )
 def test_pareto_hypervolume_indicator(
-    objectives: list[list[float]], screen_reference_point: [None, tf.Tensor],
-        reference: list[float], expected: float
+    objectives: list[list[float]],
+    screen_reference_point: [None, tf.Tensor],
+    reference: list[float],
+    expected: float,
 ) -> None:
     pareto = Pareto(tf.constant(objectives), concentration_point=screen_reference_point)
     npt.assert_allclose(pareto.hypervolume_indicator(tf.constant(reference)), expected, 1e-6)
@@ -176,13 +188,9 @@ def test_pareto_hypervolume_indicator(
     [
         (tf.zeros(shape=(0, 2))),
         (tf.zeros(shape=(0, 3))),
-        ( tf.constant([])),
+        (tf.constant([])),
     ],
 )
 def test_get_reference_point_raise_when_feed_empty_front(front):
     with pytest.raises(ValueError):
         get_reference_point(front)
-
-
-# TODO: Add Test for HypervolumeBoxDecompositionIncrementalDominated and FlipTrickNonDominatedPartition
-

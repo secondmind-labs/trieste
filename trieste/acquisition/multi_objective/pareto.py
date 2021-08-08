@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 
-from trieste.type import TensorType
+from ...type import TensorType
 from .dominance import non_dominated
 from .partition import prepare_default_non_dominated_partition_bounds
 
@@ -28,7 +28,7 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
 
     For hypervolume-based multiobjective optimisation with n>2 objectives, this class
-    defaultly use branch and bound procedure algorithm. a divide and conquer method introduced
+    defaultly use . a divide and conquer method introduced
     in :cite:`Couckuyt2012`.
     """
 
@@ -40,9 +40,8 @@ class Pareto:
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
-        :param partition: method of partitioning based on the (screened) pareto frontier
-        :param concentration_point: The concentration point used to screen out not interested frontier in
-          observations.
+        :param concentration_point: The concentration point used to screen out not
+        interested frontier in observations.
 
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
@@ -66,22 +65,27 @@ class Pareto:
             Defines the upper bound of the hypervolume.
             Should be equal or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
-        :return: hypervolume indicator, if reference point is less than all of the front in any dimension,
-            the hypervolume indicator will be zero.
+        :return: hypervolume indicator, if reference point is less than all of the front
+            in any dimension, the hypervolume indicator will be zero.
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
-        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``self.front`` is empty (which can happen
-        if the concentration point is too strict so no frontier exists after the screening)
+        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``self.front`` is empty
+            (which can happen if the concentration point is too strict so no frontier
+            exists after the screening)
         """
         if tf.equal(tf.size(self.front), 0):
-            raise ValueError('empty front cannot be used to calculate hypervolume indicator')
+            raise ValueError("empty front cannot be used to calculate hypervolume indicator")
 
         dummy_anti_reference = tf.reduce_min(self.front, axis=0) - tf.ones(
             shape=1, dtype=self.front.dtype
         )
-        lower, upper = prepare_default_non_dominated_partition_bounds(self.front, dummy_anti_reference, reference)
+        lower, upper = prepare_default_non_dominated_partition_bounds(
+            self.front, dummy_anti_reference, reference
+        )
         non_dominated_hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 1))
-        hypervolume_indicator = tf.reduce_prod(reference - dummy_anti_reference) - non_dominated_hypervolume
+        hypervolume_indicator = (
+            tf.reduce_prod(reference - dummy_anti_reference) - non_dominated_hypervolume
+        )
         return hypervolume_indicator
 
 
@@ -92,7 +96,7 @@ def get_reference_point(front: TensorType) -> TensorType:
     :raise ValueError : If ``front`` is empty
     """
     if tf.equal(tf.size(front), 0):
-        raise ValueError('empty front cannot be used to calculate hypervolume indicator')
+        raise ValueError("empty front cannot be used to calculate hypervolume indicator")
 
     f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
     return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]

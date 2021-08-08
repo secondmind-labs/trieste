@@ -17,21 +17,39 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+import tensorflow as tf
 from typing_extensions import Final
 
-import tensorflow as tf
-from trieste.type import TensorType
-from trieste.utils.misc import DEFAULTS
-from trieste.utils.multi_objective.dominance import non_dominated
+from ...type import TensorType
+from ...utils.misc import DEFAULTS
+from .dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition_bounds(observations, anti_reference, reference):
+    """
+    Prepare the default non-dominated partition boundary for acquisition function usage.
+
+    :param observations
+    :param anti_reference: a worst point to use with shape [D].
+        Defines the lower bound of the hypercell
+    :param reference: a reference point to use, with shape [D].
+        Defines the upper bound of the hypervolume.
+        Should be equal to or bigger than the anti-ideal point of the Pareto set.
+        For comparing results across runs, the same reference point must be used.
+    :return: lower, upper bounds of the partitioned cell
+    :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+        shape.
+    """
     if observations.shape[-1] > 2:
-        return FlipTrickPartitionNonDominated(observations, anti_reference, reference).partition_bounds()
+        return FlipTrickPartitionNonDominated(
+            observations, anti_reference, reference
+        ).partition_bounds()
     elif observations.shape[-1] == 2:
-        return ExactPartition2dNonDominated(observations).partition_bounds(anti_reference, reference)
+        return ExactPartition2dNonDominated(observations).partition_bounds(
+            anti_reference, reference
+        )
     else:
-        raise ValueError(f'observations: {observations} not understood')
+        raise ValueError(f"observations: {observations} not understood")
 
 
 class Partition(ABC):
@@ -41,9 +59,7 @@ class Partition(ABC):
 
     front: TensorType
 
-    def partition_bounds(
-        self, *args
-    ) -> tuple[TensorType, TensorType]:
+    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
         as well as the self.front
@@ -56,9 +72,7 @@ class NonDominatedPartition(Partition):
     """
 
     @abstractmethod
-    def partition_bounds(
-        self, *args
-    ) -> tuple[TensorType, TensorType]:
+    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
         as well as the self.front, note the returned lower and upper bounds is a partition
@@ -72,9 +86,7 @@ class DominatedPartition(Partition):
     """
 
     @abstractmethod
-    def partition_bounds(
-        self, *args
-    ) -> tuple[TensorType, TensorType]:
+    def partition_bounds(self, *args) -> tuple[TensorType, TensorType]:
         """
         Get partition bounds according to the refernece point, anti_reference point
         as well as the self.front, note the returned lower and upper bounds is a partition
@@ -104,8 +116,9 @@ class _BoundedVolumes:
 class BoundIndexPartition(NonDominatedPartition):
     """
     A collection of partition strategy that is based on storing the index of pareto fronts
-        & other auxilary points
+        & other auxiliary points
     """
+
     _bounds: _BoundedVolumes
 
     def partition_bounds(
@@ -156,7 +169,7 @@ class BoundIndexPartition(NonDominatedPartition):
 class ExactPartition2dNonDominated(BoundIndexPartition):
     def __init__(self, front: TensorType):
         """
-        :param front
+        :param front non-dominated pareto front
         """
         tf.debugging.assert_equal(
             tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),
@@ -191,82 +204,16 @@ class ExactPartition2dNonDominated(BoundIndexPartition):
 
 
 class DividedAndConquerNonDominated(BoundIndexPartition):
-    @staticmethod
-    def _is_test_required(smaller: TensorType) -> TensorType:
-        idx_dom_augm = tf.reduce_any(smaller, axis=1)
-        is_dom_augm = tf.reduce_all(idx_dom_augm)
-
-        return is_dom_augm
-
-    @staticmethod
-    def _accepted_test_body(
-        lower_result: TensorType,
-        upper_result: TensorType,
-        lower_idx: TensorType,
-        upper_idx: TensorType,
-    ) -> tuple[TensorType, TensorType]:
-        lower_result_accepted = tf.concat([lower_result, lower_idx[None]], axis=0)
-        upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
-        return lower_result_accepted, upper_result_accepted
-
-    @classmethod
-    def _rejected_test_body(
-        cls,
-        cell: TensorType,
-        lower: TensorType,
-        upper: TensorType,
-        divide_conquer_cells: TensorType,
-        total_size: TensorType,
-        threshold: TensorType,
-    ) -> TensorType:
-        divide_conquer_cells_dist = cell[1] - cell[0]
-        hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
-
-        not_unit_cell = tf.reduce_any(divide_conquer_cells_dist > 1)
-        vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
-        divide_conquer_cells_rejected = tf.cond(
-            tf.logical_and(not_unit_cell, vol_above_thresh),
-            lambda: cls._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
-            lambda: tf.identity(divide_conquer_cells),
-        )
-        return divide_conquer_cells_rejected
-
-    @staticmethod
-    def _divide_body(
-        divide_conquer_cells: TensorType,
-        divide_conquer_cells_dist: TensorType,
-        cell: TensorType,
-    ) -> TensorType:
-        edge_size = tf.reduce_max(divide_conquer_cells_dist)
-        idx = tf.argmax(divide_conquer_cells_dist)
-        edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
-        edge_size2 = int(edge_size - edge_size1)
-
-        sparse_edge_size1 = tf.concat(
-            [tf.zeros([idx]), edge_size1 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
-        )
-        upper = tf.identity(cell[1]) - tf.cast(sparse_edge_size1, dtype=tf.int32)
-
-        divide_conquer_cells_new = tf.concat(
-            [divide_conquer_cells, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0
-        )
-
-        sparse_edge_size2 = tf.concat(
-            [tf.zeros([idx]), edge_size2 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
-        )
-        lower = tf.identity(cell[0]) + tf.cast(sparse_edge_size2, dtype=tf.int32)
-
-        divide_conquer_cells_final = tf.concat(
-            [divide_conquer_cells_new, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]],
-            axis=0,
-        )
-
-        return divide_conquer_cells_final
+    """
+    branch and bound procedure algorithm. a divide and conquer method introduced
+    in :cite:`Couckuyt2012`.
+    """
 
     def __init__(
         self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
     ):
         """
+
         :param front
         :param jitter
         :param threshold
@@ -359,10 +306,82 @@ class DividedAndConquerNonDominated(BoundIndexPartition):
         )
         return _BoundedVolumes(lower_result_final, upper_result_final)
 
+    @staticmethod
+    def _is_test_required(smaller: TensorType) -> TensorType:
+        idx_dom_augm = tf.reduce_any(smaller, axis=1)
+        is_dom_augm = tf.reduce_all(idx_dom_augm)
+
+        return is_dom_augm
+
+    @staticmethod
+    def _accepted_test_body(
+        lower_result: TensorType,
+        upper_result: TensorType,
+        lower_idx: TensorType,
+        upper_idx: TensorType,
+    ) -> tuple[TensorType, TensorType]:
+        lower_result_accepted = tf.concat([lower_result, lower_idx[None]], axis=0)
+        upper_result_accepted = tf.concat([upper_result, upper_idx[None]], axis=0)
+        return lower_result_accepted, upper_result_accepted
+
+    @classmethod
+    def _rejected_test_body(
+        cls,
+        cell: TensorType,
+        lower: TensorType,
+        upper: TensorType,
+        divide_conquer_cells: TensorType,
+        total_size: TensorType,
+        threshold: TensorType,
+    ) -> TensorType:
+        divide_conquer_cells_dist = cell[1] - cell[0]
+        hc_size = tf.math.reduce_prod(upper - lower, axis=0, keepdims=True)
+
+        not_unit_cell = tf.reduce_any(divide_conquer_cells_dist > 1)
+        vol_above_thresh = tf.reduce_all((hc_size[0] / total_size) > threshold)
+        divide_conquer_cells_rejected = tf.cond(
+            tf.logical_and(not_unit_cell, vol_above_thresh),
+            lambda: cls._divide_body(divide_conquer_cells, divide_conquer_cells_dist, cell),
+            lambda: tf.identity(divide_conquer_cells),
+        )
+        return divide_conquer_cells_rejected
+
+    @staticmethod
+    def _divide_body(
+        divide_conquer_cells: TensorType,
+        divide_conquer_cells_dist: TensorType,
+        cell: TensorType,
+    ) -> TensorType:
+        edge_size = tf.reduce_max(divide_conquer_cells_dist)
+        idx = tf.argmax(divide_conquer_cells_dist)
+        edge_size1 = int(tf.round(tf.cast(edge_size, dtype=tf.float32) / 2.0))
+        edge_size2 = int(edge_size - edge_size1)
+
+        sparse_edge_size1 = tf.concat(
+            [tf.zeros([idx]), edge_size1 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+        )
+        upper = tf.identity(cell[1]) - tf.cast(sparse_edge_size1, dtype=tf.int32)
+
+        divide_conquer_cells_new = tf.concat(
+            [divide_conquer_cells, tf.stack([tf.identity(cell[0]), upper], axis=0)[None]], axis=0
+        )
+
+        sparse_edge_size2 = tf.concat(
+            [tf.zeros([idx]), edge_size2 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+        )
+        lower = tf.identity(cell[0]) + tf.cast(sparse_edge_size2, dtype=tf.int32)
+
+        divide_conquer_cells_final = tf.concat(
+            [divide_conquer_cells_new, tf.stack([lower, tf.identity(cell[1])], axis=0)[None]],
+            axis=0,
+        )
+
+        return divide_conquer_cells_final
+
 
 class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
     """
-    A method of partitioning the dominated region.
+    A Hypervolume Box Decomposition Algorithm (incremental version) (HBDA in short).
 
     The main idea is of using a sort of auxiliary points (which is referred to as local
     upper bounds in the original context, not the same as lower bounds used in Trieste)
@@ -370,13 +389,12 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
     use an alternative partition as an replacement of original partition.
 
     Main reference: Section 2.2.2 of :cite:`lacour2017box`
-    Assumptions
-    One of the assumption made here is no any points have the same value in any dimension
     """
 
     def __init__(self, observations: TensorType, reference_point: TensorType):
         """
-        :param observations preferably this can be a non-dominated front, but any set is acceptable here
+        :param observations: the objective observations, preferably this can be a non-dominated set,
+            but any set is acceptable here.
         :param reference_point
         """
         tf.debugging.assert_type(reference_point, observations.dtype)
@@ -384,7 +402,8 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
 
         tf.debugging.assert_greater_equal(reference_point, observations)
         tf.debugging.assert_greater_equal(
-            observations, -1e10 * tf.ones((1, observations.shape[-1]), dtype=observations.dtype))
+            observations, -1e10 * tf.ones((1, observations.shape[-1]), dtype=observations.dtype)
+        )
 
         self._reference_point = reference_point
         self.U_set = reference_point[
@@ -392,11 +411,18 @@ class HypervolumeBoxDecompositionIncrementalDominated(DominatedPartition):
         ]  # initialize local upper bounds with reference point
 
         self.Z_set = (  # initialize defining points _Z to be the dummy points \hat{z} that are
-            # defined in Sec 2.1. Note: 1. the original defined objective space [0, reference_point] has been replaced
-            # by [-1e10, reference_point].  2. the dummy anti reference point -1e10 will not affect lower/upper bounds
-            # of this dominated partition method
-            -1e10 * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
-            + 1e10 * tf.eye(observations.shape[-1], observations.shape[-1], batch_shape=[1], dtype=observations.dtype)
+            # defined in Sec 2.1. Note: 1. the original defined objective space [0, reference_point]
+            # has been replaced by [-1e10, reference_point].  2. the dummy anti reference
+            # point -1e10 will not affect lower/upper bounds of this dominated partition method
+            -1e10
+            * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
+            + 1e10
+            * tf.eye(
+                observations.shape[-1],
+                observations.shape[-1],
+                batch_shape=[1],
+                dtype=observations.dtype,
+            )
             + tf.linalg.diag(reference_point)[tf.newaxis, ...]
         )
 
@@ -430,16 +456,17 @@ def _update_local_upper_bounds_incremental(
     new_front_points: TensorType, u_set: TensorType, z_set: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Update the current local upper with the new pareto points. (note: this does not
-    require input: new_front_points be non-dominated points)
+    require the input: new_front_points must be non-dominated points)
 
     :param new_front_points: with shape [n, p], the new Pareto frontier points.
     :param u_set: with shape [n', p], the set containing all the existing local upper bounds.
     :param z_set: with shape [n', p, p] contain the existing local upper bounds defining points,
         note the meaning of the two p is different: first p denotes for any element
-        in u_set, it has p defining points,  the second p denotes each defining points is p dimensional.
+        in u_set, it has p defining points,  the second p denotes each defining points is
+        p dimensional.
 
-    Returns: A new [n'', p] new local upper bounds set.
-             A [n'', p, p]  contain the new local upper bounds defining points
+    :return: a new [n'', p] new local upper bounds set.
+             a [n'', p, p]  contain the new local upper bounds defining points
     """
 
     tf.debugging.assert_shapes([(new_front_points, ["N", "D"])])
@@ -452,15 +479,19 @@ def _compute_new_local_upper_bounds(
     u_set: TensorType, z_set: TensorType, z_bar: TensorType
 ) -> tuple[TensorType, TensorType]:
     r"""Compute new local upper bounds.
-    This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from :cite:`lacour2017box`: Given a new point z_bar,
-    if z_bar (new point) dominates any of the element in existing local upper bounds set: u_set, we need to:
-    1. calculating the new local upper bounds set introduced by z_bar, and its corresponding defining set z_set
-    2. remove the old local upper bounds set from u_set that has been dominated by z_bar and their corresponding
-        defining points from z_set
-    3. concatenate u_set, z_set with the new local upper bounds set and its corresponding defining set
+    This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from :cite:`lacour2017box`:
+    Given a new point z_bar, if z_bar (new point) dominates any of the element in existing
+    local upper bounds set: u_set, we need to:
+    1. calculating the new local upper bounds set introduced by z_bar, and its corresponding
+        defining set z_set
+    2. remove the old local upper bounds set from u_set that has been dominated by z_bar and
+        their corresponding defining points from z_set
+    3. concatenate u_set, z_set with the new local upper bounds set and its corresponding
+        defining set
 
     :param u_set: (U in the paper) with shape `[n,  p] dim tensor containing the local upper bounds.
-    :param z_set: (Z in the paper) with shape `[n, p, p] dim tensor containing the local upper bounds.
+    :param z_set: (Z in the paper) with shape `[n, p, p] dim tensor containing the local
+        upper bounds.
     :param z_bar: with shape [p] denoting the new point
     :return: new u_set with shape [n, p], new defining z_set with shape [n', p, p].
     """
@@ -519,7 +550,8 @@ def _compute_new_local_upper_bounds(
     # remaining indices
     z_set = z_set[z_not_dominates_u_set_mask]
 
-    # combine original untouched lub points with new lub points and their corresponding defining points
+    # combine original untouched lub points with new lub points and their corresponding
+    # defining points
     if len(lub_new) > 0:
         # add points from lub_new and lub_new_z
         u_set = tf.concat([u_set, *lub_new], axis=0)
@@ -574,18 +606,25 @@ class FlipTrickPartitionNonDominated(NonDominatedPartition):
     partitioning a non-dominated space into the problem of partitioning the
     dominated space.
 
-    For instance, consider minimization problem, we could use lacour2017box's methods to locate the
-    local upper bound point set (by partitioning the dominated region), by treating these local
-    upper bound as fake Pareto front, we can combine with a fake reference point
-    (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in this case,
-    we are able to use lacour2017box's method again to partition
-    the 'dominated' region, which will then provide us with the partition of the non-dominated region
+    For instance, consider minimization problem, we could use lacour2017box's methods to
+    locate the local upper bound point set (by partitioning the dominated region), by
+    treating these local upper bound as fake Pareto front, we can combine with a fake
+    reference point (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in
+    this case, we are able to use lacour2017box's method again to partition the 'dominated'
+    region, which will then provide us with the partition of the non-dominated region
     """
 
-    def __init__(self, observations: TensorType, anti_reference_point: TensorType, reference_point: TensorType):
-        lub_sets = HypervolumeBoxDecompositionIncrementalDominated(observations, reference_point).U_set
+    def __init__(
+        self,
+        observations: TensorType,
+        anti_reference_point: TensorType,
+        reference_point: TensorType,
+    ):
+        lub_sets = HypervolumeBoxDecompositionIncrementalDominated(
+            observations, reference_point
+        ).U_set
         flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
-            -lub_sets, - anti_reference_point
+            -lub_sets, -anti_reference_point
         )
         flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
         self.lb_pts = -flipped_ub_pts

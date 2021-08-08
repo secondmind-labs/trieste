@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This package contains multi-objective optimization utilities. """
-from .partition import (prepare_default_non_dominated_partition_bounds, \
-    ExactPartition2dNonDominated, \
-    DividedAndConquerNonDominated,
-                        HypervolumeBoxDecompositionIncrementalDominated, FlipTrickPartitionNonDominated)
-from .pareto import get_reference_point, Pareto
 from .dominance import non_dominated
+from .pareto import Pareto, get_reference_point
+from .partition import (
+    DividedAndConquerNonDominated,
+    ExactPartition2dNonDominated,
+    FlipTrickPartitionNonDominated,
+    HypervolumeBoxDecompositionIncrementalDominated,
+    prepare_default_non_dominated_partition_bounds,
+)

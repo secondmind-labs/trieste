@@ -17,9 +17,9 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
+from math import inf
 from typing import Callable
 
-from math import inf
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -68,14 +68,17 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
     soft_local_penalizer,
 )
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.partition import (
+    ExactPartition2dNonDominated,
+    prepare_default_non_dominated_partition_bounds,
+)
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.type import TensorType
 from trieste.utils import DEFAULTS
-from trieste.utils.multi_objective.pareto import Pareto, get_reference_point
-from trieste.utils.multi_objective.partition import prepare_default_non_dominated_partition_bounds, ExactPartition2dNonDominated
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
@@ -657,7 +660,8 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
     _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
-         tf.constant([-1e10] * 2), get_reference_point(_prt.front))
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_hv_improvement(model, _partition_bounds)(xs)
     npt.assert_allclose(acq_fn(xs), expected)
@@ -672,7 +676,8 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
     _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
-         tf.constant([-inf] * 2), get_reference_point(_prt.front))
+        tf.constant([-inf] * 2), get_reference_point(_prt.front)
+    )
     ehvi = expected_hv_improvement(model, _partition_bounds)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -742,7 +747,8 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
     _pareto = Pareto(existing_observations)
     ref_pt = get_reference_point(_pareto.front)
     lb_points, ub_points = prepare_default_non_dominated_partition_bounds(
-        _pareto.front, tf.constant([-math.inf] * ref_pt.shape[-1]), ref_pt)
+        _pareto.front, tf.constant([-math.inf] * ref_pt.shape[-1]), ref_pt
+    )
 
     # calc MC approx EHVI
     splus_valid = tf.reduce_all(
@@ -846,7 +852,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
     _model_based_pareto = Pareto(mean)
     _reference_pt = get_reference_point(_model_based_pareto.front)
     _partition_bounds = prepare_default_non_dominated_partition_bounds(
-        _model_based_pareto.front, tf.constant([-1e10] * _reference_pt.shape[-1]), _reference_pt)
+        _model_based_pareto.front, tf.constant([-1e10] * _reference_pt.shape[-1]), _reference_pt
+    )
 
     qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=num_samples_per_point)
     qehvi_acq = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)
@@ -969,8 +976,10 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
             PseudoBatchReparametrizationSampler(obj_samples),
             sampler_jitter=DEFAULTS.JITTER,
             partition_bounds=prepare_default_non_dominated_partition_bounds(
-                Pareto(pareto_front_obs).front, tf.constant([-1e10] * obj_samples.shape[-1],
-                                                            dtype=pareto_front_obs.dtype), reference_point)
+                Pareto(pareto_front_obs).front,
+                tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
+                reference_point,
+            ),
         )(test_input),
         expected_output,
         rtol=1e-5,
