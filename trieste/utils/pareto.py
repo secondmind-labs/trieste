@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import tensorflow as tf
+from dataclasses import dataclass
 from typing_extensions import Final
 
 from ..types import TensorType
@@ -47,23 +48,19 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     return tf.boolean_mask(observations, dominance == 0), dominance
 
 
+@dataclass(frozen=True)
 class _BoundedVolumes:
-    """
-    A :class:`_BoundedVolumes` store the index of the Pareto front to form lower and upper
-    bounds of the pseudo cells decomposition.
-    """
+    # stores the index of the Pareto front to form lower and upper
+    # bounds of the pseudo cells decomposition.
 
-    def __init__(self, lower_idx: tf.Tensor, upper_idx: tf.Tensor):
-        """
-        Construct bounded volumes.
+    # the lowerbounds index of the volumes
+    lower_idx: TensorType
 
-        :param lower_idx: the lowerbounds index of the volumes
-        :param upper_idx: the upperbounds index of the volumes
-        """
+    # the upperbounds index of the volumes
+    upper_idx: TensorType
 
-        tf.debugging.assert_shapes([(lower_idx, ["N", "D"]), (upper_idx, ["N", "D"])])
-        self.lower_idx: Final[TensorType] = lower_idx
-        self.upper_idx: Final[TensorType] = upper_idx
+    def __post_init__(self) -> None:
+        tf.debugging.assert_shapes([(self.lower_idx, ["N", "D"]), (self.upper_idx, ["N", "D"])])
 
 
 class Pareto:
