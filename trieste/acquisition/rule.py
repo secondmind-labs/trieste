@@ -29,7 +29,7 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from .function import (
     AcquisitionFunctionBuilder,
     ExpectedImprovement,

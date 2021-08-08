@@ -25,7 +25,7 @@ from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (

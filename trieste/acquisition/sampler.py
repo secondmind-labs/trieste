@@ -28,7 +28,7 @@ from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 
 
