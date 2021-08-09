@@ -297,6 +297,7 @@ class _ModelFactoryType(Protocol):
         (GaussianProcessRegression, _gpr),
         (GaussianProcessRegression, _sgpr),
         (VariationalGaussianProcess, _vgp),
+        # (SparseVariational, _svgp)
     ],
 )
 def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
