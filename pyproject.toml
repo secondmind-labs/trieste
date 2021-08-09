@@ -26,7 +26,7 @@ warn_unused_ignores = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["trieste.*", "tests.*"]
+module = ["trieste.*"]
 disallow_any_generics = true
 disallow_untyped_defs = true
 
