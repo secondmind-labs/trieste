@@ -464,6 +464,7 @@ class min_value_entropy_search:
         :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two, or
             is empty.
         """
+        tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
 
         self._model = model
@@ -1303,9 +1304,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             or ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-
-        if pending_points is not None:
-            raise ValueError("Local penalization must be first called with no pending_points.")
+        tf.debugging.Assert(None in [pending_points], [])
 
         # no penalization required if no pending_points.
         return self._update_base_acquisition_function(dataset, model)
@@ -1325,11 +1324,8 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             where M is the number of pending points and D is the search space dimension.
         :return: The updated acquisition function.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
-
-        if self._base_acquisition_function is None:
-            raise ValueError("Local penalization must be first prepared with no pending_points.")
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(None not in [self._base_acquisition_function], [])
 
         if pending_points is None:
             # update penalization params and base acquisition once per optimization step
