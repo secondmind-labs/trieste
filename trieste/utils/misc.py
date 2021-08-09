@@ -21,7 +21,7 @@ import numpy as np
 import tensorflow as tf
 from typing_extensions import Final, final
 
-from ..type import TensorType
+from ..types import TensorType
 
 C = TypeVar("C", bound=Callable)
 """ A type variable bound to `typing.Callable`. """

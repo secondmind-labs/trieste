@@ -24,7 +24,7 @@ from trieste.objectives.multi_objectives import (
     MultiObjectiveTestProblem,
     vlmop2,
 )
-from trieste.type import TensorType
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize(

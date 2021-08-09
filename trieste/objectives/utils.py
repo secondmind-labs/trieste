@@ -24,7 +24,7 @@ from typing import Optional, cast, overload
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
-from ..type import TensorType
+from ..types import TensorType
 
 
 @overload
