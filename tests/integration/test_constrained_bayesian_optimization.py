@@ -27,7 +27,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import GaussianProcessRegression
 from trieste.space import Box
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import map_values
 
 
