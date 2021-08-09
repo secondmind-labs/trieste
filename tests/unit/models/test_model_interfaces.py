@@ -286,6 +286,7 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
         (GaussianProcessRegression, _gpr),
         (GaussianProcessRegression, _sgpr),
         (VariationalGaussianProcess, _vgp),
+        # (SparseVariational, _svgp)
     ],
 )
 def _gpr_interface_factory(

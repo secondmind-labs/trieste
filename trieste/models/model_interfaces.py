@@ -504,11 +504,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(
-        self,
-        model: SVGP,
-        optimizer: Optimizer | None = None
-    ):
+    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -695,7 +691,7 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    SVGP: SparseVariational
+    SVGP: SparseVariational,
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
