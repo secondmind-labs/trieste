@@ -51,7 +51,7 @@ from trieste.models.model_interfaces import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
-from trieste.models.optimizer import Optimizer, create_optimizer
+from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
 from trieste.type import TensorType
 
 
@@ -360,6 +360,29 @@ def test_gaussian_process_regression_pairwise_covariance(gpr_interface_factory) 
 
 
 @random_seed
+def test_gpflow_predictor_get_observation_noise_raises_for_likelihood_with_variance(
+    gpr_interface_factory,
+) -> None:
+    data = _mock_data()
+    model = gpr_interface_factory(*data)
+    model.model.likelihood = gpflow.likelihoods.Gaussian()  # has variance attribute
+    model.get_observation_noise()
+
+    model.model.likelihood = gpflow.likelihoods.Bernoulli()  # does not have variance attribute
+    with pytest.raises(NotImplementedError):
+        model.get_observation_noise()
+
+
+def test_gpr_raises_for_invalid_num_kernel_samples() -> None:
+    x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
+    x = tf.convert_to_tensor(x_np, x_np.dtype)
+    y = _3x_plus_10(x)
+
+    with pytest.raises(ValueError):
+        GaussianProcessRegression(_gpr(x, y), num_kernel_samples=-1)
+
+
+@random_seed
 @unittest.mock.patch(
     "trieste.models.model_interfaces.GaussianProcessRegression.find_best_model_initialization"
 )
@@ -398,7 +421,7 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
 
     mocked_model_initializer.assert_called_once()
     num_samples = mocked_model_initializer.call_args[0][0]
-    npt.assert_array_equal(num_samples, tf.minimum(1000, 100 * (d + 1)))
+    npt.assert_array_equal(num_samples, 10 * (d + 1))
 
 
 @pytest.mark.parametrize("dim", [1, 10])
@@ -512,27 +535,6 @@ def test_find_best_model_initialization_improves_likelihood(
     npt.assert_array_less(post_init_loss, pre_init_loss)
 
 
-@random_seed
-def test_find_best_model_initialization_avoids_inf_error(gpr_interface_factory) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [5, 1]
-    model = gpr_interface_factory(x, tf.zeros_like(x))
-
-    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
-
-    model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.49])
-    upper = tf.cast([0.5], dtype=tf.float64)
-    lower = upper / 5.0
-    model.model.kernel.lengthscales = gpflow.Parameter(
-        model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
-    )
-    gpflow.set_trainable(model.model.kernel.variance, False)
-    gpflow.set_trainable(model.model.likelihood.variance, False)
-
-    model.optimize(Dataset(x, tf.zeros_like(x)))
-    model.find_best_model_initialization(2)
-
-
 def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
@@ -542,6 +544,19 @@ def test_gaussian_process_regression_predict_y(gpr_interface_factory) -> None:
 
     npt.assert_allclose(mean_f, mean_y)
     npt.assert_array_less(variance_f, variance_y)
+
+
+def test_vgp_raises_for_invalid_init() -> None:
+    x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
+    x = tf.convert_to_tensor(x_np, x_np.dtype)
+    y = _3x_plus_10(x)
+
+    with pytest.raises(ValueError):
+        VariationalGaussianProcess(_vgp(x, y), natgrad_gamma=1)
+
+    with pytest.raises(ValueError):
+        optimizer = Optimizer(gpflow.optimizers.Scipy())
+        VariationalGaussianProcess(_vgp(x, y), optimizer=optimizer, use_natgrads=True)
 
 
 def test_vgp_update_updates_num_data() -> None:
@@ -753,12 +768,68 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
 
     optimizer = create_optimizer(
         tf.optimizers.Adam(),
-        dict(max_iter=20, batch_size=10, dataset_builder=batcher, compile=compile),
+        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
     )
     model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
     assert model.model.training_loss(data) < loss
+
+
+@pytest.mark.parametrize("use_natgrads", [True, False])
+@pytest.mark.parametrize("compile", [True, False])
+@pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
+def test_vgp_optimize_with_and_without_natgrads(batcher, compile: bool, use_natgrads: bool) -> None:
+    x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    data = x_observed, y_observed
+    dataset = Dataset(*data)
+
+    optimizer = create_optimizer(
+        tf.optimizers.Adam(),
+        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
+    )
+    model = VariationalGaussianProcess(
+        _vgp(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=use_natgrads
+    )
+    loss = model.model.training_loss()
+    model.optimize(dataset)
+    assert model.model.training_loss() < loss
+
+
+@pytest.mark.parametrize("compile", [True, False])
+def test_vgp_optimize_natgrads_only_updates_variational_params(compile: bool) -> None:
+    x_observed = np.linspace(0, 100, 10).reshape((-1, 1))
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    data = x_observed, y_observed
+    dataset = Dataset(*data)
+
+    class DummyTFOptimizer(TFOptimizer):
+        def optimize(self, model: tf.Module, dataset: Dataset) -> None:
+            pass
+
+    optimizer = DummyTFOptimizer(tf.optimizers.Adam(), compile=compile, max_iter=10)
+
+    model = VariationalGaussianProcess(
+        _vgp_matern(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
+    )
+
+    old_num_trainable_params = len(model.trainable_variables)
+    old_kernel_params = model.get_kernel().parameters[0].numpy()
+    old_q_mu = model.model.q_mu.numpy()
+    old_q_sqrt = model.model.q_sqrt.numpy()
+
+    model.optimize(dataset)
+
+    new_num_trainable_params = len(model.trainable_variables)
+    new_kernel_params = model.get_kernel().parameters[0].numpy()
+    new_q_mu = model.model.q_mu.numpy()
+    new_q_sqrt = model.model.q_sqrt.numpy()
+
+    npt.assert_allclose(old_kernel_params, new_kernel_params, atol=1e-3)
+    npt.assert_equal(old_num_trainable_params, new_num_trainable_params)
+    npt.assert_raises(AssertionError, npt.assert_allclose, old_q_mu, new_q_mu)
+    npt.assert_raises(AssertionError, npt.assert_allclose, old_q_sqrt, new_q_sqrt)
 
 
 @random_seed
@@ -849,15 +920,41 @@ def test_randomize_hyperparameters_samples_different_values_for_multi_dimensiona
 
 
 @random_seed
-def test_squeeze_hyperparameters_when_param_at_edge_of_bounds() -> None:
+def test_squeeze_sigmoid_hyperparameters() -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.1 + 1e-3, 0.5 - 1e-3])
     upper = tf.cast([0.5, 0.5], dtype=tf.float64)
     lower = upper / 5.0
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    squeeze_hyperparameters(kernel, 0.1)
+    squeeze_hyperparameters(kernel, alpha=0.1)
     npt.assert_array_almost_equal(kernel.lengthscales, [0.1 + 4e-2, 0.5 - 4e-2])
+
+
+@random_seed
+def test_squeeze_softplus_hyperparameters() -> None:
+    lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
+    squeeze_hyperparameters(lik, epsilon=0.2)
+    npt.assert_array_almost_equal(lik.variance, 0.2 + 1e-6)
+
+
+@random_seed
+def test_squeeze_raises_for_invalid_epsilon() -> None:
+    lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(lik, epsilon=-1.0)
+
+
+@pytest.mark.parametrize("alpha", [-0.1, 0.0, 1.1])
+def test_squeeze_raises_for_invalid_alpha(alpha) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
+    upper = tf.cast([0.5, 0.5], dtype=tf.float64)
+    lower = upper / 5.0
+    kernel.lengthscales = gpflow.Parameter(
+        kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
+    )
+    with pytest.raises(ValueError):
+        squeeze_hyperparameters(kernel, alpha)
 
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
