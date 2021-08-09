@@ -304,7 +304,7 @@ pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 
 # %%
 eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
-rule = EfficientGlobalOptimization(eci)  # type: ignore
+rule = EfficientGlobalOptimization(eci)
 
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)
