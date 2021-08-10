@@ -186,7 +186,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         tf.debugging.Assert(isinstance(function, expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        function.update(eta)
+        function.update(eta)  # type: ignore
         return function
 
 
@@ -264,7 +264,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        function.update(eta)
+        function.update(eta)  # type: ignore
         return function
 
 
@@ -438,7 +438,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
         min_value_samples = sampler.sample(query_points)
-        function.update(min_value_samples)
+        function.update(min_value_samples)  # type: ignore
         return function
 
 
