@@ -213,7 +213,7 @@ class expected_improvement:
         self._model = model
         self._eta = tf.Variable(eta)
 
-    def update(self, eta: TensorType):
+    def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value."""
         self._eta.assign(eta)
 
@@ -307,7 +307,7 @@ class augmented_expected_improvement:
                 """
             )
 
-    def update(self, eta: TensorType):
+    def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and noise variance."""
         self._eta.assign(eta)
         self._noise_variance.assign(self._model.get_observation_noise())
@@ -470,7 +470,7 @@ class min_value_entropy_search:
         self._model = model
         self._samples = tf.Variable(samples)
 
-    def update(self, samples: TensorType):
+    def update(self, samples: TensorType) -> None:
         """Update the acquisition function with new samples."""
         self._samples.assign(samples)
 

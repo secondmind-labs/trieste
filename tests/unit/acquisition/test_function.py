@@ -17,7 +17,7 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable
+from typing import Callable, Union
 from unittest.mock import MagicMock
 
 import gpflow
@@ -57,6 +57,7 @@ from trieste.acquisition.function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
     expected_hv_improvement,
@@ -1251,7 +1252,7 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
     [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=5000)],
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
-    penalizer: Callable[..., PenalizationFunction],
+    penalizer: Callable[..., Union[PenalizationFunction, UpdatablePenalizationFunction]],
     base_builder: ExpectedImprovement | MinValueEntropySearch,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))

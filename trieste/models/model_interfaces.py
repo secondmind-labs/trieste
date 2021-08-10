@@ -528,7 +528,7 @@ class NumDataPropertyMixin:
         return self._num_data.value()
 
     @num_data.setter
-    def num_data(self, value: TensorType):
+    def num_data(self, value: TensorType) -> None:
         self._num_data.assign(value)
 
 
