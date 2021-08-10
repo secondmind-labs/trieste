@@ -29,7 +29,7 @@ import tensorflow_probability as tfp
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import (
@@ -534,7 +534,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
     the objective function. The negative predictive mean is therefore maximised.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(beta=0.0)
 
     def __repr__(self) -> str:
@@ -937,7 +937,8 @@ def batch_ehvi(
     def acquisition(at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
-        def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
+        def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
+            # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 

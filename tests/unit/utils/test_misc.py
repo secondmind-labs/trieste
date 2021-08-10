@@ -19,7 +19,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import ShapeLike, various_shapes
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils.misc import Err, Ok, jit, shapes_equal, to_numpy
 
 

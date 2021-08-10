@@ -14,11 +14,14 @@
 from __future__ import annotations
 
 import unittest.mock
+from typing import Any, TypeVar
 
 import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from gpflow.optimizers import Scipy
+from scipy.optimize import OptimizeResult
 
 from tests.util.misc import quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
@@ -31,8 +34,8 @@ from trieste.acquisition.optimizer import (
     generate_random_search_optimizer,
     optimize_discrete,
 )
-from trieste.space import Box, DiscreteSearchSpace
-from trieste.type import TensorType
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.types import TensorType
 
 
 def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
@@ -46,6 +49,9 @@ def _delta_function(power: float) -> AcquisitionFunction:
 def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
     with pytest.raises(ValueError):
         generate_random_search_optimizer(num_samples=-5)
+
+
+SP = TypeVar("SP", bound=SearchSpace)
 
 
 @random_seed
@@ -85,10 +91,10 @@ def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> N
     ],
 )
 def test_discrete_and_random_optimizer(
-    search_space: DiscreteSearchSpace,
+    search_space: SP,
     shift: list[float],
     expected_maximizer: list[list[float]],
-    optimizers: list[AcquisitionOptimizer],
+    optimizers: list[AcquisitionOptimizer[SP]],
 ) -> None:
     for optimizer in optimizers:
         maximizer = optimizer(search_space, _quadratic_sum(shift))
@@ -148,10 +154,10 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
     ],
 )
 def test_continuous_optimizer(
-    search_space: DiscreteSearchSpace,
+    search_space: Box,
     shift: list[float],
     expected_maximizer: list[list[float]],
-    optimizer: AcquisitionOptimizer,
+    optimizer: AcquisitionOptimizer[Box],
 ) -> None:
     maximizer = optimizer(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
@@ -160,7 +166,7 @@ def test_continuous_optimizer(
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])
 @pytest.mark.parametrize("num_recovery_runs", [1, 10])
 def test_optimize_continuous_raises_for_impossible_optimization(
-    num_optimization_runs, num_recovery_runs
+    num_optimization_runs: int, num_recovery_runs: int
 ) -> None:
     search_space = Box([-1, -1], [1, 2])
     optimizer = generate_continuous_optimizer(
@@ -179,12 +185,12 @@ def test_optimize_continuous_raises_for_impossible_optimization(
 
 @pytest.mark.parametrize("num_failed_runs", range(4))
 @pytest.mark.parametrize("num_recovery_runs", range(4))
-def test_optimize_continuous_recovery_runs(num_failed_runs, num_recovery_runs) -> None:
+def test_optimize_continuous_recovery_runs(num_failed_runs: int, num_recovery_runs: int) -> None:
 
     scipy_minimize = gpflow.optimizers.Scipy.minimize
     failed_runs = 0
 
-    def mock_minimize(self, *args, **kwargs):
+    def mock_minimize(self: Scipy, *args: Any, **kwargs: Any) -> OptimizeResult:
         nonlocal failed_runs
         result = scipy_minimize(self, *args, **kwargs)
         if failed_runs < num_failed_runs:

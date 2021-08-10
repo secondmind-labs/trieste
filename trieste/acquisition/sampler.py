@@ -28,7 +28,7 @@ from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 
 
@@ -412,7 +412,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
 
         try:
             self._noise_variance = model.get_observation_noise()
-            self._kernel = model.get_kernel()  # type: ignore
+            self._kernel = model.get_kernel()
         except (NotImplementedError, AttributeError):
             raise ValueError(
                 """

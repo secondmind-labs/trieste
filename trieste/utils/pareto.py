@@ -17,7 +17,7 @@ from __future__ import annotations
 import tensorflow as tf
 from typing_extensions import Final
 
-from ..type import TensorType
+from ..types import TensorType
 from .misc import DEFAULTS
 
 

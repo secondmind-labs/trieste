@@ -25,7 +25,7 @@ import math
 import tensorflow as tf
 
 from ..space import Box
-from ..type import TensorType
+from ..types import TensorType
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:

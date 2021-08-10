@@ -18,6 +18,7 @@ import math
 import unittest.mock
 from collections.abc import Mapping
 from typing import Callable
+from unittest.mock import MagicMock
 
 import gpflow
 import numpy.testing as npt
@@ -71,7 +72,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 from trieste.utils.pareto import Pareto, get_reference_point
 
@@ -341,7 +342,7 @@ def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gum
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_min_value_entropy_search_builder_builds_min_value_samples(
-    mocked_mves, use_thompson
+    mocked_mves: MagicMock, use_thompson: bool
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -395,7 +396,9 @@ def test_min_value_entropy_search_builder_updates_acquisition_function(use_thomp
 
 @random_seed
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
-def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+def test_min_value_entropy_search_builder_builds_min_value_samples_rff(
+    mocked_mves: MagicMock,
+) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
@@ -562,7 +565,9 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function) -> None:
+def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         function("", pof, tf.constant([0.0]))
@@ -575,7 +580,9 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(function) -> None:
+def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(tf.errors.InvalidArgumentError):
         function("", pof, 1.5)
@@ -663,7 +670,9 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_empty_data(function) -> None:
+def test_expected_constrained_improvement_raises_for_empty_data(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -1147,7 +1156,9 @@ def test_batch_monte_carlo_expected_improvement() -> None:
         ),
     ],
 )
-def test_single_model_acquisition_function_builder_reprs(function, function_repr) -> None:
+def test_single_model_acquisition_function_builder_reprs(
+    function: SingleModelAcquisitionBuilder, function_repr: str
+) -> None:
     assert repr(function) == function_repr
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
     assert (
@@ -1177,7 +1188,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_s
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pending_points_shape(
-    pending_points,
+    pending_points: TensorType,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
@@ -1208,7 +1219,7 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     ],
 )
 def test_locally_penalized_acquisitions_match_base_acquisition(
-    base_builder,
+    base_builder: ExpectedImprovement | MinValueEntropySearch,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -1241,8 +1252,8 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalizer: Callable[..., PenalizationFunction],
-    base_builder,
-):
+    base_builder: ExpectedImprovement | MinValueEntropySearch,
+) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
@@ -1342,7 +1353,7 @@ def test_gibbon_raises_for_gumbel_samples_with_invalid_shape(
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_builder_raises_for_invalid_pending_points_shape(
-    pending_points,
+    pending_points: TensorType,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
@@ -1423,7 +1434,9 @@ def test_gibbon_returns_correct_shape() -> None:
 
 @unittest.mock.patch("trieste.acquisition.function.gibbon")
 @pytest.mark.parametrize("use_thompson", [True, False])
-def test_gibbon_builder_builds_min_value_samples(mocked_mves, use_thompson) -> None:
+def test_gibbon_builder_builds_min_value_samples(
+    mocked_mves: MagicMock, use_thompson: bool
+) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space, use_thompson=use_thompson)
@@ -1441,7 +1454,7 @@ def test_gibbon_builder_builds_min_value_samples(mocked_mves, use_thompson) -> N
 
 @random_seed
 @unittest.mock.patch("trieste.acquisition.function.gibbon")
-def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
@@ -1487,7 +1500,7 @@ def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
 @pytest.mark.parametrize("rescaled_repulsion", [True, False])
 @pytest.mark.parametrize("noise_variance", [0.1, 1e-10])
 def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
-    rescaled_repulsion, noise_variance
+    rescaled_repulsion: bool, noise_variance: float
 ) -> None:
     """
     Check that batch GIBBON can be decomposed into the sum of sequential GIBBONs and a repulsion

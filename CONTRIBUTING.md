@@ -54,7 +54,7 @@ We use [tox](https://tox.readthedocs.io) to run reproducible quality checks. Thi
 
 #### Type checking
 
-We use [type hints](https://docs.python.org/3/library/typing.html) for documentation and static type checking with [mypy](http://mypy-lang.org). We do this throughout the source code and tests. The notebooks are checked for type correctness, but we only add types there if they are required for mypy to pass. This is because we anticipate most readers of notebooks won't be using type hints themselves. If you don't know how to add type hints to your code, leave them out. You can use `typing.Any` where the actual type isn't expressible or practical, but do avoid it where possible.
+We use [type hints](https://docs.python.org/3/library/typing.html) for documentation and static type checking with [mypy](http://mypy-lang.org). We do this throughout the source code and tests. The notebooks are checked for type correctness, but we only add types there if they are required for mypy to pass. This is because we anticipate most readers of notebooks won't be using type hints themselves. If you don't know how to add type hints when making a pull request, ask for help from reviewers or on the [community Slack workspace](./README.md#getting-help). You can use `typing.Any` where the actual type isn't expressible or practical, but do avoid it where possible.
 
 Run the type checker with
 ```bash
