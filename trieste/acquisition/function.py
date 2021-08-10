@@ -79,7 +79,7 @@ class AcquisitionFunctionBuilder(ABC):
     ) -> AcquisitionFunction:
         """
         Update an acquisition function. By default this generates a new acquisition function each
-        time. However, if the function is decorated with`@tf.function`, then you can override
+        time. However, if the function is decorated with `@tf.function`, then you can override
         this method to update its variables instead and avoid retracing the acquisition function on
         every optimization loop.
 
@@ -182,10 +182,8 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
-        if not isinstance(function, expected_improvement):
-            raise ValueError("Acquisition function is not expected_improvement")
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)
@@ -262,10 +260,8 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
-        if not isinstance(function, augmented_expected_improvement):
-            raise ValueError("Acquisition function is not augmented_expected_improvement")
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)
@@ -422,10 +418,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer.
         :param model: The model over the specified ``dataset``.
         """
-        if len(dataset.query_points) == 0:
-            raise ValueError("Dataset must be populated.")
-        if not isinstance(function, min_value_entropy_search):
-            raise ValueError("Acquisition function is not min_value_entropy_search")
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
 
         if not self._use_thompson:  # use Gumbel sampler
             sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
