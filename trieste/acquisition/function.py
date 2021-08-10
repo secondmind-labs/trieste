@@ -461,8 +461,8 @@ class min_value_entropy_search:
         :return: The max-value entropy search acquisition function modified for objective
             minimisation. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two, or
-            is empty.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+            or is empty.
         """
         tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
@@ -945,9 +945,9 @@ def batch_ehvi(
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
-        hv_contrib = tf.zeros(samples.shape[:-2], dtype=samples.dtype)
+        hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
         lb_points, ub_points = pareto.hypercell_bounds(
-            tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
+            tf.cast(tf.fill([tf.shape(samples)[-1]], -inf), at.dtype), reference_point
         )
 
         def hv_contrib_on_samples(
