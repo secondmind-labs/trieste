@@ -530,7 +530,17 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         :raise ValueError: If ``beta`` is negative.
         """
         lcb = lower_confidence_bound(model, self._beta)
-        return lambda at: -lcb(at)
+        return tf.function(lambda at: -lcb(at))
+
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        """
+        return function  # no need to update anything
 
 
 class NegativePredictiveMean(NegativeLowerConfidenceBound):
@@ -567,6 +577,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
         beta, message="Standard deviation scaling parameter beta must not be negative"
     )
 
+    @tf.function
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],

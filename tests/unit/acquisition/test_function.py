@@ -486,6 +486,27 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
+def test_negative_lower_confidence_bound_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    beta = 1.96
+    builder = NegativeLowerConfidenceBound(beta)
+    acq_fn = builder.prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = -lower_confidence_bound(model, beta)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(
+        acq_fn, Dataset(tf.ones([0, 1]), tf.ones([0, 1])), model
+    )
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
