@@ -20,18 +20,22 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
-from math import inf
 from typing import Callable, Optional, Union, cast
+
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.partition import (
+    prepare_default_non_dominated_partition_bounds,
+)
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
-from ..utils.pareto import Pareto, get_reference_point
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -763,13 +767,14 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        return expected_hv_improvement(model, _pf, _reference_pt)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
+        )
+        return expected_hv_improvement(model, _partition_bounds)
 
 
 def expected_hv_improvement(
-    model: ProbabilisticModel,
-    pareto: Pareto,
-    reference_point: TensorType,
+    model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]
 ) -> AcquisitionFunction:
     r"""
     expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -790,8 +795,8 @@ def expected_hv_improvement(
     original notation and equations.
 
     :param model: The model of the objective function.
-    :param pareto: Pareto class
-    :param reference_point: The reference point for calculating hypervolume
+    :param partition_bounds: partitioned non-dominated hyper box bounds for
+        hypervolume improvement calculation
     :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
@@ -820,9 +825,8 @@ def expected_hv_improvement(
             r"""
             Calculate the ehvi based on cell i.
             """
-            lb_points, ub_points = pareto.hypercell_bounds(
-                tf.fill([tf.shape(neg_pred_mean)[-1]], tf.cast(-inf, x.dtype)), reference_point
-            )
+
+            lb_points, ub_points = partition_bounds
 
             neg_lb_points, neg_ub_points = -ub_points, -lb_points
 
@@ -839,7 +843,7 @@ def expected_hv_improvement(
             nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
 
             cross_index = tf.constant(
-                list(product(*[[0, 1]] * reference_point.shape[-1]))
+                list(product(*[[0, 1]] * lb_points.shape[-1]))
             )  # [2^d, indices_at_dim]
 
             stacked_factors = tf.concat(
@@ -915,17 +919,19 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
+        )
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
-        return batch_ehvi(sampler, self._jitter, _pf, _reference_pt)
+        return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
 
 def batch_ehvi(
     sampler: BatchReparametrizationSampler,
     sampler_jitter: float,
-    pareto: Pareto,
-    reference_point: TensorType,
+    partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
 
     """
@@ -933,8 +939,8 @@ def batch_ehvi(
         the possible observations at 'at'.
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
-    :param pareto: a Pareto class instance containing the current obtained pareto points.
-    :param reference_point: The reference point for calculating hypervolume.
+    :param partition_bounds: partitioned non-dominated hyper box bounds for
+        hypervolume improvement calculation
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
     """
@@ -952,9 +958,9 @@ def batch_ehvi(
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
         hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
-        lb_points, ub_points = pareto.hypercell_bounds(
-            tf.cast(tf.fill([tf.shape(samples)[-1]], -inf), at.dtype), reference_point
-        )
+        lb_points, ub_points = partition_bounds
+
+        lb_points = tf.maximum(lb_points, -1e10)  # clip to improve numerical stability
 
         def hv_contrib_on_samples(
             obj_samples: TensorType,
@@ -1039,7 +1045,12 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
-        ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            _pf.front,
+            tf.constant([-1e10] * feasible_mean.shape[-1], dtype=_pf.front.dtype),
+            _reference_pt,
+        )
+        ehvi = expected_hv_improvement(objective_model, _partition_bounds)
         return lambda at: ehvi(at) * constraint_fn(at)
 
 

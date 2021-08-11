@@ -19,6 +19,7 @@ import unittest.mock
 from collections.abc import Mapping
 from typing import Callable, Union
 from unittest.mock import MagicMock
+from math import inf
 
 import gpflow
 import numpy.testing as npt
@@ -69,13 +70,17 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
     soft_local_penalizer,
 )
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.partition import (
+    ExactPartition2dNonDominated,
+    prepare_default_non_dominated_partition_bounds,
+)
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
-from trieste.utils.pareto import Pareto, get_reference_point
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
@@ -761,13 +766,16 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
         ),
     )
 
-    model = _mo_test_model(num_obj, *[None] * num_obj)
+    model = _mo_test_model(num_obj, *[10, 10] * num_obj)
     acq_fn = ExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
 
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
-    expected = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))(xs)
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -779,7 +787,10 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
     model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
-    ehvi = expected_hv_improvement(model, _prt, get_reference_point(_prt.front))
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-inf] * 2), get_reference_point(_prt.front)
+    )
+    ehvi = expected_hv_improvement(model, _partition_bounds)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ehvi(at)
@@ -847,8 +858,8 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
     )
     _pareto = Pareto(existing_observations)
     ref_pt = get_reference_point(_pareto.front)
-    lb_points, ub_points = _pareto.hypercell_bounds(
-        tf.constant([-math.inf] * ref_pt.shape[-1]), ref_pt
+    lb_points, ub_points = prepare_default_non_dominated_partition_bounds(
+        _pareto.front, tf.constant([-math.inf] * ref_pt.shape[-1]), ref_pt
     )
 
     # calc MC approx EHVI
@@ -871,7 +882,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
     ehvi_approx = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=-1), axis=1, keepdims=True))
     ehvi_approx = tf.reduce_mean(ehvi_approx, axis=-1)  # average through mc sample
 
-    ehvi = expected_hv_improvement(model, _pareto, ref_pt)(tf.expand_dims(xs, -2))
+    ehvi = expected_hv_improvement(model, (lb_points, ub_points))(tf.expand_dims(xs, -2))
 
     npt.assert_allclose(ehvi, ehvi_approx, rtol=0.01, atol=0.01)
 
@@ -952,10 +963,13 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
 
     _model_based_pareto = Pareto(mean)
     _reference_pt = get_reference_point(_model_based_pareto.front)
+    _partition_bounds = prepare_default_non_dominated_partition_bounds(
+        _model_based_pareto.front, tf.constant([-1e10] * _reference_pt.shape[-1]), _reference_pt
+    )
 
     qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=num_samples_per_point)
     qehvi_acq = qehvi_builder.prepare_acquisition_function(_model_based_tr_dataset, model)
-    ehvi_acq = expected_hv_improvement(model, _model_based_pareto, _reference_pt)
+    ehvi_acq = expected_hv_improvement(model, _partition_bounds)
 
     test_xs = tf.convert_to_tensor(
         list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim)),
@@ -1073,8 +1087,11 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
         batch_ehvi(
             PseudoBatchReparametrizationSampler(obj_samples),
             sampler_jitter=DEFAULTS.JITTER,
-            pareto=Pareto(pareto_front_obs),
-            reference_point=reference_point,
+            partition_bounds=prepare_default_non_dominated_partition_bounds(
+                Pareto(pareto_front_obs).front,
+                tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
+                reference_point,
+            ),
         )(test_input),
         expected_output,
         rtol=1e-5,
