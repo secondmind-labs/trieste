@@ -24,6 +24,7 @@ trieste model).
 from __future__ import annotations
 
 import copy
+import operator
 import unittest.mock
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
@@ -972,3 +973,29 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
     )
     with pytest.raises(ValueError):
         squeeze_hyperparameters(kernel, alpha)
+
+
+def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model_copy = copy.deepcopy(model)
+    x_predict = tf.constant([[50.5]], gpflow.default_float())
+
+    # check deepcopy predicts same values as original
+    mean_f, variance_f = model.predict(x_predict)
+    mean_f_copy, variance_f_copy = model_copy.predict(x_predict)
+    npt.assert_equal(mean_f, mean_f_copy)
+    npt.assert_equal(variance_f, variance_f_copy)
+
+    # check that updating the original doesn't break or change the deepcopy
+    x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
+    new_data = Dataset(x_new, _3x_plus_10(x_new))
+    model.update(new_data)
+    model.optimize(new_data)
+
+    mean_f_updated, variance_f_updated = model.predict(x_predict)
+    mean_f_copy_updated, variance_f_copy_updated = model_copy.predict(x_predict)
+    npt.assert_equal(mean_f_copy_updated, mean_f_copy)
+    npt.assert_equal(variance_f_copy_updated, variance_f_copy)
+    npt.assert_array_compare(operator.__ne__, mean_f_updated, mean_f)
+    npt.assert_array_compare(operator.__ne__, variance_f_updated, variance_f)

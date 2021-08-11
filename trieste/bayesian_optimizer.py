@@ -318,13 +318,11 @@ class BayesianOptimizer(Generic[SP]):
         history: list[Record[S]] = []
 
         for step in range(num_steps):
-            if track_state:
-                history.append(Record(datasets, models, acquisition_state))
-
             try:
                 if track_state:
-                    models = copy.deepcopy(models)
-                    acquisition_state = copy.deepcopy(acquisition_state)
+                    models_copy = copy.deepcopy(models)
+                    acquisition_state_copy = copy.deepcopy(acquisition_state)
+                    history.append(Record(datasets, models_copy, acquisition_state_copy))
 
                 if step == 0 and fit_initial_model:
                     for tag, model in models.items():

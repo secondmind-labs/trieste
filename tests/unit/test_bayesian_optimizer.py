@@ -259,7 +259,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
     with pytest.raises(_Whoops):
         result.unwrap()
 
-    assert len(history) == 4
+    assert len(history) == 3
 
 
 def _broken_observer(x: tf.Tensor) -> NoReturn:

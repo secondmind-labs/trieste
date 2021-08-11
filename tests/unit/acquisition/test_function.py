@@ -17,7 +17,7 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable
+from typing import Callable, Union
 from unittest.mock import MagicMock
 
 import gpflow
@@ -57,6 +57,7 @@ from trieste.acquisition.function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
     expected_hv_improvement,
@@ -145,6 +146,30 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
     npt.assert_allclose(acq_fn(xs), expected)
 
 
+def test_expected_improvement_builder_updates_expected_improvement_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_improvement(model, tf.constant([1.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    new_dataset = Dataset(
+        tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
+        tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
+    )
+    updated_acq_fn = ExpectedImprovement().update_acquisition_function(acq_fn, new_dataset, model)
+    assert updated_acq_fn == acq_fn
+    expected = expected_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
@@ -162,6 +187,7 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
 
 @random_seed
 @pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
+@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
@@ -172,7 +198,12 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
     ],
 )
 def test_expected_improvement(
-    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
+    variance_scale: float,
+    num_samples_per_point: int,
+    best: tf.Tensor,
+    rtol: float,
+    atol: float,
+    test_update: bool,
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)
@@ -189,7 +220,12 @@ def test_expected_improvement(
     samples_improvement = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_mean(samples_improvement, axis=0)
 
-    ei = expected_improvement(model, best)(xs[..., None, :])
+    if test_update:
+        eif = expected_improvement(model, tf.constant([100.0], dtype=tf.float64))
+        eif.update(best)
+    else:
+        eif = expected_improvement(model, best)
+    ei = eif(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -242,11 +278,43 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
 
-    _, variance = model.predict(tf.squeeze(xs, -2))
-    augmentation = 1.0 - (tf.math.sqrt(observation_noise)) / (
-        tf.math.sqrt(observation_noise + variance)
+    @tf.function
+    def augmentation():
+        _, variance = model.predict(tf.squeeze(xs, -2))
+        return 1.0 - (tf.math.sqrt(observation_noise)) / (
+            tf.math.sqrt(observation_noise + variance)
+        )
+
+    npt.assert_allclose(acq_fn(xs), ei * augmentation(), rtol=1e-6)
+
+
+@pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
+def test_augmented_expected_improvement_builder_updates_acquisition_function(
+    observation_noise: float,
+) -> None:
+    partial_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
     )
-    npt.assert_allclose(acq_fn(xs), ei * augmentation)
+    full_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel(noise_variance=observation_noise)
+
+    partial_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        partial_dataset, model
+    )
+    updated_acq_fn = AugmentedExpectedImprovement().update_acquisition_function(
+        partial_data_acq_fn, full_dataset, model
+    )
+    assert updated_acq_fn == partial_data_acq_fn
+    full_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        full_dataset, model
+    )
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    npt.assert_allclose(updated_acq_fn(xs), full_data_acq_fn(xs))
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
@@ -293,6 +361,41 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     query_points = tf.concat([dataset.query_points, query_points], 0)
     fmean, _ = model.predict(query_points)
     assert max(min_value_samples) < min(fmean)
+
+
+@pytest.mark.parametrize("use_thompson", [True, False, 100])
+def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    partial_dataset = Dataset(xs[:10], ys[:10])
+    full_dataset = Dataset(xs, ys)
+
+    builder = MinValueEntropySearch(
+        search_space,
+        use_thompson=bool(use_thompson),
+        num_fourier_features=None if isinstance(use_thompson, bool) else use_thompson,
+    )
+    xs = tf.cast(tf.linspace([[0.0]], [[1.0]], 10), tf.float64)
+
+    old_acq_fn = builder.prepare_acquisition_function(partial_dataset, model)
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    updated_acq_fn = builder.update_acquisition_function(old_acq_fn, full_dataset, model)
+    assert updated_acq_fn == old_acq_fn
+    updated_values = updated_acq_fn(xs)
+
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    new_acq_fn = builder.prepare_acquisition_function(full_dataset, model)
+    new_values = new_acq_fn(xs)
+
+    npt.assert_allclose(updated_values, new_values)
 
 
 @random_seed
@@ -1152,19 +1255,22 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
     [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=5000)],
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
-    penalizer: Callable[..., PenalizationFunction],
+    penalizer: Callable[..., Union[PenalizationFunction, UpdatablePenalizationFunction]],
     base_builder: ExpectedImprovement | MinValueEntropySearch,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
-    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
     acq_builder = LocalPenalizationAcquisitionFunction(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
-    acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.prepare_acquisition_function(data, model, pending_points)
+    lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
+    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    if penalizer == soft_local_penalizer:
+        assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 
