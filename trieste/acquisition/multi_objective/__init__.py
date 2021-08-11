@@ -17,7 +17,5 @@ from .pareto import Pareto, get_reference_point
 from .partition import (
     DividedAndConquerNonDominated,
     ExactPartition2dNonDominated,
-    FlipTrickPartitionNonDominated,
-    HypervolumeBoxDecompositionIncrementalDominated,
     prepare_default_non_dominated_partition_bounds,
 )
