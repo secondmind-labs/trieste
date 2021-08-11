@@ -583,6 +583,24 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
         ProbabilityOfFeasibility(threshold)
 
 
+@pytest.mark.parametrize("at", [tf.constant([[0.0]], tf.float64)])
+@pytest.mark.parametrize("threshold", [-2.3, 0.2])
+def test_probability_of_feasibility_builder_updates_without_retracing(
+    threshold: float, at: tf.Tensor
+) -> None:
+    builder = ProbabilityOfFeasibility(threshold)
+    model = QuadraticMeanAndRBFKernel()
+    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    acq = builder.prepare_acquisition_function(empty_dataset([1], [1]), model)
+    assert acq._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+    up_acq = builder.update_acquisition_function(acq, empty_dataset([2], [2]), model)
+    assert up_acq == acq
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize(
     "function",
     [

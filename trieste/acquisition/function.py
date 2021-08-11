@@ -635,6 +635,16 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         """
         return probability_of_feasibility(model, self.threshold)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        """
+        return function  # no need to update anything
+
 
 def probability_of_feasibility(
     model: ProbabilisticModel, threshold: float | TensorType
@@ -659,6 +669,7 @@ def probability_of_feasibility(
     """
     tf.debugging.assert_scalar(threshold)
 
+    @tf.function
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
