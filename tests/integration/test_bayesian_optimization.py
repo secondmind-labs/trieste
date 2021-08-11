@@ -136,5 +136,6 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
     # check that acquisition functions defined as classes aren't being retraced unnecessarily
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
-        if isinstance(acquisition_rule._acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_rule._acquisition_function.__call__._get_tracing_count() == 3
+        acquisition_function = acquisition_rule._acquisition_function
+        if isinstance(acquisition_function, AcquisitionFunctionClass):
+            assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
