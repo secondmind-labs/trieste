@@ -22,6 +22,7 @@ import tensorflow_probability as tfp
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
     GIBBON,
+    AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
@@ -132,3 +133,8 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
     npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+
+    # check that acquisition functions defined as classes aren't being retraced unnecessarily
+    if isinstance(acquisition_rule, EfficientGlobalOptimization):
+        if isinstance(acquisition_rule._acquisition_function, AcquisitionFunctionClass):
+            assert acquisition_rule._acquisition_function.__call__._get_tracing_count() == 3
