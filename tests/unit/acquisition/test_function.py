@@ -1269,8 +1269,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
     lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
     up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
-    if penalizer == soft_local_penalizer:
-        assert up_lp_acq == lp_acq  # in-place updates
+    assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 

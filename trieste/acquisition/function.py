@@ -1431,7 +1431,7 @@ class UpdatablePenalizationFunction(ABC):
         """Update penalization function."""
 
 
-class soft_local_penalizer(UpdatablePenalizationFunction):
+class local_penalizer(UpdatablePenalizationFunction):
     def __init__(
         self,
         model: ProbabilisticModel,
@@ -1439,20 +1439,7 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         lipschitz_constant: TensorType,
         eta: TensorType,
     ):
-        r"""
-        Return the soft local penalization function used for single-objective greedy batch Bayesian
-        optimization in :cite:`Gonzalez:2016`.
-
-        Soft penalization returns the probability that a candidate point does not belong
-        in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
-        posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
-        estimated Lipschitz constant :math:`L`,the penalization from a set of pending point
-        :math:`x'` on a candidate point :math:`x` is given by
-        .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
-        where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
-
-        The penalization from a set of pending points is just product of the individual
-        penalizations. See :cite:`Gonzalez:2016` for a full derivation.
+        """Initialize the local penalizer.
 
         :param model: The model over the specified ``dataset``.
         :param pending_points: The points we penalize with respect to.
@@ -1460,8 +1447,7 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         :param eta: The estimated global minima.
         :return: The local penalization function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
-        """
+            greater than one."""
         self._model = model
 
         mean_pending, variance_pending = model.predict(pending_points)
@@ -1481,11 +1467,38 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         lipschitz_constant: TensorType,
         eta: TensorType,
     ) -> None:
-        """Update the penalizer with new variable values."""
+        """Update the local penalizer with new variable values."""
         mean_pending, variance_pending = self._model.predict(pending_points)
         self._pending_points.assign(pending_points)
         self._radius.assign(tf.transpose((mean_pending - eta) / lipschitz_constant))
         self._scale.assign(tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant))
+
+
+class soft_local_penalizer(local_penalizer):
+
+    r"""
+    Return the soft local penalization function used for single-objective greedy batch Bayesian
+    optimization in :cite:`Gonzalez:2016`.
+
+    Soft penalization returns the probability that a candidate point does not belong
+    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
+    posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
+    estimated Lipschitz constant :math:`L`,the penalization from a set of pending point
+    :math:`x'` on a candidate point :math:`x` is given by
+    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+
+    The penalization from a set of pending points is just product of the individual
+    penalizations. See :cite:`Gonzalez:2016` for a full derivation.
+
+    :param model: The model over the specified ``dataset``.
+    :param pending_points: The points we penalize with respect to.
+    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+    :param eta: The estimated global minima.
+    :return: The local penalization function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    """
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -1504,13 +1517,7 @@ class soft_local_penalizer(UpdatablePenalizationFunction):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-# TODO: make this into an UpdatablePenalizationFunction
-def hard_local_penalizer(
-    model: ProbabilisticModel,
-    pending_points: TensorType,
-    lipschitz_constant: TensorType,
-    eta: TensorType,
-) -> PenalizationFunction:
+class hard_local_penalizer(local_penalizer):
     r"""
     Return the hard local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Alvi:2019`.
@@ -1528,27 +1535,20 @@ def hard_local_penalizer(
         greater than one.
     """
 
-    mean_pending, variance_pending = model.predict(pending_points)
-    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
-    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
-
     @tf.function
-    def penalization_function(x: TensorType) -> TensorType:
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This penalization function cannot be calculated for batches of points.",
         )
 
         pairwise_distances = tf.norm(
-            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+            tf.expand_dims(x, 1) - tf.expand_dims(self._pending_points, 0), axis=-1
         )
 
         p = -5  # following experiments of :cite:`Alvi:2019`.
-        penalization = ((pairwise_distances / (radius + scale)) ** p + 1) ** (1 / p)
-
+        penalization = ((pairwise_distances / (self._radius + self._scale)) ** p + 1) ** (1 / p)
         return tf.reduce_prod(penalization, axis=-1)
-
-    return penalization_function
 
 
 class GIBBON(SingleModelGreedyAcquisitionBuilder):
