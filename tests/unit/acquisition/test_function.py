@@ -153,9 +153,11 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
     )
     model = QuadraticMeanAndRBFKernel()
     acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([1.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
     new_dataset = Dataset(
         tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
@@ -165,6 +167,7 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
     assert updated_acq_fn == acq_fn
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
 
 def test_expected_improvement_builder_raises_for_empty_data() -> None:

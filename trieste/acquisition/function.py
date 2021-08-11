@@ -56,6 +56,17 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
+class AcquisitionFunctionClass(ABC):
+    """An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+    rather than as a standalone function. Using a class to represent an acquisition function
+    makes it easier to update it, to avoid having to retrace the function on every call.
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call acquisition function."""
+
+
 class AcquisitionFunctionBuilder(ABC):
     """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function."""
 
@@ -190,7 +201,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return function
 
 
-class expected_improvement:
+class expected_improvement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, eta: TensorType):
         r"""
         Return the Expected Improvement (EI) acquisition function for single-objective global
@@ -268,7 +279,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         return function
 
 
-class augmented_expected_improvement:
+class augmented_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, eta: TensorType):
         r"""
         Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
@@ -442,7 +453,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         return function
 
 
-class min_value_entropy_search:
+class min_value_entropy_search(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, samples: TensorType):
         r"""
         Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
