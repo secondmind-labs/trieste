@@ -96,7 +96,7 @@ class _BoundedVolumes:
 class BoundIndexPartition(NonDominatedPartition):
     """
     A collection of partition strategy that is based on storing the index of pareto fronts
-        & other auxiliary points
+    & other auxiliary points
     """
 
     front: TensorType

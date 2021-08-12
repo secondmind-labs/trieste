@@ -28,7 +28,8 @@ class Pareto:
     The latter is needed for certain multiobjective acquisition functions.
 
     For hypervolume-based multiobjective optimisation with n>2 objectives, this class
-    defaultly use a flip trick partition method based on :lacour2017box:.
+    use branch and bound procedure algorithm. a divide and conquer method introduced
+    in :cite:`Couckuyt2012`.
     """
 
     def __init__(
@@ -37,7 +38,6 @@ class Pareto:
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
-
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
         tf.debugging.assert_rank(observations, 2)
