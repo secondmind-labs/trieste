@@ -282,4 +282,3 @@ def test_divide_conquer_non_dominated_three_dimension_case() -> None:
             ]
         ),
     )
-

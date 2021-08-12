@@ -29,7 +29,7 @@ from .dominance import non_dominated
 
 def prepare_default_non_dominated_partition_bounds(
     observations: TensorType, anti_reference: TensorType, reference: TensorType
-):
+) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
 
@@ -160,7 +160,7 @@ class ExactPartition2dNonDominated(BoundIndexPartition):
         self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort input front
         self._bounds = self._get_bound_index()
 
-    def _get_bound_index(self):
+    def _get_bound_index(self) -> _BoundedVolumes:
         # Compute the cells covering the non-dominated region for 2 dimension case
         # this assumes the Pareto set has been sorted in ascending order on the first
         # objective, which implies the second objective is sorted in descending order
@@ -207,7 +207,7 @@ class DividedAndConquerNonDominated(BoundIndexPartition):
         self.front = front
         self._bounds = self._get_bound_index(jitter, threshold)
 
-    def _get_bound_index(self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0):
+    def _get_bound_index(self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0) -> _BoundedVolumes:
         len_front, number_of_objectives = self.front.shape
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)

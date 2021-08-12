@@ -17,9 +17,9 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
+from math import inf
 from typing import Callable, Union
 from unittest.mock import MagicMock
-from math import inf
 
 import gpflow
 import numpy.testing as npt

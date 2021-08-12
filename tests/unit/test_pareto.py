@@ -136,16 +136,8 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
 @pytest.mark.parametrize(
     "front, reference",
     [
-        (
-            tf.zeros(shape=(0, 2)),
-            [[0.1, -0.65], [-0.7, -0.1]]
-        ),
-        (
-            (
-                tf.zeros(shape=(0, 3)),
-                [4.0, 4.0, 4.0]
-            )
-        ),
+        (tf.zeros(shape=(0, 2)), [[0.1, -0.65], [-0.7, -0.1]]),
+        ((tf.zeros(shape=(0, 3)), [4.0, 4.0, 4.0])),
     ],
 )
 def test_pareto_hypervolume_indicator_raises_for_empty_front(
