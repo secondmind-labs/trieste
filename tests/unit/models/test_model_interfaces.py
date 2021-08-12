@@ -846,9 +846,7 @@ def test_sparse_variational_model_attribute() -> None:
 
 
 def test_sparse_variational_update_updates_num_data() -> None:
-    model = SparseVariational(
-        _svgp(tf.zeros([1, 4]), tf.zeros([1, 1])),
-    )
+    model = SparseVariational(_svgp(tf.zeros([1, 4]), tf.zeros([1, 1])))
     model.update(Dataset(tf.zeros([5, 4]), tf.zeros([5, 1])))
     assert model.model.num_data == 5
 
@@ -858,9 +856,7 @@ def test_sparse_variational_update_updates_num_data() -> None:
     [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
 )
 def test_sparse_variational_update_raises_for_invalid_shapes(new_data: Dataset) -> None:
-    model = SparseVariational(
-        _svgp(tf.zeros([1, 4]), tf.zeros([1, 1])),
-    )
+    model = SparseVariational(_svgp(tf.zeros([1, 4]), tf.zeros([1, 1])))
     with pytest.raises(ValueError):
         model.update(new_data)
 
