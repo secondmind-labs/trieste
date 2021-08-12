@@ -343,7 +343,8 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
     ):
         """
         :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
+            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
+            arguments.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
