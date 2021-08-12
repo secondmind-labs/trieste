@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains functions of different methods for partitioning the dominated/non-dominated
- region in multi-objective optimization, assuming a front is given upfront """
+"""
+This module contains functions of different methods for partitioning the dominated/non-dominated
+ region in multi-objective optimization problems
+ """
 from __future__ import annotations
 
 from abc import ABC
@@ -25,7 +27,9 @@ from ...utils.misc import DEFAULTS
 from .dominance import non_dominated
 
 
-def prepare_default_non_dominated_partition_bounds(observations, anti_reference, reference):
+def prepare_default_non_dominated_partition_bounds(
+    observations: TensorType, anti_reference: TensorType, reference: TensorType
+):
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
 
