@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains functions of different methods for partitioning the dominated/non-dominated
- region in multi-objective optimization problems
+This module contains functions of different methods for
+partitioning the dominated/non-dominated region in multi-objective optimization problems
  """
 from __future__ import annotations
 
@@ -207,7 +207,9 @@ class DividedAndConquerNonDominated(BoundIndexPartition):
         self.front = front
         self._bounds = self._get_bound_index(jitter, threshold)
 
-    def _get_bound_index(self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0) -> _BoundedVolumes:
+    def _get_bound_index(
+        self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
+    ) -> _BoundedVolumes:
         len_front, number_of_objectives = self.front.shape
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
