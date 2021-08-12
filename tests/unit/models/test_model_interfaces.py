@@ -391,26 +391,6 @@ def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelF
             ),
         )
 
-    npt.assert_allclose(internal_model.training_loss(**args), reference_model.training_loss(**args),
-                        rtol=1e-6)
-
-
-def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    y = _3x_plus_10(x)
-
-    model, _reference_model = gpr_interface_factory(x, y,
-                                        optimizer=create_optimizer(gpflow.optimizers.Scipy(), {}))
-
-    reference_model = _reference_model(x, y)
-    model.optimize(Dataset(x, y))
-    internal_model = model.model
-
-    if isinstance(internal_model, SVGP):
-        args = {'data': (x, y)}
-    else:
-        args = {}
-
     gpflow.optimizers.Scipy().minimize(
         reference_model.training_loss_closure(**args, compile=False),
         reference_model.trainable_variables,
