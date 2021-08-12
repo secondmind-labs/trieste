@@ -230,7 +230,7 @@ def test_greedy_batch_acquisition_rule_acquire() -> None:
     assert acq._update_count == num_query_points - 1
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
     assert acq._update_count == 2 * num_query_points - 1
 
