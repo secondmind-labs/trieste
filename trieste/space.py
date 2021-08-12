@@ -19,7 +19,6 @@ from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Optional, Sequence, TypeVar, overload
 
-import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -428,13 +427,15 @@ class OrdinalSearchSpace(Box):
                 f" got shape {value.shape}"
             )
 
-        isclose_array = np.vectorize(np.isclose)
-
         return (
             tf.reduce_all(value >= self._lower)
             and tf.reduce_all(value <= self._upper)
             and tf.reduce_all(
-                isclose_array(value / self._stepsizes, tf.round(value / self._stepsizes))
+                tf.map_fn(
+                    lambda x: tf.experimental.numpy.isclose(x[0], x[1]),
+                    (value / self._stepsizes, tf.round(value / self._stepsizes)),
+                    dtype=tf.bool,
+                )
             )
         )
 
