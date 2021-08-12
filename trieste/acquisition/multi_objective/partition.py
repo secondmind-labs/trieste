@@ -41,9 +41,9 @@ def prepare_default_non_dominated_partition_bounds(observations, anti_reference,
         shape.
     """
     if observations.shape[-1] > 2:
-        return DividedAndConquerNonDominated(
-            observations
-        ).partition_bounds(anti_reference, reference)
+        return DividedAndConquerNonDominated(observations).partition_bounds(
+            anti_reference, reference
+        )
     elif observations.shape[-1] == 2:
         return ExactPartition2dNonDominated(observations).partition_bounds(
             anti_reference, reference
@@ -95,6 +95,7 @@ class BoundIndexPartition(NonDominatedPartition):
         & other auxiliary points
     """
 
+    front: TensorType
     _bounds: _BoundedVolumes
 
     def partition_bounds(
@@ -145,14 +146,14 @@ class BoundIndexPartition(NonDominatedPartition):
 class ExactPartition2dNonDominated(BoundIndexPartition):
     def __init__(self, front: TensorType):
         """
-        :param front non-dominated pareto front
+        :param front: non-dominated pareto front
         """
         tf.debugging.assert_equal(
             tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),
             tf.zeros(shape=1, dtype=front.dtype),
             message=f"\ninput {front} " f"contains dominated points",
         )
-        self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort
+        self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort input front
         self._bounds = self._get_bound_index()
 
     def _get_bound_index(self):

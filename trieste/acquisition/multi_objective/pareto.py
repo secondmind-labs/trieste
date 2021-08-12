@@ -14,8 +14,6 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-from typing import Optional
-
 import tensorflow as tf
 
 from ...types import TensorType
@@ -36,26 +34,16 @@ class Pareto:
     def __init__(
         self,
         observations: TensorType,
-        *,
-        concentration_point: Optional[TensorType] = None,
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
-        :param concentration_point: The concentration point used to screen out not
-        interested frontier in observations.
 
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
         tf.debugging.assert_rank(observations, 2)
         tf.debugging.assert_greater_equal(tf.shape(observations)[-1], 2)
 
-        # get screened front according to sort of concentration:
-        if concentration_point is None:
-            screened_front, _ = non_dominated(observations)
-        else:  # screen possible not interested points
-            screen_mask = tf.reduce_all(observations <= concentration_point, -1)
-            screened_front, _ = non_dominated(observations[screen_mask])
-        self.front = screened_front
+        self.front = non_dominated(observations)[0]
 
     def hypervolume_indicator(self, reference: TensorType) -> TensorType:
         """
@@ -97,7 +85,7 @@ def get_reference_point(front: TensorType) -> TensorType:
     :raise ValueError : If ``front`` is empty
     """
     if tf.equal(tf.size(front), 0):
-        raise ValueError("empty front cannot be used to calculate hypervolume indicator")
+        raise ValueError("empty front cannot be used to calculate reference point")
 
     f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
     return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
