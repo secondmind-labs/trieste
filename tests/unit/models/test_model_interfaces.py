@@ -283,7 +283,7 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
 class _ModelFactoryType(Protocol):
     def __call__(
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
+    ) -> tuple[GaussianProcessRegression, Callable]:
         pass
 
 
@@ -299,10 +299,10 @@ class _ModelFactoryType(Protocol):
 def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
+    ) -> tuple[GaussianProcessRegression, Callable]:
         model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
-        _reference_model: GaussianProcessRegression = request.param[1]
+        _reference_model: Callable = request.param[1]
         return model_interface(base_model, optimizer=optimizer), _reference_model  # type: ignore
 
     return model_interface_factory
@@ -359,7 +359,7 @@ def test_gaussian_process_regression_update(gpr_interface_factory: _ModelFactory
                         rtol=1e-6)
 
 
-def test_gaussian_process_regression_ref_optimize(gpr_interface_factory) -> None:
+def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = _3x_plus_10(x)
 
@@ -1059,7 +1059,7 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
         squeeze_hyperparameters(kernel, alpha)
 
 
-def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
+def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_10(x))
     model_copy = copy.deepcopy(model)
