@@ -395,7 +395,7 @@ def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelF
                         rtol=1e-6)
 
 
-def test_gaussian_process_regression_ref_optimize(gpr_interface_factory) -> None:
+def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = _3x_plus_10(x)
 
