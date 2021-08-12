@@ -14,17 +14,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
-from trieste.models.gpflow import (
-    GaussianProcessRegression,
-    VariationalGaussianProcess,
-)
-from tests.util.models.gpflow.models import (
-    gpr_model,
-    sgpr_model,
-    vgp_model,
-)
+from tests.util.models.gpflow.models import gpr_model, sgpr_model, vgp_model
+from trieste.models.gpflow import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.optimizer import Optimizer
+from trieste.types import TensorType
+
 
 @pytest.fixture(
     name="gpr_interface_factory",
@@ -42,7 +40,7 @@ def _gpr_interface_factory(
     ) -> GaussianProcessRegression:
         interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
-        return interface(base_model, optimizer=optimizer)  # type: ignore
+        return interface(base_model, optimizer=optimizer)
 
     return interface_factory
 

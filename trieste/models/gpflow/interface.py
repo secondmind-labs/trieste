@@ -72,7 +72,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         return self.model.kernel
 
-    def get_observation_noise(self):
+    def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise for homoscedastic likelihoods.
         :return: The observation noise.

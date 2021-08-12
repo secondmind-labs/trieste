@@ -165,7 +165,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         self.optimizer.optimize(self.model, dataset)
 
-    def find_best_model_initialization(self, num_kernel_samples) -> None:
+    def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
         Test `num_kernel_samples` models with sampled kernel parameters. The model's kernel
         parameters are then set to the sample achieving maximal likelihood.

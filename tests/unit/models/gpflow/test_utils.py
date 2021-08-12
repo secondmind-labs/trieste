@@ -27,12 +27,12 @@ from packaging.version import parse
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import fnc_3x_plus_10
+from trieste.data import Dataset
 from trieste.models.gpflow import (
     module_deepcopy,
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
-from trieste.data import Dataset
 
 
 class _ModuleWithBijector(tf.Module):

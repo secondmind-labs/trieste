@@ -26,7 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 
 import gpflow
 import numpy as np
@@ -42,7 +42,6 @@ from tests.util.models.gpflow.models import (
     gpr_model,
     mock_data,
     reference_gpr,
-    sgpr_model,
     svgp_model,
     vgp_matern_model,
     vgp_model,
@@ -54,8 +53,6 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
-from trieste.types import TensorType
-
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:

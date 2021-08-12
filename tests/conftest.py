@@ -18,11 +18,6 @@ import pytest
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 
-from trieste.models.gpflow import (
-    GaussianProcessRegression,
-    SparseVariational,
-    VariationalGaussianProcess,
-)
 
 def pytest_addoption(parser: Parser) -> None:
     parser.addoption(

@@ -34,7 +34,7 @@ from tests.util.models.gpflow.models import (
 )
 from trieste.data import Dataset
 from trieste.models import ModelStack, TrainableProbabilisticModel
-from trieste.type import TensorType
+from trieste.types import TensorType
 
 
 class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
