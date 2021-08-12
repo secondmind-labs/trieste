@@ -105,7 +105,7 @@ class ProbabilisticModel(ABC):
 
         :return: The kernel.
         """
-        raise NotImplementedError("Model {self!r} does not provide observation noise")
+        raise NotImplementedError(f"Model {self!r} does not provide observation noise")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
@@ -419,6 +419,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :return: Covariance matrix between the sets of query points with shape [N, M]
         """
+        if isinstance(self.model, SGPR):
+            raise NotImplementedError("Covariance between points is not supported for SGPR.")
+
         tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
         x = self.model.data[0].value()
