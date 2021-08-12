@@ -259,11 +259,13 @@ def _gpr(x: tf.Tensor, y: tf.Tensor) -> GPR:
 
 
 def _sgpr(x: tf.Tensor, y: tf.Tensor, num_inducing: int = 2) -> SGPR:
-    return SGPR((x, y), gpflow.kernels.Matern32(), x[: num_inducing])
+    return SGPR((x, y), gpflow.kernels.Matern32(), x[:num_inducing])
 
 
 def _svgp(x: tf.Tensor, y: tf.Tensor, num_inducing: int = 2) -> SVGP:
-    return SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[: num_inducing])
+    return SVGP(
+        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:num_inducing], num_data=len(x)
+    )
 
 
 def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
@@ -293,7 +295,7 @@ class _ModelFactoryType(Protocol):
         (GaussianProcessRegression, _gpr),
         (GaussianProcessRegression, _sgpr),
         (VariationalGaussianProcess, _vgp),
-        (SparseVariational, _svgp)
+        (SparseVariational, _svgp),
     ],
 )
 def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
@@ -329,7 +331,7 @@ def test_gaussian_process_regression_loss(gpr_interface_factory: _ModelFactoryTy
     reference_model = _reference_model(x, y)
 
     if isinstance(internal_model, SVGP):
-        args = {'data': (x, y)}
+        args = {"data": (x, y)}
     else:
         args = {}
     npt.assert_allclose(
@@ -351,37 +353,52 @@ def test_gaussian_process_regression_update(gpr_interface_factory: _ModelFactory
     internal_model = model.model
 
     if isinstance(internal_model, SVGP):
-        args = {'data': (new_data.query_points, new_data.observations)}
+        args = {"data": (new_data.query_points, new_data.observations)}
     else:
         args = {}
 
-    npt.assert_allclose(internal_model.training_loss(**args), reference_model.training_loss(**args),
-                        rtol=1e-6)
+    npt.assert_allclose(
+        internal_model.training_loss(**args), reference_model.training_loss(**args), rtol=1e-6
+    )
 
 
 def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = _3x_plus_10(x)
 
-    model, _reference_model = gpr_interface_factory(x, y,
-                                        optimizer=create_optimizer(gpflow.optimizers.Scipy(), {}))
+    model, _reference_model = gpr_interface_factory(
+        x, y, optimizer=create_optimizer(gpflow.optimizers.Scipy(), {})
+    )
 
     reference_model = _reference_model(x, y)
     model.optimize(Dataset(x, y))
     internal_model = model.model
 
     if isinstance(internal_model, SVGP):
-        args = {'data': (x, y)}
+        args = {"data": (x, y)}
     else:
         args = {}
+        reference_model.data = (
+            tf.Variable(
+                reference_model.data[0],
+                trainable=False,
+                shape=[None, *reference_model.data[0].shape[1:]],
+            ),
+            tf.Variable(
+                reference_model.data[1],
+                trainable=False,
+                shape=[None, *reference_model.data[1].shape[1:]],
+            ),
+        )
 
     gpflow.optimizers.Scipy().minimize(
         reference_model.training_loss_closure(**args, compile=False),
-        reference_model.trainable_variables
+        reference_model.trainable_variables,
     )
 
-    npt.assert_allclose(internal_model.training_loss(**args), reference_model.training_loss(**args),
-                        rtol=1e-6)
+    npt.assert_allclose(
+        internal_model.training_loss(**args), reference_model.training_loss(**args), rtol=1e-6
+    )
 
 
 def test_gaussian_process_regression_pairwise_covariance(
@@ -689,7 +706,7 @@ def test_gaussian_process_regression_default_optimize(
     model, _ = gpr_interface_factory(*data)
     internal_model = model.model
     if isinstance(internal_model, SVGP):
-        args = {'data': data}
+        args = {"data": data}
     else:
         args = {}
     loss = internal_model.training_loss(**args)
@@ -702,14 +719,15 @@ def test_gaussian_process_regression_default_optimize(
 @pytest.mark.parametrize("compile", [True, False])
 def test_gaussian_process_regression_optimize(
     optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer | None,
-    gpr_interface_factory: _ModelFactoryType, compile: bool
+    gpr_interface_factory: _ModelFactoryType,
+    compile: bool,
 ) -> None:
     data = _mock_data()
     optimizer_wrapper = create_optimizer(optimizer, dict(compile=compile))
     model, _ = gpr_interface_factory(*data, optimizer=optimizer_wrapper)
     internal_model = model.model
     if isinstance(internal_model, SVGP):
-        args = {'data': data}
+        args = {"data": data}
     else:
         args = {}
     loss = internal_model.training_loss(**args)
@@ -737,6 +755,19 @@ def test_variational_gaussian_process_predict() -> None:
     mean_y, variance_y = model.predict_y(x_predict)
 
     reference_model = _vgp(x_observed, y_observed)
+    reference_model.data = (
+        tf.Variable(
+            reference_model.data[0],
+            trainable=False,
+            shape=[None, *reference_model.data[0].shape[1:]],
+        ),
+        tf.Variable(
+            reference_model.data[1],
+            trainable=False,
+            shape=[None, *reference_model.data[1].shape[1:]],
+        ),
+    )
+
     gpflow.optimizers.Scipy().minimize(
         reference_model.training_loss_closure(),
         reference_model.trainable_variables,
@@ -1061,7 +1092,7 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x))
     model_copy = copy.deepcopy(model)
     x_predict = tf.constant([[50.5]], gpflow.default_float())
 

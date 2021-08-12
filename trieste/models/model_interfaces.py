@@ -545,11 +545,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(
-        self,
-        model: SVGP,
-        optimizer: Optimizer | None = None
-    ):
+    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -566,9 +562,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
         if not isinstance(self._model, SVGPWrapper):
-            self._model._num_data = tf.Variable(
-                model.num_data, trainable=False, dtype=tf.float64
-            )
+            self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
 
     def __repr__(self) -> str:
@@ -773,7 +767,7 @@ supported_models: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticMod
     GPR: GaussianProcessRegression,
     SGPR: GaussianProcessRegression,
     VGP: VariationalGaussianProcess,
-    SVGP: SparseVariational
+    SVGP: SparseVariational,
 }
 """
 A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those
