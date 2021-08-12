@@ -31,6 +31,7 @@ from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
+from trieste.types import TensorType
 from trieste.utils.pareto import Pareto, get_reference_point
 
 
@@ -67,7 +68,7 @@ from trieste.utils.pareto import Pareto, get_reference_point
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[None, Box], convergence_threshold: float
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, Box], convergence_threshold: float
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
