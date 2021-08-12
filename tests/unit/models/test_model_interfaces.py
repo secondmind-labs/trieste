@@ -305,7 +305,7 @@ def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
         model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
         _reference_model: Callable = request.param[1]
-        return model_interface(base_model, optimizer=optimizer), _reference_model  # type: ignore
+        return model_interface(base_model, optimizer=optimizer), _reference_model
 
     return model_interface_factory
 
