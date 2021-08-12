@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)

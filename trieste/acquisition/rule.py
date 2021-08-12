@@ -29,8 +29,9 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from .function import (
+    AcquisitionFunction,
     AcquisitionFunctionBuilder,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
@@ -169,6 +170,7 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
+        self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -195,18 +197,25 @@ class EfficientGlobalOptimization(AcquisitionRule[None, SP_contra]):
         :param state: Unused.
         :return: The single (or batch of) points to query, and `None`.
         """
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                datasets, models
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function, datasets, models
+            )
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        points = self._optimizer(search_space, acquisition_function)
+        points = self._optimizer(search_space, self._acquisition_function)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for _ in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
-                greedy_acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, pending_points=points
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function, datasets, models, pending_points=points
                 )
-                chosen_point = self._optimizer(search_space, greedy_acquisition_function)
+                chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
         return points, None
@@ -372,6 +381,7 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
         self._beta = beta
         self._kappa = kappa
         self._optimizer = optimizer
+        self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -453,8 +463,15 @@ class TrustRegion(AcquisitionRule["TrustRegion.State", Box]):
                 tf.reduce_min([global_upper, xmin + eps], axis=0),
             )
 
-        acquisition_function = self._builder.prepare_acquisition_function(datasets, models)
-        point = self._optimizer(acquisition_space, acquisition_function)
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                datasets, models
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function, datasets, models
+            )
+        point = self._optimizer(acquisition_space, self._acquisition_function)
         state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
         return point, state_

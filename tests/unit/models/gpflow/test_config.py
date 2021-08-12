@@ -15,10 +15,13 @@
 from __future__ import annotations
 
 import gpflow
+import tensorflow as tf
+import numpy as np
 import pytest
 from gpflow.models import GPR, SGPR, VGP
 
 from tests.util.models.gpflow.models import gpr_model
+from tests.util.models.gpflow.models import fnc_3x_plus_10
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowModelConfig,
@@ -36,7 +39,8 @@ def test_gpflow_model_config_raises_not_supported_model_type() -> None:
 
 def test_gpflow_model_config_has_correct_supported_models() -> None:
 
-    model_specs = {"model": GaussianProcessRegression(gpr_model)}
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
     model_config = GPflowModelConfig(**model_specs)
 
     models_mapping = {
@@ -50,7 +54,8 @@ def test_gpflow_model_config_has_correct_supported_models() -> None:
 
 def test_gpflow_model_config_has_correct_default_optimizer() -> None:
 
-    model_specs = {"model": GaussianProcessRegression(gpr_model)}
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
     model_config = GPflowModelConfig(**model_specs)
 
     default_optimizer = gpflow.optimizers.Scipy

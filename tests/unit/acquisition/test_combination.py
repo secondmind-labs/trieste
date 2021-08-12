@@ -39,7 +39,7 @@ def test_reducer_raises_for_no_builders() -> None:
 
 def test_reducer__repr_builders() -> None:
     class Dummy(Reducer):
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"Dummy({self._repr_builders()})"
 
         _reduce = raise_exc

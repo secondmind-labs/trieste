@@ -54,28 +54,8 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
-from trieste.type import TensorType
+from trieste.types import TensorType
 
-
-@pytest.fixture(
-    name="gpr_interface_factory",
-    params=[
-        (GaussianProcessRegression, gpr_model),
-        (GaussianProcessRegression, sgpr_model),
-        (VariationalGaussianProcess, vgp_model),
-    ],
-)
-def _gpr_interface_factory(
-    request,
-) -> Callable[[TensorType, TensorType, Optimizer | None], GaussianProcessRegression]:
-    def interface_factory(
-        x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
-        interface: type[GaussianProcessRegression] = request.param[0]
-        base_model: GaussianProcessRegression = request.param[1](x, y)
-        return interface(base_model, optimizer=optimizer)  # type: ignore
-
-    return interface_factory
 
 
 def test_gaussian_process_regression_loss(gpr_interface_factory) -> None:

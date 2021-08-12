@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import math
 
 import gpflow
@@ -25,6 +27,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
+from trieste.types import TensorType
 from trieste.utils import map_values
 
 
@@ -36,7 +39,7 @@ from trieste.utils import map_values
     ],
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(
-    num_steps: int, acquisition_function_builder
+    num_steps: int, acquisition_function_builder: type[ExpectedConstrainedImprovement]
 ) -> None:
     """
     Test that tests the covergence of constrained BO algorithms on the
@@ -44,12 +47,12 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     """
     search_space = Box([0, 0], [6, 6])
 
-    def objective(input_data):
+    def objective(input_data: TensorType) -> TensorType:
         x, y = input_data[..., -2], input_data[..., -1]
         z = tf.cos(2.0 * x) * tf.cos(y) + tf.sin(x)
         return z[:, None]
 
-    def constraint(input_data):
+    def constraint(input_data: TensorType) -> TensorType:
         x, y = input_data[:, -2], input_data[:, -1]
         z = tf.cos(x) * tf.cos(y) - tf.sin(x) * tf.sin(y)
         return z[:, None]
@@ -60,7 +63,8 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     OBJECTIVE = "OBJECTIVE"
     CONSTRAINT = "CONSTRAINT"
 
-    def observer(query_points):  # observe both objective and constraint data
+    # observe both objective and constraint data
+    def observer(query_points: TensorType) -> dict[str, Dataset]:
         return {
             OBJECTIVE: Dataset(query_points, objective(query_points)),
             CONSTRAINT: Dataset(query_points, constraint(query_points)),
@@ -69,7 +73,7 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     num_initial_points = 6
     initial_data = observer(search_space.sample(num_initial_points))
 
-    def build_model(data):
+    def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
         gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)

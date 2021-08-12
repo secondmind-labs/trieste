@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 
 from ..data import Dataset
-from ..type import TensorType
+from ..types import TensorType
 
 
 class ProbabilisticModel(ABC):

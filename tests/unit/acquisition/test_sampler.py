@@ -144,7 +144,9 @@ def test_exact_thompson_samples_are_minima() -> None:
         IndependentReparametrizationSampler,
     ],
 )
-def test_reparametrization_sampler_reprs(sampler) -> None:
+def test_reparametrization_sampler_reprs(
+    sampler: type[BatchReparametrizationSampler | IndependentReparametrizationSampler],
+) -> None:
     assert (
         repr(sampler(20, QuadraticMeanAndRBFKernel()))
         == f"{sampler.__name__}(20, QuadraticMeanAndRBFKernel())"

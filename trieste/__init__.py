@@ -31,6 +31,6 @@ from . import (
     objectives,
     observer,
     space,
-    type,
+    types,
     utils,
 )

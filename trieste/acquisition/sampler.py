@@ -28,7 +28,7 @@ from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 
 
@@ -237,7 +237,7 @@ class IndependentReparametrizationSampler(Sampler):
 
         if tf.size(self._eps) == 0:
             self._eps.assign(
-                tf.random.normal([self._sample_size, mean.shape[-1]], dtype=tf.float64)
+                tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
             )  # [S, L]
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
@@ -313,7 +313,7 @@ class BatchReparametrizationSampler(Sampler):
         if not eps_is_populated:
             self._eps.assign(
                 tf.random.normal(
-                    [mean.shape[-1], batch_size, self._sample_size], dtype=tf.float64
+                    [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
                 )  # [L, B, S]
             )
 
@@ -412,7 +412,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
 
         try:
             self._noise_variance = model.get_observation_noise()
-            self._kernel = model.get_kernel()  # type: ignore
+            self._kernel = model.get_kernel()
         except (NotImplementedError, AttributeError):
             raise ValueError(
                 """

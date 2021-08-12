@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
 from math import inf
-from typing import Callable, Optional, cast
+from typing import Callable, Optional, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -29,7 +29,7 @@ import tensorflow_probability as tfp
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import (
@@ -56,18 +56,50 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
+class AcquisitionFunctionClass(ABC):
+    """An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+    rather than as a standalone function. Using a class to represent an acquisition function
+    makes it easier to update it, to avoid having to retrace the function on every call.
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call acquisition function."""
+
+
 class AcquisitionFunctionBuilder(ABC):
-    """An :class:`AcquisitionFunctionBuilder` builds an acquisition function."""
+    """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function."""
 
     @abstractmethod
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
+        Prepare an acquisition function.
+
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
         :return: An acquisition function.
         """
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> AcquisitionFunction:
+        """
+        Update an acquisition function. By default this generates a new acquisition function each
+        time. However, if the function is decorated with `@tf.function`, then you can override
+        this method to update its variables instead and avoid retracing the acquisition function on
+        every optimization loop.
+
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(datasets, models)
 
 
 class SingleModelAcquisitionBuilder(ABC):
@@ -90,6 +122,16 @@ class SingleModelAcquisitionBuilder(ABC):
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
+            def update_acquisition_function(
+                self,
+                function: AcquisitionFunction,
+                datasets: Mapping[str, Dataset],
+                models: Mapping[str, ProbabilisticModel],
+            ) -> AcquisitionFunction:
+                return single_builder.update_acquisition_function(
+                    function, datasets[tag], models[tag]
+                )
+
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
 
@@ -104,6 +146,17 @@ class SingleModelAcquisitionBuilder(ABC):
         :param model: The model over the specified ``dataset``.
         :return: An acquisition function.
         """
+
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(dataset, model)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -132,35 +185,56 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         return expected_improvement(model, eta)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, expected_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
 
-def expected_improvement(model: ProbabilisticModel, eta: TensorType) -> AcquisitionFunction:
-    r"""
-    Return the Expected Improvement (EI) acquisition function for single-objective global
-    optimization. Improvement is with respect to the current "best" observation ``eta``, where an
-    improvement moves towards the objective function's minimum, and the expectation is calculated
-    with respect to the ``model`` posterior. For model posterior :math:`f`, this is
 
-    .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
+class expected_improvement(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        r"""
+        Return the Expected Improvement (EI) acquisition function for single-objective global
+        optimization. Improvement is with respect to the current "best" observation ``eta``, where
+        an improvement moves towards the objective function's minimum and the expectation is
+        calculated with respect to the ``model`` posterior. For model posterior :math:`f`, this is
 
-    This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
+        .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
 
-    :param model: The model of the objective function.
-    :param eta: The "best" observation.
-    :return: The expected improvement function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
-    """
+        This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
 
-    def acquisition(x: TensorType) -> TensorType:
+        :param model: The model of the objective function.
+        :param eta: The "best" observation.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+        self._eta = tf.Variable(eta)
+
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value."""
+        self._eta.assign(eta)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, variance = model.predict(tf.squeeze(x, -2))
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
-
-    return acquisition
+        return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
 class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -189,57 +263,78 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         return augmented_expected_improvement(model, eta)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
 
-def augmented_expected_improvement(
-    model: ProbabilisticModel, eta: TensorType
-) -> AcquisitionFunction:
-    r"""
-    Return the Augmented Expected Improvement (AEI) acquisition function for single-objective global
-    optimization under homoscedastic observation noise.
-    Improvement is with respect to the current "best" observation ``eta``, where an
-    improvement moves towards the objective function's minimum, and the expectation is calculated
-    with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
-    multiplicative factor that penalizes evaluations made in areas of the space with very small
-    posterior predictive variance. Thus, when applying standard EI to noisy optimisation
-    problems, AEI avoids getting trapped and repeatedly querying the same point.
-    For model posterior :math:`f`, this is
-    .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
-    where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
-    This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
 
-    :param model: The model of the objective function.
-    :param eta: The "best" observation.
-    :return: The expected improvement function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
-    """
+class augmented_expected_improvement(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        r"""
+        Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
+        global optimization under homoscedastic observation noise.
+        Improvement is with respect to the current "best" observation ``eta``, where an
+        improvement moves towards the objective function's minimum and the expectation is calculated
+        with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
+        multiplicative factor that penalizes evaluations made in areas of the space with very small
+        posterior predictive variance. Thus, when applying standard EI to noisy optimisation
+        problems, AEI avoids getting trapped and repeatedly querying the same point.
+        For model posterior :math:`f`, this is
+        .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
+        where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
+        This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
 
-    try:
-        noise_variance = model.get_observation_noise()
-    except NotImplementedError:
-        raise ValueError(
-            """
-            Augmented expected improvement only currently supports homoscedastic gpflow models
-            with a likelihood.variance attribute.
-            """
-        )
+        :param model: The model of the objective function.
+        :param eta: The "best" observation.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+        self._eta = tf.Variable(eta)
 
-    def acquisition(x: TensorType) -> TensorType:
+        try:
+            self._noise_variance = tf.Variable(model.get_observation_noise())
+        except NotImplementedError:
+            raise ValueError(
+                """
+                Augmented expected improvement only currently supports homoscedastic gpflow models
+                with a likelihood.variance attribute.
+                """
+            )
+
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value and noise variance."""
+        self._eta.assign(eta)
+        self._noise_variance.assign(self._model.get_observation_noise())
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, variance = model.predict(tf.squeeze(x, -2))
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        expected_improvement = (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
-
-        augmentation = 1 - (tf.math.sqrt(noise_variance)) / (
-            tf.math.sqrt(noise_variance + variance)
+        expected_improvement = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(
+            self._eta
         )
 
+        augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
+            tf.math.sqrt(self._noise_variance + variance)
+        )
         return expected_improvement * augmentation
-
-    return acquisition
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
@@ -326,46 +421,84 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
 
         return min_value_entropy_search(model, min_value_samples)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
 
-def min_value_entropy_search(model: ProbabilisticModel, samples: TensorType) -> AcquisitionFunction:
-    r"""
-    Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
-    modified for objective minimisation. This function calculates the information gain (or change in
-    entropy) in the distribution over the objective minimum :math:`y^*`, if we were to evaluate the
-    objective at a given point.
+        if not self._use_thompson:  # use Gumbel sampler
+            sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
+        elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+            sampler = RandomFourierFeatureThompsonSampler(
+                self._num_samples,
+                model,
+                dataset,
+                sample_min_value=True,
+                num_features=self._num_fourier_features,
+            )
+        else:  # use exact Thompson sampler
+            sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
 
-    :param model: The model of the objective function.
-    :param samples: Samples from the distribution over :math:`y^*`.
-    :return: The max-value entropy search acquisition function modified for objective
-        minimisation. This function will raise :exc:`ValueError` or
-        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-    :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two, or
-        is empty.
-    """
-    tf.debugging.assert_rank(samples, 2)
-    tf.debugging.assert_positive(len(samples))
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        min_value_samples = sampler.sample(query_points)
+        function.update(min_value_samples)  # type: ignore
+        return function
 
-    def acquisition(x: TensorType) -> TensorType:
+
+class min_value_entropy_search(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+        r"""
+        Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+        modified for objective minimisation. This function calculates the information gain (or
+        change in entropy) in the distribution over the objective minimum :math:`y^*`, if we were
+        to evaluate the objective at a given point.
+
+        :param model: The model of the objective function.
+        :param samples: Samples from the distribution over :math:`y^*`.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+            or is empty.
+        """
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType) -> None:
+        """Update the acquisition function with new samples."""
+        self._samples.assign(samples)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        fmean, fvar = self._model.predict(tf.squeeze(x, -2))
         fsd = tf.math.sqrt(fvar)
         fsd = tf.clip_by_value(
             fsd, CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
-        gamma = (tf.squeeze(samples) - fmean) / fsd
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
 
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
         f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
-
-    return acquisition
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
@@ -406,7 +539,7 @@ class NegativePredictiveMean(NegativeLowerConfidenceBound):
     the objective function. The negative predictive mean is therefore maximised.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(beta=0.0)
 
     def __repr__(self) -> str:
@@ -601,8 +734,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         eta = tf.reduce_min(feasible_mean, axis=0)
+        function = expected_improvement(objective_model, eta)
 
-        return lambda at: expected_improvement(objective_model, eta)(at) * constraint_fn(at)
+        return lambda at: function(at) * constraint_fn(at)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
@@ -686,9 +820,8 @@ def expected_hv_improvement(
             r"""
             Calculate the ehvi based on cell i.
             """
-
             lb_points, ub_points = pareto.hypercell_bounds(
-                tf.constant([-inf] * neg_pred_mean.shape[-1], dtype=x.dtype), reference_point
+                tf.fill([tf.shape(neg_pred_mean)[-1]], tf.cast(-inf, x.dtype)), reference_point
             )
 
             neg_lb_points, neg_ub_points = -ub_points, -lb_points
@@ -809,7 +942,8 @@ def batch_ehvi(
     def acquisition(at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
-        def gen_q_subset_indices(q: int) -> list:  # generate all subsets of [1, ..., q] as indices
+        def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
+            # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
@@ -817,9 +951,9 @@ def batch_ehvi(
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
-        hv_contrib = tf.zeros(samples.shape[:-2], dtype=samples.dtype)
+        hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
         lb_points, ub_points = pareto.hypercell_bounds(
-            tf.constant([-inf] * samples.shape[-1], dtype=at.dtype), reference_point
+            tf.cast(tf.fill([tf.shape(samples)[-1]], -inf), at.dtype), reference_point
         )
 
         def hv_contrib_on_samples(
@@ -989,12 +1123,38 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
+        Generate a new acquisition function. The first time this is called, ``pending_points``
+        will be `None`. Subsequent calls will be via ``update_acquisition_funcion`` below,
+        unless that has been overridden.
+
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        Update an acquisition function. By default this generates a new acquisition function each
+        time. However, if the function is decorated with`@tf.function`, then you can override
+        this method to update its variables instead and avoid retracing the acquisition function on
+        every optimization loop.
+
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(datasets, models, pending_points=pending_points)
 
 
 class SingleModelGreedyAcquisitionBuilder(ABC):
@@ -1022,6 +1182,17 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
                     datasets[tag], models[tag], pending_points=pending_points
                 )
 
+            def update_acquisition_function(
+                self,
+                function: AcquisitionFunction,
+                datasets: Mapping[str, Dataset],
+                models: Mapping[str, ProbabilisticModel],
+                pending_points: Optional[TensorType] = None,
+            ) -> AcquisitionFunction:
+                return single_builder.update_acquisition_function(
+                    function, datasets[tag], models[tag], pending_points=pending_points
+                )
+
             def __repr__(self) -> str:
                 return f"{single_builder!r} using tag {tag!r}"
 
@@ -1041,6 +1212,23 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(dataset, model, pending_points=pending_points)
 
 
 class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
@@ -1069,7 +1257,10 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: Callable[..., PenalizationFunction] = None,
+        penalizer: Callable[
+            [ProbabilisticModel, TensorType, TensorType, TensorType],
+            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        ] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch
         | None = None,
@@ -1078,7 +1269,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param search_space: The global search space over which the optimisation is defined.
         :param num_samples: Size of the random sample over which the Lipschitz constant
             is estimated. We recommend scaling this with search space dimension.
-        :param penalizer: The chosen penalization method (defaults to soft penalization).
+        :param penalizer: The chosen penalization method (defaults to soft penalization). This
+            should be a function that accepts a model, pending points, lipschitz constant and eta
+            and returns a PenalizationFunction.
         :param base_acquisition_function_builder: Base acquisition function to be
             penalized (defaults to expected improvement). Local penalization only supports
             strictly positive acquisition functions.
@@ -1099,6 +1292,8 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self._lipschitz_constant = None
         self._eta = None
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
+        self._penalization: Optional[PenalizationFunction | UpdatablePenalizationFunction] = None
+        self._penalized_acquisition: Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
         self,
@@ -1115,64 +1310,96 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             or ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(None in [pending_points], [])
 
-        if (
-            pending_points is None
-        ):  # compute penalization params and base acquisition once per optimization step
-            samples = self._search_space.sample(num_samples=self._num_samples)
-            samples = tf.concat([dataset.query_points, samples], 0)
+        # no penalization required if no pending_points.
+        return self._update_base_acquisition_function(dataset, model)
 
-            def get_lipschitz_estimate(
-                sampled_points,
-            ) -> tf.Tensor:  # use max norm of posterior mean gradients
-                with tf.GradientTape() as g:
-                    g.watch(sampled_points)
-                    mean, _ = model.predict(sampled_points)
-                grads = g.gradient(mean, sampled_points)
-                grads_norm = tf.norm(grads, axis=1)
-                max_grads_norm = tf.reduce_max(grads_norm)
-                eta = tf.reduce_min(mean, axis=0)
-                return max_grads_norm, eta
-
-            lipschitz_constant, eta = get_lipschitz_estimate(samples)
-            if (
-                lipschitz_constant < 1e-5
-            ):  # threshold to improve numerical stability for 'flat' models
-                lipschitz_constant = 10
-
-            self._lipschitz_constant = lipschitz_constant
-            self._eta = eta
-
-            if isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
-                self._base_acquisition_function = expected_improvement(model, self._eta)
-            else:
-                self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
-                    dataset, model
-                )
-
-        tf.debugging.Assert(
-            None not in (self._lipschitz_constant, self._base_acquisition_function), []
-        )
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: The updated acquisition function.
+        """
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(None not in [self._base_acquisition_function], [])
 
         if pending_points is None:
-            # no penalization required if no pending_points.
-            return cast(AcquisitionFunction, self._base_acquisition_function)
+            # update penalization params and base acquisition once per optimization step
+            return self._update_base_acquisition_function(dataset, model)
 
-        tf.debugging.assert_shapes(
-            [(pending_points, [None] + dataset.query_points.shape[1:])],
-            message="pending_points must be of shape [N,D]",
-        )
+        tf.debugging.assert_rank(pending_points, 2)
 
-        penalization = cast(Callable[..., PenalizationFunction], self._lipschitz_penalizer)(
-            model, pending_points, self._lipschitz_constant, self._eta
-        )
+        if self._penalized_acquisition is not None and isinstance(
+            self._penalization, UpdatablePenalizationFunction
+        ):
+            # if possible, just update the penalization function variables
+            self._penalization.update(pending_points, self._lipschitz_constant, self._eta)
+            return self._penalized_acquisition
+        else:
+            # otherwise construct a new penalized acquisition function
+            self._penalization = self._lipschitz_penalizer(
+                model, pending_points, self._lipschitz_constant, self._eta
+            )
 
-        def penalized_acquisition(x: TensorType) -> TensorType:
-            base_acqf = cast(AcquisitionFunction, self._base_acquisition_function)
-            log_acq = tf.math.log(base_acqf(x)) + tf.math.log(penalization(x))
-            return tf.math.exp(log_acq)
+            @tf.function
+            def penalized_acquisition(x: TensorType) -> TensorType:
+                log_acq = tf.math.log(
+                    cast(AcquisitionFunction, self._base_acquisition_function)(x)
+                ) + tf.math.log(cast(PenalizationFunction, self._penalization)(x))
+                return tf.math.exp(log_acq)
 
-        return penalized_acquisition
+            self._penalized_acquisition = penalized_acquisition
+            return penalized_acquisition
+
+    @tf.function(experimental_relax_shapes=True)
+    def _get_lipschitz_estimate(
+        self, model: ProbabilisticModel, sampled_points: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        with tf.GradientTape() as g:
+            g.watch(sampled_points)
+            mean, _ = model.predict(sampled_points)
+        grads = g.gradient(mean, sampled_points)
+        grads_norm = tf.norm(grads, axis=1)
+        max_grads_norm = tf.reduce_max(grads_norm)
+        eta = tf.reduce_min(mean, axis=0)
+        return max_grads_norm, eta
+
+    def _update_base_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        samples = self._search_space.sample(num_samples=self._num_samples)
+        samples = tf.concat([dataset.query_points, samples], 0)
+
+        lipschitz_constant, eta = self._get_lipschitz_estimate(model, samples)
+        if lipschitz_constant < 1e-5:  # threshold to improve numerical stability for 'flat' models
+            lipschitz_constant = 10
+
+        self._lipschitz_constant = lipschitz_constant
+        self._eta = eta
+
+        if self._base_acquisition_function is not None:
+            self._base_acquisition_function = self._base_builder.update_acquisition_function(
+                self._base_acquisition_function, dataset, model
+            )
+        elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
+            self._base_acquisition_function = cast(
+                AcquisitionFunction, expected_improvement(model, self._eta)
+            )
+        else:
+            self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
+                dataset, model
+            )
+        return self._base_acquisition_function
 
 
 PenalizationFunction = Callable[[TensorType], TensorType]
@@ -1186,58 +1413,98 @@ shape `[..., 1, D]` and returns shape `[..., 1]`.
 """
 
 
-def soft_local_penalizer(
-    model: ProbabilisticModel,
-    pending_points: TensorType,
-    lipschitz_constant: TensorType,
-    eta: TensorType,
-) -> PenalizationFunction:
-    r"""
-    Return the soft local penalization function used for single-objective greedy batch Bayesian
-    optimization in :cite:`Gonzalez:2016`.
+class UpdatablePenalizationFunction(ABC):
+    """An :class:`UpdatablePenalizationFunction` builds and updates a penalization function.
+    Defining a penalization function that can be updated avoids having to retrace on every call."""
 
-    Soft penalization returns the probability that a candidate point does not belong
-    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
-    posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
-    estimated Lipschitz constant :math:`L`,the penalization from a set of pending point :math:`x'`
-    on a candidate point :math:`x` is given by
-    .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
-    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call penalization function.."""
 
-    The penalization from a set of pending points is just product of the individual penalizations.
-    See :cite:`Gonzalez:2016` for a full derivation.
+    @abstractmethod
+    def update(
+        self,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
+    ) -> None:
+        """Update penalization function."""
 
-    :param model: The model over the specified ``dataset``.
-    :param pending_points: The points we penalize with respect to.
-    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
-    :param eta: The estimated global minima.
-    :return: The local penalization function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
-    """
 
-    mean_pending, variance_pending = model.predict(pending_points)
-    radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
-    scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
+class soft_local_penalizer(UpdatablePenalizationFunction):
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
+    ):
+        r"""
+        Return the soft local penalization function used for single-objective greedy batch Bayesian
+        optimization in :cite:`Gonzalez:2016`.
 
-    def penalization_function(x: TensorType) -> TensorType:
+        Soft penalization returns the probability that a candidate point does not belong
+        in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
+        posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
+        estimated Lipschitz constant :math:`L`,the penalization from a set of pending point
+        :math:`x'` on a candidate point :math:`x` is given by
+        .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+        where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+
+        The penalization from a set of pending points is just product of the individual
+        penalizations. See :cite:`Gonzalez:2016` for a full derivation.
+
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+        :param eta: The estimated global minima.
+        :return: The local penalization function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+
+        mean_pending, variance_pending = model.predict(pending_points)
+        self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
+        self._radius = tf.Variable(
+            tf.transpose((mean_pending - eta) / lipschitz_constant),
+            shape=[1, None],
+        )
+        self._scale = tf.Variable(
+            tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant),
+            shape=[1, None],
+        )
+
+    def update(
+        self,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
+    ) -> None:
+        """Update the penalizer with new variable values."""
+        mean_pending, variance_pending = self._model.predict(pending_points)
+        self._pending_points.assign(pending_points)
+        self._radius.assign(tf.transpose((mean_pending - eta) / lipschitz_constant))
+        self._scale.assign(tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant))
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This penalization function cannot be calculated for batches of points.",
         )
 
         pairwise_distances = tf.norm(
-            tf.expand_dims(x, 1) - tf.expand_dims(pending_points, 0), axis=-1
+            tf.expand_dims(x, 1) - tf.expand_dims(self._pending_points, 0), axis=-1
         )
-        standardised_distances = (pairwise_distances - radius) / scale
+        standardised_distances = (pairwise_distances - self._radius) / self._scale
 
         normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
         penalization = normal.cdf(standardised_distances)
         return tf.reduce_prod(penalization, axis=-1)
 
-    return penalization_function
 
-
+# TODO: make this into an UpdatablePenalizationFunction
 def hard_local_penalizer(
     model: ProbabilisticModel,
     pending_points: TensorType,
@@ -1265,6 +1532,7 @@ def hard_local_penalizer(
     radius = tf.transpose((mean_pending - eta) / lipschitz_constant)
     scale = tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant)
 
+    @tf.function
     def penalization_function(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],

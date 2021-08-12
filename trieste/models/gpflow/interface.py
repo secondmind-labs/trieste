@@ -21,7 +21,7 @@ import tensorflow as tf
 from gpflow.models import GPModel
 
 from ...data import Dataset
-from ...type import TensorType
+from ...types import TensorType
 from ..interfaces import ProbabilisticModel
 from ..optimizer import Optimizer
 from .utils import module_deepcopy

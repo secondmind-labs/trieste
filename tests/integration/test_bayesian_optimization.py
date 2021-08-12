@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import gpflow
 import numpy.testing as npt
@@ -21,6 +22,7 @@ import tensorflow_probability as tfp
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
     GIBBON,
+    AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
@@ -43,6 +45,7 @@ from trieste.objectives import (
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
+from trieste.space import Box, SearchSpace
 
 
 @random_seed
@@ -90,7 +93,8 @@ from trieste.observer import OBJECTIVE
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[None, SearchSpace] | AcquisitionRule[TrustRegion.State, Box],
 ) -> None:
     search_space = BRANIN_SEARCH_SPACE
 
@@ -129,3 +133,9 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
     npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+
+    # check that acquisition functions defined as classes aren't being retraced unnecessarily
+    if isinstance(acquisition_rule, EfficientGlobalOptimization):
+        acquisition_function = acquisition_rule._acquisition_function
+        if isinstance(acquisition_function, AcquisitionFunctionClass):
+            assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore

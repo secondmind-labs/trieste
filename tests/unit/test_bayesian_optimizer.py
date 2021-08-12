@@ -39,7 +39,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import Err, Ok
 
 
@@ -199,8 +199,8 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     final_acquisition_state: int | None,
 ) -> None:
     class Rule(AcquisitionRule[int, Box]):
-        def __init__(self):
-            self.states_received = []
+        def __init__(self) -> None:
+            self.states_received: list[int | None] = []
 
         def acquire(
             self,
@@ -259,7 +259,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
     with pytest.raises(_Whoops):
         result.unwrap()
 
-    assert len(history) == 4
+    assert len(history) == 3
 
 
 def _broken_observer(x: tf.Tensor) -> NoReturn:
@@ -291,7 +291,7 @@ class _BrokenRule(AcquisitionRule[None, SearchSpace]):
     ],
 )
 def test_bayesian_optimizer_optimize_for_failed_step(
-    observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule
+    observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule[None, Box]
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
@@ -356,11 +356,11 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
     class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__([lambda x: tf.exp(-x)], [rbf()])
 
     class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__([lambda x: 2 * x], [rbf()])
 
     LINEAR = "linear"

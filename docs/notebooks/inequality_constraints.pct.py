@@ -269,7 +269,7 @@ plot_regret(
 #
 # We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherets from the previous one its objective and first constraint, but possess a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
-
+# %%
 class Sim2(Sim):
     threshold2 = 0.5
 
@@ -279,9 +279,7 @@ class Sim2(Sim):
         z = tf.sin(x) * tf.cos(y) - tf.cos(x) * tf.sin(y)
         return z[:, None]
 
-
 CONSTRAINT2 = "CONSTRAINT2"
-
 
 def observer_two_constraints(query_points):
     return {
@@ -290,7 +288,6 @@ def observer_two_constraints(query_points):
         CONSTRAINT2: Dataset(query_points, Sim2.constraint2(query_points)),
     }
 
-
 num_initial_points = 10
 initial_data = observer_two_constraints(search_space.sample(num_initial_points))
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
@@ -298,6 +295,7 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 # %% [markdown]
 # Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` into one quantity by using a `Product` `Reducer`:
 
+# %%
 from trieste.acquisition.combination import Product
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
@@ -306,8 +304,9 @@ pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 # %% [markdown]
 # We can now run the BO loop as before, and visualize the results:
 
+# %%
 eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
-rule = EfficientGlobalOptimization(eci)  # type: ignore
+rule = EfficientGlobalOptimization(eci)
 
 num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)
@@ -349,7 +348,6 @@ plot_bo_points(
     mask_fail=mask_fail,
 )
 plt.show()
-
 
 # %% [markdown]
 # ## LICENSE

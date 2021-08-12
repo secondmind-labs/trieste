@@ -25,7 +25,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
-from trieste.type import TensorType
+from trieste.types import TensorType
 
 
 def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
