@@ -486,6 +486,27 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
+def test_negative_lower_confidence_bound_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    beta = 1.96
+    builder = NegativeLowerConfidenceBound(beta)
+    acq_fn = builder.prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = -lower_confidence_bound(model, beta)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(
+        acq_fn, Dataset(tf.ones([0, 1]), tf.ones([0, 1])), model
+    )
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
@@ -560,6 +581,24 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
     threshold = tf.ones(shape)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ProbabilityOfFeasibility(threshold)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0]], tf.float64)])
+@pytest.mark.parametrize("threshold", [-2.3, 0.2])
+def test_probability_of_feasibility_builder_updates_without_retracing(
+    threshold: float, at: tf.Tensor
+) -> None:
+    builder = ProbabilityOfFeasibility(threshold)
+    model = QuadraticMeanAndRBFKernel()
+    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    acq = builder.prepare_acquisition_function(empty_dataset([1], [1]), model)
+    assert acq._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+    up_acq = builder.update_acquisition_function(acq, empty_dataset([2], [2]), model)
+    assert up_acq == acq
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -1269,8 +1308,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
     lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
     up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
-    if penalizer == soft_local_penalizer:
-        assert up_lp_acq == lp_acq  # in-place updates
+    assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 
