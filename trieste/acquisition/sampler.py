@@ -432,6 +432,8 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
+        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
+
     def __repr__(self) -> str:
         """"""
         return f"""{self.__class__.__name__}(
