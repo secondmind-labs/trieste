@@ -337,17 +337,20 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
     def __init__(
         self,
-        rule: AcquisitionRule[TensorType, Box] = EfficientGlobalOptimization(),
+        rule: AcquisitionRule[TensorType, Box] | None = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
     ):
         """
         :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space.
+            given search space. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
         """
+        if rule is None:
+            rule = EfficientGlobalOptimization()
+
         self._rule = rule
         self._beta = beta
         self._kappa = kappa
