@@ -98,6 +98,16 @@ from trieste.types import State, TensorType
                 ),
             ),
             (15, TrustRegion()),
+            (
+                15,
+                TrustRegion(
+                    EfficientGlobalOptimization(
+                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
+                            OBJECTIVE
+                        )
+                    )
+                ),
+            ),
             (10, DiscreteThompsonSampling(500, 3)),
             (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
         ],
