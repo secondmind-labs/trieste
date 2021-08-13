@@ -17,7 +17,6 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from math import inf
 from typing import Callable, Union
 from unittest.mock import MagicMock
 
@@ -827,7 +826,7 @@ def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
     model_pred_observation = model.predict(train_x)[0]
     _prt = Pareto(model_pred_observation)
     _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
-        tf.constant([-inf] * 2), get_reference_point(_prt.front)
+        tf.constant([-math.inf] * 2), get_reference_point(_prt.front)
     )
     ehvi = expected_hv_improvement(model, _partition_bounds)
 

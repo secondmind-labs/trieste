@@ -33,7 +33,7 @@ def prepare_default_non_dominated_partition_bounds(
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
 
-    :param observations
+    :param observations: The observations for all objectives, with shape [N, D].
     :param anti_reference: a worst point to use with shape [D].
         Defines the lower bound of the hypercell
     :param reference: a reference point to use, with shape [D].

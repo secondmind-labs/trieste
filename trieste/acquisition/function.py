@@ -25,16 +25,13 @@ from typing import Callable, Optional, Union, cast
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
-from trieste.acquisition.multi_objective.partition import (
-    prepare_default_non_dominated_partition_bounds,
-)
-
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
+from .multi_objective.pareto import Pareto, get_reference_point
+from .multi_objective.partition import prepare_default_non_dominated_partition_bounds
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -816,7 +813,7 @@ def expected_hv_improvement(
     original notation and equations.
 
     :param model: The model of the objective function.
-    :param partition_bounds: partitioned non-dominated hyper box bounds for
+    :param partition_bounds: partitioned non-dominated hypercell bounds for
         hypervolume improvement calculation
     :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
@@ -960,7 +957,7 @@ def batch_ehvi(
         the possible observations at 'at'.
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
-    :param partition_bounds: partitioned non-dominated hyper box bounds for
+    :param partition_bounds: partitioned non-dominated hypercell bounds for
         hypervolume improvement calculation
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
@@ -980,8 +977,6 @@ def batch_ehvi(
 
         hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
         lb_points, ub_points = partition_bounds
-
-        lb_points = tf.maximum(lb_points, -1e10)  # clip to improve numerical stability
 
         def hv_contrib_on_samples(
             obj_samples: TensorType,
