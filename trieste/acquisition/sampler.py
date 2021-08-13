@@ -439,23 +439,19 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         return f"""{self.__class__.__name__}(
         {self._sample_size!r},
         {self._model!r},
-        {self._sample_min_value},
+        {self._sample_min_value!r},
         {self._num_features!r})
         """
 
     def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.Distribution:
-        r"""
-        Calculate the posterior of theta (the feature weights) in the design space. This
-        distribution is a Gaussian
-
-        .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
-
-        where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
-        the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
-        and observation noise variance :math:`\sigma^2`.
-
-        :return: The posterior distribution for theta.
-        """
+        # Calculate the posterior of theta (the feature weights) in the design space. This
+        # distribution is a Gaussian
+        #
+        # .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
+        #
+        # where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
+        # the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
+        # and observation noise variance :math:`\sigma^2`.
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
         D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
@@ -475,17 +471,13 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
         )
 
     def _prepare_theta_posterior_in_gram_space(self) -> tfp.distributions.Distribution:
-        r"""
-        Calculate the posterior of theta (the feature weights) in the gram space.
-
-         .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
-
-        where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
-        matrix of feature evaluations across the training data :math:`\Phi` and
-        observation noise variance :math:`\sigma^2`.
-
-        :return: The posterior distribution for theta.
-        """
+        # Calculate the posterior of theta (the feature weights) in the gram space.
+        #
+        #  .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
+        #
+        # where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
+        # matrix of feature evaluations across the training data :math:`\Phi` and
+        # observation noise variance :math:`\sigma^2`.
 
         phi = self._feature_functions(self._dataset.query_points)  # [n, m]
         G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]

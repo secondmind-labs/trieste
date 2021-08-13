@@ -931,7 +931,9 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
     model = QuadraticMeanAndRBFKernel()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        BatchMonteCarloExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
+            dataset, model
+        )
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
