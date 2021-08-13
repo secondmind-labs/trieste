@@ -92,9 +92,9 @@ if result.is_ok:
 # %% [markdown]
 # ## Handling failure
 #
-# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by using the data, model and acquisition state from the last successful step, which is the last element of the `history`. Note that we only need to account for the acquisition state because we're using the stateful `TrustRegion` rule. For most rules, we don't need to account for this state.
+# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by using the data, model and acquisition state from the last successful step, which is the last element of the `history`. Recall that we only need to account for the acquisition state because we're using the stateful `TrustRegion` rule. For most rules, we don't need to account for this state.
 #
-# We can view any `Result` by printing it. We'll do that here to see what exception was caught.
+# Note can view any `Result` by printing it. We'll do that here to see what exception was caught.
 
 # %%
 if result.is_err:
