@@ -364,7 +364,7 @@ def test_gaussian_process_regression_update(gpr_interface_factory: _ModelFactory
 
 def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    y = _3x_plus_10(x)
+    y = _2sin_x_over_3(x)
 
     model, _reference_model = gpr_interface_factory(
         x, y, optimizer=create_optimizer(gpflow.optimizers.Scipy(), {})
@@ -1093,7 +1093,7 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model, _ = gpr_interface_factory(x, _3x_plus_10(x))
+    model, _ = gpr_interface_factory(x, _2sin_x_over_3(x))
     model_copy = copy.deepcopy(model)
     x_predict = tf.constant([[50.5]], gpflow.default_float())
 
@@ -1105,7 +1105,8 @@ def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType
 
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
-    new_data = Dataset(x_new, _3x_plus_10(x_new))
+    new_data = Dataset(x_new, _2sin_x_over_3(x_new))
+    print(new_data)
     model.update(new_data)
     model.optimize(new_data)
 
