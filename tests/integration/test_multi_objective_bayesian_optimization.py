@@ -21,6 +21,7 @@ from trieste.acquisition.function import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
+from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
@@ -44,17 +45,21 @@ from trieste.utils.pareto import Pareto, get_reference_point
             id="ehvi_vlmop2",
         ),
         pytest.param(
-            10,
+            15,
             EfficientGlobalOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=2
+                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=500).using(OBJECTIVE),
+                num_query_points=2,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.44,
             id="qehvi_vlmop2_q_2",
         ),
         pytest.param(
-            5,
+            10,
             EfficientGlobalOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement().using(OBJECTIVE), num_query_points=4
+                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+                num_query_points=4,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,
             id="qehvi_vlmop2_q_4",
