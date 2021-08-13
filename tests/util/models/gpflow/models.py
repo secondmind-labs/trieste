@@ -21,10 +21,13 @@ import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
+from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
+from trieste.models.gpflow import GPflowPredictor
+from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
 
@@ -118,6 +121,13 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
         tf.constant([[1.2], [3.4], [5.6], [7.8]], gpflow.default_float()),
     )
+
+
+class ModelFactoryType(Protocol):
+    def __call__(
+        self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
+    ) -> GPflowPredictor:
+        pass
 
 
 def gpr_model(x: tf.Tensor, y: tf.Tensor) -> GPR:

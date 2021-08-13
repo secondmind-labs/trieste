@@ -98,7 +98,7 @@ def create_bo_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig({
+    return trieste.models.create_model(GPflowModelConfig(**{
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {

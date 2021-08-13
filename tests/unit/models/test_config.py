@@ -14,14 +14,17 @@
 
 from __future__ import annotations
 
+import gpflow
+import numpy as np
 import pytest
+import tensorflow as tf
 
-from tests.util.models.gpflow.models import gpr_model
+from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
 from trieste.models import ModelConfig
-
-_model_specs = {"model": gpr_model}
 
 
 def test_model_missing_abstract_method() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
     with pytest.raises(NotImplementedError):
-        ModelConfig(**_model_specs)
+        ModelConfig(**model_specs)

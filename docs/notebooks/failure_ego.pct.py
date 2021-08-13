@@ -123,11 +123,11 @@ classification_model = create_classification_model(initial_data[FAILURE])
 from trieste.models.gpflow import GPflowModelConfig
 
 models: dict[str, trieste.models.ModelSpec] = {
-    OBJECTIVE: GPflowModelConfig({
+    OBJECTIVE: GPflowModelConfig(**{
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
     }),
-    FAILURE: GPflowModelConfig({
+    FAILURE: GPflowModelConfig(**{
         "model": classification_model,
         "model_args": {
             "use_natgrads": True,

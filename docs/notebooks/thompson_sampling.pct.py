@@ -41,7 +41,7 @@ gpr = gpflow.models.GPR(
 )
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = GPflowModelConfig({
+model_config = GPflowModelConfig(**{
     "model": gpr,
     "optimizer": gpflow.optimizers.Scipy(),
     "optimizer_args": {

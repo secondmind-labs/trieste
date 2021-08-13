@@ -14,23 +14,29 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any, Dict
+
 import gpflow
 import numpy as np
 import pytest
 import tensorflow as tf
 from gpflow.models import GPR, SGPR, VGP
 
-from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
+from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model, svgp_model
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowModelConfig,
     VariationalGaussianProcess,
 )
+from trieste.models.optimizer import Optimizer
 
 
 def test_gpflow_model_config_raises_not_supported_model_type() -> None:
 
-    model_specs = {"model": gpr_model}
+    inducing_variable = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": svgp_model(inducing_variable)}
 
     with pytest.raises(NotImplementedError):
         GPflowModelConfig(**model_specs)
@@ -42,7 +48,7 @@ def test_gpflow_model_config_has_correct_supported_models() -> None:
     model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
     model_config = GPflowModelConfig(**model_specs)
 
-    models_mapping = {
+    models_mapping: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
         GPR: GaussianProcessRegression,
         SGPR: GaussianProcessRegression,
         VGP: VariationalGaussianProcess,
@@ -59,4 +65,18 @@ def test_gpflow_model_config_has_correct_default_optimizer() -> None:
 
     default_optimizer = gpflow.optimizers.Scipy
 
-    assert isinstance(model_config.optimizer(), default_optimizer)
+    assert isinstance(model_config.optimizer, default_optimizer)
+
+
+def test_gpflow_model_config_allows_changing_default_optimizer() -> None:
+
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {
+        "model": gpr_model(x, fnc_3x_plus_10(x)),
+        "optimizer": tf.optimizers.Adam(),
+    }
+    model_config = GPflowModelConfig(**model_specs)
+
+    expected_optimizer = tf.optimizers.Adam
+
+    assert isinstance(model_config.optimizer, expected_optimizer)

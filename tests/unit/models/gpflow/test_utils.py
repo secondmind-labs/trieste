@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 from packaging.version import parse
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflow.models import fnc_3x_plus_10
+from tests.util.models.gpflow.models import ModelFactoryType, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     module_deepcopy,
@@ -81,7 +81,7 @@ if parse(tfp.__version__) < parse("0.12"):
             copy.deepcopy(module)
 
 
-def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
+def test_gaussian_process_deep_copyable(gpr_interface_factory: ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, fnc_3x_plus_10(x))
     model_copy = copy.deepcopy(model)

@@ -66,7 +66,7 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GPflowModelConfig({
+    return GPflowModelConfig(**{
         "model": gpr,
         "model_args": {
             "num_kernel_samples": 100,

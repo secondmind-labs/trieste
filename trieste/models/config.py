@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Union
@@ -41,29 +40,15 @@ class ModelConfig:
     model_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the model wrapper. """
 
-    optimizer: Callable = field(default_factory=tf.optimizers.Adam)
+    optimizer: Any = field(default_factory=lambda: tf.optimizers.Adam())
     """ The optimizer with which to train the model (by minimizing its loss function). """
 
     optimizer_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the optimizer wrapper. """
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "optimizer", self.default_optimizer)
         self._check_model_type()
 
-    # @property
-    @abstractmethod
-    def default_optimizer(self) -> Callable:
-        """
-        Defines a default optimizer for the model type. This method has to be specified by a model
-        type specific subclass.
-
-        :return: An optimizer function.
-        """
-        raise NotImplementedError
-
-    # @property
-    @abstractmethod
     def supported_models(
         self,
     ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
@@ -75,16 +60,6 @@ class ModelConfig:
             models of those types.
         """
         raise NotImplementedError
-
-    @staticmethod
-    def create_from_dict(d: dict[str, Any]) -> ModelConfig:
-        """
-        :param d: A dictionary from which to construct this :class:`ModelConfig`.
-        :return: A :class:`ModelConfig` built from ``d``.
-        :raise TypeError: If the keys in ``d`` do not correspond to the parameters of
-            :class:`ModelConfig`.
-        """
-        return ModelConfig(**d)
 
     def _check_model_type(self) -> None:
         if isinstance(self.model, TrainableProbabilisticModel):

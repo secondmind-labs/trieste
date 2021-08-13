@@ -53,14 +53,14 @@ def build_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-
-    return GPflowModelConfig({
+    model_spec = {
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
             "minimize_args": {"options": dict(maxiter=100)},
         },
-    })
+    }
+    return GPflowModelConfig(**model_spec)
 
 
 model_spec = build_model(initial_data)

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+import gpflow
 import tensorflow as tf
 
 from ..data import Dataset
@@ -90,6 +91,13 @@ class ProbabilisticModel(ABC):
         :return: The observation noise.
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+        :return: The kernel.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide observation noise")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):

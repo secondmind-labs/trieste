@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import gpflow
@@ -34,13 +34,12 @@ class GPflowModelConfig(ModelConfig):
     :class:`~trieste.models.TrainableProbabilisticModel`.
     """
 
-    def default_optimizer(self) -> Callable:
-        return gpflow.optimizers.Scipy()
+    optimizer: Any = field(default_factory=lambda: gpflow.optimizers.Scipy())
 
     def supported_models(
         self,
     ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
-        models_mapping = {
+        models_mapping: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
             GPR: GaussianProcessRegression,
             SGPR: GaussianProcessRegression,
             VGP: VariationalGaussianProcess,
