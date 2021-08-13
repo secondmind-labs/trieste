@@ -549,7 +549,8 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam` with
+            batch size 100.
         """
 
         if optimizer is None:
