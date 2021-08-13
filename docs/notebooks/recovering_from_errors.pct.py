@@ -41,7 +41,7 @@ observer = FaultyBranin()
 
 # %% [markdown]
 # ## Set up the problem
-# We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`, which (with non-trivial state) will better illustrate how to recover.
+# We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`. `TrustRegion` is stateful, and we'll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.
 
 # %%
 import gpflow
@@ -92,9 +92,9 @@ if result.is_ok:
 # %% [markdown]
 # ## Handling failure
 #
-# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by using the data, model and acquisition state from the last successful step, which is the last element of the `history`.
+# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by using the data, model and acquisition state from the last successful step, which is the last element of the `history`. Note that we only need to account for the acquisition state because we're using the stateful `TrustRegion` rule. For most rules, we don't need to account for this state.
 #
-# Note we can view any `Result` by printing it. We'll do that here to see what exception was caught.
+# We can view any `Result` by printing it. We'll do that here to see what exception was caught.
 
 # %%
 if result.is_err:
