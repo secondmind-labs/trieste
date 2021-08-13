@@ -113,14 +113,13 @@ def test_gpr_raises_for_invalid_num_kernel_samples() -> None:
 @unittest.mock.patch(
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
 )
-@pytest.mark.parametrize("d", [1, 3])
 @pytest.mark.parametrize("prior_for_lengthscale", [True, False])
 def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled(
-    mocked_model_initializer, d, prior_for_lengthscale, gpr_interface_factory
+    mocked_model_initializer, dim, prior_for_lengthscale, gpr_interface_factory
 ) -> None:
-    x = tf.constant(np.arange(1, 5 * d + 1).reshape(-1, d), dtype=tf.float64)  # shape: [5, d]
+    x = tf.constant(np.arange(1, 5 * dim + 1).reshape(-1, dim), dtype=tf.float64)  # shape: [5, d]
     model = gpr_interface_factory(x, fnc_3x_plus_10(x))
-    model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([d], dtype=tf.float64))
+    model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([dim], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
 
@@ -130,7 +129,7 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
         )
 
     else:
-        upper = tf.cast([10.0] * d, dtype=tf.float64)
+        upper = tf.cast([10.0] * dim, dtype=tf.float64)
         lower = upper / 100
         model.model.kernel.lengthscales = gpflow.Parameter(
             model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
@@ -148,7 +147,7 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
 
     mocked_model_initializer.assert_called_once()
     num_samples = mocked_model_initializer.call_args[0][0]
-    npt.assert_array_equal(num_samples, 10 * (d + 1))
+    npt.assert_array_equal(num_samples, 10 * (dim + 1))
 
 
 def test_find_best_model_initialization_changes_params_with_priors(
@@ -421,7 +420,6 @@ def _batcher_2(dataset: Dataset, batch_size: int):
     return dataset.astuple()
 
 
-@pytest.mark.parametrize("compile", [True, False])
 @pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
 def test_sparse_variational_optimize(batcher, compile: bool) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
@@ -440,7 +438,6 @@ def test_sparse_variational_optimize(batcher, compile: bool) -> None:
 
 
 @pytest.mark.parametrize("use_natgrads", [True, False])
-@pytest.mark.parametrize("compile", [True, False])
 @pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
 def test_vgp_optimize_with_and_without_natgrads(batcher, compile: bool, use_natgrads: bool) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
@@ -460,7 +457,6 @@ def test_vgp_optimize_with_and_without_natgrads(batcher, compile: bool, use_natg
     assert model.model.training_loss() < loss
 
 
-@pytest.mark.parametrize("compile", [True, False])
 def test_vgp_optimize_natgrads_only_updates_variational_params(compile: bool) -> None:
     x_observed = np.linspace(0, 100, 10).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)

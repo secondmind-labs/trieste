@@ -48,3 +48,8 @@ def _gpr_interface_factory(
 @pytest.fixture(name="dim", params=[1, 10])
 def _dim_fixture(request):
     return request.param
+
+
+@pytest.fixture(name="compile", params=[True, False])
+def _compile_fixture(request):
+    return request.param
