@@ -139,7 +139,7 @@ def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_po
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
     class NegQuadratic(SingleModelAcquisitionBuilder):
-        def __init__(self):
+        def __init__(self) -> None:
             self._updated = False
 
         def prepare_acquisition_function(
@@ -187,7 +187,7 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
 
 
 class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitionBuilder):
-    def __init__(self):
+    def __init__(self) -> None:
         self._update_count = 0
 
     def prepare_acquisition_function(

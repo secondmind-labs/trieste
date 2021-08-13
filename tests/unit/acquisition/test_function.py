@@ -279,7 +279,7 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
     ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
 
     @tf.function
-    def augmentation():
+    def augmentation() -> TensorType:
         _, variance = model.predict(tf.squeeze(xs, -2))
         return 1.0 - (tf.math.sqrt(observation_noise)) / (
             tf.math.sqrt(observation_noise + variance)
@@ -364,7 +364,7 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
 
 
 @pytest.mark.parametrize("use_thompson", [True, False, 100])
-def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson) -> None:
+def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson: bool) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
