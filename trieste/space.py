@@ -412,8 +412,8 @@ class OrdinalSearchSpace(Box):
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
-        member if all of its coordinates lie in the closed intervals bounded by the lower and upper
-        bounds and spaced by some step sizes.
+        member if all of its coordinates lie on the discretization specified by the given lower
+        and upper bounds and step size.
 
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
