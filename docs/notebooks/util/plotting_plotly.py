@@ -17,7 +17,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import to_numpy
 
 from .plotting import create_grid

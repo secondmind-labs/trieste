@@ -118,7 +118,7 @@ model = build_stacked_independent_objectives_model(initial_data, num_objective)
 
 # %%
 ehvi = ExpectedHypervolumeImprovement()
-rule = EfficientGlobalOptimization(builder=ehvi)  # type: ignore
+rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=ehvi)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -250,8 +250,8 @@ plot_2obj_cst_query_points(
 )
 plt.show()
 
-mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold  # type: ignore
-plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])  # type: ignore
+mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold
+plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])
 plt.show()
 
 # %% [markdown]
@@ -299,7 +299,7 @@ from trieste.acquisition.function import ExpectedConstrainedHypervolumeImproveme
 
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 echvi = ExpectedConstrainedHypervolumeImprovement(OBJECTIVE, pof.using(CONSTRAINT))
-rule = EfficientGlobalOptimization(builder=echvi)  # type: ignore
+rule = EfficientGlobalOptimization(builder=echvi)
 
 # %% [markdown]
 # We can now run the optimization loop

@@ -17,7 +17,8 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable
+from typing import Callable, Union
+from unittest.mock import MagicMock
 
 import gpflow
 import numpy.testing as npt
@@ -56,6 +57,7 @@ from trieste.acquisition.function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
     expected_hv_improvement,
@@ -71,7 +73,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 from trieste.utils.pareto import Pareto, get_reference_point
 
@@ -144,6 +146,30 @@ def test_expected_improvement_builder_builds_expected_improvement_using_best_fro
     npt.assert_allclose(acq_fn(xs), expected)
 
 
+def test_expected_improvement_builder_updates_expected_improvement_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(dataset, model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_improvement(model, tf.constant([1.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    new_dataset = Dataset(
+        tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
+        tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
+    )
+    updated_acq_fn = ExpectedImprovement().update_acquisition_function(acq_fn, new_dataset, model)
+    assert updated_acq_fn == acq_fn
+    expected = expected_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
@@ -161,6 +187,7 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
 
 @random_seed
 @pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
+@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
@@ -171,7 +198,12 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
     ],
 )
 def test_expected_improvement(
-    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
+    variance_scale: float,
+    num_samples_per_point: int,
+    best: tf.Tensor,
+    rtol: float,
+    atol: float,
+    test_update: bool,
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)
@@ -188,7 +220,12 @@ def test_expected_improvement(
     samples_improvement = tf.where(samples < best, best - samples, 0)
     ei_approx = tf.reduce_mean(samples_improvement, axis=0)
 
-    ei = expected_improvement(model, best)(xs[..., None, :])
+    if test_update:
+        eif = expected_improvement(model, tf.constant([100.0], dtype=tf.float64))
+        eif.update(best)
+    else:
+        eif = expected_improvement(model, best)
+    ei = eif(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -241,11 +278,43 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
 
-    _, variance = model.predict(tf.squeeze(xs, -2))
-    augmentation = 1.0 - (tf.math.sqrt(observation_noise)) / (
-        tf.math.sqrt(observation_noise + variance)
+    @tf.function
+    def augmentation():
+        _, variance = model.predict(tf.squeeze(xs, -2))
+        return 1.0 - (tf.math.sqrt(observation_noise)) / (
+            tf.math.sqrt(observation_noise + variance)
+        )
+
+    npt.assert_allclose(acq_fn(xs), ei * augmentation(), rtol=1e-6)
+
+
+@pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
+def test_augmented_expected_improvement_builder_updates_acquisition_function(
+    observation_noise: float,
+) -> None:
+    partial_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
     )
-    npt.assert_allclose(acq_fn(xs), ei * augmentation)
+    full_dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel(noise_variance=observation_noise)
+
+    partial_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        partial_dataset, model
+    )
+    updated_acq_fn = AugmentedExpectedImprovement().update_acquisition_function(
+        partial_data_acq_fn, full_dataset, model
+    )
+    assert updated_acq_fn == partial_data_acq_fn
+    full_data_acq_fn = AugmentedExpectedImprovement().prepare_acquisition_function(
+        full_dataset, model
+    )
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    npt.assert_allclose(updated_acq_fn(xs), full_data_acq_fn(xs))
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
@@ -277,7 +346,7 @@ def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gum
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_min_value_entropy_search_builder_builds_min_value_samples(
-    mocked_mves, use_thompson
+    mocked_mves: MagicMock, use_thompson: bool
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -294,9 +363,46 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)
 
 
+@pytest.mark.parametrize("use_thompson", [True, False, 100])
+def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    partial_dataset = Dataset(xs[:10], ys[:10])
+    full_dataset = Dataset(xs, ys)
+
+    builder = MinValueEntropySearch(
+        search_space,
+        use_thompson=bool(use_thompson),
+        num_fourier_features=None if isinstance(use_thompson, bool) else use_thompson,
+    )
+    xs = tf.cast(tf.linspace([[0.0]], [[1.0]], 10), tf.float64)
+
+    old_acq_fn = builder.prepare_acquisition_function(partial_dataset, model)
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    updated_acq_fn = builder.update_acquisition_function(old_acq_fn, full_dataset, model)
+    assert updated_acq_fn == old_acq_fn
+    updated_values = updated_acq_fn(xs)
+
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    new_acq_fn = builder.prepare_acquisition_function(full_dataset, model)
+    new_values = new_acq_fn(xs)
+
+    npt.assert_allclose(updated_values, new_values)
+
+
 @random_seed
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
-def test_min_value_entropy_search_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+def test_min_value_entropy_search_builder_builds_min_value_samples_rff(
+    mocked_mves: MagicMock,
+) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
@@ -380,6 +486,27 @@ def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidenc
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
+def test_negative_lower_confidence_bound_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    beta = 1.96
+    builder = NegativeLowerConfidenceBound(beta)
+    acq_fn = builder.prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = -lower_confidence_bound(model, beta)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(
+        acq_fn, Dataset(tf.ones([0, 1]), tf.ones([0, 1])), model
+    )
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize("beta", [-0.1, -2.0])
 def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
@@ -456,6 +583,24 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
         ProbabilityOfFeasibility(threshold)
 
 
+@pytest.mark.parametrize("at", [tf.constant([[0.0]], tf.float64)])
+@pytest.mark.parametrize("threshold", [-2.3, 0.2])
+def test_probability_of_feasibility_builder_updates_without_retracing(
+    threshold: float, at: tf.Tensor
+) -> None:
+    builder = ProbabilityOfFeasibility(threshold)
+    model = QuadraticMeanAndRBFKernel()
+    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    acq = builder.prepare_acquisition_function(empty_dataset([1], [1]), model)
+    assert acq._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+    up_acq = builder.update_acquisition_function(acq, empty_dataset([2], [2]), model)
+    assert up_acq == acq
+    npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize(
     "function",
     [
@@ -463,7 +608,9 @@ def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function) -> None:
+def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         function("", pof, tf.constant([0.0]))
@@ -476,7 +623,9 @@ def test_expected_constrained_improvement_raises_for_non_scalar_min_pof(function
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(function) -> None:
+def test_expected_constrained_improvement_raises_for_out_of_range_min_pof(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(tf.errors.InvalidArgumentError):
         function("", pof, 1.5)
@@ -564,7 +713,9 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
         ExpectedConstrainedHypervolumeImprovement,
     ],
 )
-def test_expected_constrained_improvement_raises_for_empty_data(function) -> None:
+def test_expected_constrained_improvement_raises_for_empty_data(
+    function: type[ExpectedConstrainedImprovement | ExpectedConstrainedHypervolumeImprovement],
+) -> None:
     class _Constraint(AcquisitionFunctionBuilder):
         def prepare_acquisition_function(
             self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -770,7 +921,9 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
     model = QuadraticMeanAndRBFKernel()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        BatchMonteCarloExpectedHypervolumeImprovement().prepare_acquisition_function(dataset, model)
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
+            dataset, model
+        )
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
@@ -1048,7 +1201,9 @@ def test_batch_monte_carlo_expected_improvement() -> None:
         ),
     ],
 )
-def test_single_model_acquisition_function_builder_reprs(function, function_repr) -> None:
+def test_single_model_acquisition_function_builder_reprs(
+    function: SingleModelAcquisitionBuilder, function_repr: str
+) -> None:
     assert repr(function) == function_repr
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
     assert (
@@ -1078,7 +1233,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_s
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pending_points_shape(
-    pending_points,
+    pending_points: TensorType,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
@@ -1109,7 +1264,7 @@ def test_locally_penalized_expected_improvement_raises_when_called_before_initia
     ],
 )
 def test_locally_penalized_acquisitions_match_base_acquisition(
-    base_builder,
+    base_builder: ExpectedImprovement | MinValueEntropySearch,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -1141,19 +1296,21 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
     [ExpectedImprovement(), MinValueEntropySearch(Box([0, 0], [1, 1]), grid_size=5000)],
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
-    penalizer: Callable[..., PenalizationFunction],
-    base_builder,
-):
+    penalizer: Callable[..., Union[PenalizationFunction, UpdatablePenalizationFunction]],
+    base_builder: ExpectedImprovement | MinValueEntropySearch,
+) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
-    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
     acq_builder = LocalPenalizationAcquisitionFunction(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
-    acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.prepare_acquisition_function(data, model, pending_points)
+    lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
+    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
 
@@ -1240,7 +1397,7 @@ def test_gibbon_raises_for_gumbel_samples_with_invalid_shape(
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_builder_raises_for_invalid_pending_points_shape(
-    pending_points,
+    pending_points: TensorType,
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
@@ -1321,7 +1478,9 @@ def test_gibbon_returns_correct_shape() -> None:
 
 @unittest.mock.patch("trieste.acquisition.function.gibbon")
 @pytest.mark.parametrize("use_thompson", [True, False])
-def test_gibbon_builder_builds_min_value_samples(mocked_mves, use_thompson) -> None:
+def test_gibbon_builder_builds_min_value_samples(
+    mocked_mves: MagicMock, use_thompson: bool
+) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space, use_thompson=use_thompson)
@@ -1339,7 +1498,7 @@ def test_gibbon_builder_builds_min_value_samples(mocked_mves, use_thompson) -> N
 
 @random_seed
 @unittest.mock.patch("trieste.acquisition.function.gibbon")
-def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves) -> None:
+def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
@@ -1385,7 +1544,7 @@ def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
 @pytest.mark.parametrize("rescaled_repulsion", [True, False])
 @pytest.mark.parametrize("noise_variance", [0.1, 1e-10])
 def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
-    rescaled_repulsion, noise_variance
+    rescaled_repulsion: bool, noise_variance: float
 ) -> None:
     """
     Check that batch GIBBON can be decomposed into the sum of sequential GIBBONs and a repulsion

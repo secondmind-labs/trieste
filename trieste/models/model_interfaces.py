@@ -25,7 +25,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from gpflow.utilities import multiple_assign, read_values
 
 from ..data import Dataset
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import DEFAULTS, jit
 from .optimizer import Optimizer, TFOptimizer
 
@@ -323,7 +323,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         return self.model.kernel
 
-    def get_observation_noise(self):
+    def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise for homoscedastic likelihoods.
         :return: The observation noise.
@@ -373,6 +373,17 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             )
         self._num_kernel_samples = num_kernel_samples
 
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        self._model.data = (
+            tf.Variable(
+                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
+            ),
+            tf.Variable(
+                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
+            ),
+        )
+
     def __repr__(self) -> str:
         """"""
         return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
@@ -382,7 +393,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        x, y = self.model.data
+        x, y = self.model.data[0].value(), self.model.data[1].value()
 
         _assert_data_is_compatible(dataset, Dataset(x, y))
 
@@ -392,7 +403,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if dataset.observations.shape[-1] != y.shape[-1]:
             raise ValueError
 
-        self.model.data = dataset.query_points, dataset.observations
+        self.model.data[0].assign(dataset.query_points)
+        self.model.data[1].assign(dataset.observations)
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -409,8 +421,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
-        x, _ = self.model.data
-        num_data = x.shape[0]
+        x = self.model.data[0].value()
+        num_data = tf.shape(x)[0]
         s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
 
         K = self.model.kernel(x)
@@ -469,7 +481,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         self.optimizer.optimize(self.model, dataset)
 
-    def find_best_model_initialization(self, num_kernel_samples) -> None:
+    def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
         Test `num_kernel_samples` models with sampled kernel parameters. The model's kernel
         parameters are then set to the sample achieving maximal likelihood.
@@ -499,6 +511,32 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
 
+class NumDataPropertyMixin:
+    """Mixin class for exposing num_data as a property, stored in a tf.Variable. This is to work
+    around GPFlow storing it as a number, which prevents us from updating it without retracing.
+    The property is required due to the way num_data is used in the model elbo methods.
+
+    Note that this doesn't support a num_data value of None.
+
+    This should be removed once GPFlow is updated to support Variables as num_data.
+    """
+
+    _num_data: tf.Variable
+
+    @property
+    def num_data(self) -> TensorType:
+        return self._num_data.value()
+
+    @num_data.setter
+    def num_data(self, value: TensorType) -> None:
+        self._num_data.assign(value)
+
+
+class SVGPWrapper(SVGP, NumDataPropertyMixin):
+    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
+    it as a property."""
+
+
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
@@ -513,6 +551,16 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         """
         super().__init__(optimizer)
         self._model = model
+
+        # GPflow stores num_data as a number. However, since we want to be able to update it
+        # without having to retrace the acquisition functions, put it in a Variable instead.
+        # So that the elbo method doesn't fail we also need to turn it into a property.
+        if not isinstance(self._model, SVGPWrapper):
+            self._model._num_data = tf.Variable(
+                model.num_data or data.query_points.shape[0], trainable=False, dtype=tf.float64
+            )
+            self._model.__class__ = SVGPWrapper
+
         self._data = data
 
     def __repr__(self) -> str:
@@ -530,6 +578,11 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
+
+
+class VGPWrapper(VGP, NumDataPropertyMixin):
+    """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and exposes
+    it as a property."""
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
@@ -592,6 +645,26 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
 
+        # GPflow stores num_data as a number. However, since we want to be able to update it
+        # without having to retrace the acquisition functions, put it in a Variable instead.
+        # So that the elbo method doesn't fail we also need to turn it into a property.
+        if not isinstance(self._model, VGPWrapper):
+            self._model._num_data = tf.Variable(
+                model.num_data or 0, trainable=False, dtype=tf.float64
+            )
+            self._model.__class__ = VGPWrapper
+
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        self._model.data = (
+            tf.Variable(
+                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
+            ),
+            tf.Variable(
+                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
+            ),
+        )
+
     def __repr__(self) -> str:
         """"""
         return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
@@ -610,7 +683,9 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         model = self.model
 
-        _assert_data_is_compatible(dataset, Dataset(*model.data))
+        x, y = self.model.data[0].value(), self.model.data[1].value()
+
+        _assert_data_is_compatible(dataset, Dataset(x, y))
 
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
 
@@ -626,7 +701,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
         new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
-        model.data = dataset.astuple()
+        model.data[0].assign(dataset.query_points)
+        model.data[1].assign(dataset.observations)
         model.num_data = len(dataset)
         model.q_mu = gpflow.Parameter(new_q_mu)
         model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())

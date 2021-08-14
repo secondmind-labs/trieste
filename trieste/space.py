@@ -22,7 +22,7 @@ from typing import Optional, Sequence, TypeVar, overload
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from .type import TensorType
+from .types import TensorType
 from .utils import shapes_equal
 
 SP = TypeVar("SP", bound="SearchSpace")

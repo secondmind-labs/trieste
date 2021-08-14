@@ -14,8 +14,8 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable, Container, Mapping
-from typing import Any, NoReturn, Sequence, TypeVar, Union, cast
+from collections.abc import Container, Mapping
+from typing import Any, Callable, NoReturn, Sequence, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -25,7 +25,7 @@ from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
@@ -34,7 +34,7 @@ TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
 )
 """ Error types thrown by TensorFlow's debugging functionality for tensor shapes. """
 
-C = TypeVar("C", bound=Callable)
+C = TypeVar("C", bound=Callable[..., object])
 """ Type variable bound to `typing.Callable`. """
 
 
@@ -45,7 +45,7 @@ def random_seed(f: C) -> C:
     """
 
     @functools.wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any) -> Any:
         tf.random.set_seed(0)
         return f(*args, **kwargs)
 

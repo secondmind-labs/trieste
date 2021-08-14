@@ -55,7 +55,7 @@ from trieste.objectives import (
     shekel_4,
 )
 from trieste.space import Box
-from trieste.type import TensorType
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize(
