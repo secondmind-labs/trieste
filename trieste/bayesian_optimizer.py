@@ -289,7 +289,8 @@ class BayesianOptimizer(Generic[SP]):
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}
+            # ignore below is due to MyPy not being able to handle overlaods properly
+            model_specs = {OBJECTIVE: model_specs}  # type: ignore
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
