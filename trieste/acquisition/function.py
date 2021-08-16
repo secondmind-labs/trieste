@@ -899,7 +899,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     follows :cite:`daulton2020differentiable`
     """
 
-    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples from model predicted distribution for
             each batch of points.
