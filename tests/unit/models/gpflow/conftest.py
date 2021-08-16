@@ -14,24 +14,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import pytest
-
 from gpflow.models import GPModel
 
 from tests.util.models.gpflow.models import (
     ModelFactoryType,
     gpr_model,
     sgpr_model,
-    vgp_model,
     svgp_model,
+    vgp_model,
 )
 from trieste.models.gpflow import (
-    GPflowPredictor,
     GaussianProcessRegression,
-    VariationalGaussianProcess,
+    GPflowPredictor,
     SparseVariational,
+    VariationalGaussianProcess,
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
@@ -59,10 +59,10 @@ def _gpr_interface_factory(request: Any) -> ModelFactoryType:
 
 
 @pytest.fixture(name="dim", params=[1, 10])
-def _dim_fixture(request):
+def _dim_fixture(request: Any) -> int:
     return request.param
 
 
 @pytest.fixture(name="compile", params=[True, False])
-def _compile_fixture(request):
+def _compile_fixture(request: Any) -> bool:
     return request.param

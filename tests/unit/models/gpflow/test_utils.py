@@ -36,7 +36,7 @@ from trieste.models.gpflow import (
 
 
 class _ModuleWithBijector(tf.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.const = tf.constant(1.2)
         self.var = tf.Variable(3.4)
@@ -44,7 +44,7 @@ class _ModuleWithBijector(tf.Module):
 
 
 class _NestedModuleWithBijector(tf.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.inst = _ModuleWithBijector()
         self.bijector = tfp.bijectors.Sigmoid(0.0, 1.0)
@@ -217,7 +217,7 @@ def test_squeeze_raises_for_invalid_epsilon() -> None:
 
 
 @pytest.mark.parametrize("alpha", [-0.1, 0.0, 1.1])
-def test_squeeze_raises_for_invalid_alpha(alpha) -> None:
+def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
     upper = tf.cast([0.5, 0.5], dtype=tf.float64)
     lower = upper / 5.0

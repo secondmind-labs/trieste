@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import gpflow
 import numpy.testing as npt
 import tensorflow as tf
@@ -34,7 +36,7 @@ class _QuadraticPredictor(GPflowPredictor):
 
 
 class _QuadraticGPModel(GPModel):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used
             gpflow.likelihoods.Gaussian(),
@@ -50,7 +52,7 @@ class _QuadraticGPModel(GPModel):
         var_shape = [*leading, y_dims, x_samples, x_samples] if full_cov else mean.shape
         return mean, tf.ones(var_shape, dtype=mean.dtype)
 
-    def maximum_log_likelihood_objective(self, *args, **kwargs) -> tf.Tensor:
+    def maximum_log_likelihood_objective(self, *args: Any, **kwargs: Any) -> tf.Tensor:
         raise NotImplementedError
 
 
