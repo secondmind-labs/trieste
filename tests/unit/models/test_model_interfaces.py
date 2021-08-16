@@ -975,7 +975,7 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
         squeeze_hyperparameters(kernel, alpha)
 
 
-def test_gaussian_process_deep_copyable(gpr_interface_factory) -> None:
+def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = gpr_interface_factory(x, _3x_plus_10(x))
     model_copy = copy.deepcopy(model)
