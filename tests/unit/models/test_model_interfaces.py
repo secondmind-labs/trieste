@@ -258,13 +258,13 @@ def _gpr(x: tf.Tensor, y: tf.Tensor) -> GPR:
     return GPR((x, y), gpflow.kernels.Matern32())
 
 
-def _sgpr(x: tf.Tensor, y: tf.Tensor, num_inducing: int = 2) -> SGPR:
-    return SGPR((x, y), gpflow.kernels.Matern32(), x[:num_inducing])
+def _sgpr(x: tf.Tensor, y: tf.Tensor) -> SGPR:
+    return SGPR((x, y), gpflow.kernels.Matern32(), x[:2])
 
 
-def _svgp(x: tf.Tensor, y: tf.Tensor, num_inducing: int = 2) -> SVGP:
+def _svgp(x: tf.Tensor, y: tf.Tensor) -> SVGP:
     return SVGP(
-        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:num_inducing], num_data=len(x)
+        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x)
     )
 
 
@@ -285,7 +285,7 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
 class _ModelFactoryType(Protocol):
     def __call__(
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> tuple[GaussianProcessRegression, Callable]:
+    ) -> tuple[GaussianProcessRegression, Callable[[TensorType, TensorType], GPModel]]:
         pass
 
 
@@ -301,7 +301,7 @@ class _ModelFactoryType(Protocol):
 def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> tuple[GaussianProcessRegression, Callable]:
+    ) -> tuple[GaussianProcessRegression, Callable[[TensorType, TensorType], GPModel]]:
         model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
         _reference_model: Callable = request.param[1]
@@ -654,30 +654,19 @@ def test_vgp_update() -> None:
     data = Dataset(x, _3x_plus_10(x))
     m = VariationalGaussianProcess(_vgp(data.query_points, data.observations))
 
+    reference_model = _vgp(data.query_points, data.observations)
+
+    npt.assert_allclose(m.model.q_mu, reference_model.q_mu, atol=1e-5)
+    npt.assert_allclose(m.model.q_sqrt, reference_model.q_sqrt, atol=1e-5)
+
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, _3x_plus_10(x_new))
 
-    reference_model = _vgp(data.query_points, data.observations)
+    m.update(new_data)
     reference_model_new = _vgp(new_data.query_points, new_data.observations)
 
-    internal_model = m.model
-    internal_q_mu = internal_model.q_mu
-    internal_q_sqrt = internal_model.q_sqrt
-    ref_q_mu = reference_model.q_mu
-    ref_q_sqrt = reference_model.q_sqrt
-
-    npt.assert_allclose(internal_q_mu, ref_q_mu, atol=1e-5)
-    npt.assert_allclose(internal_q_sqrt, ref_q_sqrt, atol=1e-5)
-
-    m.update(new_data)
-    internal_model_new = m.model
-    internal_new_q_mu = internal_model_new.q_mu
-    internal_new_q_sqrt = internal_model_new.q_sqrt
-    ref_new_q_mu = reference_model_new.q_mu
-    ref_new_q_sqrt = reference_model_new.q_sqrt
-
-    npt.assert_allclose(internal_new_q_mu, ref_new_q_mu, atol=1e-5)
-    npt.assert_allclose(internal_new_q_sqrt, ref_new_q_sqrt, atol=1e-5)
+    npt.assert_allclose(m.model.q_mu, reference_model_new.q_mu, atol=1e-5)
+    npt.assert_allclose(m.model.q_sqrt, reference_model_new.q_sqrt, atol=1e-5)
 
 
 @random_seed
@@ -1106,7 +1095,6 @@ def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, _2sin_x_over_3(x_new))
-    print(new_data)
     model.update(new_data)
     model.optimize(new_data)
 
