@@ -67,9 +67,9 @@ def test_gaussian_process_regression_loss(gpr_interface_factory: ModelFactoryTyp
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
-    model, reference_model = gpr_interface_factory(x, y)
+    model, _reference_model = gpr_interface_factory(x, y)
     internal_model = model.model
-    reference_model = reference_model(x, y)
+    reference_model = _reference_model(x, y)
 
     if isinstance(internal_model, SVGP):
         args = {"data": (x, y)}
@@ -84,13 +84,13 @@ def test_gaussian_process_regression_update(gpr_interface_factory: ModelFactoryT
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
-    model, reference_model = gpr_interface_factory(x, y)
+    model, _reference_model = gpr_interface_factory(x, y)
 
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, fnc_3x_plus_10(x_new))
     model.update(new_data)
 
-    reference_model = reference_model(x_new, fnc_3x_plus_10(x_new))
+    reference_model = _reference_model(x_new, fnc_3x_plus_10(x_new))
     internal_model = model.model
 
     if isinstance(internal_model, SVGP):
@@ -107,11 +107,11 @@ def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: ModelFa
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_2sin_x_over_3(x)
 
-    model, reference_model = gpr_interface_factory(
+    model, _reference_model = gpr_interface_factory(
         x, y, optimizer=create_optimizer(gpflow.optimizers.Scipy(), {})
     )
 
-    reference_model = reference_model(x, y)
+    reference_model = _reference_model(x, y)
     model.optimize(Dataset(x, y))
     internal_model = model.model
 
