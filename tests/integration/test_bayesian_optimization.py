@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import List, Union, cast
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -46,55 +48,75 @@ from trieste.objectives import (
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
+from trieste.types import State, TensorType
 
 
 @random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
-    [
-        (20, EfficientGlobalOptimization()),
-        (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-        (
-            15,
-            EfficientGlobalOptimization(
-                MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                    OBJECTIVE
-                )
+    cast(
+        List[
+            Union[
+                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[State[TensorType, TrustRegion.State], Box],
+            ]
+        ],
+        [
+            (20, EfficientGlobalOptimization()),
+            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            (
+                15,
+                EfficientGlobalOptimization(
+                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
+                        OBJECTIVE
+                    )
+                ),
             ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=3,
+            (
+                10,
+                EfficientGlobalOptimization(
+                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
             ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                LocalPenalizationAcquisitionFunction(
-                    BRANIN_SEARCH_SPACE,
-                ).using(OBJECTIVE),
-                num_query_points=3,
+            (
+                10,
+                EfficientGlobalOptimization(
+                    LocalPenalizationAcquisitionFunction(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
             ),
-        ),
-        (
-            10,
-            EfficientGlobalOptimization(
-                GIBBON(
-                    BRANIN_SEARCH_SPACE,
-                ).using(OBJECTIVE),
-                num_query_points=2,
+            (
+                10,
+                EfficientGlobalOptimization(
+                    GIBBON(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=2,
+                ),
             ),
-        ),
-        (15, TrustRegion()),
-        (10, DiscreteThompsonSampling(500, 3)),
-        (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
-    ],
+            (15, TrustRegion()),
+            (
+                15,
+                TrustRegion(
+                    EfficientGlobalOptimization(
+                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
+                            OBJECTIVE
+                        )
+                    )
+                ),
+            ),
+            (10, DiscreteThompsonSampling(500, 3)),
+            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+        ],
+    ),
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[None, SearchSpace] | AcquisitionRule[TrustRegion.State, Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, TrustRegion.State], Box],
 ) -> None:
     search_space = BRANIN_SEARCH_SPACE
 
