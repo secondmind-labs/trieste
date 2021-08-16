@@ -255,23 +255,21 @@ def _mock_data() -> tuple[tf.Tensor, tf.Tensor]:
 
 
 def _gpr(x: tf.Tensor, y: tf.Tensor) -> GPR:
-    return GPR((x, y), gpflow.kernels.Linear())
+    return GPR((x, y), gpflow.kernels.Matern32())
 
 
 def _sgpr(x: tf.Tensor, y: tf.Tensor) -> SGPR:
-    return SGPR((x, y), gpflow.kernels.Linear(), x[: len(x) // 2])
+    return SGPR((x, y), gpflow.kernels.Matern32(), x[:2])
 
 
-def _svgp(inducing_variable: tf.Tensor) -> SVGP:
-    return SVGP(gpflow.kernels.Linear(), gpflow.likelihoods.Gaussian(), inducing_variable)
+def _svgp(x: tf.Tensor, y: tf.Tensor) -> SVGP:
+    return SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x))
 
 
 def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
-    kernel = gpflow.kernels.Linear()
+    kernel = gpflow.kernels.Matern32()
     m = VGP((x, y), kernel, likelihood)
-    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
-    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
     return m
 
 
@@ -279,15 +277,13 @@ def _vgp_matern(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
-    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
-    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
     return m
 
 
 class _ModelFactoryType(Protocol):
     def __call__(
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
+    ) -> tuple[GaussianProcessRegression, Callable[[TensorType, TensorType], GPModel]]:
         pass
 
 
@@ -297,15 +293,17 @@ class _ModelFactoryType(Protocol):
         (GaussianProcessRegression, _gpr),
         (GaussianProcessRegression, _sgpr),
         (VariationalGaussianProcess, _vgp),
+        (SparseVariational, _svgp),
     ],
 )
 def _gpr_interface_factory(request: Any) -> _ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
+    ) -> tuple[GaussianProcessRegression, Callable[[TensorType, TensorType], GPModel]]:
         model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
-        return model_interface(base_model, optimizer=optimizer)
+        _reference_model: Callable[[TensorType, TensorType], GPModel] = request.param[1]
+        return model_interface(base_model, optimizer=optimizer), _reference_model
 
     return model_interface_factory
 
@@ -324,38 +322,92 @@ def _2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
 
 def test_gaussian_process_regression_loss(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_10(x))
-    reference_model = _reference_gpr(x, _3x_plus_10(x))
+    y = _3x_plus_10(x)
+
+    model, _reference_model = gpr_interface_factory(x, y)
     internal_model = model.model
+    reference_model = _reference_model(x, y)
+
+    if isinstance(internal_model, SVGP):
+        args = {"data": (x, y)}
+    else:
+        args = {}
     npt.assert_allclose(
-        internal_model.training_loss(), -reference_model.log_marginal_likelihood(), rtol=1e-6
+        internal_model.training_loss(**args), reference_model.training_loss(**args), rtol=1e-6
     )
 
 
 def test_gaussian_process_regression_update(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    y = _3x_plus_10(x)
+
+    model, _reference_model = gpr_interface_factory(x, y)
 
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, _3x_plus_10(x_new))
     model.update(new_data)
-    model.optimize(new_data)
-    reference_model = _reference_gpr(x_new, _3x_plus_10(x_new))
-    gpflow.optimizers.Scipy().minimize(
-        reference_model.training_loss_closure(), reference_model.trainable_variables
-    )
+
+    reference_model = _reference_model(x_new, _3x_plus_10(x_new))
     internal_model = model.model
-    npt.assert_allclose(internal_model.training_loss(), reference_model.training_loss(), rtol=1e-6)
+
+    if isinstance(internal_model, SVGP):
+        args = {"data": (new_data.query_points, new_data.observations)}
+    else:
+        args = {}
+
+    npt.assert_allclose(
+        internal_model.training_loss(**args), reference_model.training_loss(**args), rtol=1e-6
+    )
+
+
+def test_gaussian_process_regression_ref_optimize(gpr_interface_factory: _ModelFactoryType) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    y = _2sin_x_over_3(x)
+
+    model, _reference_model = gpr_interface_factory(
+        x, y, optimizer=create_optimizer(gpflow.optimizers.Scipy(), {})
+    )
+
+    reference_model = _reference_model(x, y)
+    model.optimize(Dataset(x, y))
+    internal_model = model.model
+
+    if isinstance(internal_model, SVGP):
+        args = {"data": (x, y)}
+    else:
+        args = {}
+        reference_model.data = (
+            tf.Variable(
+                reference_model.data[0],
+                trainable=False,
+                shape=[None, *reference_model.data[0].shape[1:]],
+            ),
+            tf.Variable(
+                reference_model.data[1],
+                trainable=False,
+                shape=[None, *reference_model.data[1].shape[1:]],
+            ),
+        )
+
+    gpflow.optimizers.Scipy().minimize(
+        reference_model.training_loss_closure(**args, compile=False),
+        reference_model.trainable_variables,
+    )
+
+    npt.assert_allclose(
+        internal_model.training_loss(**args), reference_model.training_loss(**args), rtol=1e-6
+    )
 
 
 def test_gaussian_process_regression_pairwise_covariance(
     gpr_interface_factory: _ModelFactoryType,
 ) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    y = _3x_plus_10(x)
+    model, _ = gpr_interface_factory(x, y)
 
-    if isinstance(model, VariationalGaussianProcess):
-        pytest.skip("covariance_between_points is only implemented for the GPR and SGPR models.")
+    if isinstance(model.model, (SGPR, VGP, SVGP)):
+        pytest.skip("covariance_between_points is only implemented for the GPR model.")
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
@@ -369,12 +421,20 @@ def test_gaussian_process_regression_pairwise_covariance(
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
+def test_sgpr_raises_for_covariance_between_points() -> None:
+    data = _mock_data()
+    model = GaussianProcessRegression(_sgpr(*data))
+
+    with pytest.raises(NotImplementedError):
+        model.covariance_between_points(data[0], data[0])
+
+
 @random_seed
 def test_gpflow_predictor_get_observation_noise_raises_for_likelihood_with_variance(
     gpr_interface_factory: _ModelFactoryType,
 ) -> None:
     data = _mock_data()
-    model = gpr_interface_factory(*data)
+    model, _ = gpr_interface_factory(*data)
     model.model.likelihood = gpflow.likelihoods.Gaussian()  # has variance attribute
     model.get_observation_noise()
 
@@ -405,7 +465,7 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     gpr_interface_factory: _ModelFactoryType,
 ) -> None:
     x = tf.constant(np.arange(1, 5 * d + 1).reshape(-1, d), dtype=tf.float64)  # shape: [5, d]
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x))
     model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([d], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
@@ -444,7 +504,7 @@ def test_find_best_model_initialization_changes_params_with_priors(
     x = tf.constant(
         np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
     )  # shape: [10, dim]
-    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -464,13 +524,13 @@ def test_find_best_model_initialization_changes_params_with_priors(
 
 
 @pytest.mark.parametrize("dim", [1, 10])
-def test_find_best_model_initialization_changes_params_with_sigmoid_bjectors(
+def test_find_best_model_initialization_changes_params_with_sigmoid_bijectors(
     gpr_interface_factory: _ModelFactoryType, dim: int
 ) -> None:
     x = tf.constant(
         np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
     )  # shape: [10, dim]
-    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -499,14 +559,14 @@ def test_find_best_model_initialization_without_priors_improves_training_loss(
     x = tf.constant(
         np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
     )  # shape: [10, dim]
-    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
-    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(variance=0.01, lengthscales=[0.011] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
         pytest.skip("find_best_model_initialization is only implemented for the GPR models.")
 
-    upper = tf.cast([10.0] * dim, dtype=tf.float64)
-    lower = upper / 100
+    upper = tf.cast([100.0] * dim, dtype=tf.float64)
+    lower = upper / 10000
     model.model.kernel.lengthscales = gpflow.Parameter(
         model.model.kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
@@ -526,7 +586,7 @@ def test_find_best_model_initialization_improves_likelihood(
     x = tf.constant(
         np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
     )  # shape: [10, dim]
-    model = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
+    model, _ = gpr_interface_factory(x, _3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
 
     if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
@@ -550,7 +610,7 @@ def test_find_best_model_initialization_improves_likelihood(
 
 def test_gaussian_process_regression_predict_y(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
+    model, _ = gpr_interface_factory(x, _3x_plus_gaussian_noise(x))
     x_predict = tf.constant([[50.5]], gpflow.default_float())
     mean_f, variance_f = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
@@ -586,6 +646,27 @@ def test_vgp_update_updates_num_data() -> None:
     assert new_num_data - num_data == 2
 
 
+def test_vgp_update() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+
+    data = Dataset(x, _3x_plus_10(x))
+    m = VariationalGaussianProcess(_vgp(data.query_points, data.observations))
+
+    reference_model = _vgp(data.query_points, data.observations)
+
+    npt.assert_allclose(m.model.q_mu, reference_model.q_mu, atol=1e-5)
+    npt.assert_allclose(m.model.q_sqrt, reference_model.q_sqrt, atol=1e-5)
+
+    x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
+    new_data = Dataset(x_new, _3x_plus_10(x_new))
+
+    m.update(new_data)
+    reference_model_new = _vgp(new_data.query_points, new_data.observations)
+
+    npt.assert_allclose(m.model.q_mu, reference_model_new.q_mu, atol=1e-5)
+    npt.assert_allclose(m.model.q_sqrt, reference_model_new.q_sqrt, atol=1e-5)
+
+
 @random_seed
 def test_vgp_update_q_mu_sqrt_unchanged() -> None:
     x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
@@ -609,26 +690,36 @@ def test_gaussian_process_regression_default_optimize(
     gpr_interface_factory: _ModelFactoryType,
 ) -> None:
     data = _mock_data()
-    model = gpr_interface_factory(*data)
+    model, _ = gpr_interface_factory(*data)
     internal_model = model.model
-    loss = internal_model.training_loss()
+    if isinstance(internal_model, SVGP):
+        args = {"data": data}
+    else:
+        args = {}
+    loss = internal_model.training_loss(**args)
     model.optimize(Dataset(*data))
-    assert internal_model.training_loss() < loss
+    assert internal_model.training_loss(**args) < loss
 
 
 @random_seed
 @pytest.mark.parametrize("optimizer", [gpflow.optimizers.Scipy(), tf.optimizers.Adam(), None])
+@pytest.mark.parametrize("compile", [True, False])
 def test_gaussian_process_regression_optimize(
     optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer | None,
     gpr_interface_factory: _ModelFactoryType,
+    compile: bool,
 ) -> None:
     data = _mock_data()
-    optimizer_wrapper = create_optimizer(optimizer, {})
-    model = gpr_interface_factory(*data, optimizer=optimizer_wrapper)
+    optimizer_wrapper = create_optimizer(optimizer, dict(compile=compile))
+    model, _ = gpr_interface_factory(*data, optimizer=optimizer_wrapper)
     internal_model = model.model
-    loss = internal_model.training_loss()
+    if isinstance(internal_model, SVGP):
+        args = {"data": data}
+    else:
+        args = {}
+    loss = internal_model.training_loss(**args)
     model.optimize(Dataset(*data))
-    assert internal_model.training_loss() < loss
+    assert internal_model.training_loss(**args) < loss
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -650,7 +741,21 @@ def test_variational_gaussian_process_predict() -> None:
     mean, variance = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
 
-    reference_model = _reference_gpr(x_observed, y_observed)
+    reference_model = _vgp(x_observed, y_observed)
+
+    reference_model.data = (
+        tf.Variable(
+            reference_model.data[0],
+            trainable=False,
+            shape=[None, *reference_model.data[0].shape[1:]],
+        ),
+        tf.Variable(
+            reference_model.data[1],
+            trainable=False,
+            shape=[None, *reference_model.data[1].shape[1:]],
+        ),
+    )
+
     gpflow.optimizers.Scipy().minimize(
         reference_model.training_loss_closure(),
         reference_model.trainable_variables,
@@ -659,7 +764,7 @@ def test_variational_gaussian_process_predict() -> None:
 
     npt.assert_allclose(mean, reference_mean)
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
-    npt.assert_allclose(variance_y - 0.01 ** 2, variance, atol=6e-5)
+    npt.assert_allclose(variance_y - model.get_observation_noise(), variance, atol=5e-5)
 
 
 class _QuadraticPredictor(GPflowPredictor):
@@ -723,15 +828,14 @@ def test_gpflow_predictor_sample_no_samples() -> None:
 
 
 def test_sparse_variational_model_attribute() -> None:
-    model = _svgp(_mock_data()[0])
-    sv = SparseVariational(model, Dataset(*_mock_data()))
+    model = _svgp(*_mock_data())
+    sv = SparseVariational(model)
     assert sv.model is model
 
 
 def test_sparse_variational_update_updates_num_data() -> None:
     model = SparseVariational(
-        _svgp(tf.zeros([1, 4])),
-        Dataset(tf.zeros([3, 4]), tf.zeros([3, 1])),
+        _svgp(tf.zeros([1, 4]), tf.zeros([1, 1])),
     )
     model.update(Dataset(tf.zeros([5, 4]), tf.zeros([5, 1])))
     assert model.model.num_data == 5
@@ -743,8 +847,7 @@ def test_sparse_variational_update_updates_num_data() -> None:
 )
 def test_sparse_variational_update_raises_for_invalid_shapes(new_data: Dataset) -> None:
     model = SparseVariational(
-        _svgp(tf.zeros([1, 4])),
-        Dataset(tf.zeros([3, 4]), tf.zeros([3, 1])),
+        _svgp(tf.zeros([1, 4]), tf.zeros([1, 1])),
     )
     with pytest.raises(ValueError):
         model.update(new_data)
@@ -756,7 +859,7 @@ def test_sparse_variational_optimize_with_defaults() -> None:
     data = x_observed, y_observed
     dataset = Dataset(*data)
     optimizer = create_optimizer(tf.optimizers.Adam(), dict(max_iter=20))
-    model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
+    model = SparseVariational(_svgp(x_observed, y_observed), optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
     assert model.model.training_loss(data) < loss
@@ -786,7 +889,7 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
         tf.optimizers.Adam(),
         dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
     )
-    model = SparseVariational(_svgp(x_observed[:10]), dataset, optimizer=optimizer)
+    model = SparseVariational(_svgp(x_observed, y_observed), optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
     assert model.model.training_loss(data) < loss
@@ -852,7 +955,7 @@ def test_vgp_optimize_natgrads_only_updates_variational_params(compile: bool) ->
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
-def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: int) -> None:
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(kernel.lengthscales), scale=1.0
@@ -866,7 +969,7 @@ def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: 
 
 @random_seed
 @pytest.mark.parametrize("dim", [1, 10])
-def test_randomize_model_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
+def test_randomize_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     upper = tf.cast([10.0] * dim, dtype=tf.float64)
     lower = upper / 100
@@ -977,7 +1080,7 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, _3x_plus_10(x))
+    model, _ = gpr_interface_factory(x, _2sin_x_over_3(x))
     model_copy = copy.deepcopy(model)
     x_predict = tf.constant([[50.5]], gpflow.default_float())
 
@@ -989,7 +1092,7 @@ def test_gaussian_process_deep_copyable(gpr_interface_factory: _ModelFactoryType
 
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
-    new_data = Dataset(x_new, _3x_plus_10(x_new))
+    new_data = Dataset(x_new, _2sin_x_over_3(x_new))
     model.update(new_data)
     model.optimize(new_data)
 
