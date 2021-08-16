@@ -87,6 +87,6 @@ def test_pareto_hypervolume_indicator(
         (tf.constant([])),
     ],
 )
-def test_get_reference_point_raise_when_feed_empty_front(front):
+def test_get_reference_point_raise_when_feed_empty_front(front: tf.Tensor) -> None:
     with pytest.raises(ValueError):
         get_reference_point(front)

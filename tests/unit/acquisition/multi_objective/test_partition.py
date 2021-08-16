@@ -46,7 +46,7 @@ def test_exact_partition_2d_bounds() -> None:
     )
 
 
-def test_exact_partition_2d_raise_when_input_is_not_pareto_front():
+def test_exact_partition_2d_raise_when_input_is_not_pareto_front() -> None:
     objectives = tf.constant(
         [
             [0.9575, 0.4218],
@@ -143,7 +143,7 @@ def test_exact_partition_2d_partition_bounds(
     anti_reference: list[float],
     reference: list[float],
     expected: SequenceN[float],
-):
+) -> None:
     partition = ExactPartition2dNonDominated(tf.constant(objectives))
     npt.assert_allclose(
         partition.partition_bounds(tf.constant(anti_reference), tf.constant(reference))[0],
@@ -155,7 +155,7 @@ def test_exact_partition_2d_partition_bounds(
     )
 
 
-def test_divide_conquer_non_dominated_raise_when_input_is_not_pareto_front():
+def test_divide_conquer_non_dominated_raise_when_input_is_not_pareto_front() -> None:
     objectives = tf.constant(
         [
             [0.0, 2.0, 1.0],
