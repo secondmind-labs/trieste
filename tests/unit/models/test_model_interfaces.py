@@ -263,9 +263,7 @@ def _sgpr(x: tf.Tensor, y: tf.Tensor) -> SGPR:
 
 
 def _svgp(x: tf.Tensor, y: tf.Tensor) -> SVGP:
-    return SVGP(
-        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x)
-    )
+    return SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x))
 
 
 def _vgp(x: tf.Tensor, y: tf.Tensor) -> VGP:
