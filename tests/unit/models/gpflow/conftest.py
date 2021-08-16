@@ -18,8 +18,21 @@ from typing import Any
 
 import pytest
 
-from tests.util.models.gpflow.models import ModelFactoryType, gpr_model, sgpr_model, vgp_model
-from trieste.models.gpflow import GaussianProcessRegression, VariationalGaussianProcess
+from gpflow.models import GPModel
+
+from tests.util.models.gpflow.models import (
+    ModelFactoryType,
+    gpr_model,
+    sgpr_model,
+    vgp_model,
+    svgp_model,
+)
+from trieste.models.gpflow import (
+    GPflowPredictor,
+    GaussianProcessRegression,
+    VariationalGaussianProcess,
+    SparseVariational,
+)
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -30,15 +43,17 @@ from trieste.types import TensorType
         (GaussianProcessRegression, gpr_model),
         (GaussianProcessRegression, sgpr_model),
         (VariationalGaussianProcess, vgp_model),
+        (SparseVariational, svgp_model),
     ],
 )
 def _gpr_interface_factory(request: Any) -> ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GaussianProcessRegression:
+    ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
         model_interface: type[GaussianProcessRegression] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
-        return model_interface(base_model, optimizer=optimizer)
+        reference_model: Callable[[TensorType, TensorType], GPModel] = request.param[1]
+        return model_interface(base_model, optimizer=optimizer), reference_model
 
     return model_interface_factory
 

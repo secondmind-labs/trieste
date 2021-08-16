@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 from packaging.version import parse
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflow.models import ModelFactoryType, fnc_3x_plus_10
+from tests.util.models.gpflow.models import ModelFactoryType, fnc_2sin_x_over_3
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     module_deepcopy,
@@ -83,7 +83,7 @@ if parse(tfp.__version__) < parse("0.12"):
 
 def test_gaussian_process_deep_copyable(gpr_interface_factory: ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = gpr_interface_factory(x, fnc_3x_plus_10(x))
+    model, _ = gpr_interface_factory(x, fnc_2sin_x_over_3(x))
     model_copy = copy.deepcopy(model)
     x_predict = tf.constant([[50.5]], gpflow.default_float())
 
@@ -95,7 +95,7 @@ def test_gaussian_process_deep_copyable(gpr_interface_factory: ModelFactoryType)
 
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
-    new_data = Dataset(x_new, fnc_3x_plus_10(x_new))
+    new_data = Dataset(x_new, fnc_2sin_x_over_3(x_new))
     model.update(new_data)
     model.optimize(new_data)
 
@@ -108,7 +108,7 @@ def test_gaussian_process_deep_copyable(gpr_interface_factory: ModelFactoryType)
 
 
 @random_seed
-def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: int) -> None:
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(kernel.lengthscales), scale=1.0
@@ -121,7 +121,7 @@ def test_randomize_hyperparameters_randomize_kernel_parameters_with_priors(dim: 
 
 
 @random_seed
-def test_randomize_model_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
+def test_randomize_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     upper = tf.cast([10.0] * dim, dtype=tf.float64)
     lower = upper / 100

@@ -19,12 +19,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import gpflow
-from gpflow.models import GPR, SGPR, VGP
+from gpflow.models import GPR, SGPR, VGP, SVGP
 
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import Optimizer
-from .models import GaussianProcessRegression, VariationalGaussianProcess
+from .models import (
+    GaussianProcessRegression,
+    VariationalGaussianProcess,
+    SparseVariational,
+)
 
 
 @dataclass(frozen=True)
@@ -43,5 +47,6 @@ class GPflowModelConfig(ModelConfig):
             GPR: GaussianProcessRegression,
             SGPR: GaussianProcessRegression,
             VGP: VariationalGaussianProcess,
+            SVGP: SparseVariational,
         }
         return models_mapping

@@ -21,7 +21,7 @@ import gpflow
 import numpy as np
 import pytest
 import tensorflow as tf
-from gpflow.models import GPR, SGPR, VGP
+from gpflow.models import GPR, SGPR, VGP, SVGP, GPMC
 
 from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model, svgp_model
 from trieste.models import TrainableProbabilisticModel
@@ -29,14 +29,17 @@ from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowModelConfig,
     VariationalGaussianProcess,
+    SparseVariational,
 )
 from trieste.models.optimizer import Optimizer
 
 
 def test_gpflow_model_config_raises_not_supported_model_type() -> None:
-
-    inducing_variable = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {"model": svgp_model(inducing_variable)}
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    y = fnc_3x_plus_10(x)
+    model_specs = {
+        "model": GPMC((x, y), gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian())
+    }
 
     with pytest.raises(NotImplementedError):
         GPflowModelConfig(**model_specs)
@@ -52,6 +55,7 @@ def test_gpflow_model_config_has_correct_supported_models() -> None:
         GPR: GaussianProcessRegression,
         SGPR: GaussianProcessRegression,
         VGP: VariationalGaussianProcess,
+        SVGP: SparseVariational,
     }
 
     assert model_config.supported_models() == models_mapping

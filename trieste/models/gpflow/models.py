@@ -103,6 +103,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :return: Covariance matrix between the sets of query points with shape [N, M]
         """
+        if isinstance(self.model, SGPR):
+            raise NotImplementedError("Covariance between points is not supported for SGPR.")
+
         tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
         x = self.model.data[0].value()
@@ -226,13 +229,17 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(self, model: SVGP, data: Dataset, optimizer: Optimizer | None = None):
+    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
-        :param data: The initial training data.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam` with
+            batch size 100.
         """
+
+        if optimizer is None:
+            optimizer = TFOptimizer(tf.optimizers.Adam(), batch_size=100)
+
         super().__init__(optimizer)
         self._model = model
 
@@ -240,25 +247,32 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
         if not isinstance(self._model, SVGPWrapper):
-            self._model._num_data = tf.Variable(
-                model.num_data or data.query_points.shape[0], trainable=False, dtype=tf.float64
-            )
+            self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
-
-        self._data = data
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self._model!r}, {self._data!r}, {self.optimizer!r})"
+        return f"SparseVariational({self._model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
         return self._model
 
     def update(self, dataset: Dataset) -> None:
-        assert_data_is_compatible(dataset, self._data)
+        # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
+        if dataset.query_points.shape[-1] != self.model.inducing_variable.Z.shape[-1]:
+            raise ValueError(
+                f"Shape {dataset.query_points.shape} of new query points is incompatible with"
+                f" shape {self.model.inducing_variable.Z.shape} of existing query points."
+                f" Trailing dimensions must match."
+            )
 
-        self._data = dataset
+        if dataset.observations.shape[-1] != self.model.q_mu.shape[-1]:
+            raise ValueError(
+                f"Shape {dataset.observations.shape} of new observations is incompatible with"
+                f" shape {self.model.q_mu.shape} of existing observations. Trailing"
+                f" dimensions must match."
+            )
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data

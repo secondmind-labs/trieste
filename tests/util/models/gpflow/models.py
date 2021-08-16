@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
@@ -126,28 +126,26 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
 class ModelFactoryType(Protocol):
     def __call__(
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
-    ) -> GPflowPredictor:
+    ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
         pass
 
 
 def gpr_model(x: tf.Tensor, y: tf.Tensor) -> GPR:
-    return GPR((x, y), gpflow.kernels.Linear())
+    return GPR((x, y), gpflow.kernels.Matern32())
 
 
 def sgpr_model(x: tf.Tensor, y: tf.Tensor) -> SGPR:
-    return SGPR((x, y), gpflow.kernels.Linear(), x[: len(x) // 2])
+    return SGPR((x, y), gpflow.kernels.Matern32(), x[:2])
 
 
-def svgp_model(inducing_variable: tf.Tensor) -> SVGP:
-    return SVGP(gpflow.kernels.Linear(), gpflow.likelihoods.Gaussian(), inducing_variable)
+def svgp_model(x: tf.Tensor, y: tf.Tensor) -> SVGP:
+    return SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x))
 
 
 def vgp_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
-    kernel = gpflow.kernels.Linear()
+    kernel = gpflow.kernels.Matern32()
     m = VGP((x, y), kernel, likelihood)
-    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
-    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
     return m
 
 
@@ -155,13 +153,7 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
-    variational_variables = [m.q_mu.unconstrained_variable, m.q_sqrt.unconstrained_variable]
-    gpflow.optimizers.Scipy().minimize(m.training_loss_closure(), variational_variables)
     return m
-
-
-def reference_gpr(x: tf.Tensor, y: tf.Tensor) -> gpflow.models.GPR:
-    return gpr_model(x, y)
 
 
 def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
