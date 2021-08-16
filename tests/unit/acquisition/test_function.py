@@ -26,6 +26,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from tests.util.acquisition.sampler import PseudoBatchReparametrizationSampler
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     ShapeLike,
@@ -36,8 +37,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from tests.util.sampler import PseudoBatchReparametrizationSampler
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     GIBBON,
     AcquisitionFunction,
@@ -71,7 +71,7 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
+from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS

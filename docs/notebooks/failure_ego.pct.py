@@ -22,7 +22,7 @@ import trieste
 
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
-    y = np.array(trieste.objectives.single_objectives.branin(x))
+    y = np.array(trieste.objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
@@ -120,12 +120,14 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
+from trieste.models.gpflow import GPflowModelConfig
+
 models: dict[str, trieste.models.ModelSpec] = {
-    OBJECTIVE: {
+    OBJECTIVE: GPflowModelConfig(**{
         "model": regression_model,
         "optimizer": gpflow.optimizers.Scipy(),
-    },
-    FAILURE: {
+    }),
+    FAILURE: GPflowModelConfig(**{
         "model": classification_model,
         "model_args": {
             "use_natgrads": True,
@@ -134,7 +136,7 @@ models: dict[str, trieste.models.ModelSpec] = {
         "optimizer_args": {
             "max_iter": 50,
         },       
-    },
+    }),
 }
 
 # %% [markdown]

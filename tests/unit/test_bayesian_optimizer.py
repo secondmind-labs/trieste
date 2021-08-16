@@ -27,7 +27,7 @@ from tests.util.misc import (
     mk_dataset,
     quadratic,
 )
-from tests.util.model import (
+from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
     QuadraticMeanAndRBFKernel,
