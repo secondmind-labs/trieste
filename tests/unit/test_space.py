@@ -436,7 +436,9 @@ def test_box_deepcopy() -> None:
         pytest.param(range(2), range(1, 3), [0.1, 0.2], id="ranges"),
     ],
 )
-def test_ordinalsearchspace_converts_sequences_to_float64_tensors(lower, upper, stepsizes) -> None:
+def test_ordinalsearchspace_converts_sequences_to_float64_tensors(
+    lower: Sequence[float], upper: Sequence[float], stepsizes: Sequence[float]
+) -> None:
     ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
     assert tf.as_dtype(ordinalsp.lower.dtype) is tf.float64
     assert tf.as_dtype(ordinalsp.upper.dtype) is tf.float64
@@ -454,7 +456,9 @@ def test_ordinalsearchspace_converts_sequences_to_float64_tensors(lower, upper, 
         pytest.param([1.0, 10.0], [10.0, 100.0], [2, 10]),
     ],
 )
-def test_ordinalsearchspace_sampling_return_correct_rounded_points(lower, upper, stepsizes):
+def test_ordinalsearchspace_sampling_return_correct_rounded_points(
+    lower: Sequence[float], upper: Sequence[float], stepsizes: Sequence[float]
+):
     ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
     boxsp = Box(lower, upper)
     tf.random.set_seed(0)
