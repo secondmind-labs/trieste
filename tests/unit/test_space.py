@@ -458,7 +458,7 @@ def test_ordinalsearchspace_converts_sequences_to_float64_tensors(
 )
 def test_ordinalsearchspace_sampling_return_correct_rounded_points(
     lower: Sequence[float], upper: Sequence[float], stepsizes: Sequence[float]
-):
+) -> None:
     ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
     boxsp = Box(lower, upper)
     tf.random.set_seed(0)
