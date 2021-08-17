@@ -378,6 +378,7 @@ class OrdinalSearchSpace(Box):
 
         super().__init__(lower, upper)
         tf.debugging.assert_shapes([(lower, ["D"]), (stepsizes, ["D"])])
+        tf.debugging.assert_positive(stepsizes)
         tf.assert_rank(stepsizes, 1)
 
         tf.debugging.assert_positive(len(stepsizes), message="stepsizes cannot be empty")
