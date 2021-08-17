@@ -23,6 +23,7 @@ import tensorflow_probability as tfp
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
 from gpflux.layers import GPLayer
+import warnings
 
 from ...data import Dataset
 from ...types import TensorType
@@ -61,7 +62,7 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
 
         for layer in model.f_layers:
             if layer.whiten:
-                raise Warning(
+                warnings.warn(
                     "Sampling cannot be currently used with whitening in layers"
                 )
 
@@ -95,7 +96,8 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
         for i, layer in enumerate(self.model.f_layers):
             layer.num_data = new_num_data
             if i == 0:
-                if dataset.query_points.shape[-1] != layer.inducing_variable.Z.shape[-1]:
+                if dataset.query_points.shape[-1] != \
+                        layer.inducing_variable.inducing_variable.Z.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.query_points.shape} of new query points is incompatible"
                         f" with shape {self.model.inducing_variable.Z.shape} of existing query."
