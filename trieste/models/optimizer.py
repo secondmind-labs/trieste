@@ -19,8 +19,10 @@ from functools import singledispatch
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 
 import gpflow
+from gpflux.models import DeepGP
 import scipy
 import tensorflow as tf
+from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
@@ -201,3 +203,31 @@ def _create_loss_function_external(
     compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(data, compile=compile)
+
+
+@create_loss_function.register
+def _create_loss_function_gpflux(
+    model: DeepGP,
+    data: TrainingData,
+    compile: bool = False,
+) -> LossClosure:
+    elbo = model.elbo
+
+    if isinstance(data, DatasetOwnedIterator):
+        if compile:
+            input_signature = [data.element_spec]
+            elbo = tf.function(elbo, input_signature=input_signature)
+
+        def closure():
+            batch = next(data)
+            return -elbo(batch)  # type: ignore
+
+    else:
+
+        def closure():
+            return -elbo(data)
+
+        if compile:
+            closure = tf.function(closure)
+
+    return closure
