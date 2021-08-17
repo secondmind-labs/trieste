@@ -97,7 +97,7 @@ class ProbabilisticModel(ABC):
         Return the kernel of the model.
         :return: The kernel.
         """
-        raise NotImplementedError(f"Model {self!r} does not provide observation noise")
+        raise NotImplementedError(f"Model {self!r} does not provide a kernel")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):

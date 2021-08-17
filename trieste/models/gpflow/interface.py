@@ -81,7 +81,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         try:
             noise_variance = self.model.likelihood.variance
         except AttributeError:
-            raise NotImplementedError("Model {self!r} does not have scalar observation noise")
+            raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
 
         return noise_variance
 
