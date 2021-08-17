@@ -336,7 +336,7 @@ class Box(SearchSpace):
 class OrdinalSearchSpace(Box):
     r"""
     Ordinal search space representing a discrete :math:`D`-dimensional box in
-    :math:`\mathbb{R}^D`. This class inherit :class:`Box` and generates evenly-spaced value
+    :math:`\mathbb{R}^D`. This class inherit :class:`Box` and generates evenly-spaced values
     in an interval for each dimension. For example randomly sample from this search space
     will give:
 
