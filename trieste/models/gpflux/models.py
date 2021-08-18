@@ -32,7 +32,7 @@ from .interface import GPfluxPredictor
 class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflow.models.DeepGP` with
-    only standard :class:`GPLayer`s: this class does not support keras layers, latent variable
+    only standard :class:`GPLayer`: this class does not support keras layers, latent variable
     layers, etc.
     """
 
@@ -53,7 +53,7 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
-            raise ValueError("`VanillaDeepGP` can only be built out of `GPLayer`s.")
+            raise ValueError("`VanillaDeepGP` can only be built out of `GPLayer`")
 
         for layer in model.f_layers:
             if layer.whiten:

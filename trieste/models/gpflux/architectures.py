@@ -36,13 +36,12 @@ def build_vanilla_deep_gp(
     """
     Provides a wrapper around `build_constant_input_dim_deep_gp` from `gpflux.architectures`.
 
-    :param X: input data, used to determine inducing point locations with k-means. Only supports
-    TensorType of rank two with dimensions ``[num_data, input_dim]``.
+    :param X: input data, used to determine inducing point locations with k-means.
     :param num_layers: number of layers in deep GP.
     :param num_inducing: number of inducing points to use in each layer.
-    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, typically
-        chosen small to reduce noise at start of training
+    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers
     :param likelihood_noise_variance: initial noise variance
+    :return: :class:`gpflux.models.DeepGP`
     """
 
     # Input data to model must be np.ndarray for k-means algorithm
