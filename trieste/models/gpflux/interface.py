@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import gpflux
-import gpflow
 import tensorflow as tf
 from gpflux.models import DeepGP
 
@@ -29,23 +27,22 @@ from ..gpflow.utils import module_deepcopy
 
 
 class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
-    """A trainable wrapper for a GPflux deep Gaussian process model. Note that Scipy optimizer
-    is not supported for deep GP models."""
+    """A trainable wrapper for a GPflux deep Gaussian process model."""
 
     def __init__(self, optimizer: TFOptimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam` with
-            batch size 100. Note: using Scipy optimizer will raise ValueError as it is not
-            supported.
+            batch size 100. Optimizer is required to be a TFOptimizer, attempts to use other
+            optimizers will result in an error.
         """
         super().__init__()
 
         if optimizer is None:
             optimizer = TFOptimizer(tf.optimizers.Adam(), batch_size=100)
 
-        if isinstance(optimizer.optimizer, gpflow.optimizers.Scipy):
-            raise ValueError("Cannot use Scipy optimizer for GPflux models")
+        if not isinstance(optimizer, TFOptimizer):
+            raise ValueError("Optimizer must be a TFOptimizer for GPflux models.")
 
         self._optimizer = optimizer
 
@@ -76,14 +73,6 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         from the lower layers."""
         f_mean, f_var = self.model.predict_f(query_points)
         return self.model.likelihood_layer.likelihood.predict_mean_and_var(f_mean, f_var)
-
-    def get_kernel(self) -> gpflow.kernels.Kernel:
-        """
-        Return the kernel of the model.
-
-        :return: The kernel.
-        """
-        raise NotImplementedError("Deep GPs do not have a single kernel")
 
     def get_observation_noise(self) -> TensorType:
         """

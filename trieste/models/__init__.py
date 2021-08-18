@@ -17,6 +17,6 @@ and its trainable subclass :class:`TrainableProbabilisticModel`. It also contain
 creating :class:`TrainableProbabilisticModel`\ s from config.
 """
 
-from . import gpflow, optimizer
+from . import gpflow, gpflux, optimizer
 from .config import ModelConfig, ModelSpec, create_model
 from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
