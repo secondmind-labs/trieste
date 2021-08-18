@@ -18,8 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from gpflux.models import DeepGP
 import tensorflow as tf
+from gpflux.models import DeepGP
 
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
@@ -43,4 +43,3 @@ class GPfluxModelConfig(ModelConfig):
             DeepGP: VanillaDeepGP,
         }
         return models_mapping
-

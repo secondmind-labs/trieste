@@ -14,16 +14,16 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Optional
 
 import gpflow
 import gpflux
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
-from gpflux.layers import GPLayer
-import warnings
 
 from ...data import Dataset
 from ...types import TensorType
@@ -40,9 +40,7 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
     layers, etc.
     """
 
-    def __init__(
-        self, model: DeepGP, optimizer: TFOptimizer | None = None
-    ):
+    def __init__(self, model: DeepGP, optimizer: TFOptimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -56,15 +54,11 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
-            raise ValueError(
-                "`VanillaDeepGP` can only be built out of `GPLayer`s."
-            )
+            raise ValueError("`VanillaDeepGP` can only be built out of `GPLayer`s.")
 
         for layer in model.f_layers:
             if layer.whiten:
-                warnings.warn(
-                    "Sampling cannot be currently used with whitening in layers"
-                )
+                warnings.warn("Sampling cannot be currently used with whitening in layers")
 
         self._model = model
 
@@ -96,8 +90,10 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
         for i, layer in enumerate(self.model.f_layers):
             layer.num_data = new_num_data
             if i == 0:
-                if dataset.query_points.shape[-1] != \
-                        layer.inducing_variable.inducing_variable.Z.shape[-1]:
+                if (
+                    dataset.query_points.shape[-1]
+                    != layer.inducing_variable.inducing_variable.Z.shape[-1]
+                ):
                     raise ValueError(
                         f"Shape {dataset.query_points.shape} of new query points is incompatible"
                         f" with shape {self.model.inducing_variable.Z.shape} of existing query."

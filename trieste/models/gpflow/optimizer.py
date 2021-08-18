@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
-from gpflow.models import InternalDataTrainingLossMixin, ExternalDataTrainingLossMixin
+from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
-from ..optimizer import create_loss_function, TrainingData, LossClosure
+from ..optimizer import LossClosure, TrainingData, create_loss_function
 
 
 @create_loss_function.register
@@ -35,4 +35,3 @@ def _create_loss_function_external(
     compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(data, compile=compile)
-

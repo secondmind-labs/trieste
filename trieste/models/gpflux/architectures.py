@@ -18,20 +18,20 @@ This file contains wrappers for some implementations of basic GPflux architectur
 
 from __future__ import annotations
 
+import numpy as np
 import tensorflow as tf
+from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.models import DeepGP
 
 from ...types import TensorType
-from gpflux.architectures import Config, build_constant_input_dim_deep_gp
-import numpy as np
 
 
 def build_vanilla_deep_gp(
-        X: TensorType,
-        num_layers: int,
-        num_inducing: int,
-        inner_layer_sqrt_factor: float = 1e-5,
-        likelihood_noise_variance: float = 1e-2
+    X: TensorType,
+    num_layers: int,
+    num_inducing: int,
+    inner_layer_sqrt_factor: float = 1e-5,
+    likelihood_noise_variance: float = 1e-2,
 ) -> DeepGP:
     """
     Provides a wrapper around `build_constant_input_dim_deep_gp` from `gpflux.architectures`.

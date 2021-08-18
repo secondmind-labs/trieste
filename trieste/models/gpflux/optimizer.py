@@ -18,7 +18,7 @@ import tensorflow as tf
 from gpflux.models import DeepGP
 from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
 
-from ..optimizer import create_loss_function, LossClosure, TrainingData
+from ..optimizer import LossClosure, TrainingData, create_loss_function
 
 
 @create_loss_function.register

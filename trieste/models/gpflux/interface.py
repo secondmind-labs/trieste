@@ -21,9 +21,9 @@ from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
+from ..gpflow.utils import module_deepcopy
 from ..interfaces import ProbabilisticModel
 from ..optimizer import Optimizer, TFOptimizer
-from ..gpflow.utils import module_deepcopy
 
 
 class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -96,4 +96,3 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         self.optimizer.optimize(self.model, dataset)
 
     __deepcopy__ = module_deepcopy
-
