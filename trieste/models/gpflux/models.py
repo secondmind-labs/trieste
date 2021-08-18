@@ -15,12 +15,8 @@
 from __future__ import annotations
 
 import warnings
-from typing import Optional
 
-import gpflow
-import gpflux
 import tensorflow as tf
-import tensorflow_probability as tfp
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
@@ -29,18 +25,18 @@ from ...data import Dataset
 from ...types import TensorType
 from ...utils import jit
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import TFOptimizer
+from ..optimizer import Optimizer, TFOptimizer
 from .interface import GPfluxPredictor
 
 
 class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflow.models.DeepGP` with
-    only standard :class:`GPLayer`\s: this class does not support keras layers, latent variable
+    only standard :class:`GPLayer`s: this class does not support keras layers, latent variable
     layers, etc.
     """
 
-    def __init__(self, model: DeepGP, optimizer: TFOptimizer | None = None):
+    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -50,6 +46,9 @@ class VanillaDeepGP(GPfluxPredictor, TrainableProbabilisticModel):
 
         if optimizer is None:
             optimizer = TFOptimizer(tf.optimizers.Adam(), batch_size=100)
+
+        if not isinstance(optimizer, TFOptimizer):
+            raise ValueError("Optimizer must be a TFOptimizer for deep GPs")
 
         super().__init__(optimizer)
 

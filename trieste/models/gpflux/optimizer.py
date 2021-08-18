@@ -34,14 +34,14 @@ def _create_loss_function_gpflux(
             input_signature = [data.element_spec]
             elbo = tf.function(elbo, input_signature=input_signature)
 
-        def closure():
-            batch = next(data)
-            return -elbo(batch)  # type: ignore
+        def closure() -> tf.Tensor:
+            batch = next(data)  # type: ignore
+            return -elbo(batch)
 
     else:
 
-        def closure():
-            return -elbo(data)
+        def closure() -> tf.Tensor:
+            return -elbo(data)  # type: ignore
 
         if compile:
             closure = tf.function(closure)

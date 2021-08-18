@@ -23,7 +23,7 @@ from gpflux.models import DeepGP
 
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import TFOptimizer
+from ..optimizer import Optimizer
 from .models import VanillaDeepGP
 
 
@@ -38,8 +38,8 @@ class GPfluxModelConfig(ModelConfig):
 
     def supported_models(
         self,
-    ) -> dict[Any, Callable[[Any, TFOptimizer], TrainableProbabilisticModel]]:
-        models_mapping: dict[Any, Callable[[Any, TFOptimizer], TrainableProbabilisticModel]] = {
+    ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
+        models_mapping: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
             DeepGP: VanillaDeepGP,
         }
         return models_mapping
