@@ -41,7 +41,7 @@ def _create_loss_function_gpflux(
     else:
 
         def closure() -> tf.Tensor:
-            return -elbo(data)  # type: ignore
+            return -elbo(data)  
 
         if compile:
             closure = tf.function(closure)
