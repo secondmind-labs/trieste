@@ -57,7 +57,9 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         for layer in model.f_layers:
             if layer.whiten:
-                warnings.warn("Sampling cannot be currently used with whitening in layers")
+                warnings.warn(
+                    "Sampling cannot be currently used with whitening in layers", UserWarning
+                )
 
         self._model = model
 
@@ -95,13 +97,13 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                 ):
                     raise ValueError(
                         f"Shape {dataset.query_points.shape} of new query points is incompatible"
-                        f" with shape {self.model.inducing_variable.Z.shape} of existing query."
-                        f" points. Trailing dimensions must match."
+                        f" with shape {layer.inducing_variable.inducing_variable.Z.shape} of "
+                        f" existing query points. Trailing dimensions must match."
                     )
             elif i == len(self.model.f_layers) - 1:
                 if dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.observations.shape} of new observations is incompatible"
-                        f" with shape {self.model.q_mu.shape} of existing observations. Trailing"
+                        f" with shape {layer.q_mu.shape} of existing observations. Trailing"
                         f" dimensions must match."
                     )

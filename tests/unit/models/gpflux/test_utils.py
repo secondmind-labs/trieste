@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-r"""
-This package contains the primary interface for deep Gaussian process models. It also contains a
-number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
-"""
-
-from .architectures import build_vanilla_deep_gp
-from .config import GPfluxModelConfig
-from .interface import GPfluxPredictor
-from .models import DeepGaussianProcess
-from .optimizer import _create_loss_function_gpflux

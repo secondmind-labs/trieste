@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""
-This package contains the primary interface for deep Gaussian process models. It also contains a
-number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
-"""
+from __future__ import annotations
 
-from .architectures import build_vanilla_deep_gp
-from .config import GPfluxModelConfig
-from .interface import GPfluxPredictor
-from .models import DeepGaussianProcess
-from .optimizer import _create_loss_function_gpflux
+from typing import Any
+
+import pytest
+
+
+@pytest.fixture(name="compile", params=[True, False])
+def _compile_fixture(request: Any) -> bool:
+    return request.param
