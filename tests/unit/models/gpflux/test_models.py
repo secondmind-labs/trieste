@@ -143,7 +143,7 @@ def test_dgp_warns_for_whitened_layers() -> None:
     inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_2 = gpflux.layers.GPLayer(
         kernel_2,
-        inducing_variable_2, 
+        inducing_variable_2,
         num_data=num_data,
         num_latent_gps=1,
         whiten=True,
