@@ -20,10 +20,4 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
-from .utils import (
-    M,
-    assert_data_is_compatible,
-    module_deepcopy,
-    randomize_hyperparameters,
-    squeeze_hyperparameters,
-)
+from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters

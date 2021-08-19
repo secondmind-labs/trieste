@@ -28,11 +28,7 @@ from packaging.version import parse
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import ModelFactoryType, fnc_2sin_x_over_3
 from trieste.data import Dataset
-from trieste.models.gpflow import (
-    module_deepcopy,
-    randomize_hyperparameters,
-    squeeze_hyperparameters,
-)
+from trieste.models.gpflow import randomize_hyperparameters, squeeze_hyperparameters
 
 
 class _ModuleWithBijector(tf.Module):
@@ -51,10 +47,8 @@ class _NestedModuleWithBijector(tf.Module):
 
 
 def test_module_deepcopy_is_copyable() -> None:
-    class Deepcopyable(_NestedModuleWithBijector):
-        __deepcopy__ = module_deepcopy
 
-    module = Deepcopyable()
+    module = _NestedModuleWithBijector()
 
     _ = module.bijector.forward(0.5)
     _ = module.bijector.inverse(0.5)
