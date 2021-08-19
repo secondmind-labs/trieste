@@ -24,7 +24,7 @@ from gpflux.models import DeepGP
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import Optimizer
-from .models import VanillaDeepGP
+from .models import DeepGaussianProcess
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,6 @@ class GPfluxModelConfig(ModelConfig):
         self,
     ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
         models_mapping: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
-            DeepGP: VanillaDeepGP,
+            DeepGP: DeepGaussianProcess,
         }
         return models_mapping

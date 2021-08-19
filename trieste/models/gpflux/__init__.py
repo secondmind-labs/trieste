@@ -19,5 +19,5 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 
 from .config import GPfluxModelConfig
 from .interface import GPfluxPredictor
-from .models import VanillaDeepGP
+from .models import DeepGaussianProcess
 from .optimizer import _create_loss_function_gpflux
