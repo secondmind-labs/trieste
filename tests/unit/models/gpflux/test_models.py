@@ -79,8 +79,8 @@ def test_dgp_raises_for_latent_variable_layer() -> None:
         )
     )
     gp_layer = gpflux.layers.GPLayer(
-        kernel,  # type: ignore
-        inducing_variable,  # type: ignore
+        kernel,
+        inducing_variable,
         num_data=num_data,
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
@@ -109,8 +109,8 @@ def test_dgp_raises_for_keras_layer() -> None:
         )
     )
     gp_layer = gpflux.layers.GPLayer(
-        kernel,  # type: ignore
-        inducing_variable,  # type: ignore
+        kernel,
+        inducing_variable,
         num_data=5,
         num_latent_gps=1,
         mean_function=gpflow.mean_functions.Zero(),
@@ -132,8 +132,8 @@ def test_dgp_warns_for_whitened_layers() -> None:
     kernel_1 = gpflow.kernels.SquaredExponential()
     inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_1 = gpflux.layers.GPLayer(
-        kernel_1,  # type: ignore
-        inducing_variable_1,  # type: ignore
+        kernel_1,
+        inducing_variable_1,
         num_data=num_data,
         num_latent_gps=1,
         whiten=False,
@@ -142,8 +142,8 @@ def test_dgp_warns_for_whitened_layers() -> None:
     kernel_2 = gpflow.kernels.SquaredExponential()
     inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_2 = gpflux.layers.GPLayer(
-        kernel_2,  # type: ignore
-        inducing_variable_2,  # type: ignore
+        kernel_2,
+        inducing_variable_2, 
         num_data=num_data,
         num_latent_gps=1,
         whiten=True,

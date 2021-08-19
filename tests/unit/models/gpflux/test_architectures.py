@@ -27,7 +27,7 @@ from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 
 
-def test_build_vanilla_deep_gp_returns_correct_model():
+def test_build_vanilla_deep_gp_returns_correct_model() -> None:
     num_data = 10
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
 
@@ -65,7 +65,7 @@ def test_build_vanilla_deep_gp_returns_correct_model():
     )
 
 
-def test_build_vanilla_deep_gp_gives_correct_num_inducing():
+def test_build_vanilla_deep_gp_gives_correct_num_inducing() -> None:
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
 

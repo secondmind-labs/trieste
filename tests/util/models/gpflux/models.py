@@ -38,8 +38,8 @@ def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
     kernel_1 = gpflow.kernels.SquaredExponential()
     inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_1 = GPLayer(
-        kernel_1,  # type: ignore
-        inducing_variable_1,  # type: ignore
+        kernel_1,
+        inducing_variable_1,
         num_data=num_data,
         num_latent_gps=1,
         whiten=False,
@@ -48,8 +48,8 @@ def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
     kernel_2 = gpflow.kernels.SquaredExponential()
     inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_2 = GPLayer(
-        kernel_2,  # type: ignore
-        inducing_variable_2,  # type: ignore
+        kernel_2,
+        inducing_variable_2,
         num_data=num_data,
         num_latent_gps=1,
         whiten=False,

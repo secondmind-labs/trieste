@@ -36,7 +36,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         optimizer: Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
-        super().__init__(optimizer)
+        super().__init__(optimizer)  # type: ignore
 
         self._model = _QuadraticGPModel(likelihood=likelihood)
 
@@ -121,7 +121,7 @@ def test_gpflux_predictor_raises_for_non_tf_optimizer() -> None:
     optimizer = Optimizer(gpflow.optimizers.Scipy())
 
     with pytest.raises(ValueError):
-        _QuadraticPredictor(optimizer)  # type: ignore
+        _QuadraticPredictor(optimizer)
 
 
 def test_gpflux_predictor_raises_on_predict_joint_call() -> None:
