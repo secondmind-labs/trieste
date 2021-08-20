@@ -21,6 +21,8 @@ from gpflux.models import DeepGP
 
 from trieste.models.gpflux import build_vanilla_deep_gp
 
+tf.keras.backend.set_floatx("float64")
+
 
 def single_layer_dgp_model(x: tf.Tensor) -> DeepGP:
     return build_vanilla_deep_gp(x, num_layers=1, num_inducing=len(x))
@@ -57,11 +59,3 @@ def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
     )
 
     return DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
-
-
-def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
-    return 3.0 * x + 10
-
-
-def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
-    return 2.0 * tf.math.sin(x / 3.0)

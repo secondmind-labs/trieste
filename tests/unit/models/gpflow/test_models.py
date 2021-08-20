@@ -38,10 +38,9 @@ import tensorflow_probability as tfp
 from gpflow.models import SGPR, SVGP, VGP
 
 from tests.util.misc import random_seed
+from tests.util.models.models import fnc_3x_plus_10, fnc_2sin_x_over_3
 from tests.util.models.gpflow.models import (
     ModelFactoryType,
-    fnc_2sin_x_over_3,
-    fnc_3x_plus_10,
     gpr_model,
     mock_data,
     sgpr_model,

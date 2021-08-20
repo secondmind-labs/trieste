@@ -154,11 +154,3 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
     return m
-
-
-def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
-    return 3.0 * x + 10
-
-
-def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
-    return 2.0 * tf.math.sin(x / 3.0)

@@ -23,7 +23,8 @@ import pytest
 import tensorflow as tf
 from gpflow.models import GPMC, GPR, SGPR, SVGP, VGP
 
-from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
+from tests.util.models.models import fnc_3x_plus_10
+from tests.util.models.gpflow.models import gpr_model
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,

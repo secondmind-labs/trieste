@@ -36,9 +36,8 @@ from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
 
 from tests.util.misc import random_seed
+from tests.util.models.models import fnc_3x_plus_10, fnc_2sin_x_over_3
 from tests.util.models.gpflux.models import (
-    fnc_2sin_x_over_3,
-    fnc_3x_plus_10,
     single_layer_dgp_model,
     two_layer_dgp_model,
     two_layer_dgp_model_no_whitening,

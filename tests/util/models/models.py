@@ -14,18 +14,12 @@
 
 from __future__ import annotations
 
-import gpflow
-import numpy as np
-import pytest
 import tensorflow as tf
 
-from tests.util.models.gpflow.models import gpr_model
-from tests.util.models.models import fnc_3x_plus_10
-from trieste.models import ModelConfig
+
+def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
+    return 3.0 * x + 10
 
 
-def test_model_missing_abstract_method() -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
-    with pytest.raises(NotImplementedError):
-        ModelConfig(**model_specs)
+def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
+    return 2.0 * tf.math.sin(x / 3.0)
