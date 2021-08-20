@@ -216,6 +216,15 @@ def test_box_raises_if_bounds_have_invalid_shape(
         Box(lower, upper)
 
 
+def test_box___mul___for_empty_search_space() -> None:
+    empty = Box(tf.zeros(0, dtype=tf.float64), tf.zeros(0, dtype=tf.float64))
+    cube = Box([0, 0, 0], [1, 1, 1])
+    npt.assert_array_equal((cube * empty).lower, cube.lower)
+    npt.assert_array_equal((cube * empty).upper, cube.upper)
+    npt.assert_array_equal((empty * cube).lower, cube.lower)
+    npt.assert_array_equal((empty * cube).upper, cube.upper)
+
+
 @pytest.mark.parametrize(
     "lower_dtype, upper_dtype",
     [
