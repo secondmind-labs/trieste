@@ -1115,15 +1115,52 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         )
 
         eta = tf.reduce_min(mean, axis=0)
-        sampler = BatchReparametrizationSampler(self._sample_size, model)
+        return batch_monte_carlo_expected_improvement(self._sample_size, model, eta, self._jitter)
 
-        def batch_ei(at: TensorType) -> TensorType:
-            samples = tf.squeeze(sampler.sample(at, jitter=self._jitter), axis=-1)  # [..., S, B]
-            min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
-            batch_improvement = tf.maximum(eta - min_sample_per_batch, 0.0)  # [..., S]
-            return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(isinstance(function, batch_monte_carlo_expected_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
 
-        return batch_ei
+
+class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
+        """
+
+        :param sampler:  BatchReparametrizationSampler.
+        :param eta: The "best" observation.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._sample_size = sample_size
+        self._sampler = BatchReparametrizationSampler(sample_size, model)
+        self._eta = tf.Variable(eta)
+        self._jitter = jitter
+
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value."""
+        self._eta.assign(eta)
+        self._sampler._eps.assign(tf.ones([0, 0, self._sample_size], dtype=tf.float64))
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        samples = tf.squeeze(self._sampler.sample(x, jitter=self._jitter), axis=-1)  # [..., S, B]
+        min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
+        batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
+        return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
 
 class GreedyAcquisitionFunctionBuilder(ABC):
