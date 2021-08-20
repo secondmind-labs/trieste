@@ -212,8 +212,11 @@ def test_box_raises_if_bounds_have_invalid_shape(
 ) -> None:
     lower, upper = tf.zeros(lower_shape), tf.ones(upper_shape)
 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        Box(lower, upper)
+    if lower_shape == upper_shape == (0,):
+        Box(lower, upper)  # empty box is ok
+    else:
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            Box(lower, upper)
 
 
 def test_box___mul___for_empty_search_space() -> None:
