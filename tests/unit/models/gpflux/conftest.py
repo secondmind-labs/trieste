@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import annotations
-
-from typing import Any
-
-import pytest
-
-
-@pytest.fixture(name="compile", params=[True, False])
-def _compile_fixture(request: Any) -> bool:
-    return request.param

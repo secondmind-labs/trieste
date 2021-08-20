@@ -56,7 +56,6 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import DatasetTransformer, Optimizer, TFOptimizer, create_optimizer
-from trieste.types import TensorType
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -524,19 +523,6 @@ def test_sparse_variational_optimize_with_defaults() -> None:
     assert model.model.training_loss(data) < loss
 
 
-def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, TensorType]]:
-    ds = tf.data.Dataset.from_tensor_slices(dataset.astuple())
-    ds = ds.shuffle(100)
-    ds = ds.batch(batch_size)
-    ds = ds.repeat()
-    return iter(ds)
-
-
-def _batcher_2(dataset: Dataset, batch_size: int) -> tuple[TensorType, TensorType]:
-    return dataset.astuple()
-
-
-@pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
 def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -554,7 +540,6 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
 
 
 @pytest.mark.parametrize("use_natgrads", [True, False])
-@pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
 def test_vgp_optimize_with_and_without_natgrads(
     batcher: DatasetTransformer, compile: bool, use_natgrads: bool
 ) -> None:
