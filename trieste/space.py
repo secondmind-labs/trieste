@@ -457,7 +457,7 @@ class OrdinalSearchSpace(Box):
             >>> square_at_origin = OrdinalSearchSpace([-2.0, -2.0], [2.0, 2.0], [0.2, 0.3])
             >>> new_ordinal_space = unit_interval * square_at_origin
             >>> new_ordinal_space.lower.numpy()
-            array([ 0., -2., -1.8])
+            array([ 0. , -2. , -1.8])
             >>> new_ordinal_space.upper.numpy()
             array([1., 2., 1.8])
             >>> new_ordinal_space.stepsizes.numpy()
