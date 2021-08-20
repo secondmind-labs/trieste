@@ -14,11 +14,12 @@
 
 from __future__ import annotations
 
-from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
-import gpflow
-from typing import Dict, Any
+from typing import Any, Dict
 
-from ..optimizer import LossClosure, TrainingData, create_loss_function, create_optimizer, Optimizer
+import gpflow
+from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
+
+from ..optimizer import LossClosure, Optimizer, TrainingData, create_loss_function, create_optimizer
 
 
 @create_optimizer.register
