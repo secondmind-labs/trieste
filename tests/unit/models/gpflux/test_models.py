@@ -25,8 +25,6 @@ trieste model).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import gpflow
 import gpflux.encoders
 import numpy as np
@@ -47,7 +45,7 @@ from tests.util.models.gpflux.models import (
 )
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import DatasetTransformer, Optimizer, TFOptimizer, create_optimizer
+from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
 from trieste.types import TensorType
 from trieste.utils import jit
 
@@ -206,20 +204,8 @@ def test_dgp_optimize_with_defaults() -> None:
     assert model.model.elbo(data) > elbo
 
 
-def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, TensorType]]:
-    ds = tf.data.Dataset.from_tensor_slices(dataset.astuple())
-    ds = ds.shuffle(100)
-    ds = ds.batch(batch_size)
-    ds = ds.repeat()
-    return iter(ds)
-
-
-def _batcher_2(dataset: Dataset, batch_size: int) -> tuple[TensorType, TensorType]:
-    return dataset.astuple()
-
-
-@pytest.mark.parametrize("batcher", [_batcher_1, _batcher_2])
-def test_dgp_optimize(batcher: DatasetTransformer, compile: bool) -> None:
+@pytest.mark.parametrize("batch_size", [10, 100])
+def test_dgp_optimize(batch_size: int) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
@@ -227,7 +213,7 @@ def test_dgp_optimize(batcher: DatasetTransformer, compile: bool) -> None:
 
     optimizer = create_optimizer(
         tf.optimizers.Adam(),
-        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
+        dict(max_iter=10, batch_size=batch_size),
     )
     model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer=optimizer)
     elbo = model.model.elbo(data)

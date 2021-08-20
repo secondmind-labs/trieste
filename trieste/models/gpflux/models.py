@@ -50,6 +50,9 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         if not isinstance(optimizer, TFOptimizer):
             raise ValueError("Optimizer must be a TFOptimizer for deep GPs")
 
+        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError("Model optimizer must be a tf.optimizers.Optimizer for deep GPs")
+
         super().__init__(optimizer)
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
@@ -63,6 +66,9 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self._model = model
 
+        self._keras_model = model.as_training_model()
+        self._keras_model.compile(optimizer.optimizer)
+
     def __repr__(self) -> str:
         """"""
         return f"VanillaDeepGP({self._model!r}, {self.optimizer!r})"
@@ -70,6 +76,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     @property
     def model(self) -> DeepGP:
         return self._model
+
+    @property
+    def keras_model(self) -> tf.keras.Model:
+        return self._keras_model
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         sampler = sample_dgp(self.model)

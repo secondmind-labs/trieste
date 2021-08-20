@@ -23,7 +23,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ..gpflow.utils import module_deepcopy
 from ..interfaces import ProbabilisticModel
-from ..optimizer import Optimizer, TFOptimizer
+from ..optimizer import TFOptimizer
 
 
 class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -44,10 +44,13 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         if not isinstance(optimizer, TFOptimizer):
             raise ValueError("Optimizer must be a TFOptimizer for GPflux models.")
 
+        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError("Model optimizer must be a tf.optimizers.Optimizer for GPflux models.")
+
         self._optimizer = optimizer
 
     @property
-    def optimizer(self) -> Optimizer:
+    def optimizer(self) -> TFOptimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
 
@@ -55,6 +58,11 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     @abstractmethod
     def model(self) -> DeepGP:
         """The underlying GPflux model."""
+
+    @property
+    @abstractmethod
+    def keras_model(self) -> tf.keras.Model:
+        """Returns the compiled Keras model for training."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
@@ -93,6 +101,12 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(self.model, dataset)
+        self.keras_model.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations},
+            verbose=0,
+            epochs=self.optimizer.max_iter,
+            batch_size=self.optimizer.batch_size,
+            **self.optimizer.minimize_args,
+        )
 
     __deepcopy__ = module_deepcopy
