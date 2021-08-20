@@ -149,7 +149,8 @@ def test_dgp_warns_for_whitened_layers() -> None:
 
     dgp = DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
 
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning,
+                      match='Sampling cannot be currently used with whitening in layers'):
         DeepGaussianProcess(dgp)
 
 
