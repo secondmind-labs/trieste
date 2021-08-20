@@ -24,7 +24,6 @@ from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
 from ..optimizer import Optimizer
-from .utils import module_deepcopy
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -92,5 +91,3 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
-
-    __deepcopy__ = module_deepcopy
