@@ -21,7 +21,6 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 import gpflow
 import scipy
 import tensorflow as tf
-from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
 from ..types import TensorType
@@ -161,14 +160,6 @@ def _create_tf_optimizer(
     return TFOptimizer(optimizer, **optimizer_args)
 
 
-@create_optimizer.register
-def _create_scipy_optimizer(
-    optimizer: gpflow.optimizers.Scipy,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_args)
-
-
 @singledispatch
 def create_loss_function(
     model: gpflow.models.GPModel, dataset: TrainingData, compile: bool = False
@@ -183,21 +174,3 @@ def create_loss_function(
     :return: The loss function.
     """
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
-
-
-@create_loss_function.register
-def _create_loss_function_internal(
-    model: InternalDataTrainingLossMixin,
-    data: TrainingData,
-    compile: bool = False,
-) -> LossClosure:
-    return model.training_loss_closure(compile=compile)
-
-
-@create_loss_function.register
-def _create_loss_function_external(
-    model: ExternalDataTrainingLossMixin,
-    data: TrainingData,
-    compile: bool = False,
-) -> LossClosure:
-    return model.training_loss_closure(data, compile=compile)

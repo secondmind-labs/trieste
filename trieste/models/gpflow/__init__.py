@@ -21,3 +21,4 @@ from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
+from .optimizer import _create_loss_function_internal, _create_loss_function_external
