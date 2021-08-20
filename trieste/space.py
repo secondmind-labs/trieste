@@ -459,9 +459,9 @@ class OrdinalSearchSpace(Box):
             >>> new_ordinal_space.lower.numpy()
             array([ 0. , -2. , -1.8])
             >>> new_ordinal_space.upper.numpy()
-            array([1., 2., 1.8])
+            array([1. , 2. , 1.8])
             >>> new_ordinal_space.stepsizes.numpy()
-            array([0.1, 0.2, 0.3])
+            array([0.1 , 0.2 , 0.3])
 
         :param other: A :class:`OrdinalSearchSpace` with bounds of the same type as
             this :class:`OrdinalSearchSpace`.
