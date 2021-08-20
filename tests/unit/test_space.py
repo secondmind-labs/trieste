@@ -449,6 +449,34 @@ def test_ordinalsearchspace_converts_sequences_to_float64_tensors(
 
 
 @pytest.mark.parametrize(
+    "lower, upper, stepsizes, lower_ord, upper_ord",
+    [
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2], [0.0, 1.0], [1.0, 2.0]),
+        pytest.param(
+            [0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.1, 0.2, 0.3], [0.0, 1.0, 2.1], [1.0, 2.0, 3.0]
+        ),
+        pytest.param([1.0, 10.0], [10.0, 100.0], [2.0, 10.0], [2.0, 10.0], [10.0, 100.0]),
+        pytest.param([0.1, 0.9], [1.0, 2.0], [0.2, 0.2], [0.2, 1.0], [1.0, 2.0]),
+        pytest.param([0.0, 1.0], [1.0, 2.0], [0.3, 0.3], [0.0, 1.2], [0.9, 1.8]),
+        pytest.param([0.01, 1.01], [1.0, 2.0], [0.03, 0.03], [0.03, 1.02], [0.99, 1.98]),
+        pytest.param([-1.0, -2.0], [1.0, 2.0], [0.3, 0.3], [-0.9, -1.8], [0.9, 1.8]),
+        pytest.param([-1.0, -2.0], [1.0, 2.0], [0.6, 0.6], [-0.6, -1.8], [0.6, 1.8]),
+    ],
+)
+def test_ordinalsearchspace_bounds_changes_to_nearest_multiples(
+    lower: Sequence[float],
+    upper: Sequence[float],
+    stepsizes: Sequence[float],
+    lower_ord: Sequence[float],
+    upper_ord: Sequence[float],
+) -> None:
+
+    ordinalsp = OrdinalSearchSpace(lower, upper, stepsizes)
+    npt.assert_allclose(ordinalsp.lower, lower_ord)
+    npt.assert_allclose(ordinalsp.upper, upper_ord)
+
+
+@pytest.mark.parametrize(
     "lower, upper, stepsizes",
     [
         pytest.param([0.0, 1.0], [1.0, 2.0], [0.1, 0.2]),
@@ -526,13 +554,13 @@ def test_ordinal___mul___bounds_are_the_concatenation_of_original_bounds() -> No
         tf.constant([0.0, 1.0]), tf.constant([2.0, 3.0]), tf.constant([0.1, 0.2])
     )
     ordinalsp2 = OrdinalSearchSpace(
-        tf.constant([4.1, 5.1, 6.1]), tf.constant([7.2, 8.2, 9.2]), tf.constant([0.3, 0.4, 0.5])
+        tf.constant([4.2, 5.6, 6.5]), tf.constant([7.5, 8.0, 9.5]), tf.constant([0.3, 0.4, 0.5])
     )
 
     product = ordinalsp1 * ordinalsp2
 
-    npt.assert_allclose(product.lower, [0, 1, 4.1, 5.1, 6.1])
-    npt.assert_allclose(product.upper, [2, 3, 7.2, 8.2, 9.2])
+    npt.assert_allclose(product.lower, [0, 1, 4.2, 5.6, 6.5])
+    npt.assert_allclose(product.upper, [2, 3, 7.5, 8.0, 9.5])
     npt.assert_allclose(product.stepsizes, [0.1, 0.2, 0.3, 0.4, 0.5])
 
 

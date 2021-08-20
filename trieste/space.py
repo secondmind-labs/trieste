@@ -360,8 +360,10 @@ class OrdinalSearchSpace(Box):
     ):
 
         r"""
-        If ``lower``, ``upper`` and ``stepsize`` are `Sequence`\ s of floats
+        If ``lower``, ``upper`` and ``stepsizes`` are `Sequence`\ s of floats
         (such as lists or tuples), they will be converted to tensors of dtype `tf.float64`.
+        if ``lower`` and ``upper`` are not multiple of ``stepsizes`` it will be replaced by
+        smallest and largest multiples inside previous ``lower`` and ``upper``.
 
         :param lower: The lower (inclusive) bounds of the Ordinal Space. Must have shape [D]
             for positive D, and if a tensor, must have float type.
@@ -389,6 +391,11 @@ class OrdinalSearchSpace(Box):
             self._stepsizes = tf.convert_to_tensor(stepsizes)
 
             tf.debugging.assert_same_float_dtype([self._lower, self._stepsizes])
+
+        self._lower = tf.math.ceil(tf.divide(self._lower, self._stepsizes)) * self._stepsizes
+        self._upper = (
+            tf.math.floor(tf.divide(self._upper, self._stepsizes) + 1e-6) * self._stepsizes
+        )
 
     def __repr__(self) -> str:
         """"""
@@ -422,6 +429,7 @@ class OrdinalSearchSpace(Box):
         :raise ValueError (or InvalidArgumentError): If ``value`` has a different dimensionality
             from the search space.
         """
+
         if not shapes_equal(value, self._lower):
             raise ValueError(
                 f"value must have same dimensionality as search space: {self._lower.shape},"
