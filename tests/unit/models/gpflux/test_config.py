@@ -24,8 +24,8 @@ import tensorflow as tf
 from gpflow.models import GPMC
 from gpflux.models import DeepGP
 
-from tests.util.models.models import fnc_3x_plus_10
 from tests.util.models.gpflux.models import two_layer_dgp_model
+from tests.util.models.models import fnc_3x_plus_10
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflux import DeepGaussianProcess, GPfluxModelConfig
 from trieste.models.optimizer import Optimizer

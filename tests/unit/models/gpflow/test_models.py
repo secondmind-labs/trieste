@@ -26,7 +26,6 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
-from collections.abc import Iterable
 from typing import Any
 
 import gpflow
@@ -38,7 +37,6 @@ import tensorflow_probability as tfp
 from gpflow.models import SGPR, SVGP, VGP
 
 from tests.util.misc import random_seed
-from tests.util.models.models import fnc_3x_plus_10, fnc_2sin_x_over_3
 from tests.util.models.gpflow.models import (
     ModelFactoryType,
     gpr_model,
@@ -48,6 +46,7 @@ from tests.util.models.gpflow.models import (
     vgp_matern_model,
     vgp_model,
 )
+from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     GaussianProcessRegression,

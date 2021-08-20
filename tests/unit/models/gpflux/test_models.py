@@ -36,12 +36,12 @@ from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
 
 from tests.util.misc import random_seed
-from tests.util.models.models import fnc_3x_plus_10, fnc_2sin_x_over_3
 from tests.util.models.gpflux.models import (
     single_layer_dgp_model,
     two_layer_dgp_model,
     two_layer_dgp_model_no_whitening,
 )
+from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
@@ -148,8 +148,9 @@ def test_dgp_warns_for_whitened_layers() -> None:
 
     dgp = DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
 
-    with pytest.warns(UserWarning,
-                      match='Sampling cannot be currently used with whitening in layers'):
+    with pytest.warns(
+        UserWarning, match="Sampling cannot be currently used with whitening in layers"
+    ):
         DeepGaussianProcess(dgp)
 
 

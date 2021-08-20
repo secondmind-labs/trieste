@@ -19,9 +19,10 @@ from typing import Any
 
 import pytest
 import tensorflow as tf
+
 from trieste.data import Dataset
-from trieste.types import TensorType
 from trieste.models.optimizer import DatasetTransformer
+from trieste.types import TensorType
 
 
 def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, TensorType]]:
