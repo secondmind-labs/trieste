@@ -254,7 +254,7 @@ def test_dgp_sample(compile: bool) -> None:
     model = DeepGaussianProcess(
         two_layer_dgp_model_no_whitening(x),
         optimizer=TFOptimizer(tf.optimizers.Adam()),
-        compile=compile
+        compile=compile,
     )
     num_samples = 50
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())

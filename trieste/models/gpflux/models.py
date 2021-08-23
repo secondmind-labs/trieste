@@ -15,8 +15,7 @@
 from __future__ import annotations
 
 import warnings
-
-from typing import Dict, Any
+from typing import Any, Dict
 
 import tensorflow as tf
 from gpflux.layers import GPLayer
@@ -27,7 +26,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ...utils import jit
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer, TFOptimizer
+from ..optimizer import Optimizer
 from .interface import GPfluxPredictor
 
 
@@ -41,8 +40,13 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None,
-                 fit_args: Dict[Any] | None = None, compile: bool | None = None):
+    def __init__(
+        self,
+        model: DeepGP,
+        optimizer: Optimizer | None = None,
+        fit_args: Dict[Any] | None = None,
+        compile: bool | None = None,
+    ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -66,11 +70,13 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             raise ValueError("Must use a Keras/TF optimizer for deep GPs")
 
         if fit_args is None:
-            self.fit_args = dict({
-                "verbose": 0,
-                "epochs": 100,
-                "batch_size": 100,
-            })
+            self.fit_args = dict(
+                {
+                    "verbose": 0,
+                    "epochs": 100,
+                    "batch_size": 100,
+                }
+            )
         else:
             self.fit_args = fit_args
 
@@ -110,7 +116,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-
         @jit(apply=self.compile)
         def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
             samples = []
@@ -152,6 +157,5 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations},
-            **self.fit_args
+            {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
         )
