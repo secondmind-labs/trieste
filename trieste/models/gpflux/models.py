@@ -71,7 +71,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"VanillaDeepGP({self._model!r}, {self.optimizer!r})"
+        return f"DeepGaussianProcess({self._model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> DeepGP:
