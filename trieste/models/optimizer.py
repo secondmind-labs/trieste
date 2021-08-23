@@ -162,7 +162,7 @@ def _create_tf_optimizer(
 
 @singledispatch
 def create_loss_function(
-    model: gpflow.models.GPModel, dataset: TrainingData, compile: bool = False
+    model: tf.Module, dataset: TrainingData, compile: bool = False
 ) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
