@@ -36,17 +36,31 @@ class _QuadraticPredictor(GPfluxPredictor):
         optimizer: Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
-        super().__init__(optimizer)  # type: ignore
+        super().__init__()  # type: ignore
 
-        self._model = _QuadraticGPModel(likelihood=likelihood)
+        if optimizer is None:
+            self._optimizer = tf.optimizers.Adam()
+        else:
+            self._optimizer = optimizer.optimizer
+        self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)
+
+        self._model_keras = self._model_gpflux.as_training_model()
 
     @property
-    def model(self) -> DeepGP:
-        return self._model
+    def model_gpflux(self) -> DeepGP:
+        return self._model_gpflux
+
+    @property
+    def model_keras(self) -> tf.keras.Model:
+        return self._model_keras
+
+    @property
+    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+        return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
-        mean, cov = self.model.predict_f(query_points, full_cov=True)
+        mean, cov = self.model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
         samples = sample_mvn(mean_for_sample, cov, True, num_samples=num_samples)
         samples = tf.linalg.adjoint(samples)
@@ -115,13 +129,6 @@ def test_gpflux_predictor_sample() -> None:
 def test_gpflux_predictor_sample_no_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
-
-
-def test_gpflux_predictor_raises_for_non_tf_optimizer() -> None:
-    optimizer = Optimizer(gpflow.optimizers.Scipy())
-
-    with pytest.raises(ValueError):
-        _QuadraticPredictor(optimizer)
 
 
 def test_gpflux_predictor_raises_on_predict_joint_call() -> None:

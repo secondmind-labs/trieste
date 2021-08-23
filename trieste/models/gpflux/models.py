@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import warnings
 
+from typing import Dict, Any
+
 import tensorflow as tf
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
@@ -34,26 +36,48 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflow.models.DeepGP` with
     only standard :class:`GPLayer`: this class does not support keras layers, latent variable
     layers, etc.
+
+    Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
+    (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None):
+    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None,
+                 fit_args: Dict[Any] | None = None, compile: bool | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam` with
-            batch size 100.
+            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`. Only
+            the optimizer itself is used; other args relevant for fitting should be passed as part
+            of `fit_args`.
+        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Default to
+            using 100 epochs, batch size 100, and verbose 0.
+        :param compile: Whether to compile into a graph for sampling.
         """
 
+        super().__init__()
+
+        if isinstance(optimizer, Optimizer):
+            self._optimizer = optimizer.optimizer  # Only use internal optimizer
+
         if optimizer is None:
-            optimizer = TFOptimizer(tf.optimizers.Adam(), batch_size=100)
+            self._optimizer = tf.optimizers.Adam()
 
-        if not isinstance(optimizer, TFOptimizer):
-            raise ValueError("Optimizer must be a TFOptimizer for deep GPs")
+        if not isinstance(self._optimizer, tf.keras.optimizers.Optimizer):
+            raise ValueError("Must use a Keras/TF optimizer for deep GPs")
 
-        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
-            raise ValueError("Model optimizer must be a tf.optimizers.Optimizer for deep GPs")
+        if fit_args is None:
+            self.fit_args = dict({
+                "verbose": 0,
+                "epochs": 100,
+                "batch_size": 100,
+            })
+        else:
+            self.fit_args = fit_args
 
-        super().__init__(optimizer)
+        if compile is None:
+            self.compile = False
+        else:
+            self.compile = compile
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
             raise ValueError("`DeepGaussianProcess` can only be built out of `GPLayer`")
@@ -64,41 +88,44 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                     "Sampling cannot be currently used with whitening in layers", UserWarning
                 )
 
-        self._model = model
+        self._model_gpflux = model
 
-        self._keras_model = model.as_training_model()
-        self._keras_model.compile(optimizer.optimizer)
+        self._model_keras = model.as_training_model()
+        self._model_keras.compile(self._optimizer)
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model!r}, {self.optimizer!r})"
+        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
 
     @property
-    def model(self) -> DeepGP:
-        return self._model
+    def model_gpflux(self) -> DeepGP:
+        return self._model_gpflux
 
     @property
-    def keras_model(self) -> tf.keras.Model:
-        return self._keras_model
+    def model_keras(self) -> tf.keras.Model:
+        return self._model_keras
+
+    @property
+    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+        return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        sampler = sample_dgp(self.model)
 
-        @jit(apply=self.optimizer.compile)
+        @jit(apply=self.compile)
         def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
             samples = []
             for _ in range(num_samples):
-                samples.append(sampler(query_points))
+                samples.append(sample_dgp(self.model_gpflux)(query_points))
             return tf.stack(samples)
 
         return get_samples(query_points, num_samples)
 
     def update(self, dataset: Dataset) -> None:
         new_num_data = dataset.query_points.shape[0]
-        self.model.num_data = new_num_data
+        self.model_gpflux.num_data = new_num_data
 
         # Update num_data for each layer, as well as make sure dataset shapes are ok
-        for i, layer in enumerate(self.model.f_layers):
+        for i, layer in enumerate(self.model_gpflux.f_layers):
             layer.num_data = new_num_data
             if i == 0:
                 if (
@@ -110,10 +137,21 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                         f" with shape {layer.inducing_variable.inducing_variable.Z.shape} of "
                         f" existing query points. Trailing dimensions must match."
                     )
-            elif i == len(self.model.f_layers) - 1:
+            elif i == len(self.model_gpflux.f_layers) - 1:
                 if dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.observations.shape} of new observations is incompatible"
                         f" with shape {layer.q_mu.shape} of existing observations. Trailing"
                         f" dimensions must match."
                     )
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
+        self.model_keras.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations},
+            **self.fit_args
+        )

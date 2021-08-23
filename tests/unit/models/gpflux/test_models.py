@@ -159,7 +159,7 @@ def test_dgp_model_attribute() -> None:
     dgp = two_layer_dgp_model(x)
     model = DeepGaussianProcess(dgp)
 
-    assert model.model is dgp
+    assert model.model_gpflux is dgp
 
 
 def test_dgp_update() -> None:
@@ -167,16 +167,16 @@ def test_dgp_update() -> None:
     dgp = two_layer_dgp_model(x)
     model = DeepGaussianProcess(dgp)
 
-    assert model.model.num_data == 1
+    assert model.model_gpflux.num_data == 1
 
-    for layer in model.model.f_layers:
+    for layer in model.model_gpflux.f_layers:
         assert layer.num_data == 1
 
     model.update(Dataset(tf.zeros([5, 4]), tf.zeros([5, 1])))
 
-    assert model.model.num_data == 5
+    assert model.model_gpflux.num_data == 5
 
-    for layer in model.model.f_layers:
+    for layer in model.model_gpflux.f_layers:
         assert layer.num_data == 5
 
 
@@ -200,9 +200,9 @@ def test_dgp_optimize_with_defaults() -> None:
     dataset = Dataset(*data)
     optimizer = create_optimizer(tf.optimizers.Adam(), dict(max_iter=20))
     model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer=optimizer)
-    elbo = model.model.elbo(data)
+    elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
-    assert model.model.elbo(data) > elbo
+    assert model.model_gpflux.elbo(data) > elbo
 
 
 @pytest.mark.parametrize("batch_size", [10, 100])
@@ -217,9 +217,9 @@ def test_dgp_optimize(batch_size: int) -> None:
         dict(max_iter=10, batch_size=batch_size),
     )
     model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer=optimizer)
-    elbo = model.model.elbo(data)
+    elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
-    assert model.model.elbo(data) > elbo
+    assert model.model_gpflux.elbo(data) > elbo
 
 
 def test_dgp_loss() -> None:
@@ -228,7 +228,7 @@ def test_dgp_loss() -> None:
 
     reference_model = two_layer_dgp_model(x)
     model = DeepGaussianProcess(two_layer_dgp_model(x))
-    internal_model = model.model
+    internal_model = model.model_gpflux
 
     npt.assert_allclose(internal_model.elbo((x, y)), reference_model.elbo((x, y)), rtol=1e-6)
 
@@ -249,30 +249,29 @@ def test_dgp_predict() -> None:
 
 
 @random_seed
-def test_dgp_sample() -> None:
+def test_dgp_sample(compile: bool) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_dgp_model_no_whitening(x),
-        optimizer=TFOptimizer(tf.optimizers.Adam(), compile=True),
+        optimizer=TFOptimizer(tf.optimizers.Adam()),
+        compile=compile
     )
     num_samples = 50
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
     samples = model.sample(test_x, num_samples)
 
+    assert samples.shape == [num_samples, 1, 1]
+
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
-    assert samples.shape == [num_samples, 1, 1]
-
     reference_model = two_layer_dgp_model_no_whitening(x)
 
-    sampler = sample_dgp(reference_model)
-
-    @jit(apply=True)
+    @jit(apply=compile)
     def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
         for _ in range(num_samples):
-            samples.append(sampler(query_points))
+            samples.append(sample_dgp(reference_model)(query_points))
         return tf.stack(samples)
 
     ref_samples = get_samples(test_x, num_samples)
@@ -281,5 +280,5 @@ def test_dgp_sample() -> None:
     ref_variance = tf.reduce_mean((ref_samples - ref_mean) ** 2)
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
-    npt.assert_allclose(sample_mean, ref_mean, rtol=error)
-    npt.assert_allclose(sample_variance, ref_variance, rtol=2 * error)
+    npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
+    npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)

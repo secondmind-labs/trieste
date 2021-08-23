@@ -38,7 +38,7 @@ def _batcher_2(dataset: Dataset, batch_size: int) -> tuple[TensorType, TensorTyp
 
 
 @pytest.fixture(name="batcher", params=[_batcher_1, _batcher_2])
-def _dim_fixture(request: Any) -> DatasetTransformer:
+def _batcher_fixture(request: Any) -> DatasetTransformer:
     return request.param
 
 

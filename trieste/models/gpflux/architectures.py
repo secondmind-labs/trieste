@@ -25,8 +25,6 @@ from gpflux.models import DeepGP
 
 from ...types import TensorType
 
-tf.keras.backend.set_floatx("float64")
-
 
 def build_vanilla_deep_gp(
     X: TensorType,

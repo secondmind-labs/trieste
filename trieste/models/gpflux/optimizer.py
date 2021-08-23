@@ -11,39 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import annotations
-
-import tensorflow as tf
-from gpflux.models import DeepGP
-from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
-
-from ..optimizer import LossClosure, TrainingData, create_loss_function
-
-
-@create_loss_function.register
-def _create_loss_function_gpflux(
-    model: DeepGP,
-    data: TrainingData,
-    compile: bool = False,
-) -> LossClosure:
-    elbo = model.elbo
-
-    if isinstance(data, DatasetOwnedIterator):
-        if compile:
-            input_signature = [data.element_spec]
-            elbo = tf.function(elbo, input_signature=input_signature)
-
-        def closure() -> tf.Tensor:
-            batch = next(data)  # type: ignore
-            return -elbo(batch)
-
-    else:
-
-        def closure() -> tf.Tensor:
-            return -elbo(data)
-
-        if compile:
-            closure = tf.function(closure)
-
-    return closure
