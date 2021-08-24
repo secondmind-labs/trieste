@@ -281,4 +281,5 @@ def test_dgp_sample(compile: bool) -> None:
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
+    npt.assert_allclose(sample_mean, 0, atol=2 * error)
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
