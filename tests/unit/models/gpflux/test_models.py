@@ -214,11 +214,7 @@ def test_dgp_optimize(batch_size: int) -> None:
 
     optimizer = tf.optimizers.Adam()
 
-    fit_args = {
-        "batch_size": batch_size,
-        "epochs": 10,
-        "verbose": 0
-    }
+    fit_args = {"batch_size": batch_size, "epochs": 10, "verbose": 0}
 
     model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer, fit_args)
     elbo = model.model_gpflux.elbo(data)

@@ -18,16 +18,15 @@ import warnings
 from typing import Any, Dict
 
 import tensorflow as tf
+from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
-from gpflow.inducing_variables import InducingPoints
 
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import jit
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer
 from .interface import GPfluxPredictor
 
 
@@ -138,9 +137,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                 inducing_variable = layer.inducing_variable.inducing_variable
 
             if i == 0:
-                if (
-                    dataset.query_points.shape[-1] != inducing_variable.Z.shape[-1]
-                ):
+                if dataset.query_points.shape[-1] != inducing_variable.Z.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.query_points.shape} of new query points is incompatible"
                         f" with shape {inducing_variable.Z.shape} of "

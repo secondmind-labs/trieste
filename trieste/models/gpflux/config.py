@@ -37,8 +37,9 @@ class GPfluxModelConfig(ModelConfig):
     def supported_models(
         self,
     ) -> dict[Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]]:
-        models_mapping: dict[Any, Callable[[Any, tf.optimizers.Optimizer],
-                                           TrainableProbabilisticModel]] = {
+        models_mapping: dict[
+            Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]
+        ] = {
             DeepGP: DeepGaussianProcess,
         }
         return models_mapping
@@ -52,7 +53,8 @@ class GPfluxModelConfig(ModelConfig):
 
         for model_type, model_interface in self.supported_models().items():
             if isinstance(self.model, model_type):
-                return model_interface(self.model, self.optimizer,
-                                       **self.model_args)  # type: ignore
+                return model_interface(
+                    self.model, self.optimizer, **self.model_args
+                )  # type: ignore
 
         raise NotImplementedError(f"Not supported type {type(self.model)}")

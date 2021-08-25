@@ -45,8 +45,9 @@ def test_gpflux_model_config_has_correct_supported_models() -> None:
     model_specs = {"model": two_layer_dgp_model(x)}
     model_config = GPfluxModelConfig(**model_specs)
 
-    models_mapping: Dict[Any, Callable[[Any, tf.optimizers.Optimizer],
-                                       TrainableProbabilisticModel]] = {
+    models_mapping: Dict[
+        Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]
+    ] = {
         DeepGP: DeepGaussianProcess,
     }
 

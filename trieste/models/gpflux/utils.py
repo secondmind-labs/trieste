@@ -19,7 +19,6 @@ from typing import TypeVar
 
 import gpflow
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 M = TypeVar("M", bound=tf.Module)
 """ A type variable bound to :class:`tf.Module`. """
