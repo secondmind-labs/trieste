@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Callable
+
+import pytest
 import tensorflow as tf
 
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+
 tf.keras.backend.set_floatx("float64")
+
+
+@pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
+def _two_layer_model_fixture(request: Any) -> Callable:
+    return request.param

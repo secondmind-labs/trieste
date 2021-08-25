@@ -19,21 +19,24 @@ import tensorflow as tf
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
+from trieste.data import TensorType
 from trieste.models.gpflux import build_vanilla_deep_gp
 
 tf.keras.backend.set_floatx("float64")
 
 
-def single_layer_dgp_model(x: tf.Tensor) -> DeepGP:
+def single_layer_dgp_model(x: TensorType) -> DeepGP:
     return build_vanilla_deep_gp(x, num_layers=1, num_inducing=len(x))
 
 
-def two_layer_dgp_model(x: tf.Tensor) -> DeepGP:
+def two_layer_dgp_model(x: TensorType) -> DeepGP:
     return build_vanilla_deep_gp(x, num_layers=2, num_inducing=len(x))
 
 
-def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
-    x = x.numpy()
+def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+    x_shape = x.shape[-1]
     num_data = len(x)
 
     Z = x.copy()
@@ -43,8 +46,7 @@ def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
         kernel_1,
         inducing_variable_1,
         num_data=num_data,
-        num_latent_gps=1,
-        whiten=False,
+        num_latent_gps=x_shape,
     )
 
     kernel_2 = gpflow.kernels.SquaredExponential()
@@ -54,7 +56,6 @@ def two_layer_dgp_model_no_whitening(x: tf.Tensor) -> DeepGP:
         inducing_variable_2,
         num_data=num_data,
         num_latent_gps=1,
-        whiten=False,
         mean_function=gpflow.mean_functions.Zero(),
     )
 
