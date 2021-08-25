@@ -67,6 +67,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         if not isinstance(self._optimizer, tf.keras.optimizers.Optimizer):
             raise ValueError("Must use a Keras/TF optimizer for DGPs, not wrapped in TFOptimizer")
 
+        self.original_lr = self._optimizer.lr.numpy()
+
         if fit_args is None:
             self.fit_args = dict(
                 {
@@ -153,3 +155,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.model_keras.fit(
             {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
         )
+
+        # Reset lr in case there was an lr schedule
+        self.optimizer.lr.assign(self.original_lr)

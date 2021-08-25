@@ -245,3 +245,36 @@ def test_dgp_sample(compile: bool) -> None:
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
     npt.assert_allclose(sample_mean, 0, atol=2 * error)
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
+
+
+def test_dgp_resets_lr_with_lr_schedule() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    y = fnc_3x_plus_10(x)
+
+    epochs = 10
+    init_lr = 0.01
+
+    def scheduler(epoch, lr):
+        if epoch == epoch // 2:
+            return lr * 0.1
+        else:
+            return lr
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 100,
+        "verbose": 0,
+        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+    }
+
+    optimizer = tf.optimizers.Adam(init_lr)
+
+    model = DeepGaussianProcess(two_layer_dgp_model(x), optimizer=optimizer, fit_args=fit_args)
+
+    npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+    dataset = Dataset(x, y)
+
+    model.optimize(dataset)
+
+    npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
