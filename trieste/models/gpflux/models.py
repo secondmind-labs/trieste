@@ -24,7 +24,6 @@ from gpflux.models.deep_gp import sample_dgp
 
 from ...data import Dataset
 from ...types import TensorType
-from ...utils import jit
 from ..interfaces import TrainableProbabilisticModel
 from .interface import GPfluxPredictor
 
@@ -103,7 +102,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-
         def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
             samples = []
             for _ in range(num_samples):
