@@ -44,7 +44,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         model: DeepGP,
         optimizer: tf.optimizers.Optimizer | None = None,
         fit_args: Dict[Any] | None = None,
-        compile: bool | None = None,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
@@ -54,7 +53,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             of `fit_args`.
         :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Default to
             using 100 epochs, batch size 100, and verbose 0.
-        :param compile: Whether to compile into a graph for sampling.
         """
 
         super().__init__()
@@ -79,11 +77,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             )
         else:
             self.fit_args = fit_args
-
-        if compile is None:
-            self.compile = False
-        else:
-            self.compile = compile
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
             raise ValueError("`DeepGaussianProcess` can only be built out of `GPLayer`")
@@ -110,7 +103,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        @jit(apply=self.compile)
+
         def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
             samples = []
             for _ in range(num_samples):

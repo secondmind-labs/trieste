@@ -41,7 +41,6 @@ from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.types import TensorType
-from trieste.utils import jit
 
 
 def test_dgp_raises_for_non_tf_optimizer() -> None:
@@ -211,12 +210,11 @@ def test_dgp_predict() -> None:
 
 
 @random_seed
-def test_dgp_sample(compile: bool) -> None:
+def test_dgp_sample() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_dgp_model(x),
         optimizer=tf.optimizers.Adam(),
-        compile=compile,
     )
     num_samples = 50
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
@@ -229,7 +227,6 @@ def test_dgp_sample(compile: bool) -> None:
 
     reference_model = two_layer_dgp_model(x)
 
-    @jit(apply=compile)
     def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
         for _ in range(num_samples):
