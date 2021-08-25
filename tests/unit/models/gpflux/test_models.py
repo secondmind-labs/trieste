@@ -36,15 +36,10 @@ from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflux.models import (
-    single_layer_dgp_model,
-    two_layer_dgp_model,
-    two_layer_dgp_model_no_whitening,
-)
+from tests.util.models.gpflux.models import single_layer_dgp_model, two_layer_dgp_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 from trieste.utils import jit
 
@@ -52,10 +47,10 @@ from trieste.utils import jit
 def test_dgp_raises_for_non_tf_optimizer() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_dgp_model(x)
-    optimizer = Optimizer(gpflow.optimizers.Scipy())
+    optimizer = gpflow.optimizers.Scipy()
 
     with pytest.raises(ValueError):
-        DeepGaussianProcess(dgp, optimizer=optimizer)
+        DeepGaussianProcess(dgp, optimizer=optimizer)  # type: ignore
 
 
 def test_dgp_raises_for_latent_variable_layer() -> None:
@@ -118,39 +113,6 @@ def test_dgp_raises_for_keras_layer() -> None:
     dgp = DeepGP([keras_layer_1, keras_layer_2, gp_layer], likelihood_layer)
 
     with pytest.raises(ValueError):
-        DeepGaussianProcess(dgp)
-
-
-def test_dgp_warns_for_whitened_layers() -> None:
-    num_data = 5
-    num_inducing = num_data
-
-    Z = np.linspace(-1, 1, num_inducing).reshape(-1, 1)
-    kernel_1 = gpflow.kernels.SquaredExponential()
-    inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
-    gp_layer_1 = gpflux.layers.GPLayer(
-        kernel_1,
-        inducing_variable_1,
-        num_data=num_data,
-        num_latent_gps=1,
-        whiten=False,
-    )
-
-    kernel_2 = gpflow.kernels.SquaredExponential()
-    inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
-    gp_layer_2 = gpflux.layers.GPLayer(
-        kernel_2,
-        inducing_variable_2,
-        num_data=num_data,
-        num_latent_gps=1,
-        whiten=True,
-    )
-
-    dgp = DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
-
-    with pytest.warns(
-        UserWarning, match="Sampling cannot be currently used with whitening in layers"
-    ):
         DeepGaussianProcess(dgp)
 
 
@@ -252,7 +214,7 @@ def test_dgp_predict() -> None:
 def test_dgp_sample(compile: bool) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
-        two_layer_dgp_model_no_whitening(x),
+        two_layer_dgp_model(x),
         optimizer=tf.optimizers.Adam(),
         compile=compile,
     )
@@ -265,7 +227,7 @@ def test_dgp_sample(compile: bool) -> None:
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
 
-    reference_model = two_layer_dgp_model_no_whitening(x)
+    reference_model = two_layer_dgp_model(x)
 
     @jit(apply=compile)
     def get_samples(query_points: TensorType, num_samples: int) -> TensorType:

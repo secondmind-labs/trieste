@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any, Dict
 
 import tensorflow as tf
@@ -86,12 +85,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
             raise ValueError("`DeepGaussianProcess` can only be built out of `GPLayer`")
-
-        for layer in model.f_layers:
-            if layer.whiten:
-                warnings.warn(
-                    "Sampling cannot be currently used with whitening in layers", UserWarning
-                )
 
         self._model_gpflux = model
 
