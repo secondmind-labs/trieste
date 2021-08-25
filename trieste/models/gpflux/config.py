@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import tensorflow as tf
@@ -23,7 +23,6 @@ from gpflux.models import DeepGP
 
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer
 from .models import DeepGaussianProcess
 
 
@@ -31,15 +30,29 @@ from .models import DeepGaussianProcess
 class GPfluxModelConfig(ModelConfig):
     """
     Specification for building a GPflux instance of
-    :class:`~trieste.models.TrainableProbabilisticModel`.
+    :class:`~trieste.models.TrainableProbabilisticModel`. Note that `optimizer_args` are not used
+    for GPflux models.
     """
-
-    optimizer: Any = field(default_factory=lambda: tf.optimizers.Adam())
 
     def supported_models(
         self,
-    ) -> dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]]:
-        models_mapping: dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
+    ) -> dict[Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]]:
+        models_mapping: dict[Any, Callable[[Any, tf.optimizers.Optimizer],
+                                           TrainableProbabilisticModel]] = {
             DeepGP: DeepGaussianProcess,
         }
         return models_mapping
+
+    def create_model_interface(self) -> TrainableProbabilisticModel:
+        """
+        :return: A model built from this model configuration.
+        """
+        if isinstance(self.model, TrainableProbabilisticModel):
+            return self.model
+
+        for model_type, model_interface in self.supported_models().items():
+            if isinstance(self.model, model_type):
+                return model_interface(self.model, self.optimizer,
+                                       **self.model_args)  # type: ignore
+
+        raise NotImplementedError(f"Not supported type {type(self.model)}")

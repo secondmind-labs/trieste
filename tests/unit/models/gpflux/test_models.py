@@ -44,7 +44,7 @@ from tests.util.models.gpflux.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer, TFOptimizer, create_optimizer
+from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 from trieste.utils import jit
 
@@ -198,7 +198,7 @@ def test_dgp_optimize_with_defaults() -> None:
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
     dataset = Dataset(*data)
-    optimizer = create_optimizer(tf.optimizers.Adam(), dict(max_iter=20))
+    optimizer = tf.optimizers.Adam()
     model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer=optimizer)
     elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
@@ -212,11 +212,15 @@ def test_dgp_optimize(batch_size: int) -> None:
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    optimizer = create_optimizer(
-        tf.optimizers.Adam(),
-        dict(max_iter=10, batch_size=batch_size),
-    )
-    model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer=optimizer)
+    optimizer = tf.optimizers.Adam()
+
+    fit_args = {
+        "batch_size": batch_size,
+        "epochs": 10,
+        "verbose": 0
+    }
+
+    model = DeepGaussianProcess(two_layer_dgp_model(x_observed), optimizer, fit_args)
     elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
     assert model.model_gpflux.elbo(data) > elbo
@@ -253,7 +257,7 @@ def test_dgp_sample(compile: bool) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_dgp_model_no_whitening(x),
-        optimizer=TFOptimizer(tf.optimizers.Adam()),
+        optimizer=tf.optimizers.Adam(),
         compile=compile,
     )
     num_samples = 50

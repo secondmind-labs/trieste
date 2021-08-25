@@ -19,7 +19,6 @@ from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from tests.util.misc import random_seed
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 from trieste.models.gpflux.models import DeepGaussianProcess
-from trieste.models.optimizer import TFOptimizer
 
 
 @random_seed
@@ -38,7 +37,7 @@ def test_dgp_model_close_to_actuals(hartmann_6_dataset_function, depth: int) -> 
     dgp = build_vanilla_deep_gp(
         example_data.query_points, num_layers=depth, num_inducing=num_inducing
     )
-    optimizer = TFOptimizer(tf.optimizers.Adam(0.01))
+    optimizer = tf.optimizers.Adam(0.01)
 
     def scheduler(epoch, lr):
         if epoch == epochs // 2:
@@ -73,7 +72,7 @@ def test_dgp_model_close_to_simple_implementation(hartmann_6_dataset_function, d
     dgp = build_vanilla_deep_gp(
         example_data.query_points, num_layers=depth, num_inducing=num_inducing
     )
-    optimizer = TFOptimizer(tf.optimizers.Adam(0.01))
+    optimizer = tf.optimizers.Adam(0.01)
 
     def scheduler(epoch, lr):
         if epoch == epochs // 2:

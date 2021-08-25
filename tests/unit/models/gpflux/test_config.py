@@ -28,7 +28,6 @@ from tests.util.models.gpflux.models import two_layer_dgp_model
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflux import DeepGaussianProcess, GPfluxModelConfig
-from trieste.models.optimizer import Optimizer
 
 
 def test_gpflux_model_config_raises_not_supported_model_type() -> None:
@@ -46,7 +45,8 @@ def test_gpflux_model_config_has_correct_supported_models() -> None:
     model_specs = {"model": two_layer_dgp_model(x)}
     model_config = GPfluxModelConfig(**model_specs)
 
-    models_mapping: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
+    models_mapping: Dict[Any, Callable[[Any, tf.optimizers.Optimizer],
+                                       TrainableProbabilisticModel]] = {
         DeepGP: DeepGaussianProcess,
     }
 

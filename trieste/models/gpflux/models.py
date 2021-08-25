@@ -21,6 +21,7 @@ import tensorflow as tf
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
+from gpflow.inducing_variables import InducingPoints
 
 from ...data import Dataset
 from ...types import TensorType
@@ -43,7 +44,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     def __init__(
         self,
         model: DeepGP,
-        optimizer: Optimizer | None = None,
+        optimizer: tf.optimizers.Optimizer | None = None,
         fit_args: Dict[Any] | None = None,
         compile: bool | None = None,
     ):
@@ -60,14 +61,13 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         super().__init__()
 
-        if isinstance(optimizer, Optimizer):
-            self._optimizer = optimizer.optimizer  # Only use internal optimizer
-
         if optimizer is None:
             self._optimizer = tf.optimizers.Adam()
+        else:
+            self._optimizer = optimizer
 
         if not isinstance(self._optimizer, tf.keras.optimizers.Optimizer):
-            raise ValueError("Must use a Keras/TF optimizer for deep GPs")
+            raise ValueError("Must use a Keras/TF optimizer for DGPs, not wrapped in TFOptimizer")
 
         if fit_args is None:
             self.fit_args = dict(
@@ -132,14 +132,18 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         # Update num_data for each layer, as well as make sure dataset shapes are ok
         for i, layer in enumerate(self.model_gpflux.f_layers):
             layer.num_data = new_num_data
+            if isinstance(layer.inducing_variable, InducingPoints):
+                inducing_variable = layer.inducing_variable
+            else:
+                inducing_variable = layer.inducing_variable.inducing_variable
+
             if i == 0:
                 if (
-                    dataset.query_points.shape[-1]
-                    != layer.inducing_variable.inducing_variable.Z.shape[-1]
+                    dataset.query_points.shape[-1] != inducing_variable.Z.shape[-1]
                 ):
                     raise ValueError(
                         f"Shape {dataset.query_points.shape} of new query points is incompatible"
-                        f" with shape {layer.inducing_variable.inducing_variable.Z.shape} of "
+                        f" with shape {inducing_variable.Z.shape} of "
                         f" existing query points. Trailing dimensions must match."
                     )
             elif i == len(self.model_gpflux.f_layers) - 1:
