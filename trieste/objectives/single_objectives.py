@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import math
 
+import gpflow
 import tensorflow as tf
 
 from ..space import Box
@@ -84,7 +85,7 @@ BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
-SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
+SCALED_BRANIN_MINIMUM = tf.constant([-1.447393], tf.float64)
 """ The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
 
 
@@ -419,3 +420,7 @@ MICHALEWICZ_5_MINIMUM = tf.constant([-4.687658], tf.float64)
 
 MICHALEWICZ_10_MINIMUM = tf.constant([-9.66015], tf.float64)
 """ The global minimum of the :func:`michalewicz` function, with shape [1] and dtype float64. """
+
+
+def michalewicz_5(x: TensorType) -> TensorType:
+    return michalewicz(x, d=5)
