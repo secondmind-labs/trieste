@@ -54,7 +54,7 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
     """
 
     if contour:
-        return ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        return ax.contourf(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
     else:
         return ax.plot_surface(
             xx,
