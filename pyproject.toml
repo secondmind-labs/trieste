@@ -26,7 +26,7 @@ warn_unused_ignores = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["trieste.*"]
+module = ["trieste.*", "tests.*"]
 disallow_any_generics = true
 disallow_untyped_defs = true
 
@@ -56,7 +56,7 @@ tests = "pytest --mypy --cov trieste --cov-report html:htmlcov --durations 6"
 alltests = "pytest --mypy --durations 6 --runslow yes"
 slowtests = "pytest --mypy --durations 6 --runslow only"
 quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
-mypy = "pytest --mypy --cache-clear -m mypy -v"
+mypy = "mypy"
 pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
 format = "black . --extend-exclude .tox && flake8 . && isort ."
