@@ -392,7 +392,7 @@ class OrdinalSearchSpace(Box):
 
             tf.debugging.assert_same_float_dtype([self._lower, self._stepsizes])
 
-        self._lower = tf.math.ceil(tf.divide(self._lower, self._stepsizes)) * self._stepsizes
+        self._lower = tf.math.ceil(tf.divide(self._lower, self._stepsizes) - 1e-6) * self._stepsizes
         self._upper = (
             tf.math.floor(tf.divide(self._upper, self._stepsizes) + 1e-6) * self._stepsizes
         )

@@ -461,6 +461,7 @@ def test_ordinalsearchspace_converts_sequences_to_float64_tensors(
         pytest.param([0.01, 1.01], [1.0, 2.0], [0.03, 0.03], [0.03, 1.02], [0.99, 1.98]),
         pytest.param([-1.0, -2.0], [1.0, 2.0], [0.3, 0.3], [-0.9, -1.8], [0.9, 1.8]),
         pytest.param([-1.0, -2.0], [1.0, 2.0], [0.6, 0.6], [-0.6, -1.8], [0.6, 1.8]),
+        pytest.param([5 / 3], [2.0], [1 / 3], [5 / 3], [2.0]),
     ],
 )
 def test_ordinalsearchspace_bounds_changes_to_nearest_multiples(
