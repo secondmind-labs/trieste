@@ -30,7 +30,7 @@ from .interface import GPfluxPredictor
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     """
-    A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflow.models.DeepGP` with
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     only standard :class:`GPLayer`: this class does not support keras layers, latent variable
     layers, etc.
 

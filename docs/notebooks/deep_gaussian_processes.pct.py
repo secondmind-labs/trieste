@@ -11,7 +11,7 @@ tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
-# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$, modified with a discontinuity. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
+# In this example, we look to find the minimum value of the two- and five-dimensional Michalewicz functions over the hypercubes $[0, pi]^2$/$[0, pi]^5$. We compare a two-layer DGP model with GPR, using Thompson sampling for both.
 #
 #
 
@@ -38,15 +38,13 @@ fig = plot_function_plotly(
     search_space.upper,
     grid_density=100
 )
-fig.update_layout(height=400, width=400)
+fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
 #
-# Sometimes we don't have direct access to the objective function. We only have an observer that indirectly observes it. In _Trieste_, an observer can output a number of datasets. In our case, we only have one dataset, the objective. We can convert a function with `scaled_discts_branin`'s signature to a single-output observer using `mk_observer`.
-#
-# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample a five point space-filling design from the search space and evaluate it with the observer. For continuous search spaces, Trieste supports random, Sobol and Halton initial designs.
+# We set up the observer as usual, using Sobol sampling to sample the initial points.
 
 # %%
 import trieste
@@ -62,6 +60,8 @@ initial_data = observer(initial_query_points)
 # ## Model the objective function
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
+#
+# We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
 
 # %%
 from trieste.models.gpflux import GPfluxModelConfig, build_vanilla_deep_gp
@@ -105,7 +105,7 @@ dgp_model = build_dgp_model(initial_data)
 #
 # The optimizer uses an acquisition rule to choose where in the search space to try on each optimization step. We'll start by using Thompson sampling.
 #
-# We'll run the optimizer for fifteen steps. Note: this may take a while!
+# We'll run the optimizer for twenty steps. Note: this may take a while!
 # %%
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
@@ -137,7 +137,7 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 from util.plotting_plotly import add_bo_points_plotly
 
 fig = plot_function_plotly(function, search_space.lower, search_space.upper, grid_density=100)
-fig.update_layout(height=500, width=500)
+fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
     x=dgp_query_points[:, 0],
@@ -149,19 +149,13 @@ fig = add_bo_points_plotly(
 )
 fig.show()
 
-# %% [markdown]
-# We can also visualise the how each successive point compares the current best.
-#
-# We produce two plots. The left hand plot shows the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is the same as the previous two-dimensional contour plot, but without the resulting observations. The best point is shown in each (purple dot).
-
-# %%
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
 
 dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 # %% [markdown]
-# We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
+# We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution.
 
 # %%
 from util.plotting_plotly import plot_dgp_plotly
@@ -183,6 +177,7 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
+fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]
@@ -252,7 +247,13 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
+fig.update_layout(height=800, width=800)
 fig.show()
+
+# %% [markdown]
+# We plot the regret curves of the two models side-by-side.
+
+# %%
 
 _, ax = plt.subplots(1, 2)
 plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
