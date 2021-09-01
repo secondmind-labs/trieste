@@ -43,6 +43,7 @@ from .function import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
+    DeepGaussianProcessExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
@@ -63,12 +64,11 @@ from .function import (
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
-    DeepGaussianProcessExpectedImprovement
 )
 from .sampler import (
     BatchReparametrizationSampler,
-    ExactThompsonSampler,
     DeepGaussianProcessSampler,
+    ExactThompsonSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureThompsonSampler,

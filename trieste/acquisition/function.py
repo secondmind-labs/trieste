@@ -35,11 +35,11 @@ from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import (
     BatchReparametrizationSampler,
+    DeepGaussianProcessSampler,
     ExactThompsonSampler,
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,
     ThompsonSampler,
-    DeepGaussianProcessSampler
 )
 
 CLAMP_LB = 1e-8
@@ -227,7 +227,7 @@ class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"DeepGaussianProcessExpectedImprovement({self._sample_size!r})"
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -247,13 +247,12 @@ class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
         for i, layer in enumerate(model.model_gpflux.f_layers[:-1]):
             mean, var = layer.predict(at, full_cov=False, full_output_cov=False)
 
-            at = mean + tf.sqrt(var)*tf.random.normal(
-                [self._sample_size, 1, tf.shape(mean)[-1]], dtype=tf.float64)
+            at = mean + tf.sqrt(var) * tf.random.normal(
+                [self._sample_size, 1, tf.shape(mean)[-1]], dtype=tf.float64
+            )
 
         mean_samples, _ = model.model_gpflux.f_layers[-1].predict(
-            at,
-            full_cov=False,
-            full_output_cov=False
+            at, full_cov=False, full_output_cov=False
         )
 
         mean = tf.reduce_mean(mean_samples, axis=0)
