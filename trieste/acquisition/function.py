@@ -28,6 +28,7 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..models.gpflux import DeepGaussianProcess
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -38,6 +39,7 @@ from .sampler import (
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,
     ThompsonSampler,
+    DeepGaussianProcessSampler
 )
 
 CLAMP_LB = 1e-8
@@ -199,6 +201,80 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
         return function
+
+
+class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the expected improvement function for use with a
+    :class:`~trieste.models.gpflux.DeepGaussianProcess` model, where we have to obtain a Monte Carlo
+    estimate of the expected improvement. The "best" value is taken to be the minimum of the
+    posterior mean at observed points.
+    """
+
+    def __init__(self, sample_size: int):
+        """
+        :param sample_size: The number of samples for each batch of points.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        super().__init__()
+
+        self._sample_size = sample_size
+
+    def __repr__(self) -> str:
+        """"""
+        return f"DeepGaussianProcessExpectedImprovement({self._sample_size!r})"
+
+    def prepare_acquisition_function(
+            self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1] and must
+            be an instance of :class:`~trieste.models.gpflux.DeepGaussianProcess`.
+        :return: The estimated *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
+            does not have an event shape of [1] or is not an instance of
+            :class:`~trieste.models.gpflux.DeepGaussianProcess`.
+        """
+        if not isinstance(model, DeepGaussianProcess):
+            raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess.")
+
+        tf.debugging.assert_positive(len(dataset))
+
+        at = dataset.query_points
+        for i, layer in enumerate(model.model_gpflux.f_layers[:-1]):
+            mean, var = layer.predict(at, full_cov=False, full_output_cov=False)
+
+            at = mean + tf.sqrt(var)*tf.random.normal(
+                [self._sample_size, 1, tf.shape(mean)[-1]], dtype=tf.float64)
+
+        mean_samples, _ = model.model_gpflux.f_layers[-1].predict(
+            at,
+            full_cov=False,
+            full_output_cov=False
+        )
+
+        mean = tf.reduce_mean(mean_samples, axis=0)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        sampler = DeepGaussianProcessSampler(self._sample_size, model)
+
+        def mc_ei(at: TensorType) -> TensorType:
+            tf.debugging.assert_shapes(
+                [(at, [..., 1, None])],
+                message="This acquisition function only supports batch sizes of one.",
+            )
+            samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
+            improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
+            return tf.reduce_mean(improvement, axis=0)  # [N, 1]
+
+        return mc_ei
 
 
 class expected_improvement(AcquisitionFunctionClass):

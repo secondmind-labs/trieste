@@ -63,10 +63,12 @@ from .function import (
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
+    DeepGaussianProcessExpectedImprovement
 )
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
+    DeepGaussianProcessSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureThompsonSampler,
