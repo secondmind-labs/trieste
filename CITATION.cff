@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Berkeley"
+  given-names: "Joel"
+- family-names: "Moss"
+  given-names: "Henry B."
+- family-names: "Artemev"
+  given-names: "Artem"
+- family-names: "Pascual-Diaz"
+  given-names: "Sergio"
+- family-names: "Granta"
+  given-names: "Uri"
+- family-names: "Stojic"
+  given-names: "Hrvoje"
+- family-names: "Couckuyt"
+  given-names: "Ivo"
+- family-names: "Quing"
+  given-names: "Jixiang"
+- family-names: "Satrio"
+  given-names: "Loka"
+- family-names: "Picheny"
+  given-names: "Victor"
+title: "Trieste"
+version: 0.6.1
+date-released: 2021-08-20
+url: "https://github.com/secondmind-labs/trieste"
