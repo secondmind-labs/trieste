@@ -13,7 +13,7 @@ tf.keras.backend.set_floatx("float64")
 # ## Describe the problem
 # In this example, we look to find the minimum value of the two- and five-dimensional Michalewicz functions over the hypercubes $[0, pi]^2$/$[0, pi]^5$. We compare a two-layer DGP model with GPR, using Thompson sampling for both.
 #
-#
+# The Michalewicz functions are highly non-stationary and have a global minimum that's hard to find, so DGPs might be more suitable than standard Gaussian processes.
 
 # %%
 import gpflow
