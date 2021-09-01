@@ -362,7 +362,7 @@ class OrdinalSearchSpace(Box):
         r"""
         If ``lower``, ``upper`` and ``stepsizes`` are `Sequence`\ s of floats
         (such as lists or tuples), they will be converted to tensors of dtype `tf.float64`.
-        if ``lower`` and ``upper`` are not multiple of ``stepsizes`` it will be replaced by
+        if ``lower`` and ``upper`` are not multiple of ``stepsizes``, they will be replaced by
         smallest and largest multiples inside previous ``lower`` and ``upper``.
 
         :param lower: The lower (inclusive) bounds of the Ordinal Space. Must have shape [D]
