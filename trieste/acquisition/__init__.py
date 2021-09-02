@@ -43,7 +43,7 @@ from .function import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
-    DeepGaussianProcessExpectedImprovement,
+    MonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,

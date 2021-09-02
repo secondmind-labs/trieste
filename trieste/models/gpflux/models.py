@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer
@@ -109,6 +110,30 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             return tf.stack(samples)
 
         return get_samples(query_points, num_samples)
+
+    def mc_posterior_mean(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return a Monte Carlo estimate of the posterior mean at the ``query_points``, based off
+        ``num_samples`` samples.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The Monte Carlo estimate of the posterior mean. For a predictive distribution with
+            event shape E, this has shape [..., N] + E.
+        """
+        samples = query_points
+        for layer in self.model_gpflux.f_layers[:-1]:
+            mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
+
+            samples = mean + tf.sqrt(var) * tf.random.normal(
+                [num_samples, 1, tf.shape(mean)[-1]], dtype=gpflow.default_float()
+            )
+
+        mean_samples, _ = self.model_gpflux.f_layers[-1].predict(
+            samples, full_cov=False, full_output_cov=False
+        )
+
+        return tf.reduce_mean(mean_samples, axis=0)
 
     def update(self, dataset: Dataset) -> None:
         new_num_data = dataset.query_points.shape[0]

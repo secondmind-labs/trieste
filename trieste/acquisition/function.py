@@ -21,14 +21,15 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
 from math import inf
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Optional, Union, cast, Any
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux import DeepGaussianProcess, DeepGaussianProcessSampler
+from ..models.gpflux import DeepGaussianProcess
+from .models.gpflux.sampler import DeepGaussianProcessSampler
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -202,12 +203,11 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return function
 
 
-class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
+class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the expected improvement function for use with a
-    :class:`~trieste.models.gpflux.DeepGaussianProcess` model, where we have to obtain a Monte Carlo
-    estimate of the expected improvement. The "best" value is taken to be the minimum of the
-    posterior mean at observed points.
+    Builder for a Monte Carlo-based expected improvement function for use with a model where we have
+    to obtain a Monte Carlo estimate of the expected improvement. The "best" value is taken to be
+    the minimum of the posterior mean at observed points.
     """
 
     def __init__(self, sample_size: int):
@@ -223,7 +223,7 @@ class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcessExpectedImprovement({self._sample_size!r})"
+        return f"MonteCarloExpectedImprovement({self._sample_size!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -237,31 +237,33 @@ class DeepGaussianProcessExpectedImprovement(SingleModelAcquisitionBuilder):
             does not have an event shape of [1] or is not an instance of
             :class:`~trieste.models.gpflux.DeepGaussianProcess`.
         """
-        if not isinstance(model, DeepGaussianProcess):
-            raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess.")
+        mean_samples_op = getattr(model, "mc_posterior_mean", None)
+        if not callable(mean_samples_op):
+            raise ValueError("The model must have a `mc_posterior_mean` method, which returns a "
+                             "Monte Carlo estimate of the posterior mean evaluated at query points,"
+                             "and takes a `num_samples` argument.")
 
         tf.debugging.assert_positive(len(dataset))
 
-        at = dataset.query_points
-        for i, layer in enumerate(model.model_gpflux.f_layers[:-1]):
-            mean, var = layer.predict(at, full_cov=False, full_output_cov=False)
-
-            at = mean + tf.sqrt(var) * tf.random.normal(
-                [self._sample_size, 1, tf.shape(mean)[-1]], dtype=tf.float64
-            )
-
-        mean_samples, _ = model.model_gpflux.f_layers[-1].predict(
-            at, full_cov=False, full_output_cov=False
-        )
-
-        mean = tf.reduce_mean(mean_samples, axis=0)
+        mean = model.mc_posterior_mean(dataset.query_points, self._sample_size)
 
         tf.debugging.assert_shapes(
             [(mean, ["_", 1])], message="Expected model with event shape [1]."
         )
 
         eta = tf.reduce_min(mean, axis=0)
-        sampler = DeepGaussianProcessSampler(self._sample_size, model)
+
+        supported_models = {
+            DeepGaussianProcess: DeepGaussianProcessSampler,
+        }
+
+        sampler = None
+        for model_type, sampler_type in supported_models.items():
+            if isinstance(model, model_type):
+                sampler = sampler_type(self._sample_size, model)  # type: ignore
+
+        if sampler is None:
+            raise NotImplementedError(f"Model {model} is not supported for Monte Carlo EI.")
 
         def mc_ei(at: TensorType) -> TensorType:
             tf.debugging.assert_shapes(
