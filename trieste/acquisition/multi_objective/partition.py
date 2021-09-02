@@ -17,7 +17,6 @@ partitioning the dominated/non-dominated region in multi-objective optimization 
  """
 from __future__ import annotations
 
-from abc import ABC
 from dataclasses import dataclass
 
 import tensorflow as tf
@@ -32,6 +31,9 @@ def prepare_default_non_dominated_partition_bounds(
 ) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
+    This functionality will trigger different partition according to objective numbers, if
+    objective number is 2, an `ExactPartition2dNonDominated` will be used. If the objective
+    number is larger than 2, a `DividedAndConquerNonDominated` will be used.
 
     :param observations: The observations for all objectives, with shape [N, D].
     :param anti_reference: a worst point to use with shape [D].
@@ -44,34 +46,16 @@ def prepare_default_non_dominated_partition_bounds(
     :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
         shape.
     """
-    if observations.shape[-1] > 2:
+    if tf.shape(observations)[-1] > 2:
         return DividedAndConquerNonDominated(observations).partition_bounds(
             anti_reference, reference
         )
-    elif observations.shape[-1] == 2:
+    elif tf.shape(observations)[-1] == 2:
         return ExactPartition2dNonDominated(observations).partition_bounds(
             anti_reference, reference
         )
     else:
         raise ValueError(f"observations: {observations} not understood")
-
-
-class Partition(ABC):
-    """
-    Base class of partition
-    """
-
-
-class NonDominatedPartition(Partition):
-    """
-    Partition methods focusing on partitioning non-dominated regions
-    """
-
-
-class DominatedPartition(Partition):
-    """
-    Partition methods focusing on partitioning dominated-regions
-    """
 
 
 @dataclass(frozen=True)
@@ -89,9 +73,9 @@ class _BoundedVolumes:
         tf.debugging.assert_shapes([(self.lower_idx, ["N", "D"]), (self.upper_idx, ["N", "D"])])
 
 
-class BoundIndexPartition(NonDominatedPartition):
+class _BoundIndexPartition:
     """
-    A collection of partition strategy that is based on storing the index of pareto fronts
+    A collection of partition strategies that are based on storing the index of pareto fronts
     & other auxiliary points
     """
 
@@ -129,6 +113,7 @@ class BoundIndexPartition(NonDominatedPartition):
             ]
         )
 
+        # concatenate the pseudo front to have the same corresponding of bound index
         pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
         N = tf.shape(self._bounds.upper_idx)[0]
         D = tf.shape(self._bounds.upper_idx)[1]
@@ -143,7 +128,7 @@ class BoundIndexPartition(NonDominatedPartition):
         return lower, upper
 
 
-class ExactPartition2dNonDominated(BoundIndexPartition):
+class ExactPartition2dNonDominated(_BoundIndexPartition):
     def __init__(self, front: TensorType):
         """
         :param front: non-dominated pareto front
@@ -180,7 +165,7 @@ class ExactPartition2dNonDominated(BoundIndexPartition):
         return _BoundedVolumes(lower_result, upper_result)
 
 
-class DividedAndConquerNonDominated(BoundIndexPartition):
+class DividedAndConquerNonDominated(_BoundIndexPartition):
     """
     branch and bound procedure algorithm. a divide and conquer method introduced
     in :cite:`Couckuyt2012`.

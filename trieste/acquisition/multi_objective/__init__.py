@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This package contains multi-objective optimization utilities. """
+""" This folder contains multi-objective optimization utilities. """
 from .dominance import non_dominated
 from .pareto import Pareto, get_reference_point
 from .partition import (

@@ -785,9 +785,11 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
+        # prepare the partitioned bounds of non-dominated region for calculating of the
+        # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-        )
+        )  # -1e10 acts as '-inf' to improve numerical stability
         return expected_hv_improvement(model, _partition_bounds)
 
 
@@ -937,9 +939,11 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
+        # prepare the partitioned bounds of non-dominated region for calculating of the
+        # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-        )
+        )  # -1e10 acts as '-inf' to improve numerical stability
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
@@ -1061,11 +1065,13 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
+        # prepare the partitioned bounds of non-dominated region for calculating of the
+        # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             _pf.front,
             tf.constant([-1e10] * feasible_mean.shape[-1], dtype=_pf.front.dtype),
             _reference_pt,
-        )
+        )  # -1e10 acts as '-inf' to improve numerical stability
         ehvi = expected_hv_improvement(objective_model, _partition_bounds)
         return lambda at: ehvi(at) * constraint_fn(at)
 

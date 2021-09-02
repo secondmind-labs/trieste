@@ -23,13 +23,9 @@ from .partition import prepare_default_non_dominated_partition_bounds
 
 class Pareto:
     """
-    A :class:`Pareto` Construct a Pareto set.
-    Stores a Pareto set and calculates the cell bounds covering the non-dominated region.
-    The latter is needed for certain multiobjective acquisition functions.
-
-    For hypervolume-based multiobjective optimisation with n>2 objectives, this class
-    use branch and bound procedure algorithm. a divide and conquer method introduced
-    in :cite:`Couckuyt2012`.
+    A :class:`Pareto` constructs a Pareto set.
+    Stores a Pareto set and calculates hypervolume of the Pareto set given a
+    specified reference point
     """
 
     def __init__(
@@ -65,15 +61,15 @@ class Pareto:
         if tf.equal(tf.size(self.front), 0):
             raise ValueError("empty front cannot be used to calculate hypervolume indicator")
 
-        dummy_anti_reference = tf.reduce_min(self.front, axis=0) - tf.ones(
+        helper_anti_reference = tf.reduce_min(self.front, axis=0) - tf.ones(
             shape=1, dtype=self.front.dtype
         )
         lower, upper = prepare_default_non_dominated_partition_bounds(
-            self.front, dummy_anti_reference, reference
+            self.front, helper_anti_reference, reference
         )
         non_dominated_hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 1))
         hypervolume_indicator = (
-            tf.reduce_prod(reference - dummy_anti_reference) - non_dominated_hypervolume
+            tf.reduce_prod(reference - helper_anti_reference) - non_dominated_hypervolume
         )
         return hypervolume_indicator
 
@@ -82,7 +78,9 @@ def get_reference_point(front: TensorType) -> TensorType:
     """
     reference point calculation method
 
-    :raise ValueError : If ``front`` is empty
+    :param front: Pareto front referred to calculate the reference point
+    :return a reference point to use, with shape [D].
+    :raise: ValueError : If ``front`` is empty
     """
     if tf.equal(tf.size(front), 0):
         raise ValueError("empty front cannot be used to calculate reference point")
