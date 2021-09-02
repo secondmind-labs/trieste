@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
 from math import inf
-from typing import Callable, Optional, Union, cast, Any
+from typing import Callable, Optional, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -29,11 +29,11 @@ import tensorflow_probability as tfp
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..models.gpflux import DeepGaussianProcess
-from .models.gpflux.sampler import DeepGaussianProcessSampler
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
+from .models.gpflux.sampler import DeepGaussianProcessSampler
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -239,9 +239,11 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         mean_samples_op = getattr(model, "mc_posterior_mean", None)
         if not callable(mean_samples_op):
-            raise ValueError("The model must have a `mc_posterior_mean` method, which returns a "
-                             "Monte Carlo estimate of the posterior mean evaluated at query points,"
-                             "and takes a `num_samples` argument.")
+            raise ValueError(
+                "The model must have a `mc_posterior_mean` method, which returns a "
+                "Monte Carlo estimate of the posterior mean evaluated at query points,"
+                "and takes a `num_samples` argument."
+            )
 
         tf.debugging.assert_positive(len(dataset))
 

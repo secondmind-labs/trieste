@@ -20,9 +20,8 @@ from __future__ import annotations
 import tensorflow as tf
 
 from trieste.acquisition.sampler import Sampler
-from trieste.types import TensorType
-
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.types import TensorType
 
 
 class DeepGaussianProcessSampler(Sampler):
