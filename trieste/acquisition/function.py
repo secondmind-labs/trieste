@@ -28,14 +28,13 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux import DeepGaussianProcess
+from ..models.gpflux import DeepGaussianProcess, DeepGaussianProcessSampler
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import (
     BatchReparametrizationSampler,
-    DeepGaussianProcessSampler,
     ExactThompsonSampler,
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,

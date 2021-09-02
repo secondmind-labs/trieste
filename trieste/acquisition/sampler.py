@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module is the home of the sampling functionality required by Trieste's
-acquisiiton functions.
+acquisition functions.
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ from scipy.optimize import bisect
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux import DeepGaussianProcess
 from ..types import TensorType
 from ..utils import DEFAULTS
 
@@ -328,61 +327,6 @@ class BatchReparametrizationSampler(Sampler):
         new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
-
-
-class DeepGaussianProcessSampler(Sampler):
-    r"""
-    This sampler employs the *reparameterization trick* to approximate samples from a
-    :class:`DeepGaussianProcess`\ 's predictive distribution. This sampler is essentially an
-    extension of :class:`IndependentReparametrizationSampler` for use with DGP models.
-    """
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
-        :param sample_size: The number of samples for each batch of points. Must be positive.
-        :param model: The model to sample from. Must be a :class:`DeepGaussianProcess`
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or if
-            model is not a :class:`DeepGaussianProcess`.
-        """
-        super().__init__(sample_size, model)
-
-        if not isinstance(model, DeepGaussianProcess):
-            raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess")
-
-        self._model = model
-
-        # Each element of _eps_list is essentially a lazy constant. It is declared and assigned an
-        # empty tensor here, and populated on the first call to sample
-        self._eps_list = [
-            tf.Variable(tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None])
-        ] * len(model.model_gpflux.f_layers)
-
-    def sample(self, at: TensorType) -> TensorType:
-        """
-        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
-        :meth:`sample`, for any given :class:`DeepGaussianProcessSampler` and ``at``, will produce
-        the exact same samples. Calls to :meth:`sample` on *different*
-        :class:`DeepGaussianProcessSampler` instances will produce different samples.
-
-        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
-            of dimension `D`.
-        :return: The samples, of shape `[S, ..., L]`, where `S` is the `sample_size` and `L` is
-            the number of latent model dimensions.
-        """
-        eps_is_populated = tf.size(self._eps_list[0]) != 0
-
-        samples = at
-        for i, layer in enumerate(self._model.model_gpflux.f_layers):
-            mean, var = layer.predict(at, full_cov=False, full_output_cov=False)
-
-            if not eps_is_populated:
-                self._eps_list[i].assign(
-                    tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
-                )
-
-            samples = mean + tf.sqrt(var) * tf.cast(self._eps_list[i][:, None, :], var.dtype)
-
-        return samples
 
 
 TrajectoryFunction = Callable[[TensorType], TensorType]

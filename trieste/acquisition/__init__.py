@@ -67,7 +67,6 @@ from .function import (
 )
 from .sampler import (
     BatchReparametrizationSampler,
-    DeepGaussianProcessSampler,
     ExactThompsonSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,

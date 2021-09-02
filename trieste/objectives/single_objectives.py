@@ -21,6 +21,7 @@ taken from `this Virtual Library of Simulation Experiments
 from __future__ import annotations
 
 import math
+from math import pi
 
 import tensorflow as tf
 
@@ -405,21 +406,51 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     return -result
 
 
+def michalewicz_5(x: TensorType) -> TensorType:
+    return michalewicz(x, d=5)
+
+
 MICHALEWICZ_2_MINIMIZER = tf.constant([2.20, 1.57], tf.float64)
 """
 The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^2`,
 with shape [1, 2] and dtype float64.
 """
 
+
 MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013], tf.float64)
-""" The global minimum of the :func:`michalewicz` function, with shape [1] and dtype float64. """
+"""
+The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64.
+"""
+
 
 MICHALEWICZ_5_MINIMUM = tf.constant([-4.687658], tf.float64)
-""" The global minimum of the :func:`michalewicz` function, with shape [1] and dtype float64. """
+"""
+The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64.
+"""
+
 
 MICHALEWICZ_10_MINIMUM = tf.constant([-9.66015], tf.float64)
-""" The global minimum of the :func:`michalewicz` function, with shape [1] and dtype float64. """
+"""
+The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64.
+"""
 
 
-def michalewicz_5(x: TensorType) -> TensorType:
-    return michalewicz(x, d=5)
+MICHALEWICZ_2_SEARCH_SPACE = Box([0.0], [pi]) ** 2
+"""
+The search space for the 2-dimensional :func:`michalewicz` function.
+"""
+
+
+MICHALEWICZ_5_SEARCH_SPACE = Box([0.0], [pi]) ** 5
+"""
+The search space for the 5-dimensional :func:`michalewicz` function.
+"""
+
+
+MICHALEWICZ_10_SEARCH_SPACE = Box([0.0], [pi]) ** 10
+"""
+The search space for the 10-dimensional :func:`michalewicz` function.
+"""
