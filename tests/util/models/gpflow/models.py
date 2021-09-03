@@ -24,6 +24,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
+from trieste.acquisition.sampler import Sampler
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.models.gpflow import GPflowPredictor
@@ -96,7 +97,24 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         return tf.squeeze(tf.concat(covs, axis=-3))
 
 
-class QuadraticMeanAndRBFKernel(GaussianProcess):
+class GaussianProcessWithMCPosteriorMean(GaussianProcess):
+    """A (static) Gaussian process over a vector random variable with :func:`mc_posterior_mean`
+    method."""
+
+    def __init__(
+        self,
+        mean_functions: Sequence[Callable[[TensorType], TensorType]],
+        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(mean_functions, kernels, noise_variance)
+
+    def mc_posterior_mean(self, query_points: TensorType, sample_size: int) -> TensorType:
+        mean, _ = self.predict(query_points)
+        return mean
+
+
+class QuadraticMeanAndRBFKernel(GaussianProcessWithMCPosteriorMean):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
@@ -114,6 +132,20 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
 
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
+
+
+class GaussianProcessSampler(Sampler):
+    r"""Sampler for GaussianProcess models"""
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        super().__init__(sample_size, model)
+
+    def sample(self, at: TensorType) -> TensorType:
+        mean, var = self._model.predict(at)
+
+        return mean + tf.sqrt(var) * tf.random.normal(
+            [self._sample_size, 1, tf.shape(mean)[-1]], dtype=mean.dtype
+        )
 
 
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
