@@ -20,6 +20,7 @@ from __future__ import annotations
 import tensorflow as tf
 
 from trieste.acquisition.sampler import Sampler
+from trieste.models import ProbabilisticModel
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.types import TensorType
 
@@ -32,17 +33,17 @@ class DeepGaussianProcessSampler(Sampler):
     with DGP models.
     """
 
-    def __init__(self, sample_size: int, model: DeepGaussianProcess):
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from. Must be a :class:`DeepGaussianProcess`
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or if
             model is not a :class:`DeepGaussianProcess`.
         """
-        super().__init__(sample_size, model)
-
         if not isinstance(model, DeepGaussianProcess):
             raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess")
+
+        super().__init__(sample_size, model)
 
         # Each element of _eps_list is essentially a lazy constant. It is declared and assigned an
         # empty tensor here, and populated on the first call to sample

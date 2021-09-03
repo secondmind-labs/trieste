@@ -28,17 +28,16 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux import DeepGaussianProcess
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
-from .models.gpflux.sampler import DeepGaussianProcessSampler
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,
+    Sampler,
     ThompsonSampler,
 )
 
@@ -210,8 +209,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     the minimum of the posterior mean at observed points.
     """
 
-    def __init__(self, sample_size: int):
+    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler], sample_size: int):
         """
+        :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
         :param sample_size: The number of samples for each batch of points.
         :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
         """
@@ -219,6 +219,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 
         super().__init__()
 
+        self._sampler = sampler
         self._sample_size = sample_size
 
     def __repr__(self) -> str:
@@ -231,11 +232,11 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1] and must
-            be an instance of :class:`~trieste.models.gpflux.DeepGaussianProcess`.
+            implement a :func:`mc_posterior_mean` method.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an event shape of [1] or is not an instance of
-            :class:`~trieste.models.gpflux.DeepGaussianProcess`.
+            does not have an event shape of [1] or does not implement a :func:`mc_posterior_mean`
+            method.
         """
         mean_samples_op = getattr(model, "mc_posterior_mean", None)
         if not callable(mean_samples_op):
@@ -255,17 +256,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 
         eta = tf.reduce_min(mean, axis=0)
 
-        supported_models = {
-            DeepGaussianProcess: DeepGaussianProcessSampler,
-        }
-
-        sampler = None
-        for model_type, sampler_type in supported_models.items():
-            if isinstance(model, model_type):
-                sampler = sampler_type(self._sample_size, model)  # type: ignore
-
-        if sampler is None:
-            raise NotImplementedError(f"Model {model} is not supported for Monte Carlo EI.")
+        sampler = self._sampler(self._sample_size, model)
 
         def mc_ei(at: TensorType) -> TensorType:
             tf.debugging.assert_shapes(
