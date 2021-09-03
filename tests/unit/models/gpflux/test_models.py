@@ -212,6 +212,36 @@ def test_dgp_predict() -> None:
 
 
 @random_seed
+def test_dgp_mc_posterior_mean(two_layer_model: Callable) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(
+        two_layer_model(x),
+        optimizer=tf.optimizers.Adam(),
+    )
+    num_samples = 50
+    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+    sample_mean = model.mc_posterior_mean(test_x, num_samples)
+
+    assert sample_mean.shape == [1, 1]
+
+    reference_model = two_layer_model(x)
+
+    def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
+        samples = []
+        for _ in range(num_samples):
+            samples.append(sample_dgp(reference_model)(query_points))
+        return tf.stack(samples)
+
+    ref_samples = get_samples(test_x, num_samples)
+
+    ref_mean = tf.reduce_mean(ref_samples, axis=0)
+
+    error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
+    npt.assert_allclose(sample_mean, 0, atol=error)
+
+
+@random_seed
 def test_dgp_sample(two_layer_model: Callable) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
@@ -242,7 +272,7 @@ def test_dgp_sample(two_layer_model: Callable) -> None:
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
-    npt.assert_allclose(sample_mean, 0, atol=2 * error)
+    npt.assert_allclose(sample_mean, 0, atol=error)
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
 
 

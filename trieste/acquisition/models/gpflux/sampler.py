@@ -49,7 +49,8 @@ class DeepGaussianProcessSampler(Sampler):
         # empty tensor here, and populated on the first call to sample
         self._eps_list = [
             tf.Variable(tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None])
-        ] * len(model.model_gpflux.f_layers)
+            for _ in range(len(model.model_gpflux.f_layers))
+        ]
 
     def sample(self, at: TensorType) -> TensorType:
         """
@@ -58,11 +59,13 @@ class DeepGaussianProcessSampler(Sampler):
         the exact same samples. Calls to :meth:`sample` on *different*
         :class:`DeepGaussianProcessSampler` instances will produce different samples.
 
-        :param at: Where to sample the predictive distribution, with shape `[..., D]`, for points
+        :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
-        :return: The samples, of shape `[S, ..., L]`, where `S` is the `sample_size` and `L` is
+        :return: The samples, of shape `[S, N, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         """
+        tf.debugging.assert_equal(len(tf.shape(at)), 2)
+
         eps_is_populated = tf.size(self._eps_list[0]) != 0
 
         samples = at
