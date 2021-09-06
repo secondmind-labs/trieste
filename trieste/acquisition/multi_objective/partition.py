@@ -16,6 +16,7 @@ partitioning the dominated/non-dominated region in multi-objective optimization 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import tensorflow as tf
 
@@ -83,7 +84,7 @@ class _BoundIndexPartition:
     front: TensorType
     _bounds: _BoundedVolumes
 
-    def __new__(cls, *args, **kwargs) -> object:
+    def __new__(cls, *args: Any, **kwargs: Any) -> Any:
         if cls is _BoundIndexPartition:
             raise TypeError("BoundIndexPartition may not be instantiated directly")
         return object.__new__(cls)
