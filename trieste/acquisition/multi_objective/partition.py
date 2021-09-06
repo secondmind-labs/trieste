@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-This module contains functions of different methods for
-partitioning the dominated/non-dominated region in multi-objective optimization problems
- """
+"""This module contains functions of different methods for
+partitioning the dominated/non-dominated region in multi-objective optimization problems."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -46,16 +44,19 @@ def prepare_default_non_dominated_partition_bounds(
     :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
         shape.
     """
+    assert tf.shape(observations)[-1] >= 2, ValueError(
+        "the last dimension of multi-objective "
+        f"observations (i.e., objective number) is expected to be at "
+        f"least 2 but found {tf.shape(observations)[-1]}"
+    )
     if tf.shape(observations)[-1] > 2:
         return DividedAndConquerNonDominated(observations).partition_bounds(
             anti_reference, reference
         )
-    elif tf.shape(observations)[-1] == 2:
+    else:
         return ExactPartition2dNonDominated(observations).partition_bounds(
             anti_reference, reference
         )
-    else:
-        raise ValueError(f"observations: {observations} not understood")
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,11 @@ class _BoundIndexPartition:
 
     front: TensorType
     _bounds: _BoundedVolumes
+
+    def __new__(cls, *args, **kwargs):
+        if cls is _BoundIndexPartition:
+            raise TypeError("BoundIndexPartition may not be instantiated directly")
+        return object.__new__(cls)
 
     def partition_bounds(
         self, anti_reference: TensorType, reference: TensorType
@@ -171,12 +177,9 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
     in :cite:`Couckuyt2012`.
     """
 
-    def __init__(
-        self, front: TensorType, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
-    ):
+    def __init__(self, front: TensorType, threshold: TensorType | float = 0):
         """
         :param front
-        :param jitter
         :param threshold
         """
         tf.debugging.assert_equal(
@@ -186,11 +189,9 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
         )
         self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort
         self.front = front
-        self._bounds = self._get_bound_index(jitter, threshold)
+        self._bounds = self._get_bound_index(threshold)
 
-    def _get_bound_index(
-        self, jitter: float = DEFAULTS.JITTER, threshold: TensorType | float = 0
-    ) -> _BoundedVolumes:
+    def _get_bound_index(self, threshold: TensorType | float = 0) -> _BoundedVolumes:
         len_front, number_of_objectives = self.front.shape
         lower_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
         upper_result = tf.zeros([0, number_of_objectives], dtype=tf.int32)
@@ -239,14 +240,14 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
             lower = tf.gather_nd(pseudo_front, tf.stack((lower_idx, arr), -1))
             upper = tf.gather_nd(pseudo_front, tf.stack((upper_idx, arr), -1))
 
-            test_accepted = self._is_test_required((upper - jitter) < self.front)
+            test_accepted = self._is_test_required((upper - DEFAULTS.JITTER) < self.front)
             lower_result_final, upper_result_final = tf.cond(
                 test_accepted,
                 lambda: self._accepted_test_body(lower_result, upper_result, lower_idx, upper_idx),
                 lambda: (lower_result, upper_result),
             )
 
-            test_rejected = self._is_test_required((lower + jitter) < self.front)
+            test_rejected = self._is_test_required((lower + DEFAULTS.JITTER) < self.front)
             divide_conquer_cells_final = tf.cond(
                 tf.logical_and(test_rejected, tf.logical_not(test_accepted)),
                 lambda: self._rejected_test_body(
