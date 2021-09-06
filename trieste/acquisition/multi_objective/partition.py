@@ -35,7 +35,7 @@ def prepare_default_non_dominated_partition_bounds(
 
     :param observations: The observations for all objectives, with shape [N, D].
     :param anti_reference: a worst point to use with shape [D].
-        Defines the lower bound of the hypercell
+        Defines the lower bound of the hypercell.
     :param reference: a reference point to use, with shape [D].
         Defines the upper bound of the hypervolume.
         Should be equal to or bigger than the anti-ideal point of the Pareto set.
@@ -83,7 +83,7 @@ class _BoundIndexPartition:
     front: TensorType
     _bounds: _BoundedVolumes
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> object:
         if cls is _BoundIndexPartition:
             raise TypeError("BoundIndexPartition may not be instantiated directly")
         return object.__new__(cls)

@@ -79,8 +79,8 @@ def get_reference_point(front: TensorType) -> TensorType:
     reference point calculation method
 
     :param front: Pareto front referred to calculate the reference point
-    :return a reference point to use, with shape [D].
-    :raise: ValueError : If ``front`` is empty
+    :return: a reference point to use, with shape [D].
+    :raise ValueError: If ``front`` is empty
     """
     if tf.equal(tf.size(front), 0):
         raise ValueError("empty front cannot be used to calculate reference point")
