@@ -1163,7 +1163,7 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
     ei = ExpectedImprovement().prepare_acquisition_function(data, model)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
-    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.03)
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
 
 
 @random_seed

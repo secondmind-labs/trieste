@@ -298,7 +298,7 @@ class BatchReparametrizationSampler(Sampler):
 
         tf.debugging.assert_positive(batch_size)
 
-        eps_is_populated = tf.size(self._eps) != 0
+        eps_is_populated = tf.math.is_finite(tf.reduce_max(self._eps))
 
         if eps_is_populated:
             tf.debugging.assert_equal(
