@@ -269,6 +269,10 @@ class BatchReparametrizationSampler(Sampler):
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
 
+        # for some reason graph compilation is resulting in self._eps reporting the wrong shape
+        # we therefore use an extra boolean variable to keep track of whether it's initialised
+        self._initialized = tf.Variable(False)
+
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
@@ -298,9 +302,7 @@ class BatchReparametrizationSampler(Sampler):
 
         tf.debugging.assert_positive(batch_size)
 
-        eps_is_populated = tf.math.is_finite(tf.reduce_max(self._eps))
-
-        if eps_is_populated:
+        if self._initialized:
             tf.debugging.assert_equal(
                 batch_size,
                 tf.shape(self._eps)[-2],
@@ -310,12 +312,13 @@ class BatchReparametrizationSampler(Sampler):
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
-        if not eps_is_populated:
+        if not self._initialized:
             self._eps.assign(
                 tf.random.normal(
                     [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
                 )  # [L, B, S]
             )
+            self._initialized.assign(True)
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
