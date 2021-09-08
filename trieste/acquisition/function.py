@@ -1666,10 +1666,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
         tf.debugging.assert_rank(pending_points, 2)
 
-
-
-
-
         if self._gibbon_acquisition is not None:
             # if possible, just update the diversity term
             self._diversity_term.update(pending_points, self._min_value_samples)
@@ -1683,8 +1679,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             @tf.function
             def gibbon_acquisition(x: TensorType) -> TensorType:
                 log_acq = tf.math.log(
-                    cast(AcquisitionFunction, self._base_acquisition_function)(x)
-                ) + tf.math.log(cast(PenalizationFunction, self._penalization)(x))
+                    cast(AcquisitionFunction, self._quality_term)(x)
+                ) + tf.math.log(cast(PenalizationFunction, self._diversity_term)(x))
                 return cast(PenalizationFunction, self._diversity_term)(x) + cast(AcquisitionFunction, self._quality_term)(x) 
 
             self._gibbon_acquisition = gibbon_acquisition
@@ -1711,6 +1707,81 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         return self._quality_term
 
 
+class gibbon_quality_term(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+        """
+        TODO
+        """
+
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType) -> None:
+        """Update the acquisition function with new samples."""
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples)) # TODO TEST THIS?
+        self._samples.assign(samples)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType: # [N, D] -> [N, 1]
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+
+        fmean, fvar = self._model.predict(tf.squeeze(x, -2))
+        yvar = fvar + noise_variance  # need predictive variance of observations
+
+        rho_squared = fvar / yvar  # squared correlation between observations and latent function
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+        inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+ 
+        return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
+
+       
+
+
+
+
+
+class gibbon_diversity_term(ABC):
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        pending_points: TensorType,
+        rescaled_repulsion: bool=True,
+    ):
+        """ 
+        TODO 
+        """
+        self._model = model
+        self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
+        self._rescaled_repulsion = rescaled_repulsion
+
+    def update(
+        self,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
+    ) -> None:
+        """Update the local penalizer with new variable values."""
+
+
+        
+        mean_pending, variance_pending = self._model.predict(pending_points)
+        self._pending_points.assign(pending_points)
+        self._radius.assign(tf.transpose((mean_pending - eta) / lipschitz_constant))
+        self._scale.assign(tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant))
 
 
 
@@ -1729,6 +1800,22 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NEED A QUALITY TERM AND A DIVERSITY TERM FUN
 
 
 
@@ -1878,6 +1965,57 @@ class gibbon(AcquisitionFunctionClass):
             return quality_term(rho_squared, gamma) + repulsion_weight * repulsion_term(
                 x, self._pending_points, yvar
             )
+
+
+
+class min_value_entropy_search(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+        r"""
+        Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+        modified for objective minimisation. This function calculates the information gain (or
+        change in entropy) in the distribution over the objective minimum :math:`y^*`, if we were
+        to evaluate the objective at a given point.
+
+        :param model: The model of the objective function.
+        :param samples: Samples from the distribution over :math:`y^*`.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+            or is empty.
+        """
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType) -> None:
+        """Update the acquisition function with new samples."""
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples)) # TODO TEST THIS?
+        self._samples.assign(samples)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        fmean, fvar = self._model.predict(tf.squeeze(x, -2))
+        fsd = tf.math.sqrt(fvar)
+        fsd = tf.clip_by_value(
+            fsd, CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
+
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+        f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
+
+        return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 
