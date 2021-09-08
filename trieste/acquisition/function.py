@@ -1153,7 +1153,7 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value."""
         self._eta.assign(eta)
-        self._sampler._eps.assign(tf.ones([0, 0, self._sample_size], dtype=tf.float64))
+        self._sampler._initialized.assign(False)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
