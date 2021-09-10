@@ -43,7 +43,7 @@ testpaths = [
 line-length = 100
 target-version = ['py37']
 include = '\.py$'
-exclude = '\.pct.py$'
+extend-exclude = '\.pct.py$' # we use this instead of just extend to ensure black respects .gitignore
 
 [tool.isort]
 profile = "black"
