@@ -308,7 +308,7 @@ def test_pareto_hypercell_bounds(
     anti_reference: list[float],
     reference: list[float],
     expected: SequenceN[float],
-):
+) -> None:
     pareto = Pareto(tf.constant(objectives))
     npt.assert_allclose(
         pareto.hypercell_bounds(tf.constant(anti_reference), tf.constant(reference))[0],

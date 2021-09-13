@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains type aliases."""
-from typing import Union
 
+from __future__ import annotations
+
+import gpflow
 import numpy as np
+import pytest
 import tensorflow as tf
 
-TensorType = Union[np.ndarray, tf.Tensor]
-"""Type alias for tensor-like types."""
+from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
+from trieste.models import ModelConfig
+
+
+def test_model_missing_abstract_method() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
+    with pytest.raises(NotImplementedError):
+        ModelConfig(**model_specs)

@@ -14,8 +14,8 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable, Container, Mapping
-from typing import Any, NoReturn, Sequence, TypeVar, Union, cast
+from collections.abc import Container, Mapping
+from typing import Any, Callable, NoReturn, Sequence, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -25,7 +25,7 @@ from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.space import SearchSpace
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
@@ -34,7 +34,7 @@ TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
 )
 """ Error types thrown by TensorFlow's debugging functionality for tensor shapes. """
 
-C = TypeVar("C", bound=Callable)
+C = TypeVar("C", bound=Callable[..., object])
 """ Type variable bound to `typing.Callable`. """
 
 
@@ -45,7 +45,7 @@ def random_seed(f: C) -> C:
     """
 
     @functools.wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any) -> Any:
         tf.random.set_seed(0)
         return f(*args, **kwargs)
 
@@ -113,7 +113,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
+class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
     """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):
@@ -131,16 +131,14 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: None = None,
-    ) -> tuple[TensorType, None]:
+    ) -> TensorType:
         """
         :param search_space: Unused.
         :param datasets: Unused.
         :param models: Unused.
-        :param state: Unused.
-        :return: The fixed value specified on initialisation, and `None`.
+        :return: The fixed value specified on initialisation.
         """
-        return self._qp, None
+        return self._qp
 
 
 ShapeLike = Union[tf.TensorShape, Sequence[int]]

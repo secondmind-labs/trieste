@@ -24,7 +24,7 @@ import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..data import Dataset
-from ..type import TensorType
+from ..types import TensorType
 from ..utils import jit
 
 TrainingData = Union[Tuple[TensorType, TensorType], Iterable[Tuple[TensorType, TensorType]]]
@@ -170,7 +170,9 @@ def _create_scipy_optimizer(
 
 
 @singledispatch
-def create_loss_function(model, dataset: TrainingData, compile: bool = False) -> LossClosure:
+def create_loss_function(
+    model: gpflow.models.GPModel, dataset: TrainingData, compile: bool = False
+) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
     The implementations depends on the type of the model.

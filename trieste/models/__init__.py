@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,10 @@
 # limitations under the License.
 r"""
 This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains a number of
-:class:`TrainableProbabilisticModel` wrappers for GPflow models, as well as tooling for creating
-:class:`TrainableProbabilisticModel`\ s from config.
+and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
+creating :class:`TrainableProbabilisticModel`\ s from config.
 """
-from . import optimizer
+
+from . import gpflow, optimizer
 from .config import ModelConfig, ModelSpec, create_model
-from .model_interfaces import (
-    GaussianProcessRegression,
-    GPflowPredictor,
-    M,
-    ModelStack,
-    ProbabilisticModel,
-    SparseVariational,
-    TrainableProbabilisticModel,
-    VariationalGaussianProcess,
-    module_deepcopy,
-    supported_models,
-)
+from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel

@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[mypy]
-files = trieste,tests,notebooks/**/*.py
-ignore_missing_imports = True
+r"""
+This package contains the primary interface for Gaussian process models. It also contains a
+number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
+"""
+
+from .config import GPflowModelConfig
+from .interface import GPflowPredictor
+from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
+from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters

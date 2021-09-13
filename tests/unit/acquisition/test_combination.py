@@ -20,7 +20,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, raise_exc
-from tests.util.model import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.combination import Product, Reducer, Sum
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
@@ -39,7 +39,7 @@ def test_reducer_raises_for_no_builders() -> None:
 
 def test_reducer__repr_builders() -> None:
     class Dummy(Reducer):
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"Dummy({self._repr_builders()})"
 
         _reduce = raise_exc

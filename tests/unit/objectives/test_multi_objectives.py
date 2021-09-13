@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
-from trieste.type import TensorType
-from trieste.utils.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem, vlmop2
+from trieste.objectives.multi_objectives import (
+    DTLZ1,
+    DTLZ2,
+    VLMOP2,
+    MultiObjectiveTestProblem,
+    vlmop2,
+)
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize(
@@ -41,7 +48,7 @@ from trieste.utils.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveT
         ),
     ],
 )
-def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
+def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType) -> None:
     npt.assert_allclose(vlmop2(test_x), expected, rtol=1e-5)
 
 
@@ -67,7 +74,7 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType):
 )
 def test_dtlz1_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
-):
+) -> None:
     f = DTLZ1(input_dim, num_obj).objective()
     npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
@@ -99,7 +106,7 @@ def test_dtlz1_has_expected_output(
 )
 def test_dtlz2_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
-):
+) -> None:
     f = DTLZ2(input_dim, num_obj).objective()
     npt.assert_allclose(f(test_x), expected, rtol=1e-4)
 
@@ -115,7 +122,7 @@ def test_dtlz2_has_expected_output(
 )
 def test_gen_pareto_front_is_equal_to_math_defined(
     obj_inst: MultiObjectiveTestProblem, input_dim: int, num_obj: int, gen_pf_num: int
-):
+) -> None:
     pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num)
     if isinstance(obj_inst, DTLZ1):
         tf.assert_equal(tf.reduce_sum(pfs, axis=1), 0.5)
@@ -133,6 +140,6 @@ def test_gen_pareto_front_is_equal_to_math_defined(
 )
 def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
-):
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         obj_inst.objective()(actual_x)

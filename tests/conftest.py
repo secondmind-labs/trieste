@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import pytest
+from _pytest.config import Config
+from _pytest.config.argparsing import Parser
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser) -> None:
     parser.addoption(
         "--runslow",
         action="store",
@@ -24,11 +29,11 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "slow: mark test as slow to run")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Config, items: list[pytest.Item]) -> None:
     if config.getoption("--runslow") == "no":
         skip_slow = pytest.mark.skip(reason="need --runslow option to run")
         for item in items:

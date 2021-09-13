@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
+from typing import Optional
 
 import gpflow
 import numpy.testing as npt
@@ -22,7 +23,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
-from tests.util.model import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -32,6 +33,7 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
+    AcquisitionRule,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -40,7 +42,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.type import TensorType
+from trieste.types import TensorType
 
 
 def _line_search_maximize(
@@ -66,7 +68,7 @@ def _line_search_maximize(
     ],
 )
 def test_discrete_thompson_sampling_raises_for_invalid_init_params(
-    num_search_space_samples, num_query_points, num_fourier_features
+    num_search_space_samples: int, num_query_points: int, num_fourier_features: int
 ) -> None:
     with pytest.raises(ValueError):
         DiscreteThompsonSampling(num_search_space_samples, num_query_points, num_fourier_features)
@@ -120,7 +122,7 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    query_points, _ = ts.acquire_single(search_space, dataset, model)
+    query_points = ts.acquire_single(search_space, dataset, model)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
@@ -138,18 +140,30 @@ def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_po
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
     class NegQuadratic(SingleModelAcquisitionBuilder):
+        def __init__(self) -> None:
+            self._updated = False
+
         def prepare_acquisition_function(
             self, dataset: Dataset, model: ProbabilisticModel
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
+        def update_acquisition_function(
+            self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        ) -> AcquisitionFunction:
+            self._updated = True
+            return function
+
+    function = NegQuadratic()
     search_space = Box([-10], [10])
-    ego = EfficientGlobalOptimization(NegQuadratic(), optimizer)
+    ego = EfficientGlobalOptimization(function, optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point, _ = ego.acquire_single(search_space, data, model)
+    query_point = ego.acquire_single(search_space, data, model)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
-    query_point, _ = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
+    assert not function._updated
+    query_point = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
+    assert function._updated
 
 
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
@@ -168,12 +182,15 @@ def test_joint_batch_acquisition_rule_acquire() -> None:
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
 
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
 class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitionBuilder):
+    def __init__(self) -> None:
+        self._update_count = 0
+
     def prepare_acquisition_function(
         self,
         dataset: Dataset,
@@ -188,19 +205,34 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
                 tf.reduce_max(model.predict(at)[0], axis=-2), best_pending_score
             )
 
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        self._update_count += 1
+        return self.prepare_acquisition_function(dataset, model, pending_points)
+
 
 @random_seed
 def test_greedy_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
+    assert acq._update_count == 0
     ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point, _ = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
-
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    assert acq._update_count == num_query_points - 1
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+
+    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+    assert acq._update_count == 2 * num_query_points - 1
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
@@ -213,27 +245,56 @@ def test_trust_region_raises_for_missing_datasets_key(
     search_space = Box([-1], [1])
     rule = TrustRegion()
     with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models, None)
+        rule.acquire(search_space, datasets, models)
 
 
-def test_trust_region_for_default_state() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0))
+class _Midpoint(AcquisitionRule[TensorType, Box]):
+    def acquire(
+        self,
+        search_space: Box,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> TensorType:
+        return (search_space.upper[None] + search_space.lower[None]) / 2
+
+
+@pytest.mark.parametrize(
+    "rule, expected_query_point",
+    [
+        (EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)), [[0.0, 0.0]]),
+        (_Midpoint(), [[-0.45, 1.15]]),
+    ],
+)
+def test_trust_region_for_default_state(
+    rule: AcquisitionRule[TensorType, Box], expected_query_point: TensorType
+) -> None:
+    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    query_point, state = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel(), None)
+    state, query_point = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())(None)
 
-    npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
+    assert state is not None
+    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
     npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(state.acquisition_space.upper, upper_bound)
     npt.assert_array_almost_equal(state.y_min, [0.012])
     assert state.is_global
 
 
-def test_trust_region_successful_global_to_global_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+@pytest.mark.parametrize(
+    "rule, expected_query_point",
+    [
+        (EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)), [[0.0, 0.0]]),
+        (_Midpoint(), [[-0.45, 1.15]]),
+    ],
+)
+def test_trust_region_successful_global_to_global_trust_region_unchanged(
+    rule: AcquisitionRule[TensorType, Box], expected_query_point: TensorType
+) -> None:
+    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -244,19 +305,29 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged() -> No
     is_global = True
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
-    )
+    current_state, query_point = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
+    assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
     assert current_state.is_global
-    npt.assert_array_almost_equal(query_point, tf.constant([[0.0, 0.0]]), 5)
+    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
 
 
-def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+@pytest.mark.parametrize(
+    "rule",
+    [
+        EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)),
+        _Midpoint(),
+    ],
+)
+def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
+    rule: AcquisitionRule[TensorType, Box]
+) -> None:
+    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -268,10 +339,11 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     acquisition_space = search_space
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    query_point, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
-    )
+    current_state, query_point = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
+    assert current_state is not None
     npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
     assert not current_state.is_global
     npt.assert_array_less(lower_bound, current_state.acquisition_space.lower)
@@ -279,8 +351,17 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged() 
     assert query_point[0] in current_state.acquisition_space
 
 
-def test_trust_region_for_successful_local_to_global_trust_region_increased() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+@pytest.mark.parametrize(
+    "rule",
+    [
+        EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)),
+        _Midpoint(),
+    ],
+)
+def test_trust_region_for_successful_local_to_global_trust_region_increased(
+    rule: AcquisitionRule[TensorType, Box]
+) -> None:
+    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -292,18 +373,28 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
-    )
+    current_state, _ = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
+    assert current_state is not None
     npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
 
 
-def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() -> None:
-    tr = TrustRegion(NegativeLowerConfidenceBound(0).using(OBJECTIVE))
+@pytest.mark.parametrize(
+    "rule",
+    [
+        EfficientGlobalOptimization(NegativeLowerConfidenceBound(0)),
+        _Midpoint(),
+    ],
+)
+def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
+    rule: AcquisitionRule[TensorType, Box]
+) -> None:
+    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -315,10 +406,11 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced() ->
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
-    _, current_state = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, previous_state
-    )
+    current_state, _ = tr.acquire(
+        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    )(previous_state)
 
+    assert current_state is not None
     npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
     assert current_state.is_global
     npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)

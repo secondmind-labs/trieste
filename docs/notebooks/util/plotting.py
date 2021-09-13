@@ -18,7 +18,7 @@ import tensorflow as tf
 from matplotlib import cm
 
 from trieste.acquisition import AcquisitionFunction
-from trieste.type import TensorType
+from trieste.types import TensorType
 from trieste.utils import to_numpy
 from trieste.utils.pareto import non_dominated
 

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 import numpy.testing as npt
 import pytest
@@ -27,7 +27,7 @@ from tests.util.misc import (
     mk_dataset,
     quadratic,
 )
-from tests.util.model import (
+from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
     QuadraticMeanAndRBFKernel,
@@ -39,7 +39,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.type import TensorType
+from trieste.types import State, TensorType
 from trieste.utils import Err, Ok
 
 
@@ -130,8 +130,8 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-@pytest.mark.parametrize("fit_intial_model", [True, False])
-def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> None:
+@pytest.mark.parametrize("fit_initial_model", [True, False])
+def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):
         _optimize_count = 0
 
@@ -148,13 +148,13 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_intial_model: bool) -> N
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": model},
             rule,
-            fit_intial_model=fit_intial_model,
+            fit_initial_model=fit_initial_model,
         )
         .astuple()
     )
     final_model = final_opt_state.unwrap().model
 
-    if fit_intial_model:  # optimized at start and end of first BO step
+    if fit_initial_model:  # optimized at start and end of first BO step
         assert final_model._optimize_count == 2  # type: ignore
     else:  # optimized just at end of first BO step
         assert final_model._optimize_count == 1  # type: ignore
@@ -198,23 +198,25 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     expected_states_received: list[int | None],
     final_acquisition_state: int | None,
 ) -> None:
-    class Rule(AcquisitionRule[int, Box]):
-        def __init__(self):
-            self.states_received = []
+    class Rule(AcquisitionRule[State[Optional[int], TensorType], Box]):
+        def __init__(self) -> None:
+            self.states_received: list[int | None] = []
 
         def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: int | None = None,
-        ) -> tuple[TensorType, int]:
-            self.states_received.append(state)
+        ) -> State[int | None, TensorType]:
+            def go(state: int | None) -> tuple[int | None, TensorType]:
+                self.states_received.append(state)
 
-            if state is None:
-                state = 0
+                if state is None:
+                    state = 0
 
-            return tf.constant([[0.0]], tf.float64), state + 1
+                return state + 1, tf.constant([[0.0]], tf.float64)
+
+            return go
 
     rule = Rule()
 
@@ -251,7 +253,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
             {"": mk_dataset([[0.0]], [[0.0]])},
             {"": _UncopyableModel()},
             rule,
-            fit_intial_model=False,
+            fit_initial_model=False,
         )
         .astuple()
     )
@@ -259,7 +261,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
     with pytest.raises(_Whoops):
         result.unwrap()
 
-    assert len(history) == 4
+    assert len(history) == 3
 
 
 def _broken_observer(x: tf.Tensor) -> NoReturn:
@@ -271,13 +273,12 @@ class _BrokenModel(_PseudoTrainableQuadratic):
         raise _Whoops
 
 
-class _BrokenRule(AcquisitionRule[None, SearchSpace]):
+class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        state: None = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -291,7 +292,7 @@ class _BrokenRule(AcquisitionRule[None, SearchSpace]):
     ],
 )
 def test_bayesian_optimizer_optimize_for_failed_step(
-    observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule
+    observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule[None, Box]
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
@@ -329,13 +330,12 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         def optimize(self, dataset: Dataset) -> NoReturn:
             assert False
 
-    class _UnusableRule(AcquisitionRule[None, Box]):
+    class _UnusableRule(AcquisitionRule[NoReturn, Box]):
         def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: None = None,
         ) -> NoReturn:
             assert False
 
@@ -356,37 +356,39 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
     class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__([lambda x: tf.exp(-x)], [rbf()])
 
     class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__([lambda x: 2 * x], [rbf()])
 
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
 
-    class AdditionRule(AcquisitionRule[int, Box]):
+    class AdditionRule(AcquisitionRule[State[Optional[int], TensorType], Box]):
         def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            previous_state: int | None = None,
-        ) -> tuple[TensorType, int]:
-            if previous_state is None:
-                previous_state = 1
+        ) -> State[int | None, TensorType]:
+            def go(previous_state: int | None) -> tuple[int | None, TensorType]:
+                if previous_state is None:
+                    previous_state = 1
 
-            candidate_query_points = search_space.sample(previous_state)
-            linear_predictions, _ = models[LINEAR].predict(candidate_query_points)
-            exponential_predictions, _ = models[EXPONENTIAL].predict(candidate_query_points)
+                candidate_query_points = search_space.sample(previous_state)
+                linear_predictions, _ = models[LINEAR].predict(candidate_query_points)
+                exponential_predictions, _ = models[EXPONENTIAL].predict(candidate_query_points)
 
-            target = linear_predictions + exponential_predictions
+                target = linear_predictions + exponential_predictions
 
-            optimum_idx = tf.argmin(target, axis=0)[0]
-            next_query_points = tf.expand_dims(candidate_query_points[optimum_idx, ...], axis=0)
+                optimum_idx = tf.argmin(target, axis=0)[0]
+                next_query_points = tf.expand_dims(candidate_query_points[optimum_idx, ...], axis=0)
 
-            return next_query_points, previous_state * 2
+                return previous_state * 2, next_query_points
+
+            return go
 
     def linear_and_exponential(query_points: tf.Tensor) -> dict[str, Dataset]:
         return {
@@ -430,16 +432,18 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
-    class _CountingRule(AcquisitionRule[int, Box]):
+    class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box]):
         def acquire(
             self,
             search_space: Box,
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
-            state: int | None = None,
-        ) -> tuple[TensorType, int]:
-            new_state = 0 if state is None else state + 1
-            return tf.constant([[10.0]], tf.float64) + new_state, new_state
+        ) -> State[int | None, TensorType]:
+            def go(state: int | None) -> tuple[int | None, TensorType]:
+                new_state = 0 if state is None else state + 1
+                return new_state, tf.constant([[10.0]], tf.float64) + new_state
+
+            return go
 
     class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
         def __init__(self, data: Dataset):

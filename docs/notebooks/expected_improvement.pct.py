@@ -15,7 +15,8 @@ tf.random.set_seed(1793)
 #
 
 # %%
-from trieste.utils.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
@@ -35,7 +36,7 @@ fig.show()
 # %%
 import trieste
 
-observer = trieste.utils.objectives.mk_observer(scaled_branin)
+observer = trieste.objectives.utils.mk_observer(scaled_branin)
 
 num_initial_points = 5
 initial_query_points = search_space.sample_sobol(num_initial_points)
@@ -53,6 +54,7 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 import tensorflow_probability as tfp
+from trieste.models.gpflow import GPflowModelConfig
 
 
 def build_model(data):
@@ -64,16 +66,16 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return {
-            "model": gpr,
-            "model_args": {
-                "num_kernel_samples": 100,
-            },
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-    }
+    return GPflowModelConfig(**{
+        "model": gpr,
+        "model_args": {
+            "num_kernel_samples": 100,
+        },
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
+    })
 
 model = build_model(initial_data)
 

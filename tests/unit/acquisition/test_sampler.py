@@ -22,7 +22,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
@@ -31,8 +31,8 @@ from trieste.acquisition.sampler import (
     RandomFourierFeatureThompsonSampler,
 )
 from trieste.data import Dataset
+from trieste.objectives.single_objectives import branin
 from trieste.space import Box
-from trieste.utils.objectives import branin
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -144,7 +144,9 @@ def test_exact_thompson_samples_are_minima() -> None:
         IndependentReparametrizationSampler,
     ],
 )
-def test_reparametrization_sampler_reprs(sampler) -> None:
+def test_reparametrization_sampler_reprs(
+    sampler: type[BatchReparametrizationSampler | IndependentReparametrizationSampler],
+) -> None:
     assert (
         repr(sampler(20, QuadraticMeanAndRBFKernel()))
         == f"{sampler.__name__}(20, QuadraticMeanAndRBFKernel())"
