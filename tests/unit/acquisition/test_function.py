@@ -1611,6 +1611,7 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
             calculated_batch_gibbon[i : i + 1], reconstructed_batch_gibbon
         )
 
+
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_size(
     at: TensorType,
@@ -1675,6 +1676,7 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     npt.assert_allclose(echvi(xs), constraint_fn(xs))
 
+
 def test_predictive_variance_builder_builds_predictive_variance() -> None:
     model = QuadraticMeanAndRBFKernel()
     acq_fn = PredictiveVariance().prepare_acquisition_function(
@@ -1695,7 +1697,9 @@ def test_predictive_variance_builder_builds_predictive_variance() -> None:
         (tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
     ],
 )
-def test_predictive_variance_returns_correct_shape(at, acquisition_shape) -> None:
+def test_predictive_variance_returns_correct_shape(
+    at: TensorType, acquisition_shape: TensorType
+) -> None:
     model = QuadraticMeanAndRBFKernel()
     acq_fn = PredictiveVariance().prepare_acquisition_function(
         Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
