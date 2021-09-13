@@ -22,21 +22,9 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import (
-    GIBBON,
-    AcquisitionFunctionClass,
-    AugmentedExpectedImprovement,
-    BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
-    MinValueEntropySearch,
-)
-from trieste.acquisition.rule import (
-    AcquisitionRule,
-    DiscreteThompsonSampling,
-    EfficientGlobalOptimization,
-    TrustRegion,
-)
-from trieste.bayesian_optimizer import BayesianOptimizer
+from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
+from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegion
+from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import (
@@ -53,11 +41,12 @@ from trieste.types import State, TensorType
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
+    "num_steps, reload_state, acquisition_rule",
     cast(
         List[
             Tuple[
                 int,
+                bool,
                 Union[
                     AcquisitionRule[TensorType, Box],
                     AcquisitionRule[State[TensorType, TrustRegion.State], Box],
@@ -65,25 +54,11 @@ from trieste.types import State, TensorType
             ]
         ],
         [
-            (20, EfficientGlobalOptimization()),
-            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-            (
-                15,
-                EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                        OBJECTIVE
-                    )
-                ),
-            ),
+            (20, False, EfficientGlobalOptimization()),
+            (20, True, EfficientGlobalOptimization()),
             (
                 10,
-                EfficientGlobalOptimization(
-                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-            ),
-            (
-                10,
+                False,
                 EfficientGlobalOptimization(
                     LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
@@ -93,31 +68,22 @@ from trieste.types import State, TensorType
             ),
             (
                 10,
+                True,
                 EfficientGlobalOptimization(
-                    GIBBON(
+                    LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=2,
+                    num_query_points=3,
                 ),
             ),
-            (15, TrustRegion()),
-            (
-                15,
-                TrustRegion(
-                    EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                            OBJECTIVE
-                        )
-                    )
-                ),
-            ),
-            (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+            (15, False, TrustRegion()),
+            (15, True, TrustRegion()),
         ],
     ),
 )
-def test_optimizer_finds_minima_of_the_scaled_branin_function(
+def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
+    reload_state: bool,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, TrustRegion.State], Box],
 ) -> None:
@@ -142,12 +108,28 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
-    dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, model, acquisition_rule)
-        .try_get_final_dataset()
-    )
+    ask_tell = AskTellOptimizer(search_space, initial_data, model, True, acquisition_rule)
 
+    for _ in range(num_steps):
+        # two scenarios can be tested here, depending on `reload_state` parameter
+        # in first the same optimizer object is always used
+        # in second new optimizer is created at each step (e.g. from serialized state)
+        new_point = ask_tell.ask()
+
+        if reload_state:
+            state = ask_tell.get_state()
+
+        new_data = observer(new_point)
+
+        if reload_state:
+            ask_tell = AskTellOptimizer.from_record(search_space, acquisition_rule, state)
+
+        ask_tell.tell(new_data)
+
+    final_state = ask_tell.get_state()
+    dataset = final_state.dataset
+
+    print(dataset)
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
     best_y = dataset.observations[arg_min_idx]
@@ -158,9 +140,3 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
     npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
-
-    # check that acquisition functions defined as classes aren't being retraced unnecessarily
-    if isinstance(acquisition_rule, EfficientGlobalOptimization):
-        acquisition_function = acquisition_rule._acquisition_function
-        if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
