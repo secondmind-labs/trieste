@@ -19,21 +19,22 @@ from typing import Any, Dict
 import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
-from gpflux.layers import GPLayer
+from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
-from gpflux.models.deep_gp import sample_dgp
 
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
+from .architectures import ModifiedLatentVariableLayer
 from .interface import GPfluxPredictor
+from .utils import sample_dgp
 
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
-    only standard :class:`GPLayer`: this class does not support keras layers, latent variable
-    layers, etc.
+    :class:`GPLayer` or :class:`ModifiedLatentVariableLayer`: this class does not support
+    e.g. keras layers
 
     Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
     (consistent with GPflow) so that dtype errors do not occur.
@@ -78,8 +79,13 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         else:
             self.fit_args = fit_args
 
-        if not all([isinstance(layer, GPLayer) for layer in model.f_layers]):
-            raise ValueError("`DeepGaussianProcess` can only be built out of `GPLayer`")
+        if not all(
+            [isinstance(layer, (GPLayer, ModifiedLatentVariableLayer)) for layer in model.f_layers]
+        ):
+            raise ValueError(
+                "`DeepGaussianProcess` can only be built out of `GPLayer` or"
+                "`ModifiedLatentVariableLayer`"
+            )
 
         self._model_gpflux = model
 
@@ -121,46 +127,65 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :return: The Monte Carlo estimate of the posterior mean. For a predictive distribution with
             event shape E, this has shape [..., N] + E.
         """
-        samples = query_points
+        samples = tf.tile(
+            tf.expand_dims(query_points, 0), [num_samples, *[1] * tf.rank(query_points).numpy()]
+        )
         for layer in self.model_gpflux.f_layers[:-1]:
+            if isinstance(layer, LatentVariableLayer):
+                samples = layer.compositor([samples, layer.prior.sample(tf.shape(samples)[:-1])])
+                continue
+
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
 
             samples = mean + tf.sqrt(var) * tf.random.normal(
                 [num_samples, 1, tf.shape(mean)[-1]], dtype=gpflow.default_float()
             )
 
-        mean_samples, _ = self.model_gpflux.f_layers[-1].predict(
-            samples, full_cov=False, full_output_cov=False
-        )
+        last_layer = self.model_gpflux.f_layers[-1]
+        if isinstance(last_layer, LatentVariableLayer):
+            mean_samples = last_layer.compositor(
+                [samples, last_layer.prior.sample(tf.shape(samples)[:-1])]
+            )
+        else:
+            mean_samples, _ = self.model_gpflux.f_layers[-1].predict(
+                samples, full_cov=False, full_output_cov=False
+            )
 
         return tf.reduce_mean(mean_samples, axis=0)
 
     def update(self, dataset: Dataset) -> None:
-        new_num_data = dataset.query_points.shape[0]
+        inputs = dataset.query_points
+        new_num_data = inputs.shape[0]
         self.model_gpflux.num_data = new_num_data
 
         # Update num_data for each layer, as well as make sure dataset shapes are ok
         for i, layer in enumerate(self.model_gpflux.f_layers):
             layer.num_data = new_num_data
+
+            if isinstance(layer, LatentVariableLayer):
+                inputs = layer(inputs)
+                continue
+
             if isinstance(layer.inducing_variable, InducingPoints):
                 inducing_variable = layer.inducing_variable
             else:
                 inducing_variable = layer.inducing_variable.inducing_variable
 
-            if i == 0:
-                if dataset.query_points.shape[-1] != inducing_variable.Z.shape[-1]:
-                    raise ValueError(
-                        f"Shape {dataset.query_points.shape} of new query points is incompatible"
-                        f" with shape {inducing_variable.Z.shape} of "
-                        f" existing query points. Trailing dimensions must match."
-                    )
-            elif i == len(self.model_gpflux.f_layers) - 1:
+            if inputs.shape[-1] != inducing_variable.Z.shape[-1]:
+                raise ValueError(
+                    f"Shape {inputs.shape} of input to layer {layer} is incompatible with shape"
+                    f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
+                )
+
+            if i == len(self.model_gpflux.f_layers) - 1:
                 if dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.observations.shape} of new observations is incompatible"
                         f" with shape {layer.q_mu.shape} of existing observations. Trailing"
                         f" dimensions must match."
                     )
+
+            inputs = layer(inputs)
 
     def optimize(self, dataset: Dataset) -> None:
         """

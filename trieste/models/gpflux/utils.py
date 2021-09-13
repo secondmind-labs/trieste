@@ -19,6 +19,11 @@ from typing import TypeVar
 
 import gpflow
 import tensorflow as tf
+from gpflux.layers import GPLayer, LatentVariableLayer
+from gpflux.models import DeepGP
+from gpflux.sampling.sample import Sample
+
+from trieste.types import TensorType
 
 M = TypeVar("M", bound=tf.Module)
 """ A type variable bound to :class:`tf.Module`. """
@@ -60,3 +65,35 @@ def module_deepcopy(self: M, memo: dict[int, object]) -> M:
         setattr(new, name, copy.deepcopy(value, memo))
 
     return new
+
+
+def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
+    class SampleLV(Sample):
+        def __call__(self, X: TensorType) -> tf.Tensor:
+            sample = layer.prior.sample()
+            batch_shape = tf.shape(X)[:-1]
+            for _ in range(len(batch_shape)):
+                sample = tf.expand_dims(sample, 0)
+            sample = tf.tile(sample, batch_shape.numpy().tolist() + [1])
+            return layer.compositor([X, sample])
+
+    return SampleLV()
+
+
+def sample_dgp(model: DeepGP) -> Sample:
+    function_draws = []
+    for layer in model.f_layers:
+        if isinstance(layer, GPLayer):
+            function_draws.append(layer.sample())
+        elif isinstance(layer, LatentVariableLayer):
+            function_draws.append(sample_consistent_lv_layer(layer))
+        else:
+            raise NotImplementedError(f"Sampling not implemented for {layer}")
+
+    class ChainedSample(Sample):
+        def __call__(self, X: TensorType) -> tf.Tensor:
+            for f in function_draws:
+                X = f(X)
+            return X
+
+    return ChainedSample()
