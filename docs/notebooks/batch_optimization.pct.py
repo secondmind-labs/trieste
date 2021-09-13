@@ -41,7 +41,7 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 from trieste.models import create_model
-from trieste.utils import map_values
+from trieste.models.gpflow import GPflowModelConfig
 import tensorflow_probability as tfp
 
 
@@ -53,14 +53,14 @@ def build_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-
-    return {
+    model_spec = {
         "model": gpr,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
             "minimize_args": {"options": dict(maxiter=100)},
         },
     }
+    return GPflowModelConfig(**model_spec)
 
 
 model_spec = build_model(initial_data)
@@ -87,7 +87,7 @@ from trieste.acquisition.rule import EfficientGlobalOptimization
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=batch_ei_acq)
-points_chosen_by_batch_ei, _ = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
+points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
 
 # %% [markdown]
 # then we do the same with `LocalPenalizationAcquisitionFunction` ...
@@ -98,7 +98,7 @@ from trieste.acquisition import LocalPenalizationAcquisitionFunction
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=local_penalization_acq)
-points_chosen_by_local_penalization, _ = local_penalization_acq_rule.acquire_single(
+points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single(
     search_space, initial_data, model)
 
 # %% [markdown]
@@ -110,7 +110,7 @@ from trieste.acquisition import GIBBON
 gibbon_acq = GIBBON(search_space, grid_size = 2000)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=gibbon_acq)
-points_chosen_by_gibbon, _ = gibbon_acq_rule.acquire_single(
+points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
     search_space, initial_data, model)
 
 # %% [markdown]

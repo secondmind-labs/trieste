@@ -32,6 +32,7 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
+from trieste.models.gpflow import GPflowModelConfig
 
 observations = initial_data.observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
@@ -40,13 +41,13 @@ gpr = gpflow.models.GPR(
 )
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = {
+model_config = GPflowModelConfig(**{
     "model": gpr,
     "optimizer": gpflow.optimizers.Scipy(),
     "optimizer_args": {
         "minimize_args": {"options": dict(maxiter=100)},
     },
-}
+})
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule

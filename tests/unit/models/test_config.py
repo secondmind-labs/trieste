@@ -11,12 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
 
-from . import gpflow, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from __future__ import annotations
+
+import gpflow
+import numpy as np
+import pytest
+import tensorflow as tf
+
+from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
+from trieste.models import ModelConfig
+
+
+def test_model_missing_abstract_method() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
+    with pytest.raises(NotImplementedError):
+        ModelConfig(**model_specs)

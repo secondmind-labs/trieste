@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tests.util.model import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition.sampler import BatchReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS

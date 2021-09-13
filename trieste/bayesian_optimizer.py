@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 This module contains the :class:`BayesianOptimizer` class, used to perform Bayesian optimization.
 """
+
 from __future__ import annotations
 
 import copy
@@ -30,6 +32,7 @@ from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
+from .types import State, TensorType
 from .utils import Err, Ok, Result, map_values
 
 S = TypeVar("S")
@@ -182,7 +185,23 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+        # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
+        # checker can't differentiate between TensorType and State[S | None, TensorType], and
+        # the return types clash. object is close enough to None that object will do.
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -208,7 +227,20 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -221,7 +253,8 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[S, SP] | None = None,
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        | None = None,
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -287,7 +320,8 @@ class BayesianOptimizer(Generic[SP]):
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}
+            # ignore below is due to MyPy not being able to handle overlaods properly
+            model_specs = {OBJECTIVE: model_specs}  # type: ignore
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
@@ -312,7 +346,7 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[S, SP], EfficientGlobalOptimization())
+            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
 
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
@@ -330,9 +364,12 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                query_points, acquisition_state = acquisition_rule.acquire(
-                    self._search_space, datasets, models, acquisition_state
-                )
+                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models)
+
+                if callable(points_or_stateful):
+                    acquisition_state, query_points = points_or_stateful(acquisition_state)
+                else:
+                    query_points = points_or_stateful
 
                 observer_output = self._observer(query_points)
 
