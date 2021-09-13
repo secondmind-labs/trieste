@@ -20,7 +20,7 @@ tf.random.set_seed(1793)
 
 
 # %%
-from trieste.utils.objectives import branin
+from trieste.objectives import branin
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
