@@ -73,7 +73,7 @@ from trieste.types import State, TensorType
                 ),
             ),
             (
-                10,
+                12,
                 EfficientGlobalOptimization(
                     BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                     num_query_points=3,
