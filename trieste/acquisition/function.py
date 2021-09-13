@@ -1721,11 +1721,29 @@ class gibbon_quality_term(AcquisitionFunctionClass):
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two, or
             is empty.
+        TOD SAY CHECK MODEL
         """
 
         tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
 
+        try:
+            model.get_observation_noise()
+        except NotImplementedError:
+            raise ValueError(
+                """
+                GIBBON only currently supports homoscedastic gpflow models
+                with a likelihood.variance attribute.
+                """
+            )
+
+        if not hasattr(model, "covariance_between_points"):
+            raise AttributeError(
+                """
+                GIBBON only supports models with a covariance_between_points method.
+                """
+            )
+        
         self._model = model
         self._samples = tf.Variable(samples)
 
@@ -1743,6 +1761,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         )
 
         fmean, fvar = self._model.predict(tf.squeeze(x, -2))
+        noise_variance = self._model.get_observation_noise()
         yvar = fvar + noise_variance  # need predictive variance of observations
 
         rho_squared = fvar / yvar  # squared correlation between observations and latent function
@@ -1803,12 +1822,13 @@ class gibbon_repulsion_term(ABC):
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have rank two, or
             is empty.
+        TOD SAY CHECK MODEL
         """
         tf.debugging.assert_rank(pending_points, 2)
         tf.debugging.assert_positive(len(pending_points))
 
         try:
-            noise_variance = model.get_observation_noise()
+            model.get_observation_noise()
         except NotImplementedError:
             raise ValueError(
                 """
@@ -1823,6 +1843,7 @@ class gibbon_repulsion_term(ABC):
                 GIBBON only supports models with a covariance_between_points method.
                 """
             )
+        
 
         self._model = model
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
@@ -1854,6 +1875,7 @@ class gibbon_repulsion_term(ABC):
         )
 
         fmean, fvar = self._model.predict(tf.squeeze(x, -2))
+        noise_variance = self._model.get_observation_noise()
         yvar = fvar + noise_variance  # need predictive variance of observations
 
 

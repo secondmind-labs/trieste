@@ -1396,18 +1396,91 @@ def test_gibbon_quality_term_raises_for_gumbel_samples_with_invalid_shape(
         gibbon_quality_term(model, samples)
 
 
-@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
-def test_gibbon_builder_raises_for_invalid_pending_points_shape(
-    pending_points: TensorType,
-) -> None:
-    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    space = Box([0, 0], [1, 1])
-    builder = GIBBON(search_space=space)
-    builder.prepare_acquisition_function(
-        data, QuadraticMeanAndRBFKernel(), None
-    )  # first initialize
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_gibbon_quality_term_raises_for_invalid_batch_size(at: TensorType) -> None:
+    model = QuadraticMeanAndRBFKernel()
+    gibbon_acq = gibbon_quality_term(model, tf.constant([[1.0], [2.0]]))
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
+        gibbon_acq(at)
+
+
+
+
+def test_gibbon_quality_term_returns_correct_shape() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    gumbel_samples = tf.constant([[1.0], [2.0]])
+    query_at = tf.linspace([[-10.0]], [[10.0]], 5)
+    evals = gibbon_quality_term(model, gumbel_samples)(query_at)
+    npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
+
+
+@unittest.mock.patch("trieste.acquisition.function.gibbon")
+@pytest.mark.parametrize("use_thompson", [True, False])
+def test_gibbon_builder_builds_min_value_samples(
+    mocked_mves: MagicMock, use_thompson: bool
+) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space, use_thompson=use_thompson)
+    model = QuadraticMeanAndRBFKernel()
+    builder.prepare_acquisition_function(dataset, model)
+    mocked_mves.assert_called_once()
+
+    # check that the Gumbel samples look sensible
+    min_value_samples = builder._min_value_samples
+    query_points = builder._search_space.sample(num_samples=builder._grid_size)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    fmean, _ = model.predict(query_points)
+    assert max(min_value_samples) < min(fmean)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+# def test_gibbon_builder_raises_for_invalid_pending_points_shape(
+#     pending_points: TensorType,
+# ) -> None:
+#     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+#     space = Box([0, 0], [1, 1])
+#     builder = GIBBON(search_space=space)
+#     builder.prepare_acquisition_function(
+#         data, QuadraticMeanAndRBFKernel(), None
+#     )  # first initialize
+#     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+#         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
 
 
 def test_gibbon_raises_when_called_before_initialization() -> None:
@@ -1419,14 +1492,6 @@ def test_gibbon_raises_when_called_before_initialization() -> None:
             data, QuadraticMeanAndRBFKernel(), pending_points
         )
 
-
-@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_gibbon_quality_term_raises_for_invalid_batch_size(at: TensorType) -> None:
-    model = QuadraticMeanAndRBFKernel()
-    gibbon_acq = gibbon_quality_term(model, tf.constant([[1.0], [2.0]]))
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        gibbon_acq(at)
 
 
 # def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
@@ -1469,32 +1534,7 @@ def test_gibbon_quality_term_raises_for_invalid_batch_size(at: TensorType) -> No
 #         gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
 
-def test_gibbon_quality_term_returns_correct_shape() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    gumbel_samples = tf.constant([[1.0], [2.0]])
-    query_at = tf.linspace([[-10.0]], [[10.0]], 5)
-    evals = gibbon_quality_term(model, gumbel_samples)(query_at)
-    npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
-
-@unittest.mock.patch("trieste.acquisition.function.gibbon")
-@pytest.mark.parametrize("use_thompson", [True, False])
-def test_gibbon_builder_builds_min_value_samples(
-    mocked_mves: MagicMock, use_thompson: bool
-) -> None:
-    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    search_space = Box([0, 0], [1, 1])
-    builder = GIBBON(search_space, use_thompson=use_thompson)
-    model = QuadraticMeanAndRBFKernel()
-    builder.prepare_acquisition_function(dataset, model)
-    mocked_mves.assert_called_once()
-
-    # check that the Gumbel samples look sensible
-    min_value_samples = mocked_mves.call_args[0][1]
-    query_points = builder._search_space.sample(num_samples=builder._grid_size)
-    query_points = tf.concat([dataset.query_points, query_points], 0)
-    fmean, _ = model.predict(query_points)
-    assert max(min_value_samples) < min(fmean)
 
 
 @random_seed
