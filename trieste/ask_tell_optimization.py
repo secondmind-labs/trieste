@@ -43,8 +43,8 @@ class AskTellOptimizer(Generic[S, SP]):
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible.
     That could happen because objective function cannot be implemented/called in Python, or if
-    optimization state cannot be maintained in memory. For more details about the Bayesian Optimization routine,
-    refer to :class:`BayesianOptimizer`.
+    optimization state cannot be maintained in memory.
+    For more details about the Bayesian Optimization routine, refer to :class:`BayesianOptimizer`.
     """
 
     def __init__(
@@ -96,7 +96,8 @@ class AskTellOptimizer(Generic[S, SP]):
         self._models = map_values(create_model, model_specs)
 
         if fit_model:
-            # there is no default value for `fit_model` parameter to force the user to think about it
+            # there is no default value for `fit_model` parameter
+            # to force the user to think about it
             # before invoking ask/tell API
             # there is no sensible default here:
             # `False` may result in suboptimal performance
@@ -158,7 +159,8 @@ class AskTellOptimizer(Generic[S, SP]):
 
         if self._datasets.keys() != new_data.keys():
             raise ValueError(
-                f"new_data keys {new_data.keys()} doesn't match dataset keys {self._datasets.keys()}"
+                f"new_data keys {new_data.keys()} doesn't "
+                f"match dataset keys {self._datasets.keys()}"
             )
 
         self._datasets = {tag: self._datasets[tag] + new_data[tag] for tag in new_data}
@@ -169,7 +171,9 @@ class AskTellOptimizer(Generic[S, SP]):
             model.optimize(dataset)
 
     def get_state(self) -> Record[S]:
-        """Collects the current state of the optimization, which includes datasets, models and acquisition state (if applicable).
+        """Collects the current state of the optimization, which includes datasets,
+        models and acquisition state (if applicable).
+
         :return: An optimization state record.
         """
         return Record(

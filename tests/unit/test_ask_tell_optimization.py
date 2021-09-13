@@ -104,7 +104,7 @@ def test_ask_tell_optimizer_loads_from_state(
     new_state = ask_tell.get_state()
 
     assert_datasets_allclose(old_state.dataset, new_state.dataset)
-    assert type(old_state.model) == type(new_state.model)
+    assert isinstance(new_state.model, type(old_state.model))
 
 
 def test_ask_tell_optimizer_updates_state_with_new_data(
