@@ -41,7 +41,7 @@ fig.show()
 # %%
 import trieste
 
-observer = trieste.utils.objectives.mk_observer(log_branin)
+observer = trieste.objectives.utils.mk_observer(log_branin)
 
 num_initial_points = 2
 initial_query_points = search_space.sample_halton(num_initial_points)
