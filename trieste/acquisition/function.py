@@ -404,8 +404,14 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = get_min_value_samples(model, sample_points = query_points, use_thompson = self._use_thompson, num_fourier_features = self._num_fourier_features)
-
+        min_value_samples = get_min_value_samples(
+            model,
+            dataset,
+            sampled_points=query_points,
+            num_samples=self._num_samples,
+            use_thompson=self._use_thompson,
+            num_fourier_features=self._num_fourier_features,
+        )
         return min_value_entropy_search(model, min_value_samples)
 
     def update_acquisition_function(
@@ -422,7 +428,14 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = get_min_value_samples(model, sample_points = query_points, use_thompson = self._use_thompson, num_fourier_features = self._num_fourier_features)
+        min_value_samples = get_min_value_samples(
+            model,
+            dataset,
+            sampled_points=query_points,
+            num_samples=self._num_samples,
+            use_thompson=self._use_thompson,
+            num_fourier_features=self._num_fourier_features,
+        )
         function.update(min_value_samples)  # type: ignore
         return function
 
@@ -452,7 +465,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
     def update(self, samples: TensorType) -> None:
         """Update the acquisition function with new samples."""
         tf.debugging.assert_rank(samples, 2)
-        tf.debugging.assert_positive(len(samples)) # TODO TEST THIS?
+        tf.debugging.assert_positive(len(samples))  # TODO TEST THIS?
         self._samples.assign(samples)
 
     @tf.function
@@ -1549,16 +1562,6 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-
-
-
-
-
-
-
-
-
-
 class GIBBON(SingleModelGreedyAcquisitionBuilder):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
@@ -1618,8 +1621,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         self._rescaled_repulsion = rescaled_repulsion
 
         self._min_value_samples = None
-        self._quality_term : Optional[AcquisitionFunction] = None
-        self._diversity_term: Optional[UpdatablePenalizationFunction] = None
+        self._quality_term: Optional[gibbon_quality_term] = None
+        self._diversity_term: Optional[gibbon_repulsion_term] = None
         self._gibbon_acquisition: Optional[AcquisitionFunction] = None
 
     def prepare_acquisition_function(
@@ -1662,68 +1665,72 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
         if pending_points is None:
             # update min value samples once per optimization step
-            return self._update_base_quality_term(dataset, model)
+            return self._update_quality_term(dataset, model)
 
         tf.debugging.assert_rank(pending_points, 2)
 
-        if self._gibbon_acquisition is not None:
+        if self._gibbon_acquisition is not None and isinstance(
+            self._diversity_term, gibbon_repulsion_term
+        ):
             # if possible, just update the repulsion term
-            self._diversity_term.update(pending_points, self._min_value_samples)
-            return self._penalized_acquisition
+            self._diversity_term.update(pending_points, self._min_value_samples)  # TODO: eta?
+            return self._gibbon_acquisition
         else:
-            # otherwise construct a new repulsion term
-            self._diversity_term = self._gibbon_repulsion_term(
-                model, pending_points, self._min_value_samples, self._rescaled_repulsion
+            # otherwise construct a new repulsion term and acquisition function
+            self._diversity_term = gibbon_repulsion_term(
+                model, pending_points, rescaled_repulsion=self._rescaled_repulsion
             )
 
             @tf.function
             def gibbon_acquisition(x: TensorType) -> TensorType:
-                log_acq = tf.math.log(
-                    cast(AcquisitionFunction, self._quality_term)(x)
-                ) + tf.math.log(cast(PenalizationFunction, self._diversity_term)(x))
-                return cast(PenalizationFunction, self._diversity_term)(x) + cast(AcquisitionFunction, self._quality_term)(x) 
+                return cast(PenalizationFunction, self._diversity_term)(x) + cast(
+                    AcquisitionFunction, self._quality_term
+                )(x)
 
             self._gibbon_acquisition = gibbon_acquisition
             return gibbon_acquisition
 
-    
-
     def _update_quality_term(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        tf.debugging.assert_positive(len(dataset)) # TODO TEST THIS
+        tf.debugging.assert_positive(len(dataset))
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        self._min_value_samples = get_min_value_samples(model, sample_points = query_points, use_thompson = self._use_thompson, num_fourier_features = self._num_fourier_features)
+        self._min_value_samples = get_min_value_samples(
+            model,
+            dataset,
+            sampled_points=query_points,
+            num_samples=self._num_samples,
+            use_thompson=self._use_thompson,
+            num_fourier_features=self._num_fourier_features,
+        )
 
-        if self._quality_term is not None: # if possible, just update the quality term
+        if self._quality_term is not None:  # if possible, just update the quality term
             self._quality_term.update(self._min_value_samples)
-        else: # otherwise build quality term
-            self._quality_term = cast(
-                    AcquisitionFunction, gibbon_quality_term(model, self._min_value_samples)
-                )
-        return self._quality_term
+        else:  # otherwise build quality term
+            self._quality_term = gibbon_quality_term(model, self._min_value_samples)
+        return cast(AcquisitionFunction, self._quality_term)
 
 
 class gibbon_quality_term(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, samples: TensorType):
         """
         GIBBON's quality term measures the amount of information that each individual
-        batch element provides about the objective function's minimal value :math:`y^*` (ensuring that
-        evaluations are targeted in promising areas of the space)
+        batch element provides about the objective function's minimal value :math:`y^*` (ensuring
+        that evaluations are targeted in promising areas of the space).
+
         :param model: The model of the objective function. GIBBON requires a model with
             a :method:covariance_between_points method and so GIBBON only
             supports :class:`GaussianProcessRegression` models.
         :param samples: Samples from the distribution over :math:`y^*`.
         :return: GIBBON's quality term. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two, or
-            is empty.
-        TOD SAY CHECK MODEL
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two,
+            or is empty.
+        TODO SAY CHECK MODEL
         """
-
         tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
 
@@ -1743,18 +1750,18 @@ class gibbon_quality_term(AcquisitionFunctionClass):
                 GIBBON only supports models with a covariance_between_points method.
                 """
             )
-        
+
         self._model = model
         self._samples = tf.Variable(samples)
 
     def update(self, samples: TensorType) -> None:
         """Update the acquisition function with new samples."""
         tf.debugging.assert_rank(samples, 2)
-        tf.debugging.assert_positive(len(samples)) # TODO TEST THIS?
+        tf.debugging.assert_positive(len(samples))  # TODO TEST THIS?
         self._samples.assign(samples)
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType: # [N, D] -> [N, 1]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -1774,13 +1781,8 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
         inner_log = 1 + rho_squared * ratio * (gamma - ratio)
- 
+
         return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
-
-       
-
-
-
 
 
 class gibbon_repulsion_term(ABC):
@@ -1788,24 +1790,26 @@ class gibbon_repulsion_term(ABC):
         self,
         model: ProbabilisticModel,
         pending_points: TensorType,
-        rescaled_repulsion: bool=True,
+        rescaled_repulsion: bool = True,
     ):
-        """ 
-        whereas the repulsion term encourages
-        diversity within the batch (achieving high values for points with low predictive correlation).
+        r"""
+        GIBBON's repulsion term encourages diversity within the batch
+        (achieving high values for points with low predictive correlation).
 
-        GIBBON's repulsion term :math:`r=\log |C|`  is given by the log determinant of the predictive
+        GIBBON's repulsion term :math:`r=\log |C|` is given by the log determinant of the predictive
         correlation matrix :math:`C` between the `m` pending points and the current candidate.
         The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
-        tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using the
-        formula for the determinant of block matrices, i.e :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
+        tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using
+        the formula for the determinant of block matrices, i.e
+        :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
         Note that when using GIBBON for purely sequential optimization, the repulsion term is
         not required.
 
-        As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a set
-        of `m` pending points, we need only ever calculate the entropy reduction provided by adding the
-        current candidate point to the current pending points, not the full information gain provided by
-        evaluating all the pending points. This allows for a modest computational saving.
+        As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a
+        set of `m` pending points, we need only ever calculate the entropy reduction provided by
+        adding the current candidate point to the current pending points, not the full information
+        gain provided by evaluating all the pending points. This allows for a modest computational
+        saving.
 
         When performing batch BO, GIBBON's approximation can sometimes become
         less accurate as its repulsion term dominates. Therefore, we follow the
@@ -1820,9 +1824,9 @@ class gibbon_repulsion_term(ABC):
             batch optimization performance.
         :return: GIBBON's repulsion term. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-        :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have rank two, or
-            is empty.
-        TOD SAY CHECK MODEL
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have
+            rank two, or is empty.
+        TODO SAY CHECK MODEL
         """
         tf.debugging.assert_rank(pending_points, 2)
         tf.debugging.assert_positive(len(pending_points))
@@ -1843,7 +1847,6 @@ class gibbon_repulsion_term(ABC):
                 GIBBON only supports models with a covariance_between_points method.
                 """
             )
-        
 
         self._model = model
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
@@ -1857,15 +1860,10 @@ class gibbon_repulsion_term(ABC):
     ) -> None:
         """Update the local penalizer with new variable values."""
 
-
-        
         mean_pending, variance_pending = self._model.predict(pending_points)
         self._pending_points.assign(pending_points)
         self._radius.assign(tf.transpose((mean_pending - eta) / lipschitz_constant))
         self._scale.assign(tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant))
-
-
-
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -1878,13 +1876,14 @@ class gibbon_repulsion_term(ABC):
         noise_variance = self._model.get_observation_noise()
         yvar = fvar + noise_variance  # need predictive variance of observations
 
-
         _, B = self._model.predict_joint(self._pending_points)  # [1, m, m]
         L = tf.linalg.cholesky(
             B + noise_variance * tf.eye(len(self._pending_points), dtype=B.dtype)
         )  # need predictive variance of observations
         A = tf.expand_dims(
-            self._model.covariance_between_points(tf.squeeze(x, -2), self._pending_points),  # type: ignore
+            self._model.covariance_between_points(  # type: ignore
+                tf.squeeze(x, -2), self._pending_points
+            ),
             -1,
         )  # [N, m, 1]
         L_inv_A = tf.linalg.triangular_solve(L, A)
@@ -1902,29 +1901,26 @@ class gibbon_repulsion_term(ABC):
         return repulsion_weight * repulsion
 
 
-
-def get_min_value_samples( # TEST THIS FUNCTION
-            self, 
-            model: ProbabilisticModel, 
-            sampled_points: TensorType,
-            use_thompson: bool,
-            num_fourier_features: Optional[int] = None,
+def get_min_value_samples(
+    model: ProbabilisticModel,
+    dataset: Dataset,
+    sampled_points: TensorType,
+    num_samples: int,
+    use_thompson: bool,
+    num_fourier_features: Optional[int] = None,
 ) -> TensorType:
 
-    if not self._use_thompson:  # use Gumbel sampler
-        sampler: ThompsonSampler = GumbelSampler(self._num_samples, model)
-    elif self._num_fourier_features is not None:  # use approximate Thompson sampler
+    if not use_thompson:  # use Gumbel sampler
+        sampler: ThompsonSampler = GumbelSampler(num_samples, model)
+    elif num_fourier_features is not None:  # use approximate Thompson sampler
         sampler = RandomFourierFeatureThompsonSampler(
-            self._num_samples,
+            num_samples,
             model,
             dataset,
             sample_min_value=True,
-            num_features=self._num_fourier_features,
+            num_features=num_fourier_features,
         )
     else:  # use exact Thompson sampler
-        sampler = ExactThompsonSampler(self._num_samples, model, sample_min_value=True)
+        sampler = ExactThompsonSampler(num_samples, model, sample_min_value=True)
 
-    query_points = self._search_space.sample(num_samples=self._grid_size)
-    tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
-    query_points = tf.concat([dataset.query_points, query_points], 0)
     return sampler.sample(sampled_points)

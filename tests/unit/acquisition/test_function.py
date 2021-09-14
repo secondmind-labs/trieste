@@ -62,7 +62,6 @@ from trieste.acquisition.function import (
     batch_ehvi,
     expected_hv_improvement,
     expected_improvement,
-    gibbon_repulsion_term,
     gibbon_quality_term,
     hard_local_penalizer,
     lower_confidence_bound,
@@ -1396,7 +1395,6 @@ def test_gibbon_quality_term_raises_for_gumbel_samples_with_invalid_shape(
         gibbon_quality_term(model, samples)
 
 
-
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_quality_term_raises_for_invalid_batch_size(at: TensorType) -> None:
     model = QuadraticMeanAndRBFKernel()
@@ -1404,8 +1402,6 @@ def test_gibbon_quality_term_raises_for_invalid_batch_size(at: TensorType) -> No
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         gibbon_acq(at)
-
-
 
 
 def test_gibbon_quality_term_returns_correct_shape() -> None:
@@ -1436,51 +1432,18 @@ def test_gibbon_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
-# def test_gibbon_builder_raises_for_invalid_pending_points_shape(
-#     pending_points: TensorType,
-# ) -> None:
-#     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-#     space = Box([0, 0], [1, 1])
-#     builder = GIBBON(search_space=space)
-#     builder.prepare_acquisition_function(
-#         data, QuadraticMeanAndRBFKernel(), None
-#     )  # first initialize
-#     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-#         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
+@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+def test_gibbon_builder_raises_for_invalid_pending_points_shape(
+    pending_points: TensorType,
+) -> None:
+    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space=space)
+    builder.prepare_acquisition_function(
+        data, QuadraticMeanAndRBFKernel(), None
+    )  # first initialize
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
 
 
 def test_gibbon_raises_when_called_before_initialization() -> None:
@@ -1493,48 +1456,44 @@ def test_gibbon_raises_when_called_before_initialization() -> None:
         )
 
 
+def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
+    class dummy_model_without_likelihood(ProbabilisticModel):
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
 
-# def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
-#     class dummy_model_without_likelihood(ProbabilisticModel):
-#         def predict(self, query_points: TensorType) -> tuple[None, None]:
-#             return None, None
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
 
-#         def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
-#             return None, None
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
+            return None
 
-#         def sample(self, query_points: TensorType, num_samples: int) -> None:
-#             return None
+        def covariance_between_points(
+            self, query_points_1: TensorType, query_points_2: TensorType
+        ) -> None:
+            return None
 
-#         def covariance_between_points(
-#             self, query_points_1: TensorType, query_points_2: TensorType
-#         ) -> None:
-#             return None
-
-#     with pytest.raises(ValueError):
-#         model_without_likelihood = dummy_model_without_likelihood()
-#         gibbon(model_without_likelihood, tf.constant([[1.0]]))
-
-
-# def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
-#     class dummy_model_without_covariance_between_points(ProbabilisticModel):
-#         def predict(self, query_points: TensorType) -> tuple[None, None]:
-#             return None, None
-
-#         def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
-#             return None, None
-
-#         def sample(self, query_points: TensorType, num_samples: int) -> None:
-#             return None
-
-#         def get_observation_noise(self) -> None:
-#             return None
-
-#     with pytest.raises(AttributeError):
-#         model_without_likelihood = dummy_model_without_covariance_between_points()
-#         gibbon(model_without_likelihood, tf.constant([[1.0]]))
+    with pytest.raises(ValueError):
+        model_without_likelihood = dummy_model_without_likelihood()
+        gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
 
+def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
+    class dummy_model_without_covariance_between_points(ProbabilisticModel):
+        def predict(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
 
+        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
+            return None, None
+
+        def sample(self, query_points: TensorType, num_samples: int) -> None:
+            return None
+
+        def get_observation_noise(self) -> None:
+            return None
+
+    with pytest.raises(AttributeError):
+        model_without_likelihood = dummy_model_without_covariance_between_points()
+        gibbon(model_without_likelihood, tf.constant([[1.0]]))
 
 
 @random_seed
