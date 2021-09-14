@@ -404,7 +404,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = get_min_value_samples(
+        min_value_samples = _get_min_value_samples(
             model,
             dataset,
             sampled_points=query_points,
@@ -428,7 +428,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = get_min_value_samples(
+        min_value_samples = _get_min_value_samples(
             model,
             dataset,
             sampled_points=query_points,
@@ -465,7 +465,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
     def update(self, samples: TensorType) -> None:
         """Update the acquisition function with new samples."""
         tf.debugging.assert_rank(samples, 2)
-        tf.debugging.assert_positive(len(samples))  # TODO TEST THIS?
+        tf.debugging.assert_positive(len(samples))
         self._samples.assign(samples)
 
     @tf.function
@@ -1698,7 +1698,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        self._min_value_samples = get_min_value_samples(
+        self._min_value_samples = _get_min_value_samples(
             model,
             dataset,
             sampled_points=query_points,
@@ -1729,7 +1729,6 @@ class gibbon_quality_term(AcquisitionFunctionClass):
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two,
             or is empty.
-        TODO SAY CHECK MODEL
         """
         tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
@@ -1757,7 +1756,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
     def update(self, samples: TensorType) -> None:
         """Update the acquisition function with new samples."""
         tf.debugging.assert_rank(samples, 2)
-        tf.debugging.assert_positive(len(samples))  # TODO TEST THIS?
+        tf.debugging.assert_positive(len(samples))
         self._samples.assign(samples)
 
     @tf.function
@@ -1769,7 +1768,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
 
         fmean, fvar = self._model.predict(tf.squeeze(x, -2))
         noise_variance = self._model.get_observation_noise()
-        yvar = fvar + noise_variance  # need predictive variance of observations
+        yvar = fvar + tf.cast(noise_variance, fmean.dtype)  # predictive variance of observations
 
         rho_squared = fvar / yvar  # squared correlation between observations and latent function
         fsd = tf.clip_by_value(
@@ -1826,7 +1825,6 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have
             rank two, or is empty.
-        TODO SAY CHECK MODEL
         """
         tf.debugging.assert_rank(pending_points, 2)
         tf.debugging.assert_positive(len(pending_points))
@@ -1897,7 +1895,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
-def get_min_value_samples(
+def _get_min_value_samples(
     model: ProbabilisticModel,
     dataset: Dataset,
     sampled_points: TensorType,

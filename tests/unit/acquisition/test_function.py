@@ -1433,6 +1433,33 @@ def test_gibbon_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)  # type: ignore
 
 
+@pytest.mark.parametrize("use_thompson", [True, False])
+def test_gibbon_builder_updates_acquisition_function(use_thompson: bool) -> None:
+
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    x_range = tf.cast(tf.linspace(0.0, 1.0, 5), dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    partial_dataset = Dataset(xs[:10], ys[:10])
+    full_dataset = Dataset(xs, ys)
+
+    builder = GIBBON(search_space, use_thompson=use_thompson)
+    xs = tf.cast(tf.linspace([[0.0]], [[1.0]], 10), tf.float64)
+    model = QuadraticMeanAndRBFKernel()
+
+    old_acq_fn = builder.prepare_acquisition_function(partial_dataset, model)
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    updated_acq_fn = builder.update_acquisition_function(old_acq_fn, full_dataset, model)
+    assert updated_acq_fn == old_acq_fn
+    updated_values = updated_acq_fn(xs)
+
+    tf.random.set_seed(0)  # to ensure consistent sampling
+    new_acq_fn = builder.prepare_acquisition_function(full_dataset, model)
+    new_values = new_acq_fn(xs)
+
+    npt.assert_allclose(updated_values, new_values)
+
+
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
 def test_gibbon_builder_raises_for_invalid_pending_points_shape(
     pending_points: TensorType,
