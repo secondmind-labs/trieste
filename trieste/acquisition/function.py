@@ -1844,6 +1844,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
+    See also :cite:`Gramacy2009` for details.
     """
 
     def __repr__(self) -> str:
