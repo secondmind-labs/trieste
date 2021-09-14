@@ -16,22 +16,17 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 #
-# In this example, we will perform active learning for the log Branin function.
+# In this example, we will perform active learning for the scaled Branin function.
 
 
 # %%
-from trieste.objectives import branin
+from trieste.objectives import scaled_branin
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
-
-def log_branin(x):
-    return tf.math.log(branin(x))
-
-
 search_space = Box([0, 0], [1, 1])
 
-fig = plot_function_plotly(log_branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -41,7 +36,7 @@ fig.show()
 # %%
 import trieste
 
-observer = trieste.objectives.utils.mk_observer(log_branin)
+observer = trieste.objectives.utils.mk_observer(scaled_branin)
 
 num_initial_points = 2
 initial_query_points = search_space.sample_halton(num_initial_points)
@@ -55,21 +50,24 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
+from trieste.models.gpflow import GPflowModelConfig
 
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[0.2, 0.2])
+    kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[2, 2])
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }
+    return GPflowModelConfig(
+        **{
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+        }
+    )
 
 
 model = build_model(initial_data)
