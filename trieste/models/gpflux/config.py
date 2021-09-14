@@ -19,11 +19,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import tensorflow as tf
-from gpflux.models import DeepGP
+from gpflux.models import DeepGP, GIDeepGP
 
 from ..config import ModelConfig
 from ..interfaces import TrainableProbabilisticModel
-from .models import DeepGaussianProcess
+from .models import DeepGaussianProcess, GlobalInducingDeepGaussianProcess
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class GPfluxModelConfig(ModelConfig):
             Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]
         ] = {
             DeepGP: DeepGaussianProcess,
+            GIDeepGP: GlobalInducingDeepGaussianProcess,
         }
         return models_mapping
 

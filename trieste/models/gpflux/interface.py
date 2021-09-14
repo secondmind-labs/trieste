@@ -17,7 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import tensorflow as tf
-from gpflux.models import DeepGP
+from gpflow.base import Module
 
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
@@ -41,7 +41,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     @abstractmethod
-    def model_gpflux(self) -> DeepGP:
+    def model_gpflux(self) -> Module:
         """The underlying GPflux model."""
 
     @property
