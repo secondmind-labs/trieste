@@ -1620,7 +1620,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         self._num_fourier_features = num_fourier_features
         self._rescaled_repulsion = rescaled_repulsion
 
-        self._min_value_samples = None
+        self._min_value_samples: Optional[TensorType] = None
         self._quality_term: Optional[gibbon_quality_term] = None
         self._diversity_term: Optional[gibbon_repulsion_term] = None
         self._gibbon_acquisition: Optional[AcquisitionFunction] = None
@@ -1673,7 +1673,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             self._diversity_term, gibbon_repulsion_term
         ):
             # if possible, just update the repulsion term
-            self._diversity_term.update(pending_points, self._min_value_samples)  # TODO: eta?
+            self._diversity_term.update(pending_points)
             return self._gibbon_acquisition
         else:
             # otherwise construct a new repulsion term and acquisition function
@@ -1785,7 +1785,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
 
 
-class gibbon_repulsion_term(ABC):
+class gibbon_repulsion_term(UpdatablePenalizationFunction):
     def __init__(
         self,
         model: ProbabilisticModel,
@@ -1796,7 +1796,7 @@ class gibbon_repulsion_term(ABC):
         GIBBON's repulsion term encourages diversity within the batch
         (achieving high values for points with low predictive correlation).
 
-        GIBBON's repulsion term :math:`r=\log |C|` is given by the log determinant of the predictive
+        The term :math:`r=\log |C|` is given by the log determinant of the predictive
         correlation matrix :math:`C` between the `m` pending points and the current candidate.
         The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
         tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using
@@ -1855,15 +1855,11 @@ class gibbon_repulsion_term(ABC):
     def update(
         self,
         pending_points: TensorType,
-        lipschitz_constant: TensorType,
-        eta: TensorType,
+        lipschitz_constant: TensorType = None,
+        eta: TensorType = None,
     ) -> None:
-        """Update the local penalizer with new variable values."""
-
-        mean_pending, variance_pending = self._model.predict(pending_points)
+        """Update the repulsion term with new variable values."""
         self._pending_points.assign(pending_points)
-        self._radius.assign(tf.transpose((mean_pending - eta) / lipschitz_constant))
-        self._scale.assign(tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant))
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:

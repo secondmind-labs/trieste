@@ -63,6 +63,7 @@ from trieste.acquisition.function import (
     expected_hv_improvement,
     expected_improvement,
     gibbon_quality_term,
+    gibbon_repulsion_term,
     hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
@@ -1412,7 +1413,7 @@ def test_gibbon_quality_term_returns_correct_shape() -> None:
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
-@unittest.mock.patch("trieste.acquisition.function.gibbon")
+@unittest.mock.patch("trieste.acquisition.function.gibbon_quality_term")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_gibbon_builder_builds_min_value_samples(
     mocked_mves: MagicMock, use_thompson: bool
@@ -1429,7 +1430,7 @@ def test_gibbon_builder_builds_min_value_samples(
     query_points = builder._search_space.sample(num_samples=builder._grid_size)
     query_points = tf.concat([dataset.query_points, query_points], 0)
     fmean, _ = model.predict(query_points)
-    assert max(min_value_samples) < min(fmean)
+    assert max(min_value_samples) < min(fmean)  # type: ignore
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -1474,7 +1475,7 @@ def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
 
     with pytest.raises(ValueError):
         model_without_likelihood = dummy_model_without_likelihood()
-        gibbon(model_without_likelihood, tf.constant([[1.0]]))
+        gibbon_quality_term(model_without_likelihood, tf.constant([[1.0]]))
 
 
 def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
@@ -1493,11 +1494,11 @@ def test_gibbon_raises_for_model_without_covariance_between_points_method() -> N
 
     with pytest.raises(AttributeError):
         model_without_likelihood = dummy_model_without_covariance_between_points()
-        gibbon(model_without_likelihood, tf.constant([[1.0]]))
+        gibbon_quality_term(model_without_likelihood, tf.constant([[1.0]]))
 
 
 @random_seed
-@unittest.mock.patch("trieste.acquisition.function.gibbon")
+@unittest.mock.patch("trieste.acquisition.function.gibbon_quality_term")
 def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
@@ -1536,7 +1537,7 @@ def test_gibbon_chooses_same_as_min_value_entropy_search() -> None:
 
     min_value_sample = tf.constant([[1.0]], dtype=tf.float64)
     mes_evals = min_value_entropy_search(model, min_value_sample)(xs[..., None, :])
-    gibbon_evals = gibbon(model, min_value_sample)(xs[..., None, :])
+    gibbon_evals = gibbon_quality_term(model, min_value_sample)(xs[..., None, :])
 
     npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(gibbon_evals))
 
@@ -1563,14 +1564,14 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
     pending_points = tf.constant([[0.11, 0.51], [0.21, 0.31], [0.41, 0.91]], dtype=tf.float64)
     min_value_sample = tf.constant([[-0.1, 0.1]], dtype=tf.float64)
 
-    gibbon_of_new_points = gibbon(model, min_value_sample)(xs[..., None, :])
+    gibbon_of_new_points = gibbon_quality_term(model, min_value_sample)(xs[..., None, :])
     mean, var = model.predict(xs)
     _, pending_var = model.predict_joint(pending_points)
     pending_var += noise_variance * tf.eye(len(pending_points), dtype=pending_var.dtype)
 
-    calculated_batch_gibbon = gibbon(model, min_value_sample, pending_points, rescaled_repulsion)(
-        xs[..., None, :]
-    )
+    calculated_batch_gibbon = gibbon_of_new_points + gibbon_repulsion_term(
+        model, pending_points, rescaled_repulsion=rescaled_repulsion
+    )(xs[..., None, :])
 
     for i in tf.range(len(xs)):  # check across a set of candidate points
         candidate_and_pending = tf.concat([xs[i : i + 1], pending_points], axis=0)
