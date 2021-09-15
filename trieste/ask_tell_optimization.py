@@ -20,15 +20,15 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
-from typing import Dict, Generic, Mapping, Optional, TypeVar, cast
+from typing import Dict, Generic, Mapping, Optional, TypeVar, cast, overload
 
-from .acquisition.rule import AcquisitionRule
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import Record
 from .data import Dataset
 from .models import ModelSpec, create_model
 from .observer import OBJECTIVE
 from .space import SearchSpace
-from .types import TensorType
+from .types import State, TensorType
 from .utils import map_values
 
 S = TypeVar("S")
@@ -38,40 +38,79 @@ SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
 
-class AskTellOptimizer(Generic[S, SP]):
+class AskTellOptimizer(Generic[SP]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
-    when control of the optimization loop by Trieste is impossible.
-    That could happen because objective function cannot be implemented/called in Python, or if
-    optimization state cannot be maintained in memory.
+    when control of the optimization loop by Trieste is impossible or not desirable.
     For more details about the Bayesian Optimization routine, refer to :class:`BayesianOptimizer`.
     """
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Mapping[str, Dataset] | Dataset,
+        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Mapping[str, Dataset] | Dataset,
+        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        acquisition_rule: AcquisitionRule[TensorType, SP] | None = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Mapping[str, Dataset] | Dataset,
+        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP] | None = None,
+        acquisition_state: Optional[S] = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
 
     def __init__(
         self,
         search_space: SP,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        fit_model: bool,
-        acquisition_rule: AcquisitionRule[S, SP],
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        | None = None,
         acquisition_state: Optional[S] = None,
+        *,
+        fit_model: bool = True,
     ):
         """
         :param search_space: The space over which to search.
-        :param datasets: The known observer query points and observations for each tag.
+        :param datasets: Already observed input-output pairs for each tag.
         :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
             ``datasets``.
-        :param fit_model: If `True`, models passed in will be optimized on the given data.
-            If `False`, the models are assumed to be optimized already.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
-            on each optimization step.
+            on each optimization step. Defaults to
+            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+            arguments. Note that if the default is used, this implies the tags must be
+            `OBJECTIVE` and the search space can be any :class:`~trieste.space.SearchSpace`.
         :param acquisition_state: The optional acquisition state for stateful acquisitions.
+        :param fit_model: If `True` (default), models passed in will be optimized on the given data.
+            If `False`, the models are assumed to be optimized already.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``model_specs`` do not match
             - ``datasets`` or ``model_specs`` are empty
+            - default acquisition is used but incompatible with other inputs
         """
         self._search_space = search_space
-        self._acquisition_rule = acquisition_rule
         self._acquisition_state = acquisition_state
 
         if not datasets or not model_specs:
@@ -95,40 +134,68 @@ class AskTellOptimizer(Generic[S, SP]):
         self._datasets = datasets
         self._models = map_values(create_model, model_specs)
 
+        if acquisition_rule is None:
+            if self._datasets.keys() != {OBJECTIVE}:
+                raise ValueError(
+                    f"Default acquisition rule EfficientGlobalOptimization requires tag"
+                    f" {OBJECTIVE!r}, got keys {self._datasets.keys()}"
+                )
+
+            self._acquisition_rule = cast(
+                AcquisitionRule[TensorType, SP], EfficientGlobalOptimization()
+            )
+        else:
+            self._acquisition_rule = acquisition_rule
+
         if fit_model:
-            # there is no default value for `fit_model` parameter
-            # to force the user to think about it
-            # before invoking ask/tell API
-            # there is no sensible default here:
-            # `False` may result in suboptimal performance
-            # `True` may result in two model training calls per optimization step
             for tag, model in self._models.items():
                 dataset = datasets[tag]
                 model.update(dataset)
                 model.optimize(dataset)
 
+    def __repr__(self) -> str:
+        """Print-friendly string representation"""
+        return f"""AskTellOptimizer({self._search_space!r}, {self._datasets!r},
+               {self._models!r}, {self._acquisition_rule!r}), "
+               {self._acquisition_state!r}"""
+
     @classmethod
     def from_record(
-        cls, search_space: SP, acquisition_rule: AcquisitionRule[S, SP], record: Record[S]
-    ) -> AskTellOptimizer[S, SP]:
+        cls,
+        record: Record[S],
+        search_space: SP,
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        | None = None,
+    ) -> AskTellOptimizer[SP]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
 
+        :param record: Optimization state record.
         :param search_space: The space over which to search.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
-            on each optimization step.
-        :param record: Optimization state record.
+            on each optimization step. Defaults to
+            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+            arguments.
         """
-        # here we are recovering previously saved optimization state
-        # there the model was already trained
+        # we are recovering previously saved optimization state
+        # so the model was already trained
         # thus there is no need to train it again
-        fit_model = False
         return cls(
             search_space,
             record.datasets,
             record.models,
-            fit_model,
-            acquisition_rule,
-            record.acquisition_state,
+            acquisition_rule=acquisition_rule,
+            acquisition_state=record.acquisition_state,
+            fit_model=False,
+        )
+
+    def to_record(self) -> Record[S]:
+        """Collects the current state of the optimization, which includes datasets,
+        models and acquisition state (if applicable).
+
+        :return: An optimization state record.
+        """
+        return Record(
+            datasets=self._datasets, models=self._models, acquisition_state=self._acquisition_state
         )
 
     def ask(self) -> TensorType:
@@ -137,6 +204,13 @@ class AskTellOptimizer(Generic[S, SP]):
 
         :return: A :class:`TensorType` instance representing suggested point(s).
         """
+        # This trick deserves a comment to explain what's going on
+        # acquisition_rule.acquire can return different things:
+        # - when acquisition has no state attached, it returns just points
+        # - when acquisition has state, it returns a Callable
+        #   which, when called, returns state and points
+        # so code below is needed to cater for both cases
+
         points_or_stateful = self._acquisition_rule.acquire(
             self._search_space, self._datasets, self._models
         )
@@ -169,13 +243,3 @@ class AskTellOptimizer(Generic[S, SP]):
             dataset = self._datasets[tag]
             model.update(dataset)
             model.optimize(dataset)
-
-    def get_state(self) -> Record[S]:
-        """Collects the current state of the optimization, which includes datasets,
-        models and acquisition state (if applicable).
-
-        :return: An optimization state record.
-        """
-        return Record(
-            datasets=self._datasets, models=self._models, acquisition_state=self._acquisition_state
-        )

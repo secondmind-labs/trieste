@@ -25,6 +25,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import State, TensorType
 
@@ -68,7 +69,19 @@ def test_ask_tell_optimizer_suggests_new_point(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, True, acquisition_rule)
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+
+    new_point = ask_tell.ask()
+
+    assert len(new_point) == 1
+
+
+def test_ask_tell_optimizer_with_default_acquisition_suggests_new_point(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model)
 
     new_point = ask_tell.ask()
 
@@ -81,9 +94,9 @@ def test_ask_tell_optimizer_returns_complete_state(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, True, acquisition_rule)
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
-    state_record = ask_tell.get_state()
+    state_record: Record[None] = ask_tell.to_record()
 
     assert_datasets_allclose(state_record.dataset, init_dataset)
     assert isinstance(state_record.model, type(model))
@@ -96,12 +109,12 @@ def test_ask_tell_optimizer_loads_from_state(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[TensorType] = Record(
+    old_state: Record[None] = Record(
         datasets={"": init_dataset}, models={"": model}, acquisition_state=None
     )
 
-    ask_tell = AskTellOptimizer.from_record(search_space, acquisition_rule, old_state)
-    new_state = ask_tell.get_state()
+    ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
+    new_state: Record[None] = ask_tell.to_record()
 
     assert_datasets_allclose(old_state.dataset, new_state.dataset)
     assert isinstance(new_state.model, type(old_state.model))
@@ -114,10 +127,10 @@ def test_ask_tell_optimizer_updates_state_with_new_data(
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
     new_data = mk_dataset([[1.0]], [[1.0]])
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, True, acquisition_rule)
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
     ask_tell.tell(new_data)
-    state_record = ask_tell.get_state()
+    state_record: Record[None] = ask_tell.to_record()
 
     assert_datasets_allclose(state_record.dataset, init_dataset + new_data)
 
@@ -129,10 +142,12 @@ def test_ask_tell_optimizer_trains_model(
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
     new_data = mk_dataset([[1.0]], [[1.0]])
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, False, acquisition_rule)
+    ask_tell = AskTellOptimizer(
+        search_space, init_dataset, model, acquisition_rule, fit_model=False
+    )
 
     ask_tell.tell(new_data)
-    state_record = ask_tell.get_state()
+    state_record: Record[None] = ask_tell.to_record()
 
     assert state_record.model.optimize_count == 1  # type: ignore
 
@@ -146,9 +161,9 @@ def test_ask_tell_optimizer_optimizes_initial_model(
     fit_initial_model: bool,
 ) -> None:
     ask_tell = AskTellOptimizer(
-        search_space, init_dataset, model, fit_initial_model, acquisition_rule
+        search_space, init_dataset, model, acquisition_rule, fit_model=fit_initial_model
     )
-    state_record = ask_tell.get_state()
+    state_record: Record[None] = ask_tell.to_record()
 
     if fit_initial_model:
         assert state_record.model.optimize_count == 1  # type: ignore
@@ -162,12 +177,12 @@ def test_ask_tell_optimizer_from_state_does_not_train_model(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[TensorType] = Record(
+    old_state: Record[None] = Record(
         datasets={"": init_dataset}, models={"": model}, acquisition_state=None
     )
 
-    ask_tell = AskTellOptimizer.from_record(search_space, acquisition_rule, old_state)
-    state_record = ask_tell.get_state()
+    ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
+    state_record: Record[None] = ask_tell.to_record()
 
     assert state_record.model.optimize_count == 0  # type: ignore
 
@@ -205,11 +220,12 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
 
     rule = Rule()
 
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, True, rule, starting_state)
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, rule, starting_state)
     _ = ask_tell.ask()
-    state_record = ask_tell.get_state()
+    state_record: Record[State[int, TensorType]] = ask_tell.to_record()
 
-    assert state_record.acquisition_state == expected_state
+    # mypy cannot see that this is in fact int
+    assert state_record.acquisition_state == expected_state  # type: ignore
 
 
 def test_ask_tell_optimizer_does_not_accept_empty_datasets_or_models(
@@ -219,10 +235,10 @@ def test_ask_tell_optimizer_does_not_accept_empty_datasets_or_models(
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
     with pytest.raises(ValueError):
-        AskTellOptimizer(search_space, {}, model, True, acquisition_rule)
+        AskTellOptimizer(search_space, {}, model, acquisition_rule)
 
     with pytest.raises(ValueError):
-        AskTellOptimizer(search_space, init_dataset, {}, True, acquisition_rule)
+        AskTellOptimizer(search_space, init_dataset, {}, acquisition_rule)
 
 
 def test_ask_tell_optimizer_validates_keys(
@@ -235,7 +251,7 @@ def test_ask_tell_optimizer_validates_keys(
     model_with_key_2 = {"2": model}
 
     with pytest.raises(ValueError):
-        AskTellOptimizer(search_space, dataset_with_key_1, model_with_key_2, True, acquisition_rule)
+        AskTellOptimizer(search_space, dataset_with_key_1, model_with_key_2, acquisition_rule)
 
 
 def test_ask_tell_optimizer_tell_validates_keys(
@@ -249,7 +265,20 @@ def test_ask_tell_optimizer_tell_validates_keys(
     new_data_with_key_2 = {"2": mk_dataset([[1.0]], [[1.0]])}
 
     ask_tell = AskTellOptimizer(
-        search_space, dataset_with_key_1, model_with_key_1, True, acquisition_rule
+        search_space, dataset_with_key_1, model_with_key_1, acquisition_rule
     )
     with pytest.raises(ValueError):
         ask_tell.tell(new_data_with_key_2)
+
+
+def test_ask_tell_optimizer_default_acqusition_requires_objective_tag(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+) -> None:
+    wrong_tag = OBJECTIVE + "_WRONG"
+    wrong_datasets = {wrong_tag: init_dataset}
+    wrong_models = {wrong_tag: model}
+
+    with pytest.raises(ValueError):
+        AskTellOptimizer(search_space, wrong_datasets, wrong_models)

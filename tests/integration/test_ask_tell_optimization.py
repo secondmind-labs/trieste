@@ -25,6 +25,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegion
 from trieste.ask_tell_optimization import AskTellOptimizer
+from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import (
@@ -108,7 +109,7 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
-    ask_tell = AskTellOptimizer(search_space, initial_data, model, True, acquisition_rule)
+    ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule, fit_model=True)
 
     for _ in range(num_steps):
         # two scenarios can be tested here, depending on `reload_state` parameter
@@ -117,19 +118,18 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
         new_point = ask_tell.ask()
 
         if reload_state:
-            state = ask_tell.get_state()
+            state: Record[None | State[TensorType, TrustRegion.State]] = ask_tell.to_record()
 
         new_data = observer(new_point)
 
         if reload_state:
-            ask_tell = AskTellOptimizer.from_record(search_space, acquisition_rule, state)
+            ask_tell = AskTellOptimizer.from_record(state, search_space, acquisition_rule)
 
         ask_tell.tell(new_data)
 
-    final_state = ask_tell.get_state()
+    final_state: Record[None | State[TensorType, TrustRegion.State]] = ask_tell.to_record()
     dataset = final_state.dataset
 
-    print(dataset)
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
     best_y = dataset.observations[arg_min_idx]
