@@ -37,6 +37,13 @@ from trieste.objectives import (
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
     LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
+    MICHALEWICZ_2_MINIMIZER,
+    MICHALEWICZ_2_MINIMUM,
+    MICHALEWICZ_2_SEARCH_SPACE,
+    MICHALEWICZ_5_MINIMUM,
+    MICHALEWICZ_5_SEARCH_SPACE,
+    MICHALEWICZ_10_MINIMUM,
+    MICHALEWICZ_10_SEARCH_SPACE,
     ROSENBROCK_4_MINIMIZER,
     ROSENBROCK_4_MINIMUM,
     ROSENBROCK_4_SEARCH_SPACE,
@@ -50,6 +57,9 @@ from trieste.objectives import (
     hartmann_3,
     hartmann_6,
     logarithmic_goldstein_price,
+    michalewicz_2d,
+    michalewicz_5d,
+    michalewicz_10d,
     rosenbrock_4,
     scaled_branin,
     shekel_4,
@@ -64,6 +74,7 @@ from trieste.types import TensorType
         (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
         (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
+        (michalewicz_2d, MICHALEWICZ_2_MINIMIZER, MICHALEWICZ_2_MINIMUM),
         (
             logarithmic_goldstein_price,
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
@@ -81,7 +92,7 @@ def test_objective_maps_minimizers_to_minimum(
 ) -> None:
     objective_values_at_minimizers = objective(minimizers)
     tf.debugging.assert_shapes([(objective_values_at_minimizers, [len(minimizers), 1])])
-    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-4)
+    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=2e-4)
 
 
 @pytest.mark.parametrize(
@@ -90,6 +101,9 @@ def test_objective_maps_minimizers_to_minimum(
         (branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMUM),
         (scaled_branin, BRANIN_SEARCH_SPACE, SCALED_BRANIN_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_SEARCH_SPACE, GRAMACY_LEE_MINIMUM),
+        (michalewicz_2d, MICHALEWICZ_2_SEARCH_SPACE, MICHALEWICZ_2_MINIMUM),
+        (michalewicz_5d, MICHALEWICZ_5_SEARCH_SPACE, MICHALEWICZ_5_MINIMUM),
+        (michalewicz_10d, MICHALEWICZ_10_SEARCH_SPACE, MICHALEWICZ_10_MINIMUM),
         (
             logarithmic_goldstein_price,
             LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
