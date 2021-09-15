@@ -149,12 +149,12 @@ def build_gi_deep_gp(
                 X_running = X_running.numpy()
 
         layer = GIGPLayer(
+            input_dim=D_in,
             num_latent_gps=D_out,
             num_data=num_data,
             num_inducing=num_inducing,
-            input_dim=D_in,
             mean_function=mean_function,
-            kernel_variance=last_layer_variance if is_last_layer else 1.,
+            kernel_variance_init=last_layer_variance if is_last_layer else 1.,
             prec_init=inner_layer_prec_init if not is_last_layer else last_layer_prec_init,
             inducing_targets=None if not is_last_layer else y,
         )

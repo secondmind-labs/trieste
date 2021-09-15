@@ -223,8 +223,8 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
             :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`. Only
             the optimizer itself is used; other args relevant for fitting should be passed as part
             of `fit_args`.
-        :param fit_args: TODO: A dictionary of arguments to be used in the `optimize` method.
-            Default to using 100 epochs, batch size 100, and verbose 0.
+        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Default to
+            using 100 epochs, batch size 100, and verbose 0.
         """
 
         super().__init__()
@@ -239,7 +239,6 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
 
         self.original_lr = self._optimizer.lr.numpy()
 
-        # TODO: implement fit_args properly
         if fit_args is None:
             self.fit_args = dict(
                 {
@@ -260,6 +259,9 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
 
         self._model_gpflux = model
 
+        self._model_keras = model.as_training_model()
+        self._model_keras.compile(self._optimizer)
+
     def __repr__(self) -> str:
         """"""
         return f"GlobalInducingDeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
@@ -270,7 +272,7 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
 
     @property
     def model_keras(self) -> tf.keras.Model:
-        raise NotImplementedError("Keras compatibility not yet provided for `GIDeepGP` models")
+        return self._model_keras
 
     @property
     def optimizer(self) -> tf.keras.optimizers.Optimizer:
@@ -325,17 +327,10 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
         Optimize the model with the specified `dataset`.
 
         :param dataset: The data with which to optimize the `model`.
-
-        TODO: extract into a `build_loss_function` or similar, use fit_args
         """
-        @tf.function
-        def loss():
-            return -self.model_gpflux.elbo((dataset.query_points, dataset.observations))
+        self.model_keras.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
+        )
 
-        for _ in range(self.fit_args.get("epochs")):
-            with tf.GradientTape() as tape:
-                current_loss = loss()
-            if self.fit_args.get("verbose") == 1:
-                print("Loss: ", current_loss.numpy())
-            grads = tape.gradient(current_loss, self.model_gpflux.trainable_variables)
-            self.optimizer.apply_gradients(zip(grads, self.model_gpflux.trainable_variables))
+        # Reset lr in case there was an lr schedule
+        self.optimizer.lr.assign(self.original_lr)
