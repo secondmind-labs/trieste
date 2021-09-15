@@ -22,7 +22,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,

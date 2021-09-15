@@ -26,6 +26,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from tests.util.acquisition.sampler import PseudoBatchReparametrizationSampler
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     ShapeLike,
@@ -36,8 +37,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.model import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from tests.util.sampler import PseudoBatchReparametrizationSampler
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function import (
     GIBBON,
     AcquisitionFunction,
@@ -71,7 +71,7 @@ from trieste.acquisition.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives.single_objectives import BRANIN_MINIMUM, branin
+from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -279,7 +279,7 @@ def test_augmented_expected_improvement_builder_builds_expected_improvement_time
     ei = ExpectedImprovement().prepare_acquisition_function(dataset, model)(xs)
 
     @tf.function
-    def augmentation():
+    def augmentation() -> TensorType:
         _, variance = model.predict(tf.squeeze(xs, -2))
         return 1.0 - (tf.math.sqrt(observation_noise)) / (
             tf.math.sqrt(observation_noise + variance)
@@ -364,7 +364,7 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
 
 
 @pytest.mark.parametrize("use_thompson", [True, False, 100])
-def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson) -> None:
+def test_min_value_entropy_search_builder_updates_acquisition_function(use_thompson: bool) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
     model.kernel = (
@@ -1163,7 +1163,9 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(data, model)
     ei = ExpectedImprovement().prepare_acquisition_function(data, model)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
-    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.03)
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
+    # and again, since the sampler uses cacheing
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
 
 
 @random_seed
@@ -1185,6 +1187,28 @@ def test_batch_monte_carlo_expected_improvement() -> None:
     acq = builder.prepare_acquisition_function(mk_dataset([[0.3], [0.5]], [[0.09], [0.25]]), model)
 
     npt.assert_allclose(acq(xs), expected, rtol=0.05)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> None:
+    known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
+    data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
+    model = QuadraticMeanAndRBFKernel()
+    builder = BatchMonteCarloExpectedImprovement(10_000)
+    ei = ExpectedImprovement().prepare_acquisition_function(data, model)
+    xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
+
+    batch_ei = builder.prepare_acquisition_function(data, model)
+    assert batch_ei.__call__._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    up_batch_ei = builder.update_acquisition_function(batch_ei, data, model)
+    assert up_batch_ei == batch_ei
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+    npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
 
 
 @pytest.mark.parametrize(
