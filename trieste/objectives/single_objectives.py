@@ -435,31 +435,63 @@ def michalewicz_10d(x: TensorType) -> TensorType:
     return michalewicz(x, d=10)
 
 
-MICHALEWICZ_2_MINIMIZER = tf.constant([[2.20, 1.57]], tf.float64)
+MICHALEWICZ_2_MINIMIZER = tf.constant([[2.202906, 1.570796]], tf.float64)
 """
 The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^2`,
-with shape [1, 2] and dtype float64.
+with shape [1, 2] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
 """
 
 
-MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013], tf.float64)
+MICHALEWICZ_5_MINIMIZER = tf.constant(
+    [[2.202906, 1.570796, 1.284992, 1.923058, 1.720470]], tf.float64
+)
+"""
+The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^5`,
+with shape [1, 5] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_10_MINIMIZER = tf.constant(
+    [
+        [
+            2.202906,
+            1.570796,
+            1.284992,
+            1.923058,
+            1.720470,
+            1.570796,
+            1.454414,
+            1.756087,
+            1.655717,
+            1.570796,
+        ]
+    ],
+    tf.float64,
+)
+"""
+The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^10`,
+with shape [1, 10] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013034], tf.float64)
 """
 The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64.
+float64. Taken from https://arxiv.org/abs/2003.09867
 """
 
 
-MICHALEWICZ_5_MINIMUM = tf.constant([-4.687658], tf.float64)
+MICHALEWICZ_5_MINIMUM = tf.constant([-4.6876582], tf.float64)
 """
 The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64.
+float64. Taken from https://arxiv.org/abs/2003.09867
 """
 
 
-MICHALEWICZ_10_MINIMUM = tf.constant([-9.66015], tf.float64)
+MICHALEWICZ_10_MINIMUM = tf.constant([-9.6601517], tf.float64)
 """
 The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64.
+float64. Taken from https://arxiv.org/abs/2003.09867
 """
 
 

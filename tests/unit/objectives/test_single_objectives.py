@@ -40,8 +40,10 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
     MICHALEWICZ_2_SEARCH_SPACE,
+    MICHALEWICZ_5_MINIMIZER,
     MICHALEWICZ_5_MINIMUM,
     MICHALEWICZ_5_SEARCH_SPACE,
+    MICHALEWICZ_10_MINIMIZER,
     MICHALEWICZ_10_MINIMUM,
     MICHALEWICZ_10_SEARCH_SPACE,
     ROSENBROCK_4_MINIMIZER,
@@ -75,6 +77,8 @@ from trieste.types import TensorType
         (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
         (michalewicz_2d, MICHALEWICZ_2_MINIMIZER, MICHALEWICZ_2_MINIMUM),
+        (michalewicz_5d, MICHALEWICZ_5_MINIMIZER, MICHALEWICZ_5_MINIMUM),
+        (michalewicz_10d, MICHALEWICZ_10_MINIMIZER, MICHALEWICZ_10_MINIMUM),
         (
             logarithmic_goldstein_price,
             LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
@@ -92,7 +96,7 @@ def test_objective_maps_minimizers_to_minimum(
 ) -> None:
     objective_values_at_minimizers = objective(minimizers)
     tf.debugging.assert_shapes([(objective_values_at_minimizers, [len(minimizers), 1])])
-    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=2e-4)
+    npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-4)
 
 
 @pytest.mark.parametrize(
