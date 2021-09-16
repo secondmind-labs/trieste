@@ -23,13 +23,13 @@ from __future__ import annotations
 from typing import Dict, Generic, Mapping, Optional, TypeVar, cast, overload
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .bayesian_optimizer import Record
+from .bayesian_optimizer import OptimizationResult, Record
 from .data import Dataset
 from .models import ModelSpec, create_model
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import map_values
+from .utils import Ok, map_values
 
 S = TypeVar("S")
 """ Unbound type variable. """
@@ -197,6 +197,12 @@ class AskTellOptimizer(Generic[SP]):
         return Record(
             datasets=self._datasets, models=self._models, acquisition_state=self._acquisition_state
         )
+
+    def to_result(self) -> OptimizationResult[S]:
+        """Converts current state of the optimization
+        into an :class:`~trieste.data.OptimizationResult` object."""
+        record: Record[S] = self.to_record()
+        return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
         """Suggests a point (or points in batch mode) to observe by optimizing the acquisition function.

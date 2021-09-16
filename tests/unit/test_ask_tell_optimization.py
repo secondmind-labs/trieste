@@ -109,9 +109,7 @@ def test_ask_tell_optimizer_loads_from_state(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[None] = Record(
-        datasets={"": init_dataset}, models={"": model}, acquisition_state=None
-    )
+    old_state: Record[None] = Record.with_default_tag(init_dataset, model)
 
     ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
     new_state: Record[None] = ask_tell.to_record()
@@ -177,9 +175,7 @@ def test_ask_tell_optimizer_from_state_does_not_train_model(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[None] = Record(
-        datasets={"": init_dataset}, models={"": model}, acquisition_state=None
-    )
+    old_state: Record[None] = Record.with_default_tag(init_dataset, model)
 
     ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
     state_record: Record[None] = ask_tell.to_record()
