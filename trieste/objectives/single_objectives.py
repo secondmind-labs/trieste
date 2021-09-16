@@ -408,7 +408,7 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     return -result
 
 
-def michalewicz_2d(x: TensorType) -> TensorType:
+def michalewicz_2(x: TensorType) -> TensorType:
     """
     Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
     :param x: The points at which to evaluate the function, with shape [..., 2].
@@ -417,7 +417,7 @@ def michalewicz_2d(x: TensorType) -> TensorType:
     return michalewicz(x, d=2)
 
 
-def michalewicz_5d(x: TensorType) -> TensorType:
+def michalewicz_5(x: TensorType) -> TensorType:
     """
     Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
     :param x: The points at which to evaluate the function, with shape [..., 5].
@@ -426,7 +426,7 @@ def michalewicz_5d(x: TensorType) -> TensorType:
     return michalewicz(x, d=5)
 
 
-def michalewicz_10d(x: TensorType) -> TensorType:
+def michalewicz_10(x: TensorType) -> TensorType:
     """
     Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
     :param x: The points at which to evaluate the function, with shape [..., 10].
