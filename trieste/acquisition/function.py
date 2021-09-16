@@ -299,7 +299,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         :param eta: The "best" observation.
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
+            greater than one or a model without homoscedastic observation noise.
         """
         self._model = model
         self._eta = tf.Variable(eta)
@@ -1765,7 +1765,8 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         :return: GIBBON's quality term. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two,
-            or is empty.
+            or is empty, or if ``model`` has no homoscedastic observation noise.
+        :raise AttributeError: If ``model`` doesn't implement covariance_between_points method.
         """
         tf.debugging.assert_rank(samples, 2)
         tf.debugging.assert_positive(len(samples))
@@ -1832,7 +1833,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         GIBBON's repulsion term encourages diversity within the batch
         (achieving high values for points with low predictive correlation).
 
-        The term :math:`r=\log |C|` is given by the log determinant of the predictive
+        The repulsion term :math:`r=\log |C|` is given by the log determinant of the predictive
         correlation matrix :math:`C` between the `m` pending points and the current candidate.
         The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
         tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using
@@ -1861,7 +1862,8 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         :return: GIBBON's repulsion term. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have
-            rank two, or is empty.
+            rank two, or is empty, or if ``model`` has no homoscedastic observation noise.
+        :raise AttributeError: If ``model`` doesn't implement covariance_between_points method.
         """
         tf.debugging.assert_rank(pending_points, 2)
         tf.debugging.assert_positive(len(pending_points))

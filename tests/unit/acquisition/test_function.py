@@ -319,11 +319,15 @@ def test_augmented_expected_improvement_builder_updates_acquisition_function(
 
 
 def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
-    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    empty_data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.ones([0, 2], dtype=tf.float64))
+    non_empty_data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+        builder.prepare_acquisition_function(empty_data, QuadraticMeanAndRBFKernel())
+    acq = builder.prepare_acquisition_function(non_empty_data, QuadraticMeanAndRBFKernel())
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.update_acquisition_function(acq, empty_data, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
@@ -1386,11 +1390,15 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
 
 
 def test_gibbon_builder_raises_for_empty_data() -> None:
-    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    empty_data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.ones([0, 2], dtype=tf.float64))
+    non_empty_data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel())
+        builder.prepare_acquisition_function(empty_data, QuadraticMeanAndRBFKernel())
+    acq = builder.prepare_acquisition_function(non_empty_data, QuadraticMeanAndRBFKernel())
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.update_acquisition_function(acq, empty_data, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
