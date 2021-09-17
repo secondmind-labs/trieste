@@ -45,6 +45,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    :hidden:
    :maxdepth: 1
 
+   notebooks/ask_tell_optimization
    notebooks/recovering_from_errors
 
 Run the tutorials interactively
