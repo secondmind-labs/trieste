@@ -9,25 +9,23 @@
 # %%
 import numpy as np
 import tensorflow as tf
-from trieste.observer import OBJECTIVE
-from trieste.data import Dataset
-from trieste.bayesian_optimizer import OptimizationResult, Record
-import trieste
 import matplotlib.pyplot as plt
+import gpflow
+
+from trieste.ask_tell_optimization import AskTellOptimizer
+from trieste.bayesian_optimizer import OptimizationResult, Record
+from trieste.data import Dataset
+from trieste.models.gpflow import GPflowModelConfig
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives.utils import mk_observer
+from trieste.observer import OBJECTIVE
+from trieste.space import Box
+
+from util.plotting import plot_regret
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
-from trieste.objectives import scaled_branin
-from trieste.objectives.utils import mk_observer
-from trieste.space import Box
-import gpflow
-from trieste.models.gpflow import GPflowModelConfig
-import tensorflow_probability as tfp
-from trieste.ask_tell_optimization import AskTellOptimizer
-
-from trieste.objectives import SCALED_BRANIN_MINIMUM
-from util.plotting import plot_bo_points, plot_regret
 
 search_space = Box([0, 0], [1, 1])
 n_steps = 5
@@ -78,10 +76,9 @@ for step in range(n_steps):
 # Once ask-tell optimization is over, you can get an optimization result object from it and perform whatever analysis you need. Just like with regular Trieste optimization interface. For instance here we will plot for each optimization step
 
 # %%
-ask_tell_result = ask_tell.to_result()
+ask_tell_result: OptimizationResult[None] = ask_tell.to_result()
 
 def plot_ask_tell_regret(ask_tell_result):
-    query_points = ask_tell_result.try_get_final_dataset().query_points.numpy()
     observations = ask_tell_result.try_get_final_dataset().observations.numpy()
     arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
@@ -139,7 +136,7 @@ for step in range(n_steps):
     new_config = ask_tell.ask()
 
     print("Saving Trieste state to re-use later")
-    state = ask_tell.to_record()
+    state: Record[None] = ask_tell.to_record()
 
     print(f"In the lab running the experiment #{step}.")
     new_datapoint = scaled_branin(new_config)
