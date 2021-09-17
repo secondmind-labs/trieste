@@ -21,6 +21,7 @@ taken from `this Virtual Library of Simulation Experiments
 from __future__ import annotations
 
 import math
+from math import pi
 
 import tensorflow as tf
 
@@ -383,3 +384,130 @@ float64.
 
 HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
 """ The search space for the :func:`hartmann_6` function. """
+
+
+def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
+    """
+    The Michalewicz function over :math:`[0, \\pi]` for all i=1,...,d. Dimensionality is determined
+    by the parameter ``d`` and it features steep ridges and drops. It has :math:`d!` local minima,
+    and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a
+    larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See
+    https://www.sfu.ca/~ssurjano/egg.html for details.
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param d: The dimension of the function.
+    :param m: The steepness of the valleys/ridges.
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_greater_equal(d, 1)
+    tf.debugging.assert_shapes([(x, (..., d))])
+
+    xi = tf.range(1, (d + 1), delta=1, dtype=tf.float64) * tf.pow(x, 2)
+    result = tf.reduce_sum(tf.sin(x) * tf.pow(tf.sin(xi / math.pi), 2 * m), axis=1, keepdims=True)
+
+    return -result
+
+
+def michalewicz_2(x: TensorType) -> TensorType:
+    """
+    Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    """
+    return michalewicz(x, d=2)
+
+
+def michalewicz_5(x: TensorType) -> TensorType:
+    """
+    Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
+    :param x: The points at which to evaluate the function, with shape [..., 5].
+    :return: The function values at ``x``, with shape [..., 1].
+    """
+    return michalewicz(x, d=5)
+
+
+def michalewicz_10(x: TensorType) -> TensorType:
+    """
+    Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
+    :param x: The points at which to evaluate the function, with shape [..., 10].
+    :return: The function values at ``x``, with shape [..., 1].
+    """
+    return michalewicz(x, d=10)
+
+
+MICHALEWICZ_2_MINIMIZER = tf.constant([[2.202906, 1.570796]], tf.float64)
+"""
+The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^2`,
+with shape [1, 2] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_5_MINIMIZER = tf.constant(
+    [[2.202906, 1.570796, 1.284992, 1.923058, 1.720470]], tf.float64
+)
+"""
+The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^5`,
+with shape [1, 5] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_10_MINIMIZER = tf.constant(
+    [
+        [
+            2.202906,
+            1.570796,
+            1.284992,
+            1.923058,
+            1.720470,
+            1.570796,
+            1.454414,
+            1.756087,
+            1.655717,
+            1.570796,
+        ]
+    ],
+    tf.float64,
+)
+"""
+The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^10`,
+with shape [1, 10] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013034], tf.float64)
+"""
+The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_5_MINIMUM = tf.constant([-4.6876582], tf.float64)
+"""
+The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_10_MINIMUM = tf.constant([-9.6601517], tf.float64)
+"""
+The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
+float64. Taken from https://arxiv.org/abs/2003.09867
+"""
+
+
+MICHALEWICZ_2_SEARCH_SPACE = Box([0.0], [pi]) ** 2
+"""
+The search space for the 2-dimensional :func:`michalewicz` function.
+"""
+
+
+MICHALEWICZ_5_SEARCH_SPACE = Box([0.0], [pi]) ** 5
+"""
+The search space for the 5-dimensional :func:`michalewicz` function.
+"""
+
+
+MICHALEWICZ_10_SEARCH_SPACE = Box([0.0], [pi]) ** 10
+"""
+The search space for the 10-dimensional :func:`michalewicz` function.
+"""
