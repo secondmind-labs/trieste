@@ -102,5 +102,7 @@ def test_get_reference_point_raise_when_feed_empty_front(front: tf.Tensor) -> No
         ),
     ],
 )
-def test_get_reference_point_with_different_front_shape(front: tf.Tensor, expected) -> None:
+def test_get_reference_point_with_different_front_shape(
+    front: tf.Tensor, expected: tf.Tensor
+) -> None:
     tf.debugging.assert_equal(get_reference_point(front), expected)

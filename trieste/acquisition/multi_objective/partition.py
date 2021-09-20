@@ -16,7 +16,7 @@ partitioning the dominated/non-dominated region in multi-objective optimization 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -26,7 +26,7 @@ from .dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition_bounds(
-    observations: TensorType, reference: TensorType, anti_reference: [TensorType, None] = None
+    observations: TensorType, reference: TensorType, anti_reference: Optional[TensorType] = None
 ) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
@@ -42,7 +42,7 @@ def prepare_default_non_dominated_partition_bounds(
         Defines the upper bound of the hypervolume.
         Should be equal to or bigger than the anti-ideal point of the Pareto set.
         For comparing results across runs, the same reference point must be used.
-    :return: lower, upper bounds of the partitioned cell
+    :return: lower, upper bounds of the partitioned cell, each with shape [N, D]
     :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
         shape.
     """
