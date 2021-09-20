@@ -776,9 +776,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-        )  # -1e10 acts as '-inf' to improve numerical stability
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
         return expected_hv_improvement(model, _partition_bounds)
 
 
@@ -804,8 +802,8 @@ def expected_hv_improvement(
     original notation and equations.
 
     :param model: The model of the objective function.
-    :param partition_bounds: partitioned non-dominated hypercell bounds for
-        hypervolume improvement calculation
+    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+        bounds for hypervolume improvement calculation
     :return: The expected_hv_improvement acquisition function modified for objective
         minimisation. This function will raise :exc:`ValueError` or
         :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
@@ -930,9 +928,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            _pf.front, tf.constant([-1e10] * mean.shape[-1], dtype=_pf.front.dtype), _reference_pt
-        )  # -1e10 acts as '-inf' to improve numerical stability
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
@@ -950,8 +946,8 @@ def batch_ehvi(
         the possible observations at 'at'.
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
-    :param partition_bounds: partitioned non-dominated hypercell bounds for
-        hypervolume improvement calculation
+    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+        bounds for hypervolume improvement calculation
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
     """
@@ -1058,9 +1054,8 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             _pf.front,
-            tf.constant([-1e10] * feasible_mean.shape[-1], dtype=_pf.front.dtype),
             _reference_pt,
-        )  # -1e10 acts as '-inf' to improve numerical stability
+        )
         ehvi = expected_hv_improvement(objective_model, _partition_bounds)
         return lambda at: ehvi(at) * constraint_fn(at)
 

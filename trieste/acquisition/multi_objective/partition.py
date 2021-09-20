@@ -26,7 +26,7 @@ from .dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition_bounds(
-    observations: TensorType, anti_reference: TensorType, reference: TensorType
+    observations: TensorType, reference: TensorType, anti_reference: [TensorType, None] = None
 ) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
@@ -36,7 +36,8 @@ def prepare_default_non_dominated_partition_bounds(
 
     :param observations: The observations for all objectives, with shape [N, D].
     :param anti_reference: a worst point to use with shape [D].
-        Defines the lower bound of the hypercell.
+        Defines the lower bound of the hypercell. If not specified, will use a default value:
+        -[1e10] * D.
     :param reference: a reference point to use, with shape [D].
         Defines the upper bound of the hypervolume.
         Should be equal to or bigger than the anti-ideal point of the Pareto set.
@@ -50,6 +51,28 @@ def prepare_default_non_dominated_partition_bounds(
         f"observations (i.e., objective number) is expected to be at "
         f"least 2 but found {tf.shape(observations)[-1]}"
     )
+    if (
+        anti_reference is None
+    ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
+        # make sure given observations are larger than -1e10
+        anti_reference = -1e10 * tf.ones(
+            shape=(tf.shape(observations)[-1]), dtype=observations.dtype
+        )
+        tf.debugging.assert_greater_equal(
+            observations,
+            anti_reference,
+            message="observations containing points below default "
+            "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
+            "anti-reference point.",
+        )
+        tf.debugging.assert_greater_equal(
+            reference,
+            anti_reference,
+            message="reference point containing dimensionality below default "
+            "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
+            "anti-reference point.",
+        )
+
     if tf.shape(observations)[-1] > 2:
         return DividedAndConquerNonDominated(observations).partition_bounds(
             anti_reference, reference
@@ -101,7 +124,7 @@ class _BoundIndexPartition:
             Defines the upper bound of the hypervolume.
             Should be equal to or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
-        :return: lower, upper bounds of the partitioned cell
+        :return: lower, upper bounds of the partitioned cell, each with shape [N, D]
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
         """
@@ -136,9 +159,14 @@ class _BoundIndexPartition:
 
 
 class ExactPartition2dNonDominated(_BoundIndexPartition):
+    """
+    Exact partition of non-dominated space, used as a default option when the
+    objective number equals 2.
+    """
+
     def __init__(self, front: TensorType):
         """
-        :param front: non-dominated pareto front
+        :param front: non-dominated pareto front.
         """
         tf.debugging.assert_equal(
             tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),
@@ -180,8 +208,11 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
 
     def __init__(self, front: TensorType, threshold: TensorType | float = 0):
         """
-        :param front
-        :param threshold
+        :param front: non-dominated pareto front.
+        :param threshold: a threshold used to screen out cells in partition : when its volume is
+            below this threshold, its rejected directly in order to be more computationally
+            efficient, if setting above 0, this partition strategy tends to return an
+            approximated partition.
         """
         tf.debugging.assert_equal(
             tf.cast(tf.reduce_sum(tf.abs(non_dominated(front)[1])), dtype=front.dtype),

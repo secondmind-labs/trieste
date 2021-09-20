@@ -21,7 +21,32 @@ from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
 from trieste.acquisition.multi_objective.partition import (
     DividedAndConquerNonDominated,
     ExactPartition2dNonDominated,
+    prepare_default_non_dominated_partition_bounds,
 )
+
+
+def test_default_non_dominated_partition_raise_when_obs_below_default_anti_reference() -> None:
+    objectives = tf.constant(
+        [
+            [-1e11, 0.7922],
+            [0.4854, 0.0357],
+            [0.1419, 0.9340],
+        ]
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        prepare_default_non_dominated_partition_bounds(objectives, tf.constant([1.0, 1.0]))
+
+
+def test_default_non_dominated_partition_raise_when_ref_below_default_anti_reference() -> None:
+    objectives = tf.constant(
+        [
+            [0.4854, 0.7922],
+            [0.4854, 0.0357],
+            [0.1419, 0.9340],
+        ]
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        prepare_default_non_dominated_partition_bounds(objectives, tf.constant([-1e12, 1.0]))
 
 
 def test_exact_partition_2d_bounds() -> None:

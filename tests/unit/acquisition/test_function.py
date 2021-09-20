@@ -902,7 +902,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
     _pareto = Pareto(existing_observations)
     ref_pt = get_reference_point(_pareto.front)
     lb_points, ub_points = prepare_default_non_dominated_partition_bounds(
-        _pareto.front, tf.constant([-math.inf] * ref_pt.shape[-1]), ref_pt
+        _pareto.front, ref_pt, tf.constant([-math.inf] * ref_pt.shape[-1])
     )
 
     # calc MC approx EHVI
@@ -1009,7 +1009,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
     _model_based_pareto = Pareto(mean)
     _reference_pt = get_reference_point(_model_based_pareto.front)
     _partition_bounds = prepare_default_non_dominated_partition_bounds(
-        _model_based_pareto.front, tf.constant([-1e10] * _reference_pt.shape[-1]), _reference_pt
+        _model_based_pareto.front, _reference_pt, tf.constant([-1e10] * _reference_pt.shape[-1])
     )
 
     qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=num_samples_per_point)
@@ -1134,8 +1134,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
             sampler_jitter=DEFAULTS.JITTER,
             partition_bounds=prepare_default_non_dominated_partition_bounds(
                 Pareto(pareto_front_obs).front,
-                tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
                 reference_point,
+                tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
             ),
         )(test_input),
         expected_output,

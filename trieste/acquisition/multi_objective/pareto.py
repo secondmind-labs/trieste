@@ -65,7 +65,7 @@ class Pareto:
             shape=1, dtype=self.front.dtype
         )
         lower, upper = prepare_default_non_dominated_partition_bounds(
-            self.front, helper_anti_reference, reference
+            self.front, reference, helper_anti_reference
         )
         non_dominated_hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 1))
         hypervolume_indicator = (
@@ -76,14 +76,15 @@ class Pareto:
 
 def get_reference_point(front: TensorType) -> TensorType:
     """
-    reference point calculation method
+    reference point calculation method. Note if the front only contains one point, this reference
+    point calculation method will result a reference point the same as the input.
 
-    :param front: Pareto front referred to calculate the reference point
-    :return: a reference point to use, with shape [D].
+    :param front: Pareto front referred to calculate the reference point, with shape [..., N, D]
+    :return: a reference point to use, with shape [..., D].
     :raise ValueError: If ``front`` is empty
     """
     if tf.equal(tf.size(front), 0):
         raise ValueError("empty front cannot be used to calculate reference point")
 
-    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
-    return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
+    f = tf.math.reduce_max(front, axis=-2) - tf.math.reduce_min(front, axis=-2)
+    return tf.math.reduce_max(front, axis=-2) + 2 * f / tf.cast(tf.shape(front)[-2], f.dtype)
