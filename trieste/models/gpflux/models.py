@@ -17,10 +17,10 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import gpflow
-from gpflow.base import Module
 import tensorflow as tf
+from gpflow.base import Module
 from gpflow.inducing_variables import InducingPoints
-from gpflux.layers import GPLayer, LatentVariableLayer, GIGPLayer
+from gpflux.layers import GIGPLayer, GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP, GIDeepGP
 
 from ...data import Dataset
@@ -250,9 +250,7 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
         else:
             self.fit_args = fit_args
 
-        if not all(
-            [isinstance(layer, GIGPLayer) for layer in model.f_layers]
-        ):
+        if not all([isinstance(layer, GIGPLayer) for layer in model.f_layers]):
             raise ValueError(
                 "`GlobalInducingDeepGaussianProcess` can only be built out of `GIGPLayer`"
             )
@@ -305,8 +303,10 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
             layer.num_data = new_num_data
 
             if isinstance(layer, LatentVariableLayer):
-                raise NotImplementedError("Currently we do not support latent variable layers for "
-                                          "`GlobalInducingDeepGaussianProcess` models.")
+                raise NotImplementedError(
+                    "Currently we do not support latent variable layers for "
+                    "`GlobalInducingDeepGaussianProcess` models."
+                )
 
         if tf.shape(inputs)[-1] != tf.shape(self.model_gpflux.inducing_data)[-1]:
             raise ValueError(

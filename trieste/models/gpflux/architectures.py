@@ -33,39 +33,51 @@ from gpflux.helpers import (
     construct_basic_kernel,
     construct_mean_function,
 )
-from gpflux.layers import GPLayer, GIGPLayer, LatentVariableLayer, LikelihoodLayer
+from gpflux.layers import GIGPLayer, GPLayer, LatentVariableLayer, LikelihoodLayer
 from gpflux.models import DeepGP, GIDeepGP
 from gpflux.types import ObservationType
 from scipy.cluster.vq import kmeans2
 
+from ...space import Box
 from ...types import TensorType
 
 
 def build_vanilla_deep_gp(
-    X: TensorType,
+    query_points: TensorType,
     num_layers: int,
     num_inducing: int,
     inner_layer_sqrt_factor: float = 1e-5,
     likelihood_noise_variance: float = 1e-2,
+    search_space: Optional[Box] = None,
 ) -> DeepGP:
     """
     Provides a wrapper around `build_constant_input_dim_deep_gp` from `gpflux.architectures`.
 
-    :param X: input data, used to determine inducing point locations with k-means.
+    :param query_points: input data, used to determine inducing point locations with k-means.
     :param num_layers: number of layers in deep GP.
     :param num_inducing: number of inducing points to use in each layer.
     :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers
     :param likelihood_noise_variance: initial noise variance
+    :param search_space: the search space for the Bayes Opt problem. Used for initialization of
+        inducing locations if num_inducing > len(query_points)
     :return: :class:`gpflux.models.DeepGP`
     """
 
     # Input data to model must be np.ndarray for k-means algorithm
-    if isinstance(X, tf.Tensor):
-        X = X.numpy()
+    if isinstance(query_points, tf.Tensor):
+        query_points = query_points.numpy()
 
-    # Pad X with additional random values to provide enough inducing points
-    if num_inducing > len(X):
-        X = np.concatenate([X, np.random.randn(num_inducing - len(X), *X.shape[1:])], 0)
+    # Pad query_points with additional random values to provide enough inducing points
+    if num_inducing > len(query_points):
+        if search_space is not None:
+            if not isinstance(search_space, Box):
+                raise ValueError("Currently only `Box` instances are supported for `search_space`.")
+            additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
+        else:
+            additional_points = np.random.randn(
+                num_inducing - len(query_points), *query_points.shape[1:]
+            )
+        query_points = np.concatenate([query_points, additional_points], 0)
 
     # TODO: make sure this provides the correct num_data - should be fine atm
 
@@ -76,64 +88,83 @@ def build_vanilla_deep_gp(
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
-    return build_constant_input_dim_deep_gp(X, num_layers, config)
+    return build_constant_input_dim_deep_gp(query_points, num_layers, config)
 
 
 def build_gi_deep_gp(
-    X: TensorType,
+    query_points: TensorType,
     num_layers: int,
     num_inducing: int,
-    y: Optional[TensorType] = None,
-    inner_layer_prec_init: float = .01,
-    last_layer_prec_init: float = 1.,
+    observations: Optional[TensorType] = None,
+    inner_layer_prec_init: float = 0.01,
+    last_layer_prec_init: float = 1.0,
     likelihood_noise_variance: float = 1e-2,
-    last_layer_variance: float = 1.,
+    last_layer_variance: float = 1.0,
     num_train_samples: int = 10,
     num_test_samples: int = 100,
+    search_space: Optional[Box] = None,
 ) -> GIDeepGP:
     """
     Provides a global inducing version of `build_constant_input_dim_deep_gp` from
     `gpflux.architectures`.
 
-    :param X: input data, used to determine inducing point locations with k-means.
+    :param query_points: input data, used to determine inducing point locations with k-means.
     :param num_layers: number of layers in deep GP.
     :param num_inducing: number of inducing points to use in each layer.
-    :param y: output data, used to initialize the last layer inducing outputs
+    :param observations: output data, used to initialize the last layer inducing outputs
     :param inner_layer_prec_init: initialization of the scale of the inner layer precision
     :param last_layer_prec_init: initialization of the scale of the last layer precision
     :param likelihood_noise_variance: initial noise variance
     :param last_layer_variance: initial last layer kernel variance
     :param num_train_samples: number of samples for training
     :param num_test_samples: number of samples for testing
+    :param search_space: the search space for the Bayes Opt problem. Used for initialization of
+        inducing locations if num_inducing > len(query_points)
     :return: :class:`gpflux.models.GIDeepGP`
     """
-    tf.debugging.assert_rank(X, 2, message="For this architecture, the rank of the input data must "
-                                           "be 2.")
-    num_data, input_dim = X.shape
+    tf.debugging.assert_rank(
+        query_points, 2, message="For this architecture, the rank of the input data must " "be 2."
+    )
+    num_data, input_dim = query_points.shape
 
     # Input data to model must be np.ndarray for k-means algorithm
-    if isinstance(X, tf.Tensor):
-        X = X.numpy()
+    if isinstance(query_points, tf.Tensor):
+        query_points = query_points.numpy()
 
-    # Pad X with additional random values to provide enough inducing points
-    if num_inducing > len(X):
-        X = np.concatenate([X, np.random.randn(num_inducing - len(X), *X.shape[1:])], 0)
+    # Pad query_points with additional random values to provide enough inducing points
+    if num_inducing > len(query_points):
+        if search_space is not None:
+            if not isinstance(search_space, Box):
+                raise ValueError("Currently only `Box` instances are supported for `search_space`.")
+            additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
+        else:
+            additional_points = np.random.randn(
+                num_inducing - len(query_points), *query_points.shape[1:]
+            )
+        query_points = np.concatenate([query_points, additional_points], 0)
 
-    if y is not None:
-        tf.debugging.assert_shapes(y, [num_data, 1],
-                                   message="For this architecture, the output dim must be"
-                                           " 1.")
-        if isinstance(y, tf.Tensor):
-            y = y.numpy()
+    if observations is not None:
+        tf.debugging.assert_shapes(
+            observations,
+            [num_data, 1],
+            message="For this architecture, the output dim must be" " 1.",
+        )
+        if isinstance(observations, tf.Tensor):
+            observations = observations.numpy()
 
-        if num_inducing > len(X):
-            y = np.concatenate([y, np.random.randn(num_inducing - len(X), *y.shape[1:])], 0)
+        if num_inducing > len(query_points):
+            observations = np.concatenate(
+                [
+                    observations,
+                    np.random.randn(num_inducing - len(query_points), *observations.shape[1:]),
+                ],
+                0,
+            )
 
-    inducing_init = X.copy()
-    X_running = X
+    query_points_running = query_points
 
     gp_layers = []
-    centroids, _ = kmeans2(X, k=num_inducing, minit="points")
+    inducing_init, _ = kmeans2(query_points, k=num_inducing, minit="points")
 
     for i_layer in range(num_layers):
         is_last_layer = i_layer == num_layers - 1
@@ -143,10 +174,10 @@ def build_gi_deep_gp(
         if is_last_layer:
             mean_function = gpflow.mean_functions.Zero()
         else:
-            mean_function = construct_mean_function(X_running, D_in, D_out)
-            X_running = mean_function(X_running)
-            if tf.is_tensor(X_running):
-                X_running = X_running.numpy()
+            mean_function = construct_mean_function(query_points_running, D_in, D_out)
+            query_points_running = mean_function(query_points_running)
+            if tf.is_tensor(query_points_running):
+                query_points_running = query_points_running.numpy()
 
         layer = GIGPLayer(
             input_dim=D_in,
@@ -154,9 +185,9 @@ def build_gi_deep_gp(
             num_data=num_data,
             num_inducing=num_inducing,
             mean_function=mean_function,
-            kernel_variance_init=last_layer_variance if is_last_layer else 1.,
+            kernel_variance_init=last_layer_variance if is_last_layer else 1.0,
             prec_init=inner_layer_prec_init if not is_last_layer else last_layer_prec_init,
-            inducing_targets=None if not is_last_layer else y,
+            inducing_targets=None if not is_last_layer else observations,
         )
         gp_layers.append(layer)
 
@@ -164,7 +195,7 @@ def build_gi_deep_gp(
         f_layers=gp_layers,
         num_inducing=num_inducing,
         likelihood_var=likelihood_noise_variance,
-        inducing_init=inducing_init,
+        inducing_init=inducing_init.copy(),
         inducing_shape=None,
         num_train_samples=num_train_samples,
         num_test_samples=num_test_samples,
@@ -172,7 +203,7 @@ def build_gi_deep_gp(
 
 
 def build_latent_variable_dgp_model(
-    X: TensorType,
+    query_points: TensorType,
     num_total_data: int,
     num_layers: int,
     num_inducing: int,
@@ -180,27 +211,40 @@ def build_latent_variable_dgp_model(
     likelihood_noise_variance: float = 1e-2,
     latent_dim: int | None = None,
     prior_std: float = 1.0,
+    search_space: Optional[Box] = None,
 ) -> DeepGP:
     """
     Provides a DGP model with a latent variable layer in the input.
 
-    :param X:
-    :param num_layers:
-    :param num_inducing:
-    :param inner_layer_sqrt_factor:
-    :param likelihood_noise_variance:
-    :param latent_dim:
-    :return:
+    :param query_points: input data, used to determine inducing point locations with k-means.
+    :param num_total_data: total dataset size (including points to be acquired in Bayes Opt loop).
+    :param num_layers: number of layers in deep GP.
+    :param num_inducing: number of inducing points to use in each layer.
+    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers
+    :param likelihood_noise_variance: initial noise variance.
+    :param latent_dim: dimension of latent variable in input layer.
+    :param prior_std: initialization for latent variable prior standard deviation, which is learned
+    :param search_space: the search space for the Bayes Opt problem. Used for initialization of
+        inducing locations if num_inducing > len(query_points)
+    :return: :class:`gpflux.models.DeepGP`
     """
     # Input data to model must be np.ndarray for k-means algorithm
-    if isinstance(X, tf.Tensor):
-        X = X.numpy()
+    if isinstance(query_points, tf.Tensor):
+        query_points = query_points.numpy()
 
-    num_data, input_dim = X.shape
+    num_data, input_dim = query_points.shape
 
-    # Pad X with additional random values to provide enough inducing points
-    if num_inducing > len(X):
-        X = np.concatenate([X, np.random.randn(num_inducing - len(X), *X.shape[1:])], 0)
+    # Pad query_points with additional random values to provide enough inducing points
+    if num_inducing > len(query_points):
+        if search_space is not None:
+            if not isinstance(search_space, Box):
+                raise ValueError("Currently only `Box` instances are supported for `search_space`.")
+            additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
+        else:
+            additional_points = np.random.randn(
+                num_inducing - len(query_points), *query_points.shape[1:]
+            )
+        query_points = np.concatenate([query_points, additional_points], 0)
 
     if latent_dim is None:
         latent_dim = input_dim
@@ -213,14 +257,26 @@ def build_latent_variable_dgp_model(
     lv = ModifiedLatentVariableLayer(num_data, prior, encoder)
 
     gp_layers = [lv]
-    centroids, _ = kmeans2(X, k=num_inducing, minit="points")
+    centroids, _ = kmeans2(query_points, k=num_inducing, minit="points")
     centroids_ext = np.concatenate(
         [
             centroids,
-            np.random.randn(num_inducing, latent_dim),
+            prior_std * np.random.randn(num_inducing, latent_dim),
         ],
         axis=1,
     )
+
+    def _construct_kernel(
+        input_dim: int,
+        latent_dim: int,
+        is_first_layer: bool,
+    ) -> gpflow.kernels.SquaredExponential:
+        if is_first_layer:
+            lengthscales = [0.05] * (input_dim - latent_dim) + [2.0] * latent_dim
+        else:
+            lengthscales = [2.0] * input_dim
+        kernel = gpflow.kernels.SquaredExponential(lengthscales=lengthscales, variance=1.0)
+        return kernel
 
     for i_layer in range(num_layers):
         is_first_layer = i_layer == 0
@@ -262,7 +318,7 @@ def build_latent_variable_dgp_model(
 class ModifiedLatentVariableLayer(LatentVariableLayer):
     """
     Modified version of :class:`gpflux.layers.LatentVariableLayer` to enable BayesOpt-specific
-    capabilities, such as variable dataset size.
+    capabilities, such as variable dataset size. Refer to GPflux for documentation.
     """
 
     def __init__(
@@ -280,22 +336,23 @@ class ModifiedLatentVariableLayer(LatentVariableLayer):
     def _inference_latent_samples_and_loss(
         self, layer_inputs: TensorType, observations: ObservationType, seed: Optional[int] = None
     ) -> Tuple[tf.Tensor, tf.Tensor]:
+        """
+        Sample latent variables during the *training* forward pass, hence requiring the
+        observations. Also return the KL loss per datapoint. Modified from
+        :class:`gpflux.layers.LatentVariableLayer` so that only the KLs for the latent variables
+        corresponding to the current query points are added to the loss - more KLs are added as
+        more query points are acquired.
+
+        :param layer_inputs: The output of the previous layer: used for determining how many
+            latent variables we need at this stage.
+        :param observations: The ``[inputs, targets]``, with the shapes ``[batch_size, Din]`` and
+            ``[batch_size, Dout]``, respectively.
+        :param seed: A random seed for the sampling operation.
+        :return: The samples and the loss-per-datapoint.
+        """
         distribution_params = self.encoder(None, training=True)
         posteriors = self.distribution_class(*distribution_params, allow_nan_stats=False)
         samples = posteriors.sample(seed=seed)[: tf.shape(layer_inputs)[0]]
         local_kls = self._local_kls(posteriors)[: tf.shape(layer_inputs)[0]]
         loss_per_datapoint = tf.reduce_mean(local_kls, name="local_kls")
         return samples, loss_per_datapoint
-
-
-def _construct_kernel(
-    input_dim: int,
-    latent_dim: int,
-    is_first_layer: bool,
-) -> gpflow.kernels.SquaredExponential:
-    if is_first_layer:
-        lengthscales = [0.05] * (input_dim - latent_dim) + [2.0] * latent_dim
-    else:
-        lengthscales = [2.0] * input_dim
-    kernel = gpflow.kernels.SquaredExponential(lengthscales=lengthscales, variance=1.0)
-    return kernel
