@@ -707,8 +707,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
         self._constraint_fn: Optional[AcquisitionFunction] = None
-        self._improvement_fn: Optional[AcquisitionFunction] = None
-        self._constrained_fn: Optional[AcquisitionFunction] = None
+        self._expected_improvement_fn: Optional[AcquisitionFunction] = None
+        self._constrained_improvement_fn: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -750,16 +750,16 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         eta = tf.reduce_min(feasible_mean, axis=0)
-        self._improvement_fn = expected_improvement(objective_model, eta)
+        self._expected_improvement_fn = expected_improvement(objective_model, eta)
 
         @tf.function
         def constrained_function(x: TensorType) -> TensorType:
-            return cast(AcquisitionFunction, self._improvement_fn)(x) * cast(
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
                 AcquisitionFunction, self._constraint_fn
             )(x)
 
-        self._constrained_fn = cast(AcquisitionFunction, constrained_function)
-        return self._constrained_fn
+        self._constrained_improvement_fn = constrained_function
+        return constrained_function
 
     def update_acquisition_function(
         self,
@@ -793,20 +793,24 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         eta = tf.reduce_min(feasible_mean, axis=0)
-        tf.debugging.Assert(isinstance(self._improvement_fn, expected_improvement), [])
-        self._improvement_fn.update(eta)  # type: ignore
 
-        if self._constrained_fn is not None:
-            return self._constrained_fn
+        if self._expected_improvement_fn is None:
+            self._expected_improvement_fn = expected_improvement(objective_model, eta)
+        else:
+            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
+            self._expected_improvement_fn.update(eta)  # type: ignore
+
+        if self._constrained_improvement_fn is not None:
+            return self._constrained_improvement_fn
 
         @tf.function
         def constrained_function(x: TensorType) -> TensorType:
-            return cast(AcquisitionFunction, self._improvement_fn)(x) * cast(
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
                 AcquisitionFunction, self._constraint_fn
             )(x)
 
-        self._constrained_fn = constrained_function
-        return self._constrained_fn
+        self._constrained_improvement_fn = constrained_function
+        return self._constrained_improvement_fn
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
