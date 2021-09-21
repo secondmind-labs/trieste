@@ -706,6 +706,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
+        self._constraint_fn: Optional[AcquisitionFunction] = None
+        self._improvement_fn: Optional[AcquisitionFunction] = None
+        self._constrained_fn: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -735,7 +738,52 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             " objective data, but the objective data is empty.",
         )
 
-        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
+            datasets, models
+        )
+        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        if not tf.reduce_any(is_feasible):
+            return self._constraint_fn
+
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        eta = tf.reduce_min(feasible_mean, axis=0)
+        self._improvement_fn = expected_improvement(objective_model, eta)
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_fn = cast(AcquisitionFunction, constrained_function)
+        return self._constrained_fn
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected improvement is defined with respect to existing points in the"
+            " objective data, but the objective data is empty.",
+        )
+        tf.debugging.Assert(None not in [self._constraint_fn], [])
+
+        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
+        self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
@@ -745,9 +793,20 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         eta = tf.reduce_min(feasible_mean, axis=0)
-        function = expected_improvement(objective_model, eta)
+        tf.debugging.Assert(isinstance(self._improvement_fn, expected_improvement), [])
+        self._improvement_fn.update(eta)  # type: ignore
 
-        return lambda at: function(at) * constraint_fn(at)
+        if self._constrained_fn is not None:
+            return self._constrained_fn
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_fn = constrained_function
+        return self._constrained_fn
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
