@@ -13,7 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Tuple, Union, cast
+import pickle
+from typing import Callable, List, Tuple, Union, cast
 
 import gpflow
 import numpy.testing as npt
@@ -25,7 +26,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegion
 from trieste.ask_tell_optimization import AskTellOptimizer
-from trieste.bayesian_optimizer import Record
+from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import (
@@ -42,25 +43,25 @@ from trieste.types import State, TensorType
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, reload_state, acquisition_rule",
+    "num_steps, reload_state, acquisition_rule_fn",
     cast(
         List[
             Tuple[
                 int,
                 bool,
                 Union[
-                    AcquisitionRule[TensorType, Box],
-                    AcquisitionRule[State[TensorType, TrustRegion.State], Box],
+                    Callable[[], AcquisitionRule[TensorType, Box]],
+                    Callable[[], AcquisitionRule[State[TensorType, TrustRegion.State], Box]],
                 ],
             ]
         ],
         [
-            (20, False, EfficientGlobalOptimization()),
-            (20, True, EfficientGlobalOptimization()),
+            (20, False, lambda: EfficientGlobalOptimization()),
+            (20, True, lambda: EfficientGlobalOptimization()),
             (
                 10,
                 False,
-                EfficientGlobalOptimization(
+                lambda: EfficientGlobalOptimization(
                     LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
@@ -70,24 +71,29 @@ from trieste.types import State, TensorType
             (
                 10,
                 True,
-                EfficientGlobalOptimization(
+                lambda: EfficientGlobalOptimization(
                     LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
             ),
-            (15, False, TrustRegion()),
-            (15, True, TrustRegion()),
+            (15, False, lambda: TrustRegion()),
+            (15, True, lambda: TrustRegion()),
         ],
     ),
 )
 def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     reload_state: bool,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, TrustRegion.State], Box],
+    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    | Callable[[], AcquisitionRule[State[TensorType, TrustRegion.State], Box]],
 ) -> None:
+    # For the case when optimization state is saved and reload on each iteration
+    # we need to use new acquisition function object to imitate real life usage
+    # hence acquisition rule factory method is passed in, instead of a rule object itself
+    # it is then called to create a new rule whenever needed in the test
+
     search_space = BRANIN_SEARCH_SPACE
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
@@ -109,26 +115,28 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
-    ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule, fit_model=True)
+    ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
 
     for _ in range(num_steps):
-        # two scenarios can be tested here, depending on `reload_state` parameter
+        # two scenarios are tested here, depending on `reload_state` parameter
         # in first the same optimizer object is always used
-        # in second new optimizer is created at each step (e.g. from serialized state)
+        # in second new optimizer is created at each step from saved state
         new_point = ask_tell.ask()
 
         if reload_state:
             state: Record[None | State[TensorType, TrustRegion.State]] = ask_tell.to_record()
+            written_state = pickle.dumps(state)
 
-        new_data = observer(new_point)
+        new_data_point = observer(new_point)
 
         if reload_state:
-            ask_tell = AskTellOptimizer.from_record(state, search_space, acquisition_rule)
+            state = pickle.loads(written_state)
+            ask_tell = AskTellOptimizer.from_record(state, search_space, acquisition_rule_fn())
 
-        ask_tell.tell(new_data)
+        ask_tell.tell(new_data_point)
 
-    final_state: Record[None | State[TensorType, TrustRegion.State]] = ask_tell.to_record()
-    dataset = final_state.dataset
+    result: OptimizationResult[None | State[TensorType, TrustRegion.State]] = ask_tell.to_result()
+    dataset = result.try_get_final_dataset()
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 

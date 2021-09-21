@@ -39,7 +39,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`How do I set up a batch Bayesian optimization routine?<notebooks/batch_optimization>`
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
-* :doc:`Does Trieste support Ask-Tell optimization?<notebooks/ask_tell_optimization>`
+* :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
 
 .. toctree::
    :hidden:

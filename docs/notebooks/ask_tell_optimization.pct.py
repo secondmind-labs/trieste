@@ -2,7 +2,7 @@
 # # Ask-Tell Optimization Interface
 
 # %% [markdown]
-# In this notebook we will illustrate the use of Ask-Tell interface in Trieste. This is a useful interface to have in the cases when you want to have greater control of the optimization loop, or if letting Trieste manage this loop is impossible.
+# In this notebook we will illustrate the use of Ask-Tell interface in Trieste. It might be useful in the cases when you want to have greater control of the optimization loop, or if letting Trieste manage this loop is impossible.
 #
 # First, some commmon code we will be using in the notebook.
 
@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 import gpflow
 
 from trieste.ask_tell_optimization import AskTellOptimizer
-from trieste.bayesian_optimizer import OptimizationResult, Record
+from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
+from trieste.models import create_model
 from trieste.models.gpflow import GPflowModelConfig
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
@@ -54,7 +55,7 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Timing acquisition function: simple use case for Ask-Tell
 #
-# Let's say we are very concerned with the performance of the acqusition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such coustomization functionality, and this is where Ask-Tell comes in handy.
+# Let's say we are very concerned with the performance of the acqusition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such customization functionality, and this is where Ask-Tell comes in handy.
 
 # %%
 import timeit
@@ -73,7 +74,7 @@ for step in range(n_steps):
 
 
 # %% [markdown]
-# Once ask-tell optimization is over, you can get an optimization result object from it and perform whatever analysis you need. Just like with regular Trieste optimization interface. For instance here we will plot for each optimization step
+# Once ask-tell optimization is over, you can get an optimization result object from it and perform whatever analysis you need. Just like with regular Trieste optimization interface. For instance here we will plot regret for each optimization step.
 
 # %%
 def plot_ask_tell_regret(ask_tell_result):
@@ -81,24 +82,24 @@ def plot_ask_tell_regret(ask_tell_result):
     arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
     suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
-    _, ax = plt.subplots(1, 2)
-    plot_regret(suboptimality, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+    ax = plt.gca()
+    plot_regret(suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx)
 
-    ax[0].set_yscale("log")
-    ax[0].set_ylabel("Regret")
-    ax[0].set_ylim(0.001, 100)
-    ax[0].set_xlabel("# evaluations")
+    ax.set_yscale("log")
+    ax.set_ylabel("Regret")
+    ax.set_ylim(0.001, 100)
+    ax.set_xlabel("# evaluations")
 
 plot_ask_tell_regret(ask_tell.to_result())
 
 # %% [markdown]
-# ## Model switching: using only Ask part
+# ## Model selection: using only Ask part
 #
-# A slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop. Why would we do it? [Who knows!](https://bayesopt.github.io/papers/2014/paper13.pdf). In that case we can only use Ask part of the Ask-Tell interface.
+# A slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop. So we want greater control of the model such as training it outside of Trieste. In that case we can only use Ask part of the Ask-Tell interface.
 
 # %%
-model1 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v))
-model2 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v))
+model1 = create_model(build_model(initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v)))
+model2 = create_model(build_model(initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v)))
 
 dataset = initial_data
 for step in range(n_steps):
@@ -111,39 +112,50 @@ for step in range(n_steps):
         print("Using model 2")
         model = model2
 
+    print("Asking for new point to observe")
     ask_tell = AskTellOptimizer(search_space, dataset, model)
     new_point = ask_tell.ask()
 
     new_data_point = observer(new_point)
-
     dataset = dataset + new_data_point
+
+    print("Training models externally")
+    model1.update(dataset)
+    model1.optimize(dataset)
+
+    model2.update(dataset)
+    model2.optimize(dataset)
 
 plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# ## External experiment: manipulating optimization state
+# ## External experiment: storing optimizer state
 #
-# Now let's suppose you are optimizing a real life process, e.g. a lab experiment. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. In such case you want to save the optimization state and then load it later.
-#
-# Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it.
+# Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results. 
+# 
+# In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it ny using pickle to write optimization state and read it back.
 
 # %%
+import pickle
+
+model = build_model(initial_data)
+ask_tell = AskTellOptimizer(search_space, initial_data, model)
 for step in range(n_steps):
     print(f"Ask Trieste for configuration #{step}")
     new_config = ask_tell.ask()
 
     print("Saving Trieste state to re-use later")
     state: Record[None] = ask_tell.to_record()
+    saved_state = pickle.dumps(state)
 
     print(f"In the lab running the experiment #{step}.")
     new_datapoint = scaled_branin(new_config)
+
     print("Back from the lab")
-
     print("Restore optimizer from the saved state")
-    ask_tell = AskTellOptimizer.from_record(state, search_space)
-
-    print("Tell optimizer the new datapoint")
+    loaded_state = pickle.loads(saved_state)
+    ask_tell = AskTellOptimizer.from_record(loaded_state, search_space)
     ask_tell.tell(Dataset(new_config, new_datapoint))
 
 
@@ -151,4 +163,4 @@ plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# A word of warning. This may not work with writing optimization state to disk, and reading it back later. So use with caution!
+# A word of warning. Serialization is not guaranteed to work smoothly with every GPflow model, so apply caution when using similar technique in your problems.

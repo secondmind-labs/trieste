@@ -55,26 +55,6 @@ class Record(Generic[S]):
     acquisition_state: S | None
     """ The acquisition state. """
 
-    @classmethod
-    def with_default_tag(
-        cls,
-        dataset: Dataset,
-        model: TrainableProbabilisticModel,
-        acquisition_state: S | None = None,
-    ) -> Record[S]:
-        """Creates a :class:`Record` instance with single dataset and model
-        using default `OBJECTIVE` tag.
-
-        :param dataset: Single dataset.
-        :param model: Single model instance.
-        :param acquisition_state: The acquisition state.
-        """
-        return Record(
-            datasets={OBJECTIVE: dataset},
-            models={OBJECTIVE: model},
-            acquisition_state=acquisition_state,
-        )
-
     @property
     def dataset(self) -> Dataset:
         """The dataset when there is just one dataset."""

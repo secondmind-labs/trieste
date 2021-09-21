@@ -20,6 +20,7 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
+import copy
 from typing import Dict, Generic, Mapping, Optional, TypeVar, cast, overload
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -168,7 +169,6 @@ class AskTellOptimizer(Generic[SP]):
         | None = None,
     ) -> AskTellOptimizer[SP]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
-
         :param record: Optimization state record.
         :param search_space: The space over which to search.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
@@ -194,8 +194,10 @@ class AskTellOptimizer(Generic[SP]):
 
         :return: An optimization state record.
         """
+        models_copy = copy.deepcopy(self._models)
+        acquisition_state_copy = copy.deepcopy(self._acquisition_state)
         return Record(
-            datasets=self._datasets, models=self._models, acquisition_state=self._acquisition_state
+            datasets=self._datasets, models=models_copy, acquisition_state=acquisition_state_copy
         )
 
     def to_result(self) -> OptimizationResult[S]:

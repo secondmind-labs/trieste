@@ -22,7 +22,7 @@ from tests.util.misc import FixedAcquisitionRule, assert_datasets_allclose, mk_d
 from tests.util.models.gpflow.models import GaussianProcess, PseudoTrainableProbModel, rbf
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.ask_tell_optimization import AskTellOptimizer
-from trieste.bayesian_optimizer import Record
+from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE
@@ -109,13 +109,27 @@ def test_ask_tell_optimizer_loads_from_state(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[None] = Record.with_default_tag(init_dataset, model)
+    old_state: Record[None] = Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None)
 
     ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
     new_state: Record[None] = ask_tell.to_record()
 
     assert_datasets_allclose(old_state.dataset, new_state.dataset)
     assert isinstance(new_state.model, type(old_state.model))
+
+
+def test_ask_tell_optimizer_returns_optimization_result(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+
+    result: OptimizationResult[None] = ask_tell.to_result()
+
+    assert_datasets_allclose(result.try_get_final_dataset(), init_dataset)
+    assert isinstance(result.try_get_final_model(), type(model))
 
 
 def test_ask_tell_optimizer_updates_state_with_new_data(
@@ -175,7 +189,7 @@ def test_ask_tell_optimizer_from_state_does_not_train_model(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box],
 ) -> None:
-    old_state: Record[None] = Record.with_default_tag(init_dataset, model)
+    old_state: Record[None] = Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None)
 
     ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
     state_record: Record[None] = ask_tell.to_record()
