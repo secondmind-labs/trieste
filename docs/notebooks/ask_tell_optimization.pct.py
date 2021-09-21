@@ -163,4 +163,4 @@ plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# A word of warning. Serialization is not guaranteed to work smoothly with every GPflow model, so apply caution when using similar technique in your problems.
+# A word of warning. This serialization technique is not guaranteed to work smoothly with every Tensorflow-based model, so apply to your own problems with caution.

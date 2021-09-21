@@ -169,6 +169,7 @@ class AskTellOptimizer(Generic[SP]):
         | None = None,
     ) -> AskTellOptimizer[SP]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
+
         :param record: Optimization state record.
         :param search_space: The space over which to search.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
