@@ -21,7 +21,7 @@ perform Bayesian Optimization with external control of the optimization loop.
 from __future__ import annotations
 
 import copy
-from typing import Dict, Generic, Mapping, Optional, TypeVar, cast, overload
+from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import OptimizationResult, Record
@@ -50,8 +50,8 @@ class AskTellOptimizer(Generic[SP]):
     def __init__(
         self,
         search_space: SP,
-        datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
         *,
         fit_model: bool = True,
     ):
@@ -61,8 +61,8 @@ class AskTellOptimizer(Generic[SP]):
     def __init__(
         self,
         search_space: SP,
-        datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[TensorType, SP] | None = None,
         *,
         fit_model: bool = True,
@@ -73,10 +73,46 @@ class AskTellOptimizer(Generic[SP]):
     def __init__(
         self,
         search_space: SP,
-        datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelSpec],
         acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP] | None = None,
-        acquisition_state: Optional[S] = None,
+        acquisition_state: S | None = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[TensorType, SP] | None = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SP,
+        datasets: Dataset,
+        model_specs: ModelSpec,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP] | None = None,
+        acquisition_state: S | None = None,
         *,
         fit_model: bool = True,
     ):
@@ -89,7 +125,7 @@ class AskTellOptimizer(Generic[SP]):
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
         acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
         | None = None,
-        acquisition_state: Optional[S] = None,
+        acquisition_state: S | None = None,
         *,
         fit_model: bool = True,
     ):
