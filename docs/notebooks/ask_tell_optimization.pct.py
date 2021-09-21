@@ -4,7 +4,7 @@
 # %% [markdown]
 # In this notebook we will illustrate the use of Ask-Tell interface in Trieste. It might be useful in the cases when you want to have greater control of the optimization loop, or if letting Trieste manage this loop is impossible.
 #
-# First, some commmon code we will be using in the notebook.
+# First, some code to setup the problem we will be using throughout the notebook. If you would like more details about this problem setup, please refer to [introductory EI notebook](expected_improvement.ipynb).
 
 # %%
 import numpy as np
@@ -134,7 +134,7 @@ plot_ask_tell_regret(ask_tell.to_result())
 #
 # Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results. 
 # 
-# In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it ny using pickle to write optimization state and read it back.
+# In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it by using pickle to write optimization state and read it back.
 
 # %%
 import pickle
