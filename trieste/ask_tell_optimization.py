@@ -94,7 +94,7 @@ class AskTellOptimizer(Generic[SP]):
         fit_model: bool = True,
     ):
         """
-        :param search_space: The space over which to search.
+        :param search_space: The space over which to search for the next query point.
         :param datasets: Already observed input-output pairs for each tag.
         :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
             ``datasets``.
@@ -171,7 +171,7 @@ class AskTellOptimizer(Generic[SP]):
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
 
         :param record: Optimization state record.
-        :param search_space: The space over which to search.
+        :param search_space: The space over which to search for the next query point.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
