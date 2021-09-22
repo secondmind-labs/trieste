@@ -20,7 +20,7 @@ from matplotlib import cm
 from trieste.acquisition import AcquisitionFunction
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.utils.pareto import non_dominated
+from trieste.acquisition.multi_objective.dominance import non_dominated
 
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
@@ -337,7 +337,8 @@ def plot_mobo_history(
     if mask_fail is not None:
         obs_values[mask_fail] = [np.inf] * obj_num
 
-    ax.plot([metric_func(obs_values[:pts, :]) for pts in range(size)], color="tab:orange")
+    _idxs = np.arange(1, size + 1)
+    ax.plot(_idxs, [metric_func(obs_values[:pts, :]) for pts in _idxs], color="tab:orange")
     ax.axvline(x=num_init - 0.5, color="tab:blue")
     return fig, ax
 

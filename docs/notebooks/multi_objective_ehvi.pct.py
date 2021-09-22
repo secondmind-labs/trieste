@@ -25,7 +25,7 @@ from trieste.models import create_model, ModelStack
 from trieste.models.gpflow import GPflowModelConfig
 from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
-from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
