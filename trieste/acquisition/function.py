@@ -1092,6 +1092,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
 
+        # TODO: move common code to parent class
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
@@ -1101,7 +1102,54 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             " the objective data, but the objective data is empty.",
         )
 
-        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
+            datasets, models
+        )
+        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        if not tf.reduce_any(is_feasible):
+            return self._constraint_fn
+
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+
+        _pf = Pareto(feasible_mean)
+        _reference_pt = get_reference_point(_pf.front)
+        self._expected_improvement_fn = expected_hv_improvement(objective_model, _pf, _reference_pt)
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_improvement_fn = constrained_function
+        return constrained_function
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected hypervolume improvement is defined with respect to existing points in"
+            " the objective data, but the objective data is empty.",
+        )
+        tf.debugging.Assert(None not in [self._constraint_fn], [])
+
+        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
+        self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
@@ -1111,10 +1159,24 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
 
+        # TODO: update Pareto?
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
-        ehvi = expected_hv_improvement(objective_model, _pf, _reference_pt)
-        return lambda at: ehvi(at) * constraint_fn(at)
+
+        # TODO: once supported, update expected_hv_improvement in place if it exists
+        self._expected_improvement_fn = expected_hv_improvement(objective_model, _pf, _reference_pt)
+
+        if self._constrained_improvement_fn is not None:
+            return self._constrained_improvement_fn
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_improvement_fn = constrained_function
+        return self._constrained_improvement_fn
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
