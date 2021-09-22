@@ -749,8 +749,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
-        eta = tf.reduce_min(feasible_mean, axis=0)
-        self._expected_improvement_fn = expected_improvement(objective_model, eta)
+        self._update_expected_improvement_fn(objective_model, feasible_mean)
 
         @tf.function
         def constrained_function(x: TensorType) -> TensorType:
@@ -792,13 +791,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
-        eta = tf.reduce_min(feasible_mean, axis=0)
-
-        if self._expected_improvement_fn is None:
-            self._expected_improvement_fn = expected_improvement(objective_model, eta)
-        else:
-            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
-            self._expected_improvement_fn.update(eta)  # type: ignore
+        self._update_expected_improvement_fn(objective_model, feasible_mean)
 
         if self._constrained_improvement_fn is not None:
             return self._constrained_improvement_fn
@@ -811,6 +804,23 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         self._constrained_improvement_fn = constrained_function
         return self._constrained_improvement_fn
+
+    def _update_expected_improvement_fn(
+        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+    ) -> None:
+        """
+        Set or update the unconstrained expected improvement function.
+
+        :param objective_model: The objective model.
+        :param feasible_mean: The mean of the feasible query points.
+        """
+        eta = tf.reduce_min(feasible_mean, axis=0)
+
+        if self._expected_improvement_fn is None:
+            self._expected_improvement_fn = expected_improvement(objective_model, eta)
+        else:
+            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
+            self._expected_improvement_fn.update(eta)  # type: ignore
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
@@ -1079,104 +1089,21 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             f" {self._min_feasibility_probability!r})"
         )
 
-    def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
+    def _update_expected_improvement_fn(
+        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+    ) -> None:
         """
-        :param datasets: The data from the observer. Must be populated.
-        :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained hypervolume improvement acquisition function.
-            This function will raise :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError`
-            if used with a batch size greater than one.
-        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
-        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
+        Set or update the unconstrained expected improvement function.
+
+        :param objective_model: The objective model.
+        :param feasible_mean: The mean of the feasible query points.
         """
-
-        # TODO: move common code to parent class
-        objective_model = models[self._objective_tag]
-        objective_dataset = datasets[self._objective_tag]
-
-        tf.debugging.assert_positive(
-            len(objective_dataset),
-            message="Expected hypervolume improvement is defined with respect to existing points in"
-            " the objective data, but the objective data is empty.",
-        )
-
-        self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
-            datasets, models
-        )
-        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
-
-        if not tf.reduce_any(is_feasible):
-            return self._constraint_fn
-
-        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
-        feasible_mean, _ = objective_model.predict(feasible_query_points)
-
-        _pf = Pareto(feasible_mean)
-        _reference_pt = get_reference_point(_pf.front)
-        self._expected_improvement_fn = expected_hv_improvement(objective_model, _pf, _reference_pt)
-
-        @tf.function
-        def constrained_function(x: TensorType) -> TensorType:
-            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
-                AcquisitionFunction, self._constraint_fn
-            )(x)
-
-        self._constrained_improvement_fn = constrained_function
-        return constrained_function
-
-    def update_acquisition_function(
-        self,
-        function: AcquisitionFunction,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-    ) -> AcquisitionFunction:
-        """
-        :param function: The acquisition function to update.
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
-        """
-        objective_model = models[self._objective_tag]
-        objective_dataset = datasets[self._objective_tag]
-
-        tf.debugging.assert_positive(
-            len(objective_dataset),
-            message="Expected hypervolume improvement is defined with respect to existing points in"
-            " the objective data, but the objective data is empty.",
-        )
-        tf.debugging.Assert(None not in [self._constraint_fn], [])
-
-        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
-        self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
-        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
-
-        if not tf.reduce_any(is_feasible):
-            return constraint_fn
-
-        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
-        feasible_mean, _ = objective_model.predict(feasible_query_points)
-
-        # TODO: update Pareto?
+        # TODO: update Pareto in place?
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
 
         # TODO: once supported, update expected_hv_improvement in place if it exists
         self._expected_improvement_fn = expected_hv_improvement(objective_model, _pf, _reference_pt)
-
-        if self._constrained_improvement_fn is not None:
-            return self._constrained_improvement_fn
-
-        @tf.function
-        def constrained_function(x: TensorType) -> TensorType:
-            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
-                AcquisitionFunction, self._constraint_fn
-            )(x)
-
-        self._constrained_improvement_fn = constrained_function
-        return self._constrained_improvement_fn
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
