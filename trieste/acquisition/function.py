@@ -756,10 +756,18 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     The implementation of the acquisition function largely
     follows :cite:`yang2019efficient`
     """
+    def __init__(self, reference_point: Optional[TensorType] = None):
+        """
+        :param reference_point: with shape [D] (D represents number of objectives), if the user has
+        the knowledge where the Pareto front might be, this arg can be used to specify a fixed
+        reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
+        is used to automatically set a reference point according to the datasets.
+        """
+        self._reference_point = reference_point
 
     def __repr__(self) -> str:
         """"""
-        return "ExpectedHypervolumeImprovement()"
+        return f"ExpectedHypervolumeImprovement({self._reference_point!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -773,7 +781,8 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
+        _reference_pt = self._reference_point if self._reference_point is not None else \
+            get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
@@ -888,12 +897,17 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     follows :cite:`daulton2020differentiable`
     """
 
-    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER,
+                 reference_point: Optional[TensorType] = None):
         """
         :param sample_size: The number of samples from model predicted distribution for
             each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
+        :param reference_point: with shape [D] (D represents number of objectives), if the user has
+            the knowledge where the Pareto front might be, this arg can be used to specify a fixed
+            reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
+            is used to automatically set a reference point according to the datasets.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
             ``jitter`` is negative.
         """
@@ -904,12 +918,13 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
+        self._reference_point = reference_point
 
     def __repr__(self) -> str:
         """"""
         return (
             f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r})"
+            f" jitter={self._jitter!r}, reference_point = {self._reference_point!r})"
         )
 
     def prepare_acquisition_function(
@@ -925,7 +940,8 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
+        _reference_pt = self._reference_point if self._reference_point is not None else \
+            get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
@@ -1008,12 +1024,22 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
     ExpectedHypervolumeImprovement.
     """
 
+    def __init__(self, *args, reference_point: Optional[TensorType] = None, **kwargs):
+        """
+        :param reference_point: with shape [D] (D represents number of objectives), if the user has
+        the knowledge where the feasible Pareto front might be, this arg can be used to specify a fixed
+        reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
+        is used to automatically set a reference point according to the datasets.
+        """
+        super().__init__(*args, **kwargs)
+        self._reference_point = reference_point
+
     def __repr__(self) -> str:
         """"""
         return (
             f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
-            f"{self._constraint_builder!r},"
-            f" {self._min_feasibility_probability!r})"
+            f"{self._constraint_builder!r}, reference_point = {self._reference_point}"
+            f" min_feasibility_probability = {self._min_feasibility_probability!r})"
         )
 
     def prepare_acquisition_function(
@@ -1049,7 +1075,8 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         feasible_mean, _ = objective_model.predict(feasible_query_points)
 
         _pf = Pareto(feasible_mean)
-        _reference_pt = get_reference_point(_pf.front)
+        _reference_pt = self._reference_point if self._reference_point is not None else \
+            get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
