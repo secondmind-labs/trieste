@@ -21,6 +21,7 @@ from trieste.acquisition.function import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -32,7 +33,6 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import TensorType
-from trieste.utils.pareto import Pareto, get_reference_point
 
 
 @random_seed
