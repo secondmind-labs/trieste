@@ -44,7 +44,7 @@ np.random.seed(1794)
 tf.random.set_seed(1794)
 tf.keras.backend.set_floatx("float64")
 
-runs = 1
+runs = 10
 
 
 function_dict = {
@@ -87,7 +87,7 @@ for function_key in function_dict:
     acquisition_rule = DiscreteThompsonSampling(1000, 1)
 
     num_initial_points = 20
-    num_acquisitions = 20
+    num_acquisitions = 480
     num_evaluation_points = 1000
     for run in range(runs):
 
@@ -109,7 +109,6 @@ for function_key in function_dict:
             if retrain:
                 num_acq_per_loop = 10
                 num_loops = num_acquisitions // num_acq_per_loop
-                print("num_loops: ", num_loops)
 
                 current_dataset = initial_data
 
