@@ -1976,6 +1976,8 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
         :return: The determinant of the predictive function.
         """
 
