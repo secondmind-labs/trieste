@@ -2,9 +2,9 @@
 # # Ask-Tell Optimization Interface
 
 # %% [markdown]
-# In this notebook we will illustrate the use of Ask-Tell interface in Trieste. It might be useful in the cases when you want to have greater control of the optimization loop, or if letting Trieste manage this loop is impossible.
+# In this notebook we will illustrate the use of an Ask-Tell interface in Trieste. It is useful for cases where you want to have greater control of the optimization loop, or when letting Trieste manage this loop is impossible.
 #
-# First, some code to setup the problem we will be using throughout the notebook. If you would like more details about this problem setup, please refer to [introductory EI notebook](expected_improvement.ipynb).
+# First, some code to set up the problem we will be using throughout the notebook. If you would like more details about this problem setup, please refer to [introductory EI notebook](expected_improvement.ipynb).
 
 # %%
 import numpy as np
@@ -15,8 +15,7 @@ import gpflow
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
-from trieste.models import create_model
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -41,16 +40,12 @@ def build_model(data, kernel_func=None):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GPflowModelConfig(**{
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-    })
+    return GaussianProcessRegression(gpr)
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
 observer = mk_observer(scaled_branin)
 initial_data = observer(initial_query_points)
-model = build_model(initial_data)
 
 # %% [markdown]
 # ## Timing acquisition function: simple use case for Ask-Tell
@@ -60,6 +55,7 @@ model = build_model(initial_data)
 # %%
 import timeit
 
+model = build_model(initial_data)
 ask_tell = AskTellOptimizer(search_space, initial_data, model)
 
 for step in range(n_steps):
@@ -74,7 +70,7 @@ for step in range(n_steps):
 
 
 # %% [markdown]
-# Once ask-tell optimization is over, you can get an optimization result object from it and perform whatever analysis you need. Just like with regular Trieste optimization interface. For instance here we will plot regret for each optimization step.
+# Once ask-tell optimization is over, you can extract an optimization result object and perform whatever analysis you need, just like with regular Trieste optimization interface. For instance, here we will plot regret for each optimization step.
 
 # %%
 def plot_ask_tell_regret(ask_tell_result):
@@ -95,11 +91,11 @@ plot_ask_tell_regret(ask_tell.to_result())
 # %% [markdown]
 # ## Model selection: using only Ask part
 #
-# A slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop. So we want greater control of the model such as training it outside of Trieste. In that case we can only use Ask part of the Ask-Tell interface.
+# We now turn to a slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop, e.g. we want to be able to train a model outside of Trieste. In this case we can only use Ask part of the Ask-Tell interface.
 
 # %%
-model1 = create_model(build_model(initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v)))
-model2 = create_model(build_model(initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v)))
+model1 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v))
+model2 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v))
 
 dataset = initial_data
 for step in range(n_steps):

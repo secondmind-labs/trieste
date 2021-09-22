@@ -205,6 +205,7 @@ class AskTellOptimizer(Generic[SP]):
         | None = None,
     ) -> AskTellOptimizer[SP]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
+        Model training isn't triggered upon creation of the instance.
 
         :param record: Optimization state record.
         :param search_space: The space over which to search for the next query point.
@@ -239,7 +240,7 @@ class AskTellOptimizer(Generic[SP]):
 
     def to_result(self) -> OptimizationResult[S]:
         """Converts current state of the optimization
-        into an :class:`~trieste.data.OptimizationResult` object."""
+        into a :class:`~trieste.data.OptimizationResult` object."""
         record: Record[S] = self.to_record()
         return OptimizationResult(Ok(record), [])
 

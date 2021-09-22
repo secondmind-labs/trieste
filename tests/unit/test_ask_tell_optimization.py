@@ -281,7 +281,7 @@ def test_ask_tell_optimizer_tell_validates_keys(
         ask_tell.tell(new_data_with_key_2)
 
 
-def test_ask_tell_optimizer_default_acqusition_requires_objective_tag(
+def test_ask_tell_optimizer_default_acquisition_requires_objective_tag(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
