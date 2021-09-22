@@ -406,8 +406,16 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     return -result
 
 
+def michalewicz_2(x: TensorType) -> TensorType:
+    return michalewicz(x, d=2)
+
+
 def michalewicz_5(x: TensorType) -> TensorType:
     return michalewicz(x, d=5)
+
+
+def michalewicz_10(x: TensorType) -> TensorType:
+    return michalewicz(x, d=10)
 
 
 MICHALEWICZ_2_MINIMIZER = tf.constant([2.20, 1.57], tf.float64)
@@ -417,21 +425,21 @@ with shape [1, 2] and dtype float64.
 """
 
 
-MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013], tf.float64)
+MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013034], tf.float64)
 """
 The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
 float64.
 """
 
 
-MICHALEWICZ_5_MINIMUM = tf.constant([-4.687658], tf.float64)
+MICHALEWICZ_5_MINIMUM = tf.constant([-4.6876582], tf.float64)
 """
 The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
 float64.
 """
 
 
-MICHALEWICZ_10_MINIMUM = tf.constant([-9.66015], tf.float64)
+MICHALEWICZ_10_MINIMUM = tf.constant([-9.6601517], tf.float64)
 """
 The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
 float64.
