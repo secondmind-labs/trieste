@@ -179,7 +179,7 @@ for i in range(bo_iter):
         contour=True,
         colorbar=True,
         figsize=(10, 6),
-        title=["Variance contour with queried points at iter:" + str(i + 1)],
+        title=["Variance contour with queried points at iter: " + str(i + 1)],
         xlabel="$X_1$",
         ylabel="$X_2$",
     )
