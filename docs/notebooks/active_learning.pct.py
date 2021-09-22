@@ -136,7 +136,7 @@ for i in range(bo_iter):
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For batch active learning, we must pass a num_query_points input to our `EfficientGLobalOptimization` rule.
+# For batch active learning, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule.
 
 # %%
 bo_iter = 5
