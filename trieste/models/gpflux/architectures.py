@@ -62,19 +62,19 @@ def build_vanilla_deep_gp(
     if isinstance(query_points, tf.Tensor):
         query_points = query_points.numpy()
 
+    num_data, input_dim = query_points.shape
+
     # Pad query_points with additional random values to provide enough inducing points
-    if num_inducing > len(query_points):
+    if num_inducing > num_data:
         if search_space is not None:
             if not isinstance(search_space, Box):
                 raise ValueError("Currently only `Box` instances are supported for `search_space`.")
-            additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
+            additional_points = search_space.sample_sobol(num_inducing - num_data).numpy()
         else:
             additional_points = np.random.randn(
-                num_inducing - len(query_points), *query_points.shape[1:]
+                num_inducing - num_data, *query_points.shape[1:]
             )
         query_points = np.concatenate([query_points, additional_points], 0)
-
-    # TODO: make sure this provides the correct num_data - should be fine atm
 
     config = Config(
         num_inducing=num_inducing,
@@ -83,7 +83,14 @@ def build_vanilla_deep_gp(
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
-    return build_constant_input_dim_deep_gp(query_points, num_layers, config)
+    model = build_constant_input_dim_deep_gp(query_points, num_layers, config)
+
+    # Since `build_constant_input_dim_deep_gp` will have been passed the wrong number of datapoints
+    # if num_inducing > num_data
+    for layer in model.f_layers:
+        layer.num_data = num_data
+
+    return model
 
 
 def build_latent_variable_dgp_model(
