@@ -42,8 +42,6 @@ from exp_utils import (
 )
 import argparse
 
-np.random.seed(1794)
-tf.random.set_seed(1794)
 tf.keras.backend.set_floatx("float64")
 
 parser = argparse.ArgumentParser()
@@ -60,6 +58,9 @@ model_key = args.model
 learn_noise = args.ln
 retrain = args.rt
 run = args.run
+
+np.random.seed(run)
+tf.random.set_seed(run)
 
 function_dict = {
     "michalewicz2": [michalewicz_2, MICHALEWICZ_2_MINIMUM, MICHALEWICZ_2_SEARCH_SPACE],
