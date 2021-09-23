@@ -2,11 +2,12 @@
 # # Using deep Gaussian processes with GPflux for Bayesian optimization.
 
 # %%
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 import numpy as np
 import tensorflow as tf
 
-np.random.seed(1794)
-tf.random.set_seed(1794)
 tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
@@ -51,8 +52,12 @@ import trieste
 
 observer = mk_observer(function)
 
-num_initial_points = 10
-num_acquisitions = 20
+num_initial_points = 20
+num_acquisitions = 480
+
+num_acq_per_loop = 10
+num_loops = 48
+
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -64,18 +69,20 @@ initial_data = observer(initial_query_points)
 # We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
 
 # %%
-from trieste.models.gpflux import GPfluxModelConfig, build_vanilla_deep_gp
+from trieste.models.gpflux import GPfluxModelConfig, build_vanilla_deep_gp, build_gi_deep_gp
 from gpflow.utilities import set_trainable
 
 
 def build_dgp_model(data):
     variance = tf.math.reduce_variance(data.observations)
 
-    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
-    dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
+    dgp = build_gi_deep_gp(data.query_points, num_layers=2, num_inducing=100,
+                           last_layer_variance=variance.numpy())
+    # dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
+    # dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
-    dgp.likelihood_layer.likelihood.variance.assign(1e-5)
-    set_trainable(dgp.likelihood_layer.likelihood.variance, False)
+    dgp.likelihood_layer.variance.assign(1e-3)
+    # set_trainable(dgp.likelihood_layer, False)
 
     epochs = 200
     batch_size = 100
@@ -84,7 +91,7 @@ def build_dgp_model(data):
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,
-        "verbose": 0,
+        "verbose": 1,
     }
 
     return GPfluxModelConfig(**{
@@ -96,7 +103,7 @@ def build_dgp_model(data):
     })
 
 
-dgp_model = build_dgp_model(initial_data)
+# dgp_model = build_dgp_model(initial_data)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -108,13 +115,45 @@ dgp_model = build_dgp_model(initial_data)
 # We'll run the optimizer for twenty steps. Note: this may take a while!
 # %%
 from trieste.acquisition.rule import DiscreteThompsonSampling
+from util.plotting_plotly import plot_dgp_plotly, plot_gi_dgp_plotly
+from util.plotting_plotly import add_bo_points_plotly
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 acquisition_rule = DiscreteThompsonSampling(1000, 1)
 
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
-dgp_dataset = dgp_result.try_get_final_dataset()
+dgp_dataset = initial_data
+
+for loop in range(num_loops):
+    dgp_model = build_dgp_model(dgp_dataset)
+    dgp_result = bo.optimize(num_acq_per_loop, dgp_dataset, dgp_model,
+                             acquisition_rule=acquisition_rule, track_state=False)
+    dgp_dataset = dgp_result.try_get_final_dataset()
+
+    dgp_query_points = dgp_dataset.query_points.numpy()
+    dgp_observations = dgp_dataset.observations.numpy()
+    dgp_arg_min_idx = tf.squeeze(tf.argmin(dgp_observations, axis=0))
+
+    fig = plot_gi_dgp_plotly(
+        dgp_result.try_get_final_model().model_gpflux,  # type: ignore
+        search_space.lower,
+        search_space.upper,
+        grid_density=100,
+        num_samples=200,
+    )
+
+    fig = add_bo_points_plotly(
+        x=dgp_query_points[:, 0],
+        y=dgp_query_points[:, 1],
+        z=dgp_observations[:, 0],
+        num_init=num_initial_points,
+        idx_best=dgp_arg_min_idx,
+        fig=fig,
+        figrow=1,
+        figcol=1,
+    )
+    fig.update_layout(height=800, width=800)
+    fig.show()
+
 
 # %% [markdown]
 # ## Explore the results
@@ -158,13 +197,14 @@ dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution.
 
 # %%
-from util.plotting_plotly import plot_dgp_plotly
+from util.plotting_plotly import plot_dgp_plotly, plot_gi_dgp_plotly
 
-fig = plot_dgp_plotly(
+fig = plot_gi_dgp_plotly(
     dgp_result.try_get_final_model().model_gpflux,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=100,
+    num_samples=50,
 )
 
 fig = add_bo_points_plotly(
@@ -195,8 +235,8 @@ def build_gp_model(data):
     prior_scale = tf.cast(1.0, dtype=tf.float64)
     kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
+    gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-3)
+    gpflow.set_trainable(gpr.likelihood, True)
 
     return GPflowModelConfig(**{
         "model": gpr,
@@ -261,14 +301,17 @@ plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_ar
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
-ax[0].set_ylim(0.5, 3)
+ax[0].set_ylim(0.00001, 2)
 ax[0].set_xlabel("# evaluations")
 ax[0].set_title("DGP")
 
 ax[1].set_title("GP")
 ax[1].set_yscale("log")
-ax[1].set_ylim(0.5, 3)
+ax[1].set_ylim(0.00001, 2)
 ax[1].set_xlabel("# evaluations")
+
+plt.show()
+plt.close()
 
 # %% [markdown]
 # We might also expect that the DGP model will do better on higher dimensional data. We explore this by testing a higher-dimensional version of the Michalewicz dataset.
