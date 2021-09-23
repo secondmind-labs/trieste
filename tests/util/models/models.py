@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
 
-from . import gpflow, gpflux, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from __future__ import annotations
+
+import tensorflow as tf
+
+
+def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
+    return 3.0 * x + 10
+
+
+def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
+    return 2.0 * tf.math.sin(x / 3.0)

@@ -11,12 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
 
-from . import gpflow, gpflux, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from typing import Any, Callable
+
+import pytest
+import tensorflow as tf
+
+from tests.util.trieste.utils.objectives import hartmann_6_dataset
+from trieste.data import Dataset
+
+tf.keras.backend.set_floatx("float64")
+
+
+@pytest.fixture(name="depth", params=[2, 3])
+def _depth_fixture(request: Any) -> int:
+    return request.param
+
+
+@pytest.fixture(name="hartmann_6_dataset_function", scope="session")
+def _hartmann_6_dataset_function_fixture() -> Callable[[int], Dataset]:
+    return hartmann_6_dataset

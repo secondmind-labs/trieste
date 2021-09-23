@@ -11,12 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
 
-from . import gpflow, gpflux, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from typing import Any, Callable
+
+import pytest
+import tensorflow as tf
+from trieste.types import TensorType
+from gpflux.models import DeepGP
+
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+
+tf.keras.backend.set_floatx("float64")
+
+
+@pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
+def _two_layer_model_fixture(request: Any) -> Callable[[TensorType], DeepGP]:
+    return request.param

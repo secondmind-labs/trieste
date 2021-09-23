@@ -26,7 +26,8 @@ import tensorflow_probability as tfp
 from packaging.version import parse
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflow.models import ModelFactoryType, fnc_2sin_x_over_3
+from tests.util.models.gpflow.models import ModelFactoryType
+from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
 from trieste.models.gpflow import randomize_hyperparameters, squeeze_hyperparameters
 
