@@ -71,9 +71,7 @@ def build_vanilla_deep_gp(
                 raise ValueError("Currently only `Box` instances are supported for `search_space`.")
             additional_points = search_space.sample_sobol(num_inducing - num_data).numpy()
         else:
-            additional_points = np.random.randn(
-                num_inducing - num_data, *query_points.shape[1:]
-            )
+            additional_points = np.random.randn(num_inducing - num_data, *query_points.shape[1:])
         query_points = np.concatenate([query_points, additional_points], 0)
 
     config = Config(
