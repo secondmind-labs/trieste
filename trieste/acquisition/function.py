@@ -1098,7 +1098,6 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         :param objective_model: The objective model.
         :param feasible_mean: The mean of the feasible query points.
         """
-        # TODO: update Pareto in place?
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
