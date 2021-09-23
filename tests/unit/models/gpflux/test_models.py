@@ -24,7 +24,7 @@ trieste model).
 
 from __future__ import annotations
 
-from typing import Callable, Any
+from typing import Callable
 
 import gpflow
 import gpflux.encoders
@@ -147,8 +147,7 @@ def test_dgp_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
 )
 def test_dgp_update_raises_for_invalid_shapes(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    new_data: Dataset
+    two_layer_model: Callable[[TensorType], DeepGP], new_data: Dataset
 ) -> None:
     x = tf.zeros([1, 4])
     dgp = two_layer_model(x)

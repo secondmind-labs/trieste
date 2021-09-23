@@ -16,10 +16,10 @@ from typing import Any, Callable
 
 import pytest
 import tensorflow as tf
-from trieste.types import TensorType
 from gpflux.models import DeepGP
 
 from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+from trieste.types import TensorType
 
 tf.keras.backend.set_floatx("float64")
 
