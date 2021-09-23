@@ -39,6 +39,7 @@ from .sampler import (
     RandomFourierFeatureThompsonSampler,
     ThompsonSampler,
 )
+from types import FunctionType
 
 CLAMP_LB = 1e-8
 
@@ -756,18 +757,23 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     The implementation of the acquisition function largely
     follows :cite:`yang2019efficient`
     """
-    def __init__(self, reference_point: Optional[TensorType] = None):
+
+    def __init__(
+        self, ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point
+    ):
         """
-        :param reference_point: with shape [D] (D represents number of objectives), if the user has
-        the knowledge where the Pareto front might be, this arg can be used to specify a fixed
-        reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
-        is used to automatically set a reference point according to the datasets.
+        :param ref_point_specification: this method is used to determine how the reference point is
+            calculated. If a Callable function specified, it is expected to take existing pareto
+            front and return a reference point with shape [D] (D represents number of objectives).
+            If the Pareto front location is known, this arg can be used to specify a fixed
+            reference point in each bo iteration. A dynamic reference point updating strategy is
+            used by default to set a reference point according to the datasets.
         """
-        self._reference_point = reference_point
+        self._ref_point_specification = ref_point_specification
 
     def __repr__(self) -> str:
         """"""
-        return f"ExpectedHypervolumeImprovement({self._reference_point!r})"
+        return f"ExpectedHypervolumeImprovement({self._ref_point_specification!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -781,8 +787,18 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _reference_pt = self._reference_point if self._reference_point is not None else \
-            get_reference_point(_pf.front)
+        if isinstance(self._ref_point_specification, FunctionType):
+            _reference_pt = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(
+                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
+            ), ValueError(
+                "There exists pareto frontier point that not dominated by reference point."
+            )
+        else:
+            assert isinstance(
+                self._ref_point_specification, tf.Tensor
+            )  # specified a fixed ref point
+            _reference_pt = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
@@ -897,17 +913,24 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     follows :cite:`daulton2020differentiable`
     """
 
-    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER,
-                 reference_point: Optional[TensorType] = None):
+    def __init__(
+        self,
+        sample_size: int,
+        *,
+        jitter: float = DEFAULTS.JITTER,
+        ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point,
+    ):
         """
         :param sample_size: The number of samples from model predicted distribution for
             each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
-        :param reference_point: with shape [D] (D represents number of objectives), if the user has
-            the knowledge where the Pareto front might be, this arg can be used to specify a fixed
-            reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
-            is used to automatically set a reference point according to the datasets.
+        :param ref_point_specification: this method is used to determine how the reference point is
+            calculated. If a Callable function specified, it is expected to take existing pareto
+            front and return a reference point with shape [D] (D represents number of objectives).
+            If the Pareto front location is known, this arg can be used to specify a fixed
+            reference point in each bo iteration. A dynamic reference point updating strategy is
+            used by default to set a reference point according to the datasets.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
             ``jitter`` is negative.
         """
@@ -918,13 +941,14 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
-        self._reference_point = reference_point
+        self._ref_point_specification = ref_point_specification
 
     def __repr__(self) -> str:
         """"""
         return (
             f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r}, reference_point = {self._reference_point!r})"
+            f" jitter={self._jitter!r}, ref_point_specification = "
+            f"{self._ref_point_specification!r})"
         )
 
     def prepare_acquisition_function(
@@ -940,8 +964,18 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _reference_pt = self._reference_point if self._reference_point is not None else \
-            get_reference_point(_pf.front)
+        if isinstance(self._ref_point_specification, FunctionType):
+            _reference_pt = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(
+                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
+            ), ValueError(
+                "There exists pareto frontier point that not dominated by reference point."
+            )
+        else:
+            assert isinstance(
+                self._ref_point_specification, tf.Tensor
+            )  # specified a fixed ref point
+            _reference_pt = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
@@ -1024,21 +1058,30 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
     ExpectedHypervolumeImprovement.
     """
 
-    def __init__(self, *args, reference_point: Optional[TensorType] = None, **kwargs):
+    def __init__(
+        self,
+        objective_tag: str,
+        constraint_builder: AcquisitionFunctionBuilder,
+        min_feasibility_probability: float | TensorType = 0.5,
+        ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point,
+    ):
         """
-        :param reference_point: with shape [D] (D represents number of objectives), if the user has
-        the knowledge where the feasible Pareto front might be, this arg can be used to specify a fixed
-        reference point in each bo iteration, otherwise, a dynamic reference point updating strategy
-        is used to automatically set a reference point according to the datasets.
+        :param ref_point_specification: this method is used to determine how the reference point is
+            calculated. If a Callable function specified, it is expected to take existing pareto
+            front and return a reference point with shape [D] (D represents number of objectives).
+            If the feasible Pareto front location is known, this arg can be used to specify a fixed
+            reference point in each bo iteration. A dynamic reference point updating strategy is
+            used by default to set a reference point according to the datasets.
         """
-        super().__init__(*args, **kwargs)
-        self._reference_point = reference_point
+        super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
+        self._ref_point_specification = ref_point_specification
 
     def __repr__(self) -> str:
         """"""
         return (
             f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
-            f"{self._constraint_builder!r}, reference_point = {self._reference_point}"
+            f"{self._constraint_builder!r}, ref_point_specification = "
+            f"{self._ref_point_specification!r}"
             f" min_feasibility_probability = {self._min_feasibility_probability!r})"
         )
 
@@ -1075,8 +1118,18 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         feasible_mean, _ = objective_model.predict(feasible_query_points)
 
         _pf = Pareto(feasible_mean)
-        _reference_pt = self._reference_point if self._reference_point is not None else \
-            get_reference_point(_pf.front)
+        if isinstance(self._ref_point_specification, FunctionType):
+            _reference_pt = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(
+                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
+            ), ValueError(
+                "There exists pareto frontier point that not dominated by reference point."
+            )
+        else:
+            assert isinstance(
+                self._ref_point_specification, tf.Tensor
+            )  # specified a fixed ref point
+            _reference_pt = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
