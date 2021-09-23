@@ -70,11 +70,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
-        # To tell if the data is stored in a way it can be updated without retracing,
-        # we look at its first dimension size.
-        # If it is a number, TF won't allow it to change, and we reset it to None
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overriden
+        # Thus here we ensure data is stored in dynamic shape Variables
 
-        if self._model.data[0].shape[0] is None and self._model.data[1].shape[0] is None:
+        if all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
             # both query points and observations are in right shape
             # nothing to do
             return

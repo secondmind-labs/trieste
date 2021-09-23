@@ -58,6 +58,8 @@ from trieste.types import State, TensorType
         [
             (20, False, lambda: EfficientGlobalOptimization()),
             (20, True, lambda: EfficientGlobalOptimization()),
+            (15, False, lambda: TrustRegion()),
+            (15, True, lambda: TrustRegion()),
             (
                 10,
                 False,
@@ -68,18 +70,6 @@ from trieste.types import State, TensorType
                     num_query_points=3,
                 ),
             ),
-            (
-                10,
-                True,
-                lambda: EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-            ),
-            (15, False, lambda: TrustRegion()),
-            (15, True, lambda: TrustRegion()),
         ],
     ),
 )

@@ -63,7 +63,7 @@ class AskTellOptimizer(Generic[SP]):
         search_space: SP,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP] | None = None,
+        acquisition_rule: AcquisitionRule[TensorType, SP],
         *,
         fit_model: bool = True,
     ):
@@ -75,7 +75,7 @@ class AskTellOptimizer(Generic[SP]):
         search_space: SP,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP] | None = None,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         fit_model: bool = True,
@@ -99,7 +99,7 @@ class AskTellOptimizer(Generic[SP]):
         search_space: SP,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP] | None = None,
+        acquisition_rule: AcquisitionRule[TensorType, SP],
         *,
         fit_model: bool = True,
     ):
@@ -111,7 +111,7 @@ class AskTellOptimizer(Generic[SP]):
         search_space: SP,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP] | None = None,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
         acquisition_state: S | None = None,
         *,
         fit_model: bool = True,
@@ -217,11 +217,14 @@ class AskTellOptimizer(Generic[SP]):
         # we are recovering previously saved optimization state
         # so the model was already trained
         # thus there is no need to train it again
+
+        # type ignore below is due to the fact that overloads don't allow
+        # optional acquisition_rule along with acquisition_state
         return cls(
             search_space,
             record.datasets,
             record.models,
-            acquisition_rule=acquisition_rule,
+            acquisition_rule=acquisition_rule,  # type: ignore
             acquisition_state=record.acquisition_state,
             fit_model=False,
         )
