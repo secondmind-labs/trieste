@@ -37,7 +37,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     @abstractmethod
-    def _model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf.keras.Model:
         """Returns the compiled Keras model for training."""
 
     @property

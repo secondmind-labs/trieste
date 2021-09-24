@@ -21,8 +21,6 @@ from gpflux.models import DeepGP
 
 from trieste.data import TensorType
 
-tf.keras.backend.set_floatx("float64")
-
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     if isinstance(x, tf.Tensor):

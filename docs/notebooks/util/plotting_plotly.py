@@ -120,10 +120,7 @@ def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, 
 
 
 def plot_gp_plotly(
-    model: GPModel,
-    mins: TensorType,
-    maxs: TensorType,
-    grid_density=20
+    model: GPModel, mins: TensorType, maxs: TensorType, grid_density=20
 ) -> go.Figure:
     """
     Plots 2-dimensional plot of a GP model's predictions with mean and 2 standard deviations.
@@ -168,7 +165,7 @@ def plot_dgp_plotly(
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 20,
-    num_samples: int = 100
+    num_samples: int = 100,
 ) -> go.Figure:
     """
     Plots sample-based mean and 2 standard deviations for DGP models in 2 dimensions.
