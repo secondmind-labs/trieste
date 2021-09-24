@@ -20,7 +20,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Optional, Sequence, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -854,7 +854,6 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
 
 class expected_hv_improvement(AcquisitionFunctionClass):
-
     def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
         r"""
         expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -882,8 +881,15 @@ class expected_hv_improvement(AcquisitionFunctionClass):
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         """
         self._model = model
-        self._lb_points = tf.Variable(partition_bounds[0])
-        self._ub_points = tf.Variable(partition_bounds[1])
+        self._lb_points = tf.Variable(
+            partition_bounds[0], trainable=False, shape=[None, partition_bounds[0].shape[-1]]
+        )
+        self._ub_points = tf.Variable(
+            partition_bounds[1], trainable=False, shape=[None, partition_bounds[1].shape[-1]]
+        )
+        self._cross_index = tf.constant(
+            list(product(*[[0, 1]] * self._lb_points.shape[-1]))
+        ) # [2^d, indices_at_dim]
 
     def update(self, partition_bounds: tuple[TensorType, TensorType]) -> None:
         """Update the acquisition function with new partition bounds."""
@@ -929,17 +935,13 @@ class expected_hv_improvement(AcquisitionFunctionClass):
             psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
             nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
 
-            cross_index = tf.convert_to_tensor(
-                list(product(*tf.tile(tf.constant([[0, 1]]), [tf.shape(self._lb_points)[-1], 1])))
-            ) # [2^d, indices_at_dim]
-
             stacked_factors = tf.concat(
                 [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
             )  # Take the cross product of psi_diff and nu across all outcomes
             # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
 
             factor_combinations = tf.linalg.diag_part(
-                tf.gather(stacked_factors, cross_index, axis=-2)
+                tf.gather(stacked_factors, self._cross_index, axis=-2)
             )  # [..., num_cells, 2^d, 2(operation_num), num_obj]
 
             return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
