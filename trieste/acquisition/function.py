@@ -853,36 +853,45 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         return expected_hv_improvement(model, _partition_bounds)
 
 
-def expected_hv_improvement(
-    model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]
-) -> AcquisitionFunction:
-    r"""
-    expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
-    The expected hypervolume improvement calculation in the non-dominated region
-    can be decomposed into sub-calculations based on each partitioned cell.
-    For easier calculation, this sub-calculation can be reformulated as a combination
-    of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
-    function calculations, respectively.
+class expected_hv_improvement(AcquisitionFunctionClass):
 
-    Note:
-    1. Since in Trieste we do not assume the use of a certain non-dominated region partition
-    algorithm, we do not assume the last dimension of the partitioned cell has only one
-    (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
-    This is not as efficient as the original paper, but is applicable to different non-dominated
-    partition algorithm.
-    2. As the Psi and nu function in the original paper are defined for maximization problems,
-    we inverse our minimisation problem (to also be a maximisation), allowing use of the
-    original notation and equations.
+    def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
+        r"""
+        expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+        The expected hypervolume improvement calculation in the non-dominated region
+        can be decomposed into sub-calculations based on each partitioned cell.
+        For easier calculation, this sub-calculation can be reformulated as a combination
+        of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+        function calculations, respectively.
 
-    :param model: The model of the objective function.
-    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
-        bounds for hypervolume improvement calculation
-    :return: The expected_hv_improvement acquisition function modified for objective
-        minimisation. This function will raise :exc:`ValueError` or
-        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-    """
+        Note:
+        1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+        algorithm, we do not assume the last dimension of the partitioned cell has only one
+        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+        This is not as efficient as the original paper, but is applicable to different non-dominated
+        partition algorithm.
+        2. As the Psi and nu function in the original paper are defined for maximization problems,
+        we inverse our minimisation problem (to also be a maximisation), allowing use of the
+        original notation and equations.
 
-    def acquisition(x: TensorType) -> TensorType:
+        :param model: The model of the objective function.
+        :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+            bounds for hypervolume improvement calculation
+        :return: The expected_hv_improvement acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        """
+        self._model = model
+        self._lb_points = tf.Variable(partition_bounds[0])
+        self._ub_points = tf.Variable(partition_bounds[1])
+
+    def update(self, partition_bounds: tuple[TensorType, TensorType]) -> None:
+        """Update the acquisition function with new partition bounds."""
+        self._lb_points.assign(partition_bounds[0])
+        self._ub_points.assign(partition_bounds[1])
+
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -906,9 +915,7 @@ def expected_hv_improvement(
             Calculate the ehvi based on cell i.
             """
 
-            lb_points, ub_points = partition_bounds
-
-            neg_lb_points, neg_ub_points = -ub_points, -lb_points
+            neg_lb_points, neg_ub_points = -self._ub_points, -self._lb_points
 
             neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
 
@@ -922,9 +929,9 @@ def expected_hv_improvement(
             psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
             nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
 
-            cross_index = tf.constant(
-                list(product(*[[0, 1]] * lb_points.shape[-1]))
-            )  # [2^d, indices_at_dim]
+            cross_index = tf.convert_to_tensor(
+                list(product(*tf.tile(tf.constant([[0, 1]]), [tf.shape(self._lb_points)[-1], 1])))
+            ) # [2^d, indices_at_dim]
 
             stacked_factors = tf.concat(
                 [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
@@ -937,7 +944,7 @@ def expected_hv_improvement(
 
             return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
 
-        candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
+        candidate_mean, candidate_var = self._model.predict(tf.squeeze(x, -2))
         candidate_std = tf.sqrt(candidate_var)
 
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
@@ -950,8 +957,6 @@ def expected_hv_improvement(
             axis=-1,
             keepdims=True,
         )
-
-    return acquisition
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
