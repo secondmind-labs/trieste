@@ -889,14 +889,14 @@ class expected_hv_improvement(AcquisitionFunctionClass):
         )
         self._cross_index = tf.constant(
             list(product(*[[0, 1]] * self._lb_points.shape[-1]))
-        ) # [2^d, indices_at_dim]
+        )  # [2^d, indices_at_dim]
 
     def update(self, partition_bounds: tuple[TensorType, TensorType]) -> None:
         """Update the acquisition function with new partition bounds."""
         self._lb_points.assign(partition_bounds[0])
         self._ub_points.assign(partition_bounds[1])
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
@@ -1114,8 +1114,15 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             _reference_pt,
         )
 
-        # TODO: once supported, update expected_hv_improvement in place if it exists
-        self._expected_improvement_fn = expected_hv_improvement(objective_model, _partition_bounds)
+        if self._expected_improvement_fn is None:
+            self._expected_improvement_fn = expected_hv_improvement(
+                objective_model, _partition_bounds
+            )
+        else:
+            tf.debugging.Assert(
+                isinstance(self._expected_improvement_fn, expected_hv_improvement), []
+            )
+            self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
