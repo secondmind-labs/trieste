@@ -78,4 +78,4 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         return noise_variance
 
     def __deepcopy__(self, memo: dict[int, object]) -> GPfluxPredictor:
-        raise NotImplementedError("")
+        raise NotImplementedError("`deepcopy` not yet supported for `GPfluxPredictor`")
