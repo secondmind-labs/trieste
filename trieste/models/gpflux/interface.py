@@ -76,3 +76,6 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
             raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
 
         return noise_variance
+
+    def __deepcopy__(self, memo: dict[int, object]) -> GPfluxPredictor:
+        raise NotImplementedError("")

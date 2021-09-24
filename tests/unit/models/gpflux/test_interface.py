@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import copy
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -155,3 +157,10 @@ def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likeliho
 
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
+
+
+def test_gpflux_predictor_deepcopy_raises_not_implemented() -> None:
+    model = _QuadraticPredictor()
+
+    with pytest.raises(NotImplementedError):
+        copy.deepcopy(model)
