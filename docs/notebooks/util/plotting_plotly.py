@@ -21,6 +21,9 @@ import tensorflow as tf
 from trieste.types import TensorType
 from trieste.utils import to_numpy
 
+from gpflow.models import GPModel
+from gpflux.models import DeepGP
+
 from .plotting import create_grid
 
 
@@ -116,8 +119,14 @@ def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, 
     return fig
 
 
-def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
+def plot_gp_plotly(
+    model: GPModel,
+    mins: TensorType,
+    maxs: TensorType,
+    grid_density=20
+) -> go.Figure:
     """
+    Plots 2-dimensional plot of a GP model's predictions with mean and 2 standard deviations.
 
     :param model: a gpflow model
     :param mins: list of 2 lower bounds
@@ -155,9 +164,15 @@ def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
 
 
 def plot_dgp_plotly(
-    model, mins: TensorType, maxs: TensorType, grid_density: int = 20, num_samples: int = 100
-):
+    model: DeepGP,
+    mins: TensorType,
+    maxs: TensorType,
+    grid_density: int = 20,
+    num_samples: int = 100
+) -> go.Figure:
     """
+    Plots sample-based mean and 2 standard deviations for DGP models in 2 dimensions.
+
     :param model: a dgp model
     :param mins: list of 2 lower bounds
     :param maxs: list of 2 upper bounds

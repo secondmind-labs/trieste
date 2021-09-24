@@ -37,7 +37,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
 
     @property
     @abstractmethod
-    def model_keras(self) -> tf.keras.Model:
+    def _model_keras(self) -> tf.keras.Model:
         """Returns the compiled Keras model for training."""
 
     @property
@@ -66,6 +66,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise for homoscedastic likelihoods.
+
         :return: The observation noise.
         :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
         """

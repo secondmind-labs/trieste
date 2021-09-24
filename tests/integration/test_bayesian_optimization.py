@@ -50,8 +50,6 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-tf.keras.backend.set_floatx("float64")
-
 
 @random_seed
 @pytest.mark.parametrize(

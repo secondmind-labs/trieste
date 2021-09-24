@@ -25,7 +25,7 @@ from trieste.models.optimizer import DatasetTransformer
 from trieste.types import TensorType
 
 
-def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, TensorType]]:
+def _batcher_bs_100(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, TensorType]]:
     ds = tf.data.Dataset.from_tensor_slices(dataset.astuple())
     ds = ds.shuffle(100)
     ds = ds.batch(batch_size)
@@ -33,11 +33,11 @@ def _batcher_1(dataset: Dataset, batch_size: int) -> Iterable[tuple[TensorType, 
     return iter(ds)
 
 
-def _batcher_2(dataset: Dataset, batch_size: int) -> tuple[TensorType, TensorType]:
+def _batcher_full_batch(dataset: Dataset, batch_size: int) -> tuple[TensorType, TensorType]:
     return dataset.astuple()
 
 
-@pytest.fixture(name="batcher", params=[_batcher_1, _batcher_2])
+@pytest.fixture(name="batcher", params=[_batcher_bs_100, _batcher_full_batch])
 def _batcher_fixture(request: Any) -> DatasetTransformer:
     return request.param
 

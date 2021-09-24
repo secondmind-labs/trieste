@@ -21,7 +21,7 @@ from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from gpflux.sampling.sample import Sample
 
-from trieste.types import TensorType
+from ...types import TensorType
 
 M = TypeVar("M", bound=tf.Module)
 """ A type variable bound to :class:`tf.Module`. """
@@ -48,7 +48,7 @@ def sample_dgp(model: DeepGP) -> Sample:
         elif isinstance(layer, LatentVariableLayer):
             function_draws.append(sample_consistent_lv_layer(layer))
         else:
-            raise NotImplementedError(f"Sampling not implemented for {layer}")
+            raise NotImplementedError(f"Sampling not implemented for {type(layer)}")
 
     class ChainedSample(Sample):
         def __call__(self, X: TensorType) -> tf.Tensor:
