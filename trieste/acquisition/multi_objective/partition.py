@@ -26,7 +26,8 @@ from .dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition_bounds(
-    observations: TensorType, reference: TensorType, anti_reference: Optional[TensorType] = None
+    reference: TensorType, observations: Optional[TensorType] = None,
+        anti_reference: Optional[TensorType] = None
 ) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
@@ -34,7 +35,8 @@ def prepare_default_non_dominated_partition_bounds(
     objective number is 2, an `ExactPartition2dNonDominated` will be used. If the objective
     number is larger than 2, a `DividedAndConquerNonDominated` will be used.
 
-    :param observations: The observations for all objectives, with shape [N, D].
+    :param observations: The observations for all objectives, with shape [N, D], if not specified,
+        a single non-dominated partition bounds constructed by reference and anti_reference point.
     :param anti_reference: a worst point to use with shape [D].
         Defines the lower bound of the hypercell. If not specified, will use a default value:
         -[1e10] * D.
@@ -46,17 +48,13 @@ def prepare_default_non_dominated_partition_bounds(
     :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
         shape.
     """
-    assert tf.shape(observations)[-1] >= 2, ValueError(
-        "the last dimension of multi-objective "
-        f"observations (i.e., objective number) is expected to be at "
-        f"least 2 but found {tf.shape(observations)[-1]}"
-    )
+    tf.debugging.assert_shapes([(reference, ["D"])])
     if (
         anti_reference is None
     ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
         # make sure given observations are larger than -1e10
         anti_reference = -1e10 * tf.ones(
-            shape=(tf.shape(observations)[-1]), dtype=observations.dtype
+            shape=(tf.shape(reference)), dtype=observations.dtype
         )
         tf.debugging.assert_greater_equal(
             observations,
@@ -72,8 +70,12 @@ def prepare_default_non_dominated_partition_bounds(
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
+    else: # a anti_reference point is specified
+        tf.debugging.assert_shapes([(anti_reference, ["D"])])
 
-    if tf.shape(observations)[-1] > 2:
+    if observations is None:
+        return tf.expand_dims(anti_reference, 0), tf.expand_dims(reference, 0)
+    elif tf.shape(observations)[-1] > 2:
         return DividedAndConquerNonDominated(observations).partition_bounds(
             anti_reference, reference
         )

@@ -773,7 +773,10 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
     def __repr__(self) -> str:
         """"""
-        return f"ExpectedHypervolumeImprovement({self._ref_point_specification!r})"
+        if isinstance(self._ref_point_specification, FunctionType):
+            return f"ExpectedHypervolumeImprovement({self._ref_point_specification.__name__!r})"
+        else:
+            return f"ExpectedHypervolumeImprovement({self._ref_point_specification!r})"
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -789,9 +792,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
             _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(
-                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
-            ), ValueError(
+            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
@@ -966,9 +967,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
             _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(
-                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
-            ), ValueError(
+            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
@@ -1078,12 +1077,14 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
 
     def __repr__(self) -> str:
         """"""
-        return (
-            f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
-            f"{self._constraint_builder!r}, ref_point_specification = "
-            f"{self._ref_point_specification!r}"
-            f" min_feasibility_probability = {self._min_feasibility_probability!r})"
-        )
+        if isinstance(self._ref_point_specification, FunctionType):
+            return (f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+                    f"{self._constraint_builder!r}, {self._min_feasibility_probability!r},"
+                    f"{repr(self._ref_point_specification.__name__)!r}")
+        else:
+            return (f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+                    f"{self._constraint_builder!r}, {self._min_feasibility_probability!r},"
+                    f"{repr(self._ref_point_specification)!r}")
 
     def prepare_acquisition_function(
         self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
@@ -1120,9 +1121,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         _pf = Pareto(feasible_mean)
         if isinstance(self._ref_point_specification, FunctionType):
             _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(
-                tf.reduce_all(tf.less_equal(_pf.front, _reference_pt), -1), -1
-            ), ValueError(
+            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
