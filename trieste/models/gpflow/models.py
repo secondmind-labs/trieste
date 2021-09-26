@@ -57,16 +57,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             )
         self._num_kernel_samples = num_kernel_samples
 
-        # GPflow stores the data in Tensors. However, since we want to be able to update the data
-        # without having to retrace the acquisition functions, put it in Variables instead.
-        self._model.data = (
-            tf.Variable(
-                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
-            ),
-            tf.Variable(
-                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
-            ),
-        )
+        self._ensure_variable_model_data()
 
     def __repr__(self) -> str:
         """"""
@@ -76,7 +67,30 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
     def model(self) -> GPR | SGPR:
         return self._model
 
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overriden
+        # Thus here we ensure data is stored in dynamic shape Variables
+
+        if all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+            # both query points and observations are in right shape
+            # nothing to do
+            return
+
+        self._model.data = (
+            tf.Variable(
+                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
+            ),
+            tf.Variable(
+                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
+            ),
+        )
+
     def update(self, dataset: Dataset) -> None:
+        self._ensure_variable_model_data()
+
         x, y = self.model.data[0].value(), self.model.data[1].value()
 
         assert_data_is_compatible(dataset, Dataset(x, y))
