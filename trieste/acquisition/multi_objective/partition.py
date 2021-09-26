@@ -26,7 +26,9 @@ from .dominance import non_dominated
 
 
 def prepare_default_non_dominated_partition_bounds(
-    observations: TensorType, reference: TensorType, anti_reference: Optional[TensorType] = None
+    reference: TensorType,
+    observations: Optional[TensorType] = None,
+    anti_reference: Optional[TensorType] = None,
 ) -> tuple[TensorType, TensorType]:
     """
     Prepare the default non-dominated partition boundary for acquisition function usage.
@@ -34,7 +36,9 @@ def prepare_default_non_dominated_partition_bounds(
     objective number is 2, an `ExactPartition2dNonDominated` will be used. If the objective
     number is larger than 2, a `DividedAndConquerNonDominated` will be used.
 
-    :param observations: The observations for all objectives, with shape [N, D].
+    :param observations: The observations for all objectives, with shape [N, D], if not specified
+        or is an empty Tensor, a single non-dominated partition bounds constructed by reference
+        and anti_reference point.
     :param anti_reference: a worst point to use with shape [D].
         Defines the lower bound of the hypercell. If not specified, will use a default value:
         -[1e10] * D.
@@ -45,35 +49,47 @@ def prepare_default_non_dominated_partition_bounds(
     :return: lower, upper bounds of the partitioned cell, each with shape [N, D]
     :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
         shape.
+    :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``anti_reference`` has an invalid
+        shape.
     """
-    assert tf.shape(observations)[-1] >= 2, ValueError(
-        "the last dimension of multi-objective "
-        f"observations (i.e., objective number) is expected to be at "
-        f"least 2 but found {tf.shape(observations)[-1]}"
-    )
-    if (
-        anti_reference is None
-    ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
-        # make sure given observations are larger than -1e10
-        anti_reference = -1e10 * tf.ones(
-            shape=(tf.shape(observations)[-1]), dtype=observations.dtype
-        )
+
+    def not_valid_obs(obs: TensorType) -> bool:
+        return obs is None or tf.equal(tf.size(observations), 0)
+
+    def specify_default_anti_reference_point(ref: TensorType, obs: TensorType) -> TensorType:
+        anti_ref = -1e10 * tf.ones(shape=(tf.shape(reference)), dtype=reference.dtype)
         tf.debugging.assert_greater_equal(
-            observations,
-            anti_reference,
-            message="observations containing points below default "
-            "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
-            "anti-reference point.",
-        )
-        tf.debugging.assert_greater_equal(
-            reference,
-            anti_reference,
+            ref,
+            anti_ref,
             message="reference point containing dimensionality below default "
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
+        if not not_valid_obs(obs):
+            tf.debugging.assert_greater_equal(
+                obs,
+                anti_ref,
+                message="observations containing points below default "
+                "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
+                "anti-reference point.",
+            )
+        return anti_ref
 
-    if tf.shape(observations)[-1] > 2:
+    tf.debugging.assert_shapes([(reference, ["D"])])
+    if (  # prepare default anti_reference point if not specified
+        anti_reference is None
+    ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
+        # make sure given observations are larger than -1e10
+        anti_reference = specify_default_anti_reference_point(reference, observations)
+    else:  # a anti_reference point is specified
+        tf.debugging.assert_shapes([(anti_reference, ["D"])])
+
+    if not_valid_obs(observations):  # if no valid observations
+        assert tf.reduce_all(tf.less_equal(anti_reference, reference)), ValueError(
+            "anti_reference points contains dimension bigger than reference point"
+        )
+        return tf.expand_dims(anti_reference, 0), tf.expand_dims(reference, 0)
+    elif tf.shape(observations)[-1] > 2:
         return DividedAndConquerNonDominated(observations).partition_bounds(
             anti_reference, reference
         )
