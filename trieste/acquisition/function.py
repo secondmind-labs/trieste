@@ -852,6 +852,24 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
         return expected_hv_improvement(model, _partition_bounds)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        function.update(_partition_bounds)  # type: ignore
+        return function
+
 
 class expected_hv_improvement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):

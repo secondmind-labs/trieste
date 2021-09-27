@@ -829,6 +829,45 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
     npt.assert_allclose(acq_fn(xs), expected)
 
 
+def test_ehvi_builder_updates_expected_hv_improvement_using_pareto_from_model() -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+    dataset = Dataset(
+        train_x,
+        tf.tile(
+            tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8], [1.1], [2.1], [3.9]]), [1, num_obj]
+        ),
+    )
+    partial_dataset = Dataset(dataset.query_points[:4], dataset.observations[:4])
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+
+    model = _mo_test_model(num_obj, *[10, 10] * num_obj)
+    acq_fn = ExpectedHypervolumeImprovement().prepare_acquisition_function(partial_dataset, model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    # update the acquisition function, evaluate it, and check that it hasn't been retraced
+    updated_acq_fn = ExpectedHypervolumeImprovement().update_acquisition_function(
+        acq_fn, dataset, model
+    )
+    assert updated_acq_fn == acq_fn
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_ehvi_raises_for_invalid_batch_size(at: TensorType) -> None:
     num_obj = 2
