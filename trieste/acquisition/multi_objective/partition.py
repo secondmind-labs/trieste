@@ -38,7 +38,7 @@ def prepare_default_non_dominated_partition_bounds(
 
     :param observations: The observations for all objectives, with shape [N, D], if not specified
         or is an empty Tensor, a single non-dominated partition bounds constructed by reference
-        and anti_reference point.
+        and anti_reference point will be returned.
     :param anti_reference: a worst point to use with shape [D].
         Defines the lower bound of the hypercell. If not specified, will use a default value:
         -[1e10] * D.
@@ -53,10 +53,12 @@ def prepare_default_non_dominated_partition_bounds(
         shape.
     """
 
-    def not_valid_obs(obs: TensorType) -> bool:
+    def not_valid_obs(obs: Optional[TensorType]) -> bool:
         return obs is None or tf.equal(tf.size(observations), 0)
 
-    def specify_default_anti_reference_point(ref: TensorType, obs: TensorType) -> TensorType:
+    def specify_default_anti_reference_point(
+        ref: TensorType, obs: Optional[TensorType]
+    ) -> TensorType:
         anti_ref = -1e10 * tf.ones(shape=(tf.shape(reference)), dtype=reference.dtype)
         tf.debugging.assert_greater_equal(
             ref,
@@ -65,7 +67,7 @@ def prepare_default_non_dominated_partition_bounds(
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
-        if not not_valid_obs(obs):
+        if not not_valid_obs(obs):  # make sure given (valid) observations are larger than -1e10
             tf.debugging.assert_greater_equal(
                 obs,
                 anti_ref,
@@ -79,9 +81,8 @@ def prepare_default_non_dominated_partition_bounds(
     if (  # prepare default anti_reference point if not specified
         anti_reference is None
     ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
-        # make sure given observations are larger than -1e10
         anti_reference = specify_default_anti_reference_point(reference, observations)
-    else:  # a anti_reference point is specified
+    else:  # anti_reference point is specified
         tf.debugging.assert_shapes([(anti_reference, ["D"])])
 
     if not_valid_obs(observations):  # if no valid observations
