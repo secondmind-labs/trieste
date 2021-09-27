@@ -16,9 +16,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import tensorflow as tf
 
 from trieste.types import TensorType
 from trieste.utils import to_numpy
+
+from gpflow.models import GPModel
+from gpflux.models import DeepGP
 
 from .plotting import create_grid
 
@@ -115,8 +119,11 @@ def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, 
     return fig
 
 
-def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
+def plot_gp_plotly(
+    model: GPModel, mins: TensorType, maxs: TensorType, grid_density=20
+) -> go.Figure:
     """
+    Plots 2-dimensional plot of a GP model's predictions with mean and 2 standard deviations.
 
     :param model: a gpflow model
     :param mins: list of 2 lower bounds
@@ -132,6 +139,58 @@ def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
 
     # Evaluate objective function
     Fmean, Fvar = model.predict_f(Xplot)
+
+    n_output = Fmean.shape[1]
+
+    fig = make_subplots(
+        rows=1, cols=n_output, specs=[np.repeat({"type": "surface"}, n_output).tolist()]
+    )
+
+    for k in range(n_output):
+        fmean = Fmean[:, k].numpy()
+        fvar = Fvar[:, k].numpy()
+
+        lcb = fmean - 2 * np.sqrt(fvar)
+        ucb = fmean + 2 * np.sqrt(fvar)
+
+        fig = add_surface_plotly(xx, yy, fmean, fig, alpha=1.0, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, lcb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, ucb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+
+    return fig
+
+
+def plot_dgp_plotly(
+    model: DeepGP,
+    mins: TensorType,
+    maxs: TensorType,
+    grid_density: int = 20,
+    num_samples: int = 100,
+) -> go.Figure:
+    """
+    Plots sample-based mean and 2 standard deviations for DGP models in 2 dimensions.
+
+    :param model: a dgp model
+    :param mins: list of 2 lower bounds
+    :param maxs: list of 2 upper bounds
+    :param grid_density: integer (grid size)
+    :return: a plotly figure
+    """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
+
+    # Create a regular grid on the parameter space
+    Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
+
+    # Evaluate objective function
+    means = []
+    vars = []
+    for _ in range(num_samples):
+        Fmean_sample, Fvar_sample = model.predict_f(Xplot)
+        means.append(Fmean_sample)
+        vars.append(Fvar_sample)
+    Fmean = tf.reduce_mean(tf.stack(means), axis=0)
+    Fvar = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - Fmean ** 2
 
     n_output = Fmean.shape[1]
 
