@@ -32,9 +32,13 @@ def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
         def __call__(self, X: TensorType) -> tf.Tensor:
             sample = layer.prior.sample()
             batch_shape = tf.shape(X)[:-1]
+            sample_rank = tf.rank(sample)
             for _ in range(len(batch_shape)):
                 sample = tf.expand_dims(sample, 0)
-            sample = tf.tile(sample, tf.concat([batch_shape, [1]], -1))
+            sample = tf.tile(
+                sample,
+                tf.concat([batch_shape, tf.ones(sample_rank, dtype='int32')], -1)
+            )
             return layer.compositor([X, sample])
 
     return SampleLV()
