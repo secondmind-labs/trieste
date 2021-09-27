@@ -320,7 +320,7 @@ class BayesianOptimizer(Generic[SP]):
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            # ignore below is due to MyPy not being able to handle overlaods properly
+            # ignore below is due to MyPy not being able to handle overloads properly
             model_specs = {OBJECTIVE: model_specs}  # type: ignore
 
         # reassure the type checker that everything is tagged
