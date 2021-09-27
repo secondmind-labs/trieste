@@ -63,7 +63,7 @@ from trieste.types import State, TensorType
         ],
         [
             (20, EfficientGlobalOptimization()),
-            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
                 25,
                 EfficientGlobalOptimization(
