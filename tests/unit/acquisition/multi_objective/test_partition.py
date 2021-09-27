@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -25,6 +27,40 @@ from trieste.acquisition.multi_objective.partition import (
 )
 
 
+@pytest.mark.parametrize(
+    "reference, observations, anti_ref, expected",
+    [
+        (
+            tf.constant([1.0, 1.0]),
+            None,
+            tf.constant([-1.0, -1.0]),
+            (tf.constant([[-1.0, -1.0]]), tf.constant([[1.0, 1.0]])),
+        ),
+        (
+            tf.constant([1.0, 1.0]),
+            None,
+            tf.constant([1.0, -1.0]),
+            (tf.constant([[1.0, -1.0]]), tf.constant([[1.0, 1.0]])),
+        ),
+        (
+            tf.constant([1.0, 1.0]),
+            tf.constant([]),
+            tf.constant([1.0, -1.0]),
+            (tf.constant([[1.0, -1.0]]), tf.constant([[1.0, 1.0]])),
+        ),
+    ],
+)
+def test_default_non_dominated_partition_when_no_valid_obs(
+    reference: tf.Tensor,
+    observations: Optional[tf.Tensor],
+    anti_ref: Optional[tf.Tensor],
+    expected: tuple[tf.Tensor, tf.Tensor],
+) -> None:
+    npt.assert_array_equal(
+        prepare_default_non_dominated_partition_bounds(reference, observations, anti_ref), expected
+    )
+
+
 def test_default_non_dominated_partition_raise_when_obs_below_default_anti_reference() -> None:
     objectives = tf.constant(
         [
@@ -34,19 +70,32 @@ def test_default_non_dominated_partition_raise_when_obs_below_default_anti_refer
         ]
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        prepare_default_non_dominated_partition_bounds(objectives, tf.constant([1.0, 1.0]))
+        prepare_default_non_dominated_partition_bounds(tf.constant([1.0, 1.0]), objectives)
 
 
-def test_default_non_dominated_partition_raise_when_ref_below_default_anti_reference() -> None:
-    objectives = tf.constant(
-        [
-            [0.4854, 0.7922],
-            [0.4854, 0.0357],
-            [0.1419, 0.9340],
-        ]
-    )
+@pytest.mark.parametrize(
+    "ref, obs, anti_ref",
+    [
+        (
+            tf.constant([-1e12, 1.0]),
+            tf.constant(
+                [
+                    [0.4854, 0.7922],
+                    [0.4854, 0.0357],
+                    [0.1419, 0.9340],
+                ]
+            ),
+            None,
+        ),
+        (tf.constant([-1e12, 1.0]), None, None),
+        (tf.constant([-1e12, 1.0]), tf.constant([]), None),
+    ],
+)
+def test_default_non_dominated_partition_raise_when_ref_below_default_anti_reference(
+    ref: tf.Tensor, obs: Optional[tf.Tensor], anti_ref: Optional[tf.Tensor]
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        prepare_default_non_dominated_partition_bounds(objectives, tf.constant([-1e12, 1.0]))
+        prepare_default_non_dominated_partition_bounds(ref, obs, anti_ref)
 
 
 def test_exact_partition_2d_bounds() -> None:
