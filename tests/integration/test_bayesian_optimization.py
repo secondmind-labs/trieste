@@ -63,9 +63,9 @@ from trieste.types import State, TensorType
         ],
         [
             (20, EfficientGlobalOptimization()),
-            (15, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
-                25,
+                15,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
                         OBJECTIVE
