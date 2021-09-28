@@ -41,6 +41,7 @@ def build_vanilla_deep_gp(
 ) -> DeepGP:
     """
     Provides a wrapper around `build_constant_input_dim_deep_gp` from `gpflux.architectures`.
+
     :param query_points: input data, used to determine inducing point locations with k-means.
     :param num_layers: number of layers in deep GP.
     :param num_inducing: number of inducing points to use in each layer.
