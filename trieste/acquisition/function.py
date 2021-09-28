@@ -706,6 +706,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
+        self._constraint_fn: Optional[AcquisitionFunction] = None
+        self._expected_improvement_fn: Optional[AcquisitionFunction] = None
+        self._constrained_improvement_fn: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -735,7 +738,51 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             " objective data, but the objective data is empty.",
         )
 
-        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
+        self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
+            datasets, models
+        )
+        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
+        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        if not tf.reduce_any(is_feasible):
+            return self._constraint_fn
+
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
+        feasible_mean, _ = objective_model.predict(feasible_query_points)
+        self._update_expected_improvement_fn(objective_model, feasible_mean)
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_improvement_fn = constrained_function
+        return constrained_function
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param datasets: The data from the observer.
+        :param models: The models over each dataset in ``datasets``.
+        """
+        objective_model = models[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
+
+        tf.debugging.assert_positive(
+            len(objective_dataset),
+            message="Expected improvement is defined with respect to existing points in the"
+            " objective data, but the objective data is empty.",
+        )
+        tf.debugging.Assert(self._constraint_fn is not None, [])
+
+        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
+        self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
@@ -744,10 +791,36 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
-        eta = tf.reduce_min(feasible_mean, axis=0)
-        function = expected_improvement(objective_model, eta)
+        self._update_expected_improvement_fn(objective_model, feasible_mean)
 
-        return lambda at: function(at) * constraint_fn(at)
+        if self._constrained_improvement_fn is not None:
+            return self._constrained_improvement_fn
+
+        @tf.function
+        def constrained_function(x: TensorType) -> TensorType:
+            return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
+                AcquisitionFunction, self._constraint_fn
+            )(x)
+
+        self._constrained_improvement_fn = constrained_function
+        return self._constrained_improvement_fn
+
+    def _update_expected_improvement_fn(
+        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+    ) -> None:
+        """
+        Set or update the unconstrained expected improvement function.
+
+        :param objective_model: The objective model.
+        :param feasible_mean: The mean of the feasible query points.
+        """
+        eta = tf.reduce_min(feasible_mean, axis=0)
+
+        if self._expected_improvement_fn is None:
+            self._expected_improvement_fn = expected_improvement(objective_model, eta)
+        else:
+            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
+            self._expected_improvement_fn.update(eta)  # type: ignore
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
@@ -779,37 +852,70 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
         return expected_hv_improvement(model, _partition_bounds)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
 
-def expected_hv_improvement(
-    model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]
-) -> AcquisitionFunction:
-    r"""
-    expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
-    The expected hypervolume improvement calculation in the non-dominated region
-    can be decomposed into sub-calculations based on each partitioned cell.
-    For easier calculation, this sub-calculation can be reformulated as a combination
-    of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
-    function calculations, respectively.
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        function.update(_partition_bounds)  # type: ignore
+        return function
 
-    Note:
-    1. Since in Trieste we do not assume the use of a certain non-dominated region partition
-    algorithm, we do not assume the last dimension of the partitioned cell has only one
-    (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
-    This is not as efficient as the original paper, but is applicable to different non-dominated
-    partition algorithm.
-    2. As the Psi and nu function in the original paper are defined for maximization problems,
-    we inverse our minimisation problem (to also be a maximisation), allowing use of the
-    original notation and equations.
 
-    :param model: The model of the objective function.
-    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
-        bounds for hypervolume improvement calculation
-    :return: The expected_hv_improvement acquisition function modified for objective
-        minimisation. This function will raise :exc:`ValueError` or
-        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-    """
+class expected_hv_improvement(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
+        r"""
+        expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+        The expected hypervolume improvement calculation in the non-dominated region
+        can be decomposed into sub-calculations based on each partitioned cell.
+        For easier calculation, this sub-calculation can be reformulated as a combination
+        of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+        function calculations, respectively.
 
-    def acquisition(x: TensorType) -> TensorType:
+        Note:
+        1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+        algorithm, we do not assume the last dimension of the partitioned cell has only one
+        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+        This is not as efficient as the original paper, but is applicable to different non-dominated
+        partition algorithm.
+        2. As the Psi and nu function in the original paper are defined for maximization problems,
+        we inverse our minimisation problem (to also be a maximisation), allowing use of the
+        original notation and equations.
+
+        :param model: The model of the objective function.
+        :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+            bounds for hypervolume improvement calculation
+        :return: The expected_hv_improvement acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        """
+        self._model = model
+        self._lb_points = tf.Variable(
+            partition_bounds[0], trainable=False, shape=[None, partition_bounds[0].shape[-1]]
+        )
+        self._ub_points = tf.Variable(
+            partition_bounds[1], trainable=False, shape=[None, partition_bounds[1].shape[-1]]
+        )
+        self._cross_index = tf.constant(
+            list(product(*[[0, 1]] * self._lb_points.shape[-1]))
+        )  # [2^d, indices_at_dim]
+
+    def update(self, partition_bounds: tuple[TensorType, TensorType]) -> None:
+        """Update the acquisition function with new partition bounds."""
+        self._lb_points.assign(partition_bounds[0])
+        self._ub_points.assign(partition_bounds[1])
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -833,9 +939,7 @@ def expected_hv_improvement(
             Calculate the ehvi based on cell i.
             """
 
-            lb_points, ub_points = partition_bounds
-
-            neg_lb_points, neg_ub_points = -ub_points, -lb_points
+            neg_lb_points, neg_ub_points = -self._ub_points, -self._lb_points
 
             neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # clip to improve numerical stability
 
@@ -849,22 +953,18 @@ def expected_hv_improvement(
             psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
             nu_contrib = nu(neg_lb_points, neg_ub_points, neg_pred_mean, pred_std)
 
-            cross_index = tf.constant(
-                list(product(*[[0, 1]] * lb_points.shape[-1]))
-            )  # [2^d, indices_at_dim]
-
             stacked_factors = tf.concat(
                 [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
             )  # Take the cross product of psi_diff and nu across all outcomes
             # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
 
             factor_combinations = tf.linalg.diag_part(
-                tf.gather(stacked_factors, cross_index, axis=-2)
+                tf.gather(stacked_factors, self._cross_index, axis=-2)
             )  # [..., num_cells, 2^d, 2(operation_num), num_obj]
 
             return tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1)
 
-        candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
+        candidate_mean, candidate_var = self._model.predict(tf.squeeze(x, -2))
         candidate_std = tf.sqrt(candidate_var)
 
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
@@ -877,8 +977,6 @@ def expected_hv_improvement(
             axis=-1,
             keepdims=True,
         )
-
-    return acquisition
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
@@ -1016,38 +1114,15 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             f" {self._min_feasibility_probability!r})"
         )
 
-    def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
-    ) -> AcquisitionFunction:
+    def _update_expected_improvement_fn(
+        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+    ) -> None:
         """
-        :param datasets: The data from the observer. Must be populated.
-        :param models: The models over each dataset in ``datasets``.
-        :return: The expected constrained hypervolume improvement acquisition function.
-            This function will raise :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError`
-            if used with a batch size greater than one.
-        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
-        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
+        Set or update the unconstrained expected improvement function.
+
+        :param objective_model: The objective model.
+        :param feasible_mean: The mean of the feasible query points.
         """
-
-        objective_model = models[self._objective_tag]
-        objective_dataset = datasets[self._objective_tag]
-
-        tf.debugging.assert_positive(
-            len(objective_dataset),
-            message="Expected hypervolume improvement is defined with respect to existing points in"
-            " the objective data, but the objective data is empty.",
-        )
-
-        constraint_fn = self._constraint_builder.prepare_acquisition_function(datasets, models)
-        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
-        is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
-
-        if not tf.reduce_any(is_feasible):
-            return constraint_fn
-
-        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
-        feasible_mean, _ = objective_model.predict(feasible_query_points)
-
         _pf = Pareto(feasible_mean)
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
@@ -1056,8 +1131,16 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             _reference_pt,
             _pf.front,
         )
-        ehvi = expected_hv_improvement(objective_model, _partition_bounds)
-        return lambda at: ehvi(at) * constraint_fn(at)
+
+        if self._expected_improvement_fn is None:
+            self._expected_improvement_fn = expected_hv_improvement(
+                objective_model, _partition_bounds
+            )
+        else:
+            tf.debugging.Assert(
+                isinstance(self._expected_improvement_fn, expected_hv_improvement), []
+            )
+            self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -1364,7 +1447,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             or ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None in [pending_points], [])
+        tf.debugging.Assert(pending_points is None, [])
 
         # no penalization required if no pending_points.
         return self._update_base_acquisition_function(dataset, model)
@@ -1385,7 +1468,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None not in [self._base_acquisition_function], [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
         if pending_points is None:
             # update penalization params and base acquisition once per optimization step
@@ -1683,7 +1766,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None in [pending_points], [])
+        tf.debugging.Assert(pending_points is None, [])
 
         # no diversity term required if no pending_points.
         return self._update_quality_term(dataset, model)
@@ -1704,7 +1787,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None not in [self._quality_term], [])
+        tf.debugging.Assert(self._quality_term is not None, [])
 
         if pending_points is None:
             # update min value samples once per optimization step
