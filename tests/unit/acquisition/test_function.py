@@ -664,14 +664,21 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
     data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
     models_ = {"foo": QuadraticMeanAndRBFKernel()}
 
-    eci = ExpectedConstrainedImprovement("foo", _Certainty(), 0).prepare_acquisition_function(
-        data, models_
-    )
+    builder = ExpectedConstrainedImprovement("foo", _Certainty(), 0)
+    eci = builder.prepare_acquisition_function(data, models_)
 
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(data, models_)
 
     at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
     npt.assert_allclose(eci(at), ei(at))
+
+    new_data = {"foo": Dataset(tf.constant([[0.5], [1.0]]), tf.constant([[0.25], [0.5]]))}
+    up_eci = builder.update_acquisition_function(eci, new_data, models_)
+    assert up_eci == eci
+    up_ei = ExpectedImprovement().using("foo").prepare_acquisition_function(new_data, models_)
+
+    npt.assert_allclose(eci(at), up_ei(at))
+    assert eci._get_tracing_count() == 1  # type: ignore
 
 
 def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
@@ -820,6 +827,45 @@ def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_hv_improvement(model, _partition_bounds)(xs)
     npt.assert_allclose(acq_fn(xs), expected)
+
+
+def test_ehvi_builder_updates_expected_hv_improvement_using_pareto_from_model() -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+    dataset = Dataset(
+        train_x,
+        tf.tile(
+            tf.constant([[4.1], [0.9], [1.2], [0.1], [-8.8], [1.1], [2.1], [3.9]]), [1, num_obj]
+        ),
+    )
+    partial_dataset = Dataset(dataset.query_points[:4], dataset.observations[:4])
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+
+    model = _mo_test_model(num_obj, *[10, 10] * num_obj)
+    acq_fn = ExpectedHypervolumeImprovement().prepare_acquisition_function(partial_dataset, model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    # update the acquisition function, evaluate it, and check that it hasn't been retraced
+    updated_acq_fn = ExpectedHypervolumeImprovement().update_acquisition_function(
+        acq_fn, dataset, model
+    )
+    assert updated_acq_fn == acq_fn
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    _partition_bounds = ExactPartition2dNonDominated(_prt.front).partition_bounds(
+        tf.constant([-1e10] * 2), get_reference_point(_prt.front)
+    )
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -1692,17 +1738,28 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
-    data = {"foo": Dataset(train_x, model_pred_observation)}
+    data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
     models_ = {"foo": obj_model}
 
-    echvi = ExpectedConstrainedHypervolumeImprovement(
-        "foo", _Certainty(), 0
-    ).prepare_acquisition_function(data, models_)
+    builder = ExpectedConstrainedHypervolumeImprovement("foo", _Certainty(), 0)
+    echvi = builder.prepare_acquisition_function(data, models_)
 
     ehvi = ExpectedHypervolumeImprovement().using("foo").prepare_acquisition_function(data, models_)
 
     at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
     npt.assert_allclose(echvi(at), ehvi(at))
+
+    new_data = {"foo": Dataset(train_x, model_pred_observation)}
+    up_echvi = builder.update_acquisition_function(echvi, new_data, models_)
+    assert up_echvi == echvi
+    up_ehvi = (
+        ExpectedHypervolumeImprovement()
+        .using("foo")
+        .prepare_acquisition_function(new_data, models_)
+    )
+
+    npt.assert_allclose(up_echvi(at), up_ehvi(at))
+    assert up_echvi._get_tracing_count() == 1  # type: ignore
 
 
 def test_echvi_is_constraint_when_no_feasible_points() -> None:
