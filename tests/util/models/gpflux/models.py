@@ -23,6 +23,15 @@ from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
 from trieste.data import TensorType
+from trieste.models.gpflux import build_vanilla_deep_gp
+
+
+def single_layer_dgp_model(x: TensorType) -> DeepGP:
+    return build_vanilla_deep_gp(x, num_layers=1, num_inducing=len(x))
+
+
+def two_layer_dgp_model(x: TensorType) -> DeepGP:
+    return build_vanilla_deep_gp(x, num_layers=2, num_inducing=len(x))
 
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
