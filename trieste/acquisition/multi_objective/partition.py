@@ -63,7 +63,7 @@ def prepare_default_non_dominated_partition_bounds(
         tf.debugging.assert_greater_equal(
             ref,
             anti_ref,
-            message="reference point containing dimensionality below default "
+            message=f"reference point: {ref} containing at least one value below default "
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
@@ -71,23 +71,24 @@ def prepare_default_non_dominated_partition_bounds(
             tf.debugging.assert_greater_equal(
                 obs,
                 anti_ref,
-                message="observations containing points below default "
+                message=f"observations: {obs} containing at least one value below default "
                 "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
                 "anti-reference point.",
             )
         return anti_ref
 
     tf.debugging.assert_shapes([(reference, ["D"])])
-    if (  # prepare default anti_reference point if not specified
-        anti_reference is None
-    ):  # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
+    if anti_reference is None:
+        # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
         anti_reference = specify_default_anti_reference_point(reference, observations)
-    else:  # anti_reference point is specified
+    else:
+        # anti_reference point is specified
         tf.debugging.assert_shapes([(anti_reference, ["D"])])
 
     if is_empty_obs(observations):  # if no valid observations
         assert tf.reduce_all(tf.less_equal(anti_reference, reference)), ValueError(
-            "anti_reference point contains at least one value larger than reference point"
+            f"anti_reference point: {anti_reference} contains at least one value larger "
+            f"than reference point: {reference}"
         )
         return tf.expand_dims(anti_reference, 0), tf.expand_dims(reference, 0)
     elif tf.shape(observations)[-1] > 2:
