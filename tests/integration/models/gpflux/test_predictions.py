@@ -35,7 +35,7 @@ def test_dgp_model_close_to_actuals(
     dataset_size = 1000
     num_inducing = 200
     batch_size = 200
-    epochs = 1000
+    epochs = 1200
 
     example_data = hartmann_6_dataset_function(dataset_size)
 
