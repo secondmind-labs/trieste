@@ -81,6 +81,6 @@ def test_gpflow_predictor_sample() -> None:
     npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
 
 
-def test_gpflow_predictor_sample_no_samples() -> None:
+def test_gpflow_predictor_sample_0_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
