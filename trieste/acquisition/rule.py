@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union, List
 
 import tensorflow as tf
 
@@ -67,6 +67,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        pending_points: T_co | None = None
     ) -> T_co:
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
@@ -89,6 +90,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         search_space: SP_contra,
         dataset: Dataset,
         model: ProbabilisticModel,
+        pending_points: T_co | None = None
     ) -> T_co:
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
@@ -104,7 +106,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
                 "AcquisitionRule.acquire_single method does not support multiple datasets "
                 "or models: use acquire instead"
             )
-        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model})
+        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, pending_points)
 
 
 class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
@@ -174,6 +176,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        pending_points: TensorType | None = None
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
@@ -196,17 +199,27 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
                 self._acquisition_function, datasets, models
             )
 
-        points = self._optimizer(search_space, self._acquisition_function)
-
-        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
+        if not isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
+            points = self._optimizer(search_space, self._acquisition_function)
+        else:
+            points = None
             for _ in range(
-                self._num_query_points - 1
-            ):  # greedily allocate remaining batch elements
+                self._num_query_points
+            ):  # greedily allocate batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, datasets, models, pending_points=points
+                    self._acquisition_function, datasets, models, pending_points=pending_points
                 )
                 chosen_point = self._optimizer(search_space, self._acquisition_function)
-                points = tf.concat([points, chosen_point], axis=0)
+                
+                if points is None:
+                    points = chosen_point
+                else:
+                    points = tf.concat([points, chosen_point], axis=0)
+                
+                if pending_points is None:
+                    pending_points = chosen_point
+                else:
+                    pending_points = tf.concat([pending_points, chosen_point], axis=0)
 
         return points
 
