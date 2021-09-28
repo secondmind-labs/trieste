@@ -779,7 +779,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             message="Expected improvement is defined with respect to existing points in the"
             " objective data, but the objective data is empty.",
         )
-        tf.debugging.Assert(None not in [self._constraint_fn], [])
+        tf.debugging.Assert(self._constraint_fn is not None, [])
 
         constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
         self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
@@ -1447,7 +1447,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             or ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None in [pending_points], [])
+        tf.debugging.Assert(pending_points is None, [])
 
         # no penalization required if no pending_points.
         return self._update_base_acquisition_function(dataset, model)
@@ -1468,7 +1468,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None not in [self._base_acquisition_function], [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
         if pending_points is None:
             # update penalization params and base acquisition once per optimization step
@@ -1766,7 +1766,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None in [pending_points], [])
+        tf.debugging.Assert(pending_points is None, [])
 
         # no diversity term required if no pending_points.
         return self._update_quality_term(dataset, model)
@@ -1787,7 +1787,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(None not in [self._quality_term], [])
+        tf.debugging.Assert(self._quality_term is not None, [])
 
         if pending_points is None:
             # update min value samples once per optimization step
