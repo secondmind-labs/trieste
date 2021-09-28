@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Callable
+
 import numpy as np
 import tensorflow as tf
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 
 from tests.util.misc import random_seed
+from trieste.data import Dataset
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 from trieste.models.gpflux.models import DeepGaussianProcess
 
 
 @random_seed
-def test_dgp_model_close_to_actuals(hartmann_6_dataset_function, depth: int) -> None:
+def test_dgp_model_close_to_actuals(
+    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int
+) -> None:
     """
     Ensure that DGP model fits well and predictions are close to actual output values.
     """
@@ -39,7 +44,7 @@ def test_dgp_model_close_to_actuals(hartmann_6_dataset_function, depth: int) -> 
     )
     optimizer = tf.optimizers.Adam(0.01)
 
-    def scheduler(epoch, lr):
+    def scheduler(epoch: int, lr: float) -> float:
         if epoch == epochs // 2:
             return lr * 0.1
         else:
@@ -60,7 +65,9 @@ def test_dgp_model_close_to_actuals(hartmann_6_dataset_function, depth: int) -> 
 
 
 @random_seed
-def test_dgp_model_close_to_simple_implementation(hartmann_6_dataset_function, depth: int) -> None:
+def test_dgp_model_close_to_simple_implementation(
+    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int
+) -> None:
     dataset_size = 1000
     num_inducing = 200
     batch_size = 200
@@ -74,7 +81,7 @@ def test_dgp_model_close_to_simple_implementation(hartmann_6_dataset_function, d
     )
     optimizer = tf.optimizers.Adam(0.01)
 
-    def scheduler(epoch, lr):
+    def scheduler(epoch: int, lr: float) -> float:
         if epoch == epochs // 2:
             return lr * 0.1
         else:

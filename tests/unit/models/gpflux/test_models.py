@@ -32,7 +32,6 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
 
@@ -44,46 +43,13 @@ from trieste.models.gpflux import DeepGaussianProcess
 from trieste.types import TensorType
 
 
-def test_dgp_raises_for_non_tf_optimizer(two_layer_model: Callable) -> None:
+def test_dgp_raises_for_non_tf_optimizer(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
     optimizer = gpflow.optimizers.Scipy()
 
     with pytest.raises(ValueError):
-        DeepGaussianProcess(dgp, optimizer=optimizer)  # type: ignore
-
-
-def test_dgp_raises_for_latent_variable_layer() -> None:
-    num_data = 5
-
-    encoder = gpflux.encoders.DirectlyParameterizedNormalDiag(num_data, 1)
-    prior = tfp.distributions.MultivariateNormalDiag(np.zeros(1), np.ones(1))
-    lv = gpflux.layers.LatentVariableLayer(prior, encoder)
-    kernel = gpflow.kernels.SquaredExponential(lengthscales=[1.0] * 2)
-    num_inducing = 5
-    inducing_variable = gpflow.inducing_variables.InducingPoints(
-        np.concatenate(
-            [
-                np.linspace(-1, 1, num_inducing).reshape(-1, 1),
-                np.random.randn(num_inducing, 1),
-            ],
-            axis=1,
-        )
-    )
-    gp_layer = gpflux.layers.GPLayer(
-        kernel,
-        inducing_variable,
-        num_data=num_data,
-        num_latent_gps=1,
-        mean_function=gpflow.mean_functions.Zero(),
-    )
-
-    likelihood_layer = gpflux.layers.LikelihoodLayer(gpflow.likelihoods.Gaussian(0.01))
-
-    dgp = DeepGP([lv, gp_layer], likelihood_layer)
-
-    with pytest.raises(ValueError):
-        DeepGaussianProcess(dgp)
+        DeepGaussianProcess(dgp, optimizer=optimizer)
 
 
 def test_dgp_raises_for_keras_layer() -> None:
@@ -116,7 +82,7 @@ def test_dgp_raises_for_keras_layer() -> None:
         DeepGaussianProcess(dgp)
 
 
-def test_dgp_model_attribute(two_layer_model: Callable) -> None:
+def test_dgp_model_attribute(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
@@ -124,7 +90,7 @@ def test_dgp_model_attribute(two_layer_model: Callable) -> None:
     assert model.model_gpflux is dgp
 
 
-def test_dgp_update(two_layer_model: Callable) -> None:
+def test_dgp_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.zeros([1, 4])
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
@@ -146,7 +112,9 @@ def test_dgp_update(two_layer_model: Callable) -> None:
     "new_data",
     [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
 )
-def test_dgp_update_raises_for_invalid_shapes(two_layer_model: Callable, new_data: Dataset) -> None:
+def test_dgp_update_raises_for_invalid_shapes(
+    two_layer_model: Callable[[TensorType], DeepGP], new_data: Dataset
+) -> None:
     x = tf.zeros([1, 4])
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
@@ -155,7 +123,7 @@ def test_dgp_update_raises_for_invalid_shapes(two_layer_model: Callable, new_dat
         model.update(new_data)
 
 
-def test_dgp_optimize_with_defaults(two_layer_model: Callable) -> None:
+def test_dgp_optimize_with_defaults(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
@@ -168,7 +136,7 @@ def test_dgp_optimize_with_defaults(two_layer_model: Callable) -> None:
 
 
 @pytest.mark.parametrize("batch_size", [10, 100])
-def test_dgp_optimize(two_layer_model: Callable, batch_size: int) -> None:
+def test_dgp_optimize(two_layer_model: Callable[[TensorType], DeepGP], batch_size: int) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
@@ -184,7 +152,7 @@ def test_dgp_optimize(two_layer_model: Callable, batch_size: int) -> None:
     assert model.model_gpflux.elbo(data) > elbo
 
 
-def test_dgp_loss(two_layer_model: Callable) -> None:
+def test_dgp_loss(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
@@ -211,37 +179,7 @@ def test_dgp_predict() -> None:
 
 
 @random_seed
-def test_dgp_mc_posterior_mean(two_layer_model: Callable) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = DeepGaussianProcess(
-        two_layer_model(x),
-        optimizer=tf.optimizers.Adam(),
-    )
-    num_samples = 50
-    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
-    sample_mean = model.mc_posterior_mean(test_x, num_samples)
-
-    assert sample_mean.shape == [1, 1]
-
-    reference_model = two_layer_model(x)
-
-    def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
-        samples = []
-        for _ in range(num_samples):
-            samples.append(sample_dgp(reference_model)(query_points))
-        return tf.stack(samples)
-
-    ref_samples = get_samples(test_x, num_samples)
-
-    ref_mean = tf.reduce_mean(ref_samples, axis=0)
-
-    error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
-    npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
-    npt.assert_allclose(sample_mean, 0, atol=error)
-
-
-@random_seed
-def test_dgp_sample(two_layer_model: Callable) -> None:
+def test_dgp_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_model(x),
@@ -275,14 +213,14 @@ def test_dgp_sample(two_layer_model: Callable) -> None:
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
 
 
-def test_dgp_resets_lr_with_lr_schedule(two_layer_model: Callable) -> None:
+def test_dgp_resets_lr_with_lr_schedule(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
     epochs = 10
     init_lr = 0.01
 
-    def scheduler(epoch, lr):
+    def scheduler(epoch: int, lr: float) -> float:
         if epoch == epoch // 2:
             return lr * 0.1
         else:

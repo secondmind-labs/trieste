@@ -18,6 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.trieste.utils.objectives import hartmann_6_dataset
+from trieste.data import Dataset
 
 tf.keras.backend.set_floatx("float64")
 
@@ -28,5 +29,5 @@ def _depth_fixture(request: Any) -> int:
 
 
 @pytest.fixture(name="hartmann_6_dataset_function", scope="session")
-def _hartmann_6_dataset_function_fixture() -> Callable:
+def _hartmann_6_dataset_function_fixture() -> Callable[[int], Dataset]:
     return hartmann_6_dataset

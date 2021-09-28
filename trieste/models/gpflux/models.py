@@ -40,7 +40,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self,
         model: DeepGP,
         optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[Any] | None = None,
+        fit_args: Dict[str, Any] | None = None,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model.

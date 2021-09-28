@@ -182,7 +182,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     ],
 )
 def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
-    num_steps: int, acquisition_rule: AcquisitionRule
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
 ) -> None:
 
     search_space = Box([0, 0], [pi, pi])
@@ -193,7 +193,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
 
         dgp = two_layer_dgp_model(data.query_points)
 
-        def scheduler(epoch, lr):
+        def scheduler(epoch: int, lr: float) -> float:
             if epoch == epochs // 2:
                 return lr * 0.1
             else:

@@ -16,12 +16,14 @@ from typing import Any, Callable
 
 import pytest
 import tensorflow as tf
+from gpflux.models import DeepGP
 
 from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+from trieste.types import TensorType
 
 tf.keras.backend.set_floatx("float64")
 
 
 @pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
-def _two_layer_model_fixture(request: Any) -> Callable:
+def _two_layer_model_fixture(request: Any) -> Callable[[TensorType], DeepGP]:
     return request.param
