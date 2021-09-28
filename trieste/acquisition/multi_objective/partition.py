@@ -53,7 +53,7 @@ def prepare_default_non_dominated_partition_bounds(
         shape.
     """
 
-    def not_valid_obs(obs: Optional[TensorType]) -> bool:
+    def is_empty_obs(obs: Optional[TensorType]) -> bool:
         return obs is None or tf.equal(tf.size(observations), 0)
 
     def specify_default_anti_reference_point(
@@ -67,7 +67,7 @@ def prepare_default_non_dominated_partition_bounds(
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
-        if not not_valid_obs(obs):  # make sure given (valid) observations are larger than -1e10
+        if not is_empty_obs(obs):  # make sure given (valid) observations are larger than -1e10
             tf.debugging.assert_greater_equal(
                 obs,
                 anti_ref,
@@ -85,9 +85,9 @@ def prepare_default_non_dominated_partition_bounds(
     else:  # anti_reference point is specified
         tf.debugging.assert_shapes([(anti_reference, ["D"])])
 
-    if not_valid_obs(observations):  # if no valid observations
+    if is_empty_obs(observations):  # if no valid observations
         assert tf.reduce_all(tf.less_equal(anti_reference, reference)), ValueError(
-            "anti_reference points contains dimension bigger than reference point"
+            "anti_reference point contains at least one value larger than reference point"
         )
         return tf.expand_dims(anti_reference, 0), tf.expand_dims(reference, 0)
     elif tf.shape(observations)[-1] > 2:
