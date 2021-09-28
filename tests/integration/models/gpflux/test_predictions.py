@@ -22,6 +22,7 @@ from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 from trieste.models.gpflux.models import DeepGaussianProcess
+from gpflow.utilities import set_trainable
 
 
 @random_seed
@@ -35,13 +36,15 @@ def test_dgp_model_close_to_actuals(
     dataset_size = 100
     num_inducing = 100
     batch_size = 100
-    epochs = 3000
+    epochs = 2000
 
     example_data = hartmann_6_dataset_function(dataset_size)
 
     dgp = build_vanilla_deep_gp(
         example_data.query_points, num_layers=depth, num_inducing=num_inducing
     )
+    dgp.likelihood_layer.likelihood.variance.assign(1e-4)
+    set_trainable(dgp.likelihood_layer, False)
     optimizer = tf.optimizers.Adam(0.01)
 
     def scheduler(epoch: int, lr: float) -> float:
@@ -61,7 +64,7 @@ def test_dgp_model_close_to_actuals(
     model.optimize(example_data)
     predicted_means, _ = model.predict(example_data.query_points)
 
-    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
+    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.1, rtol=0.2)
 
 
 @random_seed
