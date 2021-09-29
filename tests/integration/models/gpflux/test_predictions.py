@@ -16,13 +16,11 @@ from typing import Callable
 
 import numpy as np
 import tensorflow as tf
-from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 
 from tests.util.misc import random_seed
+from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.data import Dataset
-from trieste.models.gpflux.architectures import build_vanilla_deep_gp
-from trieste.models.gpflux.models import DeepGaussianProcess
 
 
 @random_seed
@@ -40,27 +38,16 @@ def test_dgp_model_close_to_actuals(
 
     example_data = hartmann_6_dataset_function(dataset_size)
 
-    dgp = build_vanilla_deep_gp(
-        example_data.query_points, num_layers=depth, num_inducing=num_inducing
+    model, _ = trieste_deep_gaussian_process(
+        query_points=example_data.query_points,
+        depth=depth,
+        num_inducing=num_inducing,
+        learning_rate=0.01,
+        batch_size=batch_size,
+        epochs=epochs,
+        fix_noise=True,
     )
-    dgp.likelihood_layer.likelihood.variance.assign(1e-4)
-    set_trainable(dgp.likelihood_layer, False)
-    optimizer = tf.optimizers.Adam(0.01)
 
-    def scheduler(epoch: int, lr: float) -> float:
-        if epoch == epochs // 2:
-            return lr * 0.1
-        else:
-            return lr
-
-    fit_args = {
-        "batch_size": batch_size,
-        "epochs": epochs,
-        "verbose": 0,
-        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-    }
-
-    model = DeepGaussianProcess(dgp, optimizer, fit_args)
     model.optimize(example_data)
     predicted_means, _ = model.predict(example_data.query_points)
 
@@ -79,25 +66,14 @@ def test_dgp_model_close_to_simple_implementation(
     example_data = hartmann_6_dataset_function(dataset_size)
 
     # Trieste implementation
-    dgp = build_vanilla_deep_gp(
-        example_data.query_points, num_layers=depth, num_inducing=num_inducing
+    trieste_model, fit_args = trieste_deep_gaussian_process(
+        query_points=example_data.query_points,
+        depth=depth,
+        num_inducing=num_inducing,
+        learning_rate=0.01,
+        batch_size=batch_size,
+        epochs=epochs,
     )
-    optimizer = tf.optimizers.Adam(0.01)
-
-    def scheduler(epoch: int, lr: float) -> float:
-        if epoch == epochs // 2:
-            return lr * 0.1
-        else:
-            return lr
-
-    fit_args = {
-        "batch_size": batch_size,
-        "epochs": epochs,
-        "verbose": 0,
-        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-    }
-
-    trieste_model = DeepGaussianProcess(dgp, optimizer, fit_args)
     trieste_model.optimize(example_data)
     trieste_predicted_means, _ = trieste_model.predict(example_data.query_points)
 
@@ -111,11 +87,7 @@ def test_dgp_model_close_to_simple_implementation(
     keras_model = gpflux_model.as_training_model()
     keras_model.compile(tf.optimizers.Adam(0.01))
     keras_model.fit(
-        {"inputs": example_data.query_points, "targets": example_data.observations},
-        batch_size=batch_size,
-        epochs=epochs,
-        verbose=0,
-        callbacks=tf.keras.callbacks.LearningRateScheduler(scheduler),
+        {"inputs": example_data.query_points, "targets": example_data.observations}, **fit_args
     )
 
     gpflux_predicted_means, _ = gpflux_model.predict_f(example_data.query_points)
