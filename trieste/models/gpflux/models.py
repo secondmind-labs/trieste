@@ -49,8 +49,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`. Only
             the optimizer itself is used; other args relevant for fitting should be passed as part
             of `fit_args`.
-        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Default to
-            using 100 epochs, batch size 100, and verbose 0.
+        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Defaults to
+            using 100 epochs, batch size 100, and verbose 0. See
+            https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+            arguments.
         """
 
         super().__init__()
@@ -60,8 +62,11 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         else:
             self._optimizer = optimizer
 
-        if not isinstance(self._optimizer, tf.keras.optimizers.Optimizer):
-            raise ValueError("Must use a Keras/TF optimizer for DGPs, not wrapped in TFOptimizer")
+        if not isinstance(self._optimizer, tf.optimizers.Optimizer):
+            raise ValueError(f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                             f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                             f"received {type(optimizer)} instead. Note that the optimizer should "
+                             f"therefore not be wrapped in the Trieste `TFOptimizer` wrapper.")
 
         self.original_lr = self._optimizer.lr.numpy()
 
@@ -76,11 +81,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         else:
             self.fit_args = fit_args
 
-        if not all([isinstance(layer, (GPLayer, LatentVariableLayer)) for layer in model.f_layers]):
-            raise ValueError(
-                "`DeepGaussianProcess` can only be built out of `GPLayer` or"
-                "`LatentVariableLayer`"
-            )
+        for layer in model.f_layers:
+            if not isinstance(layer, (GPLayer, LatentVariableLayer)):
+                raise ValueError(
+                    f"`DeepGaussianProcess` can only be built out of `GPLayer` or"
+                    f"`LatentVariableLayer`, received {type(layer)} instead."
+                )
 
         self._model_gpflux = model
 
@@ -104,13 +110,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        def get_samples(query_points: TensorType, num_samples: int) -> TensorType:
-            samples = []
-            for _ in range(num_samples):
-                samples.append(sample_dgp(self.model_gpflux)(query_points))
-            return tf.stack(samples)
-
-        return get_samples(query_points, num_samples)
+        samples = []
+        for _ in range(num_samples):
+            samples.append(sample_dgp(self.model_gpflux)(query_points))
+        return tf.stack(samples)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -137,8 +140,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                     f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
                 )
 
-            if i == len(self.model_gpflux.f_layers) - 1:
-                if dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
+            if i == len(self.model_gpflux.f_layers) - 1 and \
+                    dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
                     raise ValueError(
                         f"Shape {dataset.observations.shape} of new observations is incompatible"
                         f" with shape {layer.q_mu.shape} of existing observations. Trailing"
