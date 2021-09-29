@@ -352,6 +352,7 @@ class BayesianOptimizer(Generic[SP]):
         history: list[Record[S]] = []
 
         for step in range(num_steps):
+            print(step)
             try:
                 if track_state:
                     models_copy = copy.deepcopy(models)
