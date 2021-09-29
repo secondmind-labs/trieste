@@ -32,6 +32,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
+    We provide simple architectures that can be used with this class in the `architectures.py` file.
     Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
     (consistent with GPflow) so that dtype errors do not occur.
     """
