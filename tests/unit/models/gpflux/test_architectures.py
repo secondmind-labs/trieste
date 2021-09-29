@@ -27,7 +27,7 @@ from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 
 
-def test_build_vanilla_deep_gp_returns_correct_model() -> None:
+def test_build_vanilla_deep_gp_returns_correct_model(keras_float: None) -> None:
     num_data = 10
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
 
@@ -65,7 +65,7 @@ def test_build_vanilla_deep_gp_returns_correct_model() -> None:
     )
 
 
-def test_build_vanilla_deep_gp_gives_correct_num_inducing() -> None:
+def test_build_vanilla_deep_gp_gives_correct_num_inducing(keras_float: None) -> None:
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
 
@@ -84,3 +84,26 @@ def test_build_vanilla_deep_gp_gives_correct_num_inducing() -> None:
 
     for layer in vanilla_deep_gp.f_layers:
         npt.assert_equal(layer.q_mu.shape[0], num_inducing)
+
+
+def test_build_vanilla_deep_gp_gives_correct_num_data(keras_float: None) -> None:
+    num_data = 5
+    x = np.arange(num_data).reshape(-1, 1).astype(np.double)
+
+    num_layers = 2
+    num_inducing = num_data * 2
+    inner_layer_sqrt_factor = 1e-5
+    likelihood_noise_variance = 1e-2
+
+    vanilla_deep_gp = build_vanilla_deep_gp(
+        x,
+        num_layers=num_layers,
+        num_inducing=num_inducing,
+        inner_layer_sqrt_factor=inner_layer_sqrt_factor,
+        likelihood_noise_variance=likelihood_noise_variance,
+    )
+
+    npt.assert_equal(vanilla_deep_gp.num_data, num_data)
+
+    for layer in vanilla_deep_gp.f_layers:
+        npt.assert_equal(layer.num_data, num_data)

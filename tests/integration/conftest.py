@@ -12,23 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable
-
 import pytest
 import tensorflow as tf
-
-from tests.util.trieste.utils.objectives import hartmann_6_dataset
-from trieste.data import Dataset
-
-
-@pytest.fixture(name="depth", params=[2, 3])
-def _depth_fixture(request: Any) -> int:
-    return request.param
-
-
-@pytest.fixture(name="hartmann_6_dataset_function", scope="session")
-def _hartmann_6_dataset_function_fixture() -> Callable[[int], Dataset]:
-    return hartmann_6_dataset
 
 
 @pytest.fixture(name="keras_float")

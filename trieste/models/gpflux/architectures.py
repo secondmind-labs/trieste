@@ -81,6 +81,7 @@ def build_vanilla_deep_gp(
 
     # If num_inducing is larger than the number of provided query points, the initialization for
     # num_data will be wrong.
+    model.num_data = num_data
     for layer in model.f_layers:
         layer.num_data = num_data
 

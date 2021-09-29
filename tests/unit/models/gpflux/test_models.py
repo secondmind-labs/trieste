@@ -123,7 +123,9 @@ def test_dgp_update_raises_for_invalid_shapes(
         model.update(new_data)
 
 
-def test_dgp_optimize_with_defaults(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_dgp_optimize_with_defaults(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
@@ -136,7 +138,9 @@ def test_dgp_optimize_with_defaults(two_layer_model: Callable[[TensorType], Deep
 
 
 @pytest.mark.parametrize("batch_size", [10, 100])
-def test_dgp_optimize(two_layer_model: Callable[[TensorType], DeepGP], batch_size: int) -> None:
+def test_dgp_optimize(
+    two_layer_model: Callable[[TensorType], DeepGP], batch_size: int, keras_float: None
+) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
@@ -213,7 +217,9 @@ def test_dgp_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
 
 
-def test_dgp_resets_lr_with_lr_schedule(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_dgp_resets_lr_with_lr_schedule(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 

@@ -16,18 +16,18 @@ from typing import Callable
 
 import numpy as np
 import tensorflow as tf
+from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux.architectures import build_vanilla_deep_gp
 from trieste.models.gpflux.models import DeepGaussianProcess
-from gpflow.utilities import set_trainable
 
 
 @random_seed
 def test_dgp_model_close_to_actuals(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int
+    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
 ) -> None:
     """
     Ensure that DGP model fits well and predictions are close to actual output values.
@@ -69,7 +69,7 @@ def test_dgp_model_close_to_actuals(
 
 @random_seed
 def test_dgp_model_close_to_simple_implementation(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int
+    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
 ) -> None:
     dataset_size = 200
     num_inducing = 100

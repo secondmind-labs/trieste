@@ -56,8 +56,6 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-tf.keras.backend.set_floatx("float64")
-
 
 @random_seed
 @pytest.mark.parametrize(
@@ -182,7 +180,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     ],
 )
 def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
 ) -> None:
 
     search_space = Box([0, 0], [pi, pi])
