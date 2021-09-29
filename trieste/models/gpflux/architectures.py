@@ -62,8 +62,10 @@ def build_vanilla_deep_gp(
     if num_inducing > len(query_points):
         if search_space is not None:
             if not isinstance(search_space, Box):
-                raise ValueError(f"Currently only `Box` instances are supported for `search_space`,"
-                                 f" received {type(search_space)}.")
+                raise ValueError(
+                    f"Currently only `Box` instances are supported for `search_space`,"
+                    f" received {type(search_space)}."
+                )
             additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
         else:
             additional_points = np.random.randn(
@@ -81,7 +83,7 @@ def build_vanilla_deep_gp(
     model = build_constant_input_dim_deep_gp(query_points, num_layers, config)
 
     # If num_inducing is larger than the number of provided query points, the initialization for
-    # num_data will be wrong.
+    # num_data will be wrong. We therefore make sure it is set correctly.
     model.num_data = num_data
     for layer in model.f_layers:
         layer.num_data = num_data

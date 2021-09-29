@@ -63,10 +63,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             self._optimizer = optimizer
 
         if not isinstance(self._optimizer, tf.optimizers.Optimizer):
-            raise ValueError(f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                             f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                             f"received {type(optimizer)} instead. Note that the optimizer should "
-                             f"therefore not be wrapped in the Trieste `TFOptimizer` wrapper.")
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(optimizer)} instead. Note that the optimizer should "
+                f"therefore not be wrapped in the Trieste `TFOptimizer` wrapper."
+            )
 
         self.original_lr = self._optimizer.lr.numpy()
 
@@ -140,13 +142,15 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                     f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
                 )
 
-            if i == len(self.model_gpflux.f_layers) - 1 and \
-                    dataset.observations.shape[-1] != layer.q_mu.shape[-1]:
-                    raise ValueError(
-                        f"Shape {dataset.observations.shape} of new observations is incompatible"
-                        f" with shape {layer.q_mu.shape} of existing observations. Trailing"
-                        f" dimensions must match."
-                    )
+            if (
+                i == len(self.model_gpflux.f_layers) - 1
+                and dataset.observations.shape[-1] != layer.q_mu.shape[-1]
+            ):
+                raise ValueError(
+                    f"Shape {dataset.observations.shape} of new observations is incompatible"
+                    f" with shape {layer.q_mu.shape} of existing observations. Trailing"
+                    f" dimensions must match."
+                )
 
             inputs = layer(inputs)
 
