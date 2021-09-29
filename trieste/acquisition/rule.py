@@ -202,9 +202,9 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         if not isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             points = self._optimizer(search_space, self._acquisition_function)
         else:
-            points = None
+            points = self._optimizer(search_space, self._acquisition_function)
             for _ in range(
-                self._num_query_points
+                self._num_query_points - 1
             ):  # greedily allocate batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function, datasets, models, pending_points=pending_points
