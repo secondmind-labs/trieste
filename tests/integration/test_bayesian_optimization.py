@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-from math import pi
 from typing import List, Tuple, Union, cast
 
 import gpflow
@@ -41,12 +40,13 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.gpflux import GPfluxModelConfig
+from trieste.models.gpflux import DeepGaussianProcess
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
+    MICHALEWICZ_2_SEARCH_SPACE,
     SCALED_BRANIN_MINIMUM,
     michalewicz,
     scaled_branin,
@@ -183,9 +183,9 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
 ) -> None:
 
-    search_space = Box([0, 0], [pi, pi])
+    search_space = MICHALEWICZ_2_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> GPfluxModelConfig:
+    def build_model(data: Dataset) -> DeepGaussianProcess:
         epochs = int(2e3)
         batch_size = 100
 
@@ -205,17 +205,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
 
-        config = GPfluxModelConfig(
-            **{
-                "model": dgp,
-                "model_args": {
-                    "fit_args": fit_args,
-                },
-                "optimizer": optimizer,
-            }
-        )
-
-        return config
+        return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
 
     initial_query_points = search_space.sample(50)
     observer = mk_observer(michalewicz, OBJECTIVE)

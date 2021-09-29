@@ -118,7 +118,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         # Update num_data for each layer, as well as make sure dataset shapes are ok
         for i, layer in enumerate(self.model_gpflux.f_layers):
-            layer.num_data = new_num_data
+            if hasattr(layer, "num_data"):
+                layer.num_data = new_num_data
 
             if isinstance(layer, LatentVariableLayer):
                 inputs = layer(inputs)
