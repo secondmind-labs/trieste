@@ -159,5 +159,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
         )
 
-        # Reset lr in case there was an lr schedule
+        # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
+        # so that the next time we call `optimize` the starting learning rate would be different.
+        # Therefore we make sure the learning rate is set back to its initial value.
         self.optimizer.lr.assign(self.original_lr)

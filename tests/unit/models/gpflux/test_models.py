@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """
-In this module, we test the *behaviour* of trieste models against reference GPflux models (thus
+In this module, we test the *behaviour* of Trieste models against reference GPflux models (thus
 implicitly assuming the latter are correct).
-*NOTE:* Where GPflux models are used as the underlying model in an trieste model, we should
+*NOTE:* Where GPflux models are used as the underlying model in an Trieste model, we should
 *not* test that the underlying model is used in any particular way. To do so would break
 encapsulation. For example, we should *not* test that methods on the GPflux models are called
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
-trieste model).
+Trieste model).
 """
 
 from __future__ import annotations

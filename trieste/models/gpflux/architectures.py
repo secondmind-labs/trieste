@@ -62,7 +62,8 @@ def build_vanilla_deep_gp(
     if num_inducing > len(query_points):
         if search_space is not None:
             if not isinstance(search_space, Box):
-                raise ValueError("Currently only `Box` instances are supported for `search_space`.")
+                raise ValueError(f"Currently only `Box` instances are supported for `search_space`,"
+                                 f" received {type(search_space)}.")
             additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
         else:
             additional_points = np.random.randn(
