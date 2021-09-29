@@ -17,7 +17,7 @@ Simple GPflux models to be used in the tests.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import gpflow
 import tensorflow as tf
@@ -74,7 +74,7 @@ def trieste_deep_gaussian_process(
     batch_size: int,
     epochs: int,
     fix_noise: bool = False,
-) -> [DeepGaussianProcess, Dict[str, Any]]:
+) -> Tuple[DeepGaussianProcess, Dict[str, Any]]:
     dgp = build_vanilla_deep_gp(query_points, num_layers=depth, num_inducing=num_inducing)
     if fix_noise:
         dgp.likelihood_layer.likelihood.variance.assign(1e-4)
