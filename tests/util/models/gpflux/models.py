@@ -22,6 +22,7 @@ from typing import Any, Dict, Tuple
 import gpflow
 import tensorflow as tf
 from gpflow.utilities import set_trainable
+from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
@@ -30,11 +31,31 @@ from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
-    return build_vanilla_deep_gp(x, num_layers=1, num_inducing=len(x))
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+
+    config = Config(
+        num_inducing=len(x),
+        inner_layer_qsqrt_factor=1e-5,
+        likelihood_noise_variance=1e-2,
+        whiten=True,  # whiten = False not supported yet in GPflux for this model
+    )
+
+    return build_constant_input_dim_deep_gp(X=x, num_layers=1, config=config)
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
-    return build_vanilla_deep_gp(x, num_layers=2, num_inducing=len(x))
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+
+    config = Config(
+        num_inducing=len(x),
+        inner_layer_qsqrt_factor=1e-5,
+        likelihood_noise_variance=1e-2,
+        whiten=True,  # whiten = False not supported yet in GPflux for this model
+    )
+
+    return build_constant_input_dim_deep_gp(X=x, num_layers=2, config=config)
 
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
