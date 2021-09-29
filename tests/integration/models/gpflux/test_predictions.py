@@ -62,6 +62,7 @@ def test_dgp_model_close_to_simple_implementation(
     num_inducing = 100
     batch_size = 100
     epochs = 500
+    learning_rate = 0.01
 
     example_data = hartmann_6_dataset_function(dataset_size)
 
@@ -70,7 +71,7 @@ def test_dgp_model_close_to_simple_implementation(
         query_points=example_data.query_points,
         depth=depth,
         num_inducing=num_inducing,
-        learning_rate=0.01,
+        learning_rate=learning_rate,
         batch_size=batch_size,
         epochs=epochs,
     )
@@ -85,7 +86,7 @@ def test_dgp_model_close_to_simple_implementation(
     gpflux_model = build_constant_input_dim_deep_gp(example_data.query_points, depth, config)
 
     keras_model = gpflux_model.as_training_model()
-    keras_model.compile(tf.optimizers.Adam(0.01))
+    keras_model.compile(tf.optimizers.Adam(learning_rate))
     keras_model.fit(
         {"inputs": example_data.query_points, "targets": example_data.observations}, **fit_args
     )
