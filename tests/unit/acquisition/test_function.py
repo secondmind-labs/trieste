@@ -1068,7 +1068,19 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
     )  # [test_num, input_dim]
     test_xs = tf.expand_dims(test_xs, -2)  # add Batch dim: q=1
 
+    assert qehvi_acq.__call__._get_tracing_count() == 0  # type: ignore
     npt.assert_allclose(ehvi_acq(test_xs), qehvi_acq(test_xs), rtol=1e-2, atol=1e-2)
+    # and again, since the sampler uses cacheing
+    npt.assert_allclose(ehvi_acq(test_xs), qehvi_acq(test_xs), rtol=1e-2, atol=1e-2)
+    assert qehvi_acq.__call__._get_tracing_count() == 1  # type: ignore
+
+    up_qehvi_acq = qehvi_builder.update_acquisition_function(
+        qehvi_acq, _model_based_tr_dataset, model
+    )
+    assert up_qehvi_acq == qehvi_acq
+    assert qehvi_acq.__call__._get_tracing_count() == 1  # type: ignore
+    npt.assert_allclose(ehvi_acq(test_xs), qehvi_acq(test_xs), rtol=1e-2, atol=1e-2)
+    assert qehvi_acq.__call__._get_tracing_count() == 1  # type: ignore
 
 
 @random_seed

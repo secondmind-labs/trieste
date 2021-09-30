@@ -1058,7 +1058,7 @@ class batch_ehvi(AcquisitionFunctionClass):
         sampler: BatchReparametrizationSampler,
         sampler_jitter: float,
         partition_bounds: tuple[TensorType, TensorType],
-    ) -> AcquisitionFunction:
+    ) -> None:
         """
         :param sampler: The posterior sampler, which given query points `at`, is able to sample
             the possible observations at 'at'.
