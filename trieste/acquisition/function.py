@@ -1027,30 +1027,65 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
-
         sampler = BatchReparametrizationSampler(self._sample_size, model)
-
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        """
 
-def batch_ehvi(
-    sampler: BatchReparametrizationSampler,
-    sampler_jitter: float,
-    partition_bounds: tuple[TensorType, TensorType],
-) -> AcquisitionFunction:
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, batch_ehvi), [])
+        mean, _ = model.predict(dataset.query_points)
 
-    """
-    :param sampler: The posterior sampler, which given query points `at`, is able to sample
-        the possible observations at 'at'.
-    :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
-        decomposition of the covariance matrix.
-    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
-        bounds for hypervolume improvement calculation
-    :return: The batch expected hypervolume improvement acquisition
-        function for objective minimisation.
-    """
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        # prepare the partitioned bounds of non-dominated region for calculating of the
+        # hypervolume improvement in this area
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        function.update(_partition_bounds)  # type: ignore
+        return function
 
-    def acquisition(at: TensorType) -> TensorType:
+
+class batch_ehvi(AcquisitionFunctionClass):
+    def __init__(
+        self,
+        sampler: BatchReparametrizationSampler,
+        sampler_jitter: float,
+        partition_bounds: tuple[TensorType, TensorType],
+    ) -> AcquisitionFunction:
+        """
+        :param sampler: The posterior sampler, which given query points `at`, is able to sample
+            the possible observations at 'at'.
+        :param sampler_jitter: The size of the jitter to use in sampler when stabilising the
+            Cholesky decomposition of the covariance matrix.
+        :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+            bounds for hypervolume improvement calculation
+        :return: The batch expected hypervolume improvement acquisition
+            function for objective minimisation.
+        """
+        self._sampler = sampler
+        self._sampler_jitter = sampler_jitter
+        self._lb_points = tf.Variable(
+            partition_bounds[0], trainable=False, shape=[None, partition_bounds[0].shape[-1]]
+        )
+        self._ub_points = tf.Variable(
+            partition_bounds[1], trainable=False, shape=[None, partition_bounds[1].shape[-1]]
+        )
+
+    def update(self, partition_bounds: tuple[TensorType, TensorType]) -> None:
+        """Update the acquisition function with new partition bounds."""
+        self._lb_points.assign(partition_bounds[0])
+        self._ub_points.assign(partition_bounds[1])
+        self._sampler._initialized.assign(False)
+
+    @tf.function
+    def __call__(self, at: TensorType) -> TensorType:
         _batch_size = at.shape[-2]  # B
 
         def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
@@ -1058,12 +1093,11 @@ def batch_ehvi(
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
-        samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
+        samples = self._sampler.sample(at, jitter=self._sampler_jitter)  # [..., S, B, num_obj]
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
         hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
-        lb_points, ub_points = partition_bounds
 
         def hv_contrib_on_samples(
             obj_samples: TensorType,
@@ -1073,11 +1107,11 @@ def batch_ehvi(
 
             overlap_vertices = tf.maximum(  # compare overlap vertices and lower bound of each cell:
                 tf.expand_dims(overlap_vertices, -3),  # expand a cell dimension
-                lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
+                self._lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
             )  # [..., S, K, Cq_j, num_obj]
 
             lengths_j = tf.maximum(  # get hvi length per obj within each cell
-                (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
+                (self._ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
             )  # [..., S, K, Cq_j, num_obj]
 
             areas_j = tf.reduce_sum(  # sum over all subsets Cq_j -> [..., S, K]
@@ -1095,8 +1129,6 @@ def batch_ehvi(
             )
 
         return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
-
-    return acquisition
 
 
 class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
@@ -1215,7 +1247,8 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
         """
 
-        :param sampler:  BatchReparametrizationSampler.
+        :param sample_size:  The number of samples for each batch of points.
+        :param model: The model over the specified ``dataset``.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
