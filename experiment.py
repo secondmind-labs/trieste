@@ -41,17 +41,21 @@ from exp_utils import (
     test_ll_vanilla_dgp,
 )
 import argparse
+import gpflow
 
-np.random.seed(1794)
-tf.random.set_seed(1794)
+#np.random.seed(1794)
+#tf.random.set_seed(1794)
 tf.keras.backend.set_floatx("float64")
+gpflow.config.set_default_jitter(1e-5)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
 parser.add_argument('--function', type=str, help='objective function', nargs='?', default='michalewicz2')
 parser.add_argument('--model', type=str, help='model name', nargs='?', default='deepgp')
-parser.add_argument('--ln', type=bool, help='whether to learn noise variance', nargs='?', default=False)
-parser.add_argument('--rt', type=bool, help='whether to retrain', nargs='?', default=False)
+parser.add_argument('--lnt', dest='ln', help='whether to learn noise variance', action='store_true')
+parser.add_argument('--lnf', dest='ln', help='whether to learn noise variance', action='store_false')
+parser.add_argument('--rtt', dest='rt', help='whether to retrain', action='store_true')
+parser.add_argument('--rtf', dest='rt', help='whether to retrain', action='store_false')
 parser.add_argument('--run', type=int, help='run number', nargs='?', default=0)
 args = parser.parse_args()
 
@@ -60,6 +64,9 @@ model_key = args.model
 learn_noise = args.ln
 retrain = args.rt
 run = args.run
+
+np.random.seed(run)
+tf.random.set_seed(run)
 
 function_dict = {
     "michalewicz2": [michalewicz_2, MICHALEWICZ_2_MINIMUM, MICHALEWICZ_2_SEARCH_SPACE],
@@ -144,15 +151,15 @@ def run_bayes_opt(
     result_evaluation_ll = tester(ll_evaluation_data, result_model)
 
     pd.DataFrame(result_query_points).to_csv(
-        'results/{}/{}_query_points_{}'.format(function_key, model_key, run))
+        'results/{}/{}_ln{}_rt{}_query_points_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_observations).to_csv(
-        'results/{}/{}_observations_{}'.format(function_key, model_key, run))
+        'results/{}/{}_ln{}_rt{}_observations_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_evaluation_ll).to_csv(
-        'results/{}/{}_ood_ll_{}'.format(function_key, model_key, run))
+        'results/{}/{}_ln{}_rt{}_ood_ll_{}'.format(function_key, model_key, learn_noise, retrain, run))
 
-    print(f"{model_key} observation "
+    print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")
-    print(f"{model_key} OOD LL: {result_evaluation_ll}")
+    print(f"{model_key} ln {learn_noise} rt {retrain} OOD LL: {result_evaluation_ll}")
     print("Time: ", time.time() - start_time)
 
 
