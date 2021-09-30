@@ -438,6 +438,7 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         )
 
     # TODO: Add some test for this?
+    # TODO: Do we need this?
     def update(self, new_obs: TensorType):
         """
         Update with new observations, this can be computed with the incremental method
@@ -576,7 +577,7 @@ def _get_partition_bounds_hbda(
     of :cite:`lacour2017box`.
 
     :param u: with shape [|U(N)|, D], local upper bounds set, |U(N)| is the sets number,
-       p denotes the objective dimensionality
+       D denotes the objective dimensionality
     :param z: with shape [|U(N)|, D, D]
     :param reference_point: z^r in the paper, with shape [D]
     :return: l_bounds, u_bounds
@@ -601,3 +602,45 @@ def _get_partition_bounds_hbda(
     # remove empty partitions
     empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
     return l_bounds[~empty], u_bounds[~empty]
+
+
+# TODO: Need Test
+# TODO: Support update
+class FlipTrickPartitionNonDominated:
+    """
+    Main refer Algorithm 3 of :cite:yang2019efficient, a slight alter of
+    method is utilized as we are performing minimization.
+    The idea behind the proposed algorithm is transforming the problem of
+    partitioning a non-dominated space into the problem of partitioning the
+    dominated space.
+    For instance, consider minimization problem, we could use lacour2017box's methods to
+    locate the local upper bound point set (by partitioning the dominated region), by
+    treating these local upper bound as fake Pareto front, we can combine with a fake
+    reference point (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in
+    this case, we are able to use :cite:`lacour2017box`s method again to partition the
+    'dominated' region, which will then provide us with the partition of the non-dominated
+    region
+    """
+
+    def __init__(
+        self,
+        observations: TensorType,
+        anti_reference_point: TensorType,
+        reference_point: TensorType,
+    ):
+        lub_sets = HypervolumeBoxDecompositionIncrementalDominated(
+            observations, reference_point
+        ).U_set
+        flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
+            -lub_sets, -anti_reference_point
+        )
+        flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
+        self.lb_pts = -flipped_ub_pts
+        self.ub_pts = -flipped_lb_pts
+
+    def partition_bounds(self) -> tuple[TensorType, TensorType]:
+        return self.lb_pts, self.ub_pts
+
+    # TODO:
+    def update(self):
+        pass
