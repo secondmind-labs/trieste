@@ -43,8 +43,6 @@ from exp_utils import (
 import argparse
 import gpflow
 
-#np.random.seed(1794)
-#tf.random.set_seed(1794)
 tf.keras.backend.set_floatx("float64")
 gpflow.config.set_default_jitter(1e-5)
 
@@ -168,5 +166,19 @@ ll_evaluation_data = observer(ll_evaluation_points)
 
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
+
+if model_key == 'rs':
+    acquired_query_points = search_space.sample(num_acquisitions)
+    acquired_data = observer(acquired_query_points)
+
+    result_query_points = tf.concat([initial_data.query_points, acquired_data.query_points], 0).numpy()
+    result_observations = tf.concat([initial_data.observations, acquired_data.observations], 0).numpy()
+
+    pd.DataFrame(result_query_points).to_csv(
+        'results/{}/{}_query_points_{}'.format(function_key, model_key, run))
+    pd.DataFrame(result_observations).to_csv(
+        'results/{}/{}_observations_{}'.format(function_key, model_key, run))
+
+    quit()
 
 run_bayes_opt(model_key, initial_data, ll_evaluation_data, search_space)
