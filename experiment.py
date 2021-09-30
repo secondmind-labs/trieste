@@ -47,7 +47,7 @@ tf.keras.backend.set_floatx("float64")
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
 parser.add_argument('--function', type=str, help='objective function', nargs='?', default='michalewicz2')
-parser.add_argument('--model', type=str, help='model name', nargs='?', default='deepgp')
+parser.add_argument('--model', type=str, help='model name', nargs='?', default='rs')
 parser.add_argument('--ln', type=bool, help='whether to learn noise variance', nargs='?', default=False)
 parser.add_argument('--rt', type=bool, help='whether to retrain', nargs='?', default=False)
 parser.add_argument('--run', type=int, help='run number', nargs='?', default=0)
@@ -162,5 +162,19 @@ ll_evaluation_data = observer(ll_evaluation_points)
 
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
+
+if model_key == 'rs':
+    acquired_query_points = search_space.sample(num_acquisitions)
+    acquired_data = observer(acquired_query_points)
+
+    result_query_points = tf.concat([initial_data.query_points, acquired_data.query_points], 0).numpy()
+    result_observations = tf.concat([initial_data.observations, acquired_data.observations], 0).numpy()
+
+    pd.DataFrame(result_query_points).to_csv(
+        'results/{}/{}_query_points_{}'.format(function_key, model_key, run))
+    pd.DataFrame(result_observations).to_csv(
+        'results/{}/{}_observations_{}'.format(function_key, model_key, run))
+
+    quit()
 
 run_bayes_opt(model_key, initial_data, ll_evaluation_data, search_space)
