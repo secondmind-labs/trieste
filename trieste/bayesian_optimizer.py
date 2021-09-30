@@ -22,9 +22,11 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, Generic, TypeVar, cast, overload
 
 import tensorflow as tf
+import numpy as np
 from absl import logging
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -351,6 +353,9 @@ class BayesianOptimizer(Generic[SP]):
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
 
+        current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+        writer = tf.summary.create_file_writer("logs/" + current_time)
+
         for step in range(num_steps):
             try:
                 if track_state:
@@ -385,6 +390,11 @@ class BayesianOptimizer(Generic[SP]):
                     dataset = datasets[tag]
                     model.update(dataset)
                     model.optimize(dataset)
+
+                with writer.as_default():
+                    for tag in datasets:
+                        tf.summary.scalar(f'best_{tag}', np.min(datasets[tag].observations), step=step)
+
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
