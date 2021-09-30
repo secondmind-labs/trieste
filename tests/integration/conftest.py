@@ -16,7 +16,8 @@ import pytest
 import tensorflow as tf
 
 
-# Teardown fixture to set keras floatx to float64 then return it to previous value at test finish
+# Setup and teardown fixture to set keras floatx to float64 before test starts
+# then return it to previous value at test finish
 # pytest uses yield in a funny way, so we use type ignore
 @pytest.fixture(name="keras_float")  # type: ignore
 def _keras_float() -> None:
