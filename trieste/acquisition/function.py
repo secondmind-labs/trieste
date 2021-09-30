@@ -1252,7 +1252,6 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     of size `B`.
     """
 
-    @abstractmethod
     def prepare_acquisition_function(
         self,
         datasets: Mapping[str, Dataset],
@@ -1270,7 +1269,9 @@ class GreedyAcquisitionFunctionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+        return self.update_acquisition_function(None, datasets, models, pending_points)
 
+    @abstractmethod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1291,7 +1292,6 @@ class GreedyAcquisitionFunctionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(datasets, models, pending_points=pending_points)
 
 
 class SingleModelGreedyAcquisitionBuilder(ABC):
@@ -1335,7 +1335,6 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
         return _Anon()
 
-    @abstractmethod
     def prepare_acquisition_function(
         self,
         dataset: Dataset,
@@ -1349,7 +1348,9 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+        return self.update_acquisition_function(None, dataset, model)
 
+    @abstractmethod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1365,7 +1366,6 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(dataset, model, pending_points=pending_points)
 
 
 class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
@@ -1432,26 +1432,6 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self._penalization: Optional[PenalizationFunction | UpdatablePenalizationFunction] = None
         self._penalized_acquisition: Optional[AcquisitionFunction] = None
 
-    def prepare_acquisition_function(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        pending_points: Optional[TensorType] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
-        :param pending_points: The points we penalize with respect to.
-        :return: The (log) expected improvement penalized with respect to the pending points.
-        :raise tf.errors.InvalidArgumentError: If the first call does not have pending_points=None,
-            or ``dataset`` is empty.
-        """
-        tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(pending_points is None, [])
-
-        # no penalization required if no pending_points.
-        return self._update_base_acquisition_function(dataset, model)
-
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1468,11 +1448,13 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
-        if pending_points is None:
+        if self._base_acquisition_function is None:
             # update penalization params and base acquisition once per optimization step
-            return self._update_base_acquisition_function(dataset, model)
+            self._update_base_acquisition_function(dataset, model)
+
+        if pending_points is None or len(pending_points) == 0:
+            return self._base_acquisition_function
 
         tf.debugging.assert_rank(pending_points, 2)
 
@@ -1751,26 +1733,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         self._diversity_term: Optional[gibbon_repulsion_term] = None
         self._gibbon_acquisition: Optional[AcquisitionFunction] = None
 
-    def prepare_acquisition_function(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        pending_points: Optional[TensorType] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
-        :param pending_points: The points we penalize with respect to.
-        :return: The GIBBON acquisition function modified for objective minimisation.
-        :raise ValueError: if the first call does not have pending_points=None.
-        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
-        """
-        tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(pending_points is None, [])
-
-        # no diversity term required if no pending_points.
-        return self._update_quality_term(dataset, model)
-
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1787,11 +1749,13 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(self._quality_term is not None, [])
 
-        if pending_points is None:
+        if self._quality_term is None:
             # update min value samples once per optimization step
-            return self._update_quality_term(dataset, model)
+            self._update_quality_term(dataset, model)
+
+        if pending_points is None or len(pending_points) == 0:
+            return cast(AcquisitionFunction, self._quality_term)
 
         tf.debugging.assert_rank(pending_points, 2)
 
