@@ -74,9 +74,9 @@ def build_vanilla_deep_gp(
         query_points = np.concatenate([query_points, additional_points], 0)
 
     config = Config(
-        num_inducing=num_inducing,
-        inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
-        likelihood_noise_variance=likelihood_noise_variance,
+        num_inducing,
+        inner_layer_sqrt_factor,
+        likelihood_noise_variance,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 

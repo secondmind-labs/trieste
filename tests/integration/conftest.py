@@ -20,7 +20,7 @@ import tensorflow as tf
 # pytest uses yield in a funny way, so we use type ignore
 @pytest.fixture(name="keras_float")  # type: ignore
 def _keras_float() -> None:
-    curr_float = tf.keras.backend.floatx()
+    current_float = tf.keras.backend.floatx()
     tf.keras.backend.set_floatx("float64")
     yield
-    tf.keras.backend.set_floatx(curr_float)
+    tf.keras.backend.set_floatx(current_float)

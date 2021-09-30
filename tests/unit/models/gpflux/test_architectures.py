@@ -38,16 +38,16 @@ def test_build_vanilla_deep_gp_returns_correct_model(keras_float: None) -> None:
 
     vanilla_deep_gp = build_vanilla_deep_gp(
         x,
-        num_layers=num_layers,
-        num_inducing=num_inducing,
-        inner_layer_sqrt_factor=inner_layer_sqrt_factor,
-        likelihood_noise_variance=likelihood_noise_variance,
+        num_layers,
+        num_inducing,
+        inner_layer_sqrt_factor,
+        likelihood_noise_variance,
     )
 
     config = Config(
         num_inducing,
-        inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
-        likelihood_noise_variance=likelihood_noise_variance,
+        inner_layer_sqrt_factor,
+        likelihood_noise_variance,
     )
     ref_deep_gp = build_constant_input_dim_deep_gp(x, num_layers=num_layers, config=config)
 
@@ -76,10 +76,10 @@ def test_build_vanilla_deep_gp_gives_correct_num_inducing(keras_float: None) -> 
 
     vanilla_deep_gp = build_vanilla_deep_gp(
         x,
-        num_layers=num_layers,
-        num_inducing=num_inducing,
-        inner_layer_sqrt_factor=inner_layer_sqrt_factor,
-        likelihood_noise_variance=likelihood_noise_variance,
+        num_layers,
+        num_inducing,
+        inner_layer_sqrt_factor,
+        likelihood_noise_variance,
     )
 
     for layer in vanilla_deep_gp.f_layers:
@@ -97,10 +97,10 @@ def test_build_vanilla_deep_gp_gives_correct_num_data(keras_float: None) -> None
 
     vanilla_deep_gp = build_vanilla_deep_gp(
         x,
-        num_layers=num_layers,
-        num_inducing=num_inducing,
-        inner_layer_sqrt_factor=inner_layer_sqrt_factor,
-        likelihood_noise_variance=likelihood_noise_variance,
+        num_layers,
+        num_inducing,
+        inner_layer_sqrt_factor,
+        likelihood_noise_variance,
     )
 
     npt.assert_equal(vanilla_deep_gp.num_data, num_data)
