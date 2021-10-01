@@ -118,7 +118,7 @@ def build_lv_dgp_model(data, num_total_data, num_layers=2, num_inducing=200, lat
 
 
 def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] = None):
-    gpflow.settings.set_default_jitter(1e-4)
+    gpflow.config.set_default_jitter(1e-4)
     print('jitter', gpflow.default_jitter())
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*data.query_points.shape[-1])
