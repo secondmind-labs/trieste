@@ -1334,9 +1334,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
     space = Box([0, 0], [1, 1])
     builder = LocalPenalizationAcquisitionFunction(search_space=space)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(
-            data, QuadraticMeanAndRBFKernel(), pending_points
-        )
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
 
 
 @random_seed
@@ -1555,9 +1553,7 @@ def test_gibbon_builder_raises_for_invalid_pending_points_shape(
     space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space=space)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(
-            data, QuadraticMeanAndRBFKernel(), pending_points
-        )
+        builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
 
 
 def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
