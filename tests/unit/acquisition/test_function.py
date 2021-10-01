@@ -17,7 +17,7 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 from unittest.mock import MagicMock
 
 import gpflow
@@ -92,7 +92,11 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
 
 class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder):
     def update_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType = None
+        self,
+        function: Optional[AcquisitionFunction],
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: TensorType = None,
     ) -> AcquisitionFunction:
         return raise_exc
 
@@ -1333,7 +1337,9 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
         data, QuadraticMeanAndRBFKernel(), None
     )  # first initialize
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.update_acquisition_function(lp_acq, data, QuadraticMeanAndRBFKernel(), pending_points)
+        builder.update_acquisition_function(
+            lp_acq, data, QuadraticMeanAndRBFKernel(), pending_points
+        )
 
 
 @random_seed
@@ -1555,7 +1561,9 @@ def test_gibbon_builder_raises_for_invalid_pending_points_shape(
         data, QuadraticMeanAndRBFKernel(), None
     )  # first initialize
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.update_acquisition_function(gibbon_acq, data, QuadraticMeanAndRBFKernel(), pending_points)
+        builder.update_acquisition_function(
+            gibbon_acq, data, QuadraticMeanAndRBFKernel(), pending_points
+        )
 
 
 def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:

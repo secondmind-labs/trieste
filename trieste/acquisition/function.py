@@ -1274,7 +1274,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     @abstractmethod
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         pending_points: Optional[TensorType] = None,
@@ -1321,7 +1321,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
             def update_acquisition_function(
                 self,
-                function: AcquisitionFunction,
+                function: Optional[AcquisitionFunction],
                 datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
                 pending_points: Optional[TensorType] = None,
@@ -1353,7 +1353,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     @abstractmethod
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
@@ -1449,13 +1449,13 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
         acq = self._update_base_acquisition_function(dataset, model)
         if pending_points is not None:
-            acq = self._update_penalization(None, dataset, model, pending_points)
+            acq = self._update_penalization(acq, dataset, model, pending_points)
 
         return acq
 
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
@@ -1479,7 +1479,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
     def _update_penalization(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
@@ -1784,7 +1784,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
@@ -1803,12 +1803,12 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         if pending_points is None:
             # no repulsion term required if no pending_points.
             return self._update_quality_term(dataset, model)
-  
+
         return self._update_repulsion_term(function, dataset, model, pending_points)
 
     def _update_repulsion_term(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
