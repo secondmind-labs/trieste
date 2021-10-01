@@ -44,7 +44,6 @@ import argparse
 import gpflow
 
 tf.keras.backend.set_floatx("float64")
-gpflow.config.set_default_jitter(1e-5)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
