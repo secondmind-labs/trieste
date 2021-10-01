@@ -1432,6 +1432,27 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self._penalization: Optional[PenalizationFunction | UpdatablePenalizationFunction] = None
         self._penalized_acquisition: Optional[AcquisitionFunction] = None
 
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The (log) expected improvement penalized with respect to the pending points.
+        :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
+        """
+        tf.debugging.assert_positive(len(dataset))
+
+        acq = self._update_base_acquisition_function(dataset, model)
+        if pending_points is not None:
+            acq = self._update_penalization(None, dataset, model, pending_points)
+
+        return acq
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1448,15 +1469,21 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
-
-        if self._base_acquisition_function is None:
-            # update penalization params and base acquisition once per optimization step
-            self._update_base_acquisition_function(dataset, model)
+        tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
         if pending_points is None or len(pending_points) == 0:
             # no penalization required if no pending_points
-            return self._base_acquisition_function
+            return self._update_base_acquisition_function(dataset, model)
 
+        return self._update_penalization(function, dataset, model, pending_points)
+
+    def _update_penalization(
+        self,
+        function: AcquisitionFunction,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
 
         if self._penalized_acquisition is not None and isinstance(
@@ -1734,6 +1761,27 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         self._diversity_term: Optional[gibbon_repulsion_term] = None
         self._gibbon_acquisition: Optional[AcquisitionFunction] = None
 
+    def prepare_acquisition_function(
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :param pending_points: The points we penalize with respect to.
+        :return: The GIBBON acquisition function modified for objective minimisation.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.assert_positive(len(dataset))
+
+        acq = self._update_quality_term(dataset, model)
+        if pending_points is not None:
+            acq = self._update_repulsion_term(acq, dataset, model, pending_points)
+
+        return acq
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -1750,15 +1798,21 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(self._quality_term is not None, [])
 
-        if self._quality_term is None:
-            # update min value samples once per optimization step
-            self._update_quality_term(dataset, model)
+        if pending_points is None:
+            # no repulsion term required if no pending_points.
+            return self._update_quality_term(dataset, model)
+  
+        return self._update_repulsion_term(function, dataset, model, pending_points)
 
-        if pending_points is None or len(pending_points) == 0:
-            # no diversity term required if no pending_points.
-            return cast(AcquisitionFunction, self._quality_term)
-
+    def _update_repulsion_term(
+        self,
+        function: AcquisitionFunction,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
 
         if self._gibbon_acquisition is not None and isinstance(

@@ -184,7 +184,8 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         :param models: The models of the specified ``datasets``.
         :return: The single (or batch of) points to query.
         """
-        if self._acquisition_function is None:
+        if self._acquisition_function is None \
+           or isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             self._acquisition_function = self._builder.prepare_acquisition_function(
                 datasets, models
             )
