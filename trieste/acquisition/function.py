@@ -1348,7 +1348,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
-        return self.update_acquisition_function(None, dataset, model)
+        return self.update_acquisition_function(None, dataset, model, pending_points)
 
     @abstractmethod
     def update_acquisition_function(
@@ -1454,6 +1454,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             self._update_base_acquisition_function(dataset, model)
 
         if pending_points is None or len(pending_points) == 0:
+            # no penalization required if no pending_points
             return self._base_acquisition_function
 
         tf.debugging.assert_rank(pending_points, 2)
@@ -1755,6 +1756,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             self._update_quality_term(dataset, model)
 
         if pending_points is None or len(pending_points) == 0:
+            # no diversity term required if no pending_points.
             return cast(AcquisitionFunction, self._quality_term)
 
         tf.debugging.assert_rank(pending_points, 2)
