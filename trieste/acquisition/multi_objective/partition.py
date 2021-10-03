@@ -384,12 +384,21 @@ class HypervolumeBoxDecompositionIncrementalDominated:
     Section 2.2.2 of :cite:`lacour2017box`.
     """
 
-    def __init__(self, observations: TensorType, reference_point: TensorType):
+    def __init__(
+        self,
+        observations: TensorType,
+        reference_point: TensorType,
+        dummy_anti_ref_value: float = -1e10,
+    ):
         """
         :param observations: the objective observations, preferably this can be a
             non-dominated set, but any set is acceptable here.
         :param reference_point a reference point to use, with shape [D]
             (same as p in the paper). Defines the upper bound of the hypervolume.
+        :param dummy_anti_ref_value: float, a value used to setup the dummy anti-reference point:
+             _dummy_anti_reference_point = [dummy_anti_ref_value, ..., dummy_anti_ref_value].
+            This anti-reference point will not affect the partitioned bounds, but it is required
+            to be smaller than any (potential) observations
         """
         tf.debugging.assert_type(reference_point, observations.dtype)
         tf.debugging.assert_shapes([(reference_point, ["D"])])
@@ -399,16 +408,21 @@ class HypervolumeBoxDecompositionIncrementalDominated:
             reference_point,
             observations,
             message=f"reference_point: {reference_point} containing points below "
-                    f"observations:\n {observations} ",
+            f"observations:\n {observations} ",
         )
+
+        self._dummy_anti_reference_point = dummy_anti_ref_value * tf.ones(
+            (1, observations.shape[-1]), dtype=observations.dtype
+        )
+        self._reference_point = reference_point
 
         # making sure objective space has been lower bounded by [-1e10, ..., -1e10]
         tf.debugging.assert_greater_equal(
-            observations, -1e10 * tf.ones((1, observations.shape[-1]), dtype=observations.dtype)
+            observations,
+            self._dummy_anti_reference_point,
+            f"observations: {observations} contains value smaller than dummy "
+            f"anti-reference point: {self._dummy_anti_reference_point}",
         )
-
-        self._reference_point = reference_point
-
         # initialize local upper bound set using reference point (step 1 of Alg 1)
         self.U_set = reference_point[tf.newaxis]
 
@@ -417,8 +431,9 @@ class HypervolumeBoxDecompositionIncrementalDominated:
             # has been replaced by [-1e10, reference_point].  2. the dummy anti reference
             # point [-1e10, ..., -1e10] value will not affect lower/upper bounds of this dominated
             # partition method
-            -1e10 * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
-            + 1e10
+            -dummy_anti_ref_value
+            * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
+            + dummy_anti_ref_value
             * tf.eye(
                 observations.shape[-1],
                 observations.shape[-1],
@@ -437,14 +452,14 @@ class HypervolumeBoxDecompositionIncrementalDominated:
             z_set=self.Z_set,
         )
 
-    # TODO: Add some test for this?
-    # TODO: Do we need this?
     def update(self, new_obs: TensorType):
         """
         Update with new observations, this can be computed with the incremental method
 
         :param new_obs with shape [N, D]
         """
+        tf.debugging.assert_greater_equal(self._reference_point, new_obs)
+        tf.debugging.assert_greater_equal(new_obs, self._dummy_anti_reference_point)
         (
             self.U_set,
             self.Z_set,
@@ -531,7 +546,9 @@ def _compute_new_local_upper_bounds(
             [1 if dim != j else 0 for dim in range(num_outcomes)], dtype=z_bar.dtype
         )
         # get except jth defining point's jth dim
-        z_uj_k = tf.gather(z_set_need_update, indices, axis=-2, batch_dims=0)[..., j]  # [M, D, D] -> [M, D-1]
+        z_uj_k = tf.gather(z_set_need_update, indices, axis=-2, batch_dims=0)[
+            ..., j
+        ]  # [M, D, D] -> [M, D-1]
         z_uj_max = tf.reduce_max(z_uj_k, -1)  # [M, D-1] -> [M]
         u_mask_to_be_replaced_by_zbar_j = z_bar[j] >= z_uj_max  # [M]
         # any of original local upper bounds (in A) can be updated
@@ -550,7 +567,10 @@ def _compute_new_local_upper_bounds(
                 u_mask_to_be_replaced_by_zbar_j
             ]  # get its original defining point
             # replace jth : [M', D - 1, D] & [1, D] -> [M', D, D]
-            z_uj_new = z_need_update * mask_not_j_dim[..., tf.newaxis] + z_bar * mask_j_dim[..., tf.newaxis]
+            z_uj_new = (
+                z_need_update * mask_not_j_dim[..., tf.newaxis]
+                + z_bar * mask_j_dim[..., tf.newaxis]
+            )
             # add its (updated) defining point
             updated_z_set = tf.concat([updated_z_set, z_uj_new], 0)
 
@@ -568,38 +588,39 @@ def _compute_new_local_upper_bounds(
     return u_set, z_set
 
 
-# TODO: figuring out this one
 def _get_partition_bounds_hbda(
-    z: TensorType, u: TensorType, reference_point: TensorType
+    z_set: TensorType, u_set: TensorType, reference_point: TensorType
 ) -> tuple[TensorType, TensorType]:
-    r"""Get the hyper cell bounds given the local upper bounds and the defining points.
-    Main referred from Equation 2 in Hypervolume Box Decomposition Algorithm (HBDA) paper
-    of :cite:`lacour2017box`.
+    r"""Get the hyper cell bounds through given the local upper bounds and the
+    defining points. Main referred from Equation 2 of :cite:`lacour2017box`.
 
-    :param u: with shape [|U(N)|, D], local upper bounds set, |U(N)| is the sets number,
-       D denotes the objective dimensionality
-    :param z: with shape [|U(N)|, D, D]
-    :param reference_point: z^r in the paper, with shape [D]
-    :return: l_bounds, u_bounds
+    :param u_set: with shape [N, D], local upper bounds set, N is the
+        sets number, D denotes the objective numbers.
+    :param z_set: with shape [N, D, D].
+    :param reference_point: z^r in the paper, with shape [D].
+    :return: lower, upper bounds of the partitioned cell, each with shape [N, D].
     """
     tf.debugging.assert_shapes([(reference_point, ["D"])])
-    l_bounds = tf.zeros(shape=[0, u.shape[-1]], dtype=u.dtype)
-    u_bounds = tf.zeros(shape=[0, u.shape[-1]], dtype=u.dtype)
+    l_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
+    u_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
 
-    for u_idx in range(u.shape[0]):
-        l_bound_new = tf.zeros(shape=0, dtype=u.dtype)
-        u_bound_new = tf.zeros(shape=0, dtype=u.dtype)
+    for u_idx in range(tf.shape(u_set)[0]):  # get partition through each of the lub point
+        l_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
+        u_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
+        # for each (partitioned) hyper-cell, get its bounds through each objective dimension
         # get bounds on 1st dim: [z_1^1(u), z_1^r]
-        l_bound_new = tf.concat([l_bound_new, z[u_idx, 0, 0][tf.newaxis]], 0)
+        l_bound_new = tf.concat([l_bound_new, z_set[u_idx, 0, 0][tf.newaxis]], 0)
         u_bound_new = tf.concat([u_bound_new, reference_point[0][tf.newaxis]], 0)
 
-        for j in range(1, u.shape[-1]):  # get bounds on rest dim
-            l_bound_new = tf.concat([l_bound_new, tf.reduce_max(z[u_idx, :j, j])[tf.newaxis]], 0)
-            u_bound_new = tf.concat([u_bound_new, u[u_idx, j][tf.newaxis]], 0)
+        for j in range(1, u_set.shape[-1]):  # get bounds on rest dim
+            l_bound_new = tf.concat(
+                [l_bound_new, tf.reduce_max(z_set[u_idx, :j, j])[tf.newaxis]], 0
+            )
+            u_bound_new = tf.concat([u_bound_new, u_set[u_idx, j][tf.newaxis]], 0)
         l_bounds = tf.concat([l_bounds, l_bound_new[tf.newaxis]], 0)
         u_bounds = tf.concat([u_bounds, u_bound_new[tf.newaxis]], 0)
 
-    # remove empty partitions
+    # remove empty partitions (i.e., if lb_bounds == ub_bounds on certain obj dimension)
     empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
     return l_bounds[~empty], u_bounds[~empty]
 
@@ -613,7 +634,7 @@ class FlipTrickPartitionNonDominated:
     The idea behind the proposed algorithm is transforming the problem of
     partitioning a non-dominated space into the problem of partitioning the
     dominated space.
-    For instance, consider minimization problem, we could use lacour2017box's methods to
+    For instance, consider minimization problem, use lacour2017box's methods to
     locate the local upper bound point set (by partitioning the dominated region), by
     treating these local upper bound as fake Pareto front, we can combine with a fake
     reference point (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in
