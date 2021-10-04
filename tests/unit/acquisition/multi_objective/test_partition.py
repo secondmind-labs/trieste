@@ -451,7 +451,7 @@ def test_hbda_incremental_dominated_raises_for_front_below_anti_reference_point(
 )
 def test_hbda_incremental_dominated_static_partition(
     observations: tf.Tensor, reference: tf.Tensor, expected_lb: tf.Tensor, expected_ub: tf.Tensor
-):
+) -> None:
     lb, ub = HypervolumeBoxDecompositionIncrementalDominated(
         observations, reference
     ).partition_bounds()
@@ -558,7 +558,7 @@ def test_hbda_incremental_dominated_update(
     reference: tf.Tensor,
     expected_lb: tf.Tensor,
     expected_ub: tf.Tensor,
-):
+) -> None:
     partition = HypervolumeBoxDecompositionIncrementalDominated(observations, reference)
     partition.update(new_observations)
     lb, ub = partition.partition_bounds()

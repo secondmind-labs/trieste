@@ -426,14 +426,14 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         # initialize local upper bound set using reference point (step 1 of Alg 1)
         self.U_set = reference_point[tf.newaxis]
 
-        self.Z_set = (  # initialize local upper bound's defining points _Z to be the dummy points \hat{z}
-            # (defined in Sec 2.1). Note: 1. the original defined objective space [0, reference_point]
-            # has been replaced by [-1e10, reference_point].  2. the dummy anti reference
-            # point [-1e10, ..., -1e10] value will not affect lower/upper bounds of this dominated
+        self.Z_set = (  # initialize local upper bound's defining points _Z to be the dummy
+            # points \hat{z} (defined in Sec 2.1). Note: 1. the original defined objective space
+            # [0, reference_point] has been replaced by [-1e10, reference_point].  2. the dummy
+            # anti reference point value will not affect lower/upper bounds of this dominated
             # partition method
-            -dummy_anti_ref_value
+            dummy_anti_ref_value
             * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
-            + dummy_anti_ref_value
+            - dummy_anti_ref_value
             * tf.eye(
                 observations.shape[-1],
                 observations.shape[-1],
@@ -452,7 +452,7 @@ class HypervolumeBoxDecompositionIncrementalDominated:
             z_set=self.Z_set,
         )
 
-    def update(self, new_obs: TensorType):
+    def update(self, new_obs: TensorType) -> None:
         """
         Update with new observations, this can be computed with the incremental method
 
@@ -531,13 +531,13 @@ def _compute_new_local_upper_bounds(
     z_set_need_update = z_set[z_bar_dominates_u_set_mask]  # [M, D, D]
 
     # Container of new local upper bound (lub) points and its defining set
-    updated_u_set = tf.zeros(shape=(0, num_outcomes))
-    updated_z_set = tf.zeros(shape=(0, num_outcomes, num_outcomes))
+    updated_u_set = tf.zeros(shape=(0, num_outcomes), dtype=u_set.dtype)
+    updated_z_set = tf.zeros(shape=(0, num_outcomes, num_outcomes), dtype=u_set.dtype)
 
     # update local upper bound and its corresponding defining points
     for j in tf.range(num_outcomes):  # check update per dimension
-        # for jth output dimension, check if if zbar_j can form a new lub (if zbar_j ≥ max_{k≠j}{z_j^k(u)}
-        # get all lub's defining point and check:
+        # for jth output dimension, check if if zbar_j can form a new lub
+        # (if zbar_j ≥ max_{k≠j}{z_j^k(u)} get all lub's defining point and check:
         indices = tf.constant([dim for dim in range(num_outcomes) if dim != j], dtype=tf.int32)
         mask_j_dim = tf.constant(
             [0 if dim != j else 1 for dim in range(num_outcomes)], dtype=z_bar.dtype
@@ -623,45 +623,3 @@ def _get_partition_bounds_hbda(
     # remove empty partitions (i.e., if lb_bounds == ub_bounds on certain obj dimension)
     empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
     return l_bounds[~empty], u_bounds[~empty]
-
-
-# TODO: Need Test
-# TODO: Support update
-class FlipTrickPartitionNonDominated:
-    """
-    Main refer Algorithm 3 of :cite:yang2019efficient, a slight alter of
-    method is utilized as we are performing minimization.
-    The idea behind the proposed algorithm is transforming the problem of
-    partitioning a non-dominated space into the problem of partitioning the
-    dominated space.
-    For instance, consider minimization problem, use lacour2017box's methods to
-    locate the local upper bound point set (by partitioning the dominated region), by
-    treating these local upper bound as fake Pareto front, we can combine with a fake
-    reference point (e.g., [-inf, ..., -inf]) and flip the problem as maximization, in
-    this case, we are able to use :cite:`lacour2017box`s method again to partition the
-    'dominated' region, which will then provide us with the partition of the non-dominated
-    region
-    """
-
-    def __init__(
-        self,
-        observations: TensorType,
-        anti_reference_point: TensorType,
-        reference_point: TensorType,
-    ):
-        lub_sets = HypervolumeBoxDecompositionIncrementalDominated(
-            observations, reference_point
-        ).U_set
-        flipped_partition = HypervolumeBoxDecompositionIncrementalDominated(
-            -lub_sets, -anti_reference_point
-        )
-        flipped_lb_pts, flipped_ub_pts = flipped_partition.partition_bounds()
-        self.lb_pts = -flipped_ub_pts
-        self.ub_pts = -flipped_lb_pts
-
-    def partition_bounds(self) -> tuple[TensorType, TensorType]:
-        return self.lb_pts, self.ub_pts
-
-    # TODO:
-    def update(self):
-        pass
