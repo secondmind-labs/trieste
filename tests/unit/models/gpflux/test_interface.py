@@ -31,8 +31,6 @@ from trieste.models.gpflux import GPfluxPredictor
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
-tf.keras.backend.set_floatx("float64")
-
 
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
