@@ -393,10 +393,10 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         """
         :param observations: the objective observations, preferably this can be a
             non-dominated set, but any set is acceptable here.
-        :param reference_point a reference point to use, with shape [D]
+        :param reference_point: a reference point to use, with shape [D]
             (same as p in the paper). Defines the upper bound of the hypervolume.
         :param dummy_anti_ref_value: float, a value used to setup the dummy anti-reference point:
-             _dummy_anti_reference_point = [dummy_anti_ref_value, ..., dummy_anti_ref_value].
+            _dummy_anti_reference_point = [dummy_anti_ref_value, ..., dummy_anti_ref_value].
             This anti-reference point will not affect the partitioned bounds, but it is required
             to be smaller than any (potential) observations
         """
@@ -503,11 +503,11 @@ def _compute_new_local_upper_bounds(
     Given a new observation z_bar, if z_bar dominates any of the element in existing
     local upper bounds set: u_set, we need to:
     1. calculating the new local upper bounds set introduced by z_bar, and its corresponding
-        defining set z_set
+    defining set z_set
     2. remove the old local upper bounds set from u_set that has been dominated by z_bar and
-        their corresponding defining points from z_set
+    their corresponding defining points from z_set
     3. concatenate u_set, z_set with the new local upper bounds set and its corresponding
-        defining set
+    defining set
     otherwise the u_set and z_set keep unchanged.
 
     :param u_set: (U in the paper) with shape [N, D] dim tensor containing the local upper bounds.
