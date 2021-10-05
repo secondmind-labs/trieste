@@ -11,7 +11,10 @@ tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
-# In this example, we look to find the minimum value of the two- and five-dimensional Michalewicz functions over the hypercubes $[0, pi]^2$/$[0, pi]^5$. We compare a two-layer DGP model with GPR, using Thompson sampling for both.
+#
+# In this notebook, we show how to use deep Gaussian processes (DGPs) for Bayesian optimization using Trieste and GPflux.
+#
+# In this example, we look to find the minimum value of the two- and five-dimensional [Michalewicz functions](https://www.sfu.ca/~ssurjano/michal.html) over the hypercubes $[0, pi]^2$/$[0, pi]^5$. We compare a two-layer DGP model with GPR, using Thompson sampling for both.
 #
 # The Michalewicz functions are highly non-stationary and have a global minimum that's hard to find, so DGPs might be more suitable than standard Gaussian processes.
 
@@ -63,6 +66,8 @@ initial_data = observer(initial_query_points)
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
 #
 # We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
+#
+# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` method.
 
 # %%
 from trieste.models.gpflux import GPfluxModelConfig, build_vanilla_deep_gp
@@ -150,15 +155,12 @@ fig = add_bo_points_plotly(
 )
 fig.show()
 
-import matplotlib.pyplot as plt
-from util.plotting import plot_regret
-
-dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
-
 # %% [markdown]
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution.
 
 # %%
+import matplotlib.pyplot as plt
+from util.plotting import plot_regret
 from util.plotting_plotly import plot_dgp_plotly
 
 fig = plot_dgp_plotly(
@@ -227,8 +229,6 @@ gp_arg_min_idx = tf.squeeze(tf.argmin(gp_observations, axis=0))
 print(f"query point: {gp_query_points[gp_arg_min_idx, :]}")
 print(f"observation: {gp_observations[gp_arg_min_idx, :]}")
 
-gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
-
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
@@ -257,6 +257,9 @@ fig.show()
 # We can also plot the regret curves of the two models side-by-side.
 
 # %%
+
+gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
+dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 _, ax = plt.subplots(1, 2)
 plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
