@@ -211,6 +211,7 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         self._update_count += 1
         return self.prepare_acquisition_function(dataset, model, pending_points)
@@ -232,7 +233,7 @@ def test_greedy_batch_acquisition_rule_acquire() -> None:
 
     query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
-    assert acq._update_count == 2 * (num_query_points - 1)
+    assert acq._update_count == 2 * num_query_points - 1
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])

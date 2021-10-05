@@ -17,7 +17,7 @@ import itertools
 import math
 import unittest.mock
 from collections.abc import Mapping
-from typing import Callable, Optional, Union
+from typing import Callable, Union
 from unittest.mock import MagicMock
 
 import gpflow
@@ -91,9 +91,8 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
 
 
 class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder):
-    def update_acquisition_function(
+    def prepare_acquisition_function(
         self,
-        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: TensorType = None,
@@ -1390,8 +1389,8 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
     lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
-    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1], False)
+    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points, False)
     assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
