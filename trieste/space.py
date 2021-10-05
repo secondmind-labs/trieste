@@ -54,7 +54,7 @@ class SearchSpace(ABC):
     @property
     @abstractmethod
     def num_input_features(self) -> TensorType:
-        """ The input dimensionality of this search space."""
+        """The input dimensionality of this search space."""
 
     def __mul__(self: SP, other: SP) -> SP:
         """
@@ -110,7 +110,7 @@ class DiscreteSearchSpace(SearchSpace):
 
     @property
     def num_input_features(self) -> TensorType:
-        """ The input dimensionality of this search space."""
+        """The input dimensionality of this search space."""
         return tf.shape(self.points)[-1]
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -227,7 +227,7 @@ class Box(SearchSpace):
 
     @property
     def num_input_features(self) -> TensorType:
-        """ The input dimensionality of this search space."""
+        """The input dimensionality of this search space."""
         return tf.shape(self.upper)[-1]
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -384,7 +384,7 @@ class DecomposableSearchSpace(SearchSpace):
 
     @property
     def num_input_features(self) -> TensorType:
-        """ The input dimensionality of this search space."""
+        """The input dimensionality of this search space."""
         return self._context_space.num_input_features + self._decision_space.num_input_features
 
     def get_context_component(self, values: TensorType) -> TensorType:
