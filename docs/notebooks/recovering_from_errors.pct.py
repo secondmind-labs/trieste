@@ -46,12 +46,16 @@ observer = FaultyBranin()
 # %%
 import gpflow
 
-search_space = trieste.space.Box(tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64))
+search_space = trieste.space.Box(
+    tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64)
+)
 initial_data = observer(search_space.sample(5))
 
 variance = tf.math.reduce_variance(initial_data.observations)
 kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(1e-12)
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(
+    initial_data.astuple(), kernel, noise_variance=1e-5
+)
 gpflow.set_trainable(gpr.likelihood, False)
 model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 
@@ -103,7 +107,7 @@ if result.is_err:
         history[-1].dataset,
         history[-1].model,
         acquisition_rule,
-        history[-1].acquisition_state,
+        history[-1].acquisition_state
     ).astuple()
 
     history.extend(new_history)
@@ -117,7 +121,9 @@ from util.plotting import plot_bo_points, plot_function_2d
 if result.is_ok:
     data = result.unwrap().dataset
     arg_min_idx = tf.squeeze(tf.argmin(data.observations, axis=0))
-    _, ax = plot_function_2d(branin, search_space.lower, search_space.upper, 30, contour=True)
+    _, ax = plot_function_2d(
+        branin, search_space.lower, search_space.upper, 30, contour=True
+    )
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
 
 # %% [markdown]

@@ -20,13 +20,11 @@ tf.random.set_seed(1234)
 # %%
 import trieste
 
-
 def masked_branin(x):
-    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
+    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
     y = np.array(trieste.objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
-
 
 # %% [markdown]
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
@@ -43,7 +41,9 @@ search_space = Box([0, 0], [1, 1])
 # %%
 from util.plotting_plotly import plot_function_plotly
 
-fig = plot_function_plotly(masked_branin, search_space.lower, search_space.upper, grid_density=70)
+fig = plot_function_plotly(
+    masked_branin, search_space.lower, search_space.upper, grid_density=70
+)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -64,15 +64,13 @@ fig.show()
 OBJECTIVE = "OBJECTIVE"
 FAILURE = "FAILURE"
 
-
 def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
     return {
         OBJECTIVE: trieste.data.Dataset(x[mask], y[mask]),
-        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64)),
+        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
     }
-
 
 # %% [markdown]
 # We can evaluate the observer at points sampled from the search space.
@@ -99,7 +97,9 @@ def create_regression_model(data):
 
 
 def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(variance=100.0, lengthscales=[0.2, 0.2])
+    kernel = gpflow.kernels.SquaredExponential(
+        variance=100.0, lengthscales=[0.2, 0.2]
+    )
     likelihood = gpflow.likelihoods.Bernoulli()
     vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
     gpflow.set_trainable(vgp.kernel.variance, False)
@@ -123,24 +123,20 @@ classification_model = create_classification_model(initial_data[FAILURE])
 from trieste.models.gpflow import GPflowModelConfig
 
 models: dict[str, trieste.models.ModelSpec] = {
-    OBJECTIVE: GPflowModelConfig(
-        **{
-            "model": regression_model,
-            "optimizer": gpflow.optimizers.Scipy(),
-        }
-    ),
-    FAILURE: GPflowModelConfig(
-        **{
-            "model": classification_model,
-            "model_args": {
-                "use_natgrads": True,
-            },
-            "optimizer": tf.optimizers.Adam(1e-3),
-            "optimizer_args": {
-                "max_iter": 50,
-            },
-        }
-    ),
+    OBJECTIVE: GPflowModelConfig(**{
+        "model": regression_model,
+        "optimizer": gpflow.optimizers.Scipy(),
+    }),
+    FAILURE: GPflowModelConfig(**{
+        "model": classification_model,
+        "model_args": {
+            "use_natgrads": True,
+        },
+        "optimizer": tf.optimizers.Adam(1e-3),
+        "optimizer_args": {
+            "max_iter": 50,
+        },       
+    }),
 }
 
 # %% [markdown]
@@ -151,21 +147,15 @@ models: dict[str, trieste.models.ModelSpec] = {
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder,
-    ExpectedImprovement,
-    Product,
-    lower_confidence_bound,
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
 )
-
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, dataset, model):
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
-
         return acquisition
-
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
@@ -194,7 +184,11 @@ from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(
-    masked_branin, search_space.lower, search_space.upper, grid_density=50, contour=True
+    masked_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=50,
+    contour=True
 )
 plot_bo_points(
     result.datasets[FAILURE].query_points.numpy(),
@@ -216,7 +210,7 @@ fig = plot_gp_plotly(
     result.models[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=50,
+    grid_density=50
 )
 fig = add_bo_points_plotly(
     x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),

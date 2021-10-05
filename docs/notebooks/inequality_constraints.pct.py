@@ -16,7 +16,6 @@ tf.random.set_seed(1793)
 # %%
 from trieste.space import Box
 
-
 class Sim:
     threshold = 0.5
 
@@ -55,13 +54,11 @@ from trieste.data import Dataset
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
-
 def observer(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
-
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -101,18 +98,13 @@ def create_bo_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(
-        GPflowModelConfig(
-            **{
-                "model": gpr,
-                "optimizer": gpflow.optimizers.Scipy(),
-                "optimizer_args": {
-                    "minimize_args": {"options": dict(maxiter=100)},
-                },
-            }
-        )
-    )
-
+    return trieste.models.create_model(GPflowModelConfig(**{
+        "model": gpr,
+        "optimizer": gpflow.optimizers.Scipy(),
+        "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)},
+        },
+    }))
 
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
@@ -125,7 +117,9 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
-eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof.using(CONSTRAINT))
+eci = trieste.acquisition.ExpectedConstrainedImprovement(
+    OBJECTIVE, pof.using(CONSTRAINT)
+)
 rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 # %% [markdown]
@@ -166,7 +160,9 @@ plt.show()
 # We'll now look at a batch-sequential approach to the same problem. Sometimes it's beneficial to query several points at a time instead of one. The acquisition function we used earlier, built by `ExpectedConstrainedImprovement`, only supports a batch size of 1, so we'll need a new acquisition function builder for larger batch sizes. We can implement this using the reparametrization trick with the Monte-Carlo sampler `BatchReparametrizationSampler`. Note that when we do this, we must initialise the sampler *outside* the acquisition function (here `batch_efi`). This is crucial: a given instance of a sampler produces repeatable, continuous samples, and we can use this to create a repeatable continuous acquisition function. Using a new sampler on each call would not result in a repeatable continuous acquisition function.
 
 # %%
-class BatchExpectedConstrainedImprovement(trieste.acquisition.AcquisitionFunctionBuilder):
+class BatchExpectedConstrainedImprovement(
+    trieste.acquisition.AcquisitionFunctionBuilder
+):
     def __init__(self, sample_size, threshold):
         self._sample_size = sample_size
         self._threshold = threshold
@@ -176,26 +172,34 @@ class BatchExpectedConstrainedImprovement(trieste.acquisition.AcquisitionFunctio
         objective_dataset = datasets[OBJECTIVE]
 
         samplers = {
-            tag: trieste.acquisition.BatchReparametrizationSampler(self._sample_size, model)
-            for tag, model in models.items()
+            tag: trieste.acquisition.BatchReparametrizationSampler(
+                self._sample_size, model
+            ) for tag, model in models.items()
         }
 
-        pf = trieste.acquisition.probability_of_feasibility(models[CONSTRAINT], self._threshold)(
-            tf.expand_dims(objective_dataset.query_points, 1)
-        )
+        pf = trieste.acquisition.probability_of_feasibility(
+            models[CONSTRAINT], self._threshold
+        )(tf.expand_dims(objective_dataset.query_points, 1))
         is_feasible = pf >= 0.5
 
         mean, _ = objective_model.predict(objective_dataset.query_points)
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         def batch_efi(at):
-            samples = {tag: tf.squeeze(sampler.sample(at), -1) for tag, sampler in samplers.items()}
+            samples = {
+                tag: tf.squeeze(sampler.sample(at), -1)
+                for tag, sampler in samplers.items()
+            }
             feasible_mask = samples[CONSTRAINT] < self._threshold  # [N, S, B]
             improvement = tf.where(
-                feasible_mask, tf.maximum(eta - samples[OBJECTIVE], 0.0), 0.0
+                feasible_mask,
+                tf.maximum(eta - samples[OBJECTIVE], 0.),
+                0.
             )  # [N, S, B]
             batch_improvement = tf.reduce_max(improvement, axis=-1)  # [N, S]
-            return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [N, 1]
+            return tf.reduce_mean(
+                batch_improvement, axis=-1, keepdims=True
+            )  # [N, 1]
 
         return batch_efi
 
@@ -223,8 +227,8 @@ batch_data = bo.optimize(
 # %%
 batch_constraint_data = batch_data[CONSTRAINT]
 new_batch_data = (
-    batch_constraint_data.query_points[-num_query_points * num_steps :],
-    batch_constraint_data.observations[-num_query_points * num_steps :],
+    batch_constraint_data.query_points[-num_query_points * num_steps:],
+    batch_constraint_data.observations[-num_query_points * num_steps:]
 )
 
 plot_init_query_points(
@@ -251,13 +255,13 @@ plot_regret(
     data[OBJECTIVE].observations.numpy(),
     ax[0],
     num_init=num_initial_points,
-    mask_fail=mask_fail.flatten(),
+    mask_fail=mask_fail.flatten()
 )
 plot_regret(
     batch_data[OBJECTIVE].observations.numpy(),
     ax[1],
     num_init=num_initial_points,
-    mask_fail=batch_mask_fail.flatten(),
+    mask_fail=batch_mask_fail.flatten()
 )
 
 # %% [markdown]
@@ -275,9 +279,7 @@ class Sim2(Sim):
         z = tf.sin(x) * tf.cos(y) - tf.cos(x) * tf.sin(y)
         return z[:, None]
 
-
 CONSTRAINT2 = "CONSTRAINT2"
-
 
 def observer_two_constraints(query_points):
     return {
@@ -285,7 +287,6 @@ def observer_two_constraints(query_points):
         CONSTRAINT: Dataset(query_points, Sim2.constraint(query_points)),
         CONSTRAINT2: Dataset(query_points, Sim2.constraint2(query_points)),
     }
-
 
 num_initial_points = 10
 initial_data = observer_two_constraints(search_space.sample(num_initial_points))
@@ -296,7 +297,6 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %%
 from trieste.acquisition.combination import Product
-
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
 pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
@@ -320,15 +320,12 @@ new_query_points = constraint_data.query_points[-num_steps:]
 new_observations = constraint_data.observations[-num_steps:]
 new_data = (new_query_points, new_observations)
 
-
 def masked_objective(x):
-    mask_nan = np.logical_or(
-        Sim2.constraint(x) > Sim2.threshold, Sim2.constraint2(x) > Sim2.threshold2
-    )
+    mask_nan = np.logical_or(Sim2.constraint(x) > Sim2.threshold,
+                             Sim2.constraint2(x) > Sim2.threshold2)
     y = np.array(Sim2.objective(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
-
 
 mask_fail1 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold
 mask_fail2 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold2
@@ -338,7 +335,11 @@ import matplotlib.pyplot as plt
 from util.plotting import plot_function_2d, plot_bo_points
 
 fig, ax = plot_function_2d(
-    masked_objective, search_space.lower, search_space.upper, grid_density=50, contour=True
+    masked_objective,
+    search_space.lower,
+    search_space.upper,
+    grid_density=50,
+    contour=True
 )
 plot_bo_points(
     data[OBJECTIVE].query_points.numpy(),

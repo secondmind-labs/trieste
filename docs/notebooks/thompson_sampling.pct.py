@@ -36,18 +36,18 @@ from trieste.models.gpflow import GPflowModelConfig
 
 observations = initial_data.observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
+gpr = gpflow.models.GPR(
+    initial_data.astuple(), kernel, noise_variance=1e-5
+)
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = GPflowModelConfig(
-    **{
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }
-)
+model_config = GPflowModelConfig(**{
+    "model": gpr,
+    "optimizer": gpflow.optimizers.Scipy(),
+    "optimizer_args": {
+        "minimize_args": {"options": dict(maxiter=100)},
+    },
+})
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
@@ -94,10 +94,10 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+    result.try_get_final_model().model, # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=30,
+    grid_density=30
 )
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
