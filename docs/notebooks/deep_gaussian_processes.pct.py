@@ -18,7 +18,8 @@ tf.keras.backend.set_floatx("float64")
 # %%
 import gpflow
 from trieste.objectives import (
-    michalewicz,
+    michalewicz_2,
+    michalewicz_5,
     MICHALEWICZ_2_MINIMUM,
     MICHALEWICZ_5_MINIMUM,
 )
@@ -27,7 +28,7 @@ from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 from math import pi
 
-function = michalewicz
+function = michalewicz_2
 F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 
 search_space = Box([0, 0], [pi, pi])
@@ -276,12 +277,6 @@ ax[1].set_xlabel("# evaluations")
 # We might also expect that the DGP model will do better on higher dimensional data. We explore this by testing a higher-dimensional version of the Michalewicz dataset.
 
 # %%
-from trieste.data import TensorType
-
-
-def michalewicz_5(x: TensorType) -> TensorType:
-    return michalewicz(x, 5)
-
 
 function = michalewicz_5
 F_MINIMIZER = MICHALEWICZ_5_MINIMUM
