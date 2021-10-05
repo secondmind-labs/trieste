@@ -1361,7 +1361,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
     def update_acquisition_function(
         self,
-        function: Optional[AcquisitionFunction],
+        function: AcquisitionFunction,
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
