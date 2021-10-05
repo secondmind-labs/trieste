@@ -47,7 +47,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
 #
-# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
+# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.
 #
 # If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 
@@ -61,21 +61,28 @@ def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GPflowModelConfig(**{
-        "model": gpr,
-        "model_args": {
-            "num_kernel_samples": 100,
-        },
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    })
+    return GPflowModelConfig(
+        **{
+            "model": gpr,
+            "model_args": {
+                "num_kernel_samples": 100,
+            },
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+        }
+    )
+
 
 model = build_model(initial_data)
 
@@ -120,8 +127,8 @@ _, ax = plot_function_2d(
     scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
 )
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
-ax[0, 0].set_xlabel(r'$x_1$')
-ax[0, 0].set_xlabel(r'$x_2$')
+ax[0, 0].set_xlabel(r"$x_1$")
+ax[0, 0].set_xlabel(r"$x_2$")
 
 # %% [markdown]
 # ... or as a three-dimensional plot
@@ -190,9 +197,7 @@ fig.show()
 # We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. Note the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
 
 # %%
-gpflow.utilities.print_summary(
-    result.try_get_final_model().model  # type: ignore
-)
+gpflow.utilities.print_summary(result.try_get_final_model().model)  # type: ignore
 
 variance_list = [
     step.model.model.kernel.variance.numpy()  # type: ignore
@@ -241,8 +246,8 @@ plot_bo_points(
     idx_best=arg_min_idx,
 )
 
-ax[0, 0].set_xlabel(r'$x_1$')
-ax[0, 0].set_xlabel(r'$x_2$')
+ax[0, 0].set_xlabel(r"$x_1$")
+ax[0, 0].set_xlabel(r"$x_2$")
 
 # %% [markdown]
 # ## LICENSE

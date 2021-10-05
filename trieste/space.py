@@ -51,7 +51,11 @@ class SearchSpace(ABC):
             dimensionality from this :class:`SearchSpace`.
         """
 
+    @property
     @abstractmethod
+    def num_input_features(self) -> TensorType:
+        """ The input dimensionality of this search space."""
+
     def __mul__(self: SP, other: SP) -> SP:
         """
         :param other: A search space of the same type as this search space.
@@ -103,6 +107,11 @@ class DiscreteSearchSpace(SearchSpace):
     def points(self) -> TensorType:
         """All the points in this space."""
         return self._points
+
+    @property
+    def num_input_features(self) -> TensorType:
+        """ The input dimensionality of this search space."""
+        return tf.shape(self.points)[-1]
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
@@ -216,6 +225,11 @@ class Box(SearchSpace):
         """The upper bounds of the box."""
         return self._upper
 
+    @property
+    def num_input_features(self) -> TensorType:
+        """ The input dimensionality of this search space."""
+        return tf.shape(self.upper)[-1]
+
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
@@ -328,4 +342,122 @@ class Box(SearchSpace):
         return Box(product_lower_bound, product_upper_bound)
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
+        return self
+
+
+class DecomposableSearchSpace(SearchSpace):
+    r"""
+    Decomposable :class:`SearchSpace` consisting of separate decision and
+    context :class:`SearchSpace`s. This class provides functionality for using
+    either the resulting combined search space or each individual space.
+
+    Note that this class assumes individual points are represented with their context
+    variables first, followed by their decision variables (in the order specified by the
+    individual spaces)
+
+    """
+
+    def __init__(self, context_space: SearchSpace, decision_space: SearchSpace):
+        r"""
+        :param context_space: the domain of the context variables.
+        :param decision_space: the domain of the decision variables.
+        """
+        self._context_space = context_space
+        self._decision_space = decision_space
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""DecomposableSearchSpace(
+        {self._context_space.__repr__()},
+        {self._decision_space.__repr__()})
+        """
+
+    @property
+    def context_space(self) -> SearchSpace:
+        """The domain of the context variables."""
+        return self._context_space
+
+    @property
+    def decision_space(self) -> SearchSpace:
+        """The domain of the decision variables."""
+        return self._decision_space
+
+    @property
+    def num_input_features(self) -> TensorType:
+        """ The input dimensionality of this search space."""
+        return self._context_space.num_input_features + self._decision_space.num_input_features
+
+    def get_context_component(self, values: TensorType) -> TensorType:
+        """
+        Returns the context components of ``values``, assuming that the context variables
+        are listed first.
+        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
+        :return: The context components of ``values` of shape [N_1, D], where
+            N_1 is the dimensionality of the context space.
+        """
+        return values[:, : self.context_space.num_input_features]
+
+    def get_decision_component(self, values: TensorType) -> TensorType:
+        """
+        Returns the decision components of ``values``, assuming that the context variables
+        are listed first.
+        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
+        :return: The decision components of ``values` of shape [N_2, D], where
+            N_2 is the dimensionality of the decision space.
+        """
+        return values[:, -self.decision_space.num_input_features :]
+
+    def __contains__(self, value: TensorType) -> bool | TensorType:
+        """
+        Return `True` if ``value`` is a member of this search space, else `False`. A point is a
+        member if its decision components lie in the decision space and its context components lie
+        in its context space.
+
+        :param value: A point to check for membership of this :class:`SearchSpace`.
+        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+            scalar boolean `TensorType` instead of the `bool` itself.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+            dimensionality from the search space.
+        """
+
+        tf.debugging.assert_equal(
+            tf.shape(value),
+            self.num_input_features,
+            message="value must have same dimensionality as search space",
+        )
+
+        context_component = self.get_context_component(tf.expand_dims(value, 0))[0, :]
+        decision_component = self.get_decision_component(tf.expand_dims(value, 0))[0, :]
+
+        return self._context_space.__contains__(
+            context_component
+        ) and self._decision_space.__contains__(decision_component)
+
+    def sample(self, num_samples: int) -> TensorType:
+        """
+        Sample randomly from the space by sampling from the context and decision spaces
+        and concatenating the resulting samples.
+
+        :param num_samples: The number of points to sample from this search space.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+            from this search space with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
+        context_space_samples = self._context_space.sample(num_samples)
+        decision_space_samples = self._decision_space.sample(num_samples)
+
+        return tf.concat([context_space_samples, decision_space_samples], -1)
+
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled
+            uniformly across both the context and decision variables of this
+            decomposable search space.
+        """
+        return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __deepcopy__(self, memo: dict[int, object]) -> DecomposableSearchSpace:
         return self

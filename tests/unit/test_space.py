@@ -24,7 +24,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.space import Box, DecomposableSearchSpace, DiscreteSearchSpace, SearchSpace
 
 
 class Integers(SearchSpace):
@@ -41,6 +41,10 @@ class Integers(SearchSpace):
 
     def __mul__(self, other: Integers) -> Integers:
         return Integers(self.limit * other.limit)
+
+    @property
+    def num_input_features(self) -> tf.Tensor:
+        pass
 
 
 @pytest.mark.parametrize("exponent", [0, -2])
@@ -85,6 +89,19 @@ def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None
 )
 def test_discrete_search_space_does_not_contain_other_points(point: tf.Tensor) -> None:
     assert point not in DiscreteSearchSpace(_points_in_2D_search_space())
+
+
+@pytest.mark.parametrize(
+    "space, num_input_features",
+    [
+        (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), 1),  # 1d
+        (DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])), 2),  # 2d
+    ],
+)
+def test_discrete_search_space_returns_correct_num_input_features(
+    space: DiscreteSearchSpace, num_input_features: int
+) -> None:
+    assert space.num_input_features == num_input_features
 
 
 @pytest.mark.parametrize(
@@ -269,6 +286,18 @@ def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
         Box(lower, upper)
 
 
+@pytest.mark.parametrize(
+    "space, num_input_features",
+    [
+        (Box([-1], [2]), 1),  # 1d
+        (Box([-1, -2], [1.5, 2.5]), 2),  # 2d
+        (Box([-1, -2, -3], [1.5, 2.5, 3.5]), 3),  # 3d
+    ],
+)
+def test_box_returns_correct_num_input_features(space: Box, num_input_features: int) -> None:
+    assert space.num_input_features == num_input_features
+
+
 def test_box_bounds_attributes() -> None:
     lower, upper = tf.zeros([2]), tf.ones([2])
     box = Box(lower, upper)
@@ -438,3 +467,224 @@ def test_box_deepcopy() -> None:
     box_copy = copy.deepcopy(box)
     npt.assert_allclose(box.lower, box_copy.lower)
     npt.assert_allclose(box.upper, box_copy.upper)
+
+
+def test_decomposable_space_bounds_attributes() -> None:
+    decision_space = Box([-1, -2], [2, 3])
+    context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+
+    assert isinstance(decomposable_space.decision_space, type(decision_space))
+    assert isinstance(decomposable_space.context_space, type(context_space))
+
+    npt.assert_allclose(decomposable_space.decision_space.lower, [-1, -2])
+    npt.assert_allclose(decomposable_space.decision_space.upper, [2, 3])
+
+    npt.assert_allclose(decomposable_space.context_space.points, tf.constant([[-0.5, 0.5]]))
+
+
+@pytest.mark.parametrize(
+    "context_space, decision_space, num_input_features",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            3,
+        ),
+        (DiscreteSearchSpace(tf.constant([[-0.5]])), Box([-1], [2]), 2),
+        (Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5]])), 3),
+        (Box([-1, -2], [2, 3]), Box([-1, -2], [2, 3]), 4),
+    ],
+)
+def test_decomposable_search_space_returns_correct_num_input_features(
+    context_space: SearchSpace, decision_space: SearchSpace, num_input_features: int
+) -> None:
+    space = DecomposableSearchSpace(context_space=context_space, decision_space=decision_space)
+    assert space.num_input_features == num_input_features
+
+
+@pytest.mark.parametrize(
+    "context_space, decision_space, num_context_features, num_decision_features",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5, 0.5]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            2,
+            2,
+        ),
+        (DiscreteSearchSpace(tf.constant([[-0.5]])), Box([-1], [2]), 1, 1),
+        (Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5]])), 2, 1),
+        (Box([-1], [2]), Box([-1, -2], [2, 3]), 1, 2),
+    ],
+)
+def test_decomposable_space_can_get_context_component(
+    context_space: SearchSpace,
+    decision_space: SearchSpace,
+    num_context_features: int,
+    num_decision_features: int,
+) -> None:
+    space = DecomposableSearchSpace(context_space=context_space, decision_space=decision_space)
+    points = tf.random.uniform([10, num_context_features + num_decision_features])
+    npt.assert_array_equal(space.get_context_component(points), points[:, :num_context_features])
+
+
+@pytest.mark.parametrize(
+    "context_space, decision_space, num_context_features, num_decision_features",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5, 0.5]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            2,
+            2,
+        ),
+        (DiscreteSearchSpace(tf.constant([[-0.5]])), Box([-1], [2]), 1, 1),
+        (Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5]])), 2, 1),
+        (Box([-1], [2]), Box([-1, -2], [2, 3]), 1, 2),
+    ],
+)
+def test_decomposable_space_can_get_decision_component(
+    context_space: SearchSpace,
+    decision_space: SearchSpace,
+    num_context_features: int,
+    num_decision_features: int,
+) -> None:
+    space = DecomposableSearchSpace(context_space=context_space, decision_space=decision_space)
+    points = tf.random.uniform([10, num_context_features + num_decision_features])
+    npt.assert_array_equal(space.get_decision_component(points), points[:, -num_decision_features:])
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        tf.constant([-1.0, 0.0, -0.5, 0.5], dtype=tf.float64),
+        tf.constant([2.0, 3.0, -0.5, 0.5], dtype=tf.float64),
+    ],
+)
+def test_decomposable_space_contains_point(point: tf.Tensor) -> None:
+    context_space = Box([-1.0, -2.0], [2.0, 3.0])
+    decision_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+    assert point in decomposable_space
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        tf.constant([-1.1, 0.0, -0.5, 0.5], dtype=tf.float64),  # just outside context space
+        tf.constant([-10, 10.0, -0.5, 0.5], dtype=tf.float64),  # well outside context space
+        tf.constant([2.0, 3.0, 2.0, 7.0], dtype=tf.float64),  # outside decision space
+        tf.constant([-10.0, -10.0, -10.0, -10.0], dtype=tf.float64),  # outside both
+    ],
+)
+def test_decomposable_space_does_not_contains_point(point: tf.Tensor) -> None:
+    context_space = Box([-1.0, -2.0], [2.0, 3.0])
+    decision_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+    assert point not in decomposable_space
+
+
+@pytest.mark.parametrize(
+    "context_space, decision_space, num_input_features",
+    [
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            3,
+        ),
+        (DiscreteSearchSpace(tf.constant([[-0.5]])), Box([-1], [2]), 2),
+        (Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5]])), 3),
+        (Box([-1, -2], [2, 3]), Box([-1, -2], [2, 3]), 4),
+    ],
+)
+def test_decomposable_space_contains_raises_on_point_of_different_shape(
+    context_space: SearchSpace, decision_space: SearchSpace, num_input_features: int
+) -> None:
+    space = DecomposableSearchSpace(context_space=context_space, decision_space=decision_space)
+    for wrong_input_shape in [num_input_features - 1, num_input_features + 1]:
+        point = tf.zeros([wrong_input_shape])
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            space.__contains__(point)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_decomposable_space_sampling_returns_correct_shape(num_samples: int) -> None:
+    decision_space = Box([-1], [2])
+    context_space = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+    samples = decomposable_space.sample(num_samples)
+    npt.assert_array_equal(tf.shape(samples), [num_samples, 3])
+
+
+@pytest.mark.parametrize("num_samples", [-1, -10])
+def test_decomposable_space_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+    decision_space = Box([-1], [2])
+    context_space = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        decomposable_space.sample(num_samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_decomposable_space_discretize_returns_search_space_with_only_points_contained_within_box(
+    num_samples: int,
+) -> None:
+    decision_space = Box([-1, -2], [2, 3])
+    context_space = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+
+    dss = decomposable_space.discretize(num_samples)
+    samples = dss.sample(num_samples)
+
+    assert all(sample in decomposable_space for sample in samples)
+
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_decomposable_space_discretize_returns_search_space_with_correct_number_of_points(
+    num_samples: int,
+) -> None:
+    decision_space = Box([-1, -2], [2, 3])
+    context_space = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64))
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+
+    dss = decomposable_space.discretize(num_samples)
+    samples = dss.sample(num_samples)
+
+    assert len(samples) == num_samples
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        dss.sample(num_samples + 1)
+
+
+def test_decomposable_space_deepcopy() -> None:
+    decision_space = Box([-1, -2], [2, 3])
+    points = tf.random.uniform([100, 2], dtype=tf.float64)
+    context_space = DiscreteSearchSpace(points)
+    decomposable_space = DecomposableSearchSpace(
+        context_space=context_space, decision_space=decision_space
+    )
+    decomposable_space_copy = copy.deepcopy(decomposable_space)
+
+    assert isinstance(
+        decomposable_space_copy.decision_space, type(decomposable_space.decision_space)
+    )
+    assert isinstance(decomposable_space_copy.context_space, type(decomposable_space.context_space))
+
+    copied_decision_space = decomposable_space_copy.decision_space
+    copied_context_space = decomposable_space_copy.context_space
+    npt.assert_allclose(copied_decision_space.lower, [-1, -2])  # type: ignore
+    npt.assert_allclose(copied_decision_space.upper, [2, 3])  # type: ignore
+    npt.assert_allclose(copied_context_space.points, points)  # type: ignore

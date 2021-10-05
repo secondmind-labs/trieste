@@ -76,7 +76,7 @@ plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple. 
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple.
 
 # %%
 plot_mobo_points_in_obj_space(initial_data.observations)
@@ -86,27 +86,40 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
+# In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model.
 #
-# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. 
+# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model.
 
 
 # %%
 def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
-        gprs =[]
-        for idx in range(num_output):
-            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance)
-            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            gprs.append((create_model(GPflowModelConfig(**{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)}}})), 1))
+    gprs = []
+    for idx in range(num_output):
+        single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+        variance = tf.math.reduce_variance(single_obj_data.observations)
+        kernel = gpflow.kernels.Matern52(variance)
+        gpr = gpflow.models.GPR(
+            (single_obj_data.query_points, single_obj_data.observations),
+            kernel,
+            noise_variance=1e-5,
+        )
+        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        gprs.append(
+            (
+                create_model(
+                    GPflowModelConfig(
+                        **{
+                            "model": gpr,
+                            "optimizer": gpflow.optimizers.Scipy(),
+                            "optimizer_args": {"minimize_args": {"options": dict(maxiter=100)}},
+                        }
+                    )
+                ),
+                1,
+            )
+        )
 
-        return ModelStack(*gprs)
+    return ModelStack(*gprs)
 
 
 # %%
@@ -131,8 +144,8 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
-# To conclude, we visualize the queried data across the design space.  
-# We represent the initial points as crosses and the points obtained by our optimization loop as dots. 
+# To conclude, we visualize the queried data across the design space.
+# We represent the initial points as crosses and the points obtained by our optimization loop as dots.
 
 # %%
 dataset = result.try_get_final_dataset()
@@ -193,7 +206,7 @@ def log_hv(observations):
 
 
 # %% [markdown]
-# Finally, we can plot the convergence of our performance metric over the course of the optimization.  
+# Finally, we can plot the convergence of our performance metric over the course of the optimization.
 # The blue vertical line in the figure denotes the time after which BO starts.
 
 # %%
@@ -225,11 +238,13 @@ class Sim:
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
+
 def observer_cst(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
@@ -251,14 +266,18 @@ plot_2obj_cst_query_points(
 plt.show()
 
 mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold
-plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])
+plot_mobo_points_in_obj_space(
+    initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0]
+)
 plt.show()
 
 # %% [markdown]
 # We use the same model wrapper to build and stack the two GP models of the objective:
 
 # %%
-objective_model = build_stacked_independent_objectives_model(initial_data_with_cst[OBJECTIVE], num_objective)
+objective_model = build_stacked_independent_objectives_model(
+    initial_data_with_cst[OBJECTIVE], num_objective
+)
 
 # %% [markdown]
 # We also create a single model of the constraint:
@@ -271,15 +290,17 @@ def create_constraint_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig(
-        **{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    ))
+    return trieste.models.create_model(
+        GPflowModelConfig(
+            **{
+                "model": gpr,
+                "optimizer": gpflow.optimizers.Scipy(),
+                "optimizer_args": {
+                    "minimize_args": {"options": dict(maxiter=100)},
+                },
+            }
+        )
+    )
 
 
 constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])

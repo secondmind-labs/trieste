@@ -30,6 +30,7 @@ tf.random.set_seed(1234)
 search_space = Box([0, 0], [1, 1])
 n_steps = 5
 
+
 def build_model(data, kernel_func=None):
     """kernel_func should be a function that takes variance as a single input parameter"""
     variance = tf.math.reduce_variance(data.observations)
@@ -41,6 +42,7 @@ def build_model(data, kernel_func=None):
     gpflow.set_trainable(gpr.likelihood, False)
 
     return GaussianProcessRegression(gpr)
+
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
@@ -86,6 +88,7 @@ def plot_ask_tell_regret(ask_tell_result):
     ax.set_ylim(0.001, 100)
     ax.set_xlabel("# evaluations")
 
+
 plot_ask_tell_regret(ask_tell.to_result())
 
 # %% [markdown]
@@ -128,8 +131,8 @@ plot_ask_tell_regret(ask_tell.to_result())
 # %% [markdown]
 # ## External experiment: storing optimizer state
 #
-# Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results. 
-# 
+# Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results.
+#
 # In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it by using pickle to write optimization state and read it back.
 
 # %%
