@@ -249,7 +249,7 @@ fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]
-# We see that the DGP model does a much better job at understanding the structure of the function. The standard Gaussian process model has a large signal variance and small lengthscales, which do not result in a good model of the true objective.
+# We see that the DGP model does a much better job at understanding the structure of the function. The standard Gaussian process model has a large signal variance and small lengthscales, which do not result in a good model of the true objective. On the other hand, the DGP model is at least able to infer the local structure around the observations.
 #
 # We can also plot the regret curves of the two models side-by-side.
 
