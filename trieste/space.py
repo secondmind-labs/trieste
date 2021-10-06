@@ -353,6 +353,10 @@ class ProductSearchSpace(SearchSpace):
     Product :class:`SearchSpace` consisting of a product of
     multiple :class:`SearchSpace`s. This class provides functionality for
     accessing either the resulting combined search space or each individual space.
+
+    Note that this class assumes that individual points in product spaces are
+    represented with their inputs in the same order as specified when initializing
+    the space.
     """
 
     def __init__(self, spaces: list[tuple[str, SearchSpace]]):
@@ -385,7 +389,7 @@ class ProductSearchSpace(SearchSpace):
         """
 
     @property
-    def subspace_tags(self) -> SearchSpace:
+    def subspace_tags(self) -> list[str]:
         """Return the names of the subspaces contained in this product space."""
         return self._tags
 
@@ -401,6 +405,7 @@ class ProductSearchSpace(SearchSpace):
     def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
         Returns the components of ``values`` lying in a particular subspace.
+
         :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
         :return: The context components of ``values` of shape [M, D], where
             M is the dimensionality of the specified subspace.
@@ -414,6 +419,9 @@ class ProductSearchSpace(SearchSpace):
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if each of its subspace components lie in each subspace.
+
+        Recall that individual points in product spaces are represented with their inputs in the
+        same order as specified when initializing the space.
 
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a

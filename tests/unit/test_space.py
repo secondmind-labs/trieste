@@ -496,7 +496,7 @@ def test_product_space_subspace_tags_attribute() -> None:
     ],
 )
 def test_product_search_space_returns_correct_dimension(
-    spaces: dict[str, SearchSpace], dimension: int
+    spaces: list[tuple[str, SearchSpace]], dimension: int
 ) -> None:
     space = ProductSearchSpace(spaces=spaces)
     assert space.dimension == dimension
@@ -545,8 +545,8 @@ def test_product_space_get_subspace() -> None:
     ],
 )
 def test_product_space_can_get_subspace_components(
-    spaces: dict[str, SearchSpace],
-    subspace_dim_range: dict[str, int],
+    spaces: list[tuple[str, SearchSpace]],
+    subspace_dim_range: dict[str, list[int]],
 ) -> None:
     space = ProductSearchSpace(spaces)
     points = tf.random.uniform([10, space.dimension])
@@ -579,7 +579,7 @@ def test_product_space_contains_point(point: tf.Tensor) -> None:
         tf.constant([-10.0, -10.0, -10.0, -10.0], dtype=tf.float64),  # outside both
     ],
 )
-def test_product_space_does_not_contains_point(point: tf.Tensor) -> None:
+def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
     space_A = Box([-1.0, -2.0], [2.0, 3.0])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
     product_space = ProductSearchSpace(spaces=[("A", space_A), ("B", space_B)])
@@ -602,7 +602,7 @@ def test_product_space_does_not_contains_point(point: tf.Tensor) -> None:
     ],
 )
 def test_product_space_contains_raises_on_point_of_different_shape(
-    spaces: dict[str, SearchSpace]
+    spaces: list[tuple[str, SearchSpace]]
 ) -> None:
     space = ProductSearchSpace(spaces=spaces)
     dimension = space.dimension
