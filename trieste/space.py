@@ -53,7 +53,7 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
-    def num_input_features(self) -> TensorType:
+    def dimension(self) -> TensorType:
         """The input dimensionality of this search space."""
 
     def __mul__(self: SP, other: SP) -> SP:
@@ -98,6 +98,7 @@ class DiscreteSearchSpace(SearchSpace):
         """
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
+        self._dimension = tf.shape(self.points)[-1]
 
     def __repr__(self) -> str:
         """"""
@@ -109,9 +110,9 @@ class DiscreteSearchSpace(SearchSpace):
         return self._points
 
     @property
-    def num_input_features(self) -> TensorType:
+    def dimension(self) -> TensorType:
         """The input dimensionality of this search space."""
-        return tf.shape(self.points)[-1]
+        return self._dimension
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
@@ -211,6 +212,8 @@ class Box(SearchSpace):
 
         tf.debugging.assert_less(self._lower, self._upper)
 
+        self._dimension = tf.shape(self.upper)[-1]
+
     def __repr__(self) -> str:
         """"""
         return f"Box({self._lower!r}, {self._upper!r})"
@@ -226,9 +229,9 @@ class Box(SearchSpace):
         return self._upper
 
     @property
-    def num_input_features(self) -> TensorType:
+    def dimension(self) -> TensorType:
         """The input dimensionality of this search space."""
-        return tf.shape(self.upper)[-1]
+        return self._dimension
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
@@ -345,73 +348,72 @@ class Box(SearchSpace):
         return self
 
 
-class DecomposableSearchSpace(SearchSpace):
+class ProductSearchSpace(SearchSpace):
     r"""
-    Decomposable :class:`SearchSpace` consisting of separate decision and
-    context :class:`SearchSpace`s. This class provides functionality for using
-    either the resulting combined search space or each individual space.
-
-    Note that this class assumes individual points are represented with their context
-    variables first, followed by their decision variables (in the order specified by the
-    individual spaces)
-
+    Product :class:`SearchSpace` consisting of a product of
+    multiple :class:`SearchSpace`s. This class provides functionality for
+    accessing either the resulting combined search space or each individual space.
     """
 
-    def __init__(self, context_space: SearchSpace, decision_space: SearchSpace):
+    def __init__(self, spaces: list[tuple[str, SearchSpace]]):
         r"""
-        :param context_space: the domain of the context variables.
-        :param decision_space: the domain of the decision variables.
+        :param spaces: A list of tag-space tuples summarizing the names and domains of
+            the space's subspaces.
         """
-        self._context_space = context_space
-        self._decision_space = decision_space
+
+        tags = [tag for (tag, space) in spaces]
+        tf.debugging.assert_equal(
+            len(tags),
+            len(set(tags)),
+            message="subspace names must be unique",
+        )
+
+        self._tags = tags
+        self._spaces = dict(zip(self._tags, [space for (tag, space) in spaces]))
+
+        subspace_sizes = [self._spaces[tag].dimension for tag in self._tags]
+        self._subspace_sizes = dict(zip(self._tags, subspace_sizes))
+        self._subspace_starting_indicies = dict(
+            zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
+        )
+        self._dimension = tf.reduce_sum(subspace_sizes)
 
     def __repr__(self) -> str:
         """"""
         return f"""DecomposableSearchSpace(
-        {self._context_space.__repr__()},
-        {self._decision_space.__repr__()})
+        {[space.__repr__()+"," for space in self._spaces]})
         """
 
     @property
-    def context_space(self) -> SearchSpace:
-        """The domain of the context variables."""
-        return self._context_space
+    def subspace_tags(self) -> SearchSpace:
+        """Return the names of the subspaces contained in this product space."""
+        return self._tags
 
     @property
-    def decision_space(self) -> SearchSpace:
-        """The domain of the decision variables."""
-        return self._decision_space
+    def dimension(self) -> TensorType:
+        """The input dimensionality of this product search space."""
+        return self._dimension
 
-    @property
-    def num_input_features(self) -> TensorType:
-        """The input dimensionality of this search space."""
-        return self._context_space.num_input_features + self._decision_space.num_input_features
+    def get_subspace(self, tag: str) -> SearchSpace:
+        """Return the domain of a particular subspace."""
+        return self._spaces[tag]
 
-    def get_context_component(self, values: TensorType) -> TensorType:
+    def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
-        Returns the context components of ``values``, assuming that the context variables
-        are listed first.
+        Returns the components of ``values`` lying in a particular subspace.
         :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
-        :return: The context components of ``values` of shape [N_1, D], where
-            N_1 is the dimensionality of the context space.
+        :return: The context components of ``values` of shape [M, D], where
+            M is the dimensionality of the specified subspace.
         """
-        return values[:, : self.context_space.num_input_features]
 
-    def get_decision_component(self, values: TensorType) -> TensorType:
-        """
-        Returns the decision components of ``values``, assuming that the context variables
-        are listed first.
-        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
-        :return: The decision components of ``values` of shape [N_2, D], where
-            N_2 is the dimensionality of the decision space.
-        """
-        return values[:, -self.decision_space.num_input_features :]
+        starting_index_of_subspace = self._subspace_starting_indicies[tag]
+        ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes[tag]
+        return values[:, starting_index_of_subspace:ending_index_of_subspace]
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
-        member if its decision components lie in the decision space and its context components lie
-        in its context space.
+        member if each of its subspace components lie in each subspace.
 
         :param value: A point to check for membership of this :class:`SearchSpace`.
         :return: `True` if ``value`` is a member of this search space, else `False`. May return a
@@ -422,20 +424,19 @@ class DecomposableSearchSpace(SearchSpace):
 
         tf.debugging.assert_equal(
             tf.shape(value),
-            self.num_input_features,
+            self.dimension,
             message="value must have same dimensionality as search space",
         )
-
-        context_component = self.get_context_component(tf.expand_dims(value, 0))[0, :]
-        decision_component = self.get_decision_component(tf.expand_dims(value, 0))[0, :]
-
-        return self._context_space.__contains__(
-            context_component
-        ) and self._decision_space.__contains__(decision_component)
+        value = tf.expand_dims(value, 0)
+        in_each_subspace = [
+            self._spaces[tag].__contains__(self.get_subspace_component(tag, value)[0, :])
+            for tag in self._tags
+        ]
+        return tf.math.reduce_all(in_each_subspace)
 
     def sample(self, num_samples: int) -> TensorType:
         """
-        Sample randomly from the space by sampling from the context and decision spaces
+        Sample randomly from the space by sampling from each subspace
         and concatenating the resulting samples.
 
         :param num_samples: The number of points to sample from this search space.
@@ -445,19 +446,16 @@ class DecomposableSearchSpace(SearchSpace):
         """
         tf.debugging.assert_non_negative(num_samples)
 
-        context_space_samples = self._context_space.sample(num_samples)
-        decision_space_samples = self._decision_space.sample(num_samples)
-
-        return tf.concat([context_space_samples, decision_space_samples], -1)
+        subspace_samples = [self._spaces[tag].sample(num_samples) for tag in self._tags]
+        return tf.concat(subspace_samples, -1)
 
     def discretize(self, num_samples: int) -> DiscreteSearchSpace:
         """
         :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
         :return: A discrete search space consisting of ``num_samples`` points sampled
-            uniformly across both the context and decision variables of this
-            decomposable search space.
+            uniformly across the space.
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __deepcopy__(self, memo: dict[int, object]) -> DecomposableSearchSpace:
+    def __deepcopy__(self, memo: dict[int, object]) -> ProductSearchSpace:
         return self
