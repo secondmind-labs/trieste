@@ -381,8 +381,8 @@ class TaggedProductSearchSpace(SearchSpace):
                 len(tags),
                 len(spaces),
                 message=f"""
-                    Number of tags must match number if search spaces but
-                    received {len(tags)} tags but {len(spaces)} subspaces.
+                    Number of tags must match number of subspaces but
+                    received {len(tags)} tags and {len(spaces)} subspaces.
                 """,
             )
             tf.debugging.assert_equal(
@@ -395,7 +395,7 @@ class TaggedProductSearchSpace(SearchSpace):
         self._tags = tuple(tags)  # avoid accidental modification by users
 
         subspace_sizes = [self._spaces[tag].dimension for tag in list(self._tags)]
-        self._subspace_sizes = dict(zip(self._tags, subspace_sizes))
+        self._subspace_sizes_by_tag = dict(zip(self._tags, subspace_sizes))
         self._subspace_starting_indicies = dict(
             zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
         )
@@ -426,13 +426,13 @@ class TaggedProductSearchSpace(SearchSpace):
         """
         Returns the components of ``values`` lying in a particular subspace.
 
-        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
-        :return: The context components of ``values`` of shape [M, D], where
-            M is the dimensionality of the specified subspace.
+        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,Dprod].
+        :return: The sub-components of ``values`` lying in the specified subspace, of shape
+            [N, Dsub], where Dsub is the dimensionality of the specified subspace.
         """
 
         starting_index_of_subspace = self._subspace_starting_indicies[tag]
-        ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes[tag]
+        ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes_by_tag[tag]
         return values[:, starting_index_of_subspace:ending_index_of_subspace]
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -455,12 +455,12 @@ class TaggedProductSearchSpace(SearchSpace):
             self.dimension,
             message="value must have same dimensionality as search space",
         )
-        value = tf.expand_dims(value, 0)
+        value = value[tf.newaxis, ...]
         in_each_subspace = [
             self._spaces[tag].__contains__(self.get_subspace_component(tag, value)[0, :])
             for tag in self._tags
         ]
-        return tf.math.reduce_all(in_each_subspace)
+        return tf.reduce_all(in_each_subspace)
 
     def sample(self, num_samples: int) -> TensorType:
         """
