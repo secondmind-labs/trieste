@@ -214,8 +214,13 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         return points
 
 
-class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP_contra]):
-    """AsyncEGO rule, as name suggests, is designed for asynchronous BO scenarios.
+class AsyncEfficientGlobalOptimization(
+    AcquisitionRule[
+        State[Optional["AsyncEfficientGlobalOptimization.State"], TensorType], SP_contra
+    ]
+):
+    """AsyncEfficientGlobalOptimization rule, as name suggests,
+    is designed for asynchronous BO scenarios.
     By asynchronous BO we understand a use case when multiple objective function
     can be launched in parallel and are expected to arrive at different times.
     Instead of waiting for the rest of observations to return, we want to immediately
@@ -223,7 +228,7 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
 
     To make the best decision about next point to observe, acquisition function
     needs to be aware of currently running observations.
-    We call such points "pending". AsyncEGO provides a ``AsyncEGO.State``
+    We call such points "pending". AsyncEGO provides a ``AsyncEfficientGlobalOptimization.State``
     object that keeps track of pending points.
     """
 
@@ -285,9 +290,9 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[AsyncEGO.State | None, TensorType]:
+    ) -> types.State[AsyncEfficientGlobalOptimization.State | None, TensorType]:
         """
-        Constructs a function that, given ``AsyncEGO.State``,
+        Constructs a function that, given ``AsyncEfficientGlobalOptimization.State``,
         returns a new state object and points to evaluate.
         The state object contains currently known pending points,
         that is points that were requested for evaluation,
@@ -304,7 +309,9 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
             points from the previous acquisition state.
         """
 
-        def state_func(state: AsyncEGO.State | None) -> tuple[AsyncEGO.State | None, TensorType]:
+        def state_func(
+            state: AsyncEfficientGlobalOptimization.State | None,
+        ) -> tuple[AsyncEfficientGlobalOptimization.State | None, TensorType]:
             @tf.function
             def is_not_in_dataset(x: TensorType) -> TensorType:
                 query_points = datasets[OBJECTIVE].query_points
@@ -347,7 +354,7 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
 
                 pending_points = tf.concat([pending_points, chosen_point], axis=0)
 
-            state = AsyncEGO.State(pending_points=pending_points)
+            state = AsyncEfficientGlobalOptimization.State(pending_points=pending_points)
 
             return state, points
 

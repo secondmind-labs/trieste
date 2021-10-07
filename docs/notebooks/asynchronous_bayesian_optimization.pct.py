@@ -12,7 +12,11 @@
 # ---
 
 # %% [markdown]
-# ### Simple objective: branin with sleeps to emulate delay. It has sleep delays to simulate workers returning at different times.
+# # Asynchronous Bayesian optimization with Trieste
+#
+# In this notebook we show how Bayesian optimization can be done asynchronuosly. That is pertinent in scenarios when the objective function we are aiming to optimize can be run for several points in parallel, and observations might return back at different times. To avoid wasting resources we immediatelly request the next point asynchronuosly, taking into account points that still being evaluated.
+#
+# To contrast this approach with regular [batch optimization](batch_optimization.ipynb), this notebook also shows how to run parallel synchronous batch approach.
 
 # %%
 # silence TF warnings and info messages, only print errors
@@ -29,9 +33,9 @@ import math
 import time
 import timeit
 
-enable_sleep_delays = True
 
-
+# %% [markdown]
+# First, let's define a simple objective that will emulate workload of variable time. We will be using class BO benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html), and insert sleep call in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
 # %%
 def objective(points, sleep=True):
     if points.shape[1] != 2:
@@ -52,7 +56,7 @@ def objective(points, sleep=True):
         if sleep:
             # insert some artificial delay
             # increases linearly with the absolute value of points
-            # which means our evaluations will take different time, good for exploring async
+            # which means our evaluations will take different time
             delay = 5 * np.sum(x)
             pid = os.getpid()
             print(
@@ -70,14 +74,11 @@ def objective(points, sleep=True):
 
     return np.array(observations)
 
-
-# %%
+# test the defined objective function
 objective(np.array([[0.1, 0.5]]), sleep=False)
 
 # %% [markdown]
-# ## Here comes Trieste
-#
-# First, define some initial data
+# As always, we need to prepare model and some initial data to kick-start the optimization process.
 
 # %%
 from trieste.space import Box
@@ -93,15 +94,8 @@ initial_data = Dataset(
     observations=tf.constant(initial_observations, dtype=tf.float64),
 )
 
-initial_data
-
-# %% [markdown]
-# Model definition
-
-# %%
 import gpflow
 from trieste.models import create_model
-
 from trieste.models.gpflow.config import GPflowModelConfig
 
 
@@ -121,20 +115,33 @@ def build_model(data):
         }
     )
 
+# these imports will be used later for optimization
+from trieste.acquisition import LocalPenalizationAcquisitionFunction
+from trieste.acquisition.rule import AsyncEfficientGlobalOptimization, EfficientGlobalOptimization
+from trieste.ask_tell_optimization import AskTellOptimizer
+
 
 # %% [markdown]
-# Define a worker that runs a single observation in a separate process. Worker reads next point from the points queue, makes an observation, and inserts observed data into the observations queue.
+# ## Multiprocessing setup
+#
+# To keep this notebook as reproducible as possible, we will only be using Python's multiprocessing package here. In this section we will explain our setup and define some common code to be used later.
+#
+# In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into observations queue. The main process then picks up the observation from the queue, at which moment it either waits for the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchrunous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.
+# 
+# The overall setup is illustrated in this diagram:
+# ![multiprocessing setup](figures/async_bo.png)
 
 # %%
-import psutil
+# Necessary multiprocessing primitives
+from multiprocessing import Manager, Process
 
+# %% [markdown]
+# We now define several common functions to implement the described setup. First we define a worker function that will be running a single observation in a separate process. Worker takes both queues as an input, reads next point from the points queue, makes an observation, and inserts observed data into the observations queue.
 
-def observer_proc(points_queue, observations_queue, cpu_id):
+# %%
+
+def observer_proc(points_queue, observations_queue):
     pid = os.getpid()
-
-    current_process = psutil.Process()
-    current_process.cpu_affinity([cpu_id])
-    print(f"Process {pid}: set CPU to {cpu_id}", flush=True)
 
     while True:
         point_to_observe = points_queue.get()
@@ -149,74 +156,161 @@ def observer_proc(points_queue, observations_queue, cpu_id):
 
         observations_queue.put(new_data)
 
-
 # %% [markdown]
-# Set how many workers can run simultaneously, and iterations for sync case
+# Next we define two helper functions, one is to create a certain number of worker processes, and another is to terminate them once we are done.
 
 # %%
+
+def create_worker_processes(n_workers, points_queue, obseverations_queue):
+    observer_processes = []
+    for i in range(n_workers):
+        worker_proc = Process(target=observer_proc, args=(points_queue, obseverations_queue))
+        worker_proc.daemon = True
+        worker_proc.start()
+
+        observer_processes.append(worker_proc)
+
+    return observer_processes
+
+def terminate_processes(processes):
+    for prc in processes:
+        prc.terminate()
+        prc.join()
+        prc.close()
+
+# %% [markdown]
+# Finally we set some common parameters. See comments below for explanation of what each one means.
+# %%
+# Number of worker processes to run simultaneously
+# Setting this to 1 will turn both setups into non-batch sequential optimization
 num_workers = 3
+# Number of iterations to run the sycnhronous scenario for
 num_iterations = 10
+# Number of observations to collect in asynchronous scenario
+num_observations = num_workers * num_iterations
+# Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
+enable_sleep_delays = True
 
 # %% [markdown]
-# ## Normal sync BO with LP
+# ## Asynchronous optimization
+# This section runs the asynchronous optimization routine. We first setup the [ask/tell optimizer](ask_tell_optimization.ipynb). Notice that we use **AsyncEfficientGlobalOptimization** rule specifically designed for asynchronous scenarios. Next we create thread-safe queues for points and observations, and run the optimization loop.
 #
-# We use LP acquisition function, and run all batch points in parallel. For that we setup the worker processes, as many as there are
+# Crucially, even though we are using batch acquisition function Local Penalization, we specify batch size of 1. This is because we don't really want a batch. Since the amout of workers we have is fixed, whenever we see a new observation we only need one point back. However this process can only be done with acquisition funcitons that implement greedy batch collection strategies, because they are able to take into account points that are currently being observed (in Trieste we call them "pending"). Trieste currently provides two such functions: Local Penalization and GIBBON.
 
 # %%
-from trieste.acquisition import LocalPenalizationAcquisitionFunction
-from trieste.acquisition.rule import AsyncEGO, EfficientGlobalOptimization
-from trieste.ask_tell_optimization import AskTellOptimizer
-from multiprocessing import Manager, Process
 
 # setup Ask Tell BO
 model_spec = build_model(initial_data)
 model = create_model(model_spec)
 
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
-local_penalization_rule = EfficientGlobalOptimization(
+local_penalization_rule = AsyncEfficientGlobalOptimization(num_query_points=1, builder=local_penalization_acq)  # type: ignore
+
+async_bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
+
+# retrieve process id for nice logging
+pid = os.getpid()
+# create point and observation queues
+m = Manager()
+pq = m.Queue()
+oq = m.Queue()
+# keep track of all workers we have launched
+observer_processes = []
+# counter to keep track of collected observations
+points_observed = 0
+
+start = timeit.default_timer()
+try:
+    observer_processes = create_worker_processes(num_workers, pq, oq)
+
+    # init the queue with first batch of points
+    for _ in range(num_workers):
+        point = async_bo.ask()
+        pq.put(np.atleast_2d(point.numpy()))
+
+    while points_observed < num_observations:
+        # keep asking queue for new observations until one arrives
+        try:
+            new_data = oq.get_nowait()
+            print(f"Process {pid}: Main     : received data {new_data}", flush=True)
+        except:
+            continue
+
+        # new_data is a tuple of (point, observation value)
+        # here we turn it into a Dataset and tell of it Trieste
+        points_observed += 1
+        new_data = Dataset(
+            query_points=tf.constant(new_data[0], dtype=tf.float64),
+            observations=tf.constant(new_data[1], dtype=tf.float64),
+        )
+        async_bo.tell(new_data)
+
+        # now we can ask Trieste for one more point
+        # and feed that back into the points queue
+        point = async_bo.ask()
+        print(f"Process {pid}: Main     : acquired point {point}", flush=True)
+        pq.put(np.atleast_2d(point))
+finally:
+    terminate_processes(observer_processes)
+stop = timeit.default_timer()
+
+# Collect the observations, compute the running time
+async_lp_observations = async_bo.to_result().try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+async_lp_time = stop - start
+print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
+
+# %% [markdown]
+# ## Synchronous parallel optimization
+#
+# This section runs the synchronous parallel optimization with Trieste. We again use Local Penalization acquisition function, but this time with batch size equal to the number of workers we have available. Once Trieste suggests the batch, we add all points to the point queue, and workers immediatelly pick them up, one point per worker. Therefore all points in the batch are evaluated in parallel.
+
+# %%
+# setup Ask Tell BO
+model_spec = build_model(initial_data)
+model = create_model(model_spec)
+
+local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
+local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=num_workers, builder=local_penalization_acq
 )
 
 sync_bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
 
 
-# thread-safe queues
-m = Manager()
-points_q = m.Queue()
-observations_q = m.Queue()
-observer_processes = []
+# retrieve process id for nice logging
 pid = os.getpid()
+# create point and observation queues
+m = Manager()
+pq = m.Queue()
+oq = m.Queue()
+# keep track of all workers we have launched
+observer_processes = []
 
 start = timeit.default_timer()
 try:
-    # setup workers
-    for i in range(psutil.cpu_count())[:num_workers]:
-        observer_p = Process(target=observer_proc, args=(points_q, observations_q, i))
-        observer_p.daemon = True
-        observer_p.start()
-
-        observer_processes.append(observer_p)
+    observer_processes = create_worker_processes(num_workers, pq, oq)
 
     # BO loop starts here
     for i in range(num_iterations):
         print(f"Process {pid}: Main     : iteration {i} starts", flush=True)
 
-        # get a batch of points, send them to queue
+        # get a batch of points from Trieste, send them to points queue
         # each worker picks up a point and processes it
         points = sync_bo.ask()
         for point in points.numpy():
-            points_q.put(point.reshape(1, -1))
+            pq.put(point.reshape(1, -1))  # reshape is to make point a 2d array
 
-        # this is sync scenario
-        # so now we wait for all workers to finish
-        # we assume no failures here
+        # now we wait for all workers to finish
+        # we create an empty dataset and wait
+        # until we collected as many observations in it
+        # as there were points in the batch
         all_new_data = Dataset(
             tf.zeros((0, initial_data.query_points.shape[1]), tf.float64),
             tf.zeros((0, initial_data.observations.shape[1]), tf.float64),
         )
         while len(all_new_data) < num_workers:
             # this line blocks the process until new data is available in the queue
-            new_data = observations_q.get()
+            new_data = oq.get()
             print(f"Process {pid}: Main     : received data {new_data}", flush=True)
 
             new_data = Dataset(
@@ -226,88 +320,24 @@ try:
 
             all_new_data = all_new_data + new_data
 
+        # tell Trieste of new batch of observations
         sync_bo.tell(all_new_data)
 
 finally:
-    # cleanup workers
-    for prc in observer_processes:
-        prc.terminate()
-        prc.join()
-        prc.close()
+    terminate_processes(observer_processes)
 stop = timeit.default_timer()
 
+# Collect the observations, compute the running time
 sync_lp_observations = (
     sync_bo.to_result().try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
 )
-
 sync_lp_time = stop - start
-print(f"Got {len(sync_lp_observations)} in {sync_lp_time:.2f}s")
+print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
+
 
 # %% [markdown]
-# ## Async BO
-
-# %%
-from multiprocessing import Process, Manager
-
-# setup Ask Tell BO
-model_spec = build_model(initial_data)
-model = create_model(model_spec)
-
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
-local_penalization_rule = AsyncEGO(num_query_points=1, builder=local_penalization_acq)
-
-bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
-
-
-m = Manager()
-pq = m.Queue()
-oq = m.Queue()
-observer_processes = []
-pid = os.getpid()
-
-points_observed = 0
-start = timeit.default_timer()
-try:
-    for i in range(psutil.cpu_count())[:num_workers]:
-        observer_p = Process(target=observer_proc, args=(pq, oq, i))
-        observer_p.daemon = True
-        observer_p.start()
-
-        observer_processes.append(observer_p)
-
-    # init the queue with first batch of points
-    for _ in range(num_workers):
-        point = bo.ask()
-        pq.put(np.atleast_2d(point.numpy()))
-
-    while points_observed < len(sync_lp_observations) - len(initial_data):
-        try:
-            new_data = oq.get_nowait()
-            print(f"Process {pid}: Main     : received data {new_data}", flush=True)
-        except:
-            continue
-
-        new_data = Dataset(
-            query_points=tf.constant(new_data[0], dtype=tf.float64),
-            observations=tf.constant(new_data[1], dtype=tf.float64),
-        )
-
-        bo.tell(new_data)
-        point = bo.ask()
-        print(f"Process {pid}: Main     : acquired point {point}", flush=True)
-        pq.put(np.atleast_2d(point))
-        points_observed += 1
-finally:
-    for prc in observer_processes:
-        prc.terminate()
-        prc.join()
-        prc.close()
-stop = timeit.default_timer()
-
-async_lp_observations = bo.to_result().try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
-
-async_lp_time = stop - start
-print(f"Got {len(async_lp_observations)} in {async_lp_time:.2f}s")
+# ## Comparison
+# To compare outcomes of sync and async runs, let's plot their respective regrets side by side, and print out the running time. We expect async scenario to run a little bit faster for this toy problem.
 
 # %%
 from trieste.objectives import SCALED_BRANIN_MINIMUM

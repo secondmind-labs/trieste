@@ -34,7 +34,7 @@ from trieste.acquisition import (
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
-    AsyncEGO,
+    AsyncEfficientGlobalOptimization,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -223,14 +223,16 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
     "rule_fn",
     [
         lambda acq, n_points: EfficientGlobalOptimization(acq, num_query_points=n_points),
-        lambda acq, n_points: AsyncEGO(acq, num_query_points=n_points),
+        lambda acq, n_points: AsyncEfficientGlobalOptimization(acq, num_query_points=n_points),
     ],
 )
-# As a side effect, this test ensures and EGO and AsyncEGO behave similarly in sync mode
+# As a side effect, this test ensures and EGO and AsyncEfficientGlobalOptimization
+# behave similarly in sync mode
 def test_greedy_batch_acquisition_rule_acquire(
     rule_fn: Callable[
         [_GreedyBatchModelMinusMeanMaximumSingleBuilder, int],
-        AcquisitionRule[TensorType, Box] | AcquisitionRule[State[TensorType, AsyncEGO.State], Box],
+        AcquisitionRule[TensorType, Box]
+        | AcquisitionRule[State[TensorType, AsyncEfficientGlobalOptimization.State], Box],
     ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
@@ -238,7 +240,7 @@ def test_greedy_batch_acquisition_rule_acquire(
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
     ego: AcquisitionRule[TensorType, Box] | AcquisitionRule[
-        State[TensorType, AsyncEGO.State], Box
+        State[TensorType, AsyncEfficientGlobalOptimization.State], Box
     ] = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
@@ -262,10 +264,10 @@ def test_async_ego_raises_for_no_or_negative_query_points() -> None:
     acq_builder = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
 
     with pytest.raises(ValueError):
-        AsyncEGO(acq_builder, num_query_points=0)
+        AsyncEfficientGlobalOptimization(acq_builder, num_query_points=0)
 
     with pytest.raises(ValueError):
-        AsyncEGO(acq_builder, num_query_points=-2)
+        AsyncEfficientGlobalOptimization(acq_builder, num_query_points=-2)
 
 
 def test_async_ego_raises_for_non_greedy_function() -> None:
@@ -273,14 +275,16 @@ def test_async_ego_raises_for_non_greedy_function() -> None:
     with pytest.raises(NotImplementedError):
         # we are deliberately passing in wrong object
         # hence type ignore
-        AsyncEGO(non_greedy_function_builder)  # type: ignore
+        AsyncEfficientGlobalOptimization(non_greedy_function_builder)  # type: ignore
 
 
 def test_async_ego_keeps_track_of_pending_points() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
-    async_ego: AsyncEGO[Box] = AsyncEGO(acq, num_query_points=num_query_points)
+    async_ego: AsyncEfficientGlobalOptimization[Box] = AsyncEfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
 
     state_fn = async_ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())

@@ -24,7 +24,12 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
-from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TrustRegion
+from trieste.acquisition.rule import (
+    AcquisitionRule,
+    AsyncEfficientGlobalOptimization,
+    EfficientGlobalOptimization,
+    TrustRegion,
+)
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
@@ -51,7 +56,16 @@ from trieste.types import State, TensorType
                 bool,
                 Union[
                     Callable[[], AcquisitionRule[TensorType, Box]],
-                    Callable[[], AcquisitionRule[State[TensorType, TrustRegion.State], Box]],
+                    Callable[
+                        [],
+                        AcquisitionRule[
+                            State[
+                                TensorType,
+                                Union[AsyncEfficientGlobalOptimization.State, TrustRegion.State],
+                            ],
+                            Box,
+                        ],
+                    ],
                 ],
             ]
         ],
@@ -70,6 +84,16 @@ from trieste.types import State, TensorType
                     num_query_points=3,
                 ),
             ),
+            (
+                30,
+                False,
+                lambda: AsyncEfficientGlobalOptimization(
+                    LocalPenalizationAcquisitionFunction(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=1,
+                ),
+            ),
         ],
     ),
 )
@@ -77,7 +101,12 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     reload_state: bool,
     acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
-    | Callable[[], AcquisitionRule[State[TensorType, TrustRegion.State], Box]],
+    | Callable[
+        [],
+        AcquisitionRule[
+            State[TensorType, AsyncEfficientGlobalOptimization.State | TrustRegion.State], Box
+        ],
+    ],
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
     # we need to use new acquisition function object to imitate real life usage
@@ -114,7 +143,9 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
         new_point = ask_tell.ask()
 
         if reload_state:
-            state: Record[None | State[TensorType, TrustRegion.State]] = ask_tell.to_record()
+            state: Record[
+                None | State[TensorType, AsyncEfficientGlobalOptimization.State | TrustRegion.State]
+            ] = ask_tell.to_record()
             written_state = pickle.dumps(state)
 
         new_data_point = observer(new_point)
@@ -125,7 +156,9 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
 
         ask_tell.tell(new_data_point)
 
-    result: OptimizationResult[None | State[TensorType, TrustRegion.State]] = ask_tell.to_result()
+    result: OptimizationResult[
+        None | State[TensorType, AsyncEfficientGlobalOptimization.State | TrustRegion.State]
+    ] = ask_tell.to_result()
     dataset = result.try_get_final_dataset()
 
     arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
