@@ -488,7 +488,7 @@ class TaggedProductSearchSpace(SearchSpace):
     def __mul__(self, other: SearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
-        building a tree of :class:`TaggedProductSearchSpace`\ s. 
+        building a tree of :class:`TaggedProductSearchSpace`\ s.
 
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
