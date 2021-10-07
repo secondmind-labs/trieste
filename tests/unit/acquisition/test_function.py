@@ -1073,10 +1073,11 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
 
 @random_seed
 @pytest.mark.parametrize(
-    "test_input, obj_samples, pareto_front_obs, reference_point, expected_output",
+    "test_input, pending_input, obj_samples, pareto_front_obs, reference_point, expected_output",
     [
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-6.5, -4.5], [-7.0, -4.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1084,7 +1085,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="q_2, both points contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-6.5, -4.5], [-6.0, -4.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1092,7 +1094,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="q_2, only 1 point contributes",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-2.0, -2.0], [0.0, -0.1]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1100,7 +1103,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="q_2, neither contributes",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-6.5, -4.5], [-9.0, -2.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1108,7 +1112,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_2_q_2, test input better than current-best first objective",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-6.5, -4.5], [-6.0, -6.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1116,7 +1121,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_2_q_2, test input better than current best second objective",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 3, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(2, 1)),
             tf.constant([[[-6.5, -4.5], [-9.0, -2.0], [-7.0, -4.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1124,7 +1130,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_2_q_3, all points contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 3, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(2, 1)),
             tf.constant([[[-6.5, -4.5], [-9.0, -2.0], [-7.0, -5.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1132,7 +1139,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_2_q_3, not all points contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 3, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(2, 1)),
             tf.constant([[[-0.0, -4.5], [-1.0, -2.0], [-3.0, -0.0]]]),
             tf.constant([[-4.0, -5.0], [-5.0, -5.0], [-8.5, -3.5], [-8.5, -3.0], [-9.0, -1.0]]),
             tf.constant([0.0, 0.0]),
@@ -1140,7 +1148,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_2_q_3, none contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-1.0, -1.0, -1.0], [-2.0, -2.0, -2.0]]]),
             tf.constant([[-4.0, -2.0, -3.0], [-3.0, -5.0, -1.0], [-2.0, -4.0, -2.0]]),
             tf.constant([1.0, 1.0, 1.0]),
@@ -1148,7 +1157,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_3_q_2, none contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant([[[-1.0, -2.0, -6.0], [-1.0, -3.0, -4.0]]]),
             tf.constant([[-4.0, -2.0, -3.0], [-3.0, -5.0, -1.0], [-2.0, -4.0, -2.0]]),
             tf.constant([1.0, 1.0, 1.0]),
@@ -1156,7 +1166,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
             id="obj_3_q_2, all points contribute",
         ),
         pytest.param(
-            tf.zeros(shape=(1, 2, 1)),
+            tf.zeros(shape=(1, 1, 1)),
+            tf.zeros(shape=(1, 1)),
             tf.constant(
                 [[[-2.0, -3.0, -7.0], [-2.0, -4.0, -5.0]], [[-1.0, -2.0, -6.0], [-1.0, -3.0, -4.0]]]
             ),
@@ -1169,6 +1180,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
 )
 def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified_samples(
     test_input: TensorType,
+    pending_input: TensorType,
     obj_samples: TensorType,
     pareto_front_obs: TensorType,
     reference_point: TensorType,
@@ -1183,6 +1195,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
                 reference_point,
                 tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
             ),
+            pending_points=pending_input
         )(test_input),
         expected_output,
         rtol=1e-5,

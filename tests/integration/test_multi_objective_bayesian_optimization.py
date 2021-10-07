@@ -46,23 +46,23 @@ from trieste.types import TensorType
             id="ehvi_vlmop2",
         ),
         pytest.param(
-            15,
+            10,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement(sample_size=500).using(OBJECTIVE),
                 num_query_points=2,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
-            -3.44,
+            -3.52,
             id="qehvi_vlmop2_q_2",
         ),
         pytest.param(
-            10,
+            5,
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
                 num_query_points=4,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
-            -3.2095,
+            -3.49,
             id="qehvi_vlmop2_q_4",
         ),
     ],
