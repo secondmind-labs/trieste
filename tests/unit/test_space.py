@@ -623,7 +623,7 @@ def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
     ],
 )
 def test_product_space_contains_raises_on_point_of_different_shape(
-    spaces: Sequence[SearchSpace]
+    spaces: Sequence[SearchSpace],
 ) -> None:
     space = TaggedProductSearchSpace(spaces=spaces)
     dimension = space.dimension
@@ -704,19 +704,19 @@ def test_product_space___mul___() -> None:
     product_of_product_spaces = product_space_1 * product_space_2
 
     subspace_0 = product_of_product_spaces.get_subspace("0")
-    subspace_0_A = subspace_0.get_subspace("A") # type: ignore
+    subspace_0_A = subspace_0.get_subspace("A")  # type: ignore
     assert isinstance(subspace_0_A, Box)
     npt.assert_array_equal(subspace_0_A.lower, [-1])
     npt.assert_array_equal(subspace_0_A.upper, [2])
-    subspace_0_B = subspace_0.get_subspace("B") # type: ignore
+    subspace_0_B = subspace_0.get_subspace("B")  # type: ignore
     assert isinstance(subspace_0_B, DiscreteSearchSpace)
     npt.assert_array_equal(subspace_0_B.points, tf.ones([100, 2], dtype=tf.float64))
 
     subspace_1 = product_of_product_spaces.get_subspace("1")
-    subspace_1_C = subspace_1.get_subspace("C") # type: ignore
+    subspace_1_C = subspace_1.get_subspace("C")  # type: ignore
     assert isinstance(subspace_1_C, Box)
     npt.assert_array_equal(subspace_1_C.lower, [-2, -2])
     npt.assert_array_equal(subspace_1_C.upper, [2, 3])
-    subspace_1_D = subspace_1.get_subspace("D") # type: ignore
+    subspace_1_D = subspace_1.get_subspace("D")  # type: ignore
     assert isinstance(subspace_1_D, DiscreteSearchSpace)
     npt.assert_array_equal(subspace_1_D.points, tf.ones([5, 3], dtype=tf.float64))
