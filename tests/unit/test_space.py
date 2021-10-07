@@ -551,7 +551,7 @@ def test_product_space_can_get_subspace_components(
     space = ProductSearchSpace(spaces)
     points = tf.random.uniform([10, space.dimension])
 
-    for tag in space._spaces.keys():
+    for tag in space.subspace_tags:
         subspace_points = points[:, subspace_dim_range[tag][0] : subspace_dim_range[tag][1]]
         npt.assert_array_equal(space.get_subspace_component(tag, points), subspace_points)
 
@@ -577,6 +577,7 @@ def test_product_space_contains_point(point: tf.Tensor) -> None:
         tf.constant([-10, 10.0, -0.5, 0.5], dtype=tf.float64),  # well outside context space
         tf.constant([2.0, 3.0, 2.0, 7.0], dtype=tf.float64),  # outside decision space
         tf.constant([-10.0, -10.0, -10.0, -10.0], dtype=tf.float64),  # outside both
+        tf.constant([-0.5, 0.5, 1.0, 2.0], dtype=tf.float64),  # swap order of components
     ],
 )
 def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
@@ -609,7 +610,7 @@ def test_product_space_contains_raises_on_point_of_different_shape(
     for wrong_input_shape in [dimension - 1, dimension + 1]:
         point = tf.zeros([wrong_input_shape])
         with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-            space.__contains__(point)
+            _ = point in space
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
@@ -657,6 +658,16 @@ def test_product_space_discretize_returns_search_space_with_correct_number_of_po
 
     assert len(samples) == num_samples
 
+
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_product_space_discretize_raises_if_sample_larger_than_discretization(
+    num_samples: int,
+) -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    product_space = ProductSearchSpace(spaces=[("A", space_A), ("B", space_B)])
+
+    dss = product_space.discretize(num_samples)
     with pytest.raises(tf.errors.InvalidArgumentError):
         dss.sample(num_samples + 1)
 

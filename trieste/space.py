@@ -98,7 +98,7 @@ class DiscreteSearchSpace(SearchSpace):
         """
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
-        self._dimension = tf.shape(self.points)[-1]
+        self._dimension = tf.shape(self._points)[-1]
 
     def __repr__(self) -> str:
         """"""
@@ -212,7 +212,7 @@ class Box(SearchSpace):
 
         tf.debugging.assert_less(self._lower, self._upper)
 
-        self._dimension = tf.shape(self.upper)[-1]
+        self._dimension = tf.shape(self._upper)[-1]
 
     def __repr__(self) -> str:
         """"""
@@ -369,7 +369,7 @@ class ProductSearchSpace(SearchSpace):
         tf.debugging.assert_equal(
             len(tags),
             len(set(tags)),
-            message="subspace names must be unique",
+            message=f"subspace names must be unique, received {tags}.",
         )
 
         self._tags = tags
@@ -385,7 +385,7 @@ class ProductSearchSpace(SearchSpace):
     def __repr__(self) -> str:
         """"""
         return f"""DecomposableSearchSpace(
-        {[space.__repr__()+"," for space in self._spaces]})
+        {[str((tag, self.get_subspace(tag)))+"," for tag in self.subspace_tags]})
         """
 
     @property
