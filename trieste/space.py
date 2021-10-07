@@ -352,7 +352,7 @@ class Box(SearchSpace):
 class TaggedProductSearchSpace(SearchSpace):
     r"""
     Product :class:`SearchSpace` consisting of a product of
-    multiple :class:`SearchSpace`s. This class provides functionality for
+    multiple :class:`SearchSpace`. This class provides functionality for
     accessing either the resulting combined search space or each individual space.
 
     Note that this class assumes that individual points in product spaces are
@@ -362,9 +362,16 @@ class TaggedProductSearchSpace(SearchSpace):
 
     def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
         r"""
-        TODO discuss
+        Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If
+        ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
+        subspaces are labelled numerically.
+
         :param spaces: A list of tag-space tuples summarizing the names and domains of
             the space's subspaces.
+        :param tags: An optional list of tags giving the unique identifiers of
+            the space's subspaces.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
+            length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
         """
 
         if tags is None:
@@ -384,8 +391,8 @@ class TaggedProductSearchSpace(SearchSpace):
                 message=f"Subspace names must be unique but received {tags}.",
             )
 
-        self._spaces = dict(zip(tags, [space for space in spaces]))
-        self._tags = tuple(tag for tag in tags)  # fix to avoid accidental modification
+        self._spaces = dict(zip(tags, spaces))
+        self._tags = tuple(tags)  # avoid accidental modification by users
 
         subspace_sizes = [self._spaces[tag].dimension for tag in list(self._tags)]
         self._subspace_sizes = dict(zip(self._tags, subspace_sizes))
@@ -420,7 +427,7 @@ class TaggedProductSearchSpace(SearchSpace):
         Returns the components of ``values`` lying in a particular subspace.
 
         :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,D].
-        :return: The context components of ``values` of shape [M, D], where
+        :return: The context components of ``values`` of shape [M, D], where
             M is the dimensionality of the specified subspace.
         """
 
@@ -483,15 +490,15 @@ class TaggedProductSearchSpace(SearchSpace):
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
         building a tree of :class:`TaggedProductSearchSpace`\ s. For example:
 
-            >>> space_0 = TaggedProductSearchSpace(spaces=[Box([0.0,1.0]),Box[0.0,2.0]])
-            >>> space_1 = TaggedProductSearchSpace(spaces=[Box([0.0,3.0]),Box[0.0,4.0]])
+            >>> space_0 = TaggedProductSearchSpace(spaces=[Box([0.0],[1.0]),Box[0.0],[2.0]])
+            >>> space_1 = TaggedProductSearchSpace(spaces=[Box([0.0],[3.0]),Box[0.0],[4.0]])
             >>> new_space = tagged_space_0 * tagged_space_1
             >>> new_box.get_subspace("0")
-            TaggedProductSearchSpace(spaces=[Box([0.0,1.0]),Box[0.0,2.0]], tags=["0", "1"])
+            TaggedProductSearchSpace(spaces=[Box([0.0],[1.0]),Box[0.0],[2.0]], tags=["0", "1"])
             >>> new_box.get_subspace("1")
-            TaggedProductSearchSpace(spaces=[Box([0.0,3.0]),Box[0.0,4.0]], tags=["0", "1"])
+            TaggedProductSearchSpace(spaces=[Box([0.0],[3.0]),Box[0.0],[4.0]], tags=["0", "1"])
             >>> new_box.get_subspace("0").get_subspace("0")
-            Box([0.0,1.0]
+            Box([0.0],[1.0]
 
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
