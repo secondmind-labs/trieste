@@ -19,7 +19,8 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from tests.util.models.gpflow.models import fnc_3x_plus_10, gpr_model
+from tests.util.models.gpflow.models import gpr_model
+from tests.util.models.models import fnc_3x_plus_10
 from trieste.models import ModelConfig
 
 

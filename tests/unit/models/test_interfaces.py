@@ -27,11 +27,10 @@ from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
-    fnc_2sin_x_over_3,
-    fnc_3x_plus_10,
     gpr_model,
     sgpr_model,
 )
+from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models import ModelStack, TrainableProbabilisticModel
 from trieste.types import TensorType

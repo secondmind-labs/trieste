@@ -11,12 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
-"""
 
-from . import gpflow, gpflux, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+import pytest
+import tensorflow as tf
+
+
+# Setup and teardown fixture to set keras floatx to float64 before test starts
+# then return it to previous value at test finish
+# pytest uses yield in a funny way, so we use type ignore
+@pytest.fixture(name="keras_float")  # type: ignore
+def _keras_float() -> None:
+    current_float = tf.keras.backend.floatx()
+    tf.keras.backend.set_floatx("float64")
+    yield
+    tf.keras.backend.set_floatx(current_float)

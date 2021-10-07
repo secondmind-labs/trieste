@@ -19,7 +19,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="trieste",
-    version="0.6.0",
+    version="0.7.0",
     author="The Trieste contributors",
     author_email="labs@secondmind.ai",
     description="A Bayesian optimization research toolbox built on TensorFlow",
@@ -39,7 +39,7 @@ setup(
     install_requires=[
         "absl-py",
         "gpflow==2.2.*",
-        "gpflux==0.1.*",
+        "gpflux==0.2.*",
         "numpy",
         "tensorflow>=2.4",
         "tensorflow-probability>=0.12",
