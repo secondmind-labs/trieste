@@ -1288,7 +1288,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisition
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :param pending_points
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]).
         :return: The batch expected hypervolume improvement acquisition function.
         """
 
@@ -1319,14 +1319,13 @@ def batch_ehvi(
     :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
         decomposition of the covariance matrix.
     :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
-        bounds for hypervolume improvement calculation
-    :param pending_points
+        bounds for hypervolume improvement calculation.
+    :param pending_points: Points already chosen to be in the current batch (of shape [M,D]).
     :return: The batch expected hypervolume improvement acquisition
         function for objective minimisation.
     """
 
     def acquisition(at: TensorType) -> TensorType:
-        # _batch_size = at.shape[-2]  # B
         _batch_size = 1 if pending_points is None else pending_points.shape[0] + 1  # B
 
         def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
