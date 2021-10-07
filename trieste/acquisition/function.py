@@ -2052,26 +2052,56 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
-    See also :cite:`MacKay1992` for details.
     """
+
+    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        """
+        self._jitter = jitter
 
     def __repr__(self) -> str:
         """"""
         return "PredictiveVariance()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel, jitter: float = DEFAULTS.JITTER
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
         :param model: The model over the specified ``dataset``.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+
         :return: The determinant of the predictive function.
         """
 
-        def determinantcovariance(at: TensorType) -> TensorType:
-            _, covariance = model.predict_joint(at)
-            return tf.exp(tf.linalg.logdet(covariance + jitter))
+        pv = determinantcovariance(model, self._jitter)
+        return tf.function(lambda at: pv(at))
 
-        return determinantcovariance
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        """
+        return function  # no need to update anything
+
+
+def determinantcovariance(model: ProbabilisticModel, jitter: float) -> TensorType:
+    """
+    The predictive variance acquisition function for active learning
+    See also :cite:`MacKay1992` for details.
+
+    :param model: The model of the objective function.
+    :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+    """
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+        _, covariance = model.predict_joint(x)
+        return tf.exp(tf.linalg.logdet(covariance + jitter))
+
+    return acquisition
