@@ -215,14 +215,18 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
 
 
 class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP_contra]):
-    """AsyncEGO rule, as name suggests, is designed for async BO scenarios.
-    By async BO we understand a use case when multiple objective function can be launched in parallel
-    and are expected to arrive at different times. Instead of waiting for the rest of observations to return,
-    we want to immediately use acquisition function to launch a new observation and avoid wasting computational resources.
+    """AsyncEGO rule, as name suggests, is designed for asynchronous BO scenarios.
+    By asynchronous BO we understand a use case when multiple objective function
+    can be launched in parallel and are expected to arrive at different times.
+    Instead of waiting for the rest of observations to return, we want to immediately
+    use acquisition function to launch a new observation and avoid wasting computational resources.
 
-    To make the best decision about next point to observe, acquisition function needs to be aware of currently running observations.
-    We call such points "pending". AsyncEGO provides a ``AsyncEGO.State`` object that keeps track of pending points
+    To make the best decision about next point to observe, acquisition function
+    needs to be aware of currently running observations.
+    We call such points "pending". AsyncEGO provides a ``AsyncEGO.State``
+    object that keeps track of pending points.
     """
+
     @dataclass(frozen=True)
     class State:
         pending_points: TensorType
@@ -235,7 +239,7 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
     ):
         """
         :param builder: Acquisition function builder. Only greedy batch approaches are supported,
-            because they are the only ones currently supporting the pending points concept.
+            because they can be told what points are pending.
         :param optimizer: The optimizer with which to optimize the acquisition function built by
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
@@ -281,7 +285,7 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[S | None, TensorType]:
+    ) -> types.State[AsyncEGO.State | None, TensorType]:
         """
         Constructs a function that, given ``AsyncEGO.State``,
         returns a new state object and points to evaluate.
@@ -302,7 +306,7 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
 
         def state_func(state: AsyncEGO.State | None) -> tuple[AsyncEGO.State | None, TensorType]:
             @tf.function
-            def is_not_in_dataset(x):
+            def is_not_in_dataset(x: TensorType) -> TensorType:
                 query_points = datasets[OBJECTIVE].query_points
                 return tf.reduce_all(tf.reduce_any(tf.not_equal(query_points, x), axis=1))
 
@@ -313,22 +317,32 @@ class AsyncEGO(AcquisitionRule[State[Optional["AsyncEGO.State"], TensorType], SP
                 mask = tf.map_fn(is_not_in_dataset, pending_points, fn_output_signature=tf.bool)
                 pending_points = tf.boolean_mask(pending_points, mask)
 
-            acquisition_function = self._builder.prepare_acquisition_function(
-                datasets, models, pending_points
-            )
+            if self._acquisition_function is None:
+                self._acquisition_function = self._builder.prepare_acquisition_function(
+                    datasets, models, pending_points
+                )
+            else:
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function, datasets, models, pending_points
+                )
 
-            points = self._optimizer(search_space, acquisition_function)
-            pending_points = points
+            points = self._optimizer(search_space, self._acquisition_function)
+            if pending_points is None:
+                pending_points = points
+            else:
+                pending_points = tf.concat([pending_points, points], axis=0)
 
-            for _ in range(self._num_query_points - 1):  # greedily allocate batch elements
-                acquisition_function = self._builder.update_acquisition_function(
-                    acquisition_function,
+            for _ in range(
+                self._num_query_points - 1
+            ):  # greedily allocate additional batch elements
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function,
                     datasets,
                     models,
                     pending_points=pending_points,
                     new_optimization_step=False,
                 )
-                chosen_point = self._optimizer(search_space, acquisition_function)
+                chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
                 pending_points = tf.concat([pending_points, chosen_point], axis=0)
@@ -539,7 +553,9 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: TrustRegion.State | None) -> tuple[TrustRegion.State | None, TensorType]:
+        def state_func(
+            state: TrustRegion.State | None,
+        ) -> tuple[TrustRegion.State | None, TensorType]:
 
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
@@ -574,4 +590,4 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
             return state_, points
 
-        return go
+        return state_func

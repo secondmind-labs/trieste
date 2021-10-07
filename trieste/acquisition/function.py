@@ -1290,7 +1290,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         :param models: The models over each dataset in ``datasets``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
-        :param new_optimization_step: Indicates if this call to update_acquisition_function
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
@@ -1373,7 +1373,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
-        :param new_optimization_step: Indicates if this call to update_acquisition_function
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
@@ -1382,7 +1382,6 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             dataset,
             model,
             pending_points=pending_points,
-            new_optimization_step=new_optimization_step,
         )
 
 
@@ -1466,7 +1465,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset))
 
         acq = self._update_base_acquisition_function(dataset, model)
-        if pending_points is not None:
+        if pending_points is not None and len(pending_points) != 0:
             acq = self._update_penalization(acq, dataset, model, pending_points)
 
         return acq
@@ -1485,7 +1484,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
-        :param new_optimization_step: Indicates if this call to update_acquisition_function
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
@@ -1498,7 +1497,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
         if pending_points is None or len(pending_points) == 0:
             # no penalization required if no pending_points
-            return self._base_acquisition_function
+            return cast(AcquisitionFunction, self._base_acquisition_function)
 
         return self._update_penalization(function, dataset, model, pending_points)
 
@@ -1802,7 +1801,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset))
 
         acq = self._update_quality_term(dataset, model)
-        if pending_points is not None:
+        if pending_points is not None and len(pending_points) != 0:
             acq = self._update_repulsion_term(acq, dataset, model, pending_points)
 
         return acq
@@ -1821,8 +1820,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
-        :param new_optimization_step: Indicates if this call to update_acquisition_function
-            is to start of a new optimization step, of to continue collecting batch of points
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, or to continue collecting batch of points
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
