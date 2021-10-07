@@ -1195,7 +1195,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
                 reference_point,
                 tf.constant([-1e10] * obj_samples.shape[-1], dtype=pareto_front_obs.dtype),
             ),
-            pending_points=pending_input
+            pending_points=pending_input,
         )(test_input),
         expected_output,
         rtol=1e-5,

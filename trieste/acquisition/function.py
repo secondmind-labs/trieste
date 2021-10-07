@@ -978,6 +978,7 @@ class expected_hv_improvement(AcquisitionFunctionClass):
             keepdims=True,
         )
 
+
 class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
@@ -1279,7 +1280,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisition
         )
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel,
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -1307,7 +1310,7 @@ def batch_ehvi(
     sampler: BatchReparametrizationSampler,
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
-    pending_points: Optional[TensorType] = None
+    pending_points: Optional[TensorType] = None,
 ) -> AcquisitionFunction:
 
     """
@@ -1332,7 +1335,9 @@ def batch_ehvi(
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
         if pending_points is not None:
-            aug_at = tf.concat([at, tf.repeat(pending_points[tf.newaxis], tf.shape(at)[:-2], 0)], -2)
+            aug_at = tf.concat(
+                [at, tf.repeat(pending_points[tf.newaxis], tf.shape(at)[:-2], 0)], -2
+            )
             samples = sampler.sample(aug_at, jitter=sampler_jitter)  # [..., S, B, num_obj]
         else:
             samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
