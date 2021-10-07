@@ -2074,6 +2074,12 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
         :return: The determinant of the predictive function.
         """
+        if not hasattr(model, "predict_joint"):
+            raise AttributeError(
+                """
+                PredictiveVariance only supports models with a predict_joint method.
+                """
+            )
 
         pv = determinantcovariance(model, self._jitter)
         return tf.function(lambda at: pv(at))
