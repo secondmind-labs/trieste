@@ -91,3 +91,14 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
+
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int):
+        """
+        Log model-specific information at a given optimization step.
+
+        :param summary_writer: Summary writer to log with.
+        :param step_number: The current optimization step number.
+        """
+        with summary_writer.as_default(step=step_number):
+            tf.summary.scalar(f'kernel.variance', self.get_kernel().variance)
+            # TODO: what to do with e.g. lengthscales, which can be multi-dimensional?

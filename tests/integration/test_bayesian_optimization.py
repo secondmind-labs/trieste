@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import datetime
 from typing import List, Tuple, Union, cast
 
 import gpflow
@@ -55,7 +56,6 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
-
 
 @random_seed
 @pytest.mark.parametrize(
@@ -148,8 +148,12 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
+    # TODO: put logs somewhere sensible and check output
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    summary_writer = tf.summary.create_file_writer("/tmp/testing")
+
     dataset = (
-        BayesianOptimizer(observer, search_space)
+        BayesianOptimizer(observer, search_space, summary_writer=summary_writer)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_dataset()
     )

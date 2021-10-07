@@ -23,7 +23,7 @@ import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Generic, TypeVar, cast, overload
+from typing import Dict, Generic, Optional, TypeVar, cast, overload
 
 import tensorflow as tf
 import numpy as np
@@ -156,14 +156,16 @@ class BayesianOptimizer(Generic[SP]):
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(self, observer: Observer, search_space: SP):
+    def __init__(self, observer: Observer, search_space: SP, summary_writer: Optional[tf.summary.SummaryWriter] = None,):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
             :class:`~trieste.space.SearchSpace`.
+        :param summary_writer: An optional summary writer object for logging to.
         """
         self._observer = observer
         self._search_space = search_space
+        self._summary_writer = summary_writer
 
     def __repr__(self) -> str:
         """"""
@@ -353,9 +355,6 @@ class BayesianOptimizer(Generic[SP]):
         models = map_values(create_model, model_specs)
         history: list[Record[S]] = []
 
-        current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-        writer = tf.summary.create_file_writer("logs/" + current_time)
-
         for step in range(num_steps):
             try:
                 if track_state:
@@ -369,7 +368,7 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models)
+                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models, step, self._summary_writer)
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)
@@ -391,10 +390,12 @@ class BayesianOptimizer(Generic[SP]):
                     model.update(dataset)
                     model.optimize(dataset)
 
-                with writer.as_default():
-                    for tag in datasets:
-                        tf.summary.scalar(f'best_{tag}', np.min(datasets[tag].observations), step=step)
-
+                if self._summary_writer:
+                    with self._summary_writer.as_default():
+                        for tag in datasets:
+                            models[tag].log(self._summary_writer, step)
+                            tf.summary.scalar(f'best_observation.{tag}', np.min(datasets[tag].observations), step=step)
+                            tf.summary.scalar(f'best_new_observation.{tag}', np.min(tagged_output[tag].observations), step=step)
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
