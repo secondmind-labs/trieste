@@ -488,17 +488,7 @@ class TaggedProductSearchSpace(SearchSpace):
     def __mul__(self, other: SearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
-        building a tree of :class:`TaggedProductSearchSpace`\ s. For example:
-
-            >>> space_0 = TaggedProductSearchSpace(spaces=[Box([0.0],[1.0]),Box([0.0],[2.0])])
-            >>> space_1 = TaggedProductSearchSpace(spaces=[Box([0.0],[3.0]),Box([0.0],[4.0])])
-            >>> new_space = space_0 * space_1
-            >>> new_space.get_subspace("0")
-            TaggedProductSearchSpace(spaces=[Box([0.0],[1.0]),Box([0.0],[2.0]), tags=["0", "1"])
-            >>> new_space.get_subspace("1")
-            TaggedProductSearchSpace(spaces=[Box([0.0],[3.0]),Box([0.0],[4.0]), tags=["0", "1"])
-            >>> new_space.get_subspace("0").get_subspace("0")
-            Box([0.0],[1.0])
+        building a tree of :class:`TaggedProductSearchSpace`\ s. 
 
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
