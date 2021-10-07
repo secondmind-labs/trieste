@@ -56,6 +56,7 @@ class SearchSpace(ABC):
     def dimension(self) -> TensorType:
         """The input dimensionality of this search space."""
 
+    @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
         """
         :param other: A search space of the same type as this search space.
@@ -348,7 +349,7 @@ class Box(SearchSpace):
         return self
 
 
-class ProductSearchSpace(SearchSpace):
+class TaggedProductSearchSpace(SearchSpace):
     r"""
     Product :class:`SearchSpace` consisting of a product of
     multiple :class:`SearchSpace`s. This class provides functionality for
@@ -359,23 +360,34 @@ class ProductSearchSpace(SearchSpace):
     the space.
     """
 
-    def __init__(self, spaces: list[tuple[str, SearchSpace]]):
+    def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
         r"""
+        TODO discuss
         :param spaces: A list of tag-space tuples summarizing the names and domains of
             the space's subspaces.
         """
 
-        tags = [tag for (tag, space) in spaces]
-        tf.debugging.assert_equal(
-            len(tags),
-            len(set(tags)),
-            message=f"subspace names must be unique, received {tags}.",
-        )
+        if tags is None:
+            tags = [str(i) for i in range(len(spaces))]
+        else:
+            tf.debugging.assert_equal(
+                len(tags),
+                len(spaces),
+                message=f"""
+                    Number of tags must match number if search spaces but
+                    received {len(tags)} tags but {len(spaces)} subspaces.
+                """,
+            )
+            tf.debugging.assert_equal(
+                len(tags),
+                len(set(tags)),
+                message=f"Subspace names must be unique but received {tags}.",
+            )
 
-        self._tags = tags
-        self._spaces = dict(zip(self._tags, [space for (tag, space) in spaces]))
+        self._spaces = dict(zip(tags, [space for space in spaces]))
+        self._tags = tuple(tag for tag in tags)  # fix to avoid accidental modification
 
-        subspace_sizes = [self._spaces[tag].dimension for tag in self._tags]
+        subspace_sizes = [self._spaces[tag].dimension for tag in list(self._tags)]
         self._subspace_sizes = dict(zip(self._tags, subspace_sizes))
         self._subspace_starting_indicies = dict(
             zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
@@ -384,12 +396,13 @@ class ProductSearchSpace(SearchSpace):
 
     def __repr__(self) -> str:
         """"""
-        return f"""DecomposableSearchSpace(
-        {[str((tag, self.get_subspace(tag)))+"," for tag in self.subspace_tags]})
-        """
+        return f"""TaggedProductSearchSpace(spaces =
+                {[self.get_subspace(tag) for tag in self.subspace_tags]},
+                tags = {self.subspace_tags})
+                """
 
     @property
-    def subspace_tags(self) -> list[str]:
+    def subspace_tags(self) -> tuple[str, ...]:
         """Return the names of the subspaces contained in this product space."""
         return self._tags
 
@@ -465,5 +478,22 @@ class ProductSearchSpace(SearchSpace):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
-    def __deepcopy__(self, memo: dict[int, object]) -> ProductSearchSpace:
-        return self
+    def __mul__(self, other: SearchSpace) -> TaggedProductSearchSpace:
+        r"""
+        Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
+        building a tree of :class:`TaggedProductSearchSpace`\ s. For example:
+
+            >>> space_0 = TaggedProductSearchSpace(spaces=[Box([0.0,1.0]),Box[0.0,2.0]])
+            >>> space_1 = TaggedProductSearchSpace(spaces=[Box([0.0,3.0]),Box[0.0,4.0]])
+            >>> new_space = tagged_space_0 * tagged_space_1
+            >>> new_box.get_subspace("0")
+            TaggedProductSearchSpace(spaces=[Box([0.0,1.0]),Box[0.0,2.0]], tags=["0", "1"])
+            >>> new_box.get_subspace("1")
+            TaggedProductSearchSpace(spaces=[Box([0.0,3.0]),Box[0.0,4.0]], tags=["0", "1"])
+            >>> new_box.get_subspace("0").get_subspace("0")
+            Box([0.0,1.0]
+
+        :param other: A search space of the same type as this search space.
+        :return: The Cartesian product of this search space with the ``other``.
+        """
+        return TaggedProductSearchSpace(spaces=[self, other])
