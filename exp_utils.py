@@ -17,6 +17,8 @@ from trieste.space import Box
 from scipy.stats import norm
 import numpy as np
 import math
+from gpflow.utilities import positive, print_summary
+from gpflow.base import Parameter
 
 
 def build_vanilla_dgp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
@@ -118,18 +120,32 @@ def build_lv_dgp_model(data, num_total_data, num_layers=2, num_inducing=200, lat
 
 
 def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] = None):
-    gpflow.config.set_default_jitter(1e-4)
+    gpflow.config.set_default_jitter(1e-5)
     print('jitter', gpflow.default_jitter())
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*data.query_points.shape[-1])
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = None #tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = None #tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
+    print('variance: ', variance.numpy())
+    dim = data.query_points.shape[-1]
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*dim)
+    variance_prior_loc = variance.numpy()
+    variance_prior_scale = 1.0
+    lengthscales_prior_scale = 0.5
+    kernel.lengthscales.assign(0.3*(search_space.upper - search_space.lower) * np.sqrt(dim))
+    #prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        loc=np.float64(variance_prior_loc), scale=np.float64(variance_prior_scale)
+    )
+            #tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        loc=np.float64(np.log(kernel.lengthscales.numpy())), scale=np.float64(lengthscales_prior_scale)
+    )
+            #tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     if learn_noise:
         gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-3)
     else:
         gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
         gpflow.set_trainable(gpr.likelihood, False)
+
+    #print_summary(gpr)
 
     return GPflowModelConfig(**{
         "model": gpr,
