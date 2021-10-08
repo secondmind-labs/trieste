@@ -296,9 +296,7 @@ def test_async_ego_keeps_track_of_pending_points() -> None:
     assert state is not None
     assert len(state.pending_points) == 2
     # two points from the first batch and all points from second
-    npt.assert_allclose(
-        state.pending_points, tf.concat([point2, point3], axis=0)
-    )
+    npt.assert_allclose(state.pending_points, tf.concat([point2, point3], axis=0))
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
