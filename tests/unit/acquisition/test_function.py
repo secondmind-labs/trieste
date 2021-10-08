@@ -1287,6 +1287,7 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
             BatchMonteCarloExpectedImprovement(10_000),
             f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
         ),
+        (PredictiveVariance(), "PredictiveVariance()"),
     ],
 )
 def test_single_model_acquisition_function_builder_reprs(
