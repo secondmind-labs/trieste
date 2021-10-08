@@ -54,7 +54,7 @@ class SearchSpace(ABC):
     @property
     @abstractmethod
     def dimension(self) -> TensorType:
-        """The input dimensionality of this search space."""
+        """The number of inputs in this search space."""
 
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
@@ -112,7 +112,7 @@ class DiscreteSearchSpace(SearchSpace):
 
     @property
     def dimension(self) -> TensorType:
-        """The input dimensionality of this search space."""
+        """The number of inputs in this search space."""
         return self._dimension
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -231,7 +231,7 @@ class Box(SearchSpace):
 
     @property
     def dimension(self) -> TensorType:
-        """The input dimensionality of this search space."""
+        """The number of inputs in this search space."""
         return self._dimension
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
@@ -246,10 +246,13 @@ class Box(SearchSpace):
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
             dimensionality from the search space.
         """
+
         tf.debugging.assert_equal(
             shapes_equal(value, self._lower),
             True,
-            message="value must have same dimensionality as search space",
+            message=f"""
+                Dimensionality mismatch: space is {self._lower}, value is {tf.shape(value)}
+                """,
         )
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
@@ -375,7 +378,7 @@ class TaggedProductSearchSpace(SearchSpace):
         """
 
         if tags is None:
-            tags = [str(i) for i in range(len(spaces))]
+            tags = [str(i) for i, _ in enumerate(spaces)]
         else:
             tf.debugging.assert_equal(
                 len(tags),
@@ -415,7 +418,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
     @property
     def dimension(self) -> TensorType:
-        """The input dimensionality of this product search space."""
+        """The number of inputs in this product search space."""
         return self._dimension
 
     def get_subspace(self, tag: str) -> SearchSpace:
@@ -453,7 +456,9 @@ class TaggedProductSearchSpace(SearchSpace):
         tf.debugging.assert_equal(
             tf.shape(value),
             self.dimension,
-            message="value must have same dimensionality as search space",
+            message=f"""
+                Dimensionality mismatch: space is {self.dimension}, value is {tf.shape(value)}
+                """,
         )
         value = value[tf.newaxis, ...]
         in_each_subspace = [
