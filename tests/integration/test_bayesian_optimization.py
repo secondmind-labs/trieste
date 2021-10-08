@@ -33,7 +33,7 @@ from trieste.acquisition.function import (
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
-    AsyncEfficientGlobalOptimization,
+    AsynchronousGreedy,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -70,7 +70,7 @@ from trieste.types import State, TensorType
                     AcquisitionRule[
                         State[
                             TensorType,
-                            Union[AsyncEfficientGlobalOptimization.State, TrustRegion.State],
+                            Union[AsynchronousGreedy.State, TrustRegion.State],
                         ],
                         Box,
                     ],
@@ -105,12 +105,11 @@ from trieste.types import State, TensorType
                 ),
             ),
             (
-                10,
-                AsyncEfficientGlobalOptimization(
+                30,
+                AsynchronousGreedy(
                     LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=3,
                 ),
             ),
             (
@@ -141,9 +140,7 @@ from trieste.types import State, TensorType
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[
-        State[TensorType, AsyncEfficientGlobalOptimization.State | TrustRegion.State], Box
-    ],
+    | AcquisitionRule[State[TensorType, AsynchronousGreedy.State | TrustRegion.State], Box],
 ) -> None:
     search_space = BRANIN_SEARCH_SPACE
 

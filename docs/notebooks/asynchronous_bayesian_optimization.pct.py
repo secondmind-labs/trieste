@@ -14,7 +14,7 @@
 # %% [markdown]
 # # Asynchronous Bayesian optimization with Trieste
 #
-# In this notebook we show how Bayesian optimization can be done asynchronuosly. That is pertinent in scenarios when the objective function we are aiming to optimize can be run for several points in parallel, and observations might return back at different times. To avoid wasting resources we immediatelly request the next point asynchronuosly, taking into account points that still being evaluated.
+# In this notebook we demonstrate Trieste's ability to perform asynchronous Bayesian optimisation, as is suitable for scenarios where the objective function can be run for several points in parallel but where observations might return back at different times. To avoid wasting resources waiting for the evaluation of the whole batch, we immediately request the next point asynchronously, taking into account points that are still being evaluated.
 #
 # To contrast this approach with regular [batch optimization](batch_optimization.ipynb), this notebook also shows how to run parallel synchronous batch approach.
 
@@ -28,48 +28,34 @@ import tensorflow as tf
 
 tf.get_logger().setLevel("ERROR")
 import numpy as np
-import math
 
 import time
 import timeit
 
 
 # %% [markdown]
-# First, let's define a simple objective that will emulate workload of variable time. We will be using class BO benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html), and insert sleep call in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
+# First, let's define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html) with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
 # %%
+from trieste.objectives import scaled_branin
+
 def objective(points, sleep=True):
     if points.shape[1] != 2:
         raise ValueError(f"Incorrect input shape, expected (*, 2), got {points.shape}")
 
-    def scaled_branin(x):
-        x0 = x[..., :1] * 15.0 - 5.0
-        x1 = x[..., 1:] * 15.0
-
-        b = 5.1 / (4 * math.pi ** 2)
-        c = 5 / math.pi
-        r = 6
-        s = 10
-        t = 1 / (8 * math.pi)
-        scale = 1 / 51.95
-        translate = -44.81
-
+    observations = []
+    for point in points:
+        observation = scaled_branin(point)
         if sleep:
             # insert some artificial delay
             # increases linearly with the absolute value of points
             # which means our evaluations will take different time
-            delay = 5 * np.sum(x)
+            delay = 3 * np.sum(point)
             pid = os.getpid()
             print(
                 f"Process {pid}: Objective: pretends like it's doing something for {delay:.2}s",
                 flush=True,
             )
             time.sleep(delay)
-
-        return scale * ((x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * np.cos(x0) + translate)
-
-    observations = []
-    for point in points:
-        observation = scaled_branin(point)
         observations.append(observation)
 
     return np.array(observations)
@@ -78,7 +64,7 @@ def objective(points, sleep=True):
 objective(np.array([[0.1, 0.5]]), sleep=False)
 
 # %% [markdown]
-# As always, we need to prepare model and some initial data to kick-start the optimization process.
+# As always, we need to prepare the model and some initial data to kick-start the optimization process.
 
 # %%
 from trieste.space import Box
@@ -95,8 +81,7 @@ initial_data = Dataset(
 )
 
 import gpflow
-from trieste.models import create_model
-from trieste.models.gpflow.config import GPflowModelConfig
+from trieste.models.gpflow import GaussianProcessRegression
 
 
 def build_model(data):
@@ -104,20 +89,11 @@ def build_model(data):
     kernel = gpflow.kernels.RBF(variance=variance)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-
-    return GPflowModelConfig(
-        **{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    )
+    return GaussianProcessRegression(gpr)
 
 # these imports will be used later for optimization
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
-from trieste.acquisition.rule import AsyncEfficientGlobalOptimization, EfficientGlobalOptimization
+from trieste.acquisition.rule import AsynchronousGreedy, EfficientGlobalOptimization
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 
@@ -126,7 +102,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 #
 # To keep this notebook as reproducible as possible, we will only be using Python's multiprocessing package here. In this section we will explain our setup and define some common code to be used later.
 #
-# In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into observations queue. The main process then picks up the observation from the queue, at which moment it either waits for the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchrunous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.
+# In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into the observations queue. The main process then picks up the observation from the queue, at which moment it either waits for the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchronous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.
 # 
 # The overall setup is illustrated in this diagram:
 # ![multiprocessing setup](figures/async_bo.png)
@@ -186,25 +162,24 @@ def terminate_processes(processes):
 num_workers = 3
 # Number of iterations to run the sycnhronous scenario for
 num_iterations = 10
-# Number of observations to collect in asynchronous scenario
+# Number of observations to collect in the asynchronous scenario
 num_observations = num_workers * num_iterations
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
 enable_sleep_delays = True
 
 # %% [markdown]
 # ## Asynchronous optimization
-# This section runs the asynchronous optimization routine. We first setup the [ask/tell optimizer](ask_tell_optimization.ipynb). Notice that we use **AsyncEfficientGlobalOptimization** rule specifically designed for asynchronous scenarios. Next we create thread-safe queues for points and observations, and run the optimization loop.
+# This section runs the asynchronous optimization routine. We first setup the [ask/tell optimizer](ask_tell_optimization.ipynb) as we cannot hand over the evaluation of the objective to Trieste. Next we create thread-safe queues for points and observations, and run the optimization loop.
 #
-# Crucially, even though we are using batch acquisition function Local Penalization, we specify batch size of 1. This is because we don't really want a batch. Since the amout of workers we have is fixed, whenever we see a new observation we only need one point back. However this process can only be done with acquisition funcitons that implement greedy batch collection strategies, because they are able to take into account points that are currently being observed (in Trieste we call them "pending"). Trieste currently provides two such functions: Local Penalization and GIBBON.
+# Crucially, even though we are using batch acquisition function Local Penalization, we specify batch size of 1. This is because we don't really want a batch. Since the amount of workers we have is fixed, whenever we see a new observation we only need one point back. However this process can only be done with acquisition functions that implement greedy batch collection strategies, because they are able to take into account points that are currently being observed (in Trieste we call them "pending"). Trieste currently provides two such functions: Local Penalization and GIBBON. Notice that we use **AsynchronousGreedy** rule specifically designed for using greedy batch acquisition functions in asynchronous scenarios.
 
 # %%
 
 # setup Ask Tell BO
-model_spec = build_model(initial_data)
-model = create_model(model_spec)
+model = build_model(initial_data)
 
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
-local_penalization_rule = AsyncEfficientGlobalOptimization(num_query_points=1, builder=local_penalization_acq)  # type: ignore
+local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
 
 async_bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
 
@@ -266,8 +241,7 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 
 # %%
 # setup Ask Tell BO
-model_spec = build_model(initial_data)
-model = create_model(model_spec)
+model = build_model(initial_data)
 
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
@@ -337,11 +311,9 @@ print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
 
 # %% [markdown]
 # ## Comparison
-# To compare outcomes of sync and async runs, let's plot their respective regrets side by side, and print out the running time. We expect async scenario to run a little bit faster for this toy problem.
+# To compare outcomes of sync and async runs, let's plot their respective regrets side by side, and print out the running time. For this toy problem we expect async scenario to run a little bit faster on machines with multiple CPU.
 
 # %%
-from trieste.objectives import SCALED_BRANIN_MINIMUM
-
 from util.plotting import plot_regret
 import matplotlib.pyplot as plt
 

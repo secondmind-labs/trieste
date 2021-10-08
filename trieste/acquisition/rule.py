@@ -45,9 +45,6 @@ from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, 
 T_co = TypeVar("T_co", covariant=True)
 """ Unbound covariant type variable. """
 
-S = TypeVar("S")
-""" Unbound type variable. """
-
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
@@ -214,12 +211,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         return points
 
 
-class AsyncEfficientGlobalOptimization(
-    AcquisitionRule[
-        State[Optional["AsyncEfficientGlobalOptimization.State"], TensorType], SP_contra
-    ]
+class AsynchronousGreedy(
+    AcquisitionRule[State[Optional["AsynchronousGreedy.State"], TensorType], SP_contra]
 ):
-    """AsyncEfficientGlobalOptimization rule, as name suggests,
+    """AsynchronousGreedy rule, as name suggests,
     is designed for asynchronous BO scenarios.
     By asynchronous BO we understand a use case when multiple objective function
     can be launched in parallel and are expected to arrive at different times.
@@ -228,7 +223,7 @@ class AsyncEfficientGlobalOptimization(
 
     To make the best decision about next point to observe, acquisition function
     needs to be aware of currently running observations.
-    We call such points "pending". AsyncEGO provides a ``AsyncEfficientGlobalOptimization.State``
+    We call such points "pending". AsyncEGO provides a ``AsynchronousGreedy.State``
     object that keeps track of pending points.
     """
 
@@ -249,13 +244,7 @@ class AsyncEfficientGlobalOptimization(
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
-        :param num_query_points: The number of points to acquire.
         """
-        if num_query_points <= 0:
-            raise ValueError(
-                f"Number of query points must be greater than 0, got {num_query_points}"
-            )
-
         if builder is None:
             raise ValueError("Please specify an acquisition builder")
 
@@ -263,8 +252,8 @@ class AsyncEfficientGlobalOptimization(
             builder, (GreedyAcquisitionFunctionBuilder, SingleModelGreedyAcquisitionBuilder)
         ):
             raise NotImplementedError(
-                f"""Only greedy acquisition strategies are supported
-                    by AsyncEGO, got {type(builder)}"""
+                f"""Only greedy acquisition strategies are supported,
+                    got {type(builder)}"""
             )
 
         if optimizer is None:
@@ -275,24 +264,22 @@ class AsyncEfficientGlobalOptimization(
 
         self._builder: GreedyAcquisitionFunctionBuilder = builder
         self._optimizer = optimizer
-        self._num_query_points = num_query_points
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
-        return f"""AsyncEGO(
+        return f"""AsynchronousGreedy(
         {self._builder!r},
-        {self._optimizer!r},
-        {self._num_query_points!r})"""
+        {self._optimizer!r})"""
 
     def acquire(
         self,
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[AsyncEfficientGlobalOptimization.State | None, TensorType]:
+    ) -> types.State[AsynchronousGreedy.State | None, TensorType]:
         """
-        Constructs a function that, given ``AsyncEfficientGlobalOptimization.State``,
+        Constructs a function that, given ``AsynchronousGreedy.State``,
         returns a new state object and points to evaluate.
         The state object contains currently known pending points,
         that is points that were requested for evaluation,
@@ -310,8 +297,8 @@ class AsyncEfficientGlobalOptimization(
         """
 
         def state_func(
-            state: AsyncEfficientGlobalOptimization.State | None,
-        ) -> tuple[AsyncEfficientGlobalOptimization.State | None, TensorType]:
+            state: AsynchronousGreedy.State | None,
+        ) -> tuple[AsynchronousGreedy.State | None, TensorType]:
             @tf.function
             def is_not_in_dataset(x: TensorType) -> TensorType:
                 query_points = datasets[OBJECTIVE].query_points
@@ -339,22 +326,7 @@ class AsyncEfficientGlobalOptimization(
             else:
                 pending_points = tf.concat([pending_points, points], axis=0)
 
-            for _ in range(
-                self._num_query_points - 1
-            ):  # greedily allocate additional batch elements
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function,
-                    datasets,
-                    models,
-                    pending_points=pending_points,
-                    new_optimization_step=False,
-                )
-                chosen_point = self._optimizer(search_space, self._acquisition_function)
-                points = tf.concat([points, chosen_point], axis=0)
-
-                pending_points = tf.concat([pending_points, chosen_point], axis=0)
-
-            state = AsyncEfficientGlobalOptimization.State(pending_points=pending_points)
+            state = AsynchronousGreedy.State(pending_points=pending_points)
 
             return state, points
 
