@@ -215,7 +215,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
                     v = self._acquisition_function(points)[0]
                 except ValueError:
                     v = self._acquisition_function([points])[0][0]
-                tf.summary.scalar(f'acquisition_function.maximum', v)
+                tf.summary.scalar(f'EGO.acquisition_function.maximum', v)
 
         # TODO: multiple logs per step in greedy functions?
 

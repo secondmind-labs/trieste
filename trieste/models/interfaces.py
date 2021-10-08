@@ -122,12 +122,13 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         """
         raise NotImplementedError
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int):
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str):
         """
         Log model-specific information at a given optimization step.
 
         :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
+        :param context: A context string to use when logging.
         """
         pass
 
@@ -236,13 +237,13 @@ class ModelStack(TrainableProbabilisticModel):
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int):
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str):
         """
         Log model-specific information at a given optimization step.
 
         :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
+        :param context: A context string to use when logging.
         """
-        # TODO: avoid name clashes between different submodels
-        for model in self._models:
-            model.log(summary_writer, step_number)
+        for i, model in enumerate(self._models):
+            model.log(summary_writer, step_number, f"{context}.{i}")

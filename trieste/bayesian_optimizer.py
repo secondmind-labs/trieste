@@ -393,9 +393,9 @@ class BayesianOptimizer(Generic[SP]):
                 if self._summary_writer:
                     with self._summary_writer.as_default():
                         for tag in datasets:
-                            models[tag].log(self._summary_writer, step)
-                            tf.summary.scalar(f'best_observation.{tag}', np.min(datasets[tag].observations), step=step)
-                            tf.summary.scalar(f'best_new_observation.{tag}', np.min(tagged_output[tag].observations), step=step)
+                            models[tag].log(self._summary_writer, step, f"{tag}.model")
+                            tf.summary.scalar(f'{tag}.best_observation', np.min(datasets[tag].observations), step=step)
+                            tf.summary.scalar(f'{tag}.best_new_observation', np.min(tagged_output[tag].observations), step=step)
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
