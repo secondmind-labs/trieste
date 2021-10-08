@@ -191,8 +191,6 @@ class Box(SearchSpace):
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
 
-        tf.debugging.assert_positive(len(lower), message="bounds cannot be empty")
-
         if isinstance(lower, Sequence):
             self._lower = tf.constant(lower, dtype=tf.float64)
             self._upper = tf.constant(upper, dtype=tf.float64)
