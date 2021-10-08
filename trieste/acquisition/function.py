@@ -2097,7 +2097,9 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
 def determinantcovariance(model: ProbabilisticModel, jitter: float) -> TensorType:
     """
-    The predictive variance acquisition function for active learning
+    The predictive variance acquisition function for active learning.
+    The model need to supply covariance of the joint marginal distribution 
+    (which is quite expensive to compute)
     See also :cite:`MacKay1992` for details.
 
     :param model: The model of the objective function.
