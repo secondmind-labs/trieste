@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
+This package contains the primary interface for deep Gaussian process models. It also contains a
+number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 """
 
-from . import gpflow, gpflux, bayesfunc, optimizer
-from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from .architectures import build_sqexp_deep_inv_wishart
+from .config import BayesFuncModelConfig
+from .interface import BayesFuncPredictor
+from .models import BayesFuncModel
