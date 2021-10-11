@@ -114,10 +114,11 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
 
                 (-elbo).backward()
                 opt.step()
-                if scheduler is not None:
-                    scheduler.step(epoch)
 
                 total_elbo += elbo.detach().cpu().item()
+
+            if scheduler is not None:
+                scheduler.step()
 
             if self.fit_args.get("verbose"):
                 print(f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {total_elbo}')

@@ -2,8 +2,10 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import numpy as np
 import tensorflow as tf
+import torch as t
 tf.config.threading.set_intra_op_parallelism_threads(1)
 tf.config.threading.set_inter_op_parallelism_threads(1)
+t.set_num_threads(1)
 from trieste.objectives import (
     michalewicz_2,
     michalewicz_5,
