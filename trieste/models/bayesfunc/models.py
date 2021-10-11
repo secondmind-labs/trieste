@@ -101,6 +101,7 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
             scheduler = None
 
         for epoch in range(self.fit_args["epochs"]):
+            total_elbo = 0.
             for data, target in trainloader:
                 opt.zero_grad()
                 data = data.expand(self.num_train_samples, *data.shape)
@@ -116,8 +117,10 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
                 if scheduler is not None:
                     scheduler.step(epoch)
 
+                total_elbo += elbo.detach().cpu().item()
+
             if self.fit_args.get("verbose"):
-                print(f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {elbo.detach().item()}')
+                print(f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {total_elbo}')
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         with t.no_grad():

@@ -104,4 +104,4 @@ def build_sqexp_deep_inv_wishart(
     )
 
     net = bf.InducingWrapper(net, inducing_batch=num_inducing, inducing_data=inducing_init)
-    return nn.Sequential(net, ConstantLayer(), bf.NormalLearnedScale(log_scale=math.sqrt(likelihood_noise_variance)))
+    return nn.Sequential(net, ConstantLayer(), bf.NormalLearnedScale(log_scale=math.log(math.sqrt(likelihood_noise_variance))))
