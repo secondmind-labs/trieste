@@ -849,7 +849,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
         return expected_hv_improvement(model, _partition_bounds)
 
     def update_acquisition_function(
@@ -866,7 +866,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
         function.update(_partition_bounds)  # type: ignore
         return function
 
@@ -1008,8 +1008,8 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            _pf.front,
             _reference_pt,
+            _pf.front,
         )
 
         if self._expected_improvement_fn is None:
@@ -1299,7 +1299,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisition
         _reference_pt = get_reference_point(_pf.front)
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_pf.front, _reference_pt)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 

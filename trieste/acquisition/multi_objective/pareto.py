@@ -65,7 +65,7 @@ class Pareto:
             shape=1, dtype=self.front.dtype
         )
         lower, upper = prepare_default_non_dominated_partition_bounds(
-            self.front, reference, helper_anti_reference
+            reference, self.front, helper_anti_reference
         )
         non_dominated_hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 1))
         hypervolume_indicator = (
