@@ -19,6 +19,7 @@ import tensorflow as tf
 from ...types import TensorType
 from .dominance import non_dominated
 from .partition import prepare_default_non_dominated_partition_bounds
+from typing import Optional
 
 
 class Pareto:
@@ -74,7 +75,7 @@ class Pareto:
         return hypervolume_indicator
 
 
-def get_reference_point(front: TensorType) -> TensorType:
+def get_reference_point(observations: TensorType, feasibility: Optional[TensorType] = None) -> TensorType:
     """
     reference point calculation method. Note if the front only contains one point, this reference
     point calculation method will result a reference point the same as the input.

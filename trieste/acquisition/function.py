@@ -843,6 +843,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             used by default to set a reference point according to the datasets.
         """
         self._ref_point_specification = ref_point_specification
+        self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
@@ -864,18 +865,18 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
-            _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
+            self._ref_point = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            _reference_pt = self._ref_point_specification
+            self._ref_point = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(self._ref_point, _pf.front)
         return expected_hv_improvement(model, _partition_bounds)
 
     def update_acquisition_function(
@@ -1041,6 +1042,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         self._sample_size = sample_size
         self._jitter = jitter
         self._ref_point_specification = ref_point_specification
+        self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
@@ -1064,18 +1066,18 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
-            _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
+            self._ref_point = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            _reference_pt = self._ref_point_specification
+            self._ref_point = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(self._ref_point, _pf.front)
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
@@ -1172,6 +1174,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         self._ref_point_specification = ref_point_specification
+        self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
@@ -1195,19 +1198,19 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         _pf = Pareto(feasible_mean)
         if isinstance(self._ref_point_specification, FunctionType):
-            _reference_pt = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, _reference_pt)), ValueError(
+            self._ref_point = self._ref_point_specification(_pf.front)
+            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
                 "There exists pareto frontier point that not dominated by reference point."
             )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            _reference_pt = self._ref_point_specification
+            self._ref_point = self._ref_point_specification
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            _reference_pt,
+            self._ref_point,
             _pf.front,
         )
 
