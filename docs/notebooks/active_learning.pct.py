@@ -50,7 +50,7 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def build_model(data):
@@ -59,15 +59,7 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GPflowModelConfig(
-        **{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    )
+    return GaussianProcessRegression(gpr)
 
 
 model = build_model(initial_data)
