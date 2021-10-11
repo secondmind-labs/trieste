@@ -38,7 +38,7 @@ import trieste
 
 observer = trieste.objectives.utils.mk_observer(scaled_branin)
 
-num_initial_points = 2
+num_initial_points = 4
 initial_query_points = search_space.sample_halton(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -67,7 +67,7 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Active learning using predictive variance
 #
-# For our first active learning example, we will use a simple acquisition function known as `PredictiveVariance` which chooses points for which we are highly uncertain (i.e. the predictive posterior covariance matrix at these points has large determinant). Note that this also implies that our model needs to have `predict_joint` method to be able to return the full covariance, and it's likely to be expensive to compute. 
+# For our first active learning example, we will use a simple acquisition function known as `PredictiveVariance` which chooses points for which we are highly uncertain (i.e. the predictive posterior covariance matrix at these points has large determinant). Note that this also implies that our model needs to have `predict_joint` method to be able to return the full covariance, and it's likely to be expensive to compute.
 #
 # We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize trieste's `BayesianOptimizer` to do the active learning steps.
 #
@@ -104,25 +104,34 @@ observations = dataset.observations.numpy()
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
 
-for i in range(bo_iter):
 
-    def pred_var(x):
-        _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
-        return var
+def plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query=1):
 
-    _, ax = plot_function_2d(
-        pred_var,
-        search_space.lower - 0.01,
-        search_space.upper + 0.01,
-        grid_density=20,
-        contour=True,
-        colorbar=True,
-        figsize=(10, 6),
-        title=["Variance contour with queried points at iter:" + str(i + 1)],
-        xlabel="$X_1$",
-        ylabel="$X_2$",
-    )
-    plot_bo_points(query_points[: num_initial_points + i], ax[0, 0], num_initial_points)
+    for i in range(bo_iter):
+
+        def pred_var(x):
+            _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
+            return var
+
+        _, ax = plot_function_2d(
+            pred_var,
+            search_space.lower - 0.01,
+            search_space.upper + 0.01,
+            grid_density=20,
+            contour=True,
+            colorbar=True,
+            figsize=(10, 6),
+            title=["Variance contour with queried points at iter:" + str(i + 1)],
+            xlabel="$X_1$",
+            ylabel="$X_2$",
+        )
+
+        plot_bo_points(
+            query_points[: num_initial_points + (i * num_query)], ax[0, 0], num_initial_points
+        )
+
+
+plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 
 
 # %% [markdown]
@@ -133,6 +142,7 @@ for i in range(bo_iter):
 # %%
 bo_iter = 5
 num_query = 3
+model = build_model(initial_data)
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
     num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
@@ -157,24 +167,4 @@ observations = dataset.observations.numpy()
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
 
-for i in range(bo_iter):
-
-    def pred_var(x):
-        _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
-        return var
-
-    _, ax = plot_function_2d(
-        pred_var,
-        search_space.lower - 0.01,
-        search_space.upper + 0.01,
-        grid_density=20,
-        contour=True,
-        colorbar=True,
-        figsize=(10, 6),
-        title=["Variance contour with queried points at iter: " + str(i + 1)],
-        xlabel="$X_1$",
-        ylabel="$X_2$",
-    )
-    plot_bo_points(
-        query_points[: num_initial_points + (i * num_query)], ax[0, 0], num_initial_points
-    )
+plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
