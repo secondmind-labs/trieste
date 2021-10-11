@@ -1,5 +1,6 @@
 import gpflow
 import tensorflow as tf
+import bayesfunc as bf
 
 from typing import Optional
 import trieste.models.gpflux.models
@@ -8,6 +9,10 @@ from trieste.models.gpflux import (
     build_vanilla_deep_gp,
     build_latent_variable_dgp_model,
     build_gi_deep_gp,
+)
+from trieste.models.bayesfunc import (
+    BayesFuncModel,
+    build_sqexp_deep_inv_wishart
 )
 from gpflow.utilities import set_trainable
 import tensorflow_probability as tfp
@@ -19,6 +24,23 @@ import numpy as np
 import math
 from gpflow.utilities import positive, print_summary
 from gpflow.base import Parameter
+import torch as t
+
+
+def build_dkp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
+                    search_space: Optional[Box] = None):
+    if learn_noise:
+        model = build_sqexp_deep_inv_wishart(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
+                                             likelihood_noise_variance=1e-3, search_space=search_space)
+    else:
+        model = build_sqexp_deep_inv_wishart(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
+                                             likelihood_noise_variance=1e-5, search_space=search_space)
+        for param in model[-1].parameters():
+            param.requires_grad = False
+
+    model.to(dtype=t.float64)
+
+    return BayesFuncModel(model)
 
 
 def build_vanilla_dgp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
@@ -157,6 +179,31 @@ def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] 
             "minimize_args": {"options": dict(maxiter=100)},
         },
     })
+
+
+def test_ll_dkp(
+    data: Dataset,
+    model: trieste.models.bayesfunc.models.BayesFuncModel,
+    num_samples: int = 100
+):
+    query_points = data.query_points
+    observations = data.observations
+    if isinstance(query_points, tf.Tensor):
+        query_points = query_points.numpy()
+    if isinstance(observations, tf.Tensor):
+        observations = observations.numpy()
+
+    with t.no_grad():
+        dkp = model.model
+        X = t.from_numpy(query_points).to(dtype=t.float64)
+        y = t.from_numpy(observations).to(dtype=t.float64).reshape(-1, 1)
+
+        X = X.expand(num_samples, *X.shape)
+        Py = dkp(X)
+        ind_ll = Py.log_prob(y)
+
+        test_ll = (t.logsumexp(ind_ll, 0) - math.log(num_samples)).mean()
+    return test_ll.numpy()
 
 
 def test_ll_vanilla_dgp(

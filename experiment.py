@@ -36,9 +36,11 @@ from exp_utils import (
     build_gi_dgp_model,
     build_gp_model,
     build_vanilla_dgp_model,
+    build_dkp_model,
     test_ll_gi_dgp,
     test_ll_gp,
     test_ll_vanilla_dgp,
+    test_ll_dkp,
 )
 import argparse
 import gpflow
@@ -79,6 +81,7 @@ model_dict = {
     "deepgp": [build_vanilla_dgp_model, test_ll_vanilla_dgp],
     "gidgp": [build_gi_dgp_model, test_ll_gi_dgp],
     "gp": [build_gp_model, test_ll_gp],
+    "dkp": [build_dkp_model, test_ll_dkp]
 }
 
 if not os.path.exists(os.path.join('results', function_key)):
