@@ -2081,8 +2081,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
                 """
             )
 
-        pv = determinantcovariance(model, self._jitter)
-        return tf.function(lambda at: pv(at))
+        return determinantcovariance(model, self._jitter)
 
     def update_acquisition_function(
         self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
