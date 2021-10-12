@@ -38,6 +38,7 @@ from tests.util.misc import (
     various_shapes,
 )
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function import (
     GIBBON,
     AcquisitionFunction,
@@ -61,7 +62,7 @@ from trieste.acquisition.function import (
     UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
-    determinantcovariance,
+    predictive_variance,
     expected_hv_improvement,
     expected_improvement,
     gibbon_quality_term,
@@ -1291,7 +1292,7 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
             BatchMonteCarloExpectedImprovement(10_000),
             f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
         ),
-        (PredictiveVariance(), "PredictiveVariance()"),
+        (PredictiveVariance(), f"PredictiveVariance(jitter={DEFAULTS.JITTER})"),
     ],
 )
 def test_single_model_acquisition_function_builder_reprs(
@@ -1820,7 +1821,7 @@ def test_predictive_variance(
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
     predvar_approx = tf.math.reduce_variance(samples, axis=0)
 
-    detcov = determinantcovariance(model, DEFAULTS.JITTER)
+    detcov = predictive_variance(model, DEFAULTS.JITTER)
     predvar = detcov(xs[..., None, :])
 
     npt.assert_allclose(predvar, predvar_approx, rtol=rtol, atol=atol)
@@ -1834,7 +1835,7 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
     )
     assert acq_fn._get_tracing_count() == 0  # type: ignore
     query_at = tf.linspace([[-10]], [[10]], 100)
-    expected = determinantcovariance(model, DEFAULTS.JITTER)(query_at)
+    expected = predictive_variance(model, DEFAULTS.JITTER)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
@@ -1844,3 +1845,15 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
     assert up_acq_fn == acq_fn
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
+def test_predictive_variance_builder_raises_for_void_predict_joint() -> None:
+    model = trieste_deep_gaussian_process(
+        tf.constant([[-2.0], [1.0]]), 2, 20, 0.01, 100, 100
+    )
+    builder = PredictiveVariance()
+    
+    with pytest.raises(AttributeError):
+        builder.prepare_acquisition_function(
+            Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+        )
