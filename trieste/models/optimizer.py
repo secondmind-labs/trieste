@@ -97,7 +97,7 @@ class Optimizer:
 
 @dataclass
 class BatchOptimizer(Optimizer):
-    """Optimizer for training models with mini-batches of training data."""
+    """ Optimizer for training models with mini-batches of training data. """
 
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """
@@ -168,14 +168,6 @@ def create_optimizer(
     :return: The :class:`Optimizer` wrapper.
     """
     raise NotImplementedError(f"Unknown optimizer {optimizer} passed for creating an optimizer")
-
-
-@create_optimizer.register
-def _create_tf_optimizer(
-    optimizer: tf.optimizers.Optimizer,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_args)
 
 
 @create_optimizer.register
