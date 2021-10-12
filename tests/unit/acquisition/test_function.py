@@ -1847,3 +1847,23 @@ def test_predictive_variance(
     predvar = detcov(xs[..., None, :])
 
     npt.assert_allclose(predvar, predvar_approx, rtol=rtol, atol=atol)
+
+
+def test_predictive_variance_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    builder = PredictiveVariance()
+    acq_fn = builder.prepare_acquisition_function(
+        Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
+    )
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = determinantcovariance(model, DEFAULTS.JITTER)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(
+        acq_fn, Dataset(tf.ones([0, 1]), tf.ones([0, 1])), model
+    )
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
