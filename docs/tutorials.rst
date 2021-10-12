@@ -29,6 +29,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/inequality_constraints
    notebooks/failure_ego
    notebooks/multi_objective_ehvi
+   notebooks/deep_gaussian_processes
 
 Frequently asked questions
 --------------------------
@@ -40,6 +41,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
+* :doc:`How can I use Trieste in asynchronous objective evaluation mode?<notebooks/asynchronous_bayesian_optimization>`
 
 .. toctree::
    :hidden:
@@ -47,6 +49,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 
    notebooks/ask_tell_optimization
    notebooks/recovering_from_errors
+   notebooks/asynchronous_bayesian_optimization
 
 Run the tutorials interactively
 -------------------------------

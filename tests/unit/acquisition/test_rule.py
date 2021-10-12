@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Optional
+from typing import Callable, Optional
 
 import gpflow
 import numpy.testing as npt
@@ -34,6 +34,7 @@ from trieste.acquisition import (
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
+    AsynchronousGreedy,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -42,7 +43,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.types import State, TensorType
 
 
 def _line_search_maximize(
@@ -207,32 +208,95 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: Optional[AcquisitionFunction],
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         self._update_count += 1
         return self.prepare_acquisition_function(dataset, model, pending_points)
 
 
 @random_seed
-def test_greedy_batch_acquisition_rule_acquire() -> None:
+@pytest.mark.parametrize(
+    "rule_fn, num_query_points",
+    [
+        (lambda acq: EfficientGlobalOptimization(acq, num_query_points=4), 4),
+        (lambda acq: AsynchronousGreedy(acq), 1),
+    ],
+)
+# As a side effect, this test ensures and EGO and AsynchronousGreedy
+# behave similarly in sync mode
+def test_greedy_batch_acquisition_rule_acquire(
+    rule_fn: Callable[
+        # callable input type(s)
+        [_GreedyBatchModelMinusMeanMaximumSingleBuilder],
+        # callable output type
+        AcquisitionRule[TensorType, Box]
+        | AcquisitionRule[State[TensorType, AsynchronousGreedy.State], Box],
+    ],
+    num_query_points: int,
+) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
-    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-        acq, num_query_points=num_query_points
-    )
+    acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
+        State[TensorType, AsynchronousGreedy.State], Box
+    ] = rule_fn(acq)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    if callable(points_or_stateful):
+        _, query_points = points_or_stateful(None)
+    else:
+        query_points = points_or_stateful
     assert acq._update_count == num_query_points - 1
-    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+    npt.assert_allclose(query_points, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
-    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
-    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
+    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    if callable(points_or_stateful):
+        _, query_points = points_or_stateful(None)
+    else:
+        query_points = points_or_stateful
+    npt.assert_allclose(query_points, [[0.0, 0.0]] * num_query_points, atol=1e-3)
     assert acq._update_count == 2 * num_query_points - 1
+
+
+def test_async_ego_raises_for_non_greedy_function() -> None:
+    non_greedy_function_builder = NegativeLowerConfidenceBound()
+    with pytest.raises(NotImplementedError):
+        # we are deliberately passing in wrong object
+        # hence type ignore
+        AsynchronousGreedy(non_greedy_function_builder)  # type: ignore
+
+
+def test_async_ego_keeps_track_of_pending_points() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
+    async_rule: AsynchronousGreedy[Box] = AsynchronousGreedy(acq)
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+
+    state_fn = async_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    state, point1 = state_fn(None)
+    state, point2 = state_fn(state)
+
+    assert state is not None
+    assert len(state.pending_points) == 2
+
+    # let's pretend we saw observations for the first point
+    new_observations = Dataset(
+        query_points=point1,
+        observations=tf.constant([[1]], dtype=tf.float32),
+    )
+    state_fn = async_rule.acquire_single(
+        search_space, dataset + new_observations, QuadraticMeanAndRBFKernel()
+    )
+    state, point3 = state_fn(state)
+
+    assert state is not None
+    assert len(state.pending_points) == 2
+    # two points from the first batch and all points from second
+    npt.assert_allclose(state.pending_points, tf.concat([point2, point3], axis=0))
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
