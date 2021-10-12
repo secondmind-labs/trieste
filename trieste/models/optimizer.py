@@ -57,8 +57,9 @@ class Optimizer:
 
     optimizer: Any
     """
-    The underlying optimizer to use. Note that we use a flexible type `Any` to allow for various
-    optimizers that specific models might need to use.
+    The underlying optimizer to use. For example, one of the subclasses of
+    :class:`~tensorflow.optimizers.Optimizer` could be used. Note that we use a flexible type `Any`
+    to allow for various optimizers that specific models might need to use.
     """
 
     minimize_args: dict[str, Any] = field(default_factory=lambda: {})

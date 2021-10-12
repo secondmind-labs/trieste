@@ -20,9 +20,9 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
-# from .optimizer import (
-#     _create_loss_function_external,
-#     _create_loss_function_internal,
-#     _create_scipy_optimizer,
-# )
+from .optimizer import (
+    _create_loss_function_external,
+    _create_loss_function_internal,
+    _create_scipy_optimizer,
+)
 from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
