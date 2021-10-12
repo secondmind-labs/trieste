@@ -2125,8 +2125,11 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
         :return: The determinant of the predictive function.
         """
-        if not hasattr(model, "predict_joint"):
-            raise AttributeError(
+        
+        try:
+            model.predict_joint(dataset.query_points[0:])
+        except NotImplementedError:
+            raise ValueError(
                 """
                 PredictiveVariance only supports models with a predict_joint method.
                 """

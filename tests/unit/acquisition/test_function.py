@@ -1848,8 +1848,8 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
 
 
 def test_predictive_variance_builder_raises_for_void_predict_joint() -> None:
-    model = trieste_deep_gaussian_process(tf.constant([[-2.0], [1.0]]), 2, 20, 0.01, 100, 100)
+    model, _ = trieste_deep_gaussian_process(tf.zeros([0, 1]), 2, 20, 0.01, 100, 100)
     builder = PredictiveVariance()
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         builder.prepare_acquisition_function(Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model)
