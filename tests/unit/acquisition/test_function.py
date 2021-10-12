@@ -61,6 +61,7 @@ from trieste.acquisition.function import (
     UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
+    determinantcovariance,
     expected_hv_improvement,
     expected_improvement,
     gibbon_quality_term,
@@ -1811,3 +1812,38 @@ def test_predictive_variance_returns_correct_shape(
         Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
     )
     npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "variance_scale, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 10_000, 0.05, 1e-6),
+        (1.0, 50_000, 0.05, 1e-3),
+        (10.0, 100_000, 0.05, 1e-2),
+        (100.0, 150_000, 0.05, 1e-1),
+    ],
+)
+def test_predictive_variance(
+    variance_scale: float,
+    num_samples_per_point: int,
+    rtol: float,
+    atol: float,
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
+    model = GaussianProcess([branin], [kernel])
+
+    mean, variance = model.predict(xs)
+    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+    predvar_approx = tf.math.reduce_variance(samples, axis=0)
+
+    detcov = determinantcovariance(model, DEFAULTS.JITTER)
+    predvar = detcov(xs[..., None, :])
+
+    npt.assert_allclose(predvar, predvar_approx, rtol=rtol, atol=atol)
