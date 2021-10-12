@@ -92,7 +92,10 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
 
 class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel, pending_points: TensorType = None
+        self,
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: TensorType = None,
     ) -> AcquisitionFunction:
         return raise_exc
 
@@ -1338,21 +1341,8 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
     builder = LocalPenalizationAcquisitionFunction(search_space=space)
-    builder.prepare_acquisition_function(
-        data, QuadraticMeanAndRBFKernel(), None
-    )  # first initialize
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
-
-
-def test_locally_penalized_expected_improvement_raises_when_called_before_initialization() -> None:
-    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    search_space = Box([0, 0], [1, 1])
-    pending_points = tf.zeros([1, 2])
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        LocalPenalizationAcquisitionFunction(search_space).prepare_acquisition_function(
-            data, QuadraticMeanAndRBFKernel(), pending_points
-        )
 
 
 @random_seed
@@ -1408,8 +1398,8 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
     lp_acq = acq_builder.prepare_acquisition_function(data, model, None)  # initialize
-    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1])
-    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points)
+    lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points[:1], False)
+    up_lp_acq = acq_builder.update_acquisition_function(lp_acq, data, model, pending_points, False)
     assert up_lp_acq == lp_acq  # in-place updates
 
     base_acq = base_builder.prepare_acquisition_function(data, model)
@@ -1570,21 +1560,8 @@ def test_gibbon_builder_raises_for_invalid_pending_points_shape(
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space=space)
-    builder.prepare_acquisition_function(
-        data, QuadraticMeanAndRBFKernel(), None
-    )  # first initialize
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(data, QuadraticMeanAndRBFKernel(), pending_points)
-
-
-def test_gibbon_raises_when_called_before_initialization() -> None:
-    data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    search_space = Box([0, 0], [1, 1])
-    pending_points = tf.zeros([1, 2])
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        GIBBON(search_space).prepare_acquisition_function(
-            data, QuadraticMeanAndRBFKernel(), pending_points
-        )
 
 
 def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:

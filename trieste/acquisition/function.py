@@ -1157,6 +1157,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         Update an acquisition function. By default this generates a new acquisition function each
@@ -1169,6 +1170,9 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         :param models: The models over each dataset in ``datasets``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, of to continue collecting batch of points
+            for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(datasets, models, pending_points=pending_points)
@@ -1205,9 +1209,14 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
                 datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
                 pending_points: Optional[TensorType] = None,
+                new_optimization_step: bool = True,
             ) -> AcquisitionFunction:
                 return single_builder.update_acquisition_function(
-                    function, datasets[tag], models[tag], pending_points=pending_points
+                    function,
+                    datasets[tag],
+                    models[tag],
+                    pending_points=pending_points,
+                    new_optimization_step=new_optimization_step,
                 )
 
             def __repr__(self) -> str:
@@ -1236,6 +1245,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -1243,9 +1253,16 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, of to continue collecting batch of points
+            for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(dataset, model, pending_points=pending_points)
+        return self.prepare_acquisition_function(
+            dataset,
+            model,
+            pending_points=pending_points,
+        )
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisitionBuilder):
@@ -1455,14 +1472,15 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: The points we penalize with respect to.
         :return: The (log) expected improvement penalized with respect to the pending points.
-        :raise tf.errors.InvalidArgumentError: If the first call does not have pending_points=None,
-            or ``dataset`` is empty.
+        :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(pending_points is None, [])
 
-        # no penalization required if no pending_points.
-        return self._update_base_acquisition_function(dataset, model)
+        acq = self._update_base_acquisition_function(dataset, model)
+        if pending_points is not None and len(pending_points) != 0:
+            acq = self._update_penalization(acq, dataset, model, pending_points)
+
+        return acq
 
     def update_acquisition_function(
         self,
@@ -1470,6 +1488,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -1477,15 +1496,30 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, of to continue collecting batch of points
+            for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
         tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
-        if pending_points is None:
-            # update penalization params and base acquisition once per optimization step
-            return self._update_base_acquisition_function(dataset, model)
+        if new_optimization_step:
+            self._update_base_acquisition_function(dataset, model)
 
+        if pending_points is None or len(pending_points) == 0:
+            # no penalization required if no pending_points
+            return cast(AcquisitionFunction, self._base_acquisition_function)
+
+        return self._update_penalization(function, dataset, model, pending_points)
+
+    def _update_penalization(
+        self,
+        function: Optional[AcquisitionFunction],
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
 
         if self._penalized_acquisition is not None and isinstance(
@@ -1774,14 +1808,15 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: The points we penalize with respect to.
         :return: The GIBBON acquisition function modified for objective minimisation.
-        :raise ValueError: if the first call does not have pending_points=None.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.assert_positive(len(dataset))
-        tf.debugging.Assert(pending_points is None, [])
 
-        # no diversity term required if no pending_points.
-        return self._update_quality_term(dataset, model)
+        acq = self._update_quality_term(dataset, model)
+        if pending_points is not None and len(pending_points) != 0:
+            acq = self._update_repulsion_term(acq, dataset, model, pending_points)
+
+        return acq
 
     def update_acquisition_function(
         self,
@@ -1789,6 +1824,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         dataset: Dataset,
         model: ProbabilisticModel,
         pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -1796,15 +1832,30 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :param model: The model over the specified ``dataset``.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, or to continue collecting batch of points
+            for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
         tf.debugging.assert_positive(len(dataset))
         tf.debugging.Assert(self._quality_term is not None, [])
 
-        if pending_points is None:
-            # update min value samples once per optimization step
-            return self._update_quality_term(dataset, model)
+        if new_optimization_step:
+            self._update_quality_term(dataset, model)
 
+        if pending_points is None:
+            # no repulsion term required if no pending_points.
+            return cast(AcquisitionFunction, self._quality_term)
+
+        return self._update_repulsion_term(function, dataset, model, pending_points)
+
+    def _update_repulsion_term(
+        self,
+        function: Optional[AcquisitionFunction],
+        dataset: Dataset,
+        model: ProbabilisticModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
 
         if self._gibbon_acquisition is not None and isinstance(
