@@ -2125,7 +2125,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
 
         :return: The determinant of the predictive function.
         """
-        
+
         try:
             model.predict_joint(dataset.query_points[0:])
         except NotImplementedError:
