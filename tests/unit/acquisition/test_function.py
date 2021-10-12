@@ -62,7 +62,6 @@ from trieste.acquisition.function import (
     UpdatablePenalizationFunction,
     augmented_expected_improvement,
     batch_ehvi,
-    predictive_variance,
     expected_hv_improvement,
     expected_improvement,
     gibbon_quality_term,
@@ -70,6 +69,7 @@ from trieste.acquisition.function import (
     hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
+    predictive_variance,
     probability_of_feasibility,
     soft_local_penalizer,
 )
@@ -1848,12 +1848,8 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
 
 
 def test_predictive_variance_builder_raises_for_void_predict_joint() -> None:
-    model = trieste_deep_gaussian_process(
-        tf.constant([[-2.0], [1.0]]), 2, 20, 0.01, 100, 100
-    )
+    model = trieste_deep_gaussian_process(tf.constant([[-2.0], [1.0]]), 2, 20, 0.01, 100, 100)
     builder = PredictiveVariance()
-    
+
     with pytest.raises(AttributeError):
-        builder.prepare_acquisition_function(
-            Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model
-        )
+        builder.prepare_acquisition_function(Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model)
