@@ -117,7 +117,7 @@ def plot_active_learning_query(result, bo_iter, num_initial_points, query_points
             pred_var,
             search_space.lower - 0.01,
             search_space.upper + 0.01,
-            grid_density=20,
+            grid_density=100,
             contour=True,
             colorbar=True,
             figsize=(10, 6),
@@ -137,7 +137,7 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For batch active learning, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule.
+# For some cases, query several points at a time can be convenient by doing batch active learning. For this case, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is, it tends to query points which are closer to each other, compared to the sequentially drawing one point at a time.
 
 # %%
 bo_iter = 5
