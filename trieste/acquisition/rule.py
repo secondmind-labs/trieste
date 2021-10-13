@@ -303,6 +303,8 @@ class AsynchronousGreedy(
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        step_number: int = 0,
+        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> types.State[AsynchronousGreedy.State | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousGreedy.State``,
@@ -318,6 +320,8 @@ class AsynchronousGreedy(
         :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
+        :param step_number: The current optimization step number.
+        :param summary_writer: An optional summary writer object for logging to.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
@@ -351,6 +355,12 @@ class AsynchronousGreedy(
                 pending_points = points
             else:
                 pending_points = tf.concat([pending_points, points], axis=0)
+
+            if summary_writer:
+                with summary_writer.as_default(step=step_number):
+                    batched_points = tf.expand_dims(points, axis=0)
+                    value = self._acquisition_function(batched_points)[0][0]
+                    tf.summary.scalar("AsyncGreedy.acquisition_function.maximum_found", value)
 
             state = AsynchronousGreedy.State(pending_points=pending_points)
 
