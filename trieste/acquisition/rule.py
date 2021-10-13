@@ -368,6 +368,7 @@ class AsynchronousOptimization(
 
             if state.has_pending_points:
                 pending_points: TensorType = state.pending_points
+
                 def function_with_pending_points(x: TensorType) -> TensorType:
                     # stuff below is quite tricky, and thus deserves an elaborate comment
                     # we receive unknown number N of points to evaluate
