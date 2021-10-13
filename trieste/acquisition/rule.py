@@ -220,15 +220,26 @@ class AsynchronousRuleState:
 
     pending_points: TensorType
 
+    def __post_init__(self) -> None:
+        if self.pending_points is None:
+            # that's fine, no validation needed
+            return
+
+        tf.debugging.assert_shapes(
+            [(self.pending_points, ["N", "D"])],
+            message=f"""Pending points are expected to be a 2D tensor,
+                        instead received tensor of shape {tf.shape(self.pending_points)}""",
+        )
+
     @property
     def has_pending_points(self) -> bool:
         """Returns `True` if there is at least one pending point, and `False` otherwise."""
         return (self.pending_points is not None) and tf.size(self.pending_points) > 0
 
-    def subtract_points(self, points: TensorType) -> AsynchronousRuleState:
-        """Removes all rows from current `pending_points` that are present in `points`.
+    def subtract_points(self, other_points: TensorType) -> AsynchronousRuleState:
+        """Removes all rows from current `pending_points` that are present in `other_points`.
 
-        :param points: Points to remove.
+        :param other_points: Points to remove.
         :return: New instance of `AsynchronousRuleState` with updated pending points.
         """
         if not self.has_pending_points:
@@ -236,14 +247,15 @@ class AsynchronousRuleState:
             return self
 
         tf.debugging.assert_shapes(
-            [(self.pending_points, [..., "D"]), (points, [..., "D"])],
-            message=f"""Last dimension mismatch between pending points
-                        {tf.shape(self.pending_points)} and given points {tf.shape(points)}""",
+            [(self.pending_points, [None, "D"]), (other_points, [None, "D"])],
+            message=f"""Other points shall be 2D and have same last dimension as pending points.
+                        Got {tf.shape(self.pending_points)} for pending points
+                        and {tf.shape(other_points)} for other points.""",
         )
 
         @tf.function
         def is_not_in_points(x: TensorType) -> TensorType:
-            return tf.reduce_all(tf.reduce_any(tf.not_equal(points, x), axis=1))
+            return tf.reduce_all(tf.reduce_any(tf.not_equal(other_points, x), axis=1))
 
         mask = tf.map_fn(is_not_in_points, self.pending_points, fn_output_signature=tf.bool)
         return AsynchronousRuleState(tf.boolean_mask(self.pending_points, mask))
@@ -258,9 +270,10 @@ class AsynchronousRuleState:
             return AsynchronousRuleState(new_points)
 
         tf.debugging.assert_shapes(
-            [(self.pending_points, [..., "D"]), (new_points, [..., "D"])],
-            message=f"""Last dimension mismatch between pending points
-                        {tf.shape(self.pending_points)} and given points {tf.shape(new_points)}""",
+            [(self.pending_points, [None, "D"]), (new_points, [None, "D"])],
+            message=f"""New points shall be 2D and have same last dimension as pending points.
+                        Got {tf.shape(self.pending_points)} for pending points
+                        and {tf.shape(new_points)} for new points.""",
         )
 
         new_pending_points = tf.concat([self.pending_points, new_points], axis=0)
@@ -275,6 +288,7 @@ class AsynchronousOptimization(
     can be launched in parallel and are expected to arrive at different times.
     Instead of waiting for the rest of observations to return, we want to immediately
     use acquisition function to launch a new observation and avoid wasting computational resources.
+    See :cite:`Alvi:2019` or :cite:`kandasamy18a` for more details.
 
     To make the best decision about next point to observe, acquisition function
     needs to be aware of currently running observations.

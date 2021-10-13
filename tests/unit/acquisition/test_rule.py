@@ -528,11 +528,18 @@ def test_trust_region_state_deepcopy() -> None:
 
 
 def test_asynchronous_rule_state_pending_points() -> None:
-    pending_points = tf.constant([1, 2, 3])
+    pending_points = tf.constant([[1], [2], [3]])
 
     state = AsynchronousRuleState(pending_points)
-
     npt.assert_array_equal(pending_points, state.pending_points)
+
+
+def test_asynchronous_rule_state_raises_incorrect_shape() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousRuleState(tf.constant([1, 2]))
+
+    with pytest.raises(ValueError):
+        AsynchronousRuleState(tf.constant([[[1], [2]]]))
 
 
 def test_asynchronous_rule_state_has_pending_points() -> None:
@@ -555,6 +562,10 @@ def test_asynchronous_rule_subtract_points_raises_shape_mismatch() -> None:
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
         state.subtract_points(tf.constant([[1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.subtract_points(tf.constant([[[1, 1], [2, 2]]]))
 
 
 def test_asynchronous_rule_subtract_points() -> None:
@@ -589,6 +600,10 @@ def test_asynchronous_rule_add_points_raises_shape_mismatch() -> None:
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
         state.add_points(tf.constant([[1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.add_points(tf.constant([[[1, 1], [2, 2]]]))
 
 
 def test_asynchronous_rule_add_points() -> None:
