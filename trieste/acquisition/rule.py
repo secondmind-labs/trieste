@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union, cast
 
 import tensorflow as tf
 
@@ -34,6 +34,7 @@ from ..types import State, TensorType
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
@@ -153,7 +154,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         ):
             builder = builder.using(OBJECTIVE)
 
-        if isinstance(builder, AcquisitionFunctionBuilder):
+        if isinstance(builder, AcquisitionFunctionBuilder) and num_query_points > 1:
             # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
@@ -211,11 +212,65 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         return points
 
 
-class AsynchronousGreedy(
-    AcquisitionRule[State[Optional["AsynchronousGreedy.State"], TensorType], SP_contra]
+@dataclass(frozen=True)
+class AsynchronousRuleState:
+    """Stores pending points for asynchronous rules.
+    These are points which were requested but are not observed yet.
+    """
+
+    pending_points: TensorType
+
+    @property
+    def has_pending_points(self) -> bool:
+        """Returns `True` if there is at least one pending point, and `False` otherwise."""
+        return (self.pending_points is not None) and tf.size(self.pending_points) > 0
+
+    def subtract_points(self, points: TensorType) -> AsynchronousRuleState:
+        """Removes all rows from current `pending_points` that are present in `points`.
+
+        :param points: Points to remove.
+        :return: New instance of `AsynchronousRuleState` with updated pending points.
+        """
+        if not self.has_pending_points:
+            # nothing to do if there are no pending points
+            return self
+
+        tf.debugging.assert_shapes(
+            [(self.pending_points, [..., "D"]), (points, [..., "D"])],
+            message=f"""Last dimension mismatch between pending points
+                        {tf.shape(self.pending_points)} and given points {tf.shape(points)}""",
+        )
+
+        @tf.function
+        def is_not_in_points(x: TensorType) -> TensorType:
+            return tf.reduce_all(tf.reduce_any(tf.not_equal(points, x), axis=1))
+
+        mask = tf.map_fn(is_not_in_points, self.pending_points, fn_output_signature=tf.bool)
+        return AsynchronousRuleState(tf.boolean_mask(self.pending_points, mask))
+
+    def add_points(self, new_points: TensorType) -> AsynchronousRuleState:
+        """Adds `new_points` to the already known pending points.
+
+        :param new_points: Points to add.
+        :return: New instance of `AsynchronousRuleState` with updated pending points.
+        """
+        if not self.has_pending_points:
+            return AsynchronousRuleState(new_points)
+
+        tf.debugging.assert_shapes(
+            [(self.pending_points, [..., "D"]), (new_points, [..., "D"])],
+            message=f"""Last dimension mismatch between pending points
+                        {tf.shape(self.pending_points)} and given points {tf.shape(new_points)}""",
+        )
+
+        new_pending_points = tf.concat([self.pending_points, new_points], axis=0)
+        return AsynchronousRuleState(new_pending_points)
+
+
+class AsynchronousOptimization(
+    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra]
 ):
-    """AsynchronousGreedy rule, as name suggests,
-    is designed for asynchronous BO scenarios.
+    """AsynchronousOptimization rule is designed for asynchronous BO scenarios.
     By asynchronous BO we understand a use case when multiple objective function
     can be launched in parallel and are expected to arrive at different times.
     Instead of waiting for the rest of observations to return, we want to immediately
@@ -223,19 +278,141 @@ class AsynchronousGreedy(
 
     To make the best decision about next point to observe, acquisition function
     needs to be aware of currently running observations.
-    We call such points "pending". AsyncEGO provides a ``AsynchronousGreedy.State``
-    object that keeps track of pending points.
+    We call such points "pending", and consider them a part of acquisition state.
+    We use :class:`AsynchronousRuleState` to store these points.
+
+    AsynchronousOptimization works with non-greedy batch acquisition functions.
+    If there are P pending points, the acquisition function is used with batch size P+1.
+    During optimization first P points are fixed to pending, and thus optimization
+    is done over the last point only, which is then returned.
+
+    `Warning`: it is not clear how efficient this approach towards asynchronous BO is.
+    If you require efficiency, consider using :class:`AsynchronousGreedy`.
     """
 
-    @dataclass(frozen=True)
-    class State:
-        pending_points: TensorType
+    def __init__(
+        self,
+        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+    ):
+        """
+        :param builder: Batch acquisition function builder. Defaults to
+            :class:`~trieste.acquisition.BatchMonteCarloExpectedImprovement` with 10 000 samples.
+        :param optimizer: The optimizer with which to optimize the acquisition function built by
+            ``builder``. This should *maximize* the acquisition function, and must be compatible
+            with the global search space. Defaults to
+            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        """
+        if builder is None:
+            builder = BatchMonteCarloExpectedImprovement(10_000)
+
+        if optimizer is None:
+            optimizer = automatic_optimizer_selector
+
+        if isinstance(builder, SingleModelAcquisitionBuilder):
+            builder = builder.using(OBJECTIVE)
+
+        self._builder: AcquisitionFunctionBuilder = builder
+        self._optimizer = optimizer
+        self._acquisition_function: Optional[AcquisitionFunction] = None
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""AsynchronousOptimization(
+        {self._builder!r},
+        {self._optimizer!r})"""
+
+    def acquire(
+        self,
+        search_space: SP_contra,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> types.State[AsynchronousRuleState | None, TensorType]:
+        """
+        Constructs a function that, given ``AsynchronousRuleState``,
+        returns a new state object and points to evaluate.
+        The state object contains currently known pending points,
+        that is points that were requested for evaluation,
+        but observation for which was not received yet.
+        To keep them up to date, pending points are compared against the given dataset,
+        and whatever points are in the dataset are deleted.
+
+        Let's suppose we have P pending points. To optimize the acquisition function
+        we call it with batches of size P+1, where first P points are fixed to pending points.
+        Optimization therefore happens over the last point only, which is returned.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
+        """
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                datasets, models
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function, datasets, models
+            )
+
+        def state_func(
+            state: AsynchronousRuleState | None,
+        ) -> tuple[AsynchronousRuleState | None, TensorType]:
+            tf.debugging.Assert(self._acquisition_function is not None, [])
+
+            if state is None:
+                state = AsynchronousRuleState(None)
+
+            state = state.subtract_points(datasets[OBJECTIVE].query_points)
+
+            if state.has_pending_points:
+                pending_points: TensorType = state.pending_points
+                def function_with_pending_points(x: TensorType) -> TensorType:
+                    # stuff below is quite tricky, and thus deserves an elaborate comment
+                    # we receive unknown number N of points to evaluate
+                    # note that we don't deal with batches here
+                    # so the shape of `x` is [N, 1, D]
+                    # we want to add P pending points to each point
+                    # so that acquisition actually receives N batches of size [P+1, D] each
+                    # therefore here we prepend each point with all pending points
+                    # resulting a shape [N, P+1, D]
+                    # we do that by repeating pending points N times and concatenating with x
+
+                    # pending points are 2D, we need 3D and repeat along first axis
+                    expanded = tf.expand_dims(pending_points, axis=0)
+                    pending_points_repeated = tf.repeat(expanded, [tf.shape(x)[0]], axis=0)
+                    all_points = tf.concat([pending_points_repeated, x], axis=1)
+                    return cast(AcquisitionFunction, self._acquisition_function)(all_points)
+
+                acquisition_function = function_with_pending_points
+            else:
+                # mypy gets confused about types of these functions
+                acquisition_function = self._acquisition_function  # type: ignore
+
+            new_point = self._optimizer(search_space, acquisition_function)
+            state = state.add_points(new_point)
+
+            return state, new_point
+
+        return state_func
+
+
+class AsynchronousGreedy(
+    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra]
+):
+    """AsynchronousGreedy rule, as name suggests,
+    is designed for asynchronous BO scenarios. To see what we understand by
+    asynchronous BO, see documentation for :class:`~trieste.acquisition.AsynchronousOptimization`.
+
+    AsynchronousGreedy rule works with greedy batch acquisition functions,
+    and effectively does one step of greedy batch collection process.
+    """
 
     def __init__(
         self,
         builder: GreedyAcquisitionFunctionBuilder | SingleModelGreedyAcquisitionBuilder,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
-        num_query_points: int = 1,
     ):
         """
         :param builder: Acquisition function builder. Only greedy batch approaches are supported,
@@ -277,9 +454,9 @@ class AsynchronousGreedy(
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-    ) -> types.State[AsynchronousGreedy.State | None, TensorType]:
+    ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
-        Constructs a function that, given ``AsynchronousGreedy.State``,
+        Constructs a function that, given ``AsynchronousRuleState``,
         returns a new state object and points to evaluate.
         The state object contains currently known pending points,
         that is points that were requested for evaluation,
@@ -297,38 +474,26 @@ class AsynchronousGreedy(
         """
 
         def state_func(
-            state: AsynchronousGreedy.State | None,
-        ) -> tuple[AsynchronousGreedy.State | None, TensorType]:
-            @tf.function
-            def is_not_in_dataset(x: TensorType) -> TensorType:
-                query_points = datasets[OBJECTIVE].query_points
-                return tf.reduce_all(tf.reduce_any(tf.not_equal(query_points, x), axis=1))
-
+            state: AsynchronousRuleState | None,
+        ) -> tuple[AsynchronousRuleState | None, TensorType]:
             if state is None:
-                pending_points = None
-            else:
-                pending_points = state.pending_points
-                mask = tf.map_fn(is_not_in_dataset, pending_points, fn_output_signature=tf.bool)
-                pending_points = tf.boolean_mask(pending_points, mask)
+                state = AsynchronousRuleState(None)
+
+            state = state.subtract_points(datasets[OBJECTIVE].query_points)
 
             if self._acquisition_function is None:
                 self._acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, pending_points
+                    datasets, models, state.pending_points
                 )
             else:
                 self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, datasets, models, pending_points
+                    self._acquisition_function, datasets, models, state.pending_points
                 )
 
-            points = self._optimizer(search_space, self._acquisition_function)
-            if pending_points is None:
-                pending_points = points
-            else:
-                pending_points = tf.concat([pending_points, points], axis=0)
+            new_point = self._optimizer(search_space, self._acquisition_function)
+            state = state.add_points(new_point)
 
-            state = AsynchronousGreedy.State(pending_points=pending_points)
-
-            return state, points
+            return state, new_point
 
         return state_func
 
