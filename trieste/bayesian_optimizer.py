@@ -22,11 +22,10 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Dict, Generic, Optional, TypeVar, cast, overload
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 from absl import logging
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -156,7 +155,12 @@ class BayesianOptimizer(Generic[SP]):
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(self, observer: Observer, search_space: SP, summary_writer: Optional[tf.summary.SummaryWriter] = None,):
+    def __init__(
+        self,
+        observer: Observer,
+        search_space: SP,
+        summary_writer: Optional[tf.summary.SummaryWriter] = None,
+    ):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -368,7 +372,9 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models, step, self._summary_writer)
+                points_or_stateful = acquisition_rule.acquire(
+                    self._search_space, datasets, models, step, self._summary_writer
+                )
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)
@@ -394,8 +400,16 @@ class BayesianOptimizer(Generic[SP]):
                     with self._summary_writer.as_default():
                         for tag in datasets:
                             models[tag].log(self._summary_writer, step, f"{tag}.model")
-                            tf.summary.scalar(f'{tag}.best_observation', np.min(datasets[tag].observations), step=step)
-                            tf.summary.scalar(f'{tag}.best_new_observation', np.min(tagged_output[tag].observations), step=step)
+                            tf.summary.scalar(
+                                f"{tag}.observation.best_overall",
+                                np.min(datasets[tag].observations),
+                                step=step,
+                            )
+                            tf.summary.scalar(
+                                f"{tag}.observation.best_new",
+                                np.min(tagged_output[tag].observations),
+                                step=step,
+                            )
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(

@@ -122,7 +122,7 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         """
         raise NotImplementedError
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str):
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 
@@ -237,7 +237,7 @@ class ModelStack(TrainableProbabilisticModel):
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str):
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 

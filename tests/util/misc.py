@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Container, Mapping
-from typing import Any, Callable, NoReturn, Sequence, TypeVar, Union, cast
+from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -131,11 +131,15 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        step_number: int = 0,
+        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> TensorType:
         """
         :param search_space: Unused.
         :param datasets: Unused.
         :param models: Unused.
+        :param step_number: Unused.
+        :param summary_writer: Unused.
         :return: The fixed value specified on initialisation.
         """
         return self._qp

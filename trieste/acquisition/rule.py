@@ -67,7 +67,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        step_number: int,
+        step_number: int = 0,
         summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> T_co:
         """
@@ -93,7 +93,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         search_space: SP_contra,
         dataset: Dataset,
         model: ProbabilisticModel,
-        step_number: int,
+        step_number: int = 0,
         summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> T_co:
         """
@@ -112,7 +112,9 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
                 "AcquisitionRule.acquire_single method does not support multiple datasets "
                 "or models: use acquire instead"
             )
-        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, step_number, summary_writer)
+        return self.acquire(
+            search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, step_number, summary_writer
+        )
 
 
 class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
@@ -182,7 +184,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         search_space: SP_contra,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        step_number: int,
+        step_number: int = 0,
         summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> TensorType:
         """
@@ -209,18 +211,12 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
 
         if summary_writer:
             with summary_writer.as_default(step=step_number):
-                # TODO: figure out difference between batches and single points!
-                # (current approach also retraces unnecessarily)
-                try:
-                    v = self._acquisition_function(points)[0]
-                except ValueError:
-                    v = self._acquisition_function([points])[0][0]
-                tf.summary.scalar(f'EGO.acquisition_function.maximum', v)
-
-        # TODO: multiple logs per step in greedy functions?
+                batched_points = tf.expand_dims(points, axis=0)
+                value = self._acquisition_function(batched_points)[0][0]
+                tf.summary.scalar("EGO.acquisition_function.maximum_found", value)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
-            for _ in range(
+            for i in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
@@ -228,6 +224,12 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
                 )
                 chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
+
+                if summary_writer:
+                    with summary_writer.as_default(step=step_number):
+                        batched_points = tf.expand_dims(chosen_point, axis=0)
+                        value = self._acquisition_function(batched_points)[0][0]
+                        tf.summary.scalar(f"EGO.acquisition_function.maximum_found.{i+1}", value)
 
         return points
 
@@ -287,7 +289,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         search_space: SearchSpace,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        step_number: int,
+        step_number: int = 0,
         summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> TensorType:
         """
@@ -393,7 +395,7 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        step_number: int,
+        step_number: int = 0,
         summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> types.State[State | None, TensorType]:
         """
@@ -469,7 +471,9 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            points = self._rule.acquire(acquisition_space, datasets, models)
+            points = self._rule.acquire(
+                acquisition_space, datasets, models, step_number, summary_writer
+            )
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
             return state_, points

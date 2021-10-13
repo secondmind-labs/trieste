@@ -92,7 +92,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str):
+    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 
@@ -101,5 +101,6 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :param context: A context string to use when logging.
         """
         with summary_writer.as_default(step=step_number):
-            tf.summary.scalar(f'{context}.kernel.variance', self.get_kernel().variance)
-            # TODO: what to do with e.g. lengthscales, which can be multi-dimensional?
+            tf.summary.scalar(f"{context}.kernel.variance", self.get_kernel().variance)
+            for i, lengthscale in enumerate(self.get_kernel().lengthscales):
+                tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)
