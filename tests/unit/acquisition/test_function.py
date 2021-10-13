@@ -1847,9 +1847,9 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
 
-def test_predictive_variance_builder_raises_for_void_predict_joint() -> None:
+def test_predictive_variance_raises_for_void_predict_joint() -> None:
     model, _ = trieste_deep_gaussian_process(tf.zeros([0, 1]), 2, 20, 0.01, 100, 100)
-    builder = PredictiveVariance()
+    acq_fn = predictive_variance(model, DEFAULTS.JITTER)
 
     with pytest.raises(ValueError):
-        builder.prepare_acquisition_function(Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])), model)
+        acq_fn(tf.zeros([0, 1]))

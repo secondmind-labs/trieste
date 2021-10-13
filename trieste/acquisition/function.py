@@ -2126,15 +2126,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         :return: The determinant of the predictive function.
         """
 
-        try:
-            model.predict_joint(dataset.query_points[0:])
-        except NotImplementedError:
-            raise ValueError(
-                """
-                PredictiveVariance only supports models with a predict_joint method.
-                """
-            )
-
         return predictive_variance(model, self._jitter)
 
     def update_acquisition_function(
@@ -2162,7 +2153,15 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
 
     @tf.function
     def acquisition(x: TensorType) -> TensorType:
-        _, covariance = model.predict_joint(x)
+
+        try:
+            _, covariance = model.predict_joint(x)
+        except NotImplementedError:
+            raise ValueError(
+                """
+                PredictiveVariance only supports models with a predict_joint method.
+                """
+            )
         return tf.exp(tf.linalg.logdet(covariance + jitter))
 
     return acquisition
