@@ -30,7 +30,7 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..types import TensorType
+from ..types import State, TensorType
 from .function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -190,7 +190,6 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
         (see :meth:`__init__`).
-
         :param search_space: The local acquisition search space for *this step*.
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
@@ -220,7 +219,11 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, datasets, models, pending_points=points
+                    self._acquisition_function,
+                    datasets,
+                    models,
+                    pending_points=points,
+                    new_optimization_step=False,
                 )
                 chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
@@ -232,6 +235,128 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
                         tf.summary.scalar(f"EGO.acquisition_function.maximum_found.{i+1}", value)
 
         return points
+
+
+class AsynchronousGreedy(
+    AcquisitionRule[State[Optional["AsynchronousGreedy.State"], TensorType], SP_contra]
+):
+    """AsynchronousGreedy rule, as name suggests,
+    is designed for asynchronous BO scenarios.
+    By asynchronous BO we understand a use case when multiple objective function
+    can be launched in parallel and are expected to arrive at different times.
+    Instead of waiting for the rest of observations to return, we want to immediately
+    use acquisition function to launch a new observation and avoid wasting computational resources.
+
+    To make the best decision about next point to observe, acquisition function
+    needs to be aware of currently running observations.
+    We call such points "pending". AsyncEGO provides a ``AsynchronousGreedy.State``
+    object that keeps track of pending points.
+    """
+
+    @dataclass(frozen=True)
+    class State:
+        pending_points: TensorType
+
+    def __init__(
+        self,
+        builder: GreedyAcquisitionFunctionBuilder | SingleModelGreedyAcquisitionBuilder,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        """
+        :param builder: Acquisition function builder. Only greedy batch approaches are supported,
+            because they can be told what points are pending.
+        :param optimizer: The optimizer with which to optimize the acquisition function built by
+            ``builder``. This should *maximize* the acquisition function, and must be compatible
+            with the global search space. Defaults to
+            :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        """
+        if builder is None:
+            raise ValueError("Please specify an acquisition builder")
+
+        if not isinstance(
+            builder, (GreedyAcquisitionFunctionBuilder, SingleModelGreedyAcquisitionBuilder)
+        ):
+            raise NotImplementedError(
+                f"""Only greedy acquisition strategies are supported,
+                    got {type(builder)}"""
+            )
+
+        if optimizer is None:
+            optimizer = automatic_optimizer_selector
+
+        if isinstance(builder, SingleModelGreedyAcquisitionBuilder):
+            builder = builder.using(OBJECTIVE)
+
+        self._builder: GreedyAcquisitionFunctionBuilder = builder
+        self._optimizer = optimizer
+        self._acquisition_function: Optional[AcquisitionFunction] = None
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""AsynchronousGreedy(
+        {self._builder!r},
+        {self._optimizer!r})"""
+
+    def acquire(
+        self,
+        search_space: SP_contra,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, ProbabilisticModel],
+    ) -> types.State[AsynchronousGreedy.State | None, TensorType]:
+        """
+        Constructs a function that, given ``AsynchronousGreedy.State``,
+        returns a new state object and points to evaluate.
+        The state object contains currently known pending points,
+        that is points that were requested for evaluation,
+        but observation for which was not received yet.
+        To keep them up to date, pending points are compared against the given dataset,
+        and whatever points are in the dataset are deleted.
+        Then the current batch is generated by calling the acquisition function,
+        and all points in the batch are added to the known pending points.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param datasets: The known observer query points and observations.
+        :param models: The models of the specified ``datasets``.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
+        """
+
+        def state_func(
+            state: AsynchronousGreedy.State | None,
+        ) -> tuple[AsynchronousGreedy.State | None, TensorType]:
+            @tf.function
+            def is_not_in_dataset(x: TensorType) -> TensorType:
+                query_points = datasets[OBJECTIVE].query_points
+                return tf.reduce_all(tf.reduce_any(tf.not_equal(query_points, x), axis=1))
+
+            if state is None:
+                pending_points = None
+            else:
+                pending_points = state.pending_points
+                mask = tf.map_fn(is_not_in_dataset, pending_points, fn_output_signature=tf.bool)
+                pending_points = tf.boolean_mask(pending_points, mask)
+
+            if self._acquisition_function is None:
+                self._acquisition_function = self._builder.prepare_acquisition_function(
+                    datasets, models, pending_points
+                )
+            else:
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function, datasets, models, pending_points
+                )
+
+            points = self._optimizer(search_space, self._acquisition_function)
+            if pending_points is None:
+                pending_points = points
+            else:
+                pending_points = tf.concat([pending_points, points], axis=0)
+
+            state = AsynchronousGreedy.State(pending_points=pending_points)
+
+            return state, points
+
+        return state_func
 
 
 class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
@@ -441,7 +566,9 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
 
-        def go(state: TrustRegion.State | None) -> tuple[TrustRegion.State | None, TensorType]:
+        def state_func(
+            state: TrustRegion.State | None,
+        ) -> tuple[TrustRegion.State | None, TensorType]:
 
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
@@ -478,4 +605,4 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
 
             return state_, points
 
-        return go
+        return state_func
