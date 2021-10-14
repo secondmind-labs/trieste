@@ -50,6 +50,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 
    notebooks/ask_tell_optimization
    notebooks/recovering_from_errors
+   notebooks/visualizing_with_tensorboard
    notebooks/asynchronous_bayesian_optimization
 
 Run the tutorials interactively
