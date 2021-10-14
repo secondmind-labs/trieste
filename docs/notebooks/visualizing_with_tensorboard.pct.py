@@ -4,11 +4,9 @@
 # %%
 import numpy as np
 import tensorflow as tf
-import random
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
-random.seed(3)
 
 # %% [markdown]
 # We often wish to track or visualize the Bayesian optimization process, either during and following execution. This tutorial shows how to do this using the [TensorBoard](https://www.tensorflow.org/tensorboard) visualization toolkit.
@@ -47,14 +45,18 @@ summary_writer = tf.summary.create_file_writer("logs/tensorboard")
 # %% [markdown]
 # We can now load the TensorBoard extension, though at this point there will not be any data to dispay.
 
-# %%
+# %% magic_args="echo Loading TensorBoard..." language="script"
+#
 # %load_ext tensorboard
 # %tensorboard --logdir "logs/tensorboard"
 
 # %% [markdown]
+# ![TensorBoard empty page](figures/tensorboard_empty.png)
+
+# %% [markdown]
 # ## Running and tracking the Bayesian Optimizer
 #
-# By passing in the `summary_writer` to `BayesianOptimizer`, we tell trieste to log relevant information during optimization. While the optimization is running we can refresh TensorBoard to see its progress.
+# By passing in the `summary_writer` to `BayesianOptimizer`, we tell trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(
@@ -65,12 +67,18 @@ result, history = bo.optimize(15, initial_data, model).astuple()
 
 
 # %% [markdown]
+# The data remains available when the optimization is over.
+#
+# ![TensorBoard graphs](figures/tensorboard_bo.png)
+
+# %% [markdown]
 # ## Logging additional model parameters
 #
-# When logging is enabled, trieste decides what information is interesting enough to log. This includes objective and acquisition function values, and some (but not all) model parameters. To log additional model parameters, you can define your own model subclass and override the `log` method. For example, the following GPR subclass also logs the likelihood variance at each step.
+# When logging is enabled, trieste decides what information is interesting enough to log. This includes objective and acquisition function values, and some (but not all) model parameters. To log additional model parameters, you can define your own model subclass and override the `log` method. For example, the following GPR subclass also logs the average lengthscale at each step.
 
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
+    
     def log(self, summary_writer, step_number, context):
         """
         Log model-specific information at a given optimization step.
@@ -81,14 +89,13 @@ class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
         """
         super().log(summary_writer, step_number, context)
         with summary_writer.as_default(step=step_number):
-            tf.summary.scalar(f"{context}.likelihood.variance", self.model.likelihood.variance)
+            tf.summary.scalar(f"{context}.kernel.lengthscales.mean", np.mean(self.get_kernel().lengthscales))
 
 
-gpflow.set_trainable(gpr.likelihood, True)
 model = GPRExtraLogging(gpr)
 
 # %% [markdown]
-# Running with this model now also produces logs for the variance.
+# Running with this model now also produces logs for the mean lengthscale.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(
@@ -96,6 +103,9 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(
 )
 
 result, history = bo.optimize(15, initial_data, model).astuple()
+
+# %% [markdown]
+# ![TensorBoard custom graphs](figures/tensorboard_custom.png)
 
 # %% [markdown]
 # ## LICENSE
