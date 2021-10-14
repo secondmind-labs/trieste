@@ -57,7 +57,9 @@ summary_writer = tf.summary.create_file_writer("logs/tensorboard")
 # By passing in the `summary_writer` to `BayesianOptimizer`, we tell trieste to log relevant information during optimization. While the optimization is running we can refresh TensorBoard to see its progress.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space, summary_writer=summary_writer)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer, search_space, summary_writer=summary_writer
+)
 
 result, history = bo.optimize(15, initial_data, model).astuple()
 
@@ -81,6 +83,7 @@ class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
         with summary_writer.as_default(step=step_number):
             tf.summary.scalar(f"{context}.likelihood.variance", self.model.likelihood.variance)
 
+
 gpflow.set_trainable(gpr.likelihood, True)
 model = GPRExtraLogging(gpr)
 
@@ -88,7 +91,9 @@ model = GPRExtraLogging(gpr)
 # Running with this model now also produces logs for the variance.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space, summary_writer=summary_writer)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer, search_space, summary_writer=summary_writer
+)
 
 result, history = bo.optimize(15, initial_data, model).astuple()
 
