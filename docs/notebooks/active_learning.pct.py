@@ -91,7 +91,7 @@ bo_iter = 5
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
 
 # %% [markdown]
-# Then we can retrieve our final dataset from the active learning steps
+# Then we can retrieve our final dataset from the active learning steps.
 
 # %%
 dataset = result.try_get_final_dataset()
