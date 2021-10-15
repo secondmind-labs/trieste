@@ -554,67 +554,104 @@ def test_asynchronous_rule_state_has_pending_points() -> None:
     assert state.has_pending_points
 
 
-def test_asynchronous_rule_subtract_points_raises_shape_mismatch() -> None:
+def test_asynchronous_rule_remove_points_raises_shape_mismatch() -> None:
     state = AsynchronousRuleState(tf.constant([[1], [2], [3]]))
     with pytest.raises(ValueError):
-        state.subtract_points(tf.constant([[1, 1]]))
+        state.remove_points(tf.constant([[1, 1]]))
 
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
-        state.subtract_points(tf.constant([[1]]))
+        state.remove_points(tf.constant([[1]]))
 
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
-        state.subtract_points(tf.constant([[[1, 1], [2, 2]]]))
+        state.remove_points(tf.constant([[[1, 1], [2, 2]]]))
 
 
-def test_asynchronous_rule_subtract_points() -> None:
+def test_asynchronous_rule_state_remove_points() -> None:
+    # brace yourself, there are many test cases here
+
     pending_points = tf.constant([[1], [2], [3]])
 
+    # first
     state = AsynchronousRuleState(pending_points)
-    state = state.subtract_points(tf.constant([[1], [2], [3]]))
-    assert not state.has_pending_points
-
-    state = AsynchronousRuleState(pending_points)
-    state = state.subtract_points(tf.constant([[3], [1], [2]]))
-    assert not state.has_pending_points
-
-    state = AsynchronousRuleState(pending_points)
-    state = state.subtract_points(tf.constant([[4], [5], [6]]))
-    npt.assert_array_equal(state.pending_points, [[1], [2], [3]])
-
-    state = AsynchronousRuleState(pending_points)
-    state = state.subtract_points(tf.constant([[1]]))
+    state = state.remove_points(tf.constant([[1]]))
     npt.assert_array_equal(state.pending_points, [[2], [3]])
 
-    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2], [3, 3]]))
-    state = state.subtract_points(tf.constant([[1, 1], [3, 2]]))
-    npt.assert_array_equal(state.pending_points, [[2, 2], [3, 3]])
+    # neither first nor last
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3]])
+
+    # last
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[3]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # unknown point, nothing to remove
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[4]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2], [3]])
+
+    # duplicated pending points - only remove one occurence
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3], [2]])
+
+    # duplicated pending points - remove a dupe and not a dupe
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [3]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # duplicated pending points - remove both dupes
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3]])
+
+    # duplicated pending points - dupe, not a dupe, unknown point
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [3], [4]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # remove from empty
+    state = AsynchronousRuleState(None)
+    state = state.remove_points(tf.constant([[2]]))
+    assert not state.has_pending_points
+
+    # remove all
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(pending_points)
+    assert not state.has_pending_points
+
+    # bigger last dimension
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 3]]))
+    state = state.remove_points(tf.constant([[1, 1], [2, 2], [3, 3], [1, 2]]))
+    npt.assert_array_equal(state.pending_points, [[2, 3]])
 
 
-def test_asynchronous_rule_add_points_raises_shape_mismatch() -> None:
+def test_asynchronous_rule_add_pending_points_raises_shape_mismatch() -> None:
     state = AsynchronousRuleState(tf.constant([[1], [2], [3]]))
     with pytest.raises(ValueError):
-        state.add_points(tf.constant([[1, 1]]))
+        state.add_pending_points(tf.constant([[1, 1]]))
 
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
-        state.add_points(tf.constant([[1]]))
+        state.add_pending_points(tf.constant([[1]]))
 
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     with pytest.raises(ValueError):
-        state.add_points(tf.constant([[[1, 1], [2, 2]]]))
+        state.add_pending_points(tf.constant([[[1, 1], [2, 2]]]))
 
 
-def test_asynchronous_rule_add_points() -> None:
+def test_asynchronous_rule_add_pending_points() -> None:
     state = AsynchronousRuleState(None)
-    state = state.add_points(tf.constant([[1]]))
+    state = state.add_pending_points(tf.constant([[1]]))
     npt.assert_array_equal(state.pending_points, [[1]])
 
     state = AsynchronousRuleState(tf.constant([[1], [2]]))
-    state = state.add_points(tf.constant([[1]]))
+    state = state.add_pending_points(tf.constant([[1]]))
     npt.assert_array_equal(state.pending_points, [[1], [2], [1]])
 
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
-    state = state.add_points(tf.constant([[3, 3], [4, 4]]))
+    state = state.add_pending_points(tf.constant([[3, 3], [4, 4]]))
     npt.assert_array_equal(state.pending_points, [[1, 1], [2, 2], [3, 3], [4, 4]])

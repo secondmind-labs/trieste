@@ -236,31 +236,48 @@ class AsynchronousRuleState:
         """Returns `True` if there is at least one pending point, and `False` otherwise."""
         return (self.pending_points is not None) and tf.size(self.pending_points) > 0
 
-    def subtract_points(self, other_points: TensorType) -> AsynchronousRuleState:
-        """Removes all rows from current `pending_points` that are present in `other_points`.
+    def remove_points(self, points_to_remove: TensorType) -> AsynchronousRuleState:
+        """Removes all rows from current `pending_points` that are present in `points_to_remove`.
+        If a point to remove occurs multiple times in the list of pending points,
+        only first occurrence of it will be removed.
 
-        :param other_points: Points to remove.
+        :param points_to_remove: Points to remove.
         :return: New instance of `AsynchronousRuleState` with updated pending points.
         """
+
+        def _remove_point(pending_points: TensorType, point_to_remove: TensorType) -> TensorType:
+            # find indexes of all occurrences of the point to remove
+            indexes_of_point = tf.where(
+                tf.reduce_all(tf.equal(pending_points, point_to_remove), axis=1)
+            )
+            if tf.equal(tf.size(indexes_of_point), 0):
+                return pending_points
+
+            # we only want to remove first occurrence
+            # and know that shape of indexes is [N, 1]
+            # that allows us to do this trick below
+            first_index = indexes_of_point[0, 0]
+            return tf.concat(
+                [pending_points[:first_index, :], pending_points[first_index + 1 :, :]], axis=0
+            )
+
         if not self.has_pending_points:
             # nothing to do if there are no pending points
             return self
 
         tf.debugging.assert_shapes(
-            [(self.pending_points, [None, "D"]), (other_points, [None, "D"])],
-            message=f"""Other points shall be 2D and have same last dimension as pending points.
+            [(self.pending_points, [None, "D"]), (points_to_remove, [None, "D"])],
+            message=f"""Point to remove shall be 1xD where D is the last dimension of pending points.
                         Got {tf.shape(self.pending_points)} for pending points
-                        and {tf.shape(other_points)} for other points.""",
+                        and {tf.shape(points_to_remove)} for other points.""",
         )
 
-        @tf.function
-        def is_not_in_points(x: TensorType) -> TensorType:
-            return tf.reduce_all(tf.reduce_any(tf.not_equal(other_points, x), axis=1))
+        new_pending_points = tf.foldl(
+            _remove_point, points_to_remove, initializer=self.pending_points
+        )
+        return AsynchronousRuleState(new_pending_points)
 
-        mask = tf.map_fn(is_not_in_points, self.pending_points, fn_output_signature=tf.bool)
-        return AsynchronousRuleState(tf.boolean_mask(self.pending_points, mask))
-
-    def add_points(self, new_points: TensorType) -> AsynchronousRuleState:
+    def add_pending_points(self, new_points: TensorType) -> AsynchronousRuleState:
         """Adds `new_points` to the already known pending points.
 
         :param new_points: Points to add.
@@ -295,7 +312,10 @@ class AsynchronousOptimization(
     We call such points "pending", and consider them a part of acquisition state.
     We use :class:`AsynchronousRuleState` to store these points.
 
-    AsynchronousOptimization works with non-greedy batch acquisition functions.
+    `AsynchronousOptimization` works with non-greedy batch acquisition functions.
+    For example, it would work with
+    :class:`~trieste.acquisition.BatchMonteCarloExpectedImprovement`,
+    but cannot be used with :class:`~trieste.acquisition.ExpectedImprovement`.
     If there are P pending points, the acquisition function is used with batch size P+1.
     During optimization first P points are fixed to pending, and thus optimization
     is done over the last point only, which is then returned.
@@ -378,7 +398,7 @@ class AsynchronousOptimization(
             if state is None:
                 state = AsynchronousRuleState(None)
 
-            state = state.subtract_points(datasets[OBJECTIVE].query_points)
+            state = state.remove_points(datasets[OBJECTIVE].query_points)
 
             if state.has_pending_points:
                 pending_points: TensorType = state.pending_points
@@ -406,7 +426,7 @@ class AsynchronousOptimization(
                 acquisition_function = self._acquisition_function  # type: ignore
 
             new_point = self._optimizer(search_space, acquisition_function)
-            state = state.add_points(new_point)
+            state = state.add_pending_points(new_point)
 
             return state, new_point
 
@@ -494,7 +514,7 @@ class AsynchronousGreedy(
             if state is None:
                 state = AsynchronousRuleState(None)
 
-            state = state.subtract_points(datasets[OBJECTIVE].query_points)
+            state = state.remove_points(datasets[OBJECTIVE].query_points)
 
             if self._acquisition_function is None:
                 self._acquisition_function = self._builder.prepare_acquisition_function(
@@ -506,7 +526,7 @@ class AsynchronousGreedy(
                 )
 
             new_point = self._optimizer(search_space, self._acquisition_function)
-            state = state.add_points(new_point)
+            state = state.add_pending_points(new_point)
 
             return state, new_point
 
