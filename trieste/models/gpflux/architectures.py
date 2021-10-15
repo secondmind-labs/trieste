@@ -96,7 +96,7 @@ def build_gi_deep_gp(
     num_layers: int,
     num_inducing: int,
     observations: Optional[TensorType] = None,
-    inner_layer_prec_init: float = 10.,
+    inner_layer_prec_init: float = 1.,
     last_layer_prec_init: float = 10.,
     likelihood_noise_variance: float = 1e-2,
     last_layer_variance: float = 1.0,
