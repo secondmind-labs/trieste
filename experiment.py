@@ -51,8 +51,8 @@ tf.keras.backend.set_floatx("float64")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
-parser.add_argument('--function', type=str, help='objective function', nargs='?', default='michalewicz2')
-parser.add_argument('--model', type=str, help='model name', nargs='?', default='deepgp')
+parser.add_argument('--function', type=str, help='objective function', nargs='?', default='ackley')
+parser.add_argument('--model', type=str, help='model name', nargs='?', default='dkp')
 parser.add_argument('--lnt', dest='ln', help='whether to learn noise variance', action='store_true')
 parser.add_argument('--lnf', dest='ln', help='whether to learn noise variance', action='store_false')
 parser.add_argument('--rtt', dest='rt', help='whether to retrain', action='store_true')
@@ -104,7 +104,6 @@ search_space = function_dict[function_key][2]
 observer = mk_observer(function)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
 
 num_initial_points = 20
 num_acquisitions = 480
@@ -130,13 +129,18 @@ def run_bayes_opt(
         current_dataset = initial_data
 
         for loop in range(num_loops):
-            model = builder(current_dataset, learn_noise=learn_noise,
+            model, acquisition_rule = builder(current_dataset, learn_noise=learn_noise,
                             search_space=search_space)
             result = bo.optimize(num_acq_per_loop, current_dataset, model,
                                      acquisition_rule=acquisition_rule, track_state=False)
             current_dataset = result.try_get_final_dataset()
+
+            result_arg_min_idx = tf.squeeze(tf.argmin(current_dataset.observations.numpy(), axis=0))
+
+            print(f"observation "
+                  f"{function_key} {run}: {current_dataset.observations.numpy()[result_arg_min_idx, :]}")
     else:
-        model = builder(initial_data, learn_noise=learn_noise, search_space=search_space)
+        model, acquisition_rule = builder(initial_data, learn_noise=learn_noise, search_space=search_space)
 
         result = bo.optimize(num_acquisitions, initial_data, model,
                              acquisition_rule=acquisition_rule, track_state=False)
@@ -153,11 +157,11 @@ def run_bayes_opt(
     result_evaluation_ll = tester(ll_evaluation_data, result_model)
 
     pd.DataFrame(result_query_points).to_csv(
-        'results/{}/{}_ln{}_rt{}_query_points_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_ei/{}/{}_ln{}_rt{}_query_points_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_observations).to_csv(
-        'results/{}/{}_ln{}_rt{}_observations_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_ei/{}/{}_ln{}_rt{}_observations_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_evaluation_ll).to_csv(
-        'results/{}/{}_ln{}_rt{}_ood_ll_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_ei/{}/{}_ln{}_rt{}_ood_ll_{}'.format(function_key, model_key, learn_noise, retrain, run))
 
     print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")
@@ -179,9 +183,9 @@ if model_key == 'rs':
     result_observations = tf.concat([initial_data.observations, acquired_data.observations], 0).numpy()
 
     pd.DataFrame(result_query_points).to_csv(
-        'results/{}/{}_query_points_{}'.format(function_key, model_key, run))
+        'results_ei/{}/{}_query_points_{}'.format(function_key, model_key, run))
     pd.DataFrame(result_observations).to_csv(
-        'results/{}/{}_observations_{}'.format(function_key, model_key, run))
+        'results_ei/{}/{}_observations_{}'.format(function_key, model_key, run))
 
     quit()
 

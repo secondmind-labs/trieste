@@ -14,6 +14,20 @@ from trieste.models.bayesfunc import (
     BayesFuncModel,
     build_sqexp_deep_inv_wishart
 )
+from trieste.acquisition.rule import (
+    DiscreteThompsonSampling,
+    EfficientGlobalOptimization,
+)
+from trieste.acquisition.models import (
+    DeepGaussianProcessSampler,
+    GlobalInducingDeepGaussianProcessSampler
+)
+from trieste.acquisition.function import (
+    MonteCarloExpectedImprovement,
+    MonteCarloAugmentedExpectedImprovement,
+    ExpectedImprovement,
+    AugmentedExpectedImprovement
+)
 from gpflow.utilities import set_trainable
 import tensorflow_probability as tfp
 from trieste.models.gpflow import GPflowModelConfig
@@ -46,7 +60,7 @@ def build_dkp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = Fa
 
     model.to(dtype=t.float64)
 
-    return BayesFuncModel(model)
+    return BayesFuncModel(model), DiscreteThompsonSampling(1000, 1)
 
 
 def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
@@ -59,9 +73,13 @@ def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: b
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.likelihood.variance.assign(1e-3)
+        MCEI = MonteCarloAugmentedExpectedImprovement(DeepGaussianProcessSampler, 10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
     else:
         dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
+        MCEI = MonteCarloExpectedImprovement(DeepGaussianProcessSampler, 10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
 
     epochs = 400
     batch_size = 1000
@@ -74,13 +92,16 @@ def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: b
         "shuffle": False,
     }
 
-    return GPfluxModelConfig(**{
-        "model": dgp,
-        "model_args": {
-            "fit_args": fit_args,
-        },
-        "optimizer": optimizer,
-    })
+    return (
+        GPfluxModelConfig(**{
+            "model": dgp,
+            "model_args": {
+                "fit_args": fit_args,
+            },
+            "optimizer": optimizer,
+        }),
+        acquisition_rule
+    )
 
 
 def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
@@ -93,9 +114,13 @@ def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool =
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.variance.assign(1e-3)
+        MCEI = MonteCarloAugmentedExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
     else:
         dgp.likelihood_layer.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
+        MCEI = MonteCarloExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
 
     epochs = 400
     batch_size = 1000
@@ -107,13 +132,16 @@ def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool =
         "verbose": 0,
     }
 
-    return GPfluxModelConfig(**{
-        "model": dgp,
-        "model_args": {
-            "fit_args": fit_args,
-        },
-        "optimizer": optimizer,
-    })
+    return (
+        GPfluxModelConfig(**{
+            "model": dgp,
+            "model_args": {
+                "fit_args": fit_args,
+            },
+            "optimizer": optimizer,
+        }),
+        acquisition_rule
+    )
 
 
 def build_lv_dgp_model(data, num_total_data, num_layers=2, num_inducing=200, latent_dim=1):
@@ -166,22 +194,29 @@ def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] 
         gpr = gpflow.models.GPR(data.astuple(), kernel,
                                 mean_function=gpflow.mean_functions.Constant(tf.reduce_mean(data.observations)),
                                 noise_variance=1e-3)
+        EI = AugmentedExpectedImprovement()
+        acquisition_rule = EfficientGlobalOptimization(EI)
     else:
         gpr = gpflow.models.GPR(data.astuple(), kernel,
                                 mean_function=gpflow.mean_functions.Constant(tf.reduce_mean(data.observations)),
                                 noise_variance=1e-5)
         gpflow.set_trainable(gpr.likelihood, False)
+        EI = ExpectedImprovement()
+        acquisition_rule = EfficientGlobalOptimization(EI)
 
-    return GPflowModelConfig(**{
-        "model": gpr,
-        "model_args": {
-            "num_kernel_samples": 100,
-        },
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    })
+    return (
+        GPflowModelConfig(**{
+            "model": gpr,
+            "model_args": {
+                "num_kernel_samples": 100,
+            },
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+                "minimize_args": {"options": dict(maxiter=100)},
+            },
+        }),
+        acquisition_rule
+    )
 
 
 def test_ll_dkp(
