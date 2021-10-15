@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .gpflux import DeepGaussianProcessSampler
+from .gpflux import DeepGaussianProcessSampler, GlobalInducingDeepGaussianProcessSampler

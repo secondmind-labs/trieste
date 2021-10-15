@@ -50,6 +50,7 @@ from .function import (
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     MonteCarloExpectedImprovement,
+    MonteCarloAugmentedExpectedImprovement,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
