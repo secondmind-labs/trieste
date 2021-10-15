@@ -37,7 +37,7 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
         fit_args: Dict[Any] | None = None,
         dtype=t.float64,
         device: str = "cpu",
-        num_train_samples: int = 10,
+        num_train_samples: int = 1,
     ):
         super().__init__()
 
@@ -48,8 +48,9 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
                 "verbose": True,
                 "lr": 0.01,
                 "epochs": 400,
-                "batch_size": 100,
-                "scheduler": True
+                "temper_until": 50,
+                "batch_size": 500,
+                "scheduler": False
             })
         else:
             self.fit_args = fit_args
@@ -110,7 +111,11 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
                 assert target.shape == output.loc.shape[1:]
 
                 ll = output.log_prob(target.unsqueeze(0)).mean(0).sum()
-                elbo = ll + logpq.mean()*target.shape[0] / self.num_data
+                if epoch < self.fit_args["temper_until"]:
+                    L = 0.1
+                else:
+                    L = 1.
+                elbo = ll + L*logpq.mean()*target.shape[0] / self.num_data
 
                 (-elbo).backward()
                 opt.step()
@@ -121,7 +126,7 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
                 scheduler.step()
 
             if self.fit_args.get("verbose"):
-                print(f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {total_elbo}')
+                print(f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {total_elbo/self.num_data}')
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         with t.no_grad():

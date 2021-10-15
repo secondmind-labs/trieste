@@ -27,8 +27,11 @@ from gpflow.base import Parameter
 import torch as t
 
 
-def build_dkp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
+def build_dkp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
                     search_space: Optional[Box] = None):
+    variance = tf.math.reduce_variance(data.observations).numpy().astype(float)
+    mean = tf.math.reduce_mean(data.observations).numpy().astype(float)
+
     if learn_noise:
         model = build_sqexp_deep_inv_wishart(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
                                              likelihood_noise_variance=1e-3, search_space=search_space)
@@ -38,26 +41,29 @@ def build_dkp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = Fa
         for param in model[-1].parameters():
             param.requires_grad = False
 
+    model[0][1][-2].log_height.data = t.tensor(0.5*np.log(variance))
+    model[1].constant.data = t.tensor(mean)
+
     model.to(dtype=t.float64)
 
     return BayesFuncModel(model)
 
 
-def build_vanilla_dgp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
+def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
                             search_space: Optional[Box] = None):
     variance = tf.math.reduce_variance(data.observations)
 
     dgp = build_vanilla_deep_gp(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
                                 search_space=search_space)
     dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
-    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
+    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.likelihood.variance.assign(1e-3)
     else:
         dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
 
-    epochs = 200
+    epochs = 400
     batch_size = 1000
 
     optimizer = tf.optimizers.Adam(0.005)
@@ -77,21 +83,21 @@ def build_vanilla_dgp_model(data, num_layers=2, num_inducing=200, learn_noise: b
     })
 
 
-def build_gi_dgp_model(data, num_layers=2, num_inducing=200, learn_noise: bool = False,
+def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
                        search_space: Optional[Box] = None):
     variance = tf.math.reduce_variance(data.observations)
 
     dgp = build_gi_deep_gp(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
                            last_layer_variance=variance.numpy(), num_train_samples=1,
                            search_space=search_space)
-    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
+    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.variance.assign(1e-3)
     else:
         dgp.likelihood_layer.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
 
-    epochs = 200
+    epochs = 400
     batch_size = 1000
 
     optimizer = tf.optimizers.Adam(0.005)
@@ -143,31 +149,28 @@ def build_lv_dgp_model(data, num_total_data, num_layers=2, num_inducing=200, lat
 
 def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] = None):
     gpflow.config.set_default_jitter(1e-5)
-    print('jitter', gpflow.default_jitter())
     variance = tf.math.reduce_variance(data.observations)
-    print('variance: ', variance.numpy())
     dim = data.query_points.shape[-1]
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*dim)
     variance_prior_loc = variance.numpy()
     variance_prior_scale = 1.0
     lengthscales_prior_scale = 0.5
     kernel.lengthscales.assign(0.3*(search_space.upper - search_space.lower) * np.sqrt(dim))
-    #prior_scale = tf.cast(1.0, dtype=tf.float64)
     kernel.variance.prior = tfp.distributions.LogNormal(
         loc=np.float64(variance_prior_loc), scale=np.float64(variance_prior_scale)
     )
-            #tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=np.float64(np.log(kernel.lengthscales.numpy())), scale=np.float64(lengthscales_prior_scale)
     )
-            #tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     if learn_noise:
-        gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-3)
+        gpr = gpflow.models.GPR(data.astuple(), kernel,
+                                mean_function=gpflow.mean_functions.Constant(tf.reduce_mean(data.observations)),
+                                noise_variance=1e-3)
     else:
-        gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
+        gpr = gpflow.models.GPR(data.astuple(), kernel,
+                                mean_function=gpflow.mean_functions.Constant(tf.reduce_mean(data.observations)),
+                                noise_variance=1e-5)
         gpflow.set_trainable(gpr.likelihood, False)
-
-    #print_summary(gpr)
 
     return GPflowModelConfig(**{
         "model": gpr,
@@ -202,7 +205,7 @@ def test_ll_dkp(
         Py = dkp(X)
         ind_ll = Py.log_prob(y)
 
-        test_ll = (t.logsumexp(ind_ll, 0) - math.log(num_samples)).mean()
+        test_ll = (t.logsumexp(ind_ll, 0) - math.log(num_samples)).mean(0)
     return test_ll.numpy()
 
 
