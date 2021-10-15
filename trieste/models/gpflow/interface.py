@@ -102,5 +102,9 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         with summary_writer.as_default(step=step_number):
             tf.summary.scalar(f"{context}.kernel.variance", self.get_kernel().variance)
-            for i, lengthscale in enumerate(self.get_kernel().lengthscales):
-                tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)
+            lengthscales = self.get_kernel().lengthscales
+            if tf.rank(lengthscales) == 0:
+                tf.summary.scalar(f"{context}.kernel.lengthscale", lengthscales)
+            elif tf.rank(lengthscales) == 1:
+                for i, lengthscale in enumerate(lengthscales):
+                    tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)
