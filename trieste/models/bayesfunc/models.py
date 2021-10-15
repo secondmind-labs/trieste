@@ -45,7 +45,7 @@ class BayesFuncModel(BayesFuncPredictor, TrainableProbabilisticModel):
 
         if fit_args is None:
             self.fit_args = dict({
-                "verbose": True,
+                "verbose": False,
                 "lr": 0.01,
                 "epochs": 400,
                 "temper_until": 50,

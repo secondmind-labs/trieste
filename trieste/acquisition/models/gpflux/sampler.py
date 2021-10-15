@@ -42,8 +42,7 @@ class DeepGaussianProcessSampler(Sampler):
             model is not a :class:`DeepGaussianProcess`.
         """
         if not isinstance(model, DeepGaussianProcess):
-            raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess or a "
-                             "trieste.models.gpflux.GlobalInducingDeepGaussianProcess")
+            raise ValueError("Model must be a trieste.models.gpflux.DeepGaussianProcess")
 
         super().__init__(sample_size, model)
 
