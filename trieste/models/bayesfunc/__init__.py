@@ -17,7 +17,7 @@ This package contains the primary interface for deep Gaussian process models. It
 number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 """
 
-from .architectures import build_sqexp_deep_inv_wishart
+from .architectures import build_sqexp_deep_inv_wishart, build_bayesfunc_gi_dgp
 from .config import BayesFuncModelConfig
 from .interface import BayesFuncPredictor
 from .models import BayesFuncModel

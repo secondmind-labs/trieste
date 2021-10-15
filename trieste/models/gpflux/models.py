@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import gpflow
 import tensorflow as tf
 from gpflow.base import Module
 from gpflow.inducing_variables import InducingPoints
@@ -117,42 +116,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             return tf.stack(samples)
 
         return get_samples(query_points, num_samples)
-
-    def mc_posterior_mean(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """
-        Return a Monte Carlo estimate of the posterior mean at the ``query_points``, based off
-        ``num_samples`` samples.
-
-        :param query_points: The points at which to sample, with shape [..., N, D].
-        :param num_samples: The number of samples at each point.
-        :return: The Monte Carlo estimate of the posterior mean. For a predictive distribution with
-            event shape E, this has shape [..., N] + E.
-        """
-        samples = tf.tile(
-            tf.expand_dims(query_points, 0), [num_samples, *[1] * tf.rank(query_points).numpy()]
-        )
-        for layer in self.model_gpflux.f_layers[:-1]:
-            if isinstance(layer, LatentVariableLayer):
-                samples = layer.compositor([samples, layer.prior.sample(tf.shape(samples)[:-1])])
-                continue
-
-            mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
-
-            samples = mean + tf.sqrt(var) * tf.random.normal(
-                [num_samples, 1, tf.shape(mean)[-1]], dtype=gpflow.default_float()
-            )
-
-        last_layer = self.model_gpflux.f_layers[-1]
-        if isinstance(last_layer, LatentVariableLayer):
-            mean_samples = last_layer.compositor(
-                [samples, last_layer.prior.sample(tf.shape(samples)[:-1])]
-            )
-        else:
-            mean_samples, _ = self.model_gpflux.f_layers[-1].predict(
-                samples, full_cov=False, full_output_cov=False
-            )
-
-        return tf.reduce_mean(mean_samples, axis=0)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -279,20 +242,6 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model_gpflux.sample(query_points, num_samples, consistent=True)
 
-    def mc_posterior_mean(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """
-        Return a Monte Carlo estimate of the posterior mean at the ``query_points``, based off
-        ``num_samples`` samples.
-
-        :param query_points: The points at which to sample, with shape [..., N, D].
-        :param num_samples: The number of samples at each point.
-        :return: The Monte Carlo estimate of the posterior mean. For a predictive distribution with
-            event shape E, this has shape [..., N] + E.
-        """
-        samples = self.model_gpflux.sample(query_points, num_samples, consistent=False)
-
-        return tf.reduce_mean(samples, axis=0)
-
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
         new_num_data = inputs.shape[0]
@@ -334,3 +283,16 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
 
         # Reset lr in case there was an lr schedule
         self.optimizer.lr.assign(self.original_lr)
+
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise for homoscedastic likelihoods.
+        :return: The observation noise.
+        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+        """
+        try:
+            noise_variance = self.model_gpflux.likelihood_layer.variance
+        except AttributeError:
+            raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
+
+        return noise_variance

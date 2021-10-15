@@ -20,4 +20,4 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 from .architectures import build_gi_deep_gp, build_latent_variable_dgp_model, build_vanilla_deep_gp
 from .config import GPfluxModelConfig
 from .interface import GPfluxPredictor
-from .models import DeepGaussianProcess
+from .models import DeepGaussianProcess, GlobalInducingDeepGaussianProcess
