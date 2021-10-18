@@ -2097,3 +2097,71 @@ def _get_min_value_samples(
         sampler = ExactThompsonSampler(num_samples, model, sample_min_value=True)
 
     return sampler.sample(sampled_points)
+
+
+class PredictiveVariance(SingleModelAcquisitionBuilder):
+    """
+    Builder for the determinant of the predictive covariance matrix over the batch points.
+    For a batch of size 1 it is the same as maximizing the predictive variance.
+    """
+
+    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        """
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return f"PredictiveVariance(jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return predictive_variance(model, self._jitter)
+
+    def update_acquisition_function(
+        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param dataset: Unused.
+        :param model: The model over the specified ``dataset``.
+        """
+        return function  # no need to update anything
+
+
+def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
+    """
+    The predictive variance acquisition function for active learning, based on
+    the determinant of the covariance (see :cite:`MacKay1992` for details).
+    Note that the model needs to supply covariance of the joint marginal distribution,
+    which can be expensive to compute.
+
+    :param model: The model of the objective function.
+    :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+    """
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+
+        try:
+            _, covariance = model.predict_joint(x)
+        except NotImplementedError:
+            raise ValueError(
+                """
+                PredictiveVariance only supports models with a predict_joint method.
+                """
+            )
+        return tf.exp(tf.linalg.logdet(covariance + jitter))
+
+    return acquisition
