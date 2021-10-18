@@ -218,7 +218,7 @@ class AsynchronousRuleState:
     These are points which were requested but are not observed yet.
     """
 
-    pending_points: TensorType
+    pending_points: Optional[TensorType] = None
 
     def __post_init__(self) -> None:
         if self.pending_points is None:
@@ -420,10 +420,9 @@ class AsynchronousOptimization(
                     all_points = tf.concat([pending_points_repeated, x], axis=1)
                     return cast(AcquisitionFunction, self._acquisition_function)(all_points)
 
-                acquisition_function = function_with_pending_points
+                acquisition_function = cast(AcquisitionFunction, function_with_pending_points)
             else:
-                # mypy gets confused about types of these functions
-                acquisition_function = self._acquisition_function  # type: ignore
+                acquisition_function = cast(AcquisitionFunction, self._acquisition_function)
 
             new_point = self._optimizer(search_space, acquisition_function)
             state = state.add_pending_points(new_point)
