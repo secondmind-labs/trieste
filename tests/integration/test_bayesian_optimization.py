@@ -136,7 +136,6 @@ from trieste.types import State, TensorType
         ],
     ),
 )
-@pytest.mark.skip()
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
