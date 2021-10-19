@@ -328,6 +328,7 @@ class AsynchronousOptimization(
         self,
         builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
     ):
         """
         :param builder: Batch acquisition function builder. Defaults to
@@ -336,7 +337,13 @@ class AsynchronousOptimization(
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        :param num_query_points: The number of points to acquire.
         """
+        if num_query_points <= 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
         if builder is None:
             builder = BatchMonteCarloExpectedImprovement(10_000)
 
@@ -345,6 +352,11 @@ class AsynchronousOptimization(
 
         if isinstance(builder, SingleModelAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
+
+        # even though we are only using batch acquisition functions
+        # there is no need to batchify the optimizer if our batch size is 1
+        if num_query_points > 1:
+            optimizer = batchify(optimizer, num_query_points)
 
         self._builder: AcquisitionFunctionBuilder = builder
         self._optimizer = optimizer
@@ -406,12 +418,12 @@ class AsynchronousOptimization(
                 def function_with_pending_points(x: TensorType) -> TensorType:
                     # stuff below is quite tricky, and thus deserves an elaborate comment
                     # we receive unknown number N of points to evaluate
-                    # note that we don't deal with batches here
-                    # so the shape of `x` is [N, 1, D]
+                    # and need to collect batch of B new points
+                    # so the shape of `x` is [N, B, D]
                     # we want to add P pending points to each point
-                    # so that acquisition actually receives N batches of size [P+1, D] each
+                    # so that acquisition actually receives N batches of size [P+B, D] each
                     # therefore here we prepend each point with all pending points
-                    # resulting a shape [N, P+1, D]
+                    # resulting a shape [N, P+B, D]
                     # we do that by repeating pending points N times and concatenating with x
 
                     # pending points are 2D, we need 3D and repeat along first axis
@@ -424,10 +436,10 @@ class AsynchronousOptimization(
             else:
                 acquisition_function = cast(AcquisitionFunction, self._acquisition_function)
 
-            new_point = self._optimizer(search_space, acquisition_function)
-            state = state.add_pending_points(new_point)
+            new_points = self._optimizer(search_space, acquisition_function)
+            state = state.add_pending_points(new_points)
 
-            return state, new_point
+            return state, new_points
 
         return state_func
 
@@ -447,6 +459,7 @@ class AsynchronousGreedy(
         self,
         builder: GreedyAcquisitionFunctionBuilder | SingleModelGreedyAcquisitionBuilder,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
     ):
         """
         :param builder: Acquisition function builder. Only greedy batch approaches are supported,
@@ -455,7 +468,13 @@ class AsynchronousGreedy(
             ``builder``. This should *maximize* the acquisition function, and must be compatible
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+        :param num_query_points: The number of points to acquire.
         """
+        if num_query_points <= 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+
         if builder is None:
             raise ValueError("Please specify an acquisition builder")
 
@@ -476,12 +495,14 @@ class AsynchronousGreedy(
         self._builder: GreedyAcquisitionFunctionBuilder = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
+        self._num_query_points = num_query_points
 
     def __repr__(self) -> str:
         """"""
         return f"""AsynchronousGreedy(
         {self._builder!r},
-        {self._optimizer!r})"""
+        {self._optimizer!r},
+        {self._num_query_points!r})"""
 
     def acquire(
         self,
@@ -524,10 +545,23 @@ class AsynchronousGreedy(
                     self._acquisition_function, datasets, models, state.pending_points
                 )
 
-            new_point = self._optimizer(search_space, self._acquisition_function)
-            state = state.add_pending_points(new_point)
+            new_points_batch = self._optimizer(search_space, self._acquisition_function)
+            state = state.add_pending_points(new_points_batch)
 
-            return state, new_point
+            for _ in range(self._num_query_points - 1):
+                # greedily allocate additional batch elements
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function,
+                    datasets,
+                    models,
+                    pending_points=state.pending_points,
+                    new_optimization_step=False,
+                )
+                new_point = self._optimizer(search_space, self._acquisition_function)
+                state = state.add_pending_points(new_point)
+                new_points_batch = tf.concat([new_points_batch, new_point], axis=0)
+
+            return state, new_points_batch
 
         return state_func
 

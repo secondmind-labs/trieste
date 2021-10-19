@@ -178,10 +178,10 @@ class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
 
 @random_seed
 @pytest.mark.parametrize(
-    "rule_fn, num_query_points",
+    "rule_fn",
     [
-        (lambda acq: EfficientGlobalOptimization(acq, num_query_points=4), 4),
-        (lambda acq: AsynchronousOptimization(acq), 1),
+        lambda acq, batch_size: EfficientGlobalOptimization(acq, num_query_points=batch_size),
+        lambda acq, batch_size: AsynchronousOptimization(acq, num_query_points=batch_size),
     ],
 )
 # As a side effect, this test ensures and EGO and AsynchronousOptimization
@@ -189,18 +189,18 @@ class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
 def test_joint_batch_acquisition_rule_acquire(
     rule_fn: Callable[
         # callable input type(s)
-        [_JointBatchModelMinusMeanMaximumSingleBuilder],
+        [_JointBatchModelMinusMeanMaximumSingleBuilder, int],
         # callable output type
         AcquisitionRule[TensorType, Box]
         | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
-    ],
-    num_query_points: int,
+    ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
     acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
         State[TensorType, AsynchronousRuleState], Box
-    ] = rule_fn(acq)
+    ] = rule_fn(acq, num_query_points)
 
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
@@ -245,10 +245,10 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 
 @random_seed
 @pytest.mark.parametrize(
-    "rule_fn, num_query_points",
+    "rule_fn",
     [
-        (lambda acq: EfficientGlobalOptimization(acq, num_query_points=4), 4),
-        (lambda acq: AsynchronousGreedy(acq), 1),
+        lambda acq, batch_size: EfficientGlobalOptimization(acq, num_query_points=batch_size),
+        lambda acq, batch_size: AsynchronousGreedy(acq, num_query_points=batch_size),
     ],
 )
 # As a side effect, this test ensures and EGO and AsynchronousGreedy
@@ -256,19 +256,19 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 def test_greedy_batch_acquisition_rule_acquire(
     rule_fn: Callable[
         # callable input type(s)
-        [_GreedyBatchModelMinusMeanMaximumSingleBuilder],
+        [_GreedyBatchModelMinusMeanMaximumSingleBuilder, int],
         # callable output type
         AcquisitionRule[TensorType, Box]
         | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
-    ],
-    num_query_points: int,
+    ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
     acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
         State[TensorType, AsynchronousRuleState], Box
-    ] = rule_fn(acq)
+    ] = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
     if callable(points_or_stateful):
@@ -293,6 +293,26 @@ def test_async_greedy_raises_for_non_greedy_function() -> None:
         # we are deliberately passing in wrong object
         # hence type ignore
         AsynchronousGreedy(non_greedy_function_builder)  # type: ignore
+
+
+def test_async_optimization_raises_for_incorrect_query_points() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousOptimization(num_query_points=0)
+
+    with pytest.raises(ValueError):
+        AsynchronousOptimization(num_query_points=-5)
+
+
+def test_async_greedy_raises_for_incorrect_query_points() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousGreedy(
+            builder=_GreedyBatchModelMinusMeanMaximumSingleBuilder(), num_query_points=0
+        )
+
+    with pytest.raises(ValueError):
+        AsynchronousGreedy(
+            builder=_GreedyBatchModelMinusMeanMaximumSingleBuilder(), num_query_points=-5
+        )
 
 
 @random_seed
