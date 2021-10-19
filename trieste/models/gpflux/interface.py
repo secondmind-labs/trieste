@@ -30,6 +30,26 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
     dtype errors."""
 
+    def __init__(self, optimizer: tf.optimizers.Optimizer | None = None):
+        """
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~tf.optimizers.Optimizer` with :class:`~tf.optimizers.Adam`.
+        """
+        super().__init__()
+
+        if optimizer is None:
+            self._optimizer = tf.optimizers.Adam()
+        else:
+            self._optimizer = optimizer
+
+        if not isinstance(self._optimizer, tf.optimizers.Optimizer):
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(optimizer)} instead. Note that the optimizer should "
+                f"therefore not be wrapped in the Trieste `BatchOptimizer` wrapper."
+            )
+
     @property
     @abstractmethod
     def model_gpflux(self) -> Module:
@@ -41,9 +61,9 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    @abstractmethod
     def optimizer(self) -> tf.keras.optimizers.Optimizer:
         """The optimizer with which to train the model."""
+        return self._optimizer
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer

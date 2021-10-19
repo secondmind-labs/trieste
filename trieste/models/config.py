@@ -61,6 +61,14 @@ class ModelConfig:
         """
         raise NotImplementedError
 
+    def create_optimizer(self) -> Optimizer:
+        """
+        Create an optimizer using :func:`~trieste.models.optimizers.create_optimizer`.
+        Model-specific subclasses can owerwrite this function in case
+        :class:`~trieste.models.optimizers.Optimizer` class should not be used.
+        """
+        return create_optimizer(self.optimizer, self.optimizer_args)
+
     def _check_model_type(self) -> None:
         if isinstance(self.model, TrainableProbabilisticModel):
             return
@@ -73,12 +81,12 @@ class ModelConfig:
 
     def create_model_interface(self) -> TrainableProbabilisticModel:
         """
-        :return: A model built from this model configuration.
+        Builds a Trieste model from the model and optimizer configuration.
         """
         if isinstance(self.model, TrainableProbabilisticModel):
             return self.model
 
-        optimizer = create_optimizer(self.optimizer, self.optimizer_args)
+        optimizer = self.create_optimizer()
 
         for model_type, model_interface in self.supported_models().items():
             if isinstance(self.model, model_type):

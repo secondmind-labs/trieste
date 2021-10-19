@@ -44,17 +44,5 @@ class GPfluxModelConfig(ModelConfig):
         }
         return models_mapping
 
-    def create_model_interface(self) -> TrainableProbabilisticModel:
-        """
-        :return: A model built from this model configuration.
-        """
-        if isinstance(self.model, TrainableProbabilisticModel):
-            return self.model
-
-        optimizer = self.optimizer
-
-        for model_type, model_interface in self.supported_models().items():
-            if isinstance(self.model, model_type):
-                return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
-
-        raise NotImplementedError(f"Not supported type {type(self.model)}")
+    def create_optimizer(self) -> tf.optimizers.Optimizer:
+        return self.optimizer
