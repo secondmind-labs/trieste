@@ -316,9 +316,10 @@ class AsynchronousOptimization(
     For example, it would work with
     :class:`~trieste.acquisition.BatchMonteCarloExpectedImprovement`,
     but cannot be used with :class:`~trieste.acquisition.ExpectedImprovement`.
-    If there are P pending points, the acquisition function is used with batch size P+1.
+    If there are P pending points and the batch of size B is requested,
+    the acquisition function is used with batch size P+B.
     During optimization first P points are fixed to pending, and thus optimization
-    is done over the last point only, which is then returned.
+    is done over the last B points only, which are then returned.
 
     `Warning`: it is not clear how efficient this approach towards asynchronous BO is.
     If you require efficiency, consider using :class:`AsynchronousGreedy`.
@@ -452,7 +453,8 @@ class AsynchronousGreedy(
     asynchronous BO, see documentation for :class:`~trieste.acquisition.AsynchronousOptimization`.
 
     AsynchronousGreedy rule works with greedy batch acquisition functions,
-    and effectively does one step of greedy batch collection process.
+    and effectively does B steps of greedy batch collection process,
+    where B is the requested batch size.
     """
 
     def __init__(
