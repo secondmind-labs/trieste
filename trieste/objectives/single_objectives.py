@@ -537,7 +537,7 @@ def trid_10(x: TensorType) -> TensorType:
     return trid(x, d=10)
 
 
-TRID_10_MINIMIZER = tf.constant([i * (10 + 1 - i) for i in range(1, 10 + 1)], tf.float64)
+TRID_10_MINIMIZER = tf.constant([[i * (10 + 1 - i) for i in range(1, 10 + 1)]], tf.float64)
 """
 The global minimizer of :func:`trid` function is defined as :math:`x_i=i(d+1-i)` for all i=1,...,d.
 Here, we define it specifically for the 10-dimensional variant, with shape [1, 10] and dtype
