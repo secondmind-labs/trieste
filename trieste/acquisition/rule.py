@@ -420,9 +420,9 @@ class AsynchronousOptimization(
                     # we receive unknown number N of points to evaluate
                     # and need to collect batch of B new points
                     # so the shape of `x` is [N, B, D]
-                    # we want to add P pending points to each point
-                    # so that acquisition actually receives N batches of size [P+B, D] each
-                    # therefore here we prepend each point with all pending points
+                    # we want to add P pending points to each batch
+                    # so that acquisition actually receives N batches of shape [P+B, D] each
+                    # therefore here we prepend each batch with all pending points
                     # resulting a shape [N, P+B, D]
                     # we do that by repeating pending points N times and concatenating with x
 
