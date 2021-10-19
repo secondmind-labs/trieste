@@ -21,11 +21,7 @@ import tensorflow as tf
 
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models.optimizer import (
-    BatchOptimizer,
-    create_loss_function,
-    create_optimizer,
-)
+from trieste.models.optimizer import BatchOptimizer, create_loss_function, create_optimizer
 
 
 def test_create_optimizer_raises_on_none() -> None:
