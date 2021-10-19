@@ -516,7 +516,7 @@ The search space for the 10-dimensional :func:`michalewicz` function.
 def trid(x: TensorType, d: int = 10) -> TensorType:
     """
     The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined
-    by the parameter ``d`` and it has a global minimum. This functions has large variation in
+    by the parameter ``d`` and it has a global minimum. This function has large variation in
     output which makes it challenging for Bayesian optimisation with vanilla Gaussian processes
     with non-stationary kernels. Models that can deal with non-stationarities, such as deep
     Gaussian processes, can be useful for modelling these functions. See :cite:`hebbal2019bayesian`
