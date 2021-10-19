@@ -27,6 +27,7 @@ from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
+    AsynchronousRuleState,
     EfficientGlobalOptimization,
     TrustRegion,
 )
@@ -61,7 +62,7 @@ from trieste.types import State, TensorType
                         AcquisitionRule[
                             State[
                                 TensorType,
-                                Union[AsynchronousGreedy.State, TrustRegion.State],
+                                Union[AsynchronousRuleState, TrustRegion.State],
                             ],
                             Box,
                         ],
@@ -102,7 +103,7 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
     acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
     | Callable[
         [],
-        AcquisitionRule[State[TensorType, AsynchronousGreedy.State | TrustRegion.State], Box],
+        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
     ],
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
@@ -141,7 +142,7 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
 
         if reload_state:
             state: Record[
-                None | State[TensorType, AsynchronousGreedy.State | TrustRegion.State]
+                None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
             ] = ask_tell.to_record()
             written_state = pickle.dumps(state)
 
@@ -154,7 +155,7 @@ def test_ask_tell_optimization_finds_minima_of_the_scaled_branin_function(
         ask_tell.tell(new_data_point)
 
     result: OptimizationResult[
-        None | State[TensorType, AsynchronousGreedy.State | TrustRegion.State]
+        None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
     ] = ask_tell.to_result()
     dataset = result.try_get_final_dataset()
 
