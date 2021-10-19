@@ -23,7 +23,6 @@ from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.optimizer import (
     BatchOptimizer,
-    Optimizer,
     create_loss_function,
     create_optimizer,
 )

@@ -14,15 +14,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 import gpflow
 
-from trieste.models.optimizer import (
-    BatchOptimizer,
-    Optimizer,
-    create_optimizer,
-)
+from trieste.models.optimizer import BatchOptimizer, Optimizer, create_optimizer
 
 
 def test_create_optimizer_scipy_produces_correct_optimizer() -> None:
