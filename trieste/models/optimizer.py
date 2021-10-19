@@ -31,6 +31,7 @@ import tensorflow as tf
 from ..data import Dataset
 from ..types import TensorType
 from ..utils import jit
+from .interfaces import TrainableProbabilisticModel
 
 TrainingData = Union[Tuple[TensorType, TensorType], Iterable[Tuple[TensorType, TensorType]]]
 """ Type alias for a batch, or batches, of training data. """
@@ -97,7 +98,7 @@ class Optimizer:
 
 @dataclass
 class BatchOptimizer(Optimizer):
-    """ Optimizer for training models with mini-batches of training data. """
+    """Optimizer for training models with mini-batches of training data."""
 
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """
@@ -158,12 +159,12 @@ def create_optimizer(
 ) -> Optimizer:
     """
     Generic function for creating a :class:`Optimizer` wrapper from a specified
-    `optimizer` and `optimizer_args`. The implementations depends on the type of the
+    `optimizer` and `optimizer_args`. The implementations depend on the type of the
     underlying optimizer, which can be model-specific. This function needs to be used as a
     decorator together with its register method to make a (model-)specific optimizer available.
 
     :param optimizer: The optimizer with which to train the model. Note that a flexible type
-        `Any` is used to allow for vartious optimizers that specific models might need to use.
+        `Any` is used to allow for various optimizers that specific models might need to use.
     :param optimizer_args: The keyword arguments to pass to the optimizer wrapper.
     :return: The :class:`Optimizer` wrapper.
     """
@@ -180,7 +181,7 @@ def _create_batch_optimizer(
 
 @singledispatch
 def create_loss_function(
-    model: tf.Module, dataset: TrainingData, compile: bool = False
+    model: TrainableProbabilisticModel, dataset: TrainingData, compile: bool = False
 ) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
