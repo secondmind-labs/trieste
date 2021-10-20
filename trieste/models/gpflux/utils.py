@@ -60,3 +60,5 @@ def sample_dgp(model: DeepGP) -> Sample:
             return X
 
     return ChainedSample()
+
+

@@ -27,6 +27,8 @@ import trieste
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
+from trieste.utils.inducing_point_selectors import KMeans, ConditionalVariance
+import tensorflow_probability as tfp
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 noise = 0.1
@@ -73,38 +75,119 @@ import gpflux
 from gpflow.config import default_float
 from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
 from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
-from trieste.models.gpflux.models import FeaturedGPFluxModel
-
+from trieste.models.gpflux.models import FeaturedHetGPFluxModel
+from gpflux.helpers import construct_basic_inducing_variables
 num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
 num_inducing_points = 50
 
+inducing_point_selector = KMeans(search_space)
+
+#
+# def get_model(data, num_inducing):
+#     """
+#     Builds the deep GP model.
+#     """
+#     X_train, Y_train = data
+#     input_dim = X_train.shape[-1]
+#     num_data = X_train.shape[0]
+#
+#     var_obs = np.var(Y_train)
+#     kernel1 = (
+#         gpflow.kernels.Matern32(variance=var_obs, lengthscales=0.2 * np.ones(input_dim))
+#         + gpflow.kernels.Constant()
+#         + gpflow.kernels.Linear(active_dims=[0])
+#     )
+#     kernel2 = (
+#         gpflow.kernels.Matern32(variance=1., lengthscales=0.2 * np.ones(input_dim))
+#         + gpflow.kernels.Constant()
+#         + gpflow.kernels.Linear(active_dims=[0])
+#     )
+#     kernel_list = [kernel1, kernel2]
+#     kernel = gpflux.helpers.construct_basic_kernel(kernel_list)
+#
+#     inducing_variable = gpflux.helpers.construct_basic_inducing_variables(
+#         num_inducing, input_dim, share_variables=True,
+#     )
+#
+#     ind = np.random.permutation(num_data)
+#     initializer = gpflux.initializers.KmeansInitializer(
+#         X=X_train[ind],
+#         num_inducing=num_inducing,
+#         qu_initializer=gpflux.initializers.ZeroOneVariationalInitializer(),
+#     )
+#
+#     layer1 = gpflux.layers.GPLayer(
+#         kernel=kernel,
+#         inducing_variable=inducing_variable,
+#         num_data=num_data,
+#         mean_function=gpflow.mean_functions.Zero(),
+#         initializer=initializer,
+#     )
+#     layer1.returns_samples = False
+#
+#     # Likelihood distribution
+#     likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
+#     distribution_class=tfp.distributions.Normal,  # Gaussian Likelihood
+#     scale_transform=tfp.bijectors.Exp(),  # Exponential Transform
+#     )
+#
+#     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood=likelihood)
+#
+#     inputs = tf.keras.Input((input_dim,), name="inputs")
+#     targets = tf.keras.Input((1,), name="targets")
+#
+#     f1 = layer1(inputs)
+#     outputs = likelihood_layer(f1, targets=targets)
+#     return tf.keras.Model(inputs=(inputs, targets), outputs=(outputs, f1))
+
+
+def create_kernel_with_features(var, input_dim):
+    num_rff = 1000
+    kernel = gpflow.kernels.SquaredExponential(variance=var, lengthscales=0.2 * np.ones(input_dim, ))
+    coefficients = np.ones((num_rff, 1), dtype=default_float())
+    features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
+    return KernelWithFeatureDecomposition(kernel, features, coefficients)
 
 def build_rff_model(data):
     var = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.SquaredExponential(variance=var, lengthscales=0.2 * np.ones(input_dim, ))
 
-    num_rff = 1000
-    features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
-    coefficients = np.ones((num_rff, 1), dtype=default_float())
-    kernel_with_features = KernelWithFeatureDecomposition(kernel, features,
-                                                          coefficients)  # prep feature decomposition for decoupled sampling
+    kernel_with_features1 =create_kernel_with_features(var, input_dim)
+    kernel_with_features2 = create_kernel_with_features(var/2., input_dim)
 
-    Z = inducing_point_selector.get_points(data.query_points, data.observations, num_inducing_points, kernel,
-                                           noise)  # get inducing points (resampled at each BO iterations)
-    inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
-    gpflow.utilities.set_trainable(inducing_variable, False)
+    kernel_list = [kernel_with_features1, kernel_with_features2]
+    kernel = gpflux.helpers.construct_basic_kernel(kernel_list)
+
+    Z = inducing_point_selector.get_points(data.query_points, data.observations, num_inducing_points,
+                                           kernel, noise)  # get inducing points (resampled at each BO iterations)
+
+    # inducing_variable = gpflow.inducing_variables.SharedIndependentInducingVariables(Z)
+    # gpflow.utilities.set_trainable(inducing_variable, False)
+
+    # inducing_variable = gpflow.inducing_variables.SeparateIndependentInducingVariables(
+    #     [
+    #         gpflow.inducing_variables.InducingPoints(Z),  # This is U1 = f1(Z1)
+    #         gpflow.inducing_variables.InducingPoints(Z),  # This is U2 = f2(Z2)
+    #     ]
+    # )
+
+    inducing_variable = construct_basic_inducing_variables(num_inducing_points, input_dim,
+    output_dim=1, share_variables=True, z_init= Z)
 
     layer = gpflux.layers.GPLayer(  # init GPFLUX SVGP model
-        kernel_with_features,
+        kernel,
         inducing_variable,
         num_data,
         whiten=False,
-        num_latent_gps=1,
+        num_latent_gps=2,
         mean_function=gpflow.mean_functions.Zero(),
     )
+    layer.returns_samples = False
 
-    likelihood = gpflow.likelihoods.Gaussian(noise)
-    gpflow.utilities.set_trainable(likelihood, False)
+    likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
+        distribution_class=tfp.distributions.Normal,  # Gaussian Likelihood
+        scale_transform=tfp.bijectors.Exp(),  # Exponential Transform
+    )
+
     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
     model = gpflux.models.DeepGP([layer], likelihood_layer)
 
@@ -119,13 +202,19 @@ def build_rff_model(data):
         "verbose": 0,
     }
 
-    return FeaturedGPFluxModel(model=model, optimizer=optimizer, fit_args=fit_args)
+    return FeaturedHetGPFluxModel(model=model, optimizer=optimizer, fit_args=fit_args)
 
 
 model = build_rff_model(initial_data[OBJECTIVE])
 
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
+
+from util.plotting import plot_gp_2d
+
+plot_gp_2d(model.model_gpflux, search_space.lower,
+    search_space.upper,
+    grid_density=30)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -135,9 +224,10 @@ models = {OBJECTIVE: model}
 
 # %%
 neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=25)
+rule = trieste.acquisition.rule.EfficientGlobalOptimization(neg_traj.using(OBJECTIVE), num_query_points=5)
+
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)[0]
+result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
 
 # %% [markdown]
 # ## Explore the results
@@ -171,12 +261,34 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 # %%
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
+from util.plotting_plotly import add_bo_points_plotly
 
 fig, ax = plt.subplots(1, 2)
-plot_regret(true_scores - 0.397887, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+plot_regret(true_scores - SCALED_BRANIN_MINIMUM.numpy(), ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
 ax[0].set_ylim(0.00001, 1000)
 ax[0].set_yscale("log")
 plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+fig.show()
+
+from util.plotting_plotly import plot_gp_plotly
+
+fig = plot_gp_plotly(
+    result.try_get_final_model().model_gpflux,  # type: ignore
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+)
+
+fig = add_bo_points_plotly(
+    x=query_points[:, 0],
+    y=query_points[:, 1],
+    z=observations[:, 0],
+    num_init=num_initial_points,
+    idx_best=arg_min_idx,
+    fig=fig,
+    figrow=1,
+    figcol=1,
+)
 fig.show()
 #
 # # %% [markdown]

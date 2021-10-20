@@ -27,7 +27,7 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux.models import FeaturedGPFluxModel
+from ..models.gpflux.models import FeaturedHetGPFluxModel
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -2185,7 +2185,7 @@ class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: FeaturedGPFluxModel,
+        self, dataset: Dataset, model: FeaturedHetGPFluxModel,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -2195,5 +2195,5 @@ class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
             `ValueError` if ``beta`` is negative.
         """
         trajectory = model.sample_trajectory()
-        return lambda at: -trajectory(tf.squeeze(at, axis=1))
+        return lambda at: -trajectory(tf.squeeze(at, axis=1)[..., 0])
 

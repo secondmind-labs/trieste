@@ -156,10 +156,11 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.optimizer.lr.assign(self.original_lr)
 
 
-class FeaturedGPFluxModel(DeepGaussianProcess):
+class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
     def sample_trajectory(self) -> Callable:
-        return sample_dgp(self.model)
+
+        return sample_dgp(self.model_gpflux)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -186,15 +187,15 @@ class FeaturedGPFluxModel(DeepGaussianProcess):
                     f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
                 )
 
-            if (
-                i == len(self.model_gpflux.f_layers) - 1
-                and dataset.observations.shape[-1] != layer.q_mu.shape[-1]
-            ):
-                raise ValueError(
-                    f"Shape {dataset.observations.shape} of new observations is incompatible"
-                    f" with shape {layer.q_mu.shape} of existing observations. Trailing"
-                    f" dimensions must match."
-                )
+            # if (
+            #     i == len(self.model_gpflux.f_layers) - 1
+            #     and dataset.observations.shape[-1] != layer.q_mu.shape[-1]
+            # ):
+            #     raise ValueError(
+            #         f"Shape {dataset.observations.shape} of new observations is incompatible"
+            #         f" with shape {layer.q_mu.shape} of existing observations. Trailing"
+            #         f" dimensions must match."
+            #     )
 
             inputs = layer(inputs)
 
