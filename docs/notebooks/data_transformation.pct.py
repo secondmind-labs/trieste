@@ -1,10 +1,9 @@
 # %% [markdown]
 # # Data transformation with the help of Ask-Tell interface.
 
+# %%
 import gpflow
 import matplotlib.pyplot as plt
-
-# %%
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -30,10 +29,9 @@ tf.random.set_seed(1794)
 #
 # In regression problem it is easy to perform data transformations as you do it once before the training. In Bayesian optimization this is more complex, as the data is added with each iteration and would need to be transformed again before the model is updated. At the moment Trieste cannot do such transformations for the user. Luckily, this can be easily done by using the [Ask-Tell interface](ask_tell_optimization.ipynb), as this is exactly the case where we want to have greater control of the optimization loop. The disadvantage is that it is up to the user to take care of all the data transformation.
 #
-# As an example, we will be searching for a minimum of a 10-dimensional [Trid functions](https://www.sfu.ca/~ssurjano/trid.html). The range of variation of the Trid function values is large. It varies from values of $10^5$ to its global minimum $f(x^∗) = −210$. This large variation range makes it difficult for Bayesian optimization with Gaussian processes to find the global minimum. However, with data normalisation it becomes possible (see <cite data-cite="hebbal2019bayesian">[Hebbal et al. 2019](https://arxiv.org/abs/1905.03350)</cite>).
+# As an example, we will be searching for a minimum of a 10-dimensional [Trid function](https://www.sfu.ca/~ssurjano/trid.html). The range of variation of the Trid function values is large. It varies from values of $10^5$ to its global minimum $f(x^∗) = −210$. This large variation range makes it difficult for Bayesian optimization with Gaussian processes to find the global minimum. However, with data normalisation it becomes possible (see <cite data-cite="hebbal2019bayesian">[Hebbal et al. 2019](https://arxiv.org/abs/1905.03350)</cite>).
 
 # %%
-
 function = trid_10
 F_MINIMUM = TRID_10_MINIMUM
 search_space = TRID_10_SEARCH_SPACE
@@ -137,7 +135,7 @@ def plot_ask_tell_regret(dataset):
 
     ax.set_yscale("log")
     ax.set_ylabel("Regret")
-    ax.set_ylim(0.001, 10000)
+    ax.set_ylim(0.001, 100000)
     ax.set_xlabel("# evaluations")
 
 
@@ -161,7 +159,7 @@ def standardise(x, mean=None, std=None):
 #
 # Note that we also need to modify the search space, from the original $[-100, 100]$ for all 10 dimensions to the standardised space. For illustration, $[-1,1]$ will suffice here.
 
-# %
+# %%
 search_space = Box([-1], [1]) ** 10
 
 
@@ -171,7 +169,7 @@ search_space = Box([-1], [1]) ** 10
 #
 # We are using a simple approach whereby we normalize the initial data and use estimated mean and standard deviation from the initial normalization for transforming the new points that Bayesian optimization loop adds to the dataset.
 
-# %
+# %%
 x_sta, x_mean, x_std = standardise(initial_data.query_points)
 y_sta, y_mean, y_std = standardise(initial_data.observations)
 standardised_data = Dataset(query_points=x_sta, observations=y_sta)
@@ -222,8 +220,8 @@ plot_ask_tell_regret(dataset)
 print(f"query point: {query_points[arg_min_idx, :]}")
 print(f"observation: {observations[arg_min_idx, :]}")
 
-#
 
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
