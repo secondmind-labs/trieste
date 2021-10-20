@@ -245,18 +245,19 @@ class AsynchronousRuleState:
         :return: New instance of `AsynchronousRuleState` with updated pending points.
         """
 
+        @tf.function
         def _remove_point(pending_points: TensorType, point_to_remove: TensorType) -> TensorType:
-            # find indexes of all occurrences of the point to remove
-            indexes_of_point = tf.where(
-                tf.reduce_all(tf.equal(pending_points, point_to_remove), axis=1)
-            )
-            if tf.equal(tf.size(indexes_of_point), 0):
+            # find all points equal to the one we need to remove
+            are_points_equal = tf.reduce_all(tf.equal(pending_points, point_to_remove), axis=1)
+            if not tf.reduce_any(are_points_equal):
+                # point to remove isn't there, nothing to do
                 return pending_points
 
-            # we only want to remove first occurrence
-            # and know that shape of indexes is [N, 1]
-            # that allows us to do this trick below
-            first_index = indexes_of_point[0, 0]
+            # this line converts all bool values to 0 and 1
+            # then finds first 1 and returns its index as 1x1 tensor
+            _, first_index_tensor = tf.math.top_k(tf.cast(are_points_equal, tf.int8), k=1)
+            # to use it as index for slicing, we need to convert 1x1 tensor to a TF scalar
+            first_index = tf.reshape(first_index_tensor, [])
             return tf.concat(
                 [pending_points[:first_index, :], pending_points[first_index + 1 :, :]], axis=0
             )
