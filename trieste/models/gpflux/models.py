@@ -159,7 +159,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
     def sample_trajectory(self) -> Callable:
-
         return sample_dgp(self.model_gpflux)
 
     def update(self, dataset: Dataset) -> None:
