@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Callable
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -154,3 +154,58 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
         self.optimizer.lr.assign(self.original_lr)
+
+
+class FeaturedGPFluxModel(DeepGaussianProcess):
+
+    def sample_trajectory(self) -> Callable:
+        return sample_dgp(self.model)
+
+    def update(self, dataset: Dataset) -> None:
+        inputs = dataset.query_points
+        new_num_data = inputs.shape[0]
+        self.model_gpflux.num_data = new_num_data
+
+        # Update num_data for each layer, as well as make sure dataset shapes are ok
+        for i, layer in enumerate(self.model_gpflux.f_layers):
+            if hasattr(layer, "num_data"):
+                layer.num_data = new_num_data
+
+            if isinstance(layer, LatentVariableLayer):
+                inputs = layer(inputs)
+                continue
+
+            if isinstance(layer.inducing_variable, InducingPoints):
+                inducing_variable = layer.inducing_variable
+            else:
+                inducing_variable = layer.inducing_variable.inducing_variable
+
+            if inputs.shape[-1] != inducing_variable.Z.shape[-1]:
+                raise ValueError(
+                    f"Shape {inputs.shape} of input to layer {layer} is incompatible with shape"
+                    f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
+                )
+
+            if (
+                i == len(self.model_gpflux.f_layers) - 1
+                and dataset.observations.shape[-1] != layer.q_mu.shape[-1]
+            ):
+                raise ValueError(
+                    f"Shape {dataset.observations.shape} of new observations is incompatible"
+                    f" with shape {layer.q_mu.shape} of existing observations. Trailing"
+                    f" dimensions must match."
+                )
+
+            inputs = layer(inputs)
+
+        if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
+            feature_function = layer.kernel.feature_functions
+            input_shape = dataset.query_points.shape
+            def renew_rff(feature_f, input_dim):
+                shape_bias = [1, feature_f.output_dim]
+                new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
+                feature_f.b = new_b
+                shape_weights = [feature_f.output_dim, input_dim]
+                new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
+                feature_f.W = new_W
+            renew_rff(feature_function,  input_shape[-1])
