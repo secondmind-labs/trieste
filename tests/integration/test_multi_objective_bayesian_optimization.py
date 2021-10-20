@@ -70,9 +70,10 @@ from trieste.types import TensorType
             id="qehvi_vlmop2_q_4",
         ),
         pytest.param(
-            40,
+            10,
             AsynchronousOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+                num_query_points=4,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,

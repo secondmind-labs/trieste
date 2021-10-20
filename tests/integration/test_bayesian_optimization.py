@@ -96,7 +96,7 @@ from trieste.types import State, TensorType
                     num_query_points=3,
                 ),
             ),
-            (36, AsynchronousOptimization()),
+            (12, AsynchronousOptimization(num_query_points=3)),
             (
                 10,
                 EfficientGlobalOptimization(
@@ -107,11 +107,12 @@ from trieste.types import State, TensorType
                 ),
             ),
             (
-                30,
+                10,
                 AsynchronousGreedy(
                     LocalPenalizationAcquisitionFunction(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
+                    num_query_points=3,
                 ),
             ),
             (
