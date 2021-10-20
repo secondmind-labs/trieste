@@ -20,7 +20,7 @@ import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
-
+import gpflux
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
@@ -159,7 +159,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
     def sample_trajectory(self) -> Callable:
-        return sample_dgp(self.model_gpflux)
+        return gpflux.models.deep_gp(self.model_gpflux)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
