@@ -318,11 +318,8 @@ class AsynchronousOptimization(
     but cannot be used with :class:`~trieste.acquisition.ExpectedImprovement`.
     If there are P pending points and the batch of size B is requested,
     the acquisition function is used with batch size P+B.
-    During optimization first P points are fixed to pending, and thus optimization
-    is done over the last B points only, which are then returned.
-
-    `Warning`: it is not clear how efficient this approach towards asynchronous BO is.
-    If you require efficiency, consider using :class:`AsynchronousGreedy`.
+    During optimization first P points are fixed to pending,
+    and thus we optimize and return the last B points only.
     """
 
     def __init__(
@@ -418,7 +415,7 @@ class AsynchronousOptimization(
 
                 def function_with_pending_points(x: TensorType) -> TensorType:
                     # stuff below is quite tricky, and thus deserves an elaborate comment
-                    # we receive unknown number N of points to evaluate
+                    # we receive unknown number N of batches to evaluate
                     # and need to collect batch of B new points
                     # so the shape of `x` is [N, B, D]
                     # we want to add P pending points to each batch
@@ -452,8 +449,8 @@ class AsynchronousGreedy(
     is designed for asynchronous BO scenarios. To see what we understand by
     asynchronous BO, see documentation for :class:`~trieste.acquisition.AsynchronousOptimization`.
 
-    AsynchronousGreedy rule works with greedy batch acquisition functions,
-    and effectively does B steps of greedy batch collection process,
+    AsynchronousGreedy rule works with greedy batch acquisition functions
+    and performs B steps of a greedy batch collection process,
     where B is the requested batch size.
     """
 
