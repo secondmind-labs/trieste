@@ -41,6 +41,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
+from trieste.logging import using_tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.objectives import (
@@ -166,31 +167,30 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
+        with using_tensorboard_writer(summary_writer):
 
-        dataset = (
-            BayesianOptimizer(observer, search_space, summary_writer=summary_writer)
-            .optimize(num_steps, initial_data, model, acquisition_rule)
-            .try_get_final_dataset()
-        )
+            dataset = (
+                BayesianOptimizer(observer, search_space)
+                .optimize(num_steps, initial_data, model, acquisition_rule)
+                .try_get_final_dataset()
+            )
 
-        arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+            arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
-        best_y = dataset.observations[arg_min_idx]
-        best_x = dataset.query_points[arg_min_idx]
+            best_y = dataset.observations[arg_min_idx]
+            best_x = dataset.query_points[arg_min_idx]
 
-        relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
-        # these accuracies are the current best for the given number of optimization steps, which
-        # makes this is a regression test
-        assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
-        npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+            relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+            # these accuracies are the current best for the given number of optimization steps,
+            # which makes this is a regression test
+            assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
+            npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
 
-        # check that acquisition functions defined as classes aren't being retraced unnecessarily
-        if isinstance(acquisition_rule, EfficientGlobalOptimization):
-            acquisition_function = acquisition_rule._acquisition_function
-            if isinstance(acquisition_function, AcquisitionFunctionClass):
-                assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
-
-        # TODO: check logs?
+            # check that acquisition functions defined as classes aren't retraced unnecessarily
+            if isinstance(acquisition_rule, EfficientGlobalOptimization):
+                acquisition_function = acquisition_rule._acquisition_function
+                if isinstance(acquisition_function, AcquisitionFunctionClass):
+                    assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
 
 
 @random_seed

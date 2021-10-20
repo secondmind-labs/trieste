@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from .. import types
 from ..data import Dataset
+from ..logging import get_tensorboard_writer
 from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
@@ -68,7 +69,6 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> T_co:
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
@@ -84,7 +84,6 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
             (matched by tag).
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: A value of type `T_co`.
         """
 
@@ -94,7 +93,6 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         dataset: Dataset,
         model: ProbabilisticModel,
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> T_co:
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
@@ -104,7 +102,6 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         :param dataset: The known observer query points and observations.
         :param model: The model to use for the dataset.
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: A value of type `T_co`.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
@@ -112,9 +109,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
                 "AcquisitionRule.acquire_single method does not support multiple datasets "
                 "or models: use acquire instead"
             )
-        return self.acquire(
-            search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, step_number, summary_writer
-        )
+        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model}, step_number)
 
 
 class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
@@ -185,7 +180,6 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
@@ -194,7 +188,6 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: The single (or batch of) points to query.
         """
         if self._acquisition_function is None:
@@ -208,6 +201,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
 
         points = self._optimizer(search_space, self._acquisition_function)
 
+        summary_writer = get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
@@ -304,7 +298,6 @@ class AsynchronousGreedy(
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> types.State[AsynchronousGreedy.State | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousGreedy.State``,
@@ -321,7 +314,6 @@ class AsynchronousGreedy(
         :param datasets: The known observer query points and observations.
         :param models: The models of the specified ``datasets``.
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
@@ -356,6 +348,7 @@ class AsynchronousGreedy(
             else:
                 pending_points = tf.concat([pending_points, points], axis=0)
 
+            summary_writer = get_tensorboard_writer()
             if summary_writer:
                 with summary_writer.as_default(step=step_number):
                     batched_points = tf.expand_dims(points, axis=0)
@@ -425,7 +418,6 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -436,7 +428,6 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: The ``num_query_points`` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
@@ -531,7 +522,6 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the trust region algorithm,
@@ -564,7 +554,6 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
             `OBJECTIVE` to calculate the new trust region.
         :param models: The models of the specified ``datasets``.
         :param step_number: The current optimization step number.
-        :param summary_writer: An optional summary writer object for logging to.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
@@ -608,9 +597,7 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            points = self._rule.acquire(
-                acquisition_space, datasets, models, step_number, summary_writer
-            )
+            points = self._rule.acquire(acquisition_space, datasets, models, step_number)
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
             return state_, points

@@ -48,6 +48,7 @@ from tests.util.models.gpflow.models import (
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
+from trieste.logging import using_tensorboard_writer
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseVariational,
@@ -347,7 +348,8 @@ def test_gaussian_process_regression_log(
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     model, _ = gpr_interface_factory(x, fnc_3x_plus_10(x))
     mocked_summary_writer = unittest.mock.MagicMock()
-    model.log(mocked_summary_writer, 42, "context")
+    with using_tensorboard_writer(mocked_summary_writer):
+        model.log(42, "context")
 
     assert len(mocked_summary_writer.method_calls) == 1
     assert mocked_summary_writer.method_calls[0][0] == "as_default"

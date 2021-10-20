@@ -21,6 +21,7 @@ import tensorflow as tf
 from gpflow.models import GPModel
 
 from ...data import Dataset
+from ...logging import get_tensorboard_writer
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
 from ..optimizer import Optimizer
@@ -92,19 +93,20 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
+    def log(self, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 
-        :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
         :param context: A context string to use when logging.
         """
-        with summary_writer.as_default(step=step_number):
-            tf.summary.scalar(f"{context}.kernel.variance", self.get_kernel().variance)
-            lengthscales = self.get_kernel().lengthscales
-            if tf.rank(lengthscales) == 0:
-                tf.summary.scalar(f"{context}.kernel.lengthscale", lengthscales)
-            elif tf.rank(lengthscales) == 1:
-                for i, lengthscale in enumerate(lengthscales):
-                    tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)
+        summary_writer = get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=step_number):
+                tf.summary.scalar(f"{context}.kernel.variance", self.get_kernel().variance)
+                lengthscales = self.get_kernel().lengthscales
+                if tf.rank(lengthscales) == 0:
+                    tf.summary.scalar(f"{context}.kernel.lengthscale", lengthscales)
+                elif tf.rank(lengthscales) == 1:
+                    for i, lengthscale in enumerate(lengthscales):
+                        tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)

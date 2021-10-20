@@ -99,11 +99,10 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide a kernel")
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
+    def log(self, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 
-        :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
         :param context: A context string to use when logging.
         """
@@ -237,13 +236,12 @@ class ModelStack(TrainableProbabilisticModel):
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
 
-    def log(self, summary_writer: tf.summary.SummaryWriter, step_number: int, context: str) -> None:
+    def log(self, step_number: int, context: str) -> None:
         """
         Log model-specific information at a given optimization step.
 
-        :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
         :param context: A context string to use when logging.
         """
         for i, model in enumerate(self._models):
-            model.log(summary_writer, step_number, f"{context}.{i}")
+            model.log(step_number, f"{context}.{i}")

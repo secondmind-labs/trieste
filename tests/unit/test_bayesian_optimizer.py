@@ -208,7 +208,6 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             step_number: int = 0,
-            summary_writer: Optional[tf.summary.SummaryWriter] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)
@@ -282,7 +281,6 @@ class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         step_number: int = 0,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -341,7 +339,6 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             step_number: int = 0,
-            summary_writer: Optional[tf.summary.SummaryWriter] = None,
         ) -> NoReturn:
             assert False
 
@@ -379,7 +376,6 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             step_number: int = 0,
-            summary_writer: Optional[tf.summary.SummaryWriter] = None,
         ) -> State[int | None, TensorType]:
             def go(previous_state: int | None) -> tuple[int | None, TensorType]:
                 if previous_state is None:
@@ -447,7 +443,6 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
             step_number: int = 0,
-            summary_writer: Optional[tf.summary.SummaryWriter] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 new_state = 0 if state is None else state + 1

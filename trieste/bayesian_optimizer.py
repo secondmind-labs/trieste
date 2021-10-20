@@ -22,7 +22,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, Optional, TypeVar, cast, overload
+from typing import Dict, Generic, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
@@ -30,6 +30,7 @@ from absl import logging
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
+from .logging import get_tensorboard_writer
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
@@ -159,7 +160,6 @@ class BayesianOptimizer(Generic[SP]):
         self,
         observer: Observer,
         search_space: SP,
-        summary_writer: Optional[tf.summary.SummaryWriter] = None,
     ):
         """
         :param observer: The observer of the objective function.
@@ -169,7 +169,6 @@ class BayesianOptimizer(Generic[SP]):
         """
         self._observer = observer
         self._search_space = search_space
-        self._summary_writer = summary_writer
 
     def __repr__(self) -> str:
         """"""
@@ -373,7 +372,7 @@ class BayesianOptimizer(Generic[SP]):
                         model.optimize(dataset)
 
                 points_or_stateful = acquisition_rule.acquire(
-                    self._search_space, datasets, models, step, self._summary_writer
+                    self._search_space, datasets, models, step
                 )
 
                 if callable(points_or_stateful):
@@ -396,10 +395,11 @@ class BayesianOptimizer(Generic[SP]):
                     model.update(dataset)
                     model.optimize(dataset)
 
-                if self._summary_writer:
-                    with self._summary_writer.as_default():
+                summary_writer = get_tensorboard_writer()
+                if summary_writer:
+                    with summary_writer.as_default():
                         for tag in datasets:
-                            models[tag].log(self._summary_writer, step, f"{tag}.model")
+                            models[tag].log(step, f"{tag}.model")
                             tf.summary.scalar(
                                 f"{tag}.observation.best_overall",
                                 np.min(datasets[tag].observations),

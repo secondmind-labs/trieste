@@ -34,16 +34,17 @@ model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 # %% [markdown]
 # ## Setting up TensorBoard
 #
-# Before running the optimization loop, we decide where TensorBoard summary logs should be stored, and create a summary writer to do this.
+# Before running the optimization loop, we decide where TensorBoard summary logs should be stored, and set a summary writer to do this.
 
 # %%
 # Clear any logs from previous runs
 # !rm -rf logs/tensorboard
 
 summary_writer = tf.summary.create_file_writer("logs/tensorboard")
+trieste.logging.set_tensorboard_writer(summary_writer)
 
 # %% [markdown]
-# We can now load the TensorBoard extension, though at this point there will not be any data to dispay.
+# We can now also load the TensorBoard extension, though at this point there will not be any data to dispay.
 
 # %% magic_args="echo Loading TensorBoard..." language="script"
 #
@@ -56,13 +57,10 @@ summary_writer = tf.summary.create_file_writer("logs/tensorboard")
 # %% [markdown]
 # ## Running and tracking the Bayesian Optimizer
 #
-# By passing in the `summary_writer` to `BayesianOptimizer`, we tell trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
+# By setting the summary writer, we tell trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(
-    observer, search_space, summary_writer=summary_writer
-)
-
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result, history = bo.optimize(15, initial_data, model).astuple()
 
 
@@ -78,18 +76,22 @@ result, history = bo.optimize(15, initial_data, model).astuple()
 
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
-    
-    def log(self, summary_writer, step_number, context):
+
+    def log(self, step_number, context):
         """
         Log model-specific information at a given optimization step.
 
-        :param summary_writer: Summary writer to log with.
         :param step_number: The current optimization step number.
         :param context: A context string to use when logging.
         """
-        super().log(summary_writer, step_number, context)
-        with summary_writer.as_default(step=step_number):
-            tf.summary.scalar(f"{context}.kernel.lengthscales.mean", np.mean(self.get_kernel().lengthscales))
+        super().log(step_number, context)
+        summary_writer = trieste.logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=step_number):
+                tf.summary.scalar(
+                    f"{context}.kernel.lengthscales.mean",
+                    np.mean(self.get_kernel().lengthscales)
+                )
 
 
 model = GPRExtraLogging(gpr)
@@ -98,10 +100,7 @@ model = GPRExtraLogging(gpr)
 # Running with this model now also produces logs for the mean lengthscale.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(
-    observer, search_space, summary_writer=summary_writer
-)
-
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result, history = bo.optimize(15, initial_data, model).astuple()
 
 # %% [markdown]
