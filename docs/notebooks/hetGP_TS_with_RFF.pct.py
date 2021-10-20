@@ -1,91 +1,112 @@
 # %% [markdown]
-# # Using deep Gaussian processes with GPflux for Bayesian optimization.
+# # S-GP-TS Demo
+
+# %% [markdown]
+# This code accomapnies the paper "Scalable Thompson Sampling usingSparse Gaussian Process Models".
+#
+# First we demonstrate the method on a simple 2D benchmark, before showing how more complicated experiments can be ran.
+
+# %%
+# %load_ext autoreload
+# %autoreload 2
 
 # %%
 import numpy as np
 import tensorflow as tf
 
-# %% [markdown]
-# For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!
-
-# %%
-np.random.seed(1794)
-tf.random.set_seed(1794)
+np.random.seed(1789)
+tf.random.set_seed(1789)
 tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
-#
-# In this notebook, we show how to use deep Gaussian processes (DGPs) for Bayesian optimization using Trieste and GPflux. DGPs may be better for modeling non-stationary objective functions than standard GP surrogates, as discussed in <cite data-cite="dutordoir2017deep,hebbal2019bayesian"/>.
-#
-# In this example, we look to find the minimum value of the two- and five-dimensional [Michalewicz functions](https://www.sfu.ca/~ssurjano/michal.html) over the hypercubes $[0, pi]^2$/$[0, pi]^5$. We compare a two-layer DGP model with GPR, using Thompson sampling for both.
-#
-# The Michalewicz functions are highly non-stationary and have a global minimum that's hard to find, so DGPs might be more suitable than standard GPs, which may struggle because they typically have stationary kernels that cannot easily model non-stationarities.
+# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
 
 # %%
-import gpflow
-from trieste.objectives import (
-    michalewicz_2,
-    michalewicz_5,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_5_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_SEARCH_SPACE
-)
+import trieste
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
 
-function = michalewicz_2
-F_MINIMIZER = MICHALEWICZ_2_MINIMUM
+search_space = trieste.space.Box([0, 0], [1, 1])
+noise = 0.1
 
-search_space = MICHALEWICZ_2_SEARCH_SPACE
 
-fig = plot_function_plotly(
-    function,
-    search_space.lower,
-    search_space.upper,
-    grid_density=100
-)
-fig.update_layout(height=800, width=800)
+def noisy_branin(x):
+    y = scaled_branin(x)
+    return y + tf.random.normal(y.shape, stddev=noise, dtype=y.dtype)
+
+
+fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
+fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
 #
-# We set up the observer as usual, using Sobol sampling to sample the initial points.
+# In _Trieste_, the observer outputs a number of datasets, each of which must be labelled so the optimization process knows which is which. In our case, we only have one dataset, the objective. We'll use _Trieste_'s default label for single-model setups, `OBJECTIVE`. We can convert a function with `branin`'s signature to a single-output observer using `mk_observer`.
+#
+# The optimization procedure will benefit from having some starting data from the objective function to base its search on. We sample five points from the search space and evaluate them on the observer.
 
 # %%
-import trieste
+from trieste.acquisition.rule import OBJECTIVE
 
-observer = mk_observer(function)
+observer = mk_observer(noisy_branin, OBJECTIVE)
 
-num_initial_points = 20
-num_acquisitions = 20
-initial_query_points = search_space.sample_sobol(num_initial_points)
+num_initial_points = 50
+initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Sparse Variational Gaussian process for this, as provided by GPflux. The model will need to be trained on each step as more points are evaluated.
 #
-# We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
+# We use a K-means clustering routine to choose 10 inducing points upon which we base our variational approximation.
 #
-# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` method.
+#
+# Just like the data output by the observer, the optimization process assumes multiple models, so we'll need to label the model in the same way.
 
 # %%
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from gpflow.utilities import set_trainable
+import gpflow
+import gpflux
+from gpflow.config import default_float
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
+from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
+from trieste.models.gpflux.models import FeaturedGPFluxModel
+
+num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
+num_inducing_points = 50
 
 
-def build_dgp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
+def build_rff_model(data):
+    var = tf.math.reduce_variance(data.observations)
+    kernel = gpflow.kernels.SquaredExponential(variance=var, lengthscales=0.2 * np.ones(input_dim, ))
 
-    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
-    dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
-    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
-    dgp.likelihood_layer.likelihood.variance.assign(1e-5)
-    set_trainable(dgp.likelihood_layer.likelihood.variance, False)
+    num_rff = 1000
+    features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
+    coefficients = np.ones((num_rff, 1), dtype=default_float())
+    kernel_with_features = KernelWithFeatureDecomposition(kernel, features,
+                                                          coefficients)  # prep feature decomposition for decoupled sampling
+
+    Z = inducing_point_selector.get_points(data.query_points, data.observations, num_inducing_points, kernel,
+                                           noise)  # get inducing points (resampled at each BO iterations)
+    inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
+    gpflow.utilities.set_trainable(inducing_variable, False)
+
+    layer = gpflux.layers.GPLayer(  # init GPFLUX SVGP model
+        kernel_with_features,
+        inducing_variable,
+        num_data,
+        whiten=False,
+        num_latent_gps=1,
+        mean_function=gpflow.mean_functions.Zero(),
+    )
+
+    likelihood = gpflow.likelihoods.Gaussian(noise)
+    gpflow.utilities.set_trainable(likelihood, False)
+    likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
+    model = gpflux.models.DeepGP([layer], likelihood_layer)
 
     epochs = 200
     batch_size = 100
@@ -98,272 +119,129 @@ def build_dgp_model(data):
         "verbose": 0,
     }
 
-    return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+    return FeaturedGPFluxModel(model=model, optimizer=optimizer, fit_args=fit_args)
 
 
-dgp_model = build_dgp_model(initial_data)
+model = build_rff_model(initial_data[OBJECTIVE])
+
+model.optimize(initial_data[OBJECTIVE])
+models = {OBJECTIVE: model}
 
 # %% [markdown]
 # ## Run the optimization loop
-#
-# We can now run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its `optimize` method.
-#
-# The optimizer uses an acquisition rule to choose where in the search space to try on each optimization step. We'll start by using Thompson sampling.
-#
-# We'll run the optimizer for twenty steps. Note: this may take a while!
+
+# %% [markdown]
+# We run 5 BO iterations, each recommending a batch of 25 locations.
+
 # %%
-from trieste.acquisition.rule import DiscreteThompsonSampling
-
+neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
+rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=25)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
-
-# Note that the GPflux interface does not currently support using `track_state=True`. This will be
-# addressed in a future update.
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
-dgp_dataset = dgp_result.try_get_final_dataset()
+result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)[0]
 
 # %% [markdown]
 # ## Explore the results
-#
-# We can now get the best point found by the optimizer. Note this isn't necessarily the point that was last evaluated.
 
 # %%
-dgp_query_points = dgp_dataset.query_points.numpy()
-dgp_observations = dgp_dataset.observations.numpy()
+dataset = result.try_get_final_datasets()[OBJECTIVE]
+query_points = dataset.query_points.numpy()
+observations = dataset.observations.numpy()
+true_scores = scaled_branin(dataset.query_points).numpy()
+arg_min_idx = tf.squeeze(tf.argmin(true_scores, axis=0))
 
-dgp_arg_min_idx = tf.squeeze(tf.argmin(dgp_observations, axis=0))
-
-print(f"query point: {dgp_query_points[dgp_arg_min_idx, :]}")
-print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
+print(f"Believed optima: {query_points[arg_min_idx, :]}")
+print(f"Objective function value: {true_scores[arg_min_idx, :]}")
 
 # %% [markdown]
-# We can visualise how the optimizer performed as a three-dimensional plot
+# We can visualise how the optimizer performed by plotting all the acquired observations (green dots), along with the initial design (green crosses) and the true function (contours). We see that S-GP-TS is able to focus resources into making evaluations in promising areas of the space.
 
 # %%
-from util.plotting_plotly import add_bo_points_plotly
+from util.plotting import plot_function_2d, plot_bo_points
 
-fig = plot_function_plotly(function, search_space.lower, search_space.upper, grid_density=100)
-fig.update_layout(height=800, width=800)
-
-fig = add_bo_points_plotly(
-    x=dgp_query_points[:, 0],
-    y=dgp_query_points[:, 1],
-    z=dgp_observations[:, 0],
-    num_init=num_initial_points,
-    idx_best=dgp_arg_min_idx,
-    fig=fig,
+_, ax = plot_function_2d(
+    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
 )
-fig.show()
+plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
 
 # %% [markdown]
-# We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Note that the DGP model is able to model the local structure of the true objective function.
+# We can also visualise the how each successive point compares the current best.
+#
+# We produce two plots. The left hand plot shows the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is the same as the previous two-dimensional contour plot, but without the contours. The best point is shown in each (purple dot).
 
 # %%
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
-from util.plotting_plotly import plot_dgp_plotly
 
-fig = plot_dgp_plotly(
-    dgp_result.try_get_final_model().model_gpflux,  # type: ignore
-    search_space.lower,
-    search_space.upper,
-    grid_density=100,
-)
-
-fig = add_bo_points_plotly(
-    x=dgp_query_points[:, 0],
-    y=dgp_query_points[:, 1],
-    z=dgp_observations[:, 0],
-    num_init=num_initial_points,
-    idx_best=dgp_arg_min_idx,
-    fig=fig,
-    figrow=1,
-    figcol=1,
-)
-fig.update_layout(height=800, width=800)
-fig.show()
-
-# %% [markdown]
-# We now compare to a GP model with priors over the hyperparameters. We do not expect this to do as well because GP models cannot deal with non-stationary functions well.
-
-# %%
-import gpflow
-import tensorflow_probability as tfp
-from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
-
-
-def build_gp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*data.query_points.shape[-1])
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}),
-        num_kernel_samples=100
-    )
-
-
-gp_model = build_gp_model(initial_data)
-
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
-gp_dataset = result.try_get_final_dataset()
-
-gp_query_points = gp_dataset.query_points.numpy()
-gp_observations = gp_dataset.observations.numpy()
-
-gp_arg_min_idx = tf.squeeze(tf.argmin(gp_observations, axis=0))
-
-print(f"query point: {gp_query_points[gp_arg_min_idx, :]}")
-print(f"observation: {gp_observations[gp_arg_min_idx, :]}")
-
-from util.plotting_plotly import plot_gp_plotly
-
-fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
-    search_space.lower,
-    search_space.upper,
-    grid_density=100,
-)
-
-fig = add_bo_points_plotly(
-    x=gp_query_points[:, 0],
-    y=gp_query_points[:, 1],
-    z=gp_observations[:, 0],
-    num_init=num_initial_points,
-    idx_best=gp_arg_min_idx,
-    fig=fig,
-    figrow=1,
-    figcol=1,
-)
-fig.update_layout(height=800, width=800)
-fig.show()
-
-# %% [markdown]
-# We see that the DGP model does a much better job at understanding the structure of the function. The standard Gaussian process model has a large signal variance and small lengthscales, which do not result in a good model of the true objective. On the other hand, the DGP model is at least able to infer the local structure around the observations.
-#
-# We can also plot the regret curves of the two models side-by-side.
-
-# %%
-
-gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
-dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
-
-_, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
-
+fig, ax = plt.subplots(1, 2)
+plot_regret(true_scores - 0.397887, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+ax[0].set_ylim(0.00001, 1000)
 ax[0].set_yscale("log")
-ax[0].set_ylabel("Regret")
-ax[0].set_ylim(0.5, 3)
-ax[0].set_xlabel("# evaluations")
-ax[0].set_title("DGP")
-
-ax[1].set_title("GP")
-ax[1].set_yscale("log")
-ax[1].set_ylim(0.5, 3)
-ax[1].set_xlabel("# evaluations")
-
-# %% [markdown]
-# We might also expect that the DGP model will do better on higher dimensional data. We explore this by testing a higher-dimensional version of the Michalewicz dataset.
+plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+fig.show()
 #
-# Set up the problem.
-
-# %%
-
-function = michalewicz_5
-F_MINIMIZER = MICHALEWICZ_5_MINIMUM
-
-search_space = MICHALEWICZ_5_SEARCH_SPACE
-
-observer = mk_observer(function)
-
-num_initial_points = 50
-num_acquisitions = 50
-initial_query_points = search_space.sample_sobol(num_initial_points)
-initial_data = observer(initial_query_points)
-
-# %% [markdown]
-# Build the DGP model and run the Bayes opt loop.
-
-# %%
-
-dgp_model = build_dgp_model(initial_data)
-
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
-
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
-dgp_dataset = dgp_result.try_get_final_dataset()
-
-dgp_query_points = dgp_dataset.query_points.numpy()
-dgp_observations = dgp_dataset.observations.numpy()
-
-dgp_arg_min_idx = tf.squeeze(tf.argmin(dgp_observations, axis=0))
-
-print(f"query point: {dgp_query_points[dgp_arg_min_idx, :]}")
-print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
-
-dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
-
-# %% [markdown]
-# Repeat the above for the GP model.
-
-# %%
-
-gp_model = build_gp_model(initial_data)
-
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
-gp_dataset = result.try_get_final_dataset()
-
-gp_query_points = gp_dataset.query_points.numpy()
-gp_observations = gp_dataset.observations.numpy()
-
-gp_arg_min_idx = tf.squeeze(tf.argmin(gp_observations, axis=0))
-
-print(f"query point: {gp_query_points[gp_arg_min_idx, :]}")
-print(f"observation: {gp_observations[gp_arg_min_idx, :]}")
-
-gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
-
-# %% [markdown]
-# Plot the regret.
-
-# %%
-
-_, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
-
-ax[0].set_yscale("log")
-ax[0].set_ylabel("Regret")
-ax[0].set_ylim(1.5, 6)
-ax[0].set_xlabel("# evaluations")
-ax[0].set_title("DGP")
-
-ax[1].set_title("GP")
-ax[1].set_yscale("log")
-ax[1].set_ylim(1.5, 6)
-ax[1].set_xlabel("# evaluations")
-
-# %% [markdown]
-# While still far from the optimum, it is considerably better than the GP.
-
+# # %% [markdown]
+# # # Full Synthetic Experiments
 #
-
-# ## LICENSE
+# # %% [markdown]
+# # We now show how to run S-GP-TS on the synthetic benchmarks, as demonstrated in the paper. We focus on the hartmann function, but our other benchmarks can be ran similarly (see commented out code).
 #
-# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
+# # %% [markdown]
+# # First we prepare the problem
+#
+# # %%
+# from trieste.utils.objectives import hartmann_6
+#
+# # from trieste.utils.objectives import ackley_5
+# # from trieste.utils.objectives import shekel_4
+#
+#
+# search_space = trieste.space.Box([0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1])
+# noise = 0.1
+#
+# exact_objective = hartmann_6
+# noise = tf.cast(0.5, dtype=tf.float64)
+#
+#
+# def noisy_hartmann_6(x):
+#     y = exact_objective(x)
+#     return y + tf.random.normal(y.shape, stddev=tf.math.sqrt(noise), dtype=y.dtype)
+#
+#
+# observer = trieste.utils.objectives.mk_observer(noisy_hartmann_6, OBJECTIVE)
+#
+# num_initial_points = 250
+# initial_query_points = search_space.sample(num_initial_points)
+# initial_data = observer(initial_query_points)
+# num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
+#
+# # %% [markdown]
+# # We then choose our inducing point selection strategy and the number of considered inducing points.
+#
+# # %%
+# inducing_point_selector = KMeans(search_space)
+# # inducing_point_selector = ConditionalVariance(search_space)
+# num_inducing_points = 100
+#
+# # %% [markdown]
+# # Prepare the S-GP-TS model.
+#
+# # %%
+# model, inducing_point_selector = build_rff_model(initial_data[OBJECTIVE], inducing_point_selector)
+# model = GPFluxModel(model, initial_data[OBJECTIVE], num_epochs=10000, batch_size=100,
+#                     inducing_point_selector=inducing_point_selector, max_num_inducing_points=num_inducing_points)
+# model.optimize(initial_data[OBJECTIVE])
+# models = {OBJECTIVE: model}
+#
+# # %% [markdown]
+# # Run the experiment for 40 iterations with batches of size 100.
+#
+# # %%
+# neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
+# rule = trieste.acquisition.rule.BatchByMultipleFunctions(neg_traj.using(OBJECTIVE), num_query_points=100)
+# bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+# result = bo.optimize(40, initial_data, models, acquisition_rule=rule, track_state=False)[0]
+#
+# # %% [markdown]
+# # ## LICENSE
+# #
+# # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
