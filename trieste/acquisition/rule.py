@@ -189,11 +189,14 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         """
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                datasets, models
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, datasets, models
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         points = self._optimizer(search_space, self._acquisition_function)
@@ -204,8 +207,8 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             ):  # greedily allocate remaining batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function,
-                    datasets,
                     models,
+                    datasets=datasets,
                     pending_points=points,
                     new_optimization_step=False,
                 )
@@ -405,11 +408,14 @@ class AsynchronousOptimization(
 
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                datasets, models
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, datasets, models
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         def state_func(
@@ -559,11 +565,16 @@ class AsynchronousGreedy(
 
             if self._acquisition_function is None:
                 self._acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, state.pending_points
+                    models,
+                    datasets=datasets,
+                    pending_points=state.pending_points,
                 )
             else:
                 self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, datasets, models, state.pending_points
+                    self._acquisition_function,
+                    models,
+                    datasets=datasets,
+                    pending_points=state.pending_points,
                 )
 
             new_points_batch = self._optimizer(search_space, self._acquisition_function)
@@ -573,8 +584,8 @@ class AsynchronousGreedy(
                 # greedily allocate additional batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function,
-                    datasets,
                     models,
+                    datasets=datasets,
                     pending_points=state.pending_points,
                     new_optimization_step=False,
                 )

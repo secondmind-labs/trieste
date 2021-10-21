@@ -121,7 +121,7 @@ from trieste.acquisition import ExpectedImprovement
 
 # plot standard EI acquisition function
 ei = ExpectedImprovement()
-ei_acq_function = ei.prepare_acquisition_function(initial_data, model)
+ei_acq_function = ei.prepare_acquisition_function(model, dataset=initial_data)
 plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100)
 
 plt.scatter(
