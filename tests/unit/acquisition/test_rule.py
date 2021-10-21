@@ -169,7 +169,7 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     query_point = ego.acquire_single(search_space, model, dataset=data)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert not function._updated
-    query_point = ego.acquire(search_space, {OBJECTIVE: model}, datasets={OBJECTIVE: data})
+    query_point = ego.acquire(search_space, {OBJECTIVE: model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert function._updated
 

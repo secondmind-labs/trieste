@@ -505,10 +505,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
     model = QuadraticMeanAndRBFKernel()
     beta = 1.96
-    acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(
-        model,
-        dataset=Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])),
-    )
+    acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(model)
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = -lower_confidence_bound(model, beta)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
@@ -518,21 +515,14 @@ def test_negative_lower_confidence_bound_builder_updates_without_retracing() -> 
     model = QuadraticMeanAndRBFKernel()
     beta = 1.96
     builder = NegativeLowerConfidenceBound(beta)
-    acq_fn = builder.prepare_acquisition_function(
-        model,
-        dataset=Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])),
-    )
+    acq_fn = builder.prepare_acquisition_function(model)
     assert acq_fn._get_tracing_count() == 0  # type: ignore
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = -lower_confidence_bound(model, beta)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
-    up_acq_fn = builder.update_acquisition_function(
-        acq_fn,
-        model,
-        dataset=Dataset(tf.ones([0, 1]), tf.ones([0, 1])),
-    )
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
@@ -584,7 +574,7 @@ def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: f
 @pytest.mark.parametrize("threshold", [-2.3, 0.2])
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
-    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), empty_dataset([1], [1]))
+    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
     expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
 
     npt.assert_allclose(acq(at), expected)
@@ -622,11 +612,11 @@ def test_probability_of_feasibility_builder_updates_without_retracing(
     builder = ProbabilityOfFeasibility(threshold)
     model = QuadraticMeanAndRBFKernel()
     expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
-    acq = builder.prepare_acquisition_function(model, dataset=empty_dataset([1], [1]))
+    acq = builder.prepare_acquisition_function(model)
     assert acq._get_tracing_count() == 0  # type: ignore
     npt.assert_allclose(acq(at), expected)
     assert acq._get_tracing_count() == 1  # type: ignore
-    up_acq = builder.update_acquisition_function(acq, model, dataset=empty_dataset([2], [2]))
+    up_acq = builder.update_acquisition_function(acq, model)
     assert up_acq == acq
     npt.assert_allclose(acq(at), expected)
     assert acq._get_tracing_count() == 1  # type: ignore
@@ -1818,10 +1808,7 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
 
 def test_predictive_variance_builder_builds_predictive_variance() -> None:
     model = QuadraticMeanAndRBFKernel()
-    acq_fn = PredictiveVariance().prepare_acquisition_function(
-        model,
-        dataset=Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])),
-    )
+    acq_fn = PredictiveVariance().prepare_acquisition_function(model)
     query_at = tf.linspace([[-10]], [[10]], 100)
     _, covariance = model.predict_joint(query_at)
     expected = tf.linalg.det(covariance)
@@ -1841,10 +1828,7 @@ def test_predictive_variance_returns_correct_shape(
     at: TensorType, acquisition_shape: TensorType
 ) -> None:
     model = QuadraticMeanAndRBFKernel()
-    acq_fn = PredictiveVariance().prepare_acquisition_function(
-        model,
-        dataset=Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])),
-    )
+    acq_fn = PredictiveVariance().prepare_acquisition_function(model)
     npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
 
 
@@ -1886,21 +1870,14 @@ def test_predictive_variance(
 def test_predictive_variance_builder_updates_without_retracing() -> None:
     model = QuadraticMeanAndRBFKernel()
     builder = PredictiveVariance()
-    acq_fn = builder.prepare_acquisition_function(
-        model,
-        dataset=Dataset(tf.zeros([0, 1]), tf.zeros([0, 1])),
-    )
+    acq_fn = builder.prepare_acquisition_function(model)
     assert acq_fn._get_tracing_count() == 0  # type: ignore
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = predictive_variance(model, DEFAULTS.JITTER)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
-    up_acq_fn = builder.update_acquisition_function(
-        acq_fn,
-        model,
-        dataset=Dataset(tf.ones([0, 1]), tf.ones([0, 1])),
-    )
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
