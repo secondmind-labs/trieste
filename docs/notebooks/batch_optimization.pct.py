@@ -87,7 +87,7 @@ from trieste.acquisition.rule import EfficientGlobalOptimization
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=batch_ei_acq)
-points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, initial_data, model)
+points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model, dataset=initial_data)
 
 # %% [markdown]
 # then we do the same with `LocalPenalizationAcquisitionFunction` ...
@@ -99,7 +99,7 @@ local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=local_penalization_acq)
 points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single(
-    search_space, initial_data, model)
+    search_space, model, dataset=initial_data)
 
 # %% [markdown]
 # and finally we use `GIBBON`.
@@ -111,7 +111,7 @@ gibbon_acq = GIBBON(search_space, grid_size = 2000)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=10, builder=gibbon_acq)
 points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
-    search_space, initial_data, model)
+    search_space, model, dataset=initial_data)
 
 # %% [markdown]
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocalPenalizationAcquisitionFunction` and `GIBBON` focus evaluations in the most promising areas of the space.
