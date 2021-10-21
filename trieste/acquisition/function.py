@@ -18,9 +18,8 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from itertools import combinations, product
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Mapping, Optional, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
