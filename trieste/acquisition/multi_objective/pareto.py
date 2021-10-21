@@ -14,8 +14,6 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-from typing import Optional
-
 import tensorflow as tf
 
 from ...types import TensorType
@@ -80,7 +78,8 @@ def get_reference_point(observations: TensorType) -> TensorType:
     """
     reference point calculation method.
 
-    :param observations: observations referred to calculate the reference point, with shape [..., N, D]
+    :param observations: observations referred to calculate the reference
+        point, with shape [..., N, D]
     :return: a reference point to use, with shape [..., D].
     :raise ValueError: If ``observations`` is empty
     """

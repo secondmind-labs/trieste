@@ -833,9 +833,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
     def __init__(
         self,
-        ref_point_specification: Union[
-            Sequence[float], TensorType, Callable[[TensorType], TensorType]
-        ] = get_reference_point,
+        ref_point_specification: Sequence[float]
+        | TensorType
+        | Callable[[TensorType], TensorType] = get_reference_point,
     ):
         """
         :param ref_point_specification: this method is used to determine how the reference point is
@@ -845,7 +845,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             reference point in each bo iteration. A dynamic reference point updating strategy is
             used by default to set a reference point according to the datasets.
         """
-        if isinstance(ref_point_specification, Callable):
+        if callable(ref_point_specification):
             self._ref_point_specification = ref_point_specification
         else:
             self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
@@ -854,8 +854,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     def __repr__(self) -> str:
         """"""
         if isinstance(self._ref_point_specification, FunctionType):
-            return f"ExpectedHypervolumeImprovement({self._ref_point_specification.__name__!r})".replace(
-                "'", ""
+            return (
+                f"ExpectedHypervolumeImprovement("
+                f"{self._ref_point_specification.__name__!r})".replace("'", "")
             )
         else:
             return f"ExpectedHypervolumeImprovement({self._ref_point_specification!r})"
@@ -1033,9 +1034,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     def __init__(
         self,
         sample_size: int,
-        ref_point_specification: Union[
-            Sequence[float], TensorType, Callable[[TensorType], TensorType]
-        ] = get_reference_point,
+        ref_point_specification: Sequence[float]
+        | TensorType
+        | Callable[[TensorType], TensorType] = get_reference_point,
         *,
         jitter: float = DEFAULTS.JITTER,
     ):
@@ -1060,7 +1061,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
-        if isinstance(ref_point_specification, Callable):
+        if callable(ref_point_specification):
             self._ref_point_specification = ref_point_specification
         else:
             self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
@@ -1077,7 +1078,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         else:
             return (
                 f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
-                f" {self._ref_point_specification.__name__!r}"
+                f" {self._ref_point_specification!r}"
                 f" jitter={self._jitter!r})"
             )
 
@@ -1191,9 +1192,9 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
         min_feasibility_probability: float | TensorType = 0.5,
-        ref_point_specification: Union[
-            Sequence[float], TensorType, Callable[[TensorType], TensorType]
-        ] = get_reference_point,
+        ref_point_specification: Sequence[float]
+        | TensorType
+        | Callable[[TensorType], TensorType] = get_reference_point,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -1208,7 +1209,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             used by default to set a reference point according to the datasets.
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
-        if isinstance(ref_point_specification, Callable):
+        if callable(ref_point_specification):
             self._ref_point_specification = ref_point_specification
         else:
             self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
