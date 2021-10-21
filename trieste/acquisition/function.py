@@ -77,10 +77,11 @@ class AcquisitionFunctionBuilder(ABC):
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
-        Prepare an acquisition function.
+        Prepare an acquisition function. We assume that this requires at least models, but
+        it may sometimes also need data.
 
         :param models: The models for each tag.
-        :param datasets: The data from the observer. (optional)
+        :param datasets: The data from the observer (optional).
         :return: An acquisition function.
         """
 
@@ -98,7 +99,7 @@ class AcquisitionFunctionBuilder(ABC):
 
         :param function: The acquisition function to update.
         :param models: The models for each tag.
-        :param datasets: The data from the observer. (optional)
+        :param datasets: The data from the observer (optional).
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(models, datasets=datasets)
@@ -151,7 +152,7 @@ class SingleModelAcquisitionBuilder(ABC):
     ) -> AcquisitionFunction:
         """
         :param model: The model.
-        :param dataset: The data to use to build the acquisition function. (optional)
+        :param dataset: The data to use to build the acquisition function (optional).
         :return: An acquisition function.
         """
 
@@ -164,7 +165,7 @@ class SingleModelAcquisitionBuilder(ABC):
         """
         :param function: The acquisition function to update.
         :param model: The model.
-        :param dataset: The data from the observer. (optional)
+        :param dataset: The data from the observer (optional).
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(model, dataset=dataset)
@@ -1344,7 +1345,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         unless that has been overridden.
 
         :param models: The models over each tag.
-        :param datasets: The data from the observer. (optional)
+        :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
@@ -1366,7 +1367,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
 
         :param function: The acquisition function to update.
         :param models: The models over each tag.
-        :param datasets: The data from the observer. (optional)
+        :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
@@ -1436,7 +1437,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     ) -> AcquisitionFunction:
         """
         :param model: The model.
-        :param dataset: The data from the observer. (optional)
+        :param dataset: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
@@ -1453,7 +1454,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         """
         :param function: The acquisition function to update.
         :param model: The model.
-        :param dataset: The data from the observer. (optional)
+        :param dataset: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function

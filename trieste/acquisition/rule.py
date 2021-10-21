@@ -72,7 +72,8 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
         own as a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some
-        context (see e.g. :class:`TrustRegion`).
+        context (see e.g. :class:`TrustRegion`). We assume that this requires at least models, but
+        it may sometimes also need data.
 
         **Type hints:**
           - The search space must be a :class:`~trieste.space.SearchSpace`. The exact type of
@@ -80,7 +81,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
 
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
-        :param datasets: The known observer query points and observations for each tag. (optional)
+        :param datasets: The known observer query points and observations for each tag (optional).
         :return: A value of type `T_co`.
         """
 
@@ -96,7 +97,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         :param search_space: The global search space over which the optimization problem
             is defined.
         :param model: The model to use.
-        :param dataset: The known observer query points and observations. (optional)
+        :param dataset: The known observer query points and observations (optional).
         :return: A value of type `T_co`.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
@@ -184,7 +185,8 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         (see :meth:`__init__`).
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
-        :param datasets: The known observer query points and observations. (optional)
+        :param datasets: The known observer query points and observations. Whether this is required
+            depends on the acquisition function used.
         :return: The single (or batch of) points to query.
         """
         if self._acquisition_function is None:
