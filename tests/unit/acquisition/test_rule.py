@@ -147,12 +147,17 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
             self._updated = False
 
         def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
         def update_acquisition_function(
-            self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+            self,
+            function: AcquisitionFunction,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             self._updated = True
             return function
@@ -171,9 +176,11 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
 
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
-        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
+        return lambda at: -tf.reduce_max(models[OBJECTIVE].predict(at)[0], axis=-2)
 
 
 @random_seed
@@ -221,8 +228,8 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: TensorType = None,
     ) -> AcquisitionFunction:
         if pending_points is None:
@@ -236,13 +243,15 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
     def update_acquisition_function(
         self,
         function: Optional[AcquisitionFunction],
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         self._update_count += 1
-        return self.prepare_acquisition_function(dataset, model, pending_points)
+        return self.prepare_acquisition_function(
+            model, dataset=dataset, pending_points=pending_points
+        )
 
 
 @random_seed
@@ -371,7 +380,7 @@ def test_trust_region_raises_for_missing_datasets_key(
 ) -> None:
     search_space = Box([-1], [1])
     rule = TrustRegion()
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         rule.acquire(search_space, models, datasets=datasets)
 
 
