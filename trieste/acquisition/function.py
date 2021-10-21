@@ -20,7 +20,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import combinations, product
-from typing import Callable, Optional, Union, cast
+from types import FunctionType
+from typing import Callable, Optional, Sequence, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -39,7 +40,6 @@ from .sampler import (
     RandomFourierFeatureThompsonSampler,
     ThompsonSampler,
 )
-from types import FunctionType
 
 CLAMP_LB = 1e-8
 
@@ -832,7 +832,10 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
 
     def __init__(
-        self, ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point
+        self,
+        ref_point_specification: Union[
+            Sequence[float], TensorType, Callable[[TensorType], TensorType]
+        ] = get_reference_point,
     ):
         """
         :param ref_point_specification: this method is used to determine how the reference point is
@@ -842,13 +845,18 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             reference point in each bo iteration. A dynamic reference point updating strategy is
             used by default to set a reference point according to the datasets.
         """
-        self._ref_point_specification = ref_point_specification
+        if isinstance(ref_point_specification, Callable):
+            self._ref_point_specification = ref_point_specification
+        else:
+            self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
         self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
         if isinstance(self._ref_point_specification, FunctionType):
-            return f"ExpectedHypervolumeImprovement({self._ref_point_specification.__name__!r})"
+            return f"ExpectedHypervolumeImprovement({self._ref_point_specification.__name__!r})".replace(
+                "'", ""
+            )
         else:
             return f"ExpectedHypervolumeImprovement({self._ref_point_specification!r})"
 
@@ -866,17 +874,17 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
             self._ref_point = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
-                "There exists pareto frontier point that not dominated by reference point."
-            )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
             self._ref_point = self._ref_point_specification
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(self._ref_point, _pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            self._ref_point, screened_front
+        )
         return expected_hv_improvement(model, _partition_bounds)
 
     def update_acquisition_function(
@@ -892,8 +900,17 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
+        if isinstance(self._ref_point_specification, FunctionType):
+            self._ref_point = self._ref_point_specification(_pf.front)
+        else:
+            assert isinstance(
+                self._ref_point_specification, tf.Tensor
+            )  # specified a fixed ref point
+            self._ref_point = self._ref_point_specification
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            self._ref_point, screened_front
+        )
         function.update(_partition_bounds)  # type: ignore
         return function
 
@@ -1016,21 +1033,23 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
     def __init__(
         self,
         sample_size: int,
+        ref_point_specification: Union[
+            Sequence[float], TensorType, Callable[[TensorType], TensorType]
+        ] = get_reference_point,
         *,
         jitter: float = DEFAULTS.JITTER,
-        ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point,
     ):
         """
         :param sample_size: The number of samples from model predicted distribution for
             each batch of points.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
         :param ref_point_specification: this method is used to determine how the reference point is
             calculated. If a Callable function specified, it is expected to take existing pareto
             front and return a reference point with shape [D] (D represents number of objectives).
             If the Pareto front location is known, this arg can be used to specify a fixed
             reference point in each bo iteration. A dynamic reference point updating strategy is
             used by default to set a reference point according to the datasets.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
             ``jitter`` is negative.
         """
@@ -1041,16 +1060,26 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
         self._sample_size = sample_size
         self._jitter = jitter
-        self._ref_point_specification = ref_point_specification
+        if isinstance(ref_point_specification, Callable):
+            self._ref_point_specification = ref_point_specification
+        else:
+            self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
         self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
-        return (
-            f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r}, ref_point_specification = "
-            f"{self._ref_point_specification!r})"
-        )
+        if isinstance(self._ref_point_specification, FunctionType):
+            return (
+                f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
+                f" {self._ref_point_specification.__name__!r},"
+                f" jitter={self._jitter!r})".replace("'", "")
+            )
+        else:
+            return (
+                f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
+                f" {self._ref_point_specification.__name__!r}"
+                f" jitter={self._jitter!r})"
+            )
 
     def prepare_acquisition_function(
         self, dataset: Dataset, model: ProbabilisticModel
@@ -1067,17 +1096,17 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         _pf = Pareto(mean)
         if isinstance(self._ref_point_specification, FunctionType):
             self._ref_point = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
-                "There exists pareto frontier point that not dominated by reference point."
-            )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
             self._ref_point = self._ref_point_specification
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(self._ref_point, _pf.front)
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            self._ref_point, screened_front
+        )
 
         sampler = BatchReparametrizationSampler(self._sample_size, model)
 
@@ -1162,9 +1191,15 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
         min_feasibility_probability: float | TensorType = 0.5,
-        ref_point_specification: Union[tf.Tensor, Callable[[TensorType], TensorType]] = get_reference_point,
+        ref_point_specification: Union[
+            Sequence[float], TensorType, Callable[[TensorType], TensorType]
+        ] = get_reference_point,
     ):
         """
+        :param objective_tag: The tag for the objective data and model.
+        :param constraint_builder: The builder for the constraint function.
+        :param min_feasibility_probability: The minimum probability of feasibility for a
+            "best point" to be considered feasible.
         :param ref_point_specification: this method is used to determine how the reference point is
             calculated. If a Callable function specified, it is expected to take existing pareto
             front and return a reference point with shape [D] (D represents number of objectives).
@@ -1173,19 +1208,26 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             used by default to set a reference point according to the datasets.
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
-        self._ref_point_specification = ref_point_specification
+        if isinstance(ref_point_specification, Callable):
+            self._ref_point_specification = ref_point_specification
+        else:
+            self._ref_point_specification = tf.convert_to_tensor(ref_point_specification)
         self._ref_point = None
 
     def __repr__(self) -> str:
         """"""
         if isinstance(self._ref_point_specification, FunctionType):
-            return (f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
-                    f"{self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                    f"{repr(self._ref_point_specification.__name__)!r}")
+            return (
+                f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r},"
+                f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
+                + f" {self._ref_point_specification.__name__!r})".replace("'", "")
+            )
         else:
-            return (f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
-                    f"{self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                    f"{repr(self._ref_point_specification)!r}")
+            return (
+                f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
+                f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
+                f" ref_point_specification={repr(self._ref_point_specification)!r})"
+            )
 
     def _update_expected_improvement_fn(
         self, objective_model: ProbabilisticModel, feasible_mean: TensorType
@@ -1199,19 +1241,17 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         _pf = Pareto(feasible_mean)
         if isinstance(self._ref_point_specification, FunctionType):
             self._ref_point = self._ref_point_specification(_pf.front)
-            assert tf.reduce_all(tf.less_equal(_pf.front, self._ref_point)), ValueError(
-                "There exists pareto frontier point that not dominated by reference point."
-            )
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
             self._ref_point = self._ref_point_specification
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             self._ref_point,
-            _pf.front,
+            screened_front,
         )
 
         if self._expected_improvement_fn is None:

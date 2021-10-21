@@ -1287,7 +1287,11 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
         (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
         (NegativePredictiveMean(), "NegativePredictiveMean()"),
         (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
-        (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement()"),
+        (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement(get_reference_point)"),
+        (
+            BatchMonteCarloExpectedHypervolumeImprovement(10_000),
+            f"BatchMonteCarloExpectedHypervolumeImprovement(10000, get_reference_point, jitter={DEFAULTS.JITTER})",
+        ),
         (
             BatchMonteCarloExpectedImprovement(10_000),
             f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
@@ -1306,7 +1310,7 @@ def test_single_model_acquisition_function_builder_reprs(
     )
     assert (
         repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
-        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0, get_reference_point)"
     )
 
 
