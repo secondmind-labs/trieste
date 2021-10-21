@@ -167,7 +167,7 @@ class BatchExpectedConstrainedImprovement(
         self._sample_size = sample_size
         self._threshold = threshold
 
-    def prepare_acquisition_function(self, datasets, models):
+    def prepare_acquisition_function(self, models, datasets):
         objective_model = models[OBJECTIVE]
         objective_dataset = datasets[OBJECTIVE]
 
