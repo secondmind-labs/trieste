@@ -194,6 +194,8 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
         ExpectedImprovement().prepare_acquisition_function(
             QuadraticMeanAndRBFKernel(), dataset=data
         )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ExpectedImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -257,6 +259,8 @@ def test_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
             QuadraticMeanAndRBFKernel(),
             dataset=data,
         )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        AugmentedExpectedImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -347,9 +351,13 @@ def test_min_value_entropy_search_builder_raises_for_empty_data() -> None:
     builder = MinValueEntropySearch(search_space)
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), dataset=empty_data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
     acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), dataset=non_empty_data)
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel(), dataset=empty_data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
@@ -768,6 +776,8 @@ def test_expected_constrained_improvement_raises_for_empty_data(
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(models_, datasets=data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(models_)
 
 
 def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
@@ -836,6 +846,8 @@ def test_ehvi_builder_raises_for_empty_data() -> None:
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         ExpectedHypervolumeImprovement().prepare_acquisition_function(model, dataset=dataset)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ExpectedHypervolumeImprovement().prepare_acquisition_function(model, dataset)
 
 
 def test_ehvi_builder_builds_expected_hv_improvement_using_pareto_from_model() -> None:
@@ -1019,6 +1031,10 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
             model,
             dataset=dataset,
+        )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
+            model,
         )
 
 
@@ -1242,6 +1258,8 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(model, dataset=data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(model)
 
 
 def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_event_shape() -> None:
@@ -1352,6 +1370,10 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
         LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
             QuadraticMeanAndRBFKernel(),
             dataset=data,
+        )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
+            QuadraticMeanAndRBFKernel(),
         )
 
 
@@ -1484,9 +1506,13 @@ def test_gibbon_builder_raises_for_empty_data() -> None:
     builder = GIBBON(search_space)
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), empty_data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
     acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), non_empty_data)
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel(), empty_data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
