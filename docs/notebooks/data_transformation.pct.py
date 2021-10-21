@@ -122,10 +122,10 @@ print(f"observation: {observations[arg_min_idx, :]}")
 
 
 # %% [markdown]
-# Once ask-tell optimization is over, you can extract an optimization result object and perform whatever analysis you need, just like with regular Trieste optimization interface. For instance, here we will plot regret for each optimization step.
+# We can plot regret for each optimization step to illustrate the performance more completely.
 
 # %%
-def plot_ask_tell_regret(dataset):
+def plot_regret_with_min(dataset):
     observations = dataset.observations.numpy()
     arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
@@ -138,26 +138,28 @@ def plot_ask_tell_regret(dataset):
     ax.set_ylim(0.001, 100000)
     ax.set_xlabel("# evaluations")
 
-
-plot_ask_tell_regret(dataset)
+plot_regret_with_min(dataset)
 
 
 # %% [markdown]
 # # Data transformation with the help of Ask-Tell interface
 #
+# We will now show how data normalization can improve results achieved by Bayesian optimization.
+#
 # We first write a simple function for doing the standardisation of the data, that is, we scale the data to have a zero mean and a variance equal to 1. We also return the mean and standard deviation parameters as we will use them to transform new points.
 
 # %%
-def standardise(x, mean=None, std=None):
-    if mean is None and std is None:
+def normalise(x, mean=None, std=None):
+    if mean is None:
         mean = tf.math.reduce_mean(x, 0, True)
+    if std is None:
         std = tf.math.sqrt(tf.math.reduce_variance(x, 0, True))
     return (x - mean) / std, mean, std
 
 
 # %% [markdown]
 #
-# Note that we also need to modify the search space, from the original $[-100, 100]$ for all 10 dimensions to the standardised space. For illustration, $[-1,1]$ will suffice here.
+# Note that we also need to modify the search space, from the original $[-100, 100]$ for all 10 dimensions to the normalised space. For illustration, $[-1,1]$ will suffice here.
 
 # %%
 search_space = Box([-1], [1]) ** 10
@@ -170,26 +172,26 @@ search_space = Box([-1], [1]) ** 10
 # We are using a simple approach whereby we normalize the initial data and use estimated mean and standard deviation from the initial normalization for transforming the new points that Bayesian optimization loop adds to the dataset.
 
 # %%
-x_sta, x_mean, x_std = standardise(initial_data.query_points)
-y_sta, y_mean, y_std = standardise(initial_data.observations)
-standardised_data = Dataset(query_points=x_sta, observations=y_sta)
+x_sta, x_mean, x_std = normalise(initial_data.query_points)
+y_sta, y_mean, y_std = normalise(initial_data.observations)
+normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 
 dataset = initial_data
 for step in range(num_acquisitions):
 
     # Retraining the model from scratch every 10 steps
     if step % 10 == 0:
-        model = build_gp_model(standardised_data)
-        model.optimize(standardised_data)
+        model = build_gp_model(normalised_data)
+        model.optimize(normalised_data)
     else:
-        model.update(standardised_data)
-        model.optimize(standardised_data)
+        model.update(normalised_data)
+        model.optimize(normalised_data)
 
     # Asking for a new point to observe
-    ask_tell = AskTellOptimizer(search_space, standardised_data, model)
+    ask_tell = AskTellOptimizer(search_space, normalised_data, model)
     query_point = ask_tell.ask()
 
-    # Transforming the query point back to the non-standardised space
+    # Transforming the query point back to the non-normalised space
     query_point = x_std * query_point + x_mean
 
     # Evaluating the function at the new query point
@@ -197,13 +199,12 @@ for step in range(num_acquisitions):
     dataset = dataset + new_data_point
 
     # Normalize the dataset with the new query point and observation
-    x_sta, _, _ = standardise(dataset.query_points, x_mean, x_std)
-    y_sta, _, _ = standardise(dataset.observations, y_mean, y_std)
-    standardised_data = Dataset(query_points=x_sta, observations=y_sta)
+    x_sta, _, _ = normalise(dataset.query_points, x_mean, x_std)
+    y_sta, _, _ = normalise(dataset.observations, y_mean, y_std)
+    normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 
 
 # %% [markdown]
-# ## Explore the results
 #
 # We inspect again the best point found by the optimizer and plot regret for each optimization step.
 #
@@ -215,7 +216,7 @@ observations = dataset.observations.numpy()
 
 arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
-plot_ask_tell_regret(dataset)
+plot_regret_with_min(dataset)
 
 print(f"query point: {query_points[arg_min_idx, :]}")
 print(f"observation: {observations[arg_min_idx, :]}")
