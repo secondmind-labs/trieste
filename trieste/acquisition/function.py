@@ -195,7 +195,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
@@ -213,7 +213,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer.  Must be populated.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
@@ -282,7 +282,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
@@ -300,7 +300,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer. Must be populated.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
@@ -432,7 +432,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
@@ -460,7 +460,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
 
@@ -781,7 +781,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         tf.debugging.Assert(datasets is not None, [])
-        assert datasets is not None
+        datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -826,7 +826,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         :param datasets: The data from the observer.
         """
         tf.debugging.Assert(datasets is not None, [])
-        assert datasets is not None
+        datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -904,7 +904,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         :return: The expected hypervolume improvement acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
@@ -927,7 +927,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer. Must be populated.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
         mean, _ = model.predict(dataset.query_points)
@@ -1089,7 +1089,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         :return: The batch expected hypervolume improvement acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
@@ -1258,7 +1258,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
             does not have an event shape of [1].
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         mean, _ = model.predict(dataset.query_points)
@@ -1282,7 +1282,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         :param dataset: The data from the observer. Must be populated.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, batch_monte_carlo_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
@@ -1547,7 +1547,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         acq = self._update_base_acquisition_function(dataset, model)
@@ -1576,7 +1576,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
@@ -1890,7 +1890,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         acq = self._update_quality_term(dataset, model)
@@ -1919,7 +1919,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [])
-        assert dataset is not None
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(self._quality_term is not None, [])
 

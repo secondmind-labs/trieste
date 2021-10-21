@@ -183,6 +183,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
         (see :meth:`__init__`).
+
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Whether this is required
