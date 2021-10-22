@@ -14,9 +14,9 @@
 # %% [markdown]
 # # Asynchronous batch Bayesian optimization
 #
-# As shown in [Asynchronous Bayesian Optimization](asynchronous_bayesian_optimization.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used a greedy batch acquisition function called Local Penalization, and requested one new point whenever an observation was received. We also used the Python multiprocessing module to run distributed observations in parallel.
+# As shown in [Asynchronous Bayesian Optimization](asynchronous_greedy_multiprocessing.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used a greedy batch acquisition function called Local Penalization, and requested one new point whenever an observation was received. We also used the Python multiprocessing module to run distributed observations in parallel.
 #
-# Here, we demonstrate a slightly different way of doing asynchronous Bayesian optimization. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrid between completely asynchronous and completely synchronous batch optimization. Third, we use [Ray](https://www.ray.io/) for parallel processing, to hide away most of the complexity of managing distributed workloads.
+# Here, we demonstrate a slightly different way of doing asynchronous Bayesian optimization. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrid between completely asynchronous and completely synchronous batch optimization. Note that greed acquisition functions also support batch sizes. Third, we use [Ray](https://www.ray.io/) to hide away most of the complexity of managing distributed workloads. There is no hard dependency in Trieste on a particular tool for parallel processing, and other libraries, such as [Dask](https://dask.org/), can be used.
 #
 # Together these two notebooks give a comprehensive overview of how to use Trieste in asynchronous scenarios.
 
@@ -33,7 +33,7 @@ import numpy as np
 import time
 
 # %% [markdown]
-# Just as before, we use Branin function with delays.
+# Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
 
 # %%
 from trieste.objectives import scaled_branin
@@ -46,7 +46,7 @@ def objective(points, sleep=True):
     for point in points:
         observation = scaled_branin(point).numpy()
         if sleep:
-            # insert some artificial delay
+            # insert some artificial delay that
             # increases linearly with the absolute value of points
             # which means our evaluations will take different time
             delay = 3 * np.sum(point)
@@ -139,14 +139,14 @@ points_observed = 0
 workers = []
 
 # a helper function to launch a worker for a numpy array representing a single point
-def lauch_worker(x):
+def launch_worker(x):
     worker = ray_objective.remote(np.atleast_2d(x), enable_sleep_delays)
     workers.append(worker)
 
 # get first couple of batches of points and init all workers
 for _ in range(int(num_workers / batch_size)):
     points = async_bo.ask().numpy()
-    np.apply_along_axis(lauch_worker, axis=1, arr=points)
+    np.apply_along_axis(launch_worker, axis=1, arr=points)
 
 finished_workers = []
 while points_observed < num_observations:
@@ -173,7 +173,7 @@ while points_observed < num_observations:
     # get a new batch of points
     # and launch workers for each point in the batch
     points = async_bo.ask().numpy()
-    np.apply_along_axis(lauch_worker, axis=1, arr=points)
+    np.apply_along_axis(launch_worker, axis=1, arr=points)
     finished_workers = []
 
 # %% [markdown]
