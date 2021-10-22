@@ -2195,5 +2195,6 @@ class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
             `ValueError` if ``beta`` is negative.
         """
         trajectory = model.sample_trajectory()
-        return lambda at: -trajectory(tf.squeeze(at, axis=1)[..., 0])
+        # return lambda at: -tf.math.reduce_mean(trajectory(at), axis=-1)
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))[..., 0:1]
 

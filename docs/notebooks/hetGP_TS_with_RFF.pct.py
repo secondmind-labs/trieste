@@ -31,12 +31,12 @@ from trieste.utils.inducing_point_selectors import KMeans, ConditionalVariance
 import tensorflow_probability as tfp
 
 search_space = trieste.space.Box([0, 0], [1, 1])
-noise = 0.1
+noise = 0.001
 
 
 def noisy_branin(x):
     y = scaled_branin(x)
-    return y + tf.random.normal(y.shape, stddev=noise, dtype=y.dtype)
+    return y + tf.random.normal(y.shape, stddev=noise * tf.reduce_sum(x, axis=-1, keepdims=True), dtype=y.dtype)
 
 
 fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
@@ -55,7 +55,7 @@ from trieste.acquisition.rule import OBJECTIVE
 
 observer = mk_observer(noisy_branin, OBJECTIVE)
 
-num_initial_points = 50
+num_initial_points = 200
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -78,67 +78,9 @@ from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureD
 from trieste.models.gpflux.models import FeaturedHetGPFluxModel
 from gpflux.helpers import construct_basic_inducing_variables
 num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
-num_inducing_points = 50
+num_inducing_points = 20
 
 inducing_point_selector = KMeans(search_space)
-
-#
-# def get_model(data, num_inducing):
-#     """
-#     Builds the deep GP model.
-#     """
-#     X_train, Y_train = data
-#     input_dim = X_train.shape[-1]
-#     num_data = X_train.shape[0]
-#
-#     var_obs = np.var(Y_train)
-#     kernel1 = (
-#         gpflow.kernels.Matern32(variance=var_obs, lengthscales=0.2 * np.ones(input_dim))
-#         + gpflow.kernels.Constant()
-#         + gpflow.kernels.Linear(active_dims=[0])
-#     )
-#     kernel2 = (
-#         gpflow.kernels.Matern32(variance=1., lengthscales=0.2 * np.ones(input_dim))
-#         + gpflow.kernels.Constant()
-#         + gpflow.kernels.Linear(active_dims=[0])
-#     )
-#     kernel_list = [kernel1, kernel2]
-#     kernel = gpflux.helpers.construct_basic_kernel(kernel_list)
-#
-#     inducing_variable = gpflux.helpers.construct_basic_inducing_variables(
-#         num_inducing, input_dim, share_variables=True,
-#     )
-#
-#     ind = np.random.permutation(num_data)
-#     initializer = gpflux.initializers.KmeansInitializer(
-#         X=X_train[ind],
-#         num_inducing=num_inducing,
-#         qu_initializer=gpflux.initializers.ZeroOneVariationalInitializer(),
-#     )
-#
-#     layer1 = gpflux.layers.GPLayer(
-#         kernel=kernel,
-#         inducing_variable=inducing_variable,
-#         num_data=num_data,
-#         mean_function=gpflow.mean_functions.Zero(),
-#         initializer=initializer,
-#     )
-#     layer1.returns_samples = False
-#
-#     # Likelihood distribution
-#     likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
-#     distribution_class=tfp.distributions.Normal,  # Gaussian Likelihood
-#     scale_transform=tfp.bijectors.Exp(),  # Exponential Transform
-#     )
-#
-#     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood=likelihood)
-#
-#     inputs = tf.keras.Input((input_dim,), name="inputs")
-#     targets = tf.keras.Input((1,), name="targets")
-#
-#     f1 = layer1(inputs)
-#     outputs = likelihood_layer(f1, targets=targets)
-#     return tf.keras.Model(inputs=(inputs, targets), outputs=(outputs, f1))
 
 
 def create_kernel_with_features(var, input_dim):
@@ -152,144 +94,168 @@ def build_rff_model(data):
     var = tf.math.reduce_variance(data.observations)
 
     kernel_with_features1 =create_kernel_with_features(var, input_dim)
-    kernel_with_features2 = create_kernel_with_features(var/2., input_dim)
+    kernel_with_features2 = create_kernel_with_features(var / 2., input_dim)
 
     kernel_list = [kernel_with_features1, kernel_with_features2]
     kernel = gpflux.helpers.construct_basic_kernel(kernel_list)
 
-    Z = inducing_point_selector.get_points(data.query_points, data.observations, num_inducing_points,
-                                           kernel, noise)  # get inducing points (resampled at each BO iterations)
-
-    # inducing_variable = gpflow.inducing_variables.SharedIndependentInducingVariables(Z)
-    # gpflow.utilities.set_trainable(inducing_variable, False)
-
-    # inducing_variable = gpflow.inducing_variables.SeparateIndependentInducingVariables(
-    #     [
-    #         gpflow.inducing_variables.InducingPoints(Z),  # This is U1 = f1(Z1)
-    #         gpflow.inducing_variables.InducingPoints(Z),  # This is U2 = f2(Z2)
-    #     ]
-    # )
+    Z = inducing_point_selector.get_points(data.query_points, data.observations,
+                                           num_inducing_points, kernel, noise)
 
     inducing_variable = construct_basic_inducing_variables(num_inducing_points, input_dim,
-    output_dim=1, share_variables=True, z_init= Z)
+    output_dim=2, share_variables=True, z_init= Z)
+    gpflow.utilities.set_trainable(inducing_variable, False)
 
-    layer = gpflux.layers.GPLayer(  # init GPFLUX SVGP model
+    layer = gpflux.layers.GPLayer(
         kernel,
         inducing_variable,
         num_data,
         whiten=False,
         num_latent_gps=2,
-        mean_function=gpflow.mean_functions.Zero(),
+        mean_function=gpflow.mean_functions.Constant(),
     )
     layer.returns_samples = False
 
     likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
-        distribution_class=tfp.distributions.Normal,  # Gaussian Likelihood
-        scale_transform=tfp.bijectors.Exp(),  # Exponential Transform
+        distribution_class=tfp.distributions.Normal,
+        scale_transform=tfp.bijectors.Exp(),
     )
 
     likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
     model = gpflux.models.DeepGP([layer], likelihood_layer)
 
-    epochs = 200
-    batch_size = 100
+    epochs = 10000
+    batch_size = 200
+    optimizer = tf.optimizers.Adam(0.05)
 
-    optimizer = tf.optimizers.Adam(0.01)
-    # These are just arguments for the Keras `fit` method.
+    callbacks = [
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor="loss", patience=10, factor=0.5, verbose=1, min_lr=1e-6,
+        ),
+        tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50, min_delta=0.01, verbose=1,
+                                         mode="min"),
+
+    ]
+
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,
-        "verbose": 0,
+        "verbose": 2,
+        "callbacks": callbacks,
     }
 
     return FeaturedHetGPFluxModel(model=model, optimizer=optimizer, fit_args=fit_args)
 
 
 model = build_rff_model(initial_data[OBJECTIVE])
-
 model.optimize(initial_data[OBJECTIVE])
 models = {OBJECTIVE: model}
 
 from util.plotting import plot_gp_2d
 
-plot_gp_2d(model.model_gpflux, search_space.lower,
+fig, ax = plot_gp_2d(model.model_gpflux, search_space.lower,
     search_space.upper,
     grid_density=30)
 
-# %% [markdown]
-# ## Run the optimization loop
+fig.axes[0].scatter(initial_query_points[:, 0], initial_query_points[:, 1],
+                    initial_data[OBJECTIVE].observations.numpy())
 
-# %% [markdown]
-# We run 5 BO iterations, each recommending a batch of 25 locations.
+Z = model.model_gpflux.f_layers[0].inducing_variable.inducing_variable.Z
 
-# %%
-neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(neg_traj.using(OBJECTIVE), num_query_points=5)
+q_mu = model.model_gpflux.f_layers[0].q_mu
+q_sqrt = model.model_gpflux.f_layers[0].q_sqrt
 
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
+# import matplotlib.pyplot as plt
+# plt.figure()
+# plt.scatter(Z[:,0], Z[:, 1])
 
-# %% [markdown]
-# ## Explore the results
-
-# %%
-dataset = result.try_get_final_datasets()[OBJECTIVE]
-query_points = dataset.query_points.numpy()
-observations = dataset.observations.numpy()
-true_scores = scaled_branin(dataset.query_points).numpy()
-arg_min_idx = tf.squeeze(tf.argmin(true_scores, axis=0))
-
-print(f"Believed optima: {query_points[arg_min_idx, :]}")
-print(f"Objective function value: {true_scores[arg_min_idx, :]}")
-
-# %% [markdown]
-# We can visualise how the optimizer performed by plotting all the acquired observations (green dots), along with the initial design (green crosses) and the true function (contours). We see that S-GP-TS is able to focus resources into making evaluations in promising areas of the space.
-
-# %%
-from util.plotting import plot_function_2d, plot_bo_points
-
-_, ax = plot_function_2d(
-    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
-)
-plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
-
-# %% [markdown]
-# We can also visualise the how each successive point compares the current best.
+# model.model_gpflux
+###################################################
+###################################################
+###################################################
+# # %% [markdown]
+# # ## Run the optimization loop
 #
-# We produce two plots. The left hand plot shows the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is the same as the previous two-dimensional contour plot, but without the contours. The best point is shown in each (purple dot).
-
-# %%
-import matplotlib.pyplot as plt
-from util.plotting import plot_regret
-from util.plotting_plotly import add_bo_points_plotly
-
-fig, ax = plt.subplots(1, 2)
-plot_regret(true_scores - SCALED_BRANIN_MINIMUM.numpy(), ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
-ax[0].set_ylim(0.00001, 1000)
-ax[0].set_yscale("log")
-plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
-fig.show()
-
-from util.plotting_plotly import plot_gp_plotly
-
-fig = plot_gp_plotly(
-    result.try_get_final_model().model_gpflux,  # type: ignore
-    search_space.lower,
-    search_space.upper,
-    grid_density=30,
-)
-
-fig = add_bo_points_plotly(
-    x=query_points[:, 0],
-    y=query_points[:, 1],
-    z=observations[:, 0],
-    num_init=num_initial_points,
-    idx_best=arg_min_idx,
-    fig=fig,
-    figrow=1,
-    figcol=1,
-)
-fig.show()
+# # %% [markdown]
+# # We run 5 BO iterations, each recommending a batch of 25 locations.
+#
+# # %%
+# neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
+# rule = trieste.acquisition.rule.EfficientGlobalOptimization(neg_traj.using(OBJECTIVE), num_query_points=20)
+#
+# bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+# result = bo.optimize(5, initial_data, models, acquisition_rule=rule, track_state=False)
+#
+# # %% [markdown]
+# # ## Explore the results
+#
+# # %%
+# dataset = result.try_get_final_datasets()[OBJECTIVE]
+# query_points = dataset.query_points.numpy()
+# observations = dataset.observations.numpy()
+# true_scores = scaled_branin(dataset.query_points).numpy()
+# arg_min_idx = tf.squeeze(tf.argmin(true_scores, axis=0))
+#
+# print(f"Believed optima: {query_points[arg_min_idx, :]}")
+# print(f"Objective function value: {true_scores[arg_min_idx, :]}")
+#
+# # %% [markdown]
+# # We can visualise how the optimizer performed by plotting all the acquired observations (green dots), along with the initial design (green crosses) and the true function (contours). We see that S-GP-TS is able to focus resources into making evaluations in promising areas of the space.
+#
+# # %%
+# from util.plotting import plot_function_2d, plot_bo_points
+#
+# _, ax = plot_function_2d(
+#     scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+# )
+# plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+#
+# # %% [markdown]
+# # We can also visualise the how each successive point compares the current best.
+# #
+# # We produce two plots. The left hand plot shows the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is the same as the previous two-dimensional contour plot, but without the contours. The best point is shown in each (purple dot).
+#
+# # %%
+# import matplotlib.pyplot as plt
+# from util.plotting import plot_regret
+# from util.plotting_plotly import add_bo_points_plotly
+#
+# fig, ax = plt.subplots(1, 2)
+# plot_regret(true_scores - SCALED_BRANIN_MINIMUM.numpy(), ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+# ax[0].set_ylim(0.00001, 1000)
+# ax[0].set_yscale("log")
+# plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+# fig.show()
+#
+# from util.plotting import plot_gp_2d
+#
+# plot_gp_2d(result.try_get_final_model().model_gpflux, search_space.lower,
+#     search_space.upper,
+#     grid_density=30)
+###################################################
+###################################################
+###################################################
+#
+# from util.plotting_plotly import plot_gp_plotly
+#
+# fig = plot_gp_plotly(
+#     result.try_get_final_model().model_gpflux,  # type: ignore
+#     search_space.lower,
+#     search_space.upper,
+#     grid_density=30,
+# )
+#
+# fig = add_bo_points_plotly(
+#     x=query_points[:, 0],
+#     y=query_points[:, 1],
+#     z=observations[:, 0],
+#     num_init=num_initial_points,
+#     idx_best=arg_min_idx,
+#     fig=fig,
+#     figrow=1,
+#     figcol=1,
+# )
+# fig.show()
 #
 # # %% [markdown]
 # # # Full Synthetic Experiments

@@ -20,12 +20,12 @@ import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
-import gpflux
+from gpflux.models.deep_gp import sample_dgp
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
 from .interface import GPfluxPredictor
-from .utils import sample_dgp
+# from .utils import sample_dgp
 
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
@@ -146,6 +146,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
+
         self.model_keras.fit(
             {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
         )
@@ -159,7 +160,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
     def sample_trajectory(self) -> Callable:
-        return gpflux.models.deep_gp(self.model_gpflux)
+        return sample_dgp(self.model_gpflux)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -209,3 +210,21 @@ class FeaturedHetGPFluxModel(DeepGaussianProcess):
                 new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
                 feature_f.W = new_W
             renew_rff(feature_function,  input_shape[-1])
+
+    # def optimize(self, dataset: Dataset) -> None:
+    #     model = self.model_gpflux.as_training_model()
+    #     model.compile(tf.optimizers.Adam(learning_rate=0.1))
+    #     callbacks = [
+    #         tf.keras.callbacks.ReduceLROnPlateau(
+    #             monitor="loss", patience=10, factor=0.5, verbose=self._verbose, min_lr=1e-6,
+    #         ),
+    #         tf.keras.callbacks.EarlyStopping(monitor="loss",patience=50, min_delta=0.01, verbose=self._verbose,mode="min"),
+    #
+    #     ]
+    #     model.fit(
+    #         {"inputs": dataset.query_points, "targets": dataset.observations},
+    #         batch_size=self._batch_size,
+    #         epochs=self.num_epochs,
+    #         verbose=self._verbose,
+    #         callbacks=callbacks
+    #     )
