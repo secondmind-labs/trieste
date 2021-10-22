@@ -99,7 +99,7 @@ def build_model(data):
 
 
 # %% [markdown]
-# Here we set up the configuration of out optimization run. See comments below for details.
+# Here we set up the configuration of our optimization run. See comments below for details.
 
 # %%
 # Number of worker processes to run simultaneously
