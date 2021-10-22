@@ -52,7 +52,7 @@ tf.keras.backend.set_floatx("float64")
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
 parser.add_argument('--function', type=str, help='objective function', nargs='?', default='ackley')
-parser.add_argument('--model', type=str, help='model name', nargs='?', default='dkp')
+parser.add_argument('--model', type=str, help='model name', nargs='?', default='deepgp')
 parser.add_argument('--lnt', dest='ln', help='whether to learn noise variance', action='store_true')
 parser.add_argument('--lnf', dest='ln', help='whether to learn noise variance', action='store_false')
 parser.add_argument('--rtt', dest='rt', help='whether to retrain', action='store_true')
@@ -62,8 +62,8 @@ args = parser.parse_args()
 
 function_key = args.function
 model_key = args.model
-learn_noise = args.ln
-retrain = args.rt
+learn_noise = True
+retrain = True
 run = args.run
 
 np.random.seed(run)
@@ -157,11 +157,11 @@ def run_bayes_opt(
     result_evaluation_ll = tester(ll_evaluation_data, result_model)
 
     pd.DataFrame(result_query_points).to_csv(
-        'results_ei/{}/{}_ln{}_rt{}_query_points_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_cts/{}/{}_ln{}_rt{}_query_points_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_observations).to_csv(
-        'results_ei/{}/{}_ln{}_rt{}_observations_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_cts/{}/{}_ln{}_rt{}_observations_{}'.format(function_key, model_key, learn_noise, retrain, run))
     pd.DataFrame(result_evaluation_ll).to_csv(
-        'results_ei/{}/{}_ln{}_rt{}_ood_ll_{}'.format(function_key, model_key, learn_noise, retrain, run))
+        'results_cts/{}/{}_ln{}_rt{}_ood_ll_{}'.format(function_key, model_key, learn_noise, retrain, run))
 
     print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")
@@ -183,9 +183,9 @@ if model_key == 'rs':
     result_observations = tf.concat([initial_data.observations, acquired_data.observations], 0).numpy()
 
     pd.DataFrame(result_query_points).to_csv(
-        'results_ei/{}/{}_query_points_{}'.format(function_key, model_key, run))
+        'results_cts/{}/{}_query_points_{}'.format(function_key, model_key, run))
     pd.DataFrame(result_observations).to_csv(
-        'results_ei/{}/{}_observations_{}'.format(function_key, model_key, run))
+        'results_cts/{}/{}_observations_{}'.format(function_key, model_key, run))
 
     quit()
 

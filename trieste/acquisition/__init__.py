@@ -56,6 +56,7 @@ from .function import (
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    NegativeModelTrajectory,
     augmented_expected_improvement,
     expected_hv_improvement,
     expected_improvement,

@@ -9,6 +9,7 @@ from trieste.models.gpflux import (
     build_vanilla_deep_gp,
     build_latent_variable_dgp_model,
     build_gi_deep_gp,
+    build_dkp_model
 )
 from trieste.models.bayesfunc import (
     BayesFuncModel,
@@ -20,14 +21,17 @@ from trieste.acquisition.rule import (
 )
 from trieste.acquisition.models import (
     DeepGaussianProcessSampler,
-    GlobalInducingDeepGaussianProcessSampler
+    GlobalInducingDeepGaussianProcessSampler,
+    DeepKernelProcessSampler
 )
 from trieste.acquisition.function import (
     MonteCarloExpectedImprovement,
     MonteCarloAugmentedExpectedImprovement,
     ExpectedImprovement,
-    AugmentedExpectedImprovement
+    AugmentedExpectedImprovement,
+    NegativeModelTrajectory
 )
+from trieste.acquisition.optimizer import generate_continuous_optimizer
 from gpflow.utilities import set_trainable
 import tensorflow_probability as tfp
 from trieste.models.gpflow import GPflowModelConfig
@@ -41,26 +45,35 @@ from gpflow.base import Parameter
 import torch as t
 
 
-def build_dkp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
+def build_deep_kernel_process_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
                     search_space: Optional[Box] = None):
-    variance = tf.math.reduce_variance(data.observations).numpy().astype(float)
-    mean = tf.math.reduce_mean(data.observations).numpy().astype(float)
+    variance = tf.math.reduce_variance(data.observations)
 
+    dgp = build_dkp_model(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
+                           last_layer_variance=variance.numpy(), num_train_samples=1,
+                           search_space=search_space)
+    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(
+        tf.reduce_mean(data.observations))
     if learn_noise:
-        model = build_sqexp_deep_inv_wishart(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
-                                             likelihood_noise_variance=1e-3, search_space=search_space)
+        dgp.likelihood_layer.variance.assign(1e-3)
+        MCEI = MonteCarloAugmentedExpectedImprovement(DeepKernelProcessSampler,
+                                                      10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
     else:
-        model = build_sqexp_deep_inv_wishart(data.query_points, num_layers=num_layers, num_inducing=num_inducing,
-                                             likelihood_noise_variance=1e-5, search_space=search_space)
-        for param in model[-1].parameters():
-            param.requires_grad = False
+        dgp.likelihood_layer.variance.assign(1e-5)
+        set_trainable(dgp.likelihood_layer, False)
+        MCEI = MonteCarloExpectedImprovement(DeepKernelProcessSampler, 10)
+        acquisition_rule = EfficientGlobalOptimization(MCEI)
 
-    model[0][1][-2].log_height.data = t.tensor(0.5*np.log(variance))
-    model[1].constant.data = t.tensor(mean)
+    optimizer = tf.optimizers.Adam(0.01)
 
-    model.to(dtype=t.float64)
-
-    return BayesFuncModel(model), DiscreteThompsonSampling(1000, 1)
+    return (
+        GPfluxModelConfig(**{
+            "model": dgp,
+            "optimizer": optimizer,
+        }),
+        acquisition_rule
+    )
 
 
 def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool = False,
@@ -73,13 +86,15 @@ def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: b
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.likelihood.variance.assign(1e-3)
-        MCEI = MonteCarloAugmentedExpectedImprovement(DeepGaussianProcessSampler, 10)
-        acquisition_rule = EfficientGlobalOptimization(MCEI)
+        # MCEI = MonteCarloAugmentedExpectedImprovement(DeepGaussianProcessSampler, 10)
+        acquisition_function = NegativeModelTrajectory()
+        acquisition_rule = EfficientGlobalOptimization(acquisition_function, optimizer=generate_continuous_optimizer(1000))
     else:
         dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
-        MCEI = MonteCarloExpectedImprovement(DeepGaussianProcessSampler, 10)
-        acquisition_rule = EfficientGlobalOptimization(MCEI)
+        # MCEI = MonteCarloExpectedImprovement(DeepGaussianProcessSampler, 10)
+        acquisition_function = NegativeModelTrajectory()
+        acquisition_rule = EfficientGlobalOptimization(acquisition_function, optimizer=generate_continuous_optimizer(1000))
 
     epochs = 400
     batch_size = 1000
@@ -114,13 +129,16 @@ def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool =
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant(tf.reduce_mean(data.observations))
     if learn_noise:
         dgp.likelihood_layer.variance.assign(1e-3)
-        MCEI = MonteCarloAugmentedExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
-        acquisition_rule = EfficientGlobalOptimization(MCEI)
+        # MCEI = MonteCarloAugmentedExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
+        # acquisition_rule = EfficientGlobalOptimization(MCEI)
     else:
         dgp.likelihood_layer.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
-        MCEI = MonteCarloExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
-        acquisition_rule = EfficientGlobalOptimization(MCEI)
+        # MCEI = MonteCarloExpectedImprovement(GlobalInducingDeepGaussianProcessSampler, 10)
+        # acquisition_rule = EfficientGlobalOptimization(MCEI)
+
+    acquisition_function = NegativeModelTrajectory()
+    acquisition_rule = EfficientGlobalOptimization(acquisition_function, optimizer=generate_continuous_optimizer(1000))
 
     epochs = 400
     batch_size = 1000

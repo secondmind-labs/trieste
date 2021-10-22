@@ -192,12 +192,12 @@ def generate_continuous_optimizer(
             if opt_result.success:
                 successful_optimization = True
 
-                new_point = bijector.forward(variable)  # [1, D]
-                new_point_score = target_func(new_point[:, None, :])  # [1, 1]
-
-                if new_point_score > chosen_point_score:  # if found a better point then keep
-                    chosen_point = new_point  # [1, D]
-                    chosen_point_score = new_point_score  # [1, 1]
+                chosen_point = bijector.forward(variable)  # [1, D]
+                # new_point_score = target_func(new_point[:, None, :])  # [1, 1]
+                #
+                # if new_point_score > chosen_point_score:  # if found a better point then keep
+                #     chosen_point = new_point  # [1, D]
+                #     chosen_point_score = new_point_score  # [1, 1]
 
         if not successful_optimization:  # if all optimizations failed then try from random start
             for i in tf.range(num_recovery_runs):

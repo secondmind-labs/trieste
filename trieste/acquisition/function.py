@@ -329,7 +329,7 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
             samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
             improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
             variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
-            augmentation = 1 - (tf.math.sqrt(noise_variance)) / (
+            augmentation = 1 - (tf.math.sqrt(noise_variance) /
                 tf.math.sqrt(noise_variance + variance)
             )
             return augmentation*tf.reduce_mean(improvement, axis=0)  # [N, 1]
@@ -471,6 +471,22 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
             tf.math.sqrt(self._noise_variance + variance)
         )
         return expected_improvement * augmentation
+
+
+class NegativeModelTrajectory(SingleModelAcquisitionBuilder):
+    def __repr__(self) -> str:
+        return f"NegativeModelTrajectory"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: Unused
+        :param model: Model to sample trajectories from. Must have a `sample_trajectory` method
+        :return: An acquisition function
+        """
+        trajectory = model.sample_trajectory()
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
