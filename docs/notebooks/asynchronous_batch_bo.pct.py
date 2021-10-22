@@ -14,9 +14,9 @@
 # %% [markdown]
 # # Asynchronous batch Bayesian optimization
 #
-# As shown in [Asynchronous Bayesian Optimization](asynchronous_bayesian_optimization.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used greedy batch acquisition function called Local Penalization, and collected one new point whenever an observation was received. We also used Python multiprocessing module to run distributed observations in parallel.
+# As shown in [Asynchronous Bayesian Optimization](asynchronous_bayesian_optimization.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used a greedy batch acquisition function called Local Penalization, and requested one new point whenever an observation was received. We also used the Python multiprocessing module to run distributed observations in parallel.
 #
-# Here we demonstrate slightly different way of doing asynchronous BO. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrind between completely asynchronous and completely synchronous batch optimization. Third, we use [Ray](https://www.ray.io/) for parallel processing, to hide away most of the complexity of managing distributed workloads.
+# Here, we demonstrate a slightly different way of doing asynchronous BO. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrid between completely asynchronous and completely synchronous batch optimization. Third, we use [Ray](https://www.ray.io/) for parallel processing, to hide away most of the complexity of managing distributed workloads.
 #
 # Together these two notebooks give a comprehensive overview of how to use Trieste in asynchronous scenarios.
 
@@ -57,6 +57,7 @@ def objective(points, sleep=True):
 
 
 # %%
+# Let's confirm our objective function works as expected
 objective(np.array([[0.1, 0.5]]), sleep=False)
 
 
@@ -98,7 +99,7 @@ def build_model(data):
 
 
 # %% [markdown]
-# Here we set some parameters of the optimization run. See comments below for explanation of what each one means.
+# Here we set up the configuration of out optimization run. See comments below for details.
 
 # %%
 # Number of worker processes to run simultaneously
@@ -106,7 +107,7 @@ def build_model(data):
 num_workers = 6
 # Number of observations to collect
 num_observations = 30
-# Batch size of the acquisition function. We will also wait for that many workers to return before launching a new batch
+# Batch size of the acquisition function. We will wait for that many workers to return before launching a new batch
 batch_size = 2
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
 enable_sleep_delays = True
@@ -161,7 +162,7 @@ while points_observed < num_observations:
     new_observations = [observation for worker in finished_workers for observation in ray.get(worker)]
 
     # new_observations is a list of tuples (point, observation value)
-    # here we turn it into a Dataset and tell of it Trieste
+    # here we turn it into a Dataset and tell it to Trieste
     points_observed += len(new_observations)
     new_data = Dataset(
         query_points=tf.constant([x[0] for x in new_observations], dtype=tf.float64),

@@ -45,7 +45,9 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
-* :doc:`How can I use Trieste in asynchronous objective evaluation mode?<notebooks/asynchronous_bayesian_optimization>`
+* How do I use Trieste in asynchronous objective evaluation mode?
+  * :doc:`Example of using greedy batch acquisition functions and Python multiprocessing module.<notebooks/asynchronous_bayesian_optimization>`
+  * :doc:`Example of using non-greedy batch acquisition functions and Ray.<notebooks/asynchronous_batch_bo>`
 
 .. toctree::
    :hidden:
@@ -54,6 +56,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    notebooks/ask_tell_optimization
    notebooks/recovering_from_errors
    notebooks/asynchronous_bayesian_optimization
+   notebooks/asynchronous_batch_bo
 
 Run the tutorials interactively
 -------------------------------
