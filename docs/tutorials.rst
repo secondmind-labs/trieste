@@ -1,4 +1,4 @@
-.. Copyright 2020 The Trieste Contributors
+.. Copyright 2021 The Trieste Contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
+* :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
 * :doc:`How can I use Trieste in asynchronous objective evaluation mode?<notebooks/asynchronous_bayesian_optimization>`
 
 .. toctree::
@@ -52,13 +53,15 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    :maxdepth: 1
 
    notebooks/ask_tell_optimization
+   notebooks/data_transformation
    notebooks/recovering_from_errors
    notebooks/asynchronous_bayesian_optimization
+
 
 Run the tutorials interactively
 -------------------------------
 
-The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies with (in the repository root)
+The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies, with (in the repository root)
 
 .. code::
 
