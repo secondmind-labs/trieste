@@ -2,6 +2,8 @@
 # # Data transformation with the help of Ask-Tell interface.
 
 # %%
+import os
+
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +22,11 @@ from trieste.space import Box
 
 np.random.seed(1794)
 tf.random.set_seed(1794)
+
+# silence TF warnings and info messages, only print errors
+# https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.get_logger().setLevel("ERROR")
 
 
 # %% [markdown]
@@ -54,37 +61,53 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Gaussian process (GP) model, built using GPflow. We also set priors over the hyperparameters.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Gaussian process (GP) model, built using GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+#
+# Here as the first example, we model the objective function using the original data, without performing any data transformation. In the next example we will model it using normalised data.
+#
+# We also put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an output normalised to have zero mean and unit variance. Since the non-normalised data from the original objective function comes with different scaling, we rescale the priors based on approximate standard deviation of inputs and outputs.
 
 # %%
-def build_gp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(
-        variance=variance, lengthscales=[0.2] * data.query_points.shape[-1]
-    )
+def build_gp_model(data, x_std = 1.0, y_std = 0.1):
+
+    dim = data.query_points.shape[-1]
+    empirical_variance = tf.math.reduce_variance(data.observations)
+
+    prior_lengthscales = [0.2*x_std*np.sqrt(dim)] * dim
     prior_scale = tf.cast(1.0, dtype=tf.float64)
+
+    x_std = tf.cast(x_std, dtype=tf.float64)
+    y_std = tf.cast(y_std, dtype=tf.float64)
+
+    kernel = gpflow.kernels.Matern52(
+        variance=empirical_variance,
+        lengthscales=prior_lengthscales,
+    )
     kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.cast(-2.0, dtype=tf.float64), prior_scale
+        tf.math.log(y_std), prior_scale
     )
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         tf.math.log(kernel.lengthscales), prior_scale
     )
     gpr = gpflow.models.GPR(
-        data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5
+        data.astuple(),
+        kernel,
+        mean_function=gpflow.mean_functions.Constant(),
+        noise_variance=1e-5,
     )
     gpflow.set_trainable(gpr.likelihood, False)
 
     return GaussianProcessRegression(
         model=gpr,
         optimizer=Optimizer(
-            gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}
+            gpflow.optimizers.Scipy(),
+            minimize_args={"options": dict(maxiter=100)}
         ),
         num_kernel_samples=100,
     )
 
-
 # build the model
-model = build_gp_model(initial_data)
+model = build_gp_model(initial_data, 20, 10000)
 
 
 # %% [markdown]
@@ -179,8 +202,7 @@ normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 dataset = initial_data
 for step in range(num_acquisitions):
 
-    # Retraining the model from scratch every 10 steps
-    if step % 10 == 0:
+    if step == 0:
         model = build_gp_model(normalised_data)
         model.optimize(normalised_data)
     else:
