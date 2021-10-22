@@ -56,6 +56,18 @@ class SearchSpace(ABC):
     def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
 
+    @property
+    @abstractmethod
+    def lower(self) -> TensorType:
+        """TODO"""
+
+
+    @property
+    @abstractmethod
+    def upper(self) -> TensorType:
+        """TODO"""
+
+
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
         """
@@ -104,6 +116,20 @@ class DiscreteSearchSpace(SearchSpace):
     def __repr__(self) -> str:
         """"""
         return f"DiscreteSearchSpace({self._points!r})"
+
+
+    @property
+    def lower(self) -> TensorType:
+        """The lower bounds of the box. TODO"""
+        return tf.reduce_min(self.points,-1)
+
+    @property
+    def upper(self) -> TensorType:
+        """The upper bounds of the box. TODO"""
+        return tf.reduce_max(self.points,-1)
+
+
+
 
     @property
     def points(self) -> TensorType:
@@ -412,6 +438,27 @@ class TaggedProductSearchSpace(SearchSpace):
                 """
 
     @property
+    def lower(self) -> TensorType:
+        """The lower bounds of the box. TODO"""
+        lower_for_each_subspace = [self.get_subspace[tag].lower for tag in self.subspace_tags]
+        return tf.concat(lower_for_each_subspace, -1)
+
+    @property
+    def upper(self) -> TensorType:
+        """The upper bounds of the box. TODO"""
+        upper_for_each_subspace = [self.get_subspace[tag].upper for tag in self.subspace_tags]
+        return tf.concat(upper_for_each_subspace, -1)
+
+
+
+
+
+
+
+
+
+
+    @property
     def subspace_tags(self) -> tuple[str, ...]:
         """Return the names of the subspaces contained in this product space."""
         return self._tags
@@ -425,6 +472,21 @@ class TaggedProductSearchSpace(SearchSpace):
         """Return the domain of a particular subspace."""
         return self._spaces[tag]
 
+
+    def fix_subspace(self, tag: str, value) -> SearchSpace:
+        """Return the domain of a particular subspace. TODO"""
+
+        assert value in self.get_subspace(tag)
+
+        new_space = [self._spaces[t] if t!=tag else DiscreteSearchSpace(points=value) for t in self.subspace_tags]
+
+        return TaggedProductSearchSpace(spaces = new_space, tags = self.subspace_tags)
+
+
+
+
+
+
     def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
         Returns the components of ``values`` lying in a particular subspace.
@@ -437,6 +499,7 @@ class TaggedProductSearchSpace(SearchSpace):
         starting_index_of_subspace = self._subspace_starting_indicies[tag]
         ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes_by_tag[tag]
         return values[:, starting_index_of_subspace:ending_index_of_subspace]
+
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
