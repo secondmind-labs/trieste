@@ -18,9 +18,8 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from itertools import combinations, product
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Mapping, Optional, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -72,21 +71,24 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
-        Prepare an acquisition function.
+        Prepare an acquisition function. We assume that this requires at least models, but
+        it may sometimes also need data.
 
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
         :return: An acquisition function.
         """
 
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         Update an acquisition function. By default this generates a new acquisition function each
@@ -95,11 +97,11 @@ class AcquisitionFunctionBuilder(ABC):
         every optimization loop.
 
         :param function: The acquisition function to update.
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(datasets, models)
+        return self.prepare_acquisition_function(models, datasets=datasets)
 
 
 class SingleModelAcquisitionBuilder(ABC):
@@ -118,18 +120,22 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+                self,
+                models: Mapping[str, ProbabilisticModel],
+                datasets: Optional[Mapping[str, Dataset]] = None,
             ) -> AcquisitionFunction:
-                return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
+                return single_builder.prepare_acquisition_function(
+                    models[tag], dataset=None if datasets is None else datasets[tag]
+                )
 
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
+                datasets: Optional[Mapping[str, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return single_builder.update_acquisition_function(
-                    function, datasets[tag], models[tag]
+                    function, models[tag], dataset=None if datasets is None else datasets[tag]
                 )
 
             def __repr__(self) -> str:
@@ -139,24 +145,29 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data to use to build the acquisition function (optional).
         :return: An acquisition function.
         """
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(dataset, model)
+        return self.prepare_acquisition_function(model, dataset=dataset)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder):
@@ -170,30 +181,39 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return "ExpectedImprovement()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``.
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return expected_improvement(model, eta)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer.  Must be populated.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
@@ -248,30 +268,39 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         return "AugmentedExpectedImprovement()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``.
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return augmented_expected_improvement(model, eta)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
@@ -389,17 +418,21 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         self._num_fourier_features = num_fourier_features
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
         :return: The max-value entropy search acquisition function modified for objective
             minimisation. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
@@ -415,14 +448,19 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         return min_value_entropy_search(model, min_value_samples)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
+        :param model: The model.
         :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
@@ -508,11 +546,13 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
         :return: The negative lower confidence bound function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -522,12 +562,15 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return tf.function(lambda at: -lcb(at))
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
         """
         return function  # no need to update anything
 
@@ -613,11 +656,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
         :return: The probability of feasibility function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -625,12 +670,15 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return probability_of_feasibility(model, self.threshold)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
         """
         return function  # no need to update anything
 
@@ -718,17 +766,22 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         )
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
+        :param models: The models over each tag.
         :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
         :return: The expected constrained improvement acquisition function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
+        tf.debugging.Assert(datasets is not None, [])
+        datasets = cast(Mapping[str, Dataset], datasets)
+
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
@@ -739,7 +792,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         )
 
         self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
-            datasets, models
+            models, datasets=datasets
         )
         pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
@@ -763,14 +816,17 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
+        :param models: The models for each tag.
         :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
         """
+        tf.debugging.Assert(datasets is not None, [])
+        datasets = cast(Mapping[str, Dataset], datasets)
+
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
 
@@ -782,7 +838,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         tf.debugging.Assert(self._constraint_fn is not None, [])
 
         constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
-        self._constraint_builder.update_acquisition_function(constraint_fn, datasets, models)
+        self._constraint_builder.update_acquisition_function(
+            constraint_fn, models, datasets=datasets
+        )
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
@@ -835,13 +893,17 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         return "ExpectedHypervolumeImprovement()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``.
         :return: The expected hypervolume improvement acquisition function.
         """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
@@ -853,13 +915,18 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         return expected_hv_improvement(model, _partition_bounds)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
         mean, _ = model.predict(dataset.query_points)
@@ -1011,14 +1078,17 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         )
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
         :return: The batch expected hypervolume improvement acquisition function.
         """
-
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
@@ -1175,16 +1245,20 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
         :return: The batch *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         mean, _ = model.predict(dataset.query_points)
 
@@ -1196,14 +1270,19 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         return batch_monte_carlo_expected_improvement(self._sample_size, model, eta, self._jitter)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model. Must have event shape [1].
+        :param dataset: The data from the observer. Must be populated.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, batch_monte_carlo_expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
@@ -1255,8 +1334,8 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -1264,8 +1343,8 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         will be `None`. Subsequent calls will be via ``update_acquisition_funcion`` below,
         unless that has been overridden.
 
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
@@ -1274,8 +1353,8 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -1286,8 +1365,8 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         every optimization loop.
 
         :param function: The acquisition function to update.
-        :param datasets: The data from the observer.
-        :param models: The models over each dataset in ``datasets``.
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
@@ -1295,7 +1374,9 @@ class GreedyAcquisitionFunctionBuilder(ABC):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        return self.prepare_acquisition_function(datasets, models, pending_points=pending_points)
+        return self.prepare_acquisition_function(
+            models, datasets=datasets, pending_points=pending_points
+        )
 
 
 class SingleModelGreedyAcquisitionBuilder(ABC):
@@ -1315,26 +1396,28 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         class _Anon(GreedyAcquisitionFunctionBuilder):
             def prepare_acquisition_function(
                 self,
-                datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
+                datasets: Optional[Mapping[str, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(
-                    datasets[tag], models[tag], pending_points=pending_points
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    pending_points=pending_points,
                 )
 
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                datasets: Mapping[str, Dataset],
                 models: Mapping[str, ProbabilisticModel],
+                datasets: Optional[Mapping[str, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
                 new_optimization_step: bool = True,
             ) -> AcquisitionFunction:
                 return single_builder.update_acquisition_function(
                     function,
-                    datasets[tag],
                     models[tag],
+                    dataset=None if datasets is None else datasets[tag],
                     pending_points=pending_points,
                     new_optimization_step=new_optimization_step,
                 )
@@ -1347,13 +1430,13 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data to use to build the acquisition function.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
@@ -1362,15 +1445,15 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
@@ -1379,8 +1462,8 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(
-            dataset,
             model,
+            dataset=dataset,
             pending_points=pending_points,
         )
 
@@ -1451,18 +1534,20 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         acq = self._update_base_acquisition_function(dataset, model)
         if pending_points is not None and len(pending_points) != 0:
@@ -1473,15 +1558,15 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
@@ -1489,7 +1574,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
         if new_optimization_step:
@@ -1560,7 +1647,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._base_builder.update_acquisition_function(
-                self._base_acquisition_function, dataset, model
+                self._base_acquisition_function,
+                model,
+                dataset=dataset,
             )
         elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
             self._base_acquisition_function = cast(
@@ -1568,7 +1657,8 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             )
         else:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
-                dataset, model
+                model,
+                dataset=dataset,
             )
         return self._base_acquisition_function
 
@@ -1787,18 +1877,20 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
 
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
         :return: The GIBBON acquisition function modified for objective minimisation.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         acq = self._update_quality_term(dataset, model)
         if pending_points is not None and len(pending_points) != 0:
@@ -1809,15 +1901,15 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param dataset: The data from the observer.
-        :param model: The model over the specified ``dataset``.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
@@ -1825,7 +1917,9 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(self._quality_term is not None, [])
 
         if new_optimization_step:
@@ -1870,7 +1964,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
     def _update_quality_term(
         self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
-        tf.debugging.assert_positive(len(dataset))
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
@@ -2117,11 +2211,13 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         return f"PredictiveVariance(jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
 
         :return: The determinant of the predictive function.
         """
@@ -2129,12 +2225,15 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         return predictive_variance(model, self._jitter)
 
     def update_acquisition_function(
-        self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
+        :param model: The model.
         :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
         """
         return function  # no need to update anything
 

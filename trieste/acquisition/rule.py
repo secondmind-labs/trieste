@@ -66,38 +66,38 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
     def acquire(
         self,
         search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> T_co:
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
         own as a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some
-        context (see e.g. :class:`TrustRegion`).
+        context (see e.g. :class:`TrustRegion`). We assume that this requires at least models, but
+        it may sometimes also need data.
 
         **Type hints:**
           - The search space must be a :class:`~trieste.space.SearchSpace`. The exact type of
             :class:`~trieste.space.SearchSpace` depends on the specific :class:`AcquisitionRule`.
 
         :param search_space: The local acquisition search space for *this step*.
-        :param datasets: The known observer query points and observations for each tag.
-        :param models: The model to use for each :class:`~trieste.data.Dataset` in ``datasets``
-            (matched by tag).
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations for each tag (optional).
         :return: A value of type `T_co`.
         """
 
     def acquire_single(
         self,
         search_space: SP_contra,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> T_co:
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
 
         :param search_space: The global search space over which the optimization problem
             is defined.
-        :param dataset: The known observer query points and observations.
-        :param model: The model to use for the dataset.
+        :param model: The model to use.
+        :param dataset: The known observer query points and observations (optional).
         :return: A value of type `T_co`.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
@@ -105,7 +105,11 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
                 "AcquisitionRule.acquire_single method does not support multiple datasets "
                 "or models: use acquire instead"
             )
-        return self.acquire(search_space, {OBJECTIVE: dataset}, {OBJECTIVE: model})
+        return self.acquire(
+            search_space,
+            {OBJECTIVE: model},
+            datasets=None if dataset is None else {OBJECTIVE: dataset},
+        )
 
 
 class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
@@ -173,24 +177,29 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
     def acquire(
         self,
         search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
         (see :meth:`__init__`).
+
         :param search_space: The local acquisition search space for *this step*.
-        :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations. Whether this is required
+            depends on the acquisition function used.
         :return: The single (or batch of) points to query.
         """
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                datasets, models
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, datasets, models
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         points = self._optimizer(search_space, self._acquisition_function)
@@ -201,8 +210,8 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             ):  # greedily allocate remaining batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function,
-                    datasets,
                     models,
+                    datasets=datasets,
                     pending_points=points,
                     new_optimization_step=False,
                 )
@@ -369,8 +378,8 @@ class AsynchronousOptimization(
     def acquire(
         self,
         search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -386,18 +395,30 @@ class AsynchronousOptimization(
         Optimization therefore happens over the last point only, which is returned.
 
         :param search_space: The local acquisition search space for *this step*.
+        :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
+
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                datasets, models
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, datasets, models
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         def state_func(
@@ -408,6 +429,7 @@ class AsynchronousOptimization(
             if state is None:
                 state = AsynchronousRuleState(None)
 
+            assert datasets is not None
             state = state.remove_points(datasets[OBJECTIVE].query_points)
 
             if state.has_pending_points:
@@ -506,8 +528,8 @@ class AsynchronousGreedy(
     def acquire(
         self,
         search_space: SP_contra,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -521,11 +543,19 @@ class AsynchronousGreedy(
         and all points in the batch are added to the known pending points.
 
         :param search_space: The local acquisition search space for *this step*.
+        :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
-        :param models: The models of the specified ``datasets``.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
 
         def state_func(
             state: AsynchronousRuleState | None,
@@ -533,15 +563,21 @@ class AsynchronousGreedy(
             if state is None:
                 state = AsynchronousRuleState(None)
 
+            assert datasets is not None
             state = state.remove_points(datasets[OBJECTIVE].query_points)
 
             if self._acquisition_function is None:
                 self._acquisition_function = self._builder.prepare_acquisition_function(
-                    datasets, models, state.pending_points
+                    models,
+                    datasets=datasets,
+                    pending_points=state.pending_points,
                 )
             else:
                 self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, datasets, models, state.pending_points
+                    self._acquisition_function,
+                    models,
+                    datasets=datasets,
+                    pending_points=state.pending_points,
                 )
 
             new_points_batch = self._optimizer(search_space, self._acquisition_function)
@@ -551,8 +587,8 @@ class AsynchronousGreedy(
                 # greedily allocate additional batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function,
-                    datasets,
                     models,
+                    datasets=datasets,
                     pending_points=state.pending_points,
                     new_optimization_step=False,
                 )
@@ -618,8 +654,8 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -627,8 +663,8 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         random samples yield the **minima** of the model posterior.
 
         :param search_space: The local acquisition search space for *this step*.
-        :param datasets: Unused.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
+        :param datasets: The known observer query points and observations.
         :return: The ``num_query_points`` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
@@ -638,12 +674,9 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
 
-        if datasets.keys() != {OBJECTIVE}:
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
             raise ValueError(
-                f"""
-                dict of datasets must contain the single key {OBJECTIVE},
-                got keys {datasets.keys()}
-                """
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
         if self._num_fourier_features is None:  # Perform exact Thompson sampling
@@ -720,8 +753,8 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
     def acquire(
         self,
         search_space: Box,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the trust region algorithm,
@@ -750,13 +783,16 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         intersection of the trust region and ``search_space``.
 
         :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
-        :param models: The models of the specified ``datasets``.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
+        if datasets is None or OBJECTIVE not in datasets.keys():
+            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
+
         dataset = datasets[OBJECTIVE]
 
         global_lower = search_space.lower
@@ -796,7 +832,7 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            points = self._rule.acquire(acquisition_space, datasets, models)
+            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
             return state_, points
