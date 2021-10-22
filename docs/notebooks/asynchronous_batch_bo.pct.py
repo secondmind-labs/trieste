@@ -16,7 +16,7 @@
 #
 # As shown in [Asynchronous Bayesian Optimization](asynchronous_bayesian_optimization.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used a greedy batch acquisition function called Local Penalization, and requested one new point whenever an observation was received. We also used the Python multiprocessing module to run distributed observations in parallel.
 #
-# Here, we demonstrate a slightly different way of doing asynchronous BO. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrid between completely asynchronous and completely synchronous batch optimization. Third, we use [Ray](https://www.ray.io/) for parallel processing, to hide away most of the complexity of managing distributed workloads.
+# Here, we demonstrate a slightly different way of doing asynchronous Bayesian optimization. First, we make use of a non-greedy batch acquisition function, known as Batch Monte Carlo Expected Improvement. Second, we wait for several workers to finish, and then launch a new batch of points. However, since our batch size is smaller than the number of workers available, this approach is a hybrid between completely asynchronous and completely synchronous batch optimization. Third, we use [Ray](https://www.ray.io/) for parallel processing, to hide away most of the complexity of managing distributed workloads.
 #
 # Together these two notebooks give a comprehensive overview of how to use Trieste in asynchronous scenarios.
 
