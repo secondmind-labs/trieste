@@ -40,8 +40,8 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
-from trieste.models import create_model
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.optimizer import Optimizer
 import tensorflow_probability as tfp
 
 
@@ -53,18 +53,12 @@ def build_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    model_spec = {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }
-    return GPflowModelConfig(**model_spec)
+    return GaussianProcessRegression(
+        gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
+    )
 
+model = build_model(initial_data)
 
-model_spec = build_model(initial_data)
-model = create_model(model_spec)
 
 # %% [markdown]
 # ## Batch acquisition functions.

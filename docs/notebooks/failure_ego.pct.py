@@ -87,14 +87,12 @@ initial_data = observer(search_space.sample(num_init_points))
 # %%
 import gpflow
 
-
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
-
 
 def create_classification_model(data):
     kernel = gpflow.kernels.SquaredExponential(
@@ -105,9 +103,9 @@ def create_classification_model(data):
     gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
 
-
 regression_model = create_regression_model(initial_data[OBJECTIVE])
 classification_model = create_classification_model(initial_data[FAILURE])
+
 
 # %% [markdown]
 # ## Build Trieste models
@@ -117,26 +115,19 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
 
 # %% [markdown]
-# We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
+# We'll train the GPR model with the default L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.optimizer import BatchOptimizer
 
 models: dict[str, trieste.models.ModelSpec] = {
-    OBJECTIVE: GPflowModelConfig(**{
-        "model": regression_model,
-        "optimizer": gpflow.optimizers.Scipy(),
-    }),
-    FAILURE: GPflowModelConfig(**{
-        "model": classification_model,
-        "model_args": {
-            "use_natgrads": True,
-        },
-        "optimizer": tf.optimizers.Adam(1e-3),
-        "optimizer_args": {
-            "max_iter": 50,
-        },       
-    }),
+    OBJECTIVE: GaussianProcessRegression(regression_model),
+    FAILURE: GaussianProcessRegression(
+        classification_model,
+        BatchOptimizer(tf.optimizers.Adam(1e-3), max_iter=50),  
+        use_natgrads=True,     
+    ),
 }
 
 # %% [markdown]

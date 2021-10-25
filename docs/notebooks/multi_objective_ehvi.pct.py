@@ -21,8 +21,9 @@ import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import create_model, ModelStack
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models import ModelStack
+from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.optimizer import Optimizer
 from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
@@ -93,20 +94,18 @@ plt.show()
 
 # %%
 def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
-        gprs =[]
-        for idx in range(num_output):
-            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance)
-            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            gprs.append((create_model(GPflowModelConfig(**{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)}}})), 1))
+    gprs =[]
+    for idx in range(num_output):
+        single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+        variance = tf.math.reduce_variance(single_obj_data.observations)
+        kernel = gpflow.kernels.Matern52(variance)
+        gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
+        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        gprs.append((GaussianProcessRegression(
+            gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
+        ), 1))
 
-        return ModelStack(*gprs)
+    return ModelStack(*gprs)
 
 
 # %%
@@ -271,16 +270,9 @@ def create_constraint_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig(
-        **{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    ))
-
+    return GaussianProcessRegression(
+        gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
+    )
 
 constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 

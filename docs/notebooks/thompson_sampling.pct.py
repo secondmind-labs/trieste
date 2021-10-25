@@ -32,7 +32,8 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.optimizer import Optimizer
 
 observations = initial_data.observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
@@ -41,13 +42,9 @@ gpr = gpflow.models.GPR(
 )
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = GPflowModelConfig(**{
-    "model": gpr,
-    "optimizer": gpflow.optimizers.Scipy(),
-    "optimizer_args": {
-        "minimize_args": {"options": dict(maxiter=100)},
-    },
-})
+model = GaussianProcessRegression(
+    gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
+)
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
@@ -67,7 +64,7 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
+result = bo.optimize(5, initial_data, model, acq_rule, track_state=False)
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
