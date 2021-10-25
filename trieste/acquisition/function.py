@@ -20,7 +20,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from itertools import combinations, product
 from types import FunctionType
-from typing import Callable, Optional, Sequence, Union, cast
+from typing import Callable, Mapping, Optional, Sequence, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp

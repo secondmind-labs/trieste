@@ -18,7 +18,7 @@ import math
 import unittest.mock
 from collections.abc import Mapping
 from types import FunctionType
-from typing import Callable, Sequence, Union
+from typing import Callable, Sequence, Optional, Union
 from unittest.mock import MagicMock
 
 import gpflow
