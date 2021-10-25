@@ -147,10 +147,10 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(),
         generate_continuous_optimizer(num_optimization_runs=3),
         generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
-        generate_continuous_optimizer(sigmoid=True),
-        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3),
-        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3, num_recovery_runs=0),
-        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=1, num_initial_samples=1),
+        generate_continuous_optimizer(),
+        generate_continuous_optimizer( num_optimization_runs=3),
+        generate_continuous_optimizer( num_optimization_runs=3, num_recovery_runs=0),
+        generate_continuous_optimizer( num_optimization_runs=1, num_initial_samples=1),
     ],
 )
 def test_continuous_optimizer(

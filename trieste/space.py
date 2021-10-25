@@ -454,10 +454,6 @@ class TaggedProductSearchSpace(SearchSpace):
 
 
 
-
-
-
-
     @property
     def subspace_tags(self) -> tuple[str, ...]:
         """Return the names of the subspaces contained in this product space."""
@@ -473,14 +469,14 @@ class TaggedProductSearchSpace(SearchSpace):
         return self._spaces[tag]
 
 
-    def fix_subspace(self, tag: str, value) -> SearchSpace:
-        """Return the domain of a particular subspace. TODO"""
+    # def fix_subspace(self, tag: str, value) -> SearchSpace:
+    #     """Return the domain of a particular subspace. TODO"""
 
-        assert value in self.get_subspace(tag)
+    #     assert value in self.get_subspace(tag)
 
-        new_space = [self._spaces[t] if t!=tag else DiscreteSearchSpace(points=value) for t in self.subspace_tags]
+    #     new_space = [self._spaces[t] if t!=tag else DiscreteSearchSpace(points=value) for t in self.subspace_tags]
 
-        return TaggedProductSearchSpace(spaces = new_space, tags = self.subspace_tags)
+    #     return TaggedProductSearchSpace(spaces = new_space, tags = self.subspace_tags)
 
 
 

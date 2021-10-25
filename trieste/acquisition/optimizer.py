@@ -118,6 +118,9 @@ def generate_continuous_optimizer(
     num_recovery_runs: int = 5,
 ) -> AcquisitionOptimizer[Box]:
     """
+
+    TODO talk about tagged
+
     Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
     of size of 1. We perfom gradient-based optimization starting from the best location
     across a sample of `num_initial_samples` random points.
@@ -161,13 +164,16 @@ def generate_continuous_optimizer(
     def optimize_continuous(space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
-        of size of 1.
+        of size of 1. TODO
 
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
+
+
+        #TODO CHECK AT LEAST ONE CTS BIT
 
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
@@ -186,7 +192,6 @@ def generate_continuous_optimizer(
             variable.assign(starting_point) # [1, D]
             return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
 
-
         successful_optimization = False
         chosen_point = variable  # [1, D]
         chosen_point_score = target_func(chosen_point[:, None, :])  # [1, 1]
@@ -194,13 +199,7 @@ def generate_continuous_optimizer(
         for i in tf.range(
             num_optimization_runs
         ):  # perform optimization for each chosen starting point
-            
-            space_with_fixed_discrete = space
-            for tag in space.subspace_tags: # fix the value of all discrete components
-                if isinstance(space.get_subspace(tag), DiscreteSearchSpace)
-                    space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag,space.get_subspace_component(tag,current_point))
-
-            bounds = spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
+            bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
             opt_result = _perform_optimization(initial_points[i : i + 1], bounds)
             if opt_result.success:
                 successful_optimization = True
@@ -214,7 +213,9 @@ def generate_continuous_optimizer(
 
         if not successful_optimization:  # if all optimizations failed then try from random start
             for i in tf.range(num_recovery_runs):
-                opt_result = _perform_optimization(space.sample(1))
+                random_start = space.sample(1)
+                bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
+                opt_result = _perform_optimization(random_start, bounds)
                 if opt_result.success:
                     chosen_point = variable # [1, D]
                     successful_optimization = True
@@ -232,132 +233,19 @@ def generate_continuous_optimizer(
     return optimize_continuous
 
 
-def generate_mixed_optimizer(
-    num_discrete_samples: int = 1,
-    continuous_optimizer: AcquisitionOptimizer[Box],
-) -> AcquisitionOptimizer[TaggedProductSearchSpace]:
-    """
-    TODO
-
-
-    Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
-    of size of 1. We perfom gradient-based optimization starting from the best location
-    across a sample of `num_initial_samples` random points.
-
-    This optimizer supports Scipy's L-BFGS-B and LBFGS optimizers. We
-    constrain L-BFGS's search with a sigmoid bijector that maps an unconstrained space into
-    the search space. In contrast, L-BFGS-B optimizes directly within the bounds of the
-    search space.
-
-    For challenging acquisition function optimizations, we run `num_optimization_runs` separate
-    optimizations, each starting from one of the top  `num_optimization_runs` initial query points.
-
-    If all `num_optimization_runs` optimizations fail to converge then we run up to
-    `num_recovery_runs` starting from random locations.
-
-    The default behavior of this method is to return a L-BFGS-B optimizer that performs
-    a single optimization from the best of 1000 initial locations. If this optimization fails then
-    we run up to `num_recovery_runs` recovery runs starting from random locations.
-
-    :param num_initial_samples: The size of the random sample used to find the starting point(s) of
-        the optimization.
-    :param sigmoid: If True then use L-BFGS, otherwise use L-BFGS-B.
-    :param num_optimization_runs: The number of separate optimizations to run.
-    :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
-    :return: The acquisition optimizer.
-    """
-    if num_discrete_samples <= 0:
-        raise ValueError(f"num_discrete_samples must be positive, got {num_discrete_samples}")
-
-    
-
-    def optimize_mixed(space: TaggedProductSearchSpace, target_func: AcquisitionFunction) -> TensorType:
-        """
-        TODO
-        A gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
-        of size of 1.
-
-        :param space: The space over which to search.
-        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-                [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
-        """
-
-        chosen_points = get_k_best_random_samples(space, target_func, k, num_initial_samples)
-
-
-        successful_optimization = False
-        chosen_point = initial_points[0 : 1]  # [1, D]
-        chosen_point_score = target_func(chosen_point[:, None, :])  # [1, 1]
-
-
-        for i in tf.range(
-            num_optimization_runs
-        ):  # perform optimization for each chosen starting point
-            current_point = initial_points[i : i + 1]
-
-            try:
-                space_with_fixed_discrete = space
-                for tag in space.subspace_tags: # fix the value of all discrete components
-                    if isinstance(space.get_subspace(tag), DiscreteSearchSpace)
-                        space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag,space.get_subspace_component(tag,current_point))
-
-                continuous_relaxation =  Box(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
-                new_point = continuous_optimizer(continuous_relaxation, target_func) 
-                successful_optimization = True
-                new_point_score = target_func(new_point[:, None, :])  # [1, 1]
-
-                if new_point_score > chosen_point_score:  # if found a better point then keep
-                    chosen_point = new_point  # [1, D]
-                    chosen_point_score = new_point_score  # [1, 1]
-
-            except FailedOptimizationError:
-                pass
-
-        if not successful_optimization:
-            raise FailedOptimizationError(
-                f"""
-                Acquisition function optimization failed,
-                even after resarting from {num_discrete_samples} locations
-                across the search space's discrete subspaces.
-                """
-                )
-        else:
-            return chosen_point  # [1, D]
-
-    return optimize_mixed # [1, D]
-
-
-
-
-
-
-
-
-
-
-def get_k_best_random_samples(space: SearchSpace, target_func:AcquisitionFunction, k:int, num_initial_samples: int)
+def get_bounds_of_box_relaxation_around_point(space: SearchSpace, current_point: TensorType) -> spo.Bounds:
     """
     TODO
     """
-    trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
-    target_func_values = target_func(trial_search_space[:, None, :])  # [num_initial_samples, 1]
-    _, top_k_indicies = tf.math.top_k(
-        target_func_values[:, 0], k=k
-    )  # [num_discrete_samples]
-    return tf.gather(trial_search_space, top_k_indicies)  # [k, D]
-
-
-
-
-
-
-
-
-
-
-
-
+    if isinstance(space, TaggedProductSearchSpace): # TODO just calc bounds, not space !!!!
+        space_with_fixed_discrete = space
+        for tag in space.subspace_tags: # fix the value of any discrete components
+            if isinstance(space.get_subspace(tag), DiscreteSearchSpace):
+                subspace_value = space.get_subspace_component(tag,current_point)
+                space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag,subspace_value)
+        return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper) 
+    else:
+        return spo.Bounds(space.lower, space.upper)
 
 
 def batchify(
