@@ -25,7 +25,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
 from .interface import GPfluxPredictor
-# from .utils import sample_dgp
+from .utils import InducingPointSelector, KMeans
 
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
@@ -159,6 +159,19 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
 class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
+    def __init__(self,
+                 model: DeepGP,
+                 optimizer: tf.optimizers.Optimizer | None = None,
+                 fit_args: Dict[str, Any] | None = None,
+                 inducing_point_selector: InducingPointSelector = None,
+                 ):
+
+        super().__init__(model, optimizer, fit_args)
+
+        if inducing_point_selector is None:
+            inducing_point_selector = KMeans
+        self._inducing_point_selector = inducing_point_selector
+
     def sample_trajectory(self) -> Callable:
         return sample_dgp(self.model_gpflux)
 
@@ -186,45 +199,44 @@ class FeaturedHetGPFluxModel(DeepGaussianProcess):
                     f"Shape {inputs.shape} of input to layer {layer} is incompatible with shape"
                     f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
                 )
-
-            # if (
-            #     i == len(self.model_gpflux.f_layers) - 1
-            #     and dataset.observations.shape[-1] != layer.q_mu.shape[-1]
-            # ):
-            #     raise ValueError(
-            #         f"Shape {dataset.observations.shape} of new observations is incompatible"
-            #         f" with shape {layer.q_mu.shape} of existing observations. Trailing"
-            #         f" dimensions must match."
-            #     )
-
             inputs = layer(inputs)
 
-        if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
-            feature_function = layer.kernel.feature_functions
-            input_shape = dataset.query_points.shape
-            def renew_rff(feature_f, input_dim):
-                shape_bias = [1, feature_f.output_dim]
-                new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
-                feature_f.b = new_b
-                shape_weights = [feature_f.output_dim, input_dim]
-                new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
-                feature_f.W = new_W
-            renew_rff(feature_function,  input_shape[-1])
+            if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
+                feature_function = layer.kernel.feature_functions
+                input_shape = dataset.query_points.shape
+                def renew_rff(feature_f, input_dim):
+                    shape_bias = [1, feature_f.output_dim]
+                    new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
+                    feature_f.b = new_b
+                    shape_weights = [feature_f.output_dim, input_dim]
+                    new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
+                    feature_f.W = new_W
+                renew_rff(feature_function,  input_shape[-1])
 
-    # def optimize(self, dataset: Dataset) -> None:
-    #     model = self.model_gpflux.as_training_model()
-    #     model.compile(tf.optimizers.Adam(learning_rate=0.1))
-    #     callbacks = [
-    #         tf.keras.callbacks.ReduceLROnPlateau(
-    #             monitor="loss", patience=10, factor=0.5, verbose=self._verbose, min_lr=1e-6,
-    #         ),
-    #         tf.keras.callbacks.EarlyStopping(monitor="loss",patience=50, min_delta=0.01, verbose=self._verbose,mode="min"),
-    #
-    #     ]
-    #     model.fit(
-    #         {"inputs": dataset.query_points, "targets": dataset.observations},
-    #         batch_size=self._batch_size,
-    #         epochs=self.num_epochs,
-    #         verbose=self._verbose,
-    #         callbacks=callbacks
-    #     )
+            num_inducing = layer.inducing_variable.inducing_variable.Z.shape[0]
+
+            Z = self._inducing_point_selector.get_points(dataset.query_points,
+                                                         dataset.observations,
+                                                         num_inducing,
+                                                         layer.kernel,
+                                                         noise=1e-6)
+
+            jitter = 1e-6
+
+            if layer.whiten:
+                f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
+                Knn = layer.kernel(Z, full_cov=True)  # [N, N]
+                jitter_mat = jitter * tf.eye(num_inducing, dtype=Knn.dtype)
+                Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
+                new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+                tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
+                S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+                new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
+            else:
+                new_q_mu, new_f_cov = layer.predict(Z, full_cov=True)  # [N, L], [L, N, N]
+                jitter_mat = jitter * tf.eye(num_inducing, dtype=new_f_cov.dtype)
+                new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
+
+            layer.q_mu.assign(new_q_mu)
+            layer.q_sqrt.assign(new_q_sqrt)
+            layer.inducing_variable.inducing_variable.Z.assign(Z)
