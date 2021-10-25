@@ -879,7 +879,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            self._ref_point = self._ref_point_specification
+            self._ref_point = tf.cast(self._ref_point_specification, dtype=mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
@@ -907,7 +907,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            self._ref_point = self._ref_point_specification
+            self._ref_point = tf.cast(self._ref_point_specification, dtype=mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             self._ref_point, screened_front
@@ -1101,7 +1101,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            self._ref_point = self._ref_point_specification
+            self._ref_point = tf.cast(self._ref_point_specification, dtype=mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
@@ -1241,12 +1241,12 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         _pf = Pareto(feasible_mean)
         if isinstance(self._ref_point_specification, FunctionType):
-            self._ref_point = self._ref_point_specification(_pf.front)
+            self._ref_point = self._ref_point_specification(feasible_mean)
         else:
             assert isinstance(
                 self._ref_point_specification, tf.Tensor
             )  # specified a fixed ref point
-            self._ref_point = self._ref_point_specification
+            self._ref_point = tf.cast(self._ref_point_specification, dtype=feasible_mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
