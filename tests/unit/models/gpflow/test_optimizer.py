@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""
-This package contains the primary interface for Gaussian process models. It also contains a
-number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
-"""
+from __future__ import annotations
 
-from . import optimizer
-from .config import GPflowModelConfig
-from .interface import GPflowPredictor
-from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
-from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
+import gpflow
+
+from trieste.models.optimizer import BatchOptimizer, Optimizer, create_optimizer
+
+
+def test_create_optimizer_scipy_produces_correct_optimizer() -> None:
+    optim = create_optimizer(gpflow.optimizers.Scipy(), {})
+    assert isinstance(optim, Optimizer) and not isinstance(optim, BatchOptimizer)

@@ -28,22 +28,21 @@ from gpflux.models import DeepGP
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux import GPfluxPredictor
-from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
 
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
         self,
-        optimizer: Optimizer | None = None,
+        optimizer: tf.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
-        super().__init__()
+        super().__init__(optimizer=optimizer)
 
         if optimizer is None:
             self._optimizer = tf.optimizers.Adam()
         else:
-            self._optimizer = optimizer.optimizer
+            self._optimizer = optimizer
         self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)
 
         self._model_keras = self._model_gpflux.as_training_model()

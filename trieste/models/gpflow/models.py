@@ -26,7 +26,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer, TFOptimizer
+from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
 
@@ -247,12 +247,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam` with
+            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
             batch size 100.
         """
 
         if optimizer is None:
-            optimizer = TFOptimizer(tf.optimizers.Adam(), batch_size=100)
+            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
 
         super().__init__(optimizer)
         self._model = model
@@ -337,7 +337,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
 
         if use_natgrads:
-            if not isinstance(self._optimizer, TFOptimizer):
+            if not isinstance(self._optimizer, BatchOptimizer):
                 raise ValueError(
                     f"""
                     Natgrads can only be used alongside an optimizer from tf.optimizers however

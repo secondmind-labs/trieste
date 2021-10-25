@@ -35,6 +35,8 @@ from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
+    AsynchronousOptimization,
+    AsynchronousRuleState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -90,7 +92,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(100, 10)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 @pytest.mark.parametrize("models", [{}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}])
@@ -108,7 +110,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(10, 100)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 @pytest.mark.parametrize("num_fourier_features", [None, 100])
@@ -123,7 +125,7 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    query_points = ts.acquire_single(search_space, dataset, model)
+    query_points = ts.acquire_single(search_space, model, dataset=dataset)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
@@ -145,12 +147,17 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
             self._updated = False
 
         def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
         def update_acquisition_function(
-            self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+            self,
+            function: AcquisitionFunction,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             self._updated = True
             return function
@@ -159,32 +166,59 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(function, optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point = ego.acquire_single(search_space, data, model)
+    query_point = ego.acquire_single(search_space, model, dataset=data)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert not function._updated
-    query_point = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
+    query_point = ego.acquire(search_space, {OBJECTIVE: model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert function._updated
 
 
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
-        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
+        return lambda at: -tf.reduce_max(models[OBJECTIVE].predict(at)[0], axis=-2)
 
 
 @random_seed
-def test_joint_batch_acquisition_rule_acquire() -> None:
+@pytest.mark.parametrize(
+    "rule_fn",
+    [
+        lambda acq, batch_size: EfficientGlobalOptimization(acq, num_query_points=batch_size),
+        lambda acq, batch_size: AsynchronousOptimization(acq, num_query_points=batch_size),
+    ],
+)
+# As a side effect, this test ensures and EGO and AsynchronousOptimization
+# behave similarly in sync mode
+def test_joint_batch_acquisition_rule_acquire(
+    rule_fn: Callable[
+        # callable input type(s)
+        [_JointBatchModelMinusMeanMaximumSingleBuilder, int],
+        # callable output type
+        AcquisitionRule[TensorType, Box]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
+    ]
+) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
-    ego: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(
-        acq, num_query_points=num_query_points
-    )
-    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    query_point = ego.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState], Box
+    ] = rule_fn(acq, num_query_points)
 
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
+    if callable(points_or_stateful):
+        _, query_point = points_or_stateful(None)
+    else:
+        query_point = points_or_stateful
+
+    print(query_point)
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
@@ -194,8 +228,8 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: TensorType = None,
     ) -> AcquisitionFunction:
         if pending_points is None:
@@ -209,21 +243,23 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
     def update_acquisition_function(
         self,
         function: Optional[AcquisitionFunction],
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         self._update_count += 1
-        return self.prepare_acquisition_function(dataset, model, pending_points)
+        return self.prepare_acquisition_function(
+            model, dataset=dataset, pending_points=pending_points
+        )
 
 
 @random_seed
 @pytest.mark.parametrize(
-    "rule_fn, num_query_points",
+    "rule_fn",
     [
-        (lambda acq: EfficientGlobalOptimization(acq, num_query_points=4), 4),
-        (lambda acq: AsynchronousGreedy(acq), 1),
+        lambda acq, batch_size: EfficientGlobalOptimization(acq, num_query_points=batch_size),
+        lambda acq, batch_size: AsynchronousGreedy(acq, num_query_points=batch_size),
     ],
 )
 # As a side effect, this test ensures and EGO and AsynchronousGreedy
@@ -231,21 +267,23 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 def test_greedy_batch_acquisition_rule_acquire(
     rule_fn: Callable[
         # callable input type(s)
-        [_GreedyBatchModelMinusMeanMaximumSingleBuilder],
+        [_GreedyBatchModelMinusMeanMaximumSingleBuilder, int],
         # callable output type
         AcquisitionRule[TensorType, Box]
-        | AcquisitionRule[State[TensorType, AsynchronousGreedy.State], Box],
-    ],
-    num_query_points: int,
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
+    ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
     acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
-        State[TensorType, AsynchronousGreedy.State], Box
-    ] = rule_fn(acq)
+        State[TensorType, AsynchronousRuleState], Box
+    ] = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
     if callable(points_or_stateful):
         _, query_points = points_or_stateful(None)
     else:
@@ -253,7 +291,9 @@ def test_greedy_batch_acquisition_rule_acquire(
     assert acq._update_count == num_query_points - 1
     npt.assert_allclose(query_points, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
-    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
     if callable(points_or_stateful):
         _, query_points = points_or_stateful(None)
     else:
@@ -262,7 +302,7 @@ def test_greedy_batch_acquisition_rule_acquire(
     assert acq._update_count == 2 * num_query_points - 1
 
 
-def test_async_ego_raises_for_non_greedy_function() -> None:
+def test_async_greedy_raises_for_non_greedy_function() -> None:
     non_greedy_function_builder = NegativeLowerConfidenceBound()
     with pytest.raises(NotImplementedError):
         # we are deliberately passing in wrong object
@@ -270,32 +310,64 @@ def test_async_ego_raises_for_non_greedy_function() -> None:
         AsynchronousGreedy(non_greedy_function_builder)  # type: ignore
 
 
-def test_async_ego_keeps_track_of_pending_points() -> None:
+def test_async_optimization_raises_for_incorrect_query_points() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousOptimization(num_query_points=0)
+
+    with pytest.raises(ValueError):
+        AsynchronousOptimization(num_query_points=-5)
+
+
+def test_async_greedy_raises_for_incorrect_query_points() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousGreedy(
+            builder=_GreedyBatchModelMinusMeanMaximumSingleBuilder(), num_query_points=0
+        )
+
+    with pytest.raises(ValueError):
+        AsynchronousGreedy(
+            builder=_GreedyBatchModelMinusMeanMaximumSingleBuilder(), num_query_points=-5
+        )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "async_rule",
+    [
+        AsynchronousOptimization(_JointBatchModelMinusMeanMaximumSingleBuilder()),
+        AsynchronousGreedy(_GreedyBatchModelMinusMeanMaximumSingleBuilder()),
+    ],
+)
+def test_async_keeps_track_of_pending_points(
+    async_rule: AcquisitionRule[State[TensorType, AsynchronousRuleState], Box]
+) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
-    async_rule: AsynchronousGreedy[Box] = AsynchronousGreedy(acq)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
 
-    state_fn = async_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    state_fn = async_rule.acquire_single(search_space, QuadraticMeanAndRBFKernel(), dataset=dataset)
     state, point1 = state_fn(None)
     state, point2 = state_fn(state)
 
     assert state is not None
     assert len(state.pending_points) == 2
 
-    # let's pretend we saw observations for the first point
+    # pretend we saw observation for the first point
     new_observations = Dataset(
         query_points=point1,
         observations=tf.constant([[1]], dtype=tf.float32),
     )
     state_fn = async_rule.acquire_single(
-        search_space, dataset + new_observations, QuadraticMeanAndRBFKernel()
+        search_space,
+        QuadraticMeanAndRBFKernel(),
+        dataset=dataset + new_observations,
     )
     state, point3 = state_fn(state)
 
     assert state is not None
     assert len(state.pending_points) == 2
-    # two points from the first batch and all points from second
+
+    # we saw first point, so pendings points are
+    # second point and new third point
     npt.assert_allclose(state.pending_points, tf.concat([point2, point3], axis=0))
 
 
@@ -308,16 +380,16 @@ def test_trust_region_raises_for_missing_datasets_key(
 ) -> None:
     search_space = Box([-1], [1])
     rule = TrustRegion()
-    with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models)
+    with pytest.raises(ValueError):
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 class _Midpoint(AcquisitionRule[TensorType, Box]):
     def acquire(
         self,
         search_space: Box,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 
@@ -338,7 +410,9 @@ def test_trust_region_for_default_state(
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    state, query_point = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())(None)
+    state, query_point = tr.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )(None)
 
     assert state is not None
     npt.assert_array_almost_equal(query_point, expected_query_point, 5)
@@ -370,7 +444,9 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged(
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -404,7 +480,9 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -438,7 +516,9 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, _ = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -471,7 +551,9 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, _ = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -490,3 +572,133 @@ def test_trust_region_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.eps, tr_state.eps)
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
     assert tr_state_copy.is_global == tr_state.is_global
+
+
+def test_asynchronous_rule_state_pending_points() -> None:
+    pending_points = tf.constant([[1], [2], [3]])
+
+    state = AsynchronousRuleState(pending_points)
+    npt.assert_array_equal(pending_points, state.pending_points)
+
+
+def test_asynchronous_rule_state_raises_incorrect_shape() -> None:
+    with pytest.raises(ValueError):
+        AsynchronousRuleState(tf.constant([1, 2]))
+
+    with pytest.raises(ValueError):
+        AsynchronousRuleState(tf.constant([[[1], [2]]]))
+
+
+def test_asynchronous_rule_state_has_pending_points() -> None:
+    state = AsynchronousRuleState(None)
+    assert not state.has_pending_points
+
+    state = AsynchronousRuleState(tf.zeros([0, 2]))
+    assert not state.has_pending_points
+
+    pending_points = tf.constant([[1], [2], [3]])
+    state = AsynchronousRuleState(pending_points)
+    assert state.has_pending_points
+
+
+def test_asynchronous_rule_remove_points_raises_shape_mismatch() -> None:
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3]]))
+    with pytest.raises(ValueError):
+        state.remove_points(tf.constant([[1, 1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.remove_points(tf.constant([[1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.remove_points(tf.constant([[[1, 1], [2, 2]]]))
+
+
+def test_asynchronous_rule_state_remove_points() -> None:
+    # brace yourself, there are many test cases here
+
+    pending_points = tf.constant([[1], [2], [3]])
+
+    # first
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[1]]))
+    npt.assert_array_equal(state.pending_points, [[2], [3]])
+
+    # neither first nor last
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3]])
+
+    # last
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[3]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # unknown point, nothing to remove
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(tf.constant([[4]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2], [3]])
+
+    # duplicated pending points - only remove one occurence
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3], [2]])
+
+    # duplicated pending points - remove a dupe and not a dupe
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [3]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # duplicated pending points - remove both dupes
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [2]]))
+    npt.assert_array_equal(state.pending_points, [[1], [3]])
+
+    # duplicated pending points - dupe, not a dupe, unknown point
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3], [2]]))
+    state = state.remove_points(tf.constant([[2], [3], [4]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2]])
+
+    # remove from empty
+    state = AsynchronousRuleState(None)
+    state = state.remove_points(tf.constant([[2]]))
+    assert not state.has_pending_points
+
+    # remove all
+    state = AsynchronousRuleState(pending_points)
+    state = state.remove_points(pending_points)
+    assert not state.has_pending_points
+
+    # bigger last dimension
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 3]]))
+    state = state.remove_points(tf.constant([[1, 1], [2, 2], [3, 3], [1, 2]]))
+    npt.assert_array_equal(state.pending_points, [[2, 3]])
+
+
+def test_asynchronous_rule_add_pending_points_raises_shape_mismatch() -> None:
+    state = AsynchronousRuleState(tf.constant([[1], [2], [3]]))
+    with pytest.raises(ValueError):
+        state.add_pending_points(tf.constant([[1, 1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.add_pending_points(tf.constant([[1]]))
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    with pytest.raises(ValueError):
+        state.add_pending_points(tf.constant([[[1, 1], [2, 2]]]))
+
+
+def test_asynchronous_rule_add_pending_points() -> None:
+    state = AsynchronousRuleState(None)
+    state = state.add_pending_points(tf.constant([[1]]))
+    npt.assert_array_equal(state.pending_points, [[1]])
+
+    state = AsynchronousRuleState(tf.constant([[1], [2]]))
+    state = state.add_pending_points(tf.constant([[1]]))
+    npt.assert_array_equal(state.pending_points, [[1], [2], [1]])
+
+    state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
+    state = state.add_pending_points(tf.constant([[3, 3], [4, 4]]))
+    npt.assert_array_equal(state.pending_points, [[1, 1], [2, 2], [3, 3], [4, 4]])

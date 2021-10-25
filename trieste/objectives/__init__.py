@@ -52,6 +52,9 @@ from .single_objectives import (
     SHEKEL_4_MINIMIZER,
     SHEKEL_4_MINIMUM,
     SHEKEL_4_SEARCH_SPACE,
+    TRID_10_MINIMIZER,
+    TRID_10_MINIMUM,
+    TRID_10_SEARCH_SPACE,
     ackley_5,
     branin,
     gramacy_lee,
@@ -65,4 +68,6 @@ from .single_objectives import (
     rosenbrock_4,
     scaled_branin,
     shekel_4,
+    trid,
+    trid_10,
 )
