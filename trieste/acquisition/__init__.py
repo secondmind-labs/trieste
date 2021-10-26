@@ -64,7 +64,6 @@ from .function import (
     min_value_entropy_search,
     probability_of_feasibility,
     soft_local_penalizer,
-    NegativeGaussianProcessTrajectory,
 )
 from .sampler import (
     BatchReparametrizationSampler,

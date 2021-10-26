@@ -27,7 +27,6 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.gpflux.models import FeaturedHetGPFluxModel
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -2166,35 +2165,3 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
         return tf.exp(tf.linalg.logdet(covariance + jitter))
 
     return acquisition
-
-
-class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
-    """
-    Builder for the negative of a GP trajectory. The trajectory is typically
-    minimised, so the negative is suitable for maximisation.
-    """
-
-    def __init__(self, beta: float = 1.96):
-        """
-        :param beta: Weighting given to the variance contribution to the lower confidence bound.
-            Must not be negative.
-        """
-        self._beta = beta
-
-    def __repr__(self) -> str:
-        return f"NegativeLowerConfidenceBound({self._beta!r})"
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: FeaturedHetGPFluxModel,
-        pending_points: Optional[TensorType] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: Unused.
-        :param model: The model over the specified ``dataset``.
-        :return: The negative of the lower confidence bound function. This function will raise
-            `ValueError` if ``beta`` is negative.
-        """
-        trajectory = model.sample_trajectory()
-        # return lambda at: -tf.math.reduce_mean(trajectory(at), axis=-1)
-        return lambda at: -trajectory(tf.squeeze(at, axis=1))[..., 0:1]
-

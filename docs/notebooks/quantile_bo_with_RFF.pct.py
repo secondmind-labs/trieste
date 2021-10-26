@@ -11,6 +11,8 @@
 # %autoreload 2
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 import tensorflow as tf
 import trieste
@@ -23,11 +25,28 @@ import gpflux
 from gpflow.config import default_float
 from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
 from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
-from trieste.models.gpflux.models import FeaturedHetGPFluxModel
 from gpflux.helpers import construct_basic_inducing_variables
 from tensorflow_probability.python.distributions.laplace import Laplace
 from trieste.acquisition.rule import OBJECTIVE
+from trieste.acquisition.function import SingleModelGreedyAcquisitionBuilder, AcquisitionFunction
+from gpflow.inducing_variables import InducingPoints
+from gpflux.layers import GPLayer, LatentVariableLayer
+from gpflux.models import DeepGP
+from gpflux.models.deep_gp import sample_dgp
+from trieste.data import Dataset
+from trieste.models.gpflux.models import DeepGaussianProcess
+from trieste.models.gpflux.utils import InducingPointSelector, KMeans
+from typing import Callable, Dict, Any, Optional
+from trieste.types import TensorType
+import matplotlib.pyplot as plt
+from util.plotting import plot_regret, create_grid, plot_gp_2d, plot_function_2d, plot_bo_points
+from gpflow.config import default_float
+from gpflow.inducing_variables import InducingVariables, SharedIndependentInducingVariables
+from gpflow.kernels import SeparateIndependent
 
+from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
+from gpflux.sampling.sample import efficient_sample, Sample
+from gpflux.sampling.utils import draw_conditional_sample
 
 np.random.seed(1789)
 tf.random.set_seed(1789)
@@ -36,24 +55,33 @@ tf.keras.backend.set_floatx("float64")
 # %% [markdown]
 # ## Describe the problem
 # %%
-num_initial_points = 250
+num_initial_points = 100
 num_inducing_points = 50
 num_rff = 1000
-num_bo_iterations = 1
-batch_size = 1
+num_bo_iterations = 10
+batch_size = 20
 
 search_space = trieste.space.Box([0, 0], [1, 1])
-noise = 1.
+noise = .5
 inducing_point_selector = KMeans(search_space)
+use_logn_noise = True
+quantile_level = 0.9
+beta = tfp.distributions.Normal(loc=0., scale=1.).quantile(value=0.9).numpy()
 
-def noisy_branin(x):
-    y = scaled_branin(x)
-    return y + tf.random.normal(y.shape, stddev=noise * tf.reduce_sum(x, axis=-1, keepdims=True), dtype=y.dtype)
-
-def quantile_branin(x):
-    y = scaled_branin(x)
-    return y + noise * tf.reduce_sum(x, axis=-1, keepdims=True)
-
+if use_logn_noise:
+    def noisy_branin(x):
+        y = scaled_branin(x)
+        return y + tf.exp(tf.random.normal(y.shape, stddev=noise * tf.reduce_sum(x, axis=-1, keepdims=True), dtype=y.dtype))
+    def quantile_branin(x):
+        y = scaled_branin(x)
+        return y + tf.exp(beta * noise * tf.reduce_sum(x, axis=-1, keepdims=True))
+else:
+    def noisy_branin(x):
+        y = scaled_branin(x)
+        return y + (tf.random.normal(y.shape, stddev=noise * tf.reduce_sum(x, axis=-1, keepdims=True), dtype=y.dtype))
+    def quantile_branin(x):
+        y = scaled_branin(x)
+        return y + beta * noise * tf.reduce_sum(x, axis=-1, keepdims=True)
 
 
 observer = mk_observer(noisy_branin, OBJECTIVE)
@@ -63,6 +91,33 @@ initial_data = observer(initial_query_points)
 num_data, input_dim = initial_data[OBJECTIVE].query_points.shape
 
 
+@efficient_sample.register(
+    SharedIndependentInducingVariables,
+    SeparateIndependent,
+    object
+)
+def _efficient_sample_matheron_rule(
+    inducing_variable: InducingVariables,
+    kernel: KernelWithFeatureDecomposition,
+    q_mu: tf.Tensor,
+    *,
+    q_sqrt: Optional[TensorType] = None,
+    whiten: bool = False,
+) -> Sample:
+    samples = []
+    for i, k in enumerate(kernel.kernels):
+        samples.append(efficient_sample(inducing_variable.inducing_variable, k, q_mu[..., i:(i+1)], q_sqrt=q_sqrt[i:(i+1), ...], whiten=whiten))
+
+    class MultiOutputSample(Sample):
+        def __call__(self, X: TensorType) -> tf.Tensor:
+            """
+            :param X: evaluation points [N, D]
+            :return: function value of sample [N, P]
+            """
+            return tf.concat([s(X) for s in samples], axis=-1)
+
+    return MultiOutputSample()
+
 
 class ASymmetricLaplace(Laplace):
     def __init__(self,
@@ -71,7 +126,7 @@ class ASymmetricLaplace(Laplace):
                  validate_args=False,
                  allow_nan_stats=True,
                  name='Laplace',
-                 tau=0.9):
+                 tau=quantile_level):
 
         super().__init__(loc, scale, validate_args, allow_nan_stats, name)
 
@@ -148,8 +203,133 @@ class ASymmetricLaplace(Laplace):
         return NotImplementedError
 
 
-def create_kernel_with_features(var, input_dim, num_rff):
+class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
+    def __init__(self,
+                 model: DeepGP,
+                 optimizer: tf.optimizers.Optimizer | None = None,
+                 fit_args: Dict[str, Any] | None = None,
+                 inducing_point_selector: InducingPointSelector = None,
+                 ):
+
+        super().__init__(model, optimizer, fit_args)
+
+        if inducing_point_selector is None:
+            inducing_point_selector = KMeans
+        self._inducing_point_selector = inducing_point_selector
+
+    def sample_trajectory(self) -> Callable:
+        return sample_dgp(self.model_gpflux)
+
+    def update(self, dataset: Dataset) -> None:
+        inputs = dataset.query_points
+        new_num_data = inputs.shape[0]
+        self.model_gpflux.num_data = new_num_data
+
+        # Update num_data for each layer, as well as make sure dataset shapes are ok
+        for i, layer in enumerate(self.model_gpflux.f_layers):
+            if hasattr(layer, "num_data"):
+                layer.num_data = new_num_data
+
+            if isinstance(layer, LatentVariableLayer):
+                inputs = layer(inputs)
+                continue
+
+            if isinstance(layer.inducing_variable, InducingPoints):
+                inducing_variable = layer.inducing_variable
+            else:
+                inducing_variable = layer.inducing_variable.inducing_variable
+
+            if inputs.shape[-1] != inducing_variable.Z.shape[-1]:
+                raise ValueError(
+                    f"Shape {inputs.shape} of input to layer {layer} is incompatible with shape"
+                    f" {inducing_variable.Z.shape} of that layer. Trailing dimensions must match."
+                )
+            inputs = layer(inputs)
+
+            if hasattr(layer.kernel, 'feature_functions'): # If using RFF kernel decomp then need to resample for new kernel params
+                feature_function = layer.kernel.feature_functions
+                input_shape = dataset.query_points.shape
+                def renew_rff(feature_f, input_dim):
+                    shape_bias = [1, feature_f.output_dim]
+                    new_b = feature_f._sample_bias(shape_bias, dtype=feature_f.dtype)
+                    feature_f.b = new_b
+                    shape_weights = [feature_f.output_dim, input_dim]
+                    new_W = feature_f._sample_weights(shape_weights, dtype=feature_f.dtype)
+                    feature_f.W = new_W
+                renew_rff(feature_function,  input_shape[-1])
+
+            num_inducing = layer.inducing_variable.inducing_variable.Z.shape[0]
+
+            Z = self._inducing_point_selector.get_points(dataset.query_points,
+                                                         dataset.observations,
+                                                         num_inducing,
+                                                         layer.kernel,
+                                                         noise=1e-6)
+
+            jitter = 1e-6
+
+            if layer.whiten:
+                f_mu, f_cov = self.predict_joint(Z)  # [N, L], [L, N, N]
+                Knn = layer.kernel(Z, full_cov=True)  # [N, N]
+                jitter_mat = jitter * tf.eye(num_inducing, dtype=Knn.dtype)
+                Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
+                new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
+                tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
+                S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
+                new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
+            else:
+                new_q_mu, new_f_cov = layer.predict(Z, full_cov=True)  # [N, L], [L, N, N]
+                jitter_mat = jitter * tf.eye(num_inducing, dtype=new_f_cov.dtype)
+                new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
+
+            layer.q_mu.assign(new_q_mu)
+            layer.q_sqrt.assign(new_q_sqrt)
+            layer.inducing_variable.inducing_variable.Z.assign(Z)
+
+
+class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
+    """
+    Builder for the negative of a GP trajectory. The trajectory is typically
+    minimised, so the negative is suitable for maximisation.
+    """
+    def __repr__(self) -> str:
+        return f"NegativeGaussianProcessTrajectory"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: FeaturedHetGPFluxModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        trajectory = model.sample_trajectory()
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))[..., 0:1]
+
+
+class NegativeQuantilefromGaussianHetGPTrajectory(SingleModelGreedyAcquisitionBuilder):
+
+    def __init__(self, quantile_level: float = 0.9):
+        """
+        :param beta: Weighting given to the variance contribution to the lower confidence bound.
+            Must not be negative.
+        """
+        self._quantile_level = quantile_level
+
+    def __repr__(self) -> str:
+        return f"NegativeGaussianProcessTrajectory"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: FeaturedHetGPFluxModel,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        trajectory = model.sample_trajectory()
+
+        def quantile_traj(at):
+            lik_layer = model.model_gpflux.likelihood_layer
+            dist = lik_layer.likelihood.conditional_distribution(trajectory(tf.squeeze(at, axis=1)))
+            return -dist.quantile(value=self._quantile_level)
+        return quantile_traj
+
+
+def create_kernel_with_features(var, input_dim, num_rff):
     kernel = gpflow.kernels.Matern52(variance=var, lengthscales=0.2 * np.ones(input_dim, ))
     prior_scale = tf.cast(1.0, dtype=tf.float64)
     kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(0.0, dtype=tf.float64), prior_scale)
@@ -159,7 +339,7 @@ def create_kernel_with_features(var, input_dim, num_rff):
     features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
     return KernelWithFeatureDecomposition(kernel, features, coefficients)
 
-def build_hetgp_rff_model(data, num_rff=1000):
+def build_hetgp_rff_model(data, num_rff=1000, likelihood_distribution=ASymmetricLaplace):
     var = tf.math.reduce_variance(data.observations)
 
     kernel_with_features1 =create_kernel_with_features(var, input_dim, num_rff)
@@ -186,7 +366,7 @@ def build_hetgp_rff_model(data, num_rff=1000):
     )
 
     likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
-        distribution_class=ASymmetricLaplace,
+        distribution_class=likelihood_distribution,
         scale_transform=tfp.bijectors.Exp(),
     )
 
@@ -216,17 +396,24 @@ def build_hetgp_rff_model(data, num_rff=1000):
                                   inducing_point_selector=inducing_point_selector)
 
 
-model = build_hetgp_rff_model(initial_data[OBJECTIVE], num_rff)
-model.optimize(initial_data[OBJECTIVE])
-models = {OBJECTIVE: model}
+quantile_model = build_hetgp_rff_model(initial_data[OBJECTIVE], num_rff)
+quantile_model.optimize(initial_data[OBJECTIVE])
+quantile_models = {OBJECTIVE: quantile_model}
 
-from util.plotting import plot_gp_2d
-fig, _ = plot_gp_2d(model.model_gpflux, search_space.lower,
-    search_space.upper,
-    grid_density=30)
-
+fig, _ = plot_gp_2d(quantile_model.model_gpflux, search_space.lower, search_space.upper, grid_density=30)
 fig.axes[0].scatter(initial_query_points[:, 0], initial_query_points[:, 1],
                     initial_data[OBJECTIVE].observations.numpy())
+
+
+hetgp_model = build_hetgp_rff_model(initial_data[OBJECTIVE], num_rff,
+                                    likelihood_distribution=tfp.distributions.Normal)
+hetgp_model.optimize(initial_data[OBJECTIVE])
+hetgp_models = {OBJECTIVE: hetgp_model}
+
+fig, _ = plot_gp_2d(hetgp_model.model_gpflux, search_space.lower, search_space.upper, grid_density=30)
+fig.axes[0].scatter(initial_query_points[:, 0], initial_query_points[:, 1],
+                    initial_data[OBJECTIVE].observations.numpy())
+
 
 
 # %% [markdown]
@@ -235,53 +422,51 @@ fig.axes[0].scatter(initial_query_points[:, 0], initial_query_points[:, 1],
 # %% [markdown]
 
 # %%
-neg_traj = trieste.acquisition.NegativeGaussianProcessTrajectory()
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(neg_traj.using(OBJECTIVE), num_query_points=batch_size)
+quantile_traj = NegativeGaussianProcessTrajectory()
+quantile_rule = trieste.acquisition.rule.EfficientGlobalOptimization(quantile_traj.using(OBJECTIVE),
+                                                                     num_query_points=batch_size)
+quantile_bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+quantile_result = quantile_bo.optimize(num_bo_iterations, initial_data, quantile_models,
+                                       acquisition_rule=quantile_rule, track_state=False)
 
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_bo_iterations, initial_data, models, acquisition_rule=rule, track_state=False)
+#
+hetgp_traj = NegativeQuantilefromGaussianHetGPTrajectory(quantile_level=quantile_level)
+hetgp_rule = trieste.acquisition.rule.EfficientGlobalOptimization(hetgp_traj.using(OBJECTIVE),
+                                                                     num_query_points=batch_size)
+hetgp_bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+hetgp_result = hetgp_bo.optimize(num_bo_iterations, initial_data, hetgp_models,
+                                       acquisition_rule=hetgp_rule, track_state=False)
 
 # %% [markdown]
 # ## Explore the results
 
 # %%
-dataset = result.try_get_final_datasets()[OBJECTIVE]
-query_points = dataset.query_points.numpy()
-observations = dataset.observations.numpy()
-true_scores = quantile_branin(dataset.query_points).numpy()
-arg_min_idx = tf.squeeze(tf.argmin(true_scores, axis=0))
-
-print(f"Believed optima: {query_points[arg_min_idx, :]}")
-print(f"Objective function value: {true_scores[arg_min_idx, :]}")
-
-# %% [markdown]
-
-# %%
-from util.plotting import plot_function_2d, plot_bo_points
-
-_, ax = plot_function_2d(
-    quantile_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
-)
-plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
-
-# %% [markdown]
-# %%
-import matplotlib.pyplot as plt
-from util.plotting import plot_regret, create_grid
-
-fig, ax = plt.subplots(1, 2)
 grid_quantile = quantile_branin(create_grid(search_space.lower, search_space.upper, grid_density=200)[0])
-actual_minimum = tf.reduce_min(true_scores).numpy()
-plot_regret(true_scores - actual_minimum, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
-ax[0].set_ylim(0.00001, 1000)
-ax[0].set_yscale("log")
-plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
-fig.show()
+actual_minimum = tf.reduce_min(grid_quantile).numpy()
 
-from util.plotting import plot_gp_2d
+def plot_results(result):
+    final_dataset = result.try_get_final_datasets()[OBJECTIVE]
+    final_model = result.try_get_final_model().model_gpflux
 
-fig, _ = plot_gp_2d(result.try_get_final_model().model_gpflux, search_space.lower,
-    search_space.upper,
-    grid_density=30)
+    query_points = final_dataset.query_points.numpy()
+    observations = final_dataset.observations.numpy()
+    true_scores = quantile_branin(final_dataset.query_points).numpy()
+    arg_min_idx = tf.squeeze(tf.argmin(true_scores, axis=0))
 
-fig.axes[0].scatter(query_points[:, 0], query_points[:, 1], observations)
+    _, ax = plot_function_2d(
+        quantile_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    )
+    plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+
+    fig, ax = plt.subplots(1, 2)
+    plot_regret(true_scores - actual_minimum, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
+    ax[0].set_ylim(0.00001, 1000)
+    ax[0].set_yscale("log")
+    plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+    fig.show()
+
+    fig, _ = plot_gp_2d(final_model, search_space.lower, search_space.upper, grid_density=30)
+    fig.axes[0].scatter(query_points[:, 0], query_points[:, 1], observations)
+
+plot_results(quantile_result)
+plot_results(hetgp_result)
