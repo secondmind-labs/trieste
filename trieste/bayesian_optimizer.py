@@ -371,7 +371,9 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models)
+                points_or_stateful = acquisition_rule.acquire(
+                    self._search_space, models, datasets=datasets
+                )
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)

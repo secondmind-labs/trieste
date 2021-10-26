@@ -38,7 +38,7 @@ from trieste.types import TensorType
 
 
 @pytest.fixture(
-    name="gpr_interface_factory",
+    name="gpflow_interface_factory",
     params=[
         (GaussianProcessRegression, gpr_model),
         (GaussianProcessRegression, sgpr_model),
@@ -46,7 +46,7 @@ from trieste.types import TensorType
         (SparseVariational, svgp_model),
     ],
 )
-def _gpr_interface_factory(request: Any) -> ModelFactoryType:
+def _gpflow_interface_factory(request: Any) -> ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:

@@ -46,7 +46,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`. Only
+            :class:`~tf.optimizers.Optimizer` with :class:`~tf.optimizers.Adam`. Only
             the optimizer itself is used; other args relevant for fitting should be passed as part
             of `fit_args`.
         :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Defaults to
@@ -55,20 +55,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             arguments.
         """
 
-        super().__init__()
-
-        if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
-        else:
-            self._optimizer = optimizer
-
-        if not isinstance(self._optimizer, tf.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer)} instead. Note that the optimizer should "
-                f"therefore not be wrapped in the Trieste `TFOptimizer` wrapper."
-            )
+        super().__init__(optimizer)
 
         self.original_lr = self._optimizer.lr.numpy()
 

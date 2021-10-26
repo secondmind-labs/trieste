@@ -1,4 +1,4 @@
-.. Copyright 2020 The Trieste Contributors
+.. Copyright 2021 The Trieste Contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -46,21 +46,26 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`How do I track and visualize an optimization loop in TensorBoard?<notebooks/visualizing_with_tensorboard>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
-* :doc:`How can I use Trieste in asynchronous objective evaluation mode?<notebooks/asynchronous_bayesian_optimization>`
+* :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
+* How do I use Trieste in asynchronous objective evaluation mode?
+  * :doc:`Example of using greedy batch acquisition functions and Python multiprocessing module.<notebooks/asynchronous_greedy_multiprocessing>`
+  * :doc:`Example of using non-greedy batch acquisition functions and Ray.<notebooks/asynchronous_nongreedy_batch_ray>`
 
 .. toctree::
    :hidden:
    :maxdepth: 1
 
    notebooks/ask_tell_optimization
+   notebooks/data_transformation
    notebooks/recovering_from_errors
+   notebooks/asynchronous_greedy_multiprocessing
+   notebooks/asynchronous_nongreedy_batch_ray
    notebooks/visualizing_with_tensorboard
-   notebooks/asynchronous_bayesian_optimization
 
 Run the tutorials interactively
 -------------------------------
 
-The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies with (in the repository root)
+The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies, with (in the repository root)
 
 .. code::
 

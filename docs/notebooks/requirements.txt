@@ -16,5 +16,6 @@ numpy
 plotly
 pandas<1.0
 matplotlib
+ray[default]
 jupyterlab
 jupytext

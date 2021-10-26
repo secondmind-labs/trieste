@@ -147,11 +147,11 @@ models: dict[str, trieste.models.ModelSpec] = {
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
 )
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
-    def prepare_acquisition_function(self, dataset, model):
+    def prepare_acquisition_function(self, model, dataset = None):
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
