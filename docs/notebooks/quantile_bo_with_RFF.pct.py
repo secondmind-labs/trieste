@@ -106,16 +106,12 @@ def _efficient_sample_matheron_rule(
 ) -> Sample:
     samples = []
     for i, k in enumerate(kernel.kernels):
-        samples.append(efficient_sample(inducing_variable.inducing_variable, k, q_mu[..., i:(i+1)], q_sqrt=q_sqrt[i:(i+1), ...], whiten=whiten))
+        samples.append(efficient_sample(inducing_variable.inducing_variable, k, q_mu[..., i:(i+1)],
+                                        q_sqrt=q_sqrt[i:(i+1), ...], whiten=whiten))
 
     class MultiOutputSample(Sample):
         def __call__(self, X: TensorType) -> tf.Tensor:
-            """
-            :param X: evaluation points [N, D]
-            :return: function value of sample [N, P]
-            """
             return tf.concat([s(X) for s in samples], axis=-1)
-
     return MultiOutputSample()
 
 
@@ -170,9 +166,7 @@ class ASymmetricLaplace(Laplace):
         is_neg = 0.5 - 0.5 * tf.sign(z)
         negF = self.tau * tf.exp((1. - self.tau) / self.scale * (x - self.loc))
         posF = 1. - (1 - self.tau) + tf.exp(-self.tau/self.scale * (x - self.loc))
-
         return tf.where(is_neg > 0.5, negF, posF)
-        # return is_neg * negF + (1. - is_neg) * posF
 
     def _log_cdf(self, x):
         return tf.math.log(self._cdf(x))
@@ -289,10 +283,6 @@ class FeaturedHetGPFluxModel(DeepGaussianProcess):
 
 
 class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
-    """
-    Builder for the negative of a GP trajectory. The trajectory is typically
-    minimised, so the negative is suitable for maximisation.
-    """
     def __repr__(self) -> str:
         return f"NegativeGaussianProcessTrajectory"
 
@@ -307,10 +297,6 @@ class NegativeGaussianProcessTrajectory(SingleModelGreedyAcquisitionBuilder):
 class NegativeQuantilefromGaussianHetGPTrajectory(SingleModelGreedyAcquisitionBuilder):
 
     def __init__(self, quantile_level: float = 0.9):
-        """
-        :param beta: Weighting given to the variance contribution to the lower confidence bound.
-            Must not be negative.
-        """
         self._quantile_level = quantile_level
 
     def __repr__(self) -> str:
@@ -341,29 +327,19 @@ def create_kernel_with_features(var, input_dim, num_rff):
 
 def build_hetgp_rff_model(data, num_rff=1000, likelihood_distribution=ASymmetricLaplace):
     var = tf.math.reduce_variance(data.observations)
-
     kernel_with_features1 =create_kernel_with_features(var, input_dim, num_rff)
     kernel_with_features2 = create_kernel_with_features(var / 2., input_dim, num_rff)
-
     kernel_list = [kernel_with_features1, kernel_with_features2]
     kernel = gpflux.helpers.construct_basic_kernel(kernel_list)
 
     Z = inducing_point_selector.get_points(data.query_points, data.observations,
                                            num_inducing_points, kernel, noise)
-
     inducing_variable = construct_basic_inducing_variables(num_inducing_points, input_dim,
-    output_dim=2, share_variables=True, z_init= Z)
-
+                                                           output_dim=2, share_variables=True, z_init= Z)
     gpflow.utilities.set_trainable(inducing_variable, False)
 
-    layer = gpflux.layers.GPLayer(
-        kernel,
-        inducing_variable,
-        num_data,
-        whiten=False,
-        num_latent_gps=2,
-        mean_function=gpflow.mean_functions.Constant(),
-    )
+    layer = gpflux.layers.GPLayer(kernel, inducing_variable, num_data, whiten=False,
+                                  num_latent_gps=2, mean_function=gpflow.mean_functions.Constant())
 
     likelihood = gpflow.likelihoods.HeteroskedasticTFPConditional(
         distribution_class=likelihood_distribution,
@@ -377,13 +353,8 @@ def build_hetgp_rff_model(data, num_rff=1000, likelihood_distribution=ASymmetric
     batch_size = 200
     optimizer = tf.optimizers.Adam(0.05)
 
-    callbacks = [
-        tf.keras.callbacks.ReduceLROnPlateau(
-            monitor="loss", patience=10, factor=0.5, verbose=1, min_lr=1e-6,
-        ),
-        tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50, min_delta=0.01, verbose=1,
-                                         mode="min"),
-    ]
+    callbacks = [tf.keras.callbacks.ReduceLROnPlateau(monitor="loss", patience=10, factor=0.5, verbose=1, min_lr=1e-6),
+        tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50, min_delta=0.01, verbose=1, mode="min"),]
 
     fit_args = {
         "batch_size": batch_size,
@@ -415,7 +386,6 @@ fig.axes[0].scatter(initial_query_points[:, 0], initial_query_points[:, 1],
                     initial_data[OBJECTIVE].observations.numpy())
 
 
-
 # %% [markdown]
 # ## Run the optimization loop
 
@@ -429,7 +399,6 @@ quantile_bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_spac
 quantile_result = quantile_bo.optimize(num_bo_iterations, initial_data, quantile_models,
                                        acquisition_rule=quantile_rule, track_state=False)
 
-#
 hetgp_traj = NegativeQuantilefromGaussianHetGPTrajectory(quantile_level=quantile_level)
 hetgp_rule = trieste.acquisition.rule.EfficientGlobalOptimization(hetgp_traj.using(OBJECTIVE),
                                                                      num_query_points=batch_size)
