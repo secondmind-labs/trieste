@@ -55,9 +55,7 @@ from trieste.types import State, TensorType
         List[
             Tuple[
                 int,
-                Union[
                     AcquisitionRule[TensorType, Box],
-                ],
             ]
         ],
         [
