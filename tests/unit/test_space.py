@@ -22,7 +22,6 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from typing_extensions import Final
-from typing import cast
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
@@ -612,7 +611,7 @@ def test_product_space_fix_subspace_fixes_desired_subspace(points: tf.Tensor) ->
         product_space_with_fixed_subspace = product_space.fix_subspace(tag, points)
         new_subspace = product_space_with_fixed_subspace.get_subspace(tag)
         assert isinstance(new_subspace, DiscreteSearchSpace)
-        npt.assert_array_equal(new_subspace.points, points) 
+        npt.assert_array_equal(new_subspace.points, points)
 
 
 @pytest.mark.parametrize(

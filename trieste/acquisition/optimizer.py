@@ -216,7 +216,7 @@ def generate_continuous_optimizer(
                     """
                 )
 
-        return chosen_point  # [1, D]
+        return tf.convert_to_tensor(chosen_point)
 
     return optimize_continuous
 
@@ -241,7 +241,7 @@ def get_bounds_of_box_relaxation_around_point(
         for tag in space.subspace_tags:
             if isinstance(space.get_subspace(tag), DiscreteSearchSpace):
                 subspace_value = space.get_subspace_component(tag, current_point)
-                space_with_fixed_discrete  = space_with_fixed_discrete.fix_subspace(
+                space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(
                     tag, subspace_value
                 )
         return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)

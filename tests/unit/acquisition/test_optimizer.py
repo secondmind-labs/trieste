@@ -278,7 +278,10 @@ def test_continuous_optimizer(
     ],
 )
 def test_get_bounds_of_box_relaxation_around_point(
-    search_space: TaggedProductSearchSpace | Box, point: TensorType, lower: TensorType, upper: TensorType
+    search_space: TaggedProductSearchSpace | Box,
+    point: TensorType,
+    lower: TensorType,
+    upper: TensorType,
 ) -> None:
     bounds = get_bounds_of_box_relaxation_around_point(search_space, point)
     npt.assert_array_equal(bounds.lb, lower)
