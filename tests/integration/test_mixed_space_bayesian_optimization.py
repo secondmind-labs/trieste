@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, cast
 
 import gpflow
 import numpy.testing as npt
@@ -27,12 +27,7 @@ from trieste.acquisition.function import (
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
 )
-from trieste.acquisition.rule import (
-    AcquisitionRule,
-    AsynchronousRuleState,
-    EfficientGlobalOptimization,
-    TrustRegion,
-)
+from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
@@ -44,8 +39,8 @@ from trieste.objectives import (
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
-from trieste.types import State, TensorType
+from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
+from trieste.types import TensorType
 
 
 @random_seed
@@ -55,7 +50,7 @@ from trieste.types import State, TensorType
         List[
             Tuple[
                 int,
-                    AcquisitionRule[TensorType, Box],
+                AcquisitionRule[TensorType, TaggedProductSearchSpace],
             ]
         ],
         [
@@ -81,8 +76,7 @@ from trieste.types import State, TensorType
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, TaggedProductSearchSpace],
 ) -> None:
     search_space = TaggedProductSearchSpace(
         spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 20)[:, None])],
