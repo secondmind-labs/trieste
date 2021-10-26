@@ -22,7 +22,6 @@ from typing import Callable, TypeVar
 import gpflow
 import scipy.optimize as spo
 import tensorflow as tf
-import tensorflow_probability as tfp
 from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
@@ -63,19 +62,9 @@ def automatic_optimizer_selector(
     if isinstance(space, DiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
-    elif isinstance(space, Box):
+    elif isinstance(space, (Box, TaggedProductSearchSpace)):
         num_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
         return generate_continuous_optimizer(num_samples)(space, target_func)
-
-    elif isinstance(space, TaggedProductSearchSpace):
-
-        # get cts and get discrete dims to set values below TODO
-
-        num_discrete_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
-        num_continuous_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
-
-        return generate_mixed_optimizer(num_discrete_samples, generate_continuous_optimizer(num_continuous_samples))(space, target_func)
-
 
     else:
         raise NotImplementedError(
@@ -83,11 +72,6 @@ def automatic_optimizer_selector(
                     maximisation over search spaces of type {space}.
                     Try specifying the optimize_random optimizer"""
         )
-
-
-
-
-
 
 
 def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
@@ -116,16 +100,14 @@ def generate_continuous_optimizer(
     num_initial_samples: int = 1000,
     num_optimization_runs: int = 1,
     num_recovery_runs: int = 5,
-) -> AcquisitionOptimizer[Box]:
+) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
+    Generate a gradient-based optimizer for :class:'Box' and :class:`TaggedProductSearchSpace'
+    spaces and batches of size 1. We perform gradient-based optimization across
+    all :class:'Box' subspaces, starting from the best location found across a sample
+    of `num_initial_samples` random points.
 
-    TODO talk about tagged
-
-    Generate a gradient-based acquisition optimizer for :class:'Box' spaces and batches
-    of size of 1. We perfom gradient-based optimization starting from the best location
-    across a sample of `num_initial_samples` random points.
-
-    This optimizer supports Scipy's L-BFGS-B optimizer. L-BFGS-B optimizes directly within
+    This optimizer supports Scipy's L-BFGS-B optimizer, which optimizes directly within and up to
     the bounds of the search space.
 
     For challenging acquisition function optimizations, we run `num_optimization_runs` separate
@@ -136,7 +118,7 @@ def generate_continuous_optimizer(
 
     The default behavior of this method is to return a L-BFGS-B optimizer that performs
     a single optimization from the best of 1000 initial locations. If this optimization fails then
-    we run up to `num_recovery_runs` recovery runs starting from random locations.
+    we run up to `num_recovery_runs` recovery runs starting from additional random locations.
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
@@ -161,19 +143,25 @@ def generate_continuous_optimizer(
     if num_recovery_runs <= -1:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
-    def optimize_continuous(space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+    def optimize_continuous(
+        space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction
+    ) -> TensorType:
         """
-        A gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
-        of size of 1. TODO
+        A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
+        and :class:`TaggedProductSearchSpace' spaces and batches of size of 1.
+
+        For :class:`TaggedProductSearchSpace' we only apply gradient updates to
+        its class:'Box' subspaces, fixing the discrete elements to the best values
+        found across the initial random search. To fix these discrete elements, we
+        optimize over a continuous class:'Box' relaxation of the discrete subspaces
+        which has equal upper and lower bounds, i.e. we specify an equality constraint
+        for this dimension in the scipy optimizer.
 
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
-
-
-        #TODO CHECK AT LEAST ONE CTS BIT
 
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
@@ -189,7 +177,7 @@ def generate_continuous_optimizer(
 
         def _perform_optimization(starting_point: TensorType, bounds: spo.Bounds) -> OptimizeResult:
             opt_kwargs = {"bounds": bounds}
-            variable.assign(starting_point) # [1, D]
+            variable.assign(starting_point)  # [1, D]
             return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
 
         successful_optimization = False
@@ -217,7 +205,7 @@ def generate_continuous_optimizer(
                 bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
                 opt_result = _perform_optimization(random_start, bounds)
                 if opt_result.success:
-                    chosen_point = variable # [1, D]
+                    chosen_point = variable  # [1, D]
                     successful_optimization = True
                     break
             if not successful_optimization:  # return error if still failed
@@ -233,18 +221,31 @@ def generate_continuous_optimizer(
     return optimize_continuous
 
 
-def get_bounds_of_box_relaxation_around_point(space: SearchSpace, current_point: TensorType) -> spo.Bounds:
+def get_bounds_of_box_relaxation_around_point(
+    space: TaggedProductSearchSpace | Box, current_point: TensorType
+) -> spo.Bounds:
     """
-    TODO
+    A function to return the bounds of a continuous relaxation of
+    a :class:`TaggedProductSearchSpace' space. All :class:`DiscreteSearchSpace'
+    subspaces are replaced with a new :class:`DiscreteSearchSpace' containing only their
+    respective component of the specified `current_point'. Note that
+    all :class:`Box' subspaces remain the same.
+
+    :param space: The original search space.
+    :param current_point: The point at which to make the continuous relaxation.
+    :return: Bounds for the Scipy optimizer.
     """
-    if isinstance(space, TaggedProductSearchSpace): # TODO just calc bounds, not space !!!!
+
+    if isinstance(space, TaggedProductSearchSpace):  # convert discrete subspaces to box spaces.
         space_with_fixed_discrete = space
-        for tag in space.subspace_tags: # fix the value of any discrete components
+        for tag in space.subspace_tags:
             if isinstance(space.get_subspace(tag), DiscreteSearchSpace):
-                subspace_value = space.get_subspace_component(tag,current_point)
-                space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag,subspace_value)
-        return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper) 
-    else:
+                subspace_value = space.get_subspace_component(tag, current_point)
+                space_with_fixed_discrete  = space_with_fixed_discrete.fix_subspace(
+                    tag, subspace_value
+                )
+        return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
+    else:  # if already a box space then just return bounds
         return spo.Bounds(space.lower, space.upper)
 
 
@@ -302,13 +303,7 @@ def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOpti
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
-
-        if isinstance(space, DiscreteSearchSpace) and (num_samples > len(space.points)):
-            _num_samples = len(space.points)
-        else:
-            _num_samples = num_samples
-
-        samples = space.sample(_num_samples)
+        samples = space.sample(num_samples)
         target_func_values = target_func(samples[:, None, :])
         max_value_idx = tf.argmax(target_func_values, axis=0)[0]
         return samples[max_value_idx : max_value_idx + 1]

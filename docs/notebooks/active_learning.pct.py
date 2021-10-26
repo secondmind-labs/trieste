@@ -79,7 +79,7 @@ from trieste.acquisition.function import PredictiveVariance
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
+    builder=acq, optimizer=generate_continuous_optimizer()
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -145,7 +145,7 @@ num_query = 3
 model = build_model(initial_data)
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
+    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer()
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
