@@ -261,7 +261,7 @@ class AskTellOptimizer(Generic[SP]):
         # so code below is needed to cater for both cases
 
         points_or_stateful = self._acquisition_rule.acquire(
-            self._search_space, self._datasets, self._models
+            self._search_space, self._models, datasets=self._datasets
         )
 
         if callable(points_or_stateful):

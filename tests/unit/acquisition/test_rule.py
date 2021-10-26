@@ -92,7 +92,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(100, 10)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 @pytest.mark.parametrize("models", [{}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}])
@@ -110,7 +110,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(10, 100)
     with pytest.raises(ValueError):
-        rule.acquire(search_space, datasets, models)
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 @pytest.mark.parametrize("num_fourier_features", [None, 100])
@@ -125,7 +125,7 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    query_points = ts.acquire_single(search_space, dataset, model)
+    query_points = ts.acquire_single(search_space, model, dataset=dataset)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
@@ -147,12 +147,17 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
             self._updated = False
 
         def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
         def update_acquisition_function(
-            self, function: AcquisitionFunction, dataset: Dataset, model: ProbabilisticModel
+            self,
+            function: AcquisitionFunction,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
         ) -> AcquisitionFunction:
             self._updated = True
             return function
@@ -161,19 +166,21 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     search_space = Box([-10], [10])
     ego = EfficientGlobalOptimization(function, optimizer)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
-    query_point = ego.acquire_single(search_space, data, model)
+    query_point = ego.acquire_single(search_space, model, dataset=data)
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert not function._updated
-    query_point = ego.acquire(search_space, {OBJECTIVE: data}, {OBJECTIVE: model})
+    query_point = ego.acquire(search_space, {OBJECTIVE: model})
     npt.assert_allclose(query_point, [[1]], rtol=1e-4)
     assert function._updated
 
 
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder):
     def prepare_acquisition_function(
-        self, dataset: Mapping[str, Dataset], model: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
-        return lambda at: -tf.reduce_max(model[OBJECTIVE].predict(at)[0], axis=-2)
+        return lambda at: -tf.reduce_max(models[OBJECTIVE].predict(at)[0], axis=-2)
 
 
 @random_seed
@@ -203,7 +210,9 @@ def test_joint_batch_acquisition_rule_acquire(
     ] = rule_fn(acq, num_query_points)
 
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
     if callable(points_or_stateful):
         _, query_point = points_or_stateful(None)
     else:
@@ -219,8 +228,8 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
 
     def prepare_acquisition_function(
         self,
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: TensorType = None,
     ) -> AcquisitionFunction:
         if pending_points is None:
@@ -234,13 +243,15 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitio
     def update_acquisition_function(
         self,
         function: Optional[AcquisitionFunction],
-        dataset: Dataset,
         model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         self._update_count += 1
-        return self.prepare_acquisition_function(dataset, model, pending_points)
+        return self.prepare_acquisition_function(
+            model, dataset=dataset, pending_points=pending_points
+        )
 
 
 @random_seed
@@ -270,7 +281,9 @@ def test_greedy_batch_acquisition_rule_acquire(
         State[TensorType, AsynchronousRuleState], Box
     ] = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
     if callable(points_or_stateful):
         _, query_points = points_or_stateful(None)
     else:
@@ -278,7 +291,9 @@ def test_greedy_batch_acquisition_rule_acquire(
     assert acq._update_count == num_query_points - 1
     npt.assert_allclose(query_points, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
-    points_or_stateful = acq_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
     if callable(points_or_stateful):
         _, query_points = points_or_stateful(None)
     else:
@@ -329,7 +344,7 @@ def test_async_keeps_track_of_pending_points(
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
 
-    state_fn = async_rule.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())
+    state_fn = async_rule.acquire_single(search_space, QuadraticMeanAndRBFKernel(), dataset=dataset)
     state, point1 = state_fn(None)
     state, point2 = state_fn(state)
 
@@ -342,7 +357,9 @@ def test_async_keeps_track_of_pending_points(
         observations=tf.constant([[1]], dtype=tf.float32),
     )
     state_fn = async_rule.acquire_single(
-        search_space, dataset + new_observations, QuadraticMeanAndRBFKernel()
+        search_space,
+        QuadraticMeanAndRBFKernel(),
+        dataset=dataset + new_observations,
     )
     state, point3 = state_fn(state)
 
@@ -363,16 +380,16 @@ def test_trust_region_raises_for_missing_datasets_key(
 ) -> None:
     search_space = Box([-1], [1])
     rule = TrustRegion()
-    with pytest.raises(KeyError):
-        rule.acquire(search_space, datasets, models)
+    with pytest.raises(ValueError):
+        rule.acquire(search_space, models, datasets=datasets)
 
 
 class _Midpoint(AcquisitionRule[TensorType, Box]):
     def acquire(
         self,
         search_space: Box,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 
@@ -393,7 +410,9 @@ def test_trust_region_for_default_state(
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    state, query_point = tr.acquire_single(search_space, dataset, QuadraticMeanAndRBFKernel())(None)
+    state, query_point = tr.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )(None)
 
     assert state is not None
     npt.assert_array_almost_equal(query_point, expected_query_point, 5)
@@ -425,7 +444,9 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged(
     previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -459,7 +480,9 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, query_point = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -493,7 +516,9 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, _ = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
@@ -526,7 +551,9 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
     previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
 
     current_state, _ = tr.acquire(
-        search_space, {OBJECTIVE: dataset}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        datasets={OBJECTIVE: dataset},
     )(previous_state)
 
     assert current_state is not None
