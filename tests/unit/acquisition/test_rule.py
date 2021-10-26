@@ -318,7 +318,6 @@ class _Midpoint(AcquisitionRule[TensorType, Box]):
         search_space: Box,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
-        step_number: int = 0,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 

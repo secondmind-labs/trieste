@@ -77,17 +77,16 @@ result, history = bo.optimize(15, initial_data, model).astuple()
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
 
-    def log(self, step_number, context):
+    def log(self, context):
         """
         Log model-specific information at a given optimization step.
 
-        :param step_number: The current optimization step number.
         :param context: A context string to use when logging.
         """
-        super().log(step_number, context)
+        super().log(context)
         summary_writer = trieste.logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=step_number):
+            with summary_writer.as_default(step=trieste.logging.get_step_number()):
                 tf.summary.scalar(
                     f"{context}.kernel.lengthscales.mean",
                     np.mean(self.get_kernel().lengthscales)

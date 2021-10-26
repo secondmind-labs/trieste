@@ -17,7 +17,7 @@ import tempfile
 
 import tensorflow as tf
 
-from trieste.logging import get_tensorboard_writer, set_tensorboard_writer, using_tensorboard_writer
+from trieste.logging import get_tensorboard_writer, set_tensorboard_writer, tensorboard_writer
 
 
 def test_get_tensorboard_writer_default() -> None:
@@ -33,10 +33,10 @@ def test_set_get_tensorboard_writer() -> None:
         assert get_tensorboard_writer() is None
 
 
-def test_using_tensorboard_writer() -> None:
+def test_tensorboard_writer() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         assert get_tensorboard_writer() is None
-        with using_tensorboard_writer(summary_writer):
+        with tensorboard_writer(summary_writer):
             assert get_tensorboard_writer() is summary_writer
         assert get_tensorboard_writer() is None

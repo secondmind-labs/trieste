@@ -30,7 +30,7 @@ from absl import logging
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .logging import get_tensorboard_writer
+from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
@@ -165,7 +165,6 @@ class BayesianOptimizer(Generic[SP]):
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
             :class:`~trieste.space.SearchSpace`.
-        :param summary_writer: An optional summary writer object for logging to.
         """
         self._observer = observer
         self._search_space = search_space
@@ -359,6 +358,7 @@ class BayesianOptimizer(Generic[SP]):
         history: list[Record[S]] = []
 
         for step in range(num_steps):
+            set_step_number(step)
             try:
                 if track_state:
                     models_copy = copy.deepcopy(models)
@@ -371,9 +371,7 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(
-                    self._search_space, datasets, models, step
-                )
+                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models)
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)
@@ -399,7 +397,7 @@ class BayesianOptimizer(Generic[SP]):
                 if summary_writer:
                     with summary_writer.as_default():
                         for tag in datasets:
-                            models[tag].log(step, f"{tag}.model")
+                            models[tag].log(f"{tag}.model")
                             tf.summary.scalar(
                                 f"{tag}.observation.best_overall",
                                 np.min(datasets[tag].observations),

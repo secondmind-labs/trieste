@@ -20,6 +20,7 @@ from typing import Iterator, Optional
 import tensorflow as tf
 
 _TENSORBOARD_WRITER: Optional[tf.summary.SummaryWriter] = None
+_STEP_NUMBER: int = 0
 
 
 def set_tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter]) -> None:
@@ -44,7 +45,7 @@ def get_tensorboard_writer() -> Optional[tf.summary.SummaryWriter]:
 
 
 @contextmanager
-def using_tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter]) -> Iterator[None]:
+def tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter]) -> Iterator[None]:
     """
     A context manager for setting or overriding a TensorBoard summary writer inside a code block.
 
@@ -54,3 +55,33 @@ def using_tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter])
     set_tensorboard_writer(summary_writer)
     yield
     set_tensorboard_writer(old_writer)
+
+
+def set_step_number(step_number: int) -> None:
+    """
+    Set an optimization step number to use for logging purposes.
+
+    :param step_number: current step number
+    """
+    global _STEP_NUMBER
+    _STEP_NUMBER = step_number
+
+
+def get_step_number() -> int:
+    """
+    Set an optimization step number to use for logging purposes.
+    """
+    return _STEP_NUMBER
+
+
+@contextmanager
+def step_number(step_number: int) -> Iterator[None]:
+    """
+    A context manager for setting or overriding the optimization step number inside a code block.
+
+    :param step_number: current step number
+    """
+    old_step_number = get_step_number()
+    set_step_number(step_number)
+    yield
+    set_step_number(old_step_number)

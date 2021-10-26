@@ -41,7 +41,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.logging import using_tensorboard_writer
+from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.objectives import (
@@ -167,7 +167,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
-        with using_tensorboard_writer(summary_writer):
+        with tensorboard_writer(summary_writer):
 
             dataset = (
                 BayesianOptimizer(observer, search_space)
