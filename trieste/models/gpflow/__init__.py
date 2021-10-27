@@ -17,8 +17,7 @@ This package contains the primary interface for Gaussian process models. It also
 number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 """
 
-from . import optimizer
-from .config import GPflowModelConfig
+from . import config, optimizer
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters

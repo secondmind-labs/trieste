@@ -14,16 +14,15 @@
 
 r"""
 This module contains common optimizers based on :class:`~tf.optimizers.Optimizer` that can be used
-with models. Specific models can sub-class these optimizers or implement their own, and should
-register them using a :func:`create_optimizer`, as well as register their loss functions using
-a :func:`create_loss_function`.
+with models. Specific models can also sub-class these optimizers or implement their own, and should
+register register their loss functions using a :func:`create_loss_function`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
 import scipy
 import tensorflow as tf
@@ -150,33 +149,6 @@ class BatchOptimizer(Optimizer):
 
         for _ in range(self.max_iter):
             train_fn()
-
-
-@singledispatch
-def create_optimizer(
-    optimizer: Any,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    """
-    Generic function for creating a :class:`Optimizer` wrapper from a specified
-    `optimizer` and `optimizer_args`. The implementations depend on the type of the
-    underlying optimizer, which can be model-specific. This function needs to be used as a
-    decorator together with its register method to make a (model-)specific optimizer available.
-
-    :param optimizer: The optimizer with which to train the model. Note that a flexible type
-        `Any` is used to allow for various optimizers that specific models might need to use.
-    :param optimizer_args: The keyword arguments to pass to the optimizer wrapper.
-    :return: The :class:`Optimizer` wrapper.
-    """
-    raise NotImplementedError(f"Unknown optimizer {optimizer} passed for creating an optimizer")
-
-
-@create_optimizer.register
-def _create_batch_optimizer(
-    optimizer: tf.optimizers.Optimizer,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return BatchOptimizer(optimizer, **optimizer_args)
 
 
 @singledispatch

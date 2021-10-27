@@ -118,12 +118,12 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # We'll train the GPR model with the default L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
 
 # %%
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
 from trieste.models.optimizer import BatchOptimizer
 
 models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
-    FAILURE: GaussianProcessRegression(
+    FAILURE: VariationalGaussianProcess(
         classification_model,
         BatchOptimizer(tf.optimizers.Adam(1e-3), max_iter=50),  
         use_natgrads=True,     

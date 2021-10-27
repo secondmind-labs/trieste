@@ -14,72 +14,39 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, Dict
+from typing import Tuple, Type
 
 import gpflow
-import numpy as np
 import pytest
-import tensorflow as tf
-from gpflow.models import GPMC, GPR, SGPR, SVGP, VGP
+from gpflow.models import GPR, SGPR, SVGP, VGP
 
-from tests.util.models.gpflow.models import gpr_model
-from tests.util.models.models import fnc_3x_plus_10
 from trieste.models import TrainableProbabilisticModel
+from trieste.models.config import ModelRegistry
 from trieste.models.gpflow import (
     GaussianProcessRegression,
-    GPflowModelConfig,
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import BatchOptimizer, Optimizer
 
 
-def test_gpflow_model_config_raises_not_supported_model_type() -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    y = fnc_3x_plus_10(x)
-    model_specs = {"model": GPMC((x, y), gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian())}
+@pytest.mark.parametrize(
+    "supported_models",
+    [
+        (GPR, GaussianProcessRegression, Optimizer),
+        (SGPR, GaussianProcessRegression, Optimizer),
+        (VGP, VariationalGaussianProcess, BatchOptimizer),
+        (SVGP, SparseVariational, BatchOptimizer),
+    ],
+)
+def test_supported_gpflow_models_are_correctly_registered(
+    supported_models: Tuple[
+        Type[gpflow.models.GPModel], Type[TrainableProbabilisticModel], Type[Optimizer]
+    ]
+) -> None:
 
-    with pytest.raises(NotImplementedError):
-        GPflowModelConfig(**model_specs)
+    model_type, interface, optimizer = supported_models
 
-
-def test_gpflow_model_config_has_correct_supported_models() -> None:
-
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
-    model_config = GPflowModelConfig(**model_specs)
-
-    models_mapping: Dict[Any, Callable[[Any, Optimizer], TrainableProbabilisticModel]] = {
-        GPR: GaussianProcessRegression,
-        SGPR: GaussianProcessRegression,
-        VGP: VariationalGaussianProcess,
-        SVGP: SparseVariational,
-    }
-
-    assert model_config.supported_models() == models_mapping
-
-
-def test_gpflow_model_config_has_correct_default_optimizer() -> None:
-
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
-    model_config = GPflowModelConfig(**model_specs)
-
-    default_optimizer = gpflow.optimizers.Scipy
-
-    assert isinstance(model_config.optimizer, default_optimizer)
-
-
-def test_gpflow_model_config_allows_changing_default_optimizer() -> None:
-
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {
-        "model": gpr_model(x, fnc_3x_plus_10(x)),
-        "optimizer": tf.optimizers.Adam(),
-    }
-    model_config = GPflowModelConfig(**model_specs)
-
-    expected_optimizer = tf.optimizers.Adam
-
-    assert isinstance(model_config.optimizer, expected_optimizer)
+    assert model_type in ModelRegistry.get_registered_models()
+    assert ModelRegistry.get_interface(model_type) == interface
+    assert ModelRegistry.get_optimizer(model_type) == optimizer
