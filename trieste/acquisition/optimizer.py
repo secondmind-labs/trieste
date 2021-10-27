@@ -102,7 +102,7 @@ def generate_continuous_optimizer(
     num_recovery_runs: int = 5,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
-    Generate a gradient-based optimizer for :class:'Box' and :class:`TaggedProductSearchSpace'
+    Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
     spaces and batches of size 1. We perform gradient-based optimization across
     all :class:'Box' subspaces, starting from the best location found across a sample
     of `num_initial_samples` random points.
@@ -150,7 +150,7 @@ def generate_continuous_optimizer(
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
         and :class:`TaggedProductSearchSpace' spaces and batches of size of 1.
 
-        For :class:`TaggedProductSearchSpace' we only apply gradient updates to
+        For :class:'TaggedProductSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces, fixing the discrete elements to the best values
         found across the initial random search. To fix these discrete elements, we
         optimize over a continuous class:'Box' relaxation of the discrete subspaces
@@ -225,11 +225,11 @@ def get_bounds_of_box_relaxation_around_point(
 ) -> spo.Bounds:
     """
     A function to return the bounds of a continuous relaxation of
-    a :class:`TaggedProductSearchSpace' space, i.e. replacing discrete
-    spaces with continuous spaces. In particular, all :class:`DiscreteSearchSpace'
-    subspaces are replaced with a new :class:`DiscreteSearchSpace' fixed at their
+    a :class:'TaggedProductSearchSpace' space, i.e. replacing discrete
+    spaces with continuous spaces. In particular, all :class:'DiscreteSearchSpace'
+    subspaces are replaced with a new :class:'DiscreteSearchSpace' fixed at their
     respective component of the specified `current_point'. Note that
-    all :class:`Box' subspaces remain the same.
+    all :class:'Box' subspaces remain the same.
 
     :param space: The original search space.
     :param current_point: The point at which to make the continuous relaxation.

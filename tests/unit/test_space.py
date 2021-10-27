@@ -151,7 +151,7 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
         _ = test_point in space
 
 
-@pytest.mark.parametrize("num_samples", [0, 1, 3, 5, 6])
+@pytest.mark.parametrize("num_samples", [0, 1, 3, 5, 6, 10, 20])
 def test_discrete_search_space_sampling(num_samples: int) -> None:
     search_space = DiscreteSearchSpace(_points_in_2D_search_space())
     samples = search_space.sample(num_samples)
@@ -568,6 +568,15 @@ def test_product_space_returns_correct_bounds(
     npt.assert_array_equal(space.upper, upper)
 
 
+def test_product_space_get_subspace_raises_for_invalid_tag() -> None:
+    space_A = Box([-1, -2], [2, 3])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        product_space.get_subspace("dummy")
+
+
 def test_product_space_get_subspace() -> None:
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
@@ -632,13 +641,12 @@ def test_product_space_fix_subspace_doesnt_fix_undesired_subspace(points: tf.Ten
 
     for tag in tags:
         product_space_with_fixed_subspace = product_space.fix_subspace(tag, points)
-        remaining_tags = tags
-        remaining_tags.remove(tag)
-        for non_target_tag in remaining_tags:
-            assert isinstance(
-                product_space_with_fixed_subspace.get_subspace(non_target_tag),
-                type(product_space.get_subspace(non_target_tag)),
-            )
+        for other_tag in tags:
+            if other_tag != tag:
+                assert isinstance(
+                    product_space_with_fixed_subspace.get_subspace(other_tag),
+                    type(product_space.get_subspace(other_tag)),
+                )
 
 
 @pytest.mark.parametrize(

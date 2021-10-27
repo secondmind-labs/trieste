@@ -142,7 +142,7 @@ class DiscreteSearchSpace(SearchSpace):
     def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space.
         """
         if num_samples == 0:
@@ -283,7 +283,7 @@ class Box(SearchSpace):
         Sample randomly from the space.
 
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
         """
@@ -436,13 +436,13 @@ class TaggedProductSearchSpace(SearchSpace):
     def lower(self) -> TensorType:
         """The lowest values taken by each space dimension, concatenated across subspaces."""
         lower_for_each_subspace = [self.get_subspace(tag).lower for tag in self.subspace_tags]
-        return tf.concat(lower_for_each_subspace, -1)
+        return tf.concat(lower_for_each_subspace, axis=-1)
 
     @property
     def upper(self) -> TensorType:
         """The largest values taken by each space dimension, concatenated across subspaces."""
         upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
-        return tf.concat(upper_for_each_subspace, -1)
+        return tf.concat(upper_for_each_subspace, axis=-1)
 
     @property
     def subspace_tags(self) -> tuple[str, ...]:
@@ -460,7 +460,14 @@ class TaggedProductSearchSpace(SearchSpace):
 
         :param tag: The tag specifying the target subspace.
         """
-
+        tf.debugging.assert_equal(
+            tag in self.subspace_tags,
+            True,
+            message=f"""
+                Attempted to access a subspace that does not exist. This space only contains
+                subspaces with the tags {self.subspace_tags} but received {tag}.
+            """,
+        )
         return self._spaces[tag]
 
     def fix_subspace(self, tag: str, values: TensorType) -> TaggedProductSearchSpace:
@@ -473,7 +480,7 @@ class TaggedProductSearchSpace(SearchSpace):
         """
 
         new_spaces = [
-            self._spaces[t] if t != tag else DiscreteSearchSpace(points=values)
+            self.get_subspace(t) if t != tag else DiscreteSearchSpace(points=values)
             for t in self.subspace_tags
         ]
 
@@ -527,7 +534,7 @@ class TaggedProductSearchSpace(SearchSpace):
         and concatenating the resulting samples.
 
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
         """
