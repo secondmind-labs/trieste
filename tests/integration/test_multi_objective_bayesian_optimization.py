@@ -74,7 +74,7 @@ from trieste.types import TensorType
             EfficientGlobalOptimization(
                 BatchMonteCarloExpectedHypervolumeImprovement(
                     sample_size=500,
-                    ref_point_specification=tf.constant([1.1, 1.1], dtype=tf.float64),
+                    reference_point_spec=tf.constant([1.1, 1.1], dtype=tf.float64),
                 ).using(OBJECTIVE),
                 num_query_points=2,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
