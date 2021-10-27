@@ -903,7 +903,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
             used by default to set a reference point according to the datasets.
         """
         if callable(reference_point_spec):
-            self._ref_point_spec = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[
+                [TensorType], TensorType
+            ] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
@@ -1120,7 +1122,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         self._sample_size = sample_size
         self._jitter = jitter
         if callable(reference_point_spec):
-            self._ref_point_spec = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[
+                [TensorType], TensorType
+            ] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
@@ -1268,7 +1272,9 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         if callable(reference_point_spec):
-            self._ref_point_spec = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[
+                [TensorType], TensorType
+            ] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
