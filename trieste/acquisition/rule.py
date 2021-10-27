@@ -599,7 +599,10 @@ class AsynchronousGreedy(
             new_points_batch = self._optimizer(search_space, self._acquisition_function)
             state = state.add_pending_points(new_points_batch)
 
-            for _ in range(self._num_query_points - 1):
+            summary_writer = get_tensorboard_writer()
+            step_number = get_step_number()
+
+            for i in range(self._num_query_points - 1):
                 # greedily allocate additional batch elements
                 self._acquisition_function = self._builder.update_acquisition_function(
                     self._acquisition_function,
@@ -609,15 +612,15 @@ class AsynchronousGreedy(
                     new_optimization_step=False,
                 )
                 new_point = self._optimizer(search_space, self._acquisition_function)
+                if summary_writer:
+                    with summary_writer.as_default(step=step_number):
+                        batched_point = tf.expand_dims(new_point, axis=0)
+                        value = self._acquisition_function(batched_point)[0][0]
+                        tf.summary.scalar(
+                            f"AsyncGreedy.acquisition_function.maximum_found.{i}", value
+                        )
                 state = state.add_pending_points(new_point)
                 new_points_batch = tf.concat([new_points_batch, new_point], axis=0)
-
-            summary_writer = get_tensorboard_writer()
-            if summary_writer:
-                with summary_writer.as_default(step=get_step_number()):
-                    batched_points = tf.expand_dims(new_points_batch, axis=0)
-                    value = self._acquisition_function(batched_points)[0][0]
-                    tf.summary.scalar("AsyncGreedy.acquisition_function.maximum_found", value)
 
             return state, new_points_batch
 
