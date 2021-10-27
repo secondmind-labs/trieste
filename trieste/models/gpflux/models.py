@@ -27,7 +27,7 @@ from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
 from .architectures import ModifiedLatentVariableLayer
 from .interface import GPfluxPredictor
-from .utils import sample_dgp, sample_gidgp
+from .utils import sample_dgp, sample_gidgp, sample_diwp
 
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
@@ -344,9 +344,8 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
         if fit_args is None:
             self.fit_args = dict({
                 "verbose": False,
-                "lr": 0.01,
-                "epochs": 500,
-                "temper_until": 100,
+                "epochs": 400,
+                "temper_until": 40,
                 "batch_size": 500,
                 "scheduler": False
             })
@@ -365,7 +364,7 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
         return f"GlobalInducingDeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
 
     @property
-    def model_gpflux(self) -> Module:
+    def model_gpflux(self) -> DeepIWP:
         return self._model_gpflux
 
     @property
@@ -375,6 +374,9 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
     @property
     def optimizer(self) -> tf.keras.optimizers.Optimizer:
         return self._optimizer
+
+    def sample_trajectory(self) -> Callable:
+        return sample_diwp(self.model_gpflux)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model_gpflux.sample(query_points, num_samples, consistent=True)

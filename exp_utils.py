@@ -65,7 +65,10 @@ def build_deep_kernel_process_model(data, num_layers=2, num_inducing=100, learn_
         MCEI = MonteCarloExpectedImprovement(DeepKernelProcessSampler, 10)
         acquisition_rule = EfficientGlobalOptimization(MCEI)
 
-    optimizer = tf.optimizers.Adam(0.01)
+    acquisition_function = NegativeModelTrajectory()
+    acquisition_rule = EfficientGlobalOptimization(acquisition_function, optimizer=generate_continuous_optimizer(1000))
+
+    optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
 
     return (
         GPfluxModelConfig(**{
@@ -99,7 +102,7 @@ def build_vanilla_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: b
     epochs = 400
     batch_size = 1000
 
-    optimizer = tf.optimizers.Adam(0.005)
+    optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,
@@ -143,7 +146,7 @@ def build_gi_dgp_model(data, num_layers=2, num_inducing=100, learn_noise: bool =
     epochs = 400
     batch_size = 1000
 
-    optimizer = tf.optimizers.Adam(0.005)
+    optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,
@@ -239,27 +242,39 @@ def build_gp_model(data, learn_noise: bool = False, search_space: Optional[Box] 
 
 def test_ll_dkp(
     data: Dataset,
-    model: trieste.models.bayesfunc.models.BayesFuncModel,
+    model: trieste.models.gpflux.models.DeepKernelProcess,
     num_samples: int = 100
-):
-    query_points = data.query_points
-    observations = data.observations
-    if isinstance(query_points, tf.Tensor):
-        query_points = query_points.numpy()
-    if isinstance(observations, tf.Tensor):
-        observations = observations.numpy()
+) -> TensorType:
+    model.num_test_samples = num_samples
+    out_samples = model.model.call(data.query_points)
+    l = out_samples.log_prob(data.observations)
+    ind_ll = tf.reduce_logsumexp(l, axis=0) - math.log(num_samples)
+    return tf.reduce_mean(ind_ll, axis=0).numpy()
 
-    with t.no_grad():
-        dkp = model.model
-        X = t.from_numpy(query_points).to(dtype=t.float64)
-        y = t.from_numpy(observations).to(dtype=t.float64).reshape(-1, 1)
 
-        X = X.expand(num_samples, *X.shape)
-        Py = dkp(X)
-        ind_ll = Py.log_prob(y)
-
-        test_ll = (t.logsumexp(ind_ll, 0) - math.log(num_samples)).mean(0)
-    return test_ll.numpy()
+# def test_ll_dkp(
+#     data: Dataset,
+#     model: trieste.models.bayesfunc.models.BayesFuncModel,
+#     num_samples: int = 100
+# ):
+#     query_points = data.query_points
+#     observations = data.observations
+#     if isinstance(query_points, tf.Tensor):
+#         query_points = query_points.numpy()
+#     if isinstance(observations, tf.Tensor):
+#         observations = observations.numpy()
+#
+#     with t.no_grad():
+#         dkp = model.model
+#         X = t.from_numpy(query_points).to(dtype=t.float64)
+#         y = t.from_numpy(observations).to(dtype=t.float64).reshape(-1, 1)
+#
+#         X = X.expand(num_samples, *X.shape)
+#         Py = dkp(X)
+#         ind_ll = Py.log_prob(y)
+#
+#         test_ll = (t.logsumexp(ind_ll, 0) - math.log(num_samples)).mean(0)
+#     return test_ll.numpy()
 
 
 def test_ll_vanilla_dgp(
