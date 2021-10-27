@@ -458,7 +458,7 @@ class TaggedProductSearchSpace(SearchSpace):
         """
         Return the domain of a particular subspace.
 
-        :param tag: The tag specifying the target subspace. 
+        :param tag: The tag specifying the target subspace.
         """
 
         return self._spaces[tag]
@@ -468,8 +468,8 @@ class TaggedProductSearchSpace(SearchSpace):
         Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with
         a :class:`DiscreteSearchSpace` containing ``values`` as its points.
 
-        :param tag: The tag specifying the target subspace.  
-        :param values: The  values used to populate the new discrete subspace. 
+        :param tag: The tag specifying the target subspace.
+        :param values: The  values used to populate the new discrete subspace.
         """
 
         new_spaces = [

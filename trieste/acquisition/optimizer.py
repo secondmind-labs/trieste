@@ -177,7 +177,7 @@ def generate_continuous_optimizer(
 
         def _perform_optimization(starting_point: TensorType, bounds: spo.Bounds) -> OptimizeResult:
             variable.assign(starting_point)  # [1, D]
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), bounds = bounds)
+            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), bounds=bounds)
 
         successful_optimization = False
         chosen_point = variable  # [1, D]
@@ -215,7 +215,7 @@ def generate_continuous_optimizer(
                     """
                 )
 
-        return tf.convert_to_tensor(chosen_point) # convert chosen point back from a variable
+        return tf.convert_to_tensor(chosen_point)  # convert chosen point back from a variable
 
     return optimize_continuous
 
