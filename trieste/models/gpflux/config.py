@@ -19,7 +19,7 @@ from typing import Any, Dict, Tuple, Type
 from gpflux.models import DeepGP
 
 from ..config import ModelRegistry
-from ..models import TrainableProbabilisticModel
+from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import Optimizer
 from .models import DeepGaussianProcess
 

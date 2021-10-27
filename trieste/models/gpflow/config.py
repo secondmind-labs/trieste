@@ -19,7 +19,7 @@ from typing import Any, Dict, Tuple, Type
 from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from ..config import ModelRegistry
-from ..models import TrainableProbabilisticModel
+from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import BatchOptimizer, Optimizer
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 
