@@ -176,9 +176,8 @@ def generate_continuous_optimizer(
             return -target_func(variable[:, None, :])  # [1]
 
         def _perform_optimization(starting_point: TensorType, bounds: spo.Bounds) -> OptimizeResult:
-            opt_kwargs = {"bounds": bounds}
             variable.assign(starting_point)  # [1, D]
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **opt_kwargs)
+            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), bounds = bounds)
 
         successful_optimization = False
         chosen_point = variable  # [1, D]
@@ -216,7 +215,7 @@ def generate_continuous_optimizer(
                     """
                 )
 
-        return tf.convert_to_tensor(chosen_point)
+        return tf.convert_to_tensor(chosen_point) # convert chosen point back from a variable
 
     return optimize_continuous
 
@@ -226,8 +225,9 @@ def get_bounds_of_box_relaxation_around_point(
 ) -> spo.Bounds:
     """
     A function to return the bounds of a continuous relaxation of
-    a :class:`TaggedProductSearchSpace' space. All :class:`DiscreteSearchSpace'
-    subspaces are replaced with a new :class:`DiscreteSearchSpace' containing only their
+    a :class:`TaggedProductSearchSpace' space, i.e. replacing discrete
+    spaces with continuous spaces. In particular, all :class:`DiscreteSearchSpace'
+    subspaces are replaced with a new :class:`DiscreteSearchSpace' fixed at their
     respective component of the specified `current_point'. Note that
     all :class:`Box' subspaces remain the same.
 

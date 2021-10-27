@@ -455,14 +455,23 @@ class TaggedProductSearchSpace(SearchSpace):
         return self._dimension
 
     def get_subspace(self, tag: str) -> SearchSpace:
-        """Return the domain of a particular subspace."""
+        """
+        Return the domain of a particular subspace.
+
+        :param tag: The tag specifying the target subspace. 
+        """
+
         return self._spaces[tag]
 
     def fix_subspace(self, tag: str, values: TensorType) -> TaggedProductSearchSpace:
         """
         Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with
         a :class:`DiscreteSearchSpace` containing ``values`` as its points.
+
+        :param tag: The tag specifying the target subspace.  
+        :param values: The  values used to populate the new discrete subspace. 
         """
+
         new_spaces = [
             self._spaces[t] if t != tag else DiscreteSearchSpace(points=values)
             for t in self.subspace_tags
