@@ -64,7 +64,7 @@ class SearchSpace(ABC):
     @property
     @abstractmethod
     def upper(self) -> TensorType:
-        """The largest value taken by each search space dimension."""
+        """The highest value taken by each search space dimension."""
 
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
@@ -122,7 +122,7 @@ class DiscreteSearchSpace(SearchSpace):
 
     @property
     def upper(self) -> TensorType:
-        """The lowest value taken across all points by each search space dimension."""
+        """The highest value taken across all points by each search space dimension."""
         return tf.reduce_max(self.points, -2)
 
     @property
@@ -440,7 +440,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
     @property
     def upper(self) -> TensorType:
-        """The largest values taken by each space dimension, concatenated across subspaces."""
+        """The highest values taken by each space dimension, concatenated across subspaces."""
         upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
         return tf.concat(upper_for_each_subspace, axis=-1)
 
@@ -473,7 +473,8 @@ class TaggedProductSearchSpace(SearchSpace):
     def fix_subspace(self, tag: str, values: TensorType) -> TaggedProductSearchSpace:
         """
         Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with
-        a :class:`DiscreteSearchSpace` containing ``values`` as its points.
+        a :class:`DiscreteSearchSpace` containing ``values`` as its points. This is useful if you
+        wish to restrict subspaces to sets of representative points.
 
         :param tag: The tag specifying the target subspace.
         :param values: The  values used to populate the new discrete subspace.
