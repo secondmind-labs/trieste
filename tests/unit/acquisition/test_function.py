@@ -41,7 +41,7 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     GaussianProcessSampler,
     QuadraticMeanAndRBFKernel,
-    rbf
+    rbf,
 )
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function import (
@@ -57,8 +57,8 @@ from trieste.acquisition.function import (
     ExpectedImprovement,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
-    MonteCarloExpectedImprovement,
     MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     PenalizationFunction,
@@ -80,12 +80,12 @@ from trieste.acquisition.function import (
     probability_of_feasibility,
     soft_local_penalizer,
 )
-from trieste.acquisition.sampler import Sampler
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.multi_objective.partition import (
     ExactPartition2dNonDominated,
     prepare_default_non_dominated_partition_bounds,
 )
+from trieste.acquisition.sampler import Sampler
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin

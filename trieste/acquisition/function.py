@@ -436,8 +436,7 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
     "best" value is taken to be the minimum of the posterior mean at observed points.
     """
 
-    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler],
-                 sample_size: int):
+    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler], sample_size: int):
         """
         :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
         :param sample_size: The number of samples for each batch of points.
@@ -455,7 +454,7 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r})"
 
     def prepare_acquisition_function(
-            self, dataset: Dataset, model: ProbabilisticModel
+        self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -490,10 +489,10 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
             samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
             improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
             variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
-            augmentation = 1 - (tf.math.sqrt(noise_variance) /
-                tf.math.sqrt(noise_variance + variance)
+            augmentation = 1 - (
+                tf.math.sqrt(noise_variance) / tf.math.sqrt(noise_variance + variance)
             )
-            return augmentation*tf.reduce_mean(improvement, axis=0)  # [N, 1]
+            return augmentation * tf.reduce_mean(improvement, axis=0)  # [N, 1]
 
         return mc_aei
 

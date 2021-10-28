@@ -19,7 +19,7 @@ from typing import Any, Callable
 import pytest
 import tensorflow as tf
 
-from tests.util.models.gpflux.models import two_layer_dgp_model, simple_two_layer_dgp_model
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
 
 
 @pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
