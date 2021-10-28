@@ -205,7 +205,10 @@ def generate_continuous_optimizer(
         if not successful_optimization:  # if all optimizations failed then try from random start
             for i in tf.range(num_recovery_runs):
                 random_start = space.sample(1)
-                bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
+                if isinstance(space, TaggedProductSearchSpace):
+                    bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
+                else:
+                    bounds = spo.Bounds(space.lower, space.upper)
                 opt_result = _perform_optimization(random_start, bounds)
                 if opt_result.success:
                     chosen_point = variable  # [1, D]

@@ -236,7 +236,7 @@ def test_get_bounds_of_box_relaxation_around_point_raises_for_not_product_spaces
     point: TensorType,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        get_bounds_of_box_relaxation_around_point(search_space, point)
+        get_bounds_of_box_relaxation_around_point(search_space, point)  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -292,7 +292,7 @@ def test_get_bounds_of_box_relaxation_around_point_raises_for_not_product_spaces
     ],
 )
 def test_get_bounds_of_box_relaxation_around_point(
-    search_space: TaggedProductSearchSpace | Box,
+    search_space: TaggedProductSearchSpace,
     point: TensorType,
     lower: TensorType,
     upper: TensorType,
