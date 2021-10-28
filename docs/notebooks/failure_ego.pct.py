@@ -138,7 +138,7 @@ models: dict[str, trieste.models.ModelSpec] = {
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
 )
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
