@@ -186,7 +186,11 @@ def generate_continuous_optimizer(
         for i in tf.range(
             num_optimization_runs
         ):  # perform optimization for each chosen starting point
-            bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
+            if isinstance(space, TaggedProductSearchSpace):
+                bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
+            else:
+                bounds = spo.Bounds(space.lower, space.upper)
+
             opt_result = _perform_optimization(initial_points[i : i + 1], bounds)
             if opt_result.success:
                 successful_optimization = True
@@ -221,32 +225,30 @@ def generate_continuous_optimizer(
 
 
 def get_bounds_of_box_relaxation_around_point(
-    space: TaggedProductSearchSpace | Box, current_point: TensorType
+    space: TaggedProductSearchSpace, current_point: TensorType
 ) -> spo.Bounds:
     """
     A function to return the bounds of a continuous relaxation of
     a :class:'TaggedProductSearchSpace' space, i.e. replacing discrete
     spaces with continuous spaces. In particular, all :class:'DiscreteSearchSpace'
     subspaces are replaced with a new :class:'DiscreteSearchSpace' fixed at their
-    respective component of the specified `current_point'. Note that
+    respective component of the specified 'current_point'. Note that
     all :class:'Box' subspaces remain the same.
 
     :param space: The original search space.
     :param current_point: The point at which to make the continuous relaxation.
     :return: Bounds for the Scipy optimizer.
     """
+    tf.debugging.Assert(isinstance(space, TaggedProductSearchSpace), [])
 
-    if isinstance(space, TaggedProductSearchSpace):  # convert discrete subspaces to box spaces.
-        space_with_fixed_discrete = space
-        for tag in space.subspace_tags:
-            if isinstance(space.get_subspace(tag), DiscreteSearchSpace):
-                subspace_value = space.get_subspace_component(tag, current_point)
-                space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(
-                    tag, subspace_value
-                )
-        return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
-    else:  # if already a box space then just return bounds
-        return spo.Bounds(space.lower, space.upper)
+    space_with_fixed_discrete = space
+    for tag in space.subspace_tags:
+        if isinstance(
+            space.get_subspace(tag), DiscreteSearchSpace
+        ):  # convert discrete subspaces to box spaces.
+            subspace_value = space.get_subspace_component(tag, current_point)
+            space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag, subspace_value)
+    return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
 
 
 def batchify(

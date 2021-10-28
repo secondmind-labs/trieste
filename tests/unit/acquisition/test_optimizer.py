@@ -23,7 +23,7 @@ import tensorflow as tf
 from gpflow.optimizers import Scipy
 from scipy.optimize import OptimizeResult
 
-from tests.util.misc import quadratic, random_seed
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
@@ -224,10 +224,24 @@ def test_continuous_optimizer(
 
 
 @pytest.mark.parametrize(
+    "search_space, point",
+    [
+        (Box([-1], [2]), tf.constant([[0.0]], dtype=tf.float64)),
+        (Box([-1, -2], [1.5, 2.5]), tf.constant([[0.0, 0.0]])),
+        (DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]])), tf.constant([[0.2]])),
+    ],
+)
+def test_get_bounds_of_box_relaxation_around_point_raises_for_not_product_spaces(
+    search_space: DiscreteSearchSpace | Box,
+    point: TensorType,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        get_bounds_of_box_relaxation_around_point(search_space, point)
+
+
+@pytest.mark.parametrize(
     "search_space, point, lower, upper",
     [
-        (Box([-1], [2]), tf.constant([[0.0]], dtype=tf.float64), [-1], [2]),  # 1D Box
-        (Box([-1, -2], [1.5, 2.5]), tf.constant([[0.0, 0.0]]), [-1, -2], [1.5, 2.5]),  # 2D Box
         (
             TaggedProductSearchSpace(
                 [

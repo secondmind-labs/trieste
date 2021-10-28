@@ -477,7 +477,7 @@ class TaggedProductSearchSpace(SearchSpace):
         wish to restrict subspaces to sets of representative points.
 
         :param tag: The tag specifying the target subspace.
-        :param values: The  values used to populate the new discrete subspace.
+        :param values: The  values used to populate the new discrete subspace.z
         """
 
         new_spaces = [
