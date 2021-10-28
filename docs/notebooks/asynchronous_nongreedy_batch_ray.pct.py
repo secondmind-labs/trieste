@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.10.2
-#   kernelspec:
-#     display_name: trieste
-#     language: python
-#     name: trieste
-# ---
-
 # %% [markdown]
 # # Asynchronous batch Bayesian optimization
 #
