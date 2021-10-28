@@ -18,7 +18,7 @@ import ray
 import numpy as np
 import time
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.

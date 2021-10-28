@@ -28,7 +28,7 @@ from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1793)
 tf.random.set_seed(1793)

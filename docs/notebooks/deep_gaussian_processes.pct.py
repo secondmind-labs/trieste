@@ -6,7 +6,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 # %% [markdown]
 # For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!

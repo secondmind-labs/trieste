@@ -20,7 +20,7 @@ from trieste.objectives import TRID_10_MINIMUM, TRID_10_SEARCH_SPACE, trid_10
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1794)
 tf.random.set_seed(1794)

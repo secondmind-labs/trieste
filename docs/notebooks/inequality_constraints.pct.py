@@ -6,7 +6,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1793)
 tf.random.set_seed(1793)

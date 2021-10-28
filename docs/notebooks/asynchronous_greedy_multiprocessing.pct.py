@@ -16,7 +16,7 @@ import numpy as np
 import time
 import timeit
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 
 # %% [markdown]

@@ -23,7 +23,7 @@ from trieste.space import Box
 
 from util.plotting import plot_regret
 
-FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
+FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
