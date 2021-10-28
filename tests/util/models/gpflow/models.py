@@ -24,11 +24,11 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
-from trieste.acquisition.sampler import Sampler
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.models.gpflow import GPflowPredictor
 from trieste.models.optimizer import Optimizer
+from trieste.models.sampler import ModelSampler
 from trieste.types import TensorType
 
 
@@ -97,6 +97,22 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         return tf.squeeze(tf.concat(covs, axis=-3))
 
 
+class GaussianProcessWithReparamSampler(GaussianProcess):
+    """A (static) Gaussian process over a vector random variable with :func:`reparam_sampler`
+    method."""
+
+    def __init__(
+        self,
+        mean_functions: Sequence[Callable[[TensorType], TensorType]],
+        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(mean_functions, kernels, noise_variance)
+
+    def reparam_sampler(self, num_samples: int) -> ModelSampler:
+        return GaussianProcessSampler(num_samples, self)
+
+
 class QuadraticMeanAndRBFKernel(GaussianProcess):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
@@ -116,12 +132,17 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
 
+    def reparam_sampler(self, num_samples: int) -> ModelSampler:
+        return GaussianProcessSampler(num_samples, self)
 
-class GaussianProcessSampler(Sampler):
+
+class GaussianProcessSampler(ModelSampler):
     r"""A :class:`trieste.acquisition.sampler.Sampler` for a :class:`GaussianProcess` model."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
-        super().__init__(sample_size, model)
+        super().__init__(sample_size)
+
+        self._model = model
 
     def sample(self, at: TensorType) -> TensorType:
         mean, var = self._model.predict(at)
