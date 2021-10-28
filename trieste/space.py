@@ -148,10 +148,10 @@ class DiscreteSearchSpace(SearchSpace):
         if num_samples == 0:
             return self.points[:0, :]
         else:
-            sampled_indicies = tf.random.categorical(
+            sampled_indices = tf.random.categorical(
                 tf.ones((1, tf.shape(self.points)[0])), num_samples
             )
-            return tf.gather(self.points, sampled_indicies)[0, :, :]  # [num_samples, D]
+            return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
@@ -420,7 +420,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
         subspace_sizes = [self._spaces[tag].dimension for tag in list(self._tags)]
         self._subspace_sizes_by_tag = dict(zip(self._tags, subspace_sizes))
-        self._subspace_starting_indicies = dict(
+        self._subspace_starting_indices = dict(
             zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
         )
         self._dimension = tf.reduce_sum(subspace_sizes)
@@ -496,7 +496,7 @@ class TaggedProductSearchSpace(SearchSpace):
             [N, Dsub], where Dsub is the dimensionality of the specified subspace.
         """
 
-        starting_index_of_subspace = self._subspace_starting_indicies[tag]
+        starting_index_of_subspace = self._subspace_starting_indices[tag]
         ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes_by_tag[tag]
         return values[:, starting_index_of_subspace:ending_index_of_subspace]
 

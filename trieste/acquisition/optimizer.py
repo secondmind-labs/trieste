@@ -103,9 +103,9 @@ def generate_continuous_optimizer(
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
-    spaces and batches of size 1. We perform gradient-based optimization across
-    all :class:'Box' subspaces, starting from the best location found across a sample
-    of `num_initial_samples` random points.
+    spaces and batches of size 1. In the case of a :class:'TaggedProductSearchSpace', We perform
+    gradient-based optimization across all :class:'Box' subspaces, starting from the best location
+    found across a sample of `num_initial_samples` random points.
 
     This optimizer supports Scipy's L-BFGS-B optimizer, which optimizes directly within and up to
     the bounds of the search space.
