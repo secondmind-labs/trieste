@@ -367,7 +367,7 @@ def test_mc_expected_improvement_builds_expected_improvement_using_best_from_mod
     model = QuadraticMeanAndRBFKernel()
     sampler = GaussianProcessSampler
     acq_fn = MonteCarloExpectedImprovement(sampler, int(1e6)).prepare_acquisition_function(
-        dataset, model
+        model, dataset
     )
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
@@ -380,7 +380,7 @@ def test_mc_expected_improvement_builder_raises_for_empty_data() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         (
             MonteCarloExpectedImprovement(Sampler, 100).prepare_acquisition_function(
-                data, QuadraticMeanAndRBFKernel()
+                QuadraticMeanAndRBFKernel(), data
             )
         )
 
@@ -419,12 +419,12 @@ def test_mc_expected_improvement(
 
     eif = MonteCarloExpectedImprovement(
         GaussianProcessSampler, num_samples_per_point
-    ).prepare_acquisition_function(dataset, model)
+    ).prepare_acquisition_function(model, dataset)
     ei_approx = eif(xs[..., None, :])
 
     best = tf.reduce_min(branin(dataset.query_points))
     eif = expected_improvement(model, best)
-    ei = eif(xs[..., None, :])
+    ei = eif(xs[..., None, :])  # type: ignore
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -444,7 +444,7 @@ def test_mc_augmented_expected_improvement_builds_aei_using_best_from_model() ->
     model = QuadraticMeanAndRBFKernel()
     sampler = GaussianProcessSampler
     acq_fn = MonteCarloAugmentedExpectedImprovement(sampler, int(1e6)).prepare_acquisition_function(
-        dataset, model
+        model, dataset
     )
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = augmented_expected_improvement(model, tf.constant([0.0]))(xs)
@@ -457,7 +457,7 @@ def test_mc_augmented_expected_improvement_builder_raises_for_empty_data() -> No
     with pytest.raises(tf.errors.InvalidArgumentError):
         (
             MonteCarloAugmentedExpectedImprovement(Sampler, 100).prepare_acquisition_function(
-                data, QuadraticMeanAndRBFKernel()
+                QuadraticMeanAndRBFKernel(), data
             )
         )
 
@@ -501,12 +501,12 @@ def test_mc_augmented_expected_improvement(
 
     aeif = MonteCarloExpectedImprovement(
         GaussianProcessSampler, num_samples_per_point
-    ).prepare_acquisition_function(dataset, model)
+    ).prepare_acquisition_function(model, dataset)
     aei_approx = aeif(xs[..., None, :])
 
     best = tf.reduce_min(branin(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
-    aei = aeif(xs[..., None, :])
+    aei = aeif(xs[..., None, :])  # type: ignore
 
     npt.assert_allclose(aei, aei_approx, rtol=rtol, atol=atol)
 

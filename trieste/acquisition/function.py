@@ -392,7 +392,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"MonteCarloExpectedImprovement({self._sample_size!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -401,6 +403,10 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an event shape of [1].
         """
+
+        if not isinstance(dataset, Dataset):
+            raise ValueError(f"`dataset` must be a Dataset for {self.__repr__()}, received"
+                             f"{type(dataset)}")
 
         tf.debugging.assert_positive(len(dataset))
 
@@ -454,7 +460,9 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -463,6 +471,10 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an event shape of [1].
         """
+
+        if not isinstance(dataset, Dataset):
+            raise ValueError(f"`dataset` must be a Dataset for {self.__repr__()}, received"
+                             f"{type(dataset)}")
 
         tf.debugging.assert_positive(len(dataset))
 

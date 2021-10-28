@@ -20,12 +20,14 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
+from gpflux.models import DeepGP
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import two_layer_dgp_model
 from trieste.acquisition.models import DeepGaussianProcessSampler
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -42,7 +44,7 @@ def test_deep_gaussian_process_sampler_raises_for_invalid_sample_size(
 
 def test_deep_gaussian_process_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
-        DeepGaussianProcessSampler(10, QuadraticMeanAndRBFKernel())
+        DeepGaussianProcessSampler(10, QuadraticMeanAndRBFKernel())  # type: ignore
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3, 4]])
@@ -61,7 +63,7 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
 
 @random_seed
 def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable,
+    two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
     sample_size = 1000
@@ -97,7 +99,7 @@ def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution
 
 @random_seed
 def test_deep_gaussian_process_sampler_sample_is_continuous(
-    two_layer_model: Callable,
+    two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -114,7 +116,7 @@ def test_deep_gaussian_process_sampler_sample_is_continuous(
 
 
 def test_deep_gaussian_process_sampler_sample_is_repeatable(
-    two_layer_model: Callable,
+    two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -132,7 +134,7 @@ def test_deep_gaussian_process_sampler_sample_is_repeatable(
 
 @random_seed
 def test_deep_gaussian_process_sampler_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable,
+    two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)

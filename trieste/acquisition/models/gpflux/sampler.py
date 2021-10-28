@@ -17,11 +17,12 @@ This module is the home of the GPflux-specific samplers for use by Trieste's acq
 
 from __future__ import annotations
 
+from typing import cast
+
 import tensorflow as tf
 from gpflux.layers import LatentVariableLayer
 
 from trieste.acquisition.sampler import Sampler
-from trieste.models import ProbabilisticModel
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.types import TensorType
 
@@ -34,7 +35,7 @@ class DeepGaussianProcessSampler(Sampler):
     with DGP models.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: DeepGaussianProcess):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from. Must be a :class:`DeepGaussianProcess`
@@ -69,7 +70,8 @@ class DeepGaussianProcessSampler(Sampler):
         eps_is_populated = tf.size(self._eps_list[0]) != 0
 
         samples = tf.tile(tf.expand_dims(at, 0), [self._sample_size, 1, 1])
-        for i, layer in enumerate(self._model.model_gpflux.f_layers):
+        model: DeepGaussianProcess = cast(DeepGaussianProcess, self._model)
+        for i, layer in enumerate(model.model_gpflux.f_layers):
             if isinstance(layer, LatentVariableLayer):
                 if not eps_is_populated:
                     self._eps_list[i].assign(layer.prior.sample([tf.shape(samples)[:-1]]))
