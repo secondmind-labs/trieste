@@ -39,7 +39,7 @@ def test_reducer_raises_for_no_builders() -> None:
 
 
 def test_reducer__repr_builders() -> None:
-    class FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?(Reducer):
+    class Dummy(Reducer):
         def __repr__(self) -> str:
             return f"Dummy({self._repr_builders()})"
 
