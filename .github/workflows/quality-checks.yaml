@@ -48,16 +48,6 @@ jobs:
     - run: pip install tox
     - run: tox -e tests
 
-  notebooks:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-    - run: pip install tox
-    - run: tox -e notebooks
-
   docs:
     runs-on: ubuntu-latest
     steps:
