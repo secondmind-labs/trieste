@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import tensorflow as tf
+import torch as t
 
 from trieste.types import TensorType
 from trieste.utils import to_numpy
@@ -217,6 +218,48 @@ def plot_gi_dgp_plotly(model, mins: TensorType, maxs: TensorType, grid_density: 
     Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
 
     # Evaluate objective function
+    samples = model.sample(Xplot, num_samples=num_samples)
+    Fmean = tf.reduce_mean(samples, axis=0)
+    Fvar = tf.math.reduce_variance(samples, axis=0)
+
+    n_output = Fmean.shape[1]
+
+    fig = make_subplots(
+        rows=1, cols=n_output, specs=[np.repeat({"type": "surface"}, n_output).tolist()]
+    )
+
+    for k in range(n_output):
+        fmean = Fmean[:, k].numpy()
+        fvar = Fvar[:, k].numpy()
+
+        lcb = fmean - 2 * np.sqrt(fvar)
+        ucb = fmean + 2 * np.sqrt(fvar)
+
+        fig = add_surface_plotly(xx, yy, fmean, fig, alpha=1.0, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, lcb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, ucb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+
+    return fig
+
+
+def plot_bf_dgp_plotly(model, mins: TensorType, maxs: TensorType, grid_density: int = 20,
+                    num_samples: int = 100):
+    """
+
+    :param model: a dgp model
+    :param mins: list of 2 lower bounds
+    :param maxs: list of 2 upper bounds
+    :param grid_density: integer (grid size)
+    :return: a plotly figure
+    """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
+
+    # Create a regular grid on the parameter space
+    Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
+
+    # Evaluate objective function
+
     samples = model.sample(Xplot, num_samples=num_samples)
     Fmean = tf.reduce_mean(samples, axis=0)
     Fvar = tf.math.reduce_variance(samples, axis=0)
