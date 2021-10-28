@@ -12,6 +12,9 @@ from util.plotting_plotly import plot_function_plotly
 import matplotlib.pyplot as plt
 import trieste
 
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
@@ -84,9 +87,11 @@ model = create_model(model_spec)
 from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
+monte_carlo_sample_size = 1000 if not DUMMY_RUN else 10
+batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size, jitter=1e-5)
+batch_size = 10 if not DUMMY_RUN else 2
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=batch_ei_acq)
+    num_query_points=batch_size, builder=batch_ei_acq)
 points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model, dataset=initial_data)
 
 # %% [markdown]
@@ -95,9 +100,10 @@ points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model
 # %%
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
+sample_size = 2000 if not DUMMY_RUN else 10
+local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=sample_size)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=local_penalization_acq)
+    num_query_points=batch_size, builder=local_penalization_acq)
 points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single(
     search_space, model, dataset=initial_data)
 
@@ -107,9 +113,9 @@ points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single
 # %%
 from trieste.acquisition import GIBBON
 
-gibbon_acq = GIBBON(search_space, grid_size = 2000)
+gibbon_acq = GIBBON(search_space, grid_size = sample_size)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=gibbon_acq)
+    num_query_points=batch_size, builder=gibbon_acq)
 points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
     search_space, model, dataset=initial_data)
 
@@ -174,7 +180,8 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
-qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
+num_steps = 10 if not DUMMY_RUN else 1
+qei_result = bo.optimize(num_steps, initial_data, model, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]
 # then we repeat the same optimization with `LocalPenalizationAcquisitionFunction`...
@@ -184,7 +191,7 @@ local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=local_penalization_acq
 )
 local_penalization_result = bo.optimize(
-    10, initial_data, model, acquisition_rule=local_penalization_rule
+    num_steps, initial_data, model, acquisition_rule=local_penalization_rule
 )
 
 # %% [markdown]
@@ -195,7 +202,7 @@ gibbon_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=gibbon_acq
 )
 gibbon_result = bo.optimize(
-    10, initial_data, model, acquisition_rule=gibbon_rule
+    num_steps, initial_data, model, acquisition_rule=gibbon_rule
 )
 
 # %% [markdown]

@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -55,8 +58,10 @@ model_config = GPflowModelConfig(**{
 # We achieve Bayesian optimization with Thompson sampling by specifying `DiscreteThompsonSampling` as the acquisition rule. Unlike the `EfficientGlobalOptimization` acquisition rule, `DiscreteThompsonSampling` does not use an acquisition function. Instead, in each optimization step, the rule samples `num_query_points` samples from the model posterior at `num_search_space_samples` points on the search space. It then returns the `num_query_points` points of those that minimise the model posterior.
 
 # %%
+num_search_space_samples = 1000 if not DUMMY_RUN else 10
+num_query_points = 10 if not DUMMY_RUN else 2
 acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
-    num_search_space_samples=1000, num_query_points=10
+    num_search_space_samples=num_search_space_samples, num_query_points=num_query_points
 )
 
 # %% [markdown]
@@ -67,7 +72,8 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(5, initial_data, model_config, acq_rule, track_state=False)
+num_steps = 5 if not DUMMY_RUN else 2
+result = bo.optimize(num_steps, initial_data, model_config, acq_rule, track_state=False)
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]

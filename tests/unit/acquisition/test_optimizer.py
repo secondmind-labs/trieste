@@ -32,10 +32,9 @@ from trieste.acquisition.optimizer import (
     batchify,
     generate_continuous_optimizer,
     generate_random_search_optimizer,
-    get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
 )
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 from trieste.types import TensorType
 
 
@@ -65,12 +64,12 @@ SP = TypeVar("SP", bound=SearchSpace)
             [[1.2]],
             [optimize_discrete, generate_random_search_optimizer()],
         ),  # 1D
-        (
+        (  # 2D
             DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [-0.2, 0.3], [0.2, -0.3], [1.2, 0.4]])),
             [0.3, -0.4],
             [[0.2, -0.3]],
             [optimize_discrete, generate_random_search_optimizer()],
-        ),  # 2D
+        ),
         (
             Box([-1], [2]),
             [1.0],
@@ -140,65 +139,6 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
             [0.3, -0.4, 0.5],
             [[0.3, -0.4, 1.0]],
         ),  # 3D
-        (
-            TaggedProductSearchSpace([Box([-1, -2], [1.5, 2.5])]),
-            [0.3, -0.4],
-            [[0.3, -0.4]],
-        ),  # Tagged space of just 2D Box
-        (
-            TaggedProductSearchSpace(
-                [
-                    DiscreteSearchSpace(
-                        tf.constant([[0.4, -2.0], [0.3, -0.4], [0.0, 2.5]], dtype=tf.float64)
-                    )
-                ]
-            ),
-            [0.3, -0.4],
-            [[0.3, -0.4]],
-        ),  # Tagged space of just 2D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1], [1.5]),
-                    DiscreteSearchSpace(tf.constant([[-2.0], [-0.4], [2.5]], dtype=tf.float64)),
-                ]
-            ),
-            [0.3, -0.4],
-            [[0.3, -0.4]],
-        ),  # Tagged space of 1D Box, 1D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1, -2], [1.5, 2.5]),
-                    DiscreteSearchSpace(tf.constant([[1.0], [1.25], [1.5]], dtype=tf.float64)),
-                ]
-            ),
-            [0.3, -0.4, 0.5],
-            [[0.3, -0.4, 1.0]],
-        ),  # Tagged space of 2D Box, 1D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1], [1.5]),
-                    DiscreteSearchSpace(
-                        tf.constant([[-0.4, 1.0], [0.0, 1.25], [1.0, 1.5]], dtype=tf.float64)
-                    ),
-                ]
-            ),
-            [0.3, -0.4, 0.5],
-            [[0.3, -0.4, 1.0]],
-        ),  # Tagged space of 1D Box, 2D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1], [1.5]),
-                    DiscreteSearchSpace(tf.constant([[-0.4], [0.0], [1.0]], dtype=tf.float64)),
-                    DiscreteSearchSpace(tf.constant([[1.0], [1.25], [1.5]], dtype=tf.float64)),
-                ]
-            ),
-            [0.3, -0.4, 0.5],
-            [[0.3, -0.4, 1.0]],
-        ),  # Tagged space of 1D Box, 1D discrete, 1D discrete
     ],
 )
 @pytest.mark.parametrize(
@@ -207,10 +147,10 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(),
         generate_continuous_optimizer(num_optimization_runs=3),
         generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
-        generate_continuous_optimizer(),
-        generate_continuous_optimizer(num_optimization_runs=3),
-        generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
-        generate_continuous_optimizer(num_optimization_runs=1, num_initial_samples=5),
+        generate_continuous_optimizer(sigmoid=True),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=3, num_recovery_runs=0),
+        generate_continuous_optimizer(sigmoid=True, num_optimization_runs=1, num_initial_samples=1),
     ],
 )
 def test_continuous_optimizer(
@@ -221,71 +161,6 @@ def test_continuous_optimizer(
 ) -> None:
     maximizer = optimizer(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
-
-
-@pytest.mark.parametrize(
-    "search_space, point, lower, upper",
-    [
-        (Box([-1], [2]), tf.constant([[0.0]], dtype=tf.float64), [-1], [2]),  # 1D Box
-        (Box([-1, -2], [1.5, 2.5]), tf.constant([[0.0, 0.0]]), [-1, -2], [1.5, 2.5]),  # 2D Box
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1.0], [1.5]),
-                    DiscreteSearchSpace(tf.constant([[-2.0], [-0.4], [2.5]], dtype=tf.float64)),
-                ]
-            ),
-            tf.constant([[0.0, -0.4]], dtype=tf.float64),
-            [-1, -0.4],
-            [1.5, -0.4],
-        ),  # Tagged space of 1D Box and 1D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1.0, -2.0], [1.5, 2.5]),
-                    DiscreteSearchSpace(tf.constant([[1.0], [1.25], [1.5]], dtype=tf.float64)),
-                ]
-            ),
-            tf.constant([[0.0, 1.0, 1.25]], dtype=tf.float64),
-            [-1.0, -2.0, 1.25],
-            [1.5, 2.5, 1.25],
-        ),  # Tagged space of 2D Box and 1D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1.0], [1.5]),
-                    DiscreteSearchSpace(
-                        tf.constant([[-0.4, 1.0], [0.0, 1.25], [1.0, 1.5]], dtype=tf.float64)
-                    ),
-                ]
-            ),
-            tf.constant([[-1.0, 1.0, 1.5]], dtype=tf.float64),
-            [-1.0, 1.0, 1.5],
-            [1.5, 1.0, 1.5],
-        ),  # Tagged space of 1D Box and 2D discrete
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1.0], [1.5]),
-                    DiscreteSearchSpace(tf.constant([[-0.4], [0.0], [1.0]], dtype=tf.float64)),
-                    DiscreteSearchSpace(tf.constant([[1.0], [1.25], [1.5]], dtype=tf.float64)),
-                ]
-            ),
-            tf.constant([[-1.0, 1.0, 1.5]], dtype=tf.float64),
-            [-1.0, 1.0, 1.5],
-            [1.5, 1.0, 1.5],
-        ),  # Tagged space of 1D Box, 1D discrete and 1D discrete
-    ],
-)
-def test_get_bounds_of_box_relaxation_around_point(
-    search_space: TaggedProductSearchSpace | Box,
-    point: TensorType,
-    lower: TensorType,
-    upper: TensorType,
-) -> None:
-    bounds = get_bounds_of_box_relaxation_around_point(search_space, point)
-    npt.assert_array_equal(bounds.lb, lower)
-    npt.assert_array_equal(bounds.ub, upper)
 
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])
@@ -373,16 +248,6 @@ def test_optimize_batch(
         ),
         (Box([0], [1]), _quadratic_sum([0.5]), ([[0.5]])),
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
-        (
-            TaggedProductSearchSpace(
-                [
-                    Box([-1, -1], [1, 1]),
-                    DiscreteSearchSpace(tf.constant([[-0.2], [0.0], [0.2]], dtype=tf.float64)),
-                ]
-            ),
-            _quadratic_sum([0.5, -0.5, 0.2]),
-            ([[0.5, -0.5, 0.2]]),
-        ),
     ],
 )
 def test_automatic_optimizer_selector(

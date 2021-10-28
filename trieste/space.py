@@ -53,18 +53,8 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
-
-    @property
-    @abstractmethod
-    def lower(self) -> TensorType:
-        """The lowest value taken by each search space dimension."""
-
-    @property
-    @abstractmethod
-    def upper(self) -> TensorType:
-        """The highest value taken by each search space dimension."""
 
     @abstractmethod
     def __mul__(self: SP, other: SP) -> SP:
@@ -116,22 +106,12 @@ class DiscreteSearchSpace(SearchSpace):
         return f"DiscreteSearchSpace({self._points!r})"
 
     @property
-    def lower(self) -> TensorType:
-        """The lowest value taken across all points by each search space dimension."""
-        return tf.reduce_min(self.points, -2)
-
-    @property
-    def upper(self) -> TensorType:
-        """The highest value taken across all points by each search space dimension."""
-        return tf.reduce_max(self.points, -2)
-
-    @property
     def points(self) -> TensorType:
         """All the points in this space."""
         return self._points
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -142,16 +122,15 @@ class DiscreteSearchSpace(SearchSpace):
     def sample(self, num_samples: int) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space.
         """
-        if num_samples == 0:
-            return self.points[:0, :]
-        else:
-            sampled_indicies = tf.random.categorical(
-                tf.ones((1, tf.shape(self.points)[0])), num_samples
-            )
-            return tf.gather(self.points, sampled_indicies)[0, :, :]  # [num_samples, D]
+        tf.debugging.assert_less_equal(
+            num_samples,
+            len(self._points),
+            message="Number of samples cannot be greater than the number of points in search space",
+        )
+        return tf.random.shuffle(self._points)[:num_samples, :]
 
     def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
@@ -251,7 +230,7 @@ class Box(SearchSpace):
         return self._upper
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -283,7 +262,7 @@ class Box(SearchSpace):
         Sample randomly from the space.
 
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
         """
@@ -433,65 +412,24 @@ class TaggedProductSearchSpace(SearchSpace):
                 """
 
     @property
-    def lower(self) -> TensorType:
-        """The lowest values taken by each space dimension, concatenated across subspaces."""
-        lower_for_each_subspace = [self.get_subspace(tag).lower for tag in self.subspace_tags]
-        return tf.concat(lower_for_each_subspace, axis=-1)
-
-    @property
-    def upper(self) -> TensorType:
-        """The highest values taken by each space dimension, concatenated across subspaces."""
-        upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
-        return tf.concat(upper_for_each_subspace, axis=-1)
-
-    @property
     def subspace_tags(self) -> tuple[str, ...]:
         """Return the names of the subspaces contained in this product space."""
         return self._tags
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this product search space."""
         return self._dimension
 
     def get_subspace(self, tag: str) -> SearchSpace:
-        """
-        Return the domain of a particular subspace.
-
-        :param tag: The tag specifying the target subspace.
-        """
-        tf.debugging.assert_equal(
-            tag in self.subspace_tags,
-            True,
-            message=f"""
-                Attempted to access a subspace that does not exist. This space only contains
-                subspaces with the tags {self.subspace_tags} but received {tag}.
-            """,
-        )
+        """Return the domain of a particular subspace."""
         return self._spaces[tag]
-
-    def fix_subspace(self, tag: str, values: TensorType) -> TaggedProductSearchSpace:
-        """
-        Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with
-        a :class:`DiscreteSearchSpace` containing ``values`` as its points. This is useful if you
-        wish to restrict subspaces to sets of representative points.
-
-        :param tag: The tag specifying the target subspace.
-        :param values: The  values used to populate the new discrete subspace.
-        """
-
-        new_spaces = [
-            self.get_subspace(t) if t != tag else DiscreteSearchSpace(points=values)
-            for t in self.subspace_tags
-        ]
-
-        return TaggedProductSearchSpace(spaces=new_spaces, tags=self.subspace_tags)
 
     def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
         Returns the components of ``values`` lying in a particular subspace.
 
-        :param value: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].
+        :param value: Points from the :class:`DecomposableSearchSpace` of shape [N,Dprod].
         :return: The sub-components of ``values`` lying in the specified subspace, of shape
             [N, Dsub], where Dsub is the dimensionality of the specified subspace.
         """
@@ -535,7 +473,7 @@ class TaggedProductSearchSpace(SearchSpace):
         and concatenating the resulting samples.
 
         :param num_samples: The number of points to sample from this search space.
-        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly, and without replacement,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
         """

@@ -27,6 +27,9 @@ from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -126,7 +129,7 @@ rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=ehvi)
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 30 if not DUMMY_RUN else 2
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
@@ -305,7 +308,7 @@ rule = EfficientGlobalOptimization(builder=echvi)
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 30 if not DUMMY_RUN else 2
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
 result = bo.optimize(num_steps, initial_data_with_cst, models, acquisition_rule=rule)
 

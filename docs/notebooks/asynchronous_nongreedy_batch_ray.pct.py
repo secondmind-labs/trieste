@@ -5,10 +5,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.12.0
+#       jupytext_version: 1.10.2
 #   kernelspec:
-#     display_name: 'Python 3.7.5 64-bit (''.venv'': venv)'
-#     name: python3
+#     display_name: trieste
+#     language: python
+#     name: trieste
 # ---
 
 # %% [markdown]
@@ -27,6 +28,9 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
+
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
 
 import ray
 import numpy as np
@@ -104,13 +108,13 @@ def build_model(data):
 # %%
 # Number of worker processes to run simultaneously
 # Setting this to 1 will reduce our optimization to non-batch sequential
-num_workers = 6
+num_workers = 6 if not DUMMY_RUN else 2
 # Number of observations to collect
-num_observations = 30
+num_observations = 30 if not DUMMY_RUN else 3
 # Batch size of the acquisition function. We will wait for that many workers to return before launching a new batch
 batch_size = 2
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = True
+enable_sleep_delays = True if not DUMMY_RUN else False
 
 # %% [markdown]
 # Now we are ready to define the optimizer. Notice how we set the acquisition function to be `BatchMonteCarloExpectedImprovement`. It is also the default function used by the `AsynchronousOptimization` rule, but here we specify it explicitly for clarity. We also set the batch size.
@@ -121,7 +125,8 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
-acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=10000)
+monte_carlo_sample_size = 10000 if not DUMMY_RUN else 10
+acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size)
 async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)
 
@@ -195,4 +200,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="
 # %%
 ray.shutdown()  # "Undo ray.init()". Terminate all the processes started in this notebook.
 
-# %%
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

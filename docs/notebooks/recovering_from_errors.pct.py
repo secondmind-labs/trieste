@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow as tf
 import random
 
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 random.seed(3)
@@ -74,7 +77,8 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, history = bo.optimize(15, initial_data, model, acquisition_rule).astuple()
+num_steps = 15 if not DUMMY_RUN else 2
+result, history = bo.optimize(num_steps, initial_data, model, acquisition_rule).astuple()
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.

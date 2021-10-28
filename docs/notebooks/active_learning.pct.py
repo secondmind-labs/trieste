@@ -10,6 +10,9 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+
 np.random.seed(1793)
 tf.random.set_seed(1793)
 
@@ -87,7 +90,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 # To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iteration.
 
 # %%
-bo_iter = 5
+bo_iter = 5 if not DUMMY_RUN else 2
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
 
 # %% [markdown]
@@ -140,7 +143,7 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 # For some cases, query several points at a time can be convenient by doing batch active learning. For this case, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is, it tends to query in high variance area less accurately, compared to the sequentially drawing one point at a time.
 
 # %%
-bo_iter = 5
+bo_iter = 5 if not DUMMY_RUN else 2
 num_query = 3
 model = build_model(initial_data)
 acq = PredictiveVariance()
@@ -168,3 +171,8 @@ observations = dataset.observations.numpy()
 from util.plotting import plot_bo_points, plot_function_2d
 
 plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

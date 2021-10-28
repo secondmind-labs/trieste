@@ -5,10 +5,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.12.0
+#       jupytext_version: 1.10.2
 #   kernelspec:
-#     display_name: 'Python 3.7.5 64-bit (''.venv'': venv)'
-#     name: python3
+#     display_name: trieste
+#     language: python
+#     name: trieste
 # ---
 
 # %% [markdown]
@@ -28,6 +29,9 @@ import tensorflow as tf
 
 tf.get_logger().setLevel("ERROR")
 import numpy as np
+
+import os 
+DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
 
 import time
 import timeit
@@ -103,7 +107,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 # To keep this notebook as reproducible as possible, we will only be using Python's multiprocessing package here. In this section we will explain our setup and define some common code to be used later.
 #
 # In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into the observations queue. The main process then picks up the observation from the queue, at which moment it either waits for the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchronous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.
-# 
+#
 # The overall setup is illustrated in this diagram:
 # ![multiprocessing setup](figures/async_bo.png)
 
@@ -161,11 +165,11 @@ def terminate_processes(processes):
 # Setting this to 1 will turn both setups into non-batch sequential optimization
 num_workers = 3
 # Number of iterations to run the sycnhronous scenario for
-num_iterations = 10
+num_iterations = 10 if not DUMMY_RUN else 2
 # Number of observations to collect in the asynchronous scenario
 num_observations = num_workers * num_iterations
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = True
+enable_sleep_delays = True if not DUMMY_RUN else False
 
 # %% [markdown]
 # ## Asynchronous optimization
