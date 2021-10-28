@@ -4,6 +4,8 @@
 # If you are an expert user of Trieste and some modelling library, GPflow for example, then building models via a configuration dictionary might be a useful alternative to working with model and optimizer interfaces. Here we provide an overview of how to use configuration dictionaries.
 
 # %%
+import os
+
 import gpflow
 import numpy as np
 import tensorflow as tf
@@ -13,6 +15,9 @@ import trieste
 from trieste.objectives import BRANIN_SEARCH_SPACE, SCALED_BRANIN_MINIMUM, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+tf.get_logger().setLevel("ERROR")
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -126,7 +131,7 @@ from trieste.models import ModelRegistry
 ModelRegistry.register_model(gpflow.models.GPMC, GaussianProcessRegression, Optimizer)
 
 # check if it has been registered
-gpflow.models.GPMC in ModelRegistry.get_registered_models()
+print(gpflow.models.GPMC in ModelRegistry.get_registered_models())
 
 # you can use the same command to get a list of all supported models
 list(ModelRegistry.get_registered_models())
