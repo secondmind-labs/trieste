@@ -98,7 +98,7 @@ def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    jitter = gpflow.kernels.White(1e-12)
+    jitter = gpflow.kernels.White(1e-5)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.create_model(GPflowModelConfig(**{
@@ -207,7 +207,7 @@ class BatchExpectedConstrainedImprovement(
         return batch_efi
 
 
-num_query_points = 4
+num_query_points = 4 if not DUMMY_RUN else 2
 sample_size = 100
 batch_eci = BatchExpectedConstrainedImprovement(sample_size, Sim.threshold)
 batch_rule = EfficientGlobalOptimization(  # type: ignore
