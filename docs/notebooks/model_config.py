@@ -3,9 +3,8 @@
 #
 # If you are an expert user of Trieste and some modelling library, GPflow for example, then building models via a configuration dictionary might be a useful alternative to working with model and optimizer interfaces. Here we provide an overview of how to use configuration dictionaries.
 
-import gpflow
-
 # %%
+import gpflow
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -42,20 +41,17 @@ initial_data = observer(initial_query_points)
 #
 # GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model interface. Trieste typically has a separate interface for each model. For instance, `GPR` model from GPflow has to be used with `GaussianProcessRegression` interface. These interfaces standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
 #
-# Typical process of setting up a valid model would go as follow.
+# Typical process of setting up a valid model would go as follow.  We first set up a GPR model, using some initial data to set some parameters.
 
 # %%
 from trieste.models.optimizer import Optimizer
 from trieste.models.gpflow import GaussianProcessRegression
 
-
-# Setting up a GPR model.
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     return gpr
-
 
 gpflow_model = build_model(initial_data)
 
