@@ -26,6 +26,7 @@ import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..models.sampler import ModelSampler
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -36,7 +37,6 @@ from .sampler import (
     ExactThompsonSampler,
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,
-    Sampler,
     ThompsonSampler,
 )
 
@@ -374,9 +374,8 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     the minimum of the posterior mean at observed points.
     """
 
-    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler], sample_size: int):
+    def __init__(self, sample_size: int):
         """
-        :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
         :param sample_size: The number of samples for each batch of points.
         :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
         """
@@ -384,7 +383,6 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 
         super().__init__()
 
-        self._sampler = sampler
         self._sample_size = sample_size
 
     def __repr__(self) -> str:
@@ -397,20 +395,34 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :param dataset: The data from the observer. Must be populated.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an event shape of [1].
+            does not have an event shape of [1] or does not have a ``reparam_sample`` method.
         """
+        get_sampler = getattr(model, "reparam_sampler", None)
+        if not callable(get_sampler):
+            raise ValueError(
+                "The model must have a `reparam_sampler` method, which takes `num_samples` and "
+                "which returns a reparameterization `ModelSampler` to create smooth samples at "
+                "query points."
+            )
+
+        sampler = get_sampler(self._sample_size)
+
+        if not isinstance(sampler, ModelSampler):
+            raise ValueError(
+                "The sampler returned by the model's `reparam_sampler` method must be an instance "
+                "of a `trieste.models.sampler.ModelSampler`."
+            )
 
         if not isinstance(dataset, Dataset):
-            raise ValueError(f"`dataset` must be a Dataset for {self.__repr__()}, received"
-                             f"{type(dataset)}")
+            raise ValueError(
+                f"`dataset` must be a Dataset for {self.__repr__()}, received" f"{type(dataset)}"
+            )
 
         tf.debugging.assert_positive(len(dataset))
-
-        sampler = self._sampler(self._sample_size, model)
 
         samples_at_query_points = sampler.sample(dataset.query_points)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
@@ -420,8 +432,6 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         )
 
         eta = tf.reduce_min(mean, axis=0)
-
-        sampler = self._sampler(self._sample_size, model)
 
         def mc_ei(at: TensorType) -> TensorType:
             tf.debugging.assert_shapes(
@@ -442,9 +452,8 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
     "best" value is taken to be the minimum of the posterior mean at observed points.
     """
 
-    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler], sample_size: int):
+    def __init__(self, sample_size: int):
         """
-        :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
         :param sample_size: The number of samples for each batch of points.
         :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
         """
@@ -452,7 +461,6 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
 
         super().__init__()
 
-        self._sampler = sampler
         self._sample_size = sample_size
 
     def __repr__(self) -> str:
@@ -465,20 +473,34 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
-        :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :return: The estimated *augmented expected improvement* acquisition function.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an event shape of [1].
+            does not have an event shape of [1] or does not have a ``reparam_sample`` method.
         """
+        get_sampler = getattr(model, "reparam_sampler", None)
+        if not callable(get_sampler):
+            raise ValueError(
+                "The model must have a `reparam_sampler` method, which takes `num_samples` and "
+                "which returns a reparameterization `Sampler` to create smooth samples at query "
+                "points."
+            )
+
+        sampler = get_sampler(self._sample_size)
+
+        if not isinstance(sampler, ModelSampler):
+            raise ValueError(
+                "The sampler returned by the model's `reparam_sampler` method must be an instance "
+                "of a `trieste.acquisition.sampler.Sampler`."
+            )
 
         if not isinstance(dataset, Dataset):
-            raise ValueError(f"`dataset` must be a Dataset for {self.__repr__()}, received"
-                             f"{type(dataset)}")
+            raise ValueError(
+                f"`dataset` must be a Dataset for {self.__repr__()}, received" f"{type(dataset)}"
+            )
 
         tf.debugging.assert_positive(len(dataset))
-
-        sampler = self._sampler(self._sample_size, model)
 
         samples_at_query_points = sampler.sample(dataset.query_points)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
@@ -488,8 +510,6 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
         )
 
         eta = tf.reduce_min(mean, axis=0)
-
-        sampler = self._sampler(self._sample_size, model)
 
         noise_variance = model.get_observation_noise()
 

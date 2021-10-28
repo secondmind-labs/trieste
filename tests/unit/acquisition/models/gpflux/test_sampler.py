@@ -19,8 +19,8 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-
 from gpflux.models import DeepGP
+
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import two_layer_dgp_model

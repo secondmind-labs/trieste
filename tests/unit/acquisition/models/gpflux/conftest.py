@@ -18,10 +18,10 @@ from typing import Any, Callable
 
 import pytest
 import tensorflow as tf
+from gpflux.models import DeepGP
 
 from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
 from trieste.types import TensorType
-from gpflux.models import DeepGP
 
 
 @pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
