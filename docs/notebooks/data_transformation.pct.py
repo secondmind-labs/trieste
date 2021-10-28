@@ -245,6 +245,89 @@ print(f"observation: {observations[arg_min_idx, :]}")
 
 
 # %% [markdown]
+#
+# Now lets try managing data transformation with a `NormalizationMixin`.
+#
+# First, we subclass the mixin to handle our normalization. See `trieste.models.normalization.StandardizationMixin` for an example that normalizes both query points and observations to have zero mean and unit variance. We modify this further to add support for updating the priors over hyperparameters.
+#
+# We then create our new model class that handles normalization automatically.
+
+# %%
+from trieste.models.normalization import StandardizationMixin
+
+class StandardizedGaussianProcessRegression(StandardizationMixin, GaussianProcessRegression):
+    def __init__(self, dataset, model, optimizer, num_kernel_samples):
+        super().__init__(dataset, model, optimizer, num_kernel_samples)
+
+
+# %% [markdown]
+#
+# Now simply substitute the new model into the boilerplate for Bayesian Optimization.
+#
+
+# %%
+search_space = TRID_10_SEARCH_SPACE  # Restore search space
+
+def build_gp_model(data, x_std = 1.0, y_std = 0.1):
+
+    dim = data.query_points.shape[-1]
+    empirical_mean = tf.math.reduce_mean(data.observations)
+    empirical_variance = tf.math.reduce_variance(data.observations)
+
+    prior_lengthscales = [0.2*x_std*np.sqrt(dim)] * dim
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+
+    x_std = tf.cast(x_std, dtype=tf.float64)
+    y_std = tf.cast(y_std, dtype=tf.float64)
+
+    kernel = gpflow.kernels.Matern52(
+        variance=empirical_variance,
+        lengthscales=prior_lengthscales,
+    )
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.constant(-2, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.zeros(10, dtype=tf.float64), tf.ones(10, dtype=tf.float64)
+    )
+    gpr = gpflow.models.GPR(
+        data.astuple(),
+        kernel,
+        mean_function=gpflow.mean_functions.Constant(empirical_mean),
+        noise_variance=1e-5 * empirical_variance,
+    )
+    gpflow.set_trainable(gpr.likelihood, False)
+
+    # Change `GaussianProcessRegression` to `StandardizedGaussianProcessRegression` and pass
+    # dataset to constructor.
+    return StandardizedGaussianProcessRegression(
+        dataset=data,
+        model=gpr,
+        optimizer=Optimizer(
+            gpflow.optimizers.Scipy(),
+            minimize_args={"options": dict(maxiter=100)}
+        ),
+        num_kernel_samples=100,
+    )
+
+# Build the model. Model priors should assume normalized data.
+model = build_gp_model(initial_data, 60, 320)
+
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+result = bo.optimize(num_acquisitions, initial_data, model)
+dataset = result.try_get_final_dataset()
+
+query_points = dataset.query_points.numpy()
+observations = dataset.observations.numpy()
+
+arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
+
+plot_regret_with_min(dataset)
+
+print(f"query point: {query_points[arg_min_idx, :]}")
+print(f"observation: {observations[arg_min_idx, :]}")
+
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
