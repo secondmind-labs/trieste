@@ -36,6 +36,7 @@ from .sampler import (
     ExactThompsonSampler,
     GumbelSampler,
     RandomFourierFeatureThompsonSampler,
+    Sampler,
     ThompsonSampler,
 )
 
@@ -364,6 +365,137 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
             tf.math.sqrt(self._noise_variance + variance)
         )
         return expected_improvement * augmentation
+
+
+class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for a Monte Carlo-based expected improvement function for use with a model where we have
+    to obtain a Monte Carlo estimate of the expected improvement. The "best" value is taken to be
+    the minimum of the posterior mean at observed points.
+    """
+
+    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler], sample_size: int):
+        """
+        :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
+        :param sample_size: The number of samples for each batch of points.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        super().__init__()
+
+        self._sampler = sampler
+        self._sample_size = sample_size
+
+    def __repr__(self) -> str:
+        """"""
+        return f"MonteCarloExpectedImprovement({self._sample_size!r})"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :return: The estimated *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
+            does not have an event shape of [1].
+        """
+
+        tf.debugging.assert_positive(len(dataset))
+
+        sampler = self._sampler(self._sample_size, model)
+
+        samples_at_query_points = sampler.sample(dataset.query_points)
+        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+
+        sampler = self._sampler(self._sample_size, model)
+
+        def mc_ei(at: TensorType) -> TensorType:
+            tf.debugging.assert_shapes(
+                [(at, [..., 1, None])],
+                message="This acquisition function only supports batch sizes of one.",
+            )
+            samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
+            improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
+            return tf.reduce_mean(improvement, axis=0)  # [N, 1]
+
+        return mc_ei
+
+
+class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for a Monte Carlo-based augmented expected improvement function for use with a model
+    where we have  to obtain a Monte Carlo estimate of the augmented expected improvement. The
+    "best" value is taken to be the minimum of the posterior mean at observed points.
+    """
+
+    def __init__(self, sampler: Callable[[int, ProbabilisticModel], Sampler],
+                 sample_size: int):
+        """
+        :param sampler: The :class:`trieste.acquisition.Sampler` to be used.
+        :param sample_size: The number of samples for each batch of points.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        super().__init__()
+
+        self._sampler = sampler
+        self._sample_size = sample_size
+
+    def __repr__(self) -> str:
+        """"""
+        return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r})"
+
+    def prepare_acquisition_function(
+            self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :return: The estimated *augmented expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
+            does not have an event shape of [1].
+        """
+
+        tf.debugging.assert_positive(len(dataset))
+
+        sampler = self._sampler(self._sample_size, model)
+
+        samples_at_query_points = sampler.sample(dataset.query_points)
+        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+
+        sampler = self._sampler(self._sample_size, model)
+
+        noise_variance = model.get_observation_noise()
+
+        def mc_aei(at: TensorType) -> TensorType:
+            tf.debugging.assert_shapes(
+                [(at, [..., 1, None])],
+                message="This acquisition function only supports batch sizes of one.",
+            )
+            samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
+            improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
+            variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
+            augmentation = 1 - (tf.math.sqrt(noise_variance) /
+                tf.math.sqrt(noise_variance + variance)
+            )
+            return augmentation*tf.reduce_mean(improvement, axis=0)  # [N, 1]
+
+        return mc_aei
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):

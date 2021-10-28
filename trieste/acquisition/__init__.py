@@ -49,6 +49,8 @@ from .function import (
     GreedyAcquisitionFunctionBuilder,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
+    MonteCarloExpectedImprovement,
+    MonteCarloAugmentedExpectedImprovement,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
