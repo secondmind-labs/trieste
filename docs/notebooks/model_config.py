@@ -47,11 +47,13 @@ initial_data = observer(initial_query_points)
 from trieste.models.optimizer import Optimizer
 from trieste.models.gpflow import GaussianProcessRegression
 
+
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     return gpr
+
 
 gpflow_model = build_model(initial_data)
 
