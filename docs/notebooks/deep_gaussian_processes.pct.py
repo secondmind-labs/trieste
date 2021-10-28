@@ -75,6 +75,7 @@ initial_data = observer(initial_query_points)
 
 # %%
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.optimizer import Optimizer
 from gpflow.utilities import set_trainable
 
 
@@ -87,18 +88,15 @@ def build_dgp_model(data):
     dgp.likelihood_layer.likelihood.variance.assign(1e-5)
     set_trainable(dgp.likelihood_layer.likelihood.variance, False)
 
-    epochs = 200
-    batch_size = 100
-
-    optimizer = tf.optimizers.Adam(0.01)
     # These are just arguments for the Keras `fit` method.
     fit_args = {
-        "batch_size": batch_size,
-        "epochs": epochs,
+        "batch_size": 100,
+        "epochs": 200,
         "verbose": 0,
     }
+    optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
 
-    return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+    return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
 
 dgp_model = build_dgp_model(initial_data)
