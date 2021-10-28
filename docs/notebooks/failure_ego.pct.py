@@ -4,11 +4,11 @@
 # %%
 from __future__ import annotations
 
+import os
 import numpy as np
 import tensorflow as tf
 
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
@@ -173,7 +173,7 @@ rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 20 if not DUMMY_RUN else 2
+num_steps = 20 if FULL_RUN else 2
 result = bo.optimize(num_steps, initial_data, models, rule).final_result.unwrap()
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))

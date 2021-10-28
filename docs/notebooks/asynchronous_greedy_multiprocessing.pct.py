@@ -9,18 +9,14 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
-
 tf.get_logger().setLevel("ERROR")
 import numpy as np
-
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
-
 import time
 import timeit
+
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 
 # %% [markdown]
@@ -151,11 +147,11 @@ def terminate_processes(processes):
 # Setting this to 1 will turn both setups into non-batch sequential optimization
 num_workers = 3
 # Number of iterations to run the sycnhronous scenario for
-num_iterations = 10 if not DUMMY_RUN else 2
+num_iterations = 10 if FULL_RUN else 2
 # Number of observations to collect in the asynchronous scenario
 num_observations = num_workers * num_iterations
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = True if not DUMMY_RUN else False
+enable_sleep_delays = True if FULL_RUN else False
 
 # %% [markdown]
 # ## Asynchronous optimization

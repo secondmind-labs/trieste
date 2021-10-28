@@ -2,12 +2,12 @@
 # # Recovering from errors during optimization
 
 # %%
+import os
 import numpy as np
 import tensorflow as tf
 import random
 
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -77,7 +77,7 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 15 if not DUMMY_RUN else 2
+num_steps = 15 if FULL_RUN else 2
 result, history = bo.optimize(num_steps, initial_data, model, acquisition_rule).astuple()
 
 # %% [markdown]

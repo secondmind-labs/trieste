@@ -5,15 +5,14 @@
 # Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with `trieste`.
 
 # %%
+import os
 import numpy as np
 import tensorflow as tf
-from util.plotting import create_grid, plot_acq_function_2d
-from util.plotting_plotly import plot_function_plotly
+from util.plotting import plot_acq_function_2d
 import matplotlib.pyplot as plt
 import trieste
 
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
@@ -87,9 +86,9 @@ model = create_model(model_spec)
 from trieste.acquisition import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-monte_carlo_sample_size = 1000 if not DUMMY_RUN else 10
+monte_carlo_sample_size = 1000 if FULL_RUN else 10
 batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size, jitter=1e-5)
-batch_size = 10 if not DUMMY_RUN else 2
+batch_size = 10 if FULL_RUN else 2
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=batch_size, builder=batch_ei_acq)
 points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model, dataset=initial_data)
@@ -100,7 +99,7 @@ points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model
 # %%
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
-sample_size = 2000 if not DUMMY_RUN else 10
+sample_size = 2000 if FULL_RUN else 10
 local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=sample_size)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=batch_size, builder=local_penalization_acq)
@@ -180,7 +179,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
-num_steps = 10 if not DUMMY_RUN else 1
+num_steps = 10 if FULL_RUN else 1
 qei_result = bo.optimize(num_steps, initial_data, model, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]

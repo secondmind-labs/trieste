@@ -7,6 +7,7 @@
 # First, some code to set up the problem we will be using throughout the notebook. If you would like more details about this problem setup, please refer to [introductory EI notebook](expected_improvement.ipynb).
 
 # %%
+import os
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -18,20 +19,18 @@ from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
-from trieste.observer import OBJECTIVE
 from trieste.space import Box
 
 from util.plotting import plot_regret
 
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
 
 search_space = Box([0, 0], [1, 1])
-n_steps = 5 if not DUMMY_RUN else 2
+n_steps = 5 if FULL_RUN else 2
 
 def build_model(data, kernel_func=None):
     """kernel_func should be a function that takes variance as a single input parameter"""

@@ -2,11 +2,11 @@
 # # Using deep Gaussian processes with GPflux for Bayesian optimization.
 
 # %%
+import os
 import numpy as np
 import tensorflow as tf
 
-import os 
-DUMMY_RUN = os.environ.get("DUMMY_RUN") # Speed up notebook when running continuous integration tests
+FULL_RUN = os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 # %% [markdown]
 # For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!
@@ -63,7 +63,7 @@ import trieste
 observer = mk_observer(function)
 
 num_initial_points = 20
-num_steps = 20 if not DUMMY_RUN else 2
+num_steps = 20 if FULL_RUN else 2
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -118,7 +118,7 @@ dgp_model = build_dgp_model(initial_data)
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-grid_size = 1000 if not DUMMY_RUN else 10
+grid_size = 1000 if FULL_RUN else 10
 acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
 # Note that the GPflux interface does not currently support using `track_state=True`. This will be
@@ -206,7 +206,7 @@ def build_gp_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    num_kernel_samples= 100 if not DUMMY_RUN else 2
+    num_kernel_samples= 100 if FULL_RUN else 2
 
     return GaussianProcessRegression(
         model=gpr,
@@ -293,7 +293,7 @@ search_space = MICHALEWICZ_5_SEARCH_SPACE
 observer = mk_observer(function)
 
 num_initial_points = 50
-num_steps = 50 if not DUMMY_RUN else 2
+num_steps = 50 if FULL_RUN else 2
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
