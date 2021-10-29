@@ -24,7 +24,7 @@ import yaml
 import logging
 import argparse
 
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -93,6 +93,7 @@ def modify_notebook(path: Path, config: dict) -> None:
     path.write_text(notebook, encoding="utf-8")
     logger.info("Modified %s", path.name)
 
+
 def revert_notebook(path: Path) -> None:
     """
     Revert a notebook from quickrun format.
@@ -113,8 +114,10 @@ def revert_notebook(path: Path) -> None:
 
 def main() -> None:
     """Script entry point."""
-    parser = argparse.ArgumentParser(description='Modify notebook files for continuous integration.')
-    parser.add_argument('--revert', action='store_true', help='Revert notebook files')
+    parser = argparse.ArgumentParser(
+        description="Modify notebook files for continuous integration."
+    )
+    parser.add_argument("--revert", action="store_true", help="Revert notebook files")
     args = parser.parse_args()
     modify_all(revert=args.revert)
 

@@ -68,7 +68,7 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 5 if FULL_RUN else 2
+num_steps = 5
 result = bo.optimize(num_steps, initial_data, model_config, acq_rule, track_state=False)
 dataset = result.try_get_final_dataset()
 
