@@ -28,9 +28,10 @@ from trieste.types import TensorType
 class GlobalInducingDeepGaussianProcessSampler(Sampler):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
-    :class:`GlobalInducingDeepGaussianProcess`\ 's predictive distribution. This sampler is essentially an
-    extension of :class:`trieste.acquisition.sampler.IndependentReparametrizationSampler` for use
-    with DGP models.
+    :class:`GlobalInducingDeepGaussianProcess`\ 's predictive distribution. This sampler is
+    essentially an extension of
+    :class:`trieste.acquisition.sampler.IndependentReparametrizationSampler` for use with DGP
+    models.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
@@ -41,8 +42,9 @@ class GlobalInducingDeepGaussianProcessSampler(Sampler):
             model is not a :class:`DeepGaussianProcess`.
         """
         if not isinstance(model, GlobalInducingDeepGaussianProcess):
-            raise ValueError("Model must be a "
-                             "trieste.models.gpflux.GlobalInducingDeepGaussianProcess")
+            raise ValueError(
+                "Model must be a " "trieste.models.gpflux.GlobalInducingDeepGaussianProcess"
+            )
 
         super().__init__(sample_size, model)
 
@@ -54,14 +56,18 @@ class GlobalInducingDeepGaussianProcessSampler(Sampler):
         ]
 
         self._u_list = [
-            tf.Variable(tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
-                        shape=[sample_size, None, None, None])
+            tf.Variable(
+                tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
+                shape=[sample_size, None, None, None],
+            )
             for _ in range(len(model.model_gpflux.f_layers))
         ]
 
         self._chol_Kuu_list = [
-            tf.Variable(tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
-                        shape=[sample_size, None, None, None])
+            tf.Variable(
+                tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
+                shape=[sample_size, None, None, None],
+            )
             for _ in range(len(model.model_gpflux.f_layers))
         ]
 
@@ -82,14 +88,11 @@ class GlobalInducingDeepGaussianProcessSampler(Sampler):
 
         eps_is_populated = tf.size(self._eps_list[0]) != 0
 
-        inducing_data = self._model.model_gpflux.inducing_data
-        inducing_data = tf.tile(
-            tf.expand_dims(inducing_data, 0),
-            [self._sample_size, 1, 1]
-        )
+        inducing_data = self._model.model_gpflux.inducing_data  # type: ignore
+        inducing_data = tf.tile(tf.expand_dims(inducing_data, 0), [self._sample_size, 1, 1])
 
         samples = tf.tile(tf.expand_dims(at, 0), [self._sample_size, 1, 1])
-        for i, layer in enumerate(self._model.model_gpflux.f_layers):
+        for i, layer in enumerate(self._model.model_gpflux.f_layers):  # type: ignore
             samples_mean = layer.mean_function(samples)
             ind_data_mean = layer.mean_function(inducing_data)
 

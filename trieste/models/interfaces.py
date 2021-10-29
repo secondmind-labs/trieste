@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Callable
 
 import gpflow
 import tensorflow as tf
@@ -98,6 +99,9 @@ class ProbabilisticModel(ABC):
         :return: The kernel.
         """
         raise NotImplementedError(f"Model {self!r} does not provide a kernel")
+
+    def sample_trajectory(self) -> Callable[[TensorType], TensorType]:
+        raise NotImplementedError(f"Model {self!r} does not provide a sample_trajectory method")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
