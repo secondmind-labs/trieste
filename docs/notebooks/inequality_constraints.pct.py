@@ -2,11 +2,8 @@
 # # Inequality constraints
 
 # %%
-import os
 import numpy as np
 import tensorflow as tf
-
-FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -131,7 +128,7 @@ rule = EfficientGlobalOptimization(eci)  # type: ignore
 # We can now run the optimization loop. We obtain the final objective and constraint data using `.try_get_final_datasets()`.
 
 # %%
-num_steps = 20 if FULL_RUN else 2
+num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 data = bo.optimize(
@@ -207,7 +204,7 @@ class BatchExpectedConstrainedImprovement(
         return batch_efi
 
 
-num_query_points = 4 if FULL_RUN else 2
+num_query_points = 4
 sample_size = 100
 batch_eci = BatchExpectedConstrainedImprovement(sample_size, Sim.threshold)
 batch_rule = EfficientGlobalOptimization(  # type: ignore
@@ -220,7 +217,7 @@ batch_rule = EfficientGlobalOptimization(  # type: ignore
 # %%
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
-num_steps = 5 if FULL_RUN else 1
+num_steps = 5
 batch_data = bo.optimize(
     num_steps, initial_data, initial_models, batch_rule, track_state=False
 ).try_get_final_datasets()
@@ -312,7 +309,7 @@ pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
 rule = EfficientGlobalOptimization(eci)
 
-num_steps = 20 if FULL_RUN else 2
+num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)
 
 data = bo.optimize(

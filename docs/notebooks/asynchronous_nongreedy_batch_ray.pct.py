@@ -18,7 +18,6 @@ import ray
 import numpy as np
 import time
 
-FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
@@ -92,13 +91,13 @@ def build_model(data):
 # %%
 # Number of worker processes to run simultaneously
 # Setting this to 1 will reduce our optimization to non-batch sequential
-num_workers = 6 if FULL_RUN else 2
+num_workers = 6
 # Number of observations to collect
-num_observations = 30 if FULL_RUN else 3
+num_observations = 30
 # Batch size of the acquisition function. We will wait for that many workers to return before launching a new batch
 batch_size = 2
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = True if FULL_RUN else False
+enable_sleep_delays = True
 
 # %% [markdown]
 # Now we are ready to define the optimizer. Notice how we set the acquisition function to be `BatchMonteCarloExpectedImprovement`. It is also the default function used by the `AsynchronousOptimization` rule, but here we specify it explicitly for clarity. We also set the batch size.
@@ -109,7 +108,7 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
-monte_carlo_sample_size = 10000 if FULL_RUN else 10
+monte_carlo_sample_size = 10000
 acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size)
 async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)

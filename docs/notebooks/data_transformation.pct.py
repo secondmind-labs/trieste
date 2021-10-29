@@ -20,8 +20,6 @@ from trieste.objectives import TRID_10_MINIMUM, TRID_10_SEARCH_SPACE, trid_10
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
-FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
-
 np.random.seed(1794)
 tf.random.set_seed(1794)
 
@@ -122,7 +120,7 @@ model = build_gp_model(initial_data, 20, 10000)
 # We'll run the optimizer for 100 steps. Note: this may take a while!
 
 # %%
-num_steps = 100 if FULL_RUN else 2
+num_steps = 100
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model)

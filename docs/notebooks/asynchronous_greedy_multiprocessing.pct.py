@@ -16,8 +16,6 @@ import numpy as np
 import time
 import timeit
 
-FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
-
 
 # %% [markdown]
 # First, let's define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html) with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
@@ -147,11 +145,11 @@ def terminate_processes(processes):
 # Setting this to 1 will turn both setups into non-batch sequential optimization
 num_workers = 3
 # Number of iterations to run the sycnhronous scenario for
-num_iterations = 10 if FULL_RUN else 2
+num_iterations = 10
 # Number of observations to collect in the asynchronous scenario
 num_observations = num_workers * num_iterations
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = True if FULL_RUN else False
+enable_sleep_delays = True
 
 # %% [markdown]
 # ## Asynchronous optimization

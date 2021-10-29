@@ -2,11 +2,8 @@
 # # Batch-sequential optimization with Thompson sampling
 
 # %%
-import os
 import numpy as np
 import tensorflow as tf
-
-FULL_RUN = not os.environ.get("PARTIAL_RUN")  # full execution or quick partial run?
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -57,8 +54,8 @@ model_config = GPflowModelConfig(**{
 # We achieve Bayesian optimization with Thompson sampling by specifying `DiscreteThompsonSampling` as the acquisition rule. Unlike the `EfficientGlobalOptimization` acquisition rule, `DiscreteThompsonSampling` does not use an acquisition function. Instead, in each optimization step, the rule samples `num_query_points` samples from the model posterior at `num_search_space_samples` points on the search space. It then returns the `num_query_points` points of those that minimise the model posterior.
 
 # %%
-num_search_space_samples = 1000 if FULL_RUN else 10
-num_query_points = 10 if FULL_RUN else 2
+num_search_space_samples = 1000
+num_query_points = 10
 acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
     num_search_space_samples=num_search_space_samples, num_query_points=num_query_points
 )
