@@ -38,7 +38,7 @@ setting up a virtual environment as described above and running the following fr
 which you can ignore.
 
 ```bash
-sphinx-build -M html . _build -D exclude_patterns=_build,Thumbs.db,.DS_Store,notebooks
+$ sphinx-build -M html . _build -D exclude_patterns=_build,Thumbs.db,.DS_Store,notebooks
 ```
 
 The easiest way to test a specific notebook for *Python errors* is to run it with `python`
@@ -47,7 +47,30 @@ if you wish to build the documentation for a specific notebook, you can run some
 the following command to exclude all other notebooks and the API documentation:
 
 ```bash
-sphinx-build -M html . _build -D autoapi_dirs= -D exclude_patterns=_build,Thumbs.db,.DS_Store,notebooks/[a-su-z]*
+$ sphinx-build -M html . _build -D autoapi_dirs= -D exclude_patterns=_build,Thumbs.db,.DS_Store,notebooks/[a-su-z]*
+```
+
+### Partial executions of the notebooks
+
+For continuous integration, we save time by executing only dummy runs of the notebook 
+optimization loops (the notebooks are still executed in full after merging).
+To do this locally, you can run the following:
+
+```bash
+$ tox -e quickdocs
+```
+
+These partial runs are managed by the 
+configuration in the `docs/notebooks/quickrun` subdirectory.
+To run them in your own virtual environment, execute the following from the `docs`
+subdirectory before building the documentation:
+```bash
+$ python notebooks/quickrun/quickrun.py
+```
+Note that this will modify the notebook files.
+To revert them to what they were before, you can execute the following:
+```python
+python notebooks/quickrun/quickrun.py --revert
 ```
 
 # License
