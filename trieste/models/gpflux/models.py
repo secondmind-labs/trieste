@@ -14,16 +14,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
-from gpflux.layers import GPLayer, LatentVariableLayer
+from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
+from .architectures import ModifiedLatentVariableLayer
 from .interface import GPfluxPredictor
 from .utils import sample_dgp
 
@@ -31,7 +32,8 @@ from .utils import sample_dgp
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
-    :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
+    :class:`GPLayer` or :class:`ModifiedLatentVariableLayer`: this class does not support e.g. keras
+    layers.
     We provide simple architectures that can be used with this class in the `architectures.py` file.
     Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
     (consistent with GPflow) so that dtype errors do not occur.
@@ -71,10 +73,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             self.fit_args = fit_args
 
         for layer in model.f_layers:
-            if not isinstance(layer, (GPLayer, LatentVariableLayer)):
+            if not isinstance(layer, (GPLayer, ModifiedLatentVariableLayer)):
                 raise ValueError(
                     f"`DeepGaussianProcess` can only be built out of `GPLayer` or"
-                    f"`LatentVariableLayer`, received {type(layer)} instead."
+                    f"`ModifiedLatentVariableLayer`, received {type(layer)} instead."
                 )
 
         self._model_gpflux = model
@@ -98,6 +100,9 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     def optimizer(self) -> tf.keras.optimizers.Optimizer:
         return self._optimizer
 
+    def sample_trajectory(self) -> Callable[[TensorType], TensorType]:
+        return sample_dgp(self.model_gpflux)
+
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
         for _ in range(num_samples):
@@ -114,7 +119,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             if hasattr(layer, "num_data"):
                 layer.num_data = new_num_data
 
-            if isinstance(layer, LatentVariableLayer):
+            if isinstance(layer, ModifiedLatentVariableLayer):
                 inputs = layer(inputs)
                 continue
 
