@@ -34,7 +34,8 @@ class NormalizationMixin(TrainableProbabilisticModel):
         self,
         dataset: Dataset,
         *args,
-        normalization_parameters: Optional[Mapping[str, Any]] = None,
+        update_normalization_parameters: bool = False,
+        update_model_parameters: bool = False,
         **kwargs
     ) -> None:
         normalization_parameters = (
@@ -153,6 +154,8 @@ class StandardizationMixin(NormalizationMixin):
 
     Ensures that the observations have zero mean and unit variance.
     """
+
+    def __init__(dataset, query_point_transformer)
 
     def _standardize(self, tensor: TensorType, mean: TensorType, std: TensorType) -> TensorType:
         return (tensor - mean) / std
