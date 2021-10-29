@@ -171,7 +171,7 @@ class GlobalInducingDeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticM
         self,
         model: GIDeepGP,
         optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[Any, Any] | None = None,
+        fit_args: Dict[str, Any] | None = None,
     ):
         """
         :param model: The underlying GPflux global inducing deep Gaussian process model.
