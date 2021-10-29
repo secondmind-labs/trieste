@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Callable
+from typing import Any, Callable, Dict
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
-from gpflux.layers import GPLayer, LatentVariableLayer, IWLayer, KGIGPLayer
+from gpflux.layers import GPLayer, IWLayer, KGIGPLayer, LatentVariableLayer
 from gpflux.models import DeepGP, DeepIWP
 
 from ...data import Dataset
@@ -171,7 +171,7 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self,
         model: DeepIWP,
         optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[Any] | None = None,
+        fit_args: Dict[str, Any] | None = None,
     ):
         """
         :param model: The underlying GPflux global inducing deep Gaussian process model.
@@ -196,13 +196,15 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.original_lr = self._optimizer.lr.numpy()
 
         if fit_args is None:
-            self.fit_args = dict({
-                "verbose": False,
-                "epochs": 400,
-                "temper_until": 40,
-                "batch_size": 500,
-                "scheduler": False
-            })
+            self.fit_args = dict(
+                {
+                    "verbose": False,
+                    "epochs": 400,
+                    "temper_until": 40,
+                    "batch_size": 500,
+                    "scheduler": False,
+                }
+            )
         else:
             self.fit_args = fit_args
 
@@ -269,8 +271,9 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
+
         @tf.function
-        def loss(T):
+        def loss(T: float) -> TensorType:
             return -self.model_gpflux.elbo((dataset.query_points, dataset.observations), T)
 
         for epoch in range(self.fit_args["epochs"]):
@@ -285,7 +288,9 @@ class DeepKernelProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
             if self.fit_args.get("verbose"):
                 print(
-                    f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: {-current_loss.numpy()/self.model_gpflux.num_data}')
+                    f'Epoch: {epoch}/{self.fit_args["epochs"]}, ELBO: '
+                    f"{-current_loss.numpy()/self.model_gpflux.num_data}"
+                )
 
     def get_observation_noise(self) -> TensorType:
         """

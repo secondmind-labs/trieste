@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import gpflow
 import tensorflow as tf
@@ -28,7 +28,12 @@ from ...utils import DEFAULTS, jit
 from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
-from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters, sample_gpr
+from .utils import (
+    assert_data_is_compatible,
+    randomize_hyperparameters,
+    sample_gpr,
+    squeeze_hyperparameters,
+)
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
@@ -149,7 +154,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             self.model.data,
             self.model.kernel,
             self.model.likelihood.variance,
-            self.model.mean_function
+            self.model.mean_function,
         )
 
     def optimize(self, dataset: Dataset) -> None:

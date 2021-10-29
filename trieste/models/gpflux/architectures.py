@@ -98,7 +98,7 @@ def build_dkp_model(
     num_layers: int,
     num_inducing: int,
     observations: Optional[TensorType] = None,
-    last_layer_prec_init: float = 10.,
+    last_layer_prec_init: float = 10.0,
     likelihood_noise_variance: float = 1e-2,
     last_layer_variance: float = 1.0,
     num_train_samples: int = 10,
@@ -147,7 +147,7 @@ def build_dkp_model(
     gp_layers = []
     inducing_init, _ = kmeans2(query_points, k=num_inducing, minit="points")
 
-    for i_layer in range(num_layers-1):
+    for i_layer in range(num_layers - 1):
         layer = IWLayer(
             num_data=num_data,
             num_inducing=num_inducing,

@@ -55,27 +55,37 @@ class DeepKernelProcessSampler(Sampler):
         ]
 
         self._eps_list = [
-            tf.Variable(tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None])
+            tf.Variable(
+                tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None]
+            )
             for _ in range(len(model.model_gpflux.f_layers) - 1)
         ]
 
         self._Gii_list = [
-            tf.Variable(tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None])
+            tf.Variable(
+                tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None]
+            )
             for _ in range(len(model.model_gpflux.f_layers) - 1)
         ]
 
         self._chol_dKii_list = [
-            tf.Variable(tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None])
+            tf.Variable(
+                tf.ones([sample_size, 0, 0], dtype=tf.float64), shape=[sample_size, None, None]
+            )
             for _ in range(len(model.model_gpflux.f_layers) - 1)
         ]
 
-        self._u = tf.Variable(tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
-                              shape=[sample_size, None, None, None])
+        self._u = tf.Variable(
+            tf.ones([sample_size, 0, 0, 0], dtype=tf.float64), shape=[sample_size, None, None, None]
+        )
 
-        self._chol_Kuu = tf.Variable(tf.ones([sample_size, 0, 0, 0], dtype=tf.float64),
-                                     shape=[sample_size, None, None, None])
+        self._chol_Kuu = tf.Variable(
+            tf.ones([sample_size, 0, 0, 0], dtype=tf.float64), shape=[sample_size, None, None, None]
+        )
 
-        self._gp_eps = tf.Variable(tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None])
+        self._gp_eps = tf.Variable(
+            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
+        )
 
         self._sample_size = sample_size
 
@@ -114,9 +124,9 @@ class DeepKernelProcessSampler(Sampler):
                 raise ValueError(f"Layer {i} must be an IWLayer")
             K = layer.kernel_gram(samples, full_cov=False)
 
-            dKii = layer.delta*K.ii
-            dKit = layer.delta*K.it
-            dktt = layer.delta*K.tt
+            dKii = layer.delta * K.ii
+            dKit = layer.delta * K.it
+            dktt = layer.delta * K.tt
 
             if not chol_dKii_is_populated:
                 chol_dKii = tf.linalg.cholesky(dKii)
@@ -129,24 +139,26 @@ class DeepKernelProcessSampler(Sampler):
             inv_Kii_kit = tf.linalg.cholesky_solve(self._chol_dKii_list[i], dKit)
 
             dktti = dktt - tf.reduce_sum(dKit * inv_Kii_kit, -2)
-            alpha = (layer.delta + layer.P + tf.cast(tf.shape(dktt)[-1], tf.float64) + 1)/2
+            alpha = (layer.delta + layer.P + tf.cast(tf.shape(dktt)[-1], tf.float64) + 1) / 2
 
             if not gamma_is_populated:
                 P = tfp.distributions.Gamma(alpha, 1)
                 gamma_sample = tf.reshape(P.sample([self._sample_size]), [self._sample_size, 1])
                 self._gamma_list[i].assign(gamma_sample)
 
-            gtti = tf.math.reciprocal(self._gamma_list[i]/(0.5*dktti))  # type: ignore
+            gtti = tf.math.reciprocal(self._gamma_list[i] / (0.5 * dktti))
 
             if not eps_is_populated:
                 eps = tf.expand_dims(tf.random.normal(tf.shape(dKit)[:-1], dtype=tf.float64), -1)
                 self._eps_list[i].assign(eps)
 
-            inv_Gii_git = inv_Kii_kit + tf.linalg.triangular_solve(
-                tf.linalg.adjoint(self._chol_dKii_list[i]),
-                self._eps_list[i],
-                lower=False
-            ) * tf.sqrt(gtti)[:, None, :]
+            inv_Gii_git = (
+                inv_Kii_kit
+                + tf.linalg.triangular_solve(
+                    tf.linalg.adjoint(self._chol_dKii_list[i]), self._eps_list[i], lower=False
+                )
+                * tf.sqrt(gtti)[:, None, :]
+            )
             git = self._Gii_list[i] @ inv_Gii_git
 
             gtt = gtti + tf.reduce_sum(git * inv_Gii_git, -2)

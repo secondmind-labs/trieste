@@ -17,13 +17,13 @@ from __future__ import annotations
 from typing import TypeVar, Union
 
 import gpflow
+import tensorflow as tf
+import tensorflow_probability as tfp
+from gpflow.base import Parameter, TensorType, default_float
 from gpflow.conditionals import base_conditional
-from gpflow.base import default_float, TensorType, Parameter
 from gpflow.models.training_mixins import RegressionData
 from gpflux.sampling.sample import Sample
 from gpflux.sampling.utils import draw_conditional_sample
-import tensorflow as tf
-import tensorflow_probability as tfp
 
 from ...data import Dataset
 
@@ -113,7 +113,6 @@ def sample_gpr(
     noise_variance: Union[float, Parameter],
     mean_function: gpflow.mean_functions.MeanFunction = gpflow.mean_functions.Zero(),
 ) -> Sample:
-
     def add_noise_cov(K: tf.Tensor, likelihood_variance: Parameter) -> tf.Tensor:
         """
         Returns K + σ² I, where σ² is the likelihood noise variance (scalar),

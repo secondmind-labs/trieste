@@ -39,10 +39,7 @@ class GPfluxModelConfig(ModelConfig):
     ) -> dict[Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]]:
         models_mapping: dict[
             Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]
-        ] = {
-            DeepGP: DeepGaussianProcess,
-            DeepIWP: DeepKernelProcess
-        }
+        ] = {DeepGP: DeepGaussianProcess, DeepIWP: DeepKernelProcess}
         return models_mapping
 
     def create_optimizer(self) -> tf.optimizers.Optimizer:
