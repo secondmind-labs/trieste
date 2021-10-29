@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Callable
-import gpflow
+
 import tensorflow as tf
 
 from ..data import Dataset
@@ -92,17 +92,15 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
         Note that this is not supported by all models.
 
-        :return: The reparametrization sampler. 
+        :return: The reparametrization sampler.
         """
         raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
-
 
     def trajectory_sampler(self) -> TrajectorySampler:
         """
@@ -110,12 +108,9 @@ class ProbabilisticModel(ABC):
 
         Note that this is not supported by all models.
 
-        :return: The trajectory sampler. 
+        :return: The trajectory sampler.
         """
         raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
-
-
-
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
@@ -250,7 +245,7 @@ class ReparametrizationSampler(ABC):
     r"""
     This sampler employs the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
-    points. 
+    points.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
@@ -276,7 +271,6 @@ class ReparametrizationSampler(ABC):
         """
 
 
-
 TrajectoryFunction = Callable[[TensorType], TensorType]
 """
 Type alias for trajectory functions.
@@ -297,7 +291,7 @@ class TrajectorySampler(ABC):
 
     Unlike the :class:`ReparametrizationSampler`, a :class:`TrajectorySampler` provides
     consistent samples (i.e ensuring that the same sample draw is used for all evalutions
-    of a particular trajectory function). 
+    of a particular trajectory function).
     """
 
     def __init__(self, model: ProbabilisticModel):
@@ -316,5 +310,3 @@ class TrajectorySampler(ABC):
         :return: A trajectory function representing an approximate trajectory from the Gaussian
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
-
-       

@@ -13,24 +13,21 @@
 # limitations under the License.
 from __future__ import annotations
 
-import math
-
 import gpflow
-import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf, QuadraticMeanAndRBFKernel_with_trajectories
+from tests.util.models.gpflow.models import (
+    QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
+)
 from trieste.acquisition.sampler import (
     ExactThompsonSampler,
     GumbelSampler,
     ThompsonSamplerFromTrajectory,
 )
 from trieste.data import Dataset
-from trieste.models.gpflow.sampler import RandomFourierFeatureTrajectorySampler
-from trieste.objectives.single_objectives import branin
 from trieste.space import Box
 
 
@@ -140,12 +137,10 @@ def test_exact_thompson_samples_are_minima() -> None:
 def test_thompson_trajectory_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
-    model = QuadraticMeanAndRBFKernel()
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ThompsonSamplerFromTrajectory(sample_size, model)
-
-
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
@@ -155,7 +150,7 @@ def test_thompson_trajectory_sampler_sample_raises_for_invalid_at_shape(
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
-    model = QuadraticMeanAndRBFKernel_with_trajectories(
+    model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
     )
     model.kernel = (
@@ -180,7 +175,7 @@ def test_thompson_trajectory_sampler_returns_correctly_shaped_samples(
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
 
-    model = QuadraticMeanAndRBFKernel_with_trajectories(
+    model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
     )
     model.kernel = (
@@ -205,7 +200,7 @@ def test_rff_thompson_samples_are_minima() -> None:
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernel_with_trajectories(
+    model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
     model.kernel = (

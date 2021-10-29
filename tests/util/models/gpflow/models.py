@@ -25,8 +25,17 @@ from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, TrainableProbabilisticModel, ReparametrizationSampler, TrajectorySampler
-from trieste.models.gpflow import GPflowPredictor, RandomFourierFeatureTrajectorySampler, BatchReparametrizationSampler 
+from trieste.models import (
+    ProbabilisticModel,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
+from trieste.models.gpflow import (
+    BatchReparametrizationSampler,
+    GPflowPredictor,
+    RandomFourierFeatureTrajectorySampler,
+)
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -95,6 +104,9 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         ]
         return tf.squeeze(tf.concat(covs, axis=-3))
 
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        return BatchReparametrizationSampler(num_samples, self)
+
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
@@ -126,7 +138,7 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
 class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
-    trajectory_sampler and reparam_sampler methods.
+    a trajectory_sampler and reparam_sampler methods.
     """
 
     def __init__(
@@ -145,9 +157,6 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
     def trajectory_sampler(self) -> TrajectorySampler:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
 
-
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
-        return BatchReparametrizationSampler(num_samples, self)
 
 class ModelFactoryType(Protocol):
     def __call__(

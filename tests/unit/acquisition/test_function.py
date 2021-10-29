@@ -37,7 +37,12 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf, QuadraticMeanAndRBFKernelWithSamplers
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
+    rbf,
+)
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function import (
     GIBBON,
@@ -441,7 +446,9 @@ def test_min_value_entropy_search_builder_builds_min_value_samples_rff(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64)
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -1273,7 +1280,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
 def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
     known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
     data = Dataset(known_query_points, quadratic(known_query_points))
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
         model, dataset=data
     )
@@ -1287,8 +1294,8 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
 @random_seed
 def test_batch_monte_carlo_expected_improvement() -> None:
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    model = QuadraticMeanAndRBFKernel()
-
+    data = Dataset(xs, quadratic(xs))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     mean, cov = model.predict_joint(xs)
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10_000)
@@ -1311,7 +1318,7 @@ def test_batch_monte_carlo_expected_improvement() -> None:
 def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
     data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     builder = BatchMonteCarloExpectedImprovement(10_000)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
@@ -1661,12 +1668,13 @@ def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> 
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
 
-    model = QuadraticMeanAndRBFKernelWithSamplers(dataset = dataset,noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64)
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    
     builder = GIBBON(search_space, use_thompson=True, use_fourier_features=True)
     builder.prepare_acquisition_function(model, dataset=dataset)
     mocked_mves.assert_called_once()

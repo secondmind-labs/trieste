@@ -30,7 +30,6 @@ from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.objectives.single_objectives import branin
-from trieste.space import Box
 
 
 @pytest.mark.parametrize(

@@ -19,17 +19,13 @@ acquisiiton functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
-from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..types import TensorType
-from ..utils import DEFAULTS
 
 
 class ThompsonSampler(ABC):
@@ -67,6 +63,7 @@ class ThompsonSampler(ABC):
         :param at: Input points that define the sampler.
         :return: Samples.
         """
+
 
 class ExactThompsonSampler(ThompsonSampler):
     r"""
@@ -175,13 +172,11 @@ class GumbelSampler(ThompsonSampler):
         return gumbel_samples
 
 
-
-
 class ThompsonSamplerFromTrajectory(ThompsonSampler):
     r"""
     This sampler provides approximate Thompson samples of the objective function's
     minimiser :math:`x^*` by minimizing approximate trajectories sampled from the
-    underlying probabilistic model. This sampling method can be used for any 
+    underlying probabilistic model. This sampling method can be used for any
     probabilistic model with a :method:`trajectory_sampler` method.
     """
 
@@ -204,13 +199,12 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
             trajectory_sampler = self._model.trajectory_sampler()
         except (NotImplementedError):
             raise ValueError(
-            """
+                """
             Thompson sampling from trajectory only supports models with a
             trajectory_sampler method.
             """
             )
         self._trajectory_sampler = trajectory_sampler
-
 
     def __repr__(self) -> str:
         """"""

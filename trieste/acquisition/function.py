@@ -34,8 +34,8 @@ from .multi_objective.partition import prepare_default_non_dominated_partition_b
 from .sampler import (
     ExactThompsonSampler,
     GumbelSampler,
-    ThompsonSamplerFromTrajectory,
     ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
 )
 
 CLAMP_LB = 1e-8
@@ -1099,9 +1099,10 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
             sampler = model.reparam_sampler(self._sample_size)
         except (NotImplementedError):
             raise ValueError(
-            """
-            Batch Monte-Carlo expected hyper-volume improvment only supports models with a reparam_sampler method.
-            """
+                """
+                The batch Monte-Carlo expected hyper-volume improvment acquisition function
+                only supports models with a reparam_sampler method.
+                """
             )
 
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
@@ -1311,9 +1312,10 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
             sampler = model.reparam_sampler(self._sample_size)
         except (NotImplementedError):
             raise ValueError(
-            """
-            Batch Monte-Carlo expected improvment only supports models with a reparam_sampler method.
-            """
+                """
+                The batch Monte-Carlo expected improvment acquisition function
+                only supports models with a reparam_sampler method.
+                """
             )
 
         self._sampler = sampler

@@ -19,4 +19,10 @@ creating :class:`TrainableProbabilisticModel`\ s from config.
 
 from . import gpflow, gpflux, optimizer
 from .config import ModelConfig, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel, TrajectorySampler, ReparametrizationSampler
+from .interfaces import (
+    ModelStack,
+    ProbabilisticModel,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)

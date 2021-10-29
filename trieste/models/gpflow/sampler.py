@@ -18,19 +18,21 @@ GPflow wrappers.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions import RandomFourierFeatures
-from scipy.optimize import bisect
 
 from ...data import Dataset
-from ..interfaces import ProbabilisticModel, ReparametrizationSampler, TrajectorySampler, TrajectoryFunction
 from ...types import TensorType
 from ...utils import DEFAULTS
-
+from ..interfaces import (
+    ProbabilisticModel,
+    ReparametrizationSampler,
+    TrajectoryFunction,
+    TrajectorySampler,
+)
+from . interface import GPflowPredictor
 
 class IndependentReparametrizationSampler(ReparametrizationSampler):
     r"""
@@ -263,9 +265,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
     def __repr__(self) -> str:
         """"""
         return f"""{self.__class__.__name__}(
-        {self._sample_size!r},
         {self._model!r},
-        {self._sample_min_value!r},
         {self._num_features!r})
         """
 

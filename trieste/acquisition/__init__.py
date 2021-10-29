@@ -65,8 +65,4 @@ from .function import (
     probability_of_feasibility,
     soft_local_penalizer,
 )
-from .sampler import (
-    ExactThompsonSampler,
-    GumbelSampler,
-    ThompsonSamplerFromTrajectory,
-)
+from .sampler import ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory

@@ -20,5 +20,9 @@ from . import optimizer
 from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
+from .sampler import (
+    BatchReparametrizationSampler,
+    IndependentReparametrizationSampler,
+    RandomFourierFeatureTrajectorySampler,
+)
 from .utils import M, assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
-from .sampler import BatchReparametrizationSampler, IndependentReparametrizationSampler, RandomFourierFeatureTrajectorySampler

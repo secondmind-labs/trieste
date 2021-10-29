@@ -93,11 +93,10 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
-
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
-        :return: The reparametrization sampler. 
+        :return: The reparametrization sampler.
         """
         return BatchReparametrizationSampler(num_samples, self)
