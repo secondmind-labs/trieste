@@ -48,6 +48,7 @@ from tests.util.models.gpflow.models import (
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
+from trieste.models import TrajectorySampler
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseVariational,
@@ -329,6 +330,54 @@ def test_find_best_model_initialization_improves_likelihood(
     post_init_loss = model.model.training_loss()
 
     npt.assert_array_less(post_init_loss, pre_init_loss)
+
+
+@random_seed
+def test_gaussian_process_regression_trajectory_sampler_returns_a_trajectory_sampler(
+    gpflow_interface_factory: ModelFactoryType, dim: int
+) -> None:
+
+    x = tf.constant(
+        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
+    )  # shape: [10, dim]
+    model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x)[:, 0:1])
+    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("trajectory_sampler is only currently implemented for the GPR models.")
+
+    trajectory_sampler = model.trajectory_sampler()
+
+    assert isinstance(trajectory_sampler, TrajectorySampler)
+
+
+@random_seed
+def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model, _ = gpflow_interface_factory(x, _3x_plus_gaussian_noise(x))
+    x_predict = tf.constant([[50.5]], gpflow.default_float())
+
+    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
+        pytest.skip("trajectory_sampler is only currently implemented for the GPR models.")
+
+    samples = []
+    num_samples = 10
+    trajectory_sampler = model.trajectory_sampler()
+    for _ in range(num_samples):
+        trajectory = trajectory_sampler.get_trajectory()
+        samples.append(trajectory(x_predict))
+
+    sample_mean = tf.reduce_mean(samples, axis=0)
+    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
+
+    true_mean, true_variance = model.predict(x_predict)
+
+    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean + 1.0, true_mean + 1.0, rtol=linear_error)
+    npt.assert_allclose(sample_variance, true_variance, rtol=2 * linear_error)
 
 
 def test_gaussian_process_regression_predict_y(gpflow_interface_factory: ModelFactoryType) -> None:

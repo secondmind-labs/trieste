@@ -22,8 +22,9 @@ from gpflow.models import GPModel
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import ProbabilisticModel, ReparametrizationSampler
 from ..optimizer import Optimizer
+from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -91,3 +92,12 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
+
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        :return: The reparametrization sampler. 
+        """
+        return BatchReparametrizationSampler(num_samples, self)

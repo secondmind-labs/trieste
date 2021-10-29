@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-
+from typing import Callable
 import gpflow
 import tensorflow as tf
 
@@ -92,12 +92,30 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-    def get_kernel(self) -> gpflow.kernels.Kernel:
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
-        Return the kernel of the model.
-        :return: The kernel.
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        Note that this is not supported by all models.
+
+        :return: The reparametrization sampler. 
         """
-        raise NotImplementedError(f"Model {self!r} does not provide a kernel")
+        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
+
+
+    def trajectory_sampler(self) -> TrajectorySampler:
+        """
+        Return a trajectory sampler.
+
+        Note that this is not supported by all models.
+
+        :return: The trajectory sampler. 
+        """
+        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
+
+
+
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
@@ -226,3 +244,77 @@ class ModelStack(TrainableProbabilisticModel):
 
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
+
+
+class ReparametrizationSampler(ABC):
+    r"""
+    This sampler employs the *reparameterization trick* to draw samples from a
+    :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
+    points. 
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        """
+        :param sample_size: The desired number of samples.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
+
+    @abstractmethod
+    def sample(self, at: TensorType) -> TensorType:
+        """
+        :param at: Input points that define the sampler.
+        :return: Samples.
+        """
+
+
+
+TrajectoryFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for trajectory functions.
+
+An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
+points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+shape `[N, 1]`.
+
+A key property of these trajectory functions is that the same sample draw is evaluated
+for all queries. This property is known as consistency.
+"""
+
+
+class TrajectorySampler(ABC):
+    r"""
+    This class builds functions that approximate a trajectory sampled from an
+    underlying :class:`ProbabilisticModel`.
+
+    Unlike the :class:`ReparametrizationSampler`, a :class:`TrajectorySampler` provides
+    consistent samples (i.e ensuring that the same sample draw is used for all evalutions
+    of a particular trajectory function). 
+    """
+
+    def __init__(self, model: ProbabilisticModel):
+        """
+        :param model: The model to sample from.
+        """
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._model!r})"
+
+    @abstractmethod
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        :return: A trajectory function representing an approximate trajectory from the Gaussian
+            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        """
+
+       

@@ -41,7 +41,7 @@ from .function import (
     SingleModelGreedyAcquisitionBuilder,
 )
 from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
-from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
+from .sampler import ExactThompsonSampler, ThompsonSamplerFromTrajectory, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
 """ Unbound covariant type variable. """
@@ -685,7 +685,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 self._num_query_points, models[OBJECTIVE]
             )
         else:  # Perform approximate Thompson sampling
-            thompson_sampler = RandomFourierFeatureThompsonSampler(
+            thompson_sampler = ThompsonSamplerFromTrajectory(
                 self._num_query_points,
                 models[OBJECTIVE],
                 datasets[OBJECTIVE],

@@ -66,9 +66,7 @@ from .function import (
     soft_local_penalizer,
 )
 from .sampler import (
-    BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
-    IndependentReparametrizationSampler,
-    RandomFourierFeatureThompsonSampler,
+    ThompsonSamplerFromTrajectory,
 )

@@ -25,17 +25,16 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ProbabilisticModel, ReparametrizationSampler
 from ..space import SearchSpace
 from ..types import TensorType
 from ..utils import DEFAULTS
 from .multi_objective.pareto import Pareto, get_reference_point
 from .multi_objective.partition import prepare_default_non_dominated_partition_bounds
 from .sampler import (
-    BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
-    RandomFourierFeatureThompsonSampler,
+    ThompsonSamplerFromTrajectory,
     ThompsonSampler,
 )
 
@@ -384,8 +383,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = True,
-        num_fourier_features: Optional[int] = None,
+        use_thompson: bool = False,
+        use_fourier_features: bool = False,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -395,27 +394,25 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of Fourier features used for approximate Thompson
-            sampling. If None, then do exact Thompson sampling.
+        :param use_fourier_features: If True then use Fourier features to yield approximate Thompson
+            samples. If False, then do exact Thompson sampling.
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` or ``grid_size`` are negative, or if
-            - ``num_fourier_features`` is negative or zero
-            - ``num_fourier_features`` is specified an ``use_thompson`` is `False`
+            - ``use_fourier_features`` is `True` and ``use_thompson`` is `False`
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if num_fourier_features is not None:
+        if use_fourier_features:
             tf.debugging.Assert(use_thompson, [])
-            tf.debugging.assert_positive(num_fourier_features)
 
         self._search_space = search_space
         self._num_samples = num_samples
         self._grid_size = grid_size
 
         self._use_thompson = use_thompson
-        self._num_fourier_features = num_fourier_features
+        self._use_fourier_features = use_fourier_features
 
     def prepare_acquisition_function(
         self,
@@ -443,7 +440,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             sampled_points=query_points,
             num_samples=self._num_samples,
             use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
+            use_fourier_features=self._use_fourier_features,
         )
         return min_value_entropy_search(model, min_value_samples)
 
@@ -472,7 +469,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             sampled_points=query_points,
             num_samples=self._num_samples,
             use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
+            use_fourier_features=self._use_fourier_features,
         )
         function.update(min_value_samples)  # type: ignore
         return function
@@ -1098,13 +1095,20 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
-        sampler = BatchReparametrizationSampler(self._sample_size, model)
+        try:
+            sampler = model.reparam_sampler(self._sample_size)
+        except (NotImplementedError):
+            raise ValueError(
+            """
+            Batch Monte-Carlo expected hyper-volume improvment only supports models with a reparam_sampler method.
+            """
+            )
 
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
 
 def batch_ehvi(
-    sampler: BatchReparametrizationSampler,
+    sampler: ReparametrizationSampler,
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -1293,8 +1297,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
         """
-
-        :param sampler:  BatchReparametrizationSampler.
+        :param sampler:  ReparametrizationSampler.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
@@ -1303,7 +1306,17 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
             greater than one.
         """
         self._sample_size = sample_size
-        self._sampler = BatchReparametrizationSampler(sample_size, model)
+
+        try:
+            sampler = model.reparam_sampler(self._sample_size)
+        except (NotImplementedError):
+            raise ValueError(
+            """
+            Batch Monte-Carlo expected improvment only supports models with a reparam_sampler method.
+            """
+            )
+
+        self._sampler = sampler
         self._eta = tf.Variable(eta)
         self._jitter = jitter
 
@@ -1832,8 +1845,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = True,
-        num_fourier_features: Optional[int] = None,
+        use_thompson: bool = False,
+        use_fourier_features: bool = False,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -1844,30 +1857,28 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             scaling this with search space dimension.
         :param use_thompson: If True then use Thompson sampling to sample the objective's
             minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of Fourier features used for approximate Thompson
-            sampling. If None, then do exact Thompson sampling.
+        :param use_fourier_features: If True then use Fourier features to yield approximate Thompson
+            samples. If False, then do exact Thompson sampling.
         :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
             batch optimization performance.
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` is not positive, or
             - ``grid_size`` is not positive, or
-            - ``num_fourier_features`` is negative or zero, or
-            - ``num_fourier_features`` is specified and ``use_thompson`` is `False`
+            - ``use_fourier_features`` is `True` and ``use_thompson`` is `False`
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if num_fourier_features is not None:
+        if use_fourier_features:
             tf.debugging.Assert(use_thompson, [])
-            tf.debugging.assert_positive(num_fourier_features)
 
         self._search_space = search_space
         self._num_samples = num_samples
         self._grid_size = grid_size
 
         self._use_thompson = use_thompson
-        self._num_fourier_features = num_fourier_features
+        self._use_fourier_features = use_fourier_features
         self._rescaled_repulsion = rescaled_repulsion
 
         self._min_value_samples: Optional[TensorType] = None
@@ -1975,7 +1986,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             sampled_points=query_points,
             num_samples=self._num_samples,
             use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
+            use_fourier_features=self._use_fourier_features,
         )
 
         if self._quality_term is not None:  # if possible, just update the quality term
@@ -2174,18 +2185,16 @@ def _get_min_value_samples(
     sampled_points: TensorType,
     num_samples: int,
     use_thompson: bool,
-    num_fourier_features: Optional[int] = None,
+    use_fourier_features: bool = True,
 ) -> TensorType:
 
     if not use_thompson:  # use Gumbel sampler
         sampler: ThompsonSampler = GumbelSampler(num_samples, model)
-    elif num_fourier_features is not None:  # use approximate Thompson sampler
-        sampler = RandomFourierFeatureThompsonSampler(
+    elif use_fourier_features:  # use approximate Thompson sampler
+        sampler = ThompsonSamplerFromTrajectory(
             num_samples,
             model,
-            dataset,
             sample_min_value=True,
-            num_features=num_fourier_features,
         )
     else:  # use exact Thompson sampler
         sampler = ExactThompsonSampler(num_samples, model, sample_min_value=True)
