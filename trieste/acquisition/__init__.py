@@ -50,6 +50,7 @@ from .function import (
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
+    NegativeModelTrajectory,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
     SingleModelAcquisitionBuilder,
