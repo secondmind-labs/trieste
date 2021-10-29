@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module is the home of the sampling functionality required by Trieste's
-acquisiiton functions.
+acquisition functions.
 """
 
 from __future__ import annotations

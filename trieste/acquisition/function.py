@@ -366,6 +366,22 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         return expected_improvement * augmentation
 
 
+class NegativeModelTrajectory(SingleModelAcquisitionBuilder):
+    def __repr__(self) -> str:
+        return "NegativeModelTrajectory"
+
+    def prepare_acquisition_function(
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: Unused
+        :param model: Model to sample trajectories from. Must have a `sample_trajectory` method
+        :return: An acquisition function
+        """
+        trajectory = model.sample_trajectory()
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))
+
+
 class MinValueEntropySearch(SingleModelAcquisitionBuilder):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective

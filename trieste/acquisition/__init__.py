@@ -49,6 +49,7 @@ from .function import (
     GreedyAcquisitionFunctionBuilder,
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
+    NegativeModelTrajectory,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
