@@ -69,7 +69,7 @@ class DeepGaussianProcessSampler(Sampler):
         eps_is_populated = tf.size(self._eps_list[0]) != 0
 
         samples = tf.tile(tf.expand_dims(at, 0), [self._sample_size, 1, 1])
-        for i, layer in enumerate(self._model.model_gpflux.f_layers):
+        for i, layer in enumerate(self._model.model_gpflux.f_layers):  # type: ignore
             if isinstance(layer, LatentVariableLayer):
                 if not eps_is_populated:
                     self._eps_list[i].assign(layer.prior.sample([tf.shape(samples)[:-1]]))
