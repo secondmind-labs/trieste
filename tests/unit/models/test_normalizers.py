@@ -60,11 +60,25 @@ def test_data_transformer_wrapper(random_data) -> None:
     )
 
     tf.debugging.assert_near(
+        tf.math.reduce_mean(normalized_model._model.data[1]), tf.constant(0, dtype=default_float())
+    )
+    tf.debugging.assert_near(
+        tf.math.reduce_std(normalized_model._model.data[1]), tf.constant(1, dtype=default_float())
+    )
+
+    tf.debugging.assert_near(
         normalized_model.predict(dataset.query_points)[0], dataset.observations, rtol=1e-2
     )
 
     updated_dataset = dataset + hartmann_6_dataset(num_query_points=5)
     normalized_model.update(updated_dataset)
+
+    tf.debugging.assert_near(
+        tf.math.reduce_mean(normalized_model._model.data[1]), tf.constant(0, dtype=default_float())
+    )
+    tf.debugging.assert_near(
+        tf.math.reduce_std(normalized_model._model.data[1]), tf.constant(1, dtype=default_float())
+    )
 
     tf.debugging.assert_near(
         normalized_model.predict(updated_dataset.query_points)[0],
