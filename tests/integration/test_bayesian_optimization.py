@@ -50,8 +50,11 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
     SCALED_BRANIN_MINIMUM,
+    TRID_10_MINIMUM,
+    TRID_10_SEARCH_SPACE,
     michalewicz,
     scaled_branin,
+    trid_10
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -245,3 +248,75 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
 
     assert tf.reduce_all(relative_minimizer_err < 0.03, axis=-1)
     npt.assert_allclose(best_y, MICHALEWICZ_2_MINIMUM, rtol=0.03)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        (50, EfficientGlobalOptimization()),
+    ],
+)
+def test_normalized_optimizer_finds_minima_of_trid_function(
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], 
+) -> None:
+    search_space = TRID_10_SEARCH_SPACE  # Restore search space
+
+    class NormalizedModel(DataTransformWrapper, GaussianProcessRegression):
+        pass
+
+    def build_gp_model(data, x_std = 1.0, y_std = 0.1):
+
+        dim = data.query_points.shape[-1]
+        empirical_mean = tf.math.reduce_mean(data.observations)
+        empirical_variance = tf.math.reduce_variance(data.observations)
+
+        prior_lengthscales = [0.2*x_std*np.sqrt(dim)] * dim
+        prior_scale = tf.cast(1.0, dtype=tf.float64)
+
+        x_std = tf.cast(x_std, dtype=tf.float64)
+        y_std = tf.cast(y_std, dtype=tf.float64)
+
+        kernel = gpflow.kernels.Matern52(
+            variance=empirical_variance,
+            lengthscales=prior_lengthscales,
+        )
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.constant(-2, dtype=tf.float64), prior_scale
+        )
+        kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            tf.zeros(10, dtype=tf.float64), tf.ones(10, dtype=tf.float64)
+        )
+        gpr = gpflow.models.GPR(
+            data.astuple(),
+            kernel,
+            mean_function=gpflow.mean_functions.Constant(empirical_mean),
+            noise_variance=1e-5 * empirical_variance,
+        )
+        gpflow.set_trainable(gpr.likelihood, False)
+
+        # Change `GaussianProcessRegression` to `StandardizedGaussianProcessRegression` and pass
+        # dataset to constructor.
+        return NormalizedModel(
+            dataset=data,
+            model=gpr,
+        )
+
+    # Build the model. Model priors should assume normalized data.
+    initial_query_points = search_space.sample(50)
+    observer = mk_observer(trid_10, OBJECTIVE)
+    initial_data = observer(initial_query_points)
+    model = build_gp_model(initial_data, 60, 320)
+
+    bo = BayesianOptimizer(observer, search_space)
+    result = bo.optimize(num_steps, initial_data, model)
+    dataset = result.try_get_final_dataset()
+
+    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+
+    best_y = dataset.observations[arg_min_idx]
+    best_x = dataset.query_points[arg_min_idx]
+    relative_minimizer_err = tf.abs((best_x - TRID_10_MINIMIZER) / TRID_10_MINIMIZER)
+
+    assert tf.reduce_all(relative_minimizer_err < 0.03, axis=-1)
+    npt.assert_allclose(best_y, TRID_10_MINIMUM, rtol=0.03)
