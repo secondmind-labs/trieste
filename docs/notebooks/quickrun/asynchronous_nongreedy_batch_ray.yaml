@@ -1,0 +1,5 @@
+replace:
+  - { from: "num_workers = \\d+", to: "num_workers = 2" }
+  - { from: "num_observations = \\d+", to: "num_observations = 3" }
+  - { from: "enable_sleep_delays = True", to: "enable_sleep_delays = False" }
+  - { from: "monte_carlo_sample_size = \\d+", to: "monte_carlo_sample_size = 3" }
