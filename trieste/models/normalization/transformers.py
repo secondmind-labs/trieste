@@ -68,7 +68,7 @@ class StandardTransformer(DataTransformer):
         self._std: TensorType = None
         super().__init__(data)
 
-    def set_parameters(self, data: TensorType) -> TensorType:
+    def set_parameters(self, data: TensorType) -> None:
         self._mean = tf.squeeze(tf.math.reduce_mean(data, axis=0))
         self._std = tf.squeeze(tf.math.reduce_std(data, axis=0))
 
@@ -93,7 +93,7 @@ class MinMaxTransformer(DataTransformer):
         self._delta: TensorType = None
         super().__init__(data)
 
-    def set_parameters(self, data: TensorType) -> TensorType:
+    def set_parameters(self, data: TensorType) -> None:
         self._min = tf.squeeze(tf.math.reduce_min(data, axis=0))
         max_data = tf.squeeze(tf.math.reduce_max(data, axis=0))
         self._delta = max_data - self._min

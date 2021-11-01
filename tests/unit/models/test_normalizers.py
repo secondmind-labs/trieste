@@ -7,19 +7,19 @@ from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.normalization import DataTransformWrapper, transformers
 
 from tests.util.trieste.utils.objectives import hartmann_6_dataset
-from tests.util.models.gpflow.models import gpr_model
+from trieste.types import TensorType
 
 # Verify that functions in transformed space and untransformed space are same.
 
 @pytest.fixture
-def random_data():
+def random_data() -> TensorType:
     """Tensor of shape [10, 6] with data sampled uniformly at random in [-100, 100]."""
     return 200 * tf.random.uniform((10, 6), dtype=default_float()) - 50
 
 
-@pytest.mark.parametrize('transformer', ['Identity', 'Standard', 'MinMax'])
-def test_inverse_forward_transform(random_data, transformer) -> None:
-    transfomer_class = getattr(transformers, f'{transformer}Transformer')
+@pytest.mark.parametrize('transformer_type', ['Identity', 'Standard', 'MinMax'])
+def test_inverse_forward_transform(random_data: TensorType, transformer_type: str) -> None:
+    transfomer_class = getattr(transformers, f'{transformer_type}Transformer')
     transformer = transfomer_class(data=random_data)
     identity_transformed_data = transformer.inverse_transform(
         transformer.transform(random_data)
@@ -27,9 +27,11 @@ def test_inverse_forward_transform(random_data, transformer) -> None:
     tf.debugging.assert_near(random_data, identity_transformed_data)
 
 
-@pytest.mark.parametrize('transformer', ['Identity', 'Standard', 'MinMax'])
-def test_variance_inverse_forward_transform(random_data, transformer) -> None:
-    transfomer_class = getattr(transformers, f'{transformer}Transformer')
+@pytest.mark.parametrize('transformer_type', ['Identity', 'Standard', 'MinMax'])
+def test_variance_inverse_forward_transform(
+    random_data: TensorType, transformer_type: str
+) -> None:
+    transfomer_class = getattr(transformers, f'{transformer_type}Transformer')
     transformer = transfomer_class(data=random_data)
     variance = tf.math.reduce_variance(random_data, axis=0)
     identity_transformed_data = transformer.inverse_transform_variance(
@@ -38,7 +40,7 @@ def test_variance_inverse_forward_transform(random_data, transformer) -> None:
     tf.debugging.assert_near(variance, identity_transformed_data)
 
 
-def test_data_transformer_wrapper(random_data) -> None:
+def test_data_transformer_wrapper(random_data: TensorType) -> None:
     dataset = hartmann_6_dataset(num_query_points=10)
     random_data = (random_data + 50) / 200
 

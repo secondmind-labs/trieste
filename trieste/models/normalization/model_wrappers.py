@@ -1,7 +1,10 @@
-from typing import Mapping, Any, Tuple
+from typing import Mapping, Any, Tuple, Sequence, Union
 import tensorflow as tf
 from gpflow import default_float
 from gpflow.utilities.traversal import read_values, multiple_assign
+from trieste.models.gpflow.interface import GPflowPredictor
+
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 from .transformers import DataTransformer
 from ..interfaces import TrainableProbabilisticModel
@@ -29,14 +32,14 @@ class DataTransformWrapper(TrainableProbabilisticModel):
     def __init__(
         self,
         dataset: Dataset,
-        *model_args,
+        *model_args: Any,
         query_point_transformer: DataTransformer,
         observation_transformer: DataTransformer,
         update_parameters: bool = False,
-        **model_kwargs
+        **model_kwargs: Any
     ) -> None:
         """Construct the wrapped model.
-        
+
         :param dataset: The unnormalized dataset.
         :param model_args: Positional arguments to be passed into the wrapped model constructor.
         :param query_point_transformer: Transformer for query points.
@@ -57,7 +60,7 @@ class DataTransformWrapper(TrainableProbabilisticModel):
 
     def _transform_dataset(self, dataset: Dataset) -> Dataset:
         """Normalize dataset.
-        
+
         :param dataset: The unnormalized dataset.
         :return: The normalized datset.
         """
@@ -66,9 +69,116 @@ class DataTransformWrapper(TrainableProbabilisticModel):
             observations=self._observation_transformer.transform(dataset.observations)
         )
 
-    def _process_hyperparameter_dictionary(self, hyperparameters, inverse_transform: bool = False):
-        """Transform model hyperparameters based on data transforms.
+    def _update_normalization_parameters(self, dataset: Dataset) -> None:
+        """Update normalization parameters for the new dataset.
+
+        :param dataset: New, unnormalized, dataset.
+        """
+        self._query_point_transformer.set_parameters(dataset.query_points)
+        self._observation_transformer.set_parameters(dataset.observations)
+
+    def _initialize_model_parameters(self) -> None:
+        """Update initial model hyperparameters by transforming into normalized space."""
+        pass
+
+    def _update_model_and_normalization_parameters(self, dataset: Dataset) -> None:
+        """Update the model and normalization parameters based on the new dataset.
+        i.e. Denormalize using the old parameters, and renormalize using parameters set from
+        the new dataset.
         
+        :param dataset: New, unnormalized, dataset.
+        """
+        self._update_normalization_parameters(dataset)
+
+    def _predict(
+        self, query_points: TensorType, predict_type: str = '', *args: Any, **kwargs: Any
+    ) -> Tuple[TensorType, TensorType]:
+        """For wrapping the model's prediction methods to feed in normalized query points and denormalize
+        the output.
+
+        :param query_points: The unnormalized query points [..., D].
+        :param predict_type: The type of prediction; options are '', '_joint', or 'y'.
+        """
+        assert predict_type == '' or '_joint' or '_y', f'predict_type {predict_type} not supported.'
+        transformed_query_points = self._query_point_transformer.transform(query_points)
+        predict_function = getattr(super(), f'predict{predict_type}')
+        mean, covariance = predict_function(transformed_query_points, *args, **kwargs)
+        return (
+            self._observation_transformer.inverse_transform(mean),
+            self._observation_transformer.inverse_transform_variance(covariance)
+        )
+
+    def predict(
+        self, query_points: TensorType, *args: Any, **kwargs: Any
+    ) -> Tuple[TensorType, TensorType]:
+        """Wrap model's `predict` method to pass in a normalized dataset and return unnormalized outputs."""
+        return self._predict(query_points, *args, **kwargs)
+
+    def predict_joint(
+        self, query_points: TensorType, *args: Any, **kwargs: Any
+    ) -> Tuple[TensorType, TensorType]:
+        """Wrap model's `predict_joint` method to pass in a normalized dataset and return unnormalized outputs."""
+        return self._predict(query_points, *args, predict_type='_joint', **kwargs)
+
+    def sample(self, query_points: TensorType, *args: Any, **kwargs: Any) -> TensorType:
+        """Wrap the model's `sample` method to normalize the inputs before sampling, and unnormalize the outputs
+        before returning.
+
+        :param query_points: Unnormalized query points [..., D].
+        :param num_samples: Number of samples required, N.
+        :return: Unnormalized samples [N, ..., D]
+        """
+        transformed_query_points = self._query_point_transformer.transform(query_points)
+        samples = super().sample(transformed_query_points, *args, **kwargs)
+        return self._observation_transformer.inverse_transform(samples)
+
+    def predict_y(
+        self, query_points: TensorType, *args: Any, **kwargs: Any
+    ) -> Tuple[TensorType, TensorType]:
+        """Wrap model's `predict_y` method to pass in a normalized dataset and return unnormalized outputs."""
+        return self._predict(query_points, *args, predict_type='_y', **kwargs)
+
+    def update(self, dataset: Dataset, *args: Any, **kwargs: Any) -> None:
+        """Wrap the model's `update` method to pass in a normalized dataset. Optionally update normalization
+        and model parameters.
+        
+        :param dataset: Unnormalized dataset.
+        """
+        if self._update_parameters:
+            self._update_model_and_normalization_parameters(dataset)
+        transformed_dataset = self._transform_dataset(dataset)
+        super().update(transformed_dataset, *args, **kwargs)  # Will update data only.
+
+    def optimize(self, dataset: Dataset, *args: Any, **kwargs: Any) -> None:
+        """Wrap the model's `optimize` method to pass in a normalized dataset.
+        
+        :param dataset: Unnormalized dataset.
+        """
+        transformed_dataset = self._transform_dataset(dataset)
+        return super().optimize(transformed_dataset, *args, **kwargs)
+
+
+class GPRDataTransformWrapper(DataTransformWrapper, GaussianProcessRegression):
+    """DataTransformWrapper for a GaussianProcessRegression model."""
+
+    def _get_unnormalised_hyperparameter_priors(self) -> Mapping[str, Any]:
+        """Get hyperparameter priors from the model, and return distributions over hyperparameters
+        for unnormalized data.
+        """
+        pass
+
+    def _update_hyperparameter_priors(self, unnormalised_hyperparameter_priors: Mapping[str, Any]) -> None:
+        """Update hyperparameter priors based upon the chosen normalizations.
+        
+        :param unnormalized_hyperparameter_priors: Priors over hyperparameters in unnormalized space.
+        """
+        pass
+
+    def _process_hyperparameter_dictionary(
+        self, hyperparameters: Mapping[str, TensorType], inverse_transform: bool = False
+    ) -> Mapping[str, TensorType]:
+        """Transform model hyperparameters based on data transforms.
+
         :param hyperparameters: The untransformed hyperparameters.
         :param inverse_transform: Whether to apply the forward transform (if False) or the inverse
             transform (if True).
@@ -88,37 +198,16 @@ class DataTransformWrapper(TrainableProbabilisticModel):
                 transform = lambda x: x
             processed_hyperparameters[key] = transform(tf_value)
         return processed_hyperparameters
-    
-    def _update_normalization_parameters(self, dataset: Dataset) -> None:
-        """Update normalization parameters for the new dataset.
-        
-        :param dataset: New, unnormalized, dataset.
-        """
-        self._query_point_transformer.set_parameters(dataset.query_points)
-        self._observation_transformer.set_parameters(dataset.observations)
 
     def _transform_and_assign_hyperparameters(
         self, hyperparameters: Mapping[str, TensorType]
     ) -> None:
         """Transform hyperparameters for normalized data, and assign to model.
-        
+
         :param hyperparameters: Hyperparameters for unnormalized data.
         """
         normalized_hyperparameters = self._process_hyperparameter_dictionary(hyperparameters)
         multiple_assign(self._model, normalized_hyperparameters)
-    
-    def _get_unnormalised_hyperparameter_priors(self) -> Mapping[str, Any]:
-        """Get hyperparameter priors from the model, and return distributions over hyperparameters
-        for unnormalized data.
-        """
-        return None
-
-    def _update_hyperparameter_priors(self, unnormalised_hyperparameter_priors: Mapping[str, Any]) -> None:
-        """Update hyperparameter priors based upon the chosen normalizations.
-        
-        :param unnormalized_hyperparameter_priors: Priors over hyperparameters in unnormalized space.
-        """
-        pass
 
     def _initialize_model_parameters(self) -> None:
         """Update initial model hyperparameters by transforming into normalized space."""
@@ -130,7 +219,7 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         """Update the model and normalization parameters based on the new dataset.
         i.e. Denormalize using the old parameters, and renormalize using parameters set from
         the new dataset.
-        
+
         :param dataset: New, unnormalized, dataset.
         """
         hyperparameters = read_values(self._model)
@@ -141,64 +230,3 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         self._update_normalization_parameters(dataset)
         self._transform_and_assign_hyperparameters(unnormalized_hyperparameters)
         self._update_hyperparameter_priors(unnormalized_hyperparameter_priors)
-
-    def _predict(
-        self, query_points: TensorType, predict_type: str = ''
-    ) -> Tuple[TensorType, TensorType]:
-        """For wrapping the model's prediction methods to feed in normalized query points and denormalize
-        the output.
-
-        :param query_points: The unnormalized query points [..., D].
-        :param predict_type: The type of prediction; options are '', '_joint', or 'y'.
-        """
-        assert predict_type == '' or '_joint' or '_y', f'predict_type {predict_type} not supported.'
-        transformed_query_points = self._query_point_transformer.transform(query_points)
-        predict_function = getattr(super(), f'predict{predict_type}')
-        mean, covariance = predict_function(transformed_query_points)
-        return (
-            self._observation_transformer.inverse_transform(mean),
-            self._observation_transformer.inverse_transform_variance(covariance)
-        )
-
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        """Wrap model's `predict` method to pass in a normalized dataset and return unnormalized outputs."""
-        return self._predict(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        """Wrap model's `predict_joint` method to pass in a normalized dataset and return unnormalized outputs."""
-        return self._predict(query_points, predict_type='_joint')
-
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """Wrap the model's `sample` method to normalize the inputs before sampling, and unnormalize the outputs
-        before returning.
-
-        :param query_points: Unnormalized query points [..., D].
-        :param num_samples: Number of samples required, N.
-        :return: Unnormalized samples [N, ..., D]
-        """
-        transformed_query_points = self._query_point_transformer.transform(query_points)
-        samples = super().sample(transformed_query_points, num_samples)
-        return self._observation_transformer.inverse_transform(samples)
-
-    def predict_y(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
-        """Wrap model's `predict_y` method to pass in a normalized dataset and return unnormalized outputs."""
-        return self._predict(query_points, predict_type='_y')
-
-    def update(self, dataset: Dataset) -> None:
-        """Wrap the model's `update` method to pass in a normalized dataset. Optionally update normalization
-        and model parameters.
-        
-        :param dataset: Unnormalized dataset.
-        """
-        if self._update_parameters:
-            self._update_model_and_normalization_parameters(dataset)
-        transformed_dataset = self._transform_dataset(dataset)
-        super().update(transformed_dataset)  # Will update data only.
-
-    def optimize(self, dataset: Dataset) -> None:
-        """Wrap the model's `optimize` method to pass in a normalized dataset.
-        
-        :param dataset: Unnormalized dataset.
-        """
-        transformed_dataset = self._transform_dataset(dataset)
-        return super().optimize(transformed_dataset)

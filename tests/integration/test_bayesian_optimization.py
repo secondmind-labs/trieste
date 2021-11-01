@@ -268,7 +268,7 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
     class NormalizedModel(DataTransformWrapper, GaussianProcessRegression):
         pass
 
-    def build_gp_model(data, x_std = 1.0, y_std = 0.1):
+    def build_gp_model(data: Dataset, x_std: float = 1.0, y_std: float = 0.1):
 
         dim = data.query_points.shape[-1]
         empirical_variance = tf.math.reduce_variance(data.observations)
