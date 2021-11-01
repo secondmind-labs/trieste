@@ -620,7 +620,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         self,
         num_search_space_samples: int,
         num_query_points: int,
-        use_random_fourier_features: bool = False,
+        use_fourier_features: bool = False,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
@@ -638,14 +638,14 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
 
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
-        self._use_random_fourier_features = use_random_fourier_features
+        self._use_fourier_features = use_fourier_features
 
     def __repr__(self) -> str:
         """"""
         return f"""DiscreteThompsonSampling(
         {self._num_search_space_samples!r},
         {self._num_query_points!r},
-        {self._use_random_fourier_features!r})"""
+        {self._use_fourier_features!r})"""
 
     def acquire(
         self,
@@ -675,7 +675,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
-        if self._use_random_fourier_features is False:  # Perform exact Thompson sampling
+        if self._use_fourier_features is False:  # Perform exact Thompson sampling
             thompson_sampler: ThompsonSampler = ExactThompsonSampler(
                 self._num_query_points, models[OBJECTIVE]
             )

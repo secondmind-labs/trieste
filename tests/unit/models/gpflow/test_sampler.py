@@ -48,6 +48,12 @@ def test_reparametrization_sampler_reprs(
     )
 
 
+def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
+
+
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
@@ -284,3 +290,24 @@ def test_rff_trajecotry_sampler_returns_same_posterior_from_each_calculation_met
 
     npt.assert_allclose(posterior_1.loc, posterior_2.loc, rtol=0.02)
     npt.assert_allclose(posterior_1.scale_tril, posterior_2.scale_tril, rtol=0.02)
+
+
+@random_seed
+def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None:
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    sampler1 = RandomFourierFeatureTrajectorySampler(model, dataset, num_features=100)
+    trajectory1 = sampler1.get_trajectory()
+
+    sampler2 = RandomFourierFeatureTrajectorySampler(model, dataset, num_features=100)
+    trajectory2 = sampler2.get_trajectory()
+
+    npt.assert_array_less(1e-9, tf.abs(trajectory1(xs) - trajectory2(xs)))

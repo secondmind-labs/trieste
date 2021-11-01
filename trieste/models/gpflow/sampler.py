@@ -18,7 +18,6 @@ GPflow wrappers.
 
 from __future__ import annotations
 
-
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions import RandomFourierFeatures
@@ -32,7 +31,7 @@ from ..interfaces import (
     TrajectoryFunction,
     TrajectorySampler,
 )
-from . interface import GPflowPredictor
+
 
 class IndependentReparametrizationSampler(ReparametrizationSampler):
     r"""
@@ -59,7 +58,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
 
-    def sample(self, at: TensorType) -> TensorType:
+        self._initialized = tf.Variable(False)
+
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
@@ -68,17 +69,24 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
 
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
-        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
+            is negative.
         """
         tf.debugging.assert_shapes([(at, [..., 1, None])])
-        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
+        tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        if tf.size(self._eps) == 0:
+        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
+        var = var + jitter
+
+        if not self._initialized:
             self._eps.assign(
                 tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
             )  # [S, L]
+            self._initialized.assign(True)
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 

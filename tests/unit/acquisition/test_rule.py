@@ -114,15 +114,22 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
         rule.acquire(search_space, models, datasets=datasets)
 
 
-@pytest.mark.parametrize("use_random_fourier_features", [True, False])
+def test_discrete_thompson_sampling_raises_if_use_fourier_features_with_incorrect_model() -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    ts = DiscreteThompsonSampling(100, 10, use_fourier_features=True)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    with pytest.raises(ValueError):
+        ts.acquire_single(search_space, model, dataset=dataset)
+
+
+@pytest.mark.parametrize("use_fourier_features", [True, False])
 @pytest.mark.parametrize("num_query_points", [1, 10])
 def test_discrete_thompson_sampling_acquire_returns_correct_shape(
-    use_random_fourier_features: bool, num_query_points: int
+    use_fourier_features: bool, num_query_points: int
 ) -> None:
     search_space = Box([-2.2, -1.0], [1.3, 3.3])
-    ts = DiscreteThompsonSampling(
-        100, num_query_points, use_random_fourier_features=use_random_fourier_features
-    )
+    ts = DiscreteThompsonSampling(100, num_query_points, use_fourier_features=use_fourier_features)
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)

@@ -17,10 +17,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable
 
+import gpflow
 import tensorflow as tf
 
 from ..data import Dataset
 from ..types import TensorType
+from ..utils import DEFAULTS
 
 
 class ProbabilisticModel(ABC):
@@ -98,6 +100,7 @@ class ProbabilisticModel(ABC):
 
         Note that this is not supported by all models.
 
+        :param num_samples: The desired number of samples.
         :return: The reparametrization sampler.
         """
         raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
@@ -111,6 +114,13 @@ class ProbabilisticModel(ABC):
         :return: The trajectory sampler.
         """
         raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+        :return: The kernel.
+        """
+        raise NotImplementedError(f"Model {self!r} does not provide a kernel")
 
 
 class TrainableProbabilisticModel(ProbabilisticModel):
@@ -258,15 +268,18 @@ class ReparametrizationSampler(ABC):
 
         self._sample_size = sample_size
         self._model = model
+        self._initialized = tf.Variable(False)
 
     def __repr__(self) -> str:
         """"""
         return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
 
     @abstractmethod
-    def sample(self, at: TensorType) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         :param at: Input points that define the sampler.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky
+            decomposition of the covariance matrix.
         :return: Samples.
         """
 

@@ -104,6 +104,10 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         ]
         return tf.squeeze(tf.concat(covs, axis=-3))
 
+
+class GaussianProcessWithSamplers(GaussianProcess):
+    """A (static) Gaussian process over a vector random variable with a reparam sampler"""
+
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         return BatchReparametrizationSampler(num_samples, self)
 
@@ -156,6 +160,9 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
 
     def trajectory_sampler(self) -> TrajectorySampler:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        return BatchReparametrizationSampler(num_samples, self)
 
 
 class ModelFactoryType(Protocol):
