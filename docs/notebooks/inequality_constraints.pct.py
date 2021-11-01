@@ -95,7 +95,7 @@ def create_bo_model(data):
     variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    jitter = gpflow.kernels.White(1e-5)
+    jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.create_model(GPflowModelConfig(**{
