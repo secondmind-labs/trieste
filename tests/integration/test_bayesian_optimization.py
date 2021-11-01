@@ -194,7 +194,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (5, DiscreteThompsonSampling(1000, 50)),
+        (1, DiscreteThompsonSampling(1000, 50)),
     ],
 )
 def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
@@ -207,7 +207,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
     search_space = Box(MICHALEWICZ_2_MINIMIZER[0] - 0.5, MICHALEWICZ_2_MINIMIZER[0] + 0.5)
 
     def build_model(data: Dataset) -> DeepGaussianProcess:
-        epochs = int(2e3)
+        epochs = int(4e2)
         batch_size = 100
 
         dgp = two_layer_dgp_model(data.query_points)
@@ -228,7 +228,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
 
-    initial_query_points = search_space.sample(50)
+    initial_query_points = search_space.sample_sobol(20)
     observer = mk_observer(michalewicz, OBJECTIVE)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
