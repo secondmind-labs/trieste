@@ -60,7 +60,7 @@ import trieste
 observer = mk_observer(function)
 
 num_initial_points = 20
-num_acquisitions = 20
+num_steps = 20
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -115,11 +115,12 @@ dgp_model = build_dgp_model(initial_data)
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
+grid_size = 1000
+acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
 # Note that the GPflux interface does not currently support using `track_state=True`. This will be
 # addressed in a future update.
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
+dgp_result = bo.optimize(num_steps, initial_data, dgp_model,
                          acquisition_rule=acquisition_rule, track_state=False)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
@@ -202,11 +203,12 @@ def build_gp_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
+    num_kernel_samples = 100
 
     return GaussianProcessRegression(
         model=gpr,
         optimizer=Optimizer(gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}),
-        num_kernel_samples=100
+        num_kernel_samples=num_kernel_samples
     )
 
 
@@ -214,7 +216,7 @@ gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
+result = bo.optimize(num_steps, initial_data, gp_model, acquisition_rule=acquisition_rule,
                      track_state=False)
 gp_dataset = result.try_get_final_dataset()
 
@@ -288,7 +290,7 @@ search_space = MICHALEWICZ_5_SEARCH_SPACE
 observer = mk_observer(function)
 
 num_initial_points = 50
-num_acquisitions = 50
+num_steps = 50
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -300,9 +302,9 @@ initial_data = observer(initial_query_points)
 dgp_model = build_dgp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
+acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
+dgp_result = bo.optimize(num_steps, initial_data, dgp_model,
                          acquisition_rule=acquisition_rule, track_state=False)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
@@ -325,7 +327,7 @@ gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
+result = bo.optimize(num_steps, initial_data, gp_model, acquisition_rule=acquisition_rule,
                      track_state=False)
 gp_dataset = result.try_get_final_dataset()
 
@@ -361,9 +363,9 @@ ax[1].set_xlabel("# evaluations")
 
 # %% [markdown]
 # While still far from the optimum, it is considerably better than the GP.
-
 #
-
+#
+#
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
