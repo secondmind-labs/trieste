@@ -196,7 +196,7 @@ def generate_continuous_optimizer(
                 successful_optimization = True
 
                 new_point = variable  # [1, D]
-                new_point_score = target_func(new_point[:, None, :])  # [1, 1]
+                new_point_score = -opt_result.fun  # [1, 1]
 
                 if new_point_score > chosen_point_score:  # if found a better point then keep
                     chosen_point = new_point  # [1, D]
