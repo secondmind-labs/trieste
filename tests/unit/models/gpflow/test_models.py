@@ -446,7 +446,7 @@ def test_gaussian_process_regression_optimize(
 
 @random_seed
 def test_variational_gaussian_process_predict() -> None:
-    x_observed = tf.constant(np.arange(100).reshape((-1, 1)), dtype=gpflow.default_float())
+    x_observed = tf.constant(np.arange(3).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
     model = VariationalGaussianProcess(vgp_model(x_observed, y_observed))
     internal_model = model.model
@@ -455,7 +455,7 @@ def test_variational_gaussian_process_predict() -> None:
         internal_model.training_loss_closure(),
         internal_model.trainable_variables,
     )
-    x_predict = tf.constant([[50.5]], gpflow.default_float())
+    x_predict = tf.constant([[1.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
 
