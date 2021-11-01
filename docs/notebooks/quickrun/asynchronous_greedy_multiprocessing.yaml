@@ -1,0 +1,3 @@
+replace:
+  - { from: "num_iterations = \\d+", to: "num_iterations = 2" }
+  - { from: "enable_sleep_delays = True", to: "enable_sleep_delays = False" }

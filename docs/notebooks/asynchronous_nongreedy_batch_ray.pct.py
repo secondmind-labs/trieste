@@ -1,16 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.12.0
-#   kernelspec:
-#     display_name: 'Python 3.7.5 64-bit (''.venv'': venv)'
-#     name: python3
-# ---
-
 # %% [markdown]
 # # Asynchronous batch Bayesian optimization
 #
@@ -27,10 +14,10 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
-
 import ray
 import numpy as np
 import time
+
 
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
@@ -121,7 +108,8 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
-acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=10000)
+monte_carlo_sample_size = 10000
+acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size)
 async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)
 
@@ -195,4 +183,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="
 # %%
 ray.shutdown()  # "Undo ray.init()". Terminate all the processes started in this notebook.
 
-# %%
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

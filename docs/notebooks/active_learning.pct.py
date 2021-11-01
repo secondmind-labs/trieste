@@ -8,7 +8,6 @@
 # %matplotlib inline
 import numpy as np
 import tensorflow as tf
-import pandas as pd
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -168,3 +167,8 @@ observations = dataset.observations.numpy()
 from util.plotting import plot_bo_points, plot_function_2d
 
 plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
