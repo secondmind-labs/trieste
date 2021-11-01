@@ -271,8 +271,9 @@ class ModelStack(TrainableProbabilisticModel):
                 however, received samplers of types {unique_sampler_types}.
                 """
             )
-        else:  # return the sampler defined for the whole model stack
-            return sampler_types[0](num_samples, self)
+        else:  # return the shared sampler rebuilt for the whole model stack
+            shared_sampler = sampler_types[0]
+            return shared_sampler(num_samples, self)
 
 
 class ReparametrizationSampler(ABC):
