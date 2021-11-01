@@ -250,19 +250,29 @@ class ModelStack(TrainableProbabilisticModel):
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
 
-
-
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
-        Return a reparametrization sampler providing `num_samples` samples.
-
-        Note that this is not supported by all models.
+        Return a reparametrization sampler providing `num_samples` samples across
+        all the models in the model stack.
 
         :param num_samples: The desired number of samples.
         :return: The reparametrization sampler.
+        :raise NotImplementedError: If the models in the stack do not share the
+            same :meth:`reparam_sampler`.
         """
-        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
 
+        sampler_types = [type(model.reparam_sampler(1)) for model in self._models]
+        unique_sampler_types = set(sampler_types)
+        if len(unique_sampler_types) > 1:
+            raise NotImplementedError(
+                f"""
+                Reparameterization sampling is only currently supported for model
+                stacks built from models that use the same reparameterization sampler,
+                however, received samplers of types {unique_sampler_types}.
+                """
+            )
+        else:  # return the sampler defined for the whole model stack
+            return sampler_types[0](num_samples, self)
 
 
 class ReparametrizationSampler(ABC):
