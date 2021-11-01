@@ -383,7 +383,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = False,
+        use_thompson: bool = True,
         use_fourier_features: bool = False,
     ):
         """
@@ -1847,7 +1847,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = False,
+        use_thompson: bool = True,
         use_fourier_features: bool = False,
         rescaled_repulsion: bool = True,
     ):
