@@ -211,7 +211,7 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
-def test_rff_trajecotry_sampler_raises_for_invalid_number_of_features(
+def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
     num_features: int,
 ) -> None:
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
@@ -225,7 +225,7 @@ def test_rff_trajecotry_sampler_raises_for_invalid_number_of_features(
         RandomFourierFeatureTrajectorySampler(model, dataset, num_features=num_features)
 
 
-def test_rff_trajecotry_sampler_raises_for_a_non_gpflow_kernel() -> None:
+def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
     model = QuadraticMeanAndRBFKernel()
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     with pytest.raises(AssertionError):
@@ -233,7 +233,7 @@ def test_rff_trajecotry_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
-def test_rff_trajecotry_sampler_returns_trajectory_function_with_correct_shaped_output(
+def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shaped_output(
     num_evals: int,
 ) -> None:
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
@@ -251,7 +251,7 @@ def test_rff_trajecotry_sampler_returns_trajectory_function_with_correct_shaped_
     tf.debugging.assert_shapes([(trajectory(xs), [num_evals, 1])])
 
 
-def test_rff_trajecotry_sampler_returns_deterministic_trajectory() -> None:
+def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()
@@ -271,7 +271,7 @@ def test_rff_trajecotry_sampler_returns_deterministic_trajectory() -> None:
     npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
 
 
-def test_rff_trajecotry_sampler_returns_same_posterior_from_each_calculation_method() -> None:
+def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_method() -> None:
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     model.kernel = (
         gpflow.kernels.RBF()

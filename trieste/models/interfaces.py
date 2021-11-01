@@ -345,6 +345,6 @@ class TrajectorySampler(ABC):
     @abstractmethod
     def get_trajectory(self) -> TrajectoryFunction:
         """
-        :return: A trajectory function representing an approximate trajectory from the Gaussian
-            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        :return: A trajectory function representing an approximate trajectory from the
+            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
