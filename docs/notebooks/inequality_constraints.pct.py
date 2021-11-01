@@ -222,8 +222,6 @@ batch_data = bo.optimize(
     num_steps, initial_data, initial_models, batch_rule, track_state=False
 ).try_get_final_datasets()
 
-# %%
-
 # %% [markdown]
 # We visualise the resulting data as before.
 
