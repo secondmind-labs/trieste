@@ -84,9 +84,9 @@ from trieste.types import State, TensorType
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, use_fourier_features=True).using(
-                        OBJECTIVE
-                    )
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE, use_thompson=True, use_fourier_features=True
+                    ).using(OBJECTIVE)
                 ),
             ),
             (
@@ -129,9 +129,9 @@ from trieste.types import State, TensorType
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, use_fourier_features=True).using(
-                            OBJECTIVE
-                        )
+                        MinValueEntropySearch(
+                            BRANIN_SEARCH_SPACE, use_thompson=True, use_fourier_features=True
+                        ).using(OBJECTIVE)
                     )
                 ),
             ),
