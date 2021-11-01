@@ -1070,13 +1070,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_j
         BatchMonteCarloExpectedHypervolumeImprovement(100, jitter=-1.0)
 
 
-def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler(
-    input_dim: int,
-    num_samples_per_point: int,
-    training_input: tf.Tensor,
-    obj_num: int,
-    variance_scale: float,
-) -> None:
+def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> None:
 
     model = _mo_test_model(2, *[1.0] * 2, with_reparam_sampler=False)
 

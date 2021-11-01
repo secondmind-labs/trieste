@@ -251,6 +251,20 @@ class ModelStack(TrainableProbabilisticModel):
             model.optimize(Dataset(dataset.query_points, obs))
 
 
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        Note that this is not supported by all models.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        """
+        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
+
+
+
 class ReparametrizationSampler(ABC):
     r"""
     This sampler employs the *reparameterization trick* to draw samples from a
