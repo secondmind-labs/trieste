@@ -260,7 +260,6 @@ class AskTellOptimizer(Generic[SP]):
         #   which, when called, returns state and points
         # so code below is needed to cater for both cases
 
-        # TODO: handle step number for logging?
         points_or_stateful = self._acquisition_rule.acquire(
             self._search_space, self._models, datasets=self._datasets
         )

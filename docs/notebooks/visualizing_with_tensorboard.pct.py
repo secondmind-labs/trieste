@@ -60,8 +60,9 @@ trieste.logging.set_tensorboard_writer(summary_writer)
 # By setting the summary writer, we tell trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
 
 # %%
+num_steps = 15
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result, history = bo.optimize(15, initial_data, model).astuple()
+result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
 
 # %% [markdown]
@@ -100,10 +101,22 @@ model = GPRExtraLogging(gpr)
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result, history = bo.optimize(15, initial_data, model).astuple()
+result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
 # %% [markdown]
 # ![TensorBoard custom graphs](figures/tensorboard_custom.png)
+
+# %% [markdown]
+# ## Using Tensorboard with Ask-Tell Optimization
+#
+# To use Tensorboard logging with the [Ask-Tell interface](ask_tell_optimization.ipynb), you must also explicitly set the optimization step number before calling ask or tell:
+
+# %%
+for step in range(num_steps):
+    trieste.logging.set_step_number(step)
+    # new_point = ask_tell.ask()
+    # new_data = observer(new_point)
+    # ask_tell.tell(new_data)
 
 # %% [markdown]
 # ## LICENSE

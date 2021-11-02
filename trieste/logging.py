@@ -62,8 +62,11 @@ def set_step_number(step_number: int) -> None:
     Set an optimization step number to use for logging purposes.
 
     :param step_number: current step number
+    :raise ValueError: if step_number < 0
     """
     global _STEP_NUMBER
+    if step_number < 0:
+        raise ValueError(f"step_number must be non-negative (got {step_number})")
     _STEP_NUMBER = step_number
 
 
