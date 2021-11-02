@@ -55,7 +55,7 @@ fig.show()
 #   - one containing only those query_points and observations where the observations are finite.
 #     We'll label this with `OBJECTIVE`.
 #   - the other containing all the query points, but whose observations indicate if evaluating the
-#     observer failed at that point, using `1` if the evaluation failed, else `0`. We'll label this
+#     observer failed at that point, using `0` if the evaluation failed, else `1`. We'll label this
 #     with `FAILURE`.
 #
 # Let's define an observer that outputs the data in these formats.
