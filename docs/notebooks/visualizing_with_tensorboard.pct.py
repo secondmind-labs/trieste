@@ -40,7 +40,7 @@ model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 # Clear any logs from previous runs
 # !rm -rf logs/tensorboard
 
-summary_writer = tf.summary.create_file_writer("logs/tensorboard")
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment1")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
 # %% [markdown]
@@ -97,9 +97,12 @@ class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
 model = GPRExtraLogging(gpr)
 
 # %% [markdown]
-# Running with this model now also produces logs for the mean lengthscale.
+# Running with this model now also produces logs for the mean lengthscale. We mark this optimization run as a separate experiment by creating a new summary writer. Tensorboard will conveniently offer an automatic comparison of the experiments.
 
 # %%
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment2")
+trieste.logging.set_tensorboard_writer(summary_writer)
+
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
@@ -112,11 +115,16 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # To use Tensorboard logging with the [Ask-Tell interface](ask_tell_optimization.ipynb), you must also explicitly set the optimization step number before calling ask or tell:
 
 # %%
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment3")
+trieste.logging.set_tensorboard_writer(summary_writer)
+
+ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(search_space, initial_data, model)
+
 for step in range(num_steps):
     trieste.logging.set_step_number(step)
-    # new_point = ask_tell.ask()
-    # new_data = observer(new_point)
-    # ask_tell.tell(new_data)
+    new_point = ask_tell.ask()
+    new_data = observer(new_point)
+    ask_tell.tell(new_data)
 
 # %% [markdown]
 # ## LICENSE
