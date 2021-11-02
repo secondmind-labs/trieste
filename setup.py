@@ -42,6 +42,6 @@ setup(
         "gpflux==0.2.*",
         "numpy",
         "tensorflow>=2.4",
-        "tensorflow-probability>=0.12",
+        "tensorflow-probability>=0.12,<0.14",
     ],
 )
