@@ -53,10 +53,6 @@ def test_tensorboard_writer() -> None:
         assert get_tensorboard_writer() is None
 
 
-def test_get_step_number_default() -> None:
-    assert get_step_number() == 0
-
-
 @pytest.mark.parametrize("step", [0, 1, 42])
 def test_set_get_step_number(step: int) -> None:
     set_step_number(step)
