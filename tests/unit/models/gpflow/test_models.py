@@ -352,16 +352,16 @@ def test_gaussian_process_regression_log(
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
         with step_number(42):
-            model.log("context")
+            model.log()
 
     assert len(mocked_summary_writer.method_calls) == 1
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
     assert mocked_summary_scalar.call_count == 2
-    assert mocked_summary_scalar.call_args_list[0][0][0] == "context.kernel.variance"
+    assert mocked_summary_scalar.call_args_list[0][0][0] == "kernel.variance"
     assert mocked_summary_scalar.call_args_list[0][0][1].numpy() == 1
-    assert mocked_summary_scalar.call_args_list[1][0][0] == "context.kernel.lengthscale"
+    assert mocked_summary_scalar.call_args_list[1][0][0] == "kernel.lengthscale"
     assert mocked_summary_scalar.call_args_list[1][0][1].numpy() == 1
 
 

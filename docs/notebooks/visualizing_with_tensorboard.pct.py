@@ -78,18 +78,13 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
 
-    def log(self, context):
-        """
-        Log model-specific information at a given optimization step.
-
-        :param context: A context string to use when logging.
-        """
-        super().log(context)
+    def log(self):
+        super().log()
         summary_writer = trieste.logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=trieste.logging.get_step_number()):
                 tf.summary.scalar(
-                    f"{context}.kernel.lengthscales.mean",
+                    "kernel.lengthscales.mean",
                     np.mean(self.get_kernel().lengthscales)
                 )
 
@@ -110,12 +105,38 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # ![TensorBoard custom graphs](figures/tensorboard_custom.png)
 
 # %% [markdown]
+# ## Logging additional acqusition rule metrics
+#
+#
+# Similarly, it is possible to log additional metrics connected to the acquisition rule by overriding rule's `acquire` method (or any other method used while evaluating the rule). For example, the following class also logs the mean coordinates of the selected points:
+
+# %%
+class EGOExtraLogging(trieste.acquisition.rule.EfficientGlobalOptimization):
+    
+    def acquire(self, search_space, models, datasets = None):
+        points = super().acquire(search_space, models, datasets)
+        summary_writer = trieste.logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=trieste.logging.get_step_number()):
+                tf.summary.scalar("EGO.points_selected.mean", tf.math.reduce_mean(points))
+        return points
+    
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment3")
+trieste.logging.set_tensorboard_writer(summary_writer)
+
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+result, history = bo.optimize(num_steps, initial_data, model, acquisition_rule=EGOExtraLogging()).astuple()
+
+# %% [markdown]
+# ![TensorBoard custom rule graphs](figures/tensorboard_custom_rule.png)
+
+# %% [markdown]
 # ## Using Tensorboard with Ask-Tell Optimization
 #
 # To use Tensorboard logging with the [Ask-Tell interface](ask_tell_optimization.ipynb), you must also explicitly set the optimization step number before calling ask or tell:
 
 # %%
-summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment3")
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment4")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
 ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(search_space, initial_data, model)
