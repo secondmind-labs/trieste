@@ -46,7 +46,6 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-
 BRANIN_OPTIMIZER_PARAMS = (
     "num_steps, reload_state, acquisition_rule_fn",
     cast(
@@ -208,8 +207,8 @@ class TestAskTellOptimizerFindsMinimum:
 
         if branin:
             relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
-            # these accuracies are the current best for the given number of optimization steps, which makes
-            # this is a regression test
+            # these accuracies are the current best for the given number of optimization steps,
+            # which makes this is a regression test
             assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
             npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
         else:
