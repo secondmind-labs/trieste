@@ -99,7 +99,7 @@ BRANIN_OPTIMIZER_PARAMS = (
 
 class TestAskTellOptimizerFindsMinimum:
     @random_seed
-    @pytest.mark.slow
+    @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
     @pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
     def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
         self,
