@@ -377,6 +377,10 @@ def test_vgp_raises_for_invalid_init() -> None:
         optimizer = Optimizer(gpflow.optimizers.Scipy())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
 
+    with pytest.raises(ValueError):
+        optimizer = BatchOptimizer(gpflow.optimizers.Scipy())
+        VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
+
 
 def test_vgp_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
