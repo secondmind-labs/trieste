@@ -71,7 +71,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
         # Data has to be stored in variables with dynamic shape to allow for changes
-        # Sometimes, for instance after serialization-deserialization, the shape can be overriden
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
         # Thus here we ensure data is stored in dynamic shape Variables
 
         if all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
@@ -337,11 +337,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
 
         if use_natgrads:
-            if not isinstance(self._optimizer, BatchOptimizer):
+            if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
                 raise ValueError(
                     f"""
-                    Natgrads can only be used alongside an optimizer from tf.optimizers however
-                    received f{self._optimizer}
+                    Natgrads can only be used alongside an optimizer built from tf.optimizers
+                    however received f{self._optimizer}.
                     """
                 )
 
@@ -401,7 +401,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
 
         # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
-        # q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
+        # q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
         # Hence we need to back-transform from f_mu and f_cov to obtain the updated
         # new_q_mu and new_q_sqrt:
         Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
