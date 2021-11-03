@@ -323,7 +323,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
+            batch size 100.
         :param use_natgrads: If True then alternate model optimization steps with natural
             gradient updates. Note that natural gradients requires
             an :class:`~trieste.models.optimizer.Optimizer` optimizer.
@@ -333,6 +334,10 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             optimizer.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
+
+        if optimizer is None:
+            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
+
         super().__init__(optimizer)
         self._model = model
 
