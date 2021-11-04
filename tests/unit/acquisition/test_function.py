@@ -434,7 +434,7 @@ def test_min_value_entropy_search_builder_updates_acquisition_function(use_thomp
 
 
 @random_seed
-@unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
+@unittest.mock.patch("trieste.acquisition.single_objective.entropy.min_value_entropy_search")
 def test_min_value_entropy_search_builder_builds_min_value_samples_rff(
     mocked_mves: MagicMock,
 ) -> None:
@@ -1658,7 +1658,7 @@ def test_gibbon_raises_for_model_without_covariance_between_points_method() -> N
 
 
 @random_seed
-@unittest.mock.patch("trieste.acquisition.function.gibbon_quality_term")
+@unittest.mock.patch("trieste.acquisition.single_objective.entropy.gibbon_quality_term")
 def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
