@@ -36,34 +36,22 @@ UCB.
 """
 from . import optimizer, rule
 from .combination import Product, Reducer, Sum
-from .function import (
-    GIBBON,
+from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    AugmentedExpectedImprovement,
-    BatchMonteCarloExpectedHypervolumeImprovement,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedConstrainedImprovement,
-    ExpectedHypervolumeImprovement,
-    ExpectedImprovement,
+    AcquisitionFunctionClass,
     GreedyAcquisitionFunctionBuilder,
-    LocalPenalizationAcquisitionFunction,
-    MinValueEntropySearch,
-    NegativeLowerConfidenceBound,
-    NegativePredictiveMean,
-    ProbabilityOfFeasibility,
+    PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
-    augmented_expected_improvement,
+    UpdatablePenalizationFunction,
+)
+from .multi_objective import (
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+    batch_ehvi,
     expected_hv_improvement,
-    expected_improvement,
-    gibbon_quality_term,
-    gibbon_repulsion_term,
-    hard_local_penalizer,
-    lower_confidence_bound,
-    min_value_entropy_search,
-    probability_of_feasibility,
-    soft_local_penalizer,
 )
 from .sampler import (
     BatchReparametrizationSampler,
@@ -71,4 +59,27 @@ from .sampler import (
     GumbelSampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureThompsonSampler,
+)
+from .single_objective import (
+    GIBBON,
+    AugmentedExpectedImprovement,
+    BatchMonteCarloExpectedImprovement,
+    ExpectedConstrainedImprovement,
+    ExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
+    MinValueEntropySearch,
+    NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
+    PredictiveVariance,
+    ProbabilityOfFeasibility,
+    augmented_expected_improvement,
+    expected_improvement,
+    gibbon_quality_term,
+    gibbon_repulsion_term,
+    hard_local_penalizer,
+    lower_confidence_bound,
+    min_value_entropy_search,
+    predictive_variance,
+    probability_of_feasibility,
+    soft_local_penalizer,
 )

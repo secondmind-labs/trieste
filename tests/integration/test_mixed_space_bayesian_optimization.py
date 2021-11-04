@@ -22,7 +22,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
     LocalPenalizationAcquisitionFunction,

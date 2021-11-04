@@ -74,7 +74,7 @@ model = build_model(initial_data)
 # %%
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition.function import PredictiveVariance
+from trieste.acquisition import PredictiveVariance
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(

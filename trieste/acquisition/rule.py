@@ -32,17 +32,16 @@ from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
-from .function import (
+from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
 )
 from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
 from .sampler import ExactThompsonSampler, RandomFourierFeatureThompsonSampler, ThompsonSampler
+from .single_objective import BatchMonteCarloExpectedImprovement, ExpectedImprovement
 
 T_co = TypeVar("T_co", covariant=True)
 """ Unbound covariant type variable. """

@@ -26,7 +26,7 @@ from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from .function import AcquisitionFunction
+from .interface import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """

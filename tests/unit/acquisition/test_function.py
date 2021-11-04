@@ -39,7 +39,7 @@ from tests.util.misc import (
 )
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     GIBBON,
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
