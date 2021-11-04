@@ -13,27 +13,24 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Callable, Optional, Union
+from typing import Callable, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import (
-    TF_DEBUGGING_ERROR_TYPES,
-    random_seed,
-)
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from trieste.acquisition.single_objective.local_penalization import (
-    LocalPenalizationAcquisitionFunction,
-    hard_local_penalizer,
-    soft_local_penalizer,
-)
 from trieste.acquisition import (
     ExpectedImprovement,
     MinValueEntropySearch,
     PenalizationFunction,
     UpdatablePenalizationFunction,
+)
+from trieste.acquisition.single_objective.local_penalization import (
+    LocalPenalizationAcquisitionFunction,
+    hard_local_penalizer,
+    soft_local_penalizer,
 )
 from trieste.data import Dataset
 from trieste.space import Box

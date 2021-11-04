@@ -22,12 +22,8 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import (
-    TF_DEBUGGING_ERROR_TYPES,
-    quadratic,
-    random_seed,
-)
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
 from trieste.acquisition.single_objective.entropy import (
     GIBBON,
     MinValueEntropySearch,

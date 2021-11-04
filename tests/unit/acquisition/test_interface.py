@@ -17,16 +17,8 @@ from typing import Optional
 
 import pytest
 
-from tests.util.misc import (
-    empty_dataset,
-    raise_exc,
-)
+from tests.util.misc import empty_dataset, raise_exc
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from trieste.acquisition.interface import (
-    AcquisitionFunction,
-    SingleModelAcquisitionBuilder,
-    SingleModelGreedyAcquisitionBuilder,
-)
 from trieste.acquisition import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
@@ -38,6 +30,11 @@ from trieste.acquisition import (
     NegativePredictiveMean,
     PredictiveVariance,
     ProbabilityOfFeasibility,
+)
+from trieste.acquisition.interface import (
+    AcquisitionFunction,
+    SingleModelAcquisitionBuilder,
+    SingleModelGreedyAcquisitionBuilder,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
