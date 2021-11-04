@@ -52,15 +52,18 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
     SCALED_BRANIN_MINIMUM,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
     michalewicz,
     scaled_branin,
+    simple_quadratic,
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-BRANIN_OPTIMIZER_PARAMS = (
+OPTIMIZER_PARAMS = (
     "num_steps, acquisition_rule",
     cast(
         List[
@@ -144,7 +147,7 @@ BRANIN_OPTIMIZER_PARAMS = (
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -154,28 +157,25 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
-@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
 def test_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
 ) -> None:
+    # for speed reasons we sometimes test with a simple quadratic defined on the same search space
+    # branin; currently assume that every rule should be able to solve this in 5 steps
     _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
 
 
 def _test_optimizer_finds_minimum(
-    branin: bool,
+    optimize_branin: bool,
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
 ) -> None:
 
     search_space = BRANIN_SEARCH_SPACE
-
-    # for speed reasons we sometimes test with a simple quadratic defined on the
-    # same search space as branin
-    def simple_quadratic(x: TensorType) -> TensorType:
-        return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
@@ -192,7 +192,7 @@ def _test_optimizer_finds_minimum(
         return GaussianProcessRegression(gpr)
 
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(scaled_branin if branin else simple_quadratic)
+    observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
@@ -211,16 +211,16 @@ def _test_optimizer_finds_minimum(
             best_y = dataset.observations[arg_min_idx]
             best_x = dataset.query_points[arg_min_idx]
 
-            if branin:
+            if optimize_branin:
                 relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
                 # these accuracies are the current best for the given number of optimization
                 # steps, which makes this is a regression test
                 assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
             else:
-                # currently assume that every rule should be able to solve this in 5 steps
-                npt.assert_allclose(best_x, tf.constant([1.0, 1.0], tf.float64), rtol=0.05)
-                npt.assert_allclose(best_y, tf.constant([-4.0], tf.float64), rtol=0.05)
+                absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
+                assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
+                npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
