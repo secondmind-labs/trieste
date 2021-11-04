@@ -378,7 +378,7 @@ def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gum
         MinValueEntropySearch(search_space, use_thompson=False, num_fourier_features=10)
 
 
-@unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
+@unittest.mock.patch("trieste.acquisition.single_objective.entropy.min_value_entropy_search")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_min_value_entropy_search_builder_builds_min_value_samples(
     mocked_mves: MagicMock, use_thompson: bool
@@ -1559,7 +1559,7 @@ def test_gibbon_quality_term_returns_correct_shape() -> None:
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
-@unittest.mock.patch("trieste.acquisition.function.gibbon_quality_term")
+@unittest.mock.patch("trieste.acquisition.single_objective.entropy.gibbon_quality_term")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_gibbon_builder_builds_min_value_samples(
     mocked_mves: MagicMock, use_thompson: bool
