@@ -399,7 +399,8 @@ class BayesianOptimizer(Generic[SP]):
                 if summary_writer:
                     with summary_writer.as_default():
                         for tag in datasets:
-                            models[tag].log(f"{tag}.model")
+                            with tf.name_scope(f"{tag}.model"):
+                                models[tag].log()
                             tf.summary.scalar(
                                 f"{tag}.observation.best_overall",
                                 np.min(datasets[tag].observations),

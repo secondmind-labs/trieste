@@ -98,6 +98,9 @@ result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
+# In this tutorial we will manually explore the results once the optimization loop completes. For how to monitor the loop in realtime, including some of the plots shown below, see [visualizing and tracking optimizations using Tensorboard](visualizing_with_tensorboard.ipynb).
+
+# %% [markdown]
 # ## Explore the results
 #
 # We can now get the best point found by the optimizer. Note this isn't necessarily the point that was last evaluated.
