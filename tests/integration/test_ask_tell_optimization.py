@@ -97,121 +97,115 @@ BRANIN_OPTIMIZER_PARAMS = (
 )
 
 
-class TestAskTellOptimizerFindsMinimum:
-    @random_seed
-    @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-    @pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
-    def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
-        self,
-        num_steps: int,
-        reload_state: bool,
-        acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
-        | Callable[
-            [],
-            AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-        ],
-    ) -> None:
-        self._test_ask_tell_optimization_finds(True, num_steps, reload_state, acquisition_rule_fn)
+@random_seed
+@pytest.mark.slow  # to run this, add --runslow yes to the pytest command
+@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
+    num_steps: int,
+    reload_state: bool,
+    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    | Callable[
+        [],
+        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    ],
+) -> None:
+    _test_ask_tell_optimization_finds(True, num_steps, reload_state, acquisition_rule_fn)
 
-    @random_seed
-    @pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
-    def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
-        self,
-        num_steps: int,
-        reload_state: bool,
-        acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
-        | Callable[
-            [],
-            AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-        ],
-    ) -> None:
-        self._test_ask_tell_optimization_finds(
-            False, min(num_steps, 5), reload_state, acquisition_rule_fn
+
+@random_seed
+@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
+    num_steps: int,
+    reload_state: bool,
+    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    | Callable[
+        [],
+        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    ],
+) -> None:
+    _test_ask_tell_optimization_finds(False, min(num_steps, 5), reload_state, acquisition_rule_fn)
+
+
+def _test_ask_tell_optimization_finds(
+    branin: bool,
+    num_steps: int,
+    reload_state: bool,
+    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    | Callable[
+        [],
+        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    ],
+) -> None:
+    # For the case when optimization state is saved and reload on each iteration
+    # we need to use new acquisition function object to imitate real life usage
+    # hence acquisition rule factory method is passed in, instead of a rule object itself
+    # it is then called to create a new rule whenever needed in the test
+
+    search_space = BRANIN_SEARCH_SPACE
+
+    # for speed reasons we sometimes test with a simple quadratic defined on the
+    # same search space as branin
+    def simple_quadratic(x: TensorType) -> TensorType:
+        return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+
+    def build_model(data: Dataset) -> GaussianProcessRegression:
+        variance = tf.math.reduce_variance(data.observations)
+        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+        scale = tf.constant(1.0, dtype=tf.float64)
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.constant(-2.0, dtype=tf.float64), scale
         )
+        kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            tf.math.log(kernel.lengthscales), scale
+        )
+        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
+        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        return GaussianProcessRegression(gpr)
 
-    @staticmethod
-    def _test_ask_tell_optimization_finds(
-        branin: bool,
-        num_steps: int,
-        reload_state: bool,
-        acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
-        | Callable[
-            [],
-            AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-        ],
-    ) -> None:
-        # For the case when optimization state is saved and reload on each iteration
-        # we need to use new acquisition function object to imitate real life usage
-        # hence acquisition rule factory method is passed in, instead of a rule object itself
-        # it is then called to create a new rule whenever needed in the test
+    initial_query_points = search_space.sample(5)
+    observer = mk_observer(scaled_branin if branin else simple_quadratic)
+    initial_data = observer(initial_query_points)
+    model = build_model(initial_data)
 
-        search_space = BRANIN_SEARCH_SPACE
+    ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
 
-        # for speed reasons we sometimes test with a simple quadratic defined on the
-        # same search space as branin
-        def simple_quadratic(x: TensorType) -> TensorType:
-            return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+    for _ in range(num_steps):
+        # two scenarios are tested here, depending on `reload_state` parameter
+        # in first the same optimizer object is always used
+        # in second new optimizer is created at each step from saved state
+        new_point = ask_tell.ask()
 
-        def build_model(data: Dataset) -> GaussianProcessRegression:
-            variance = tf.math.reduce_variance(data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            scale = tf.constant(1.0, dtype=tf.float64)
-            kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.constant(-2.0, dtype=tf.float64), scale
-            )
-            kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log(kernel.lengthscales), scale
-            )
-            gpr = gpflow.models.GPR(
-                (data.query_points, data.observations), kernel, noise_variance=1e-5
-            )
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            return GaussianProcessRegression(gpr)
+        if reload_state:
+            state: Record[
+                None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
+            ] = ask_tell.to_record()
+            written_state = pickle.dumps(state)
 
-        initial_query_points = search_space.sample(5)
-        observer = mk_observer(scaled_branin if branin else simple_quadratic)
-        initial_data = observer(initial_query_points)
-        model = build_model(initial_data)
+        new_data_point = observer(new_point)
 
-        ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
+        if reload_state:
+            state = pickle.loads(written_state)
+            ask_tell = AskTellOptimizer.from_record(state, search_space, acquisition_rule_fn())
 
-        for _ in range(num_steps):
-            # two scenarios are tested here, depending on `reload_state` parameter
-            # in first the same optimizer object is always used
-            # in second new optimizer is created at each step from saved state
-            new_point = ask_tell.ask()
+        ask_tell.tell(new_data_point)
 
-            if reload_state:
-                state: Record[
-                    None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
-                ] = ask_tell.to_record()
-                written_state = pickle.dumps(state)
+    result: OptimizationResult[
+        None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
+    ] = ask_tell.to_result()
+    dataset = result.try_get_final_dataset()
 
-            new_data_point = observer(new_point)
+    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
-            if reload_state:
-                state = pickle.loads(written_state)
-                ask_tell = AskTellOptimizer.from_record(state, search_space, acquisition_rule_fn())
+    best_y = dataset.observations[arg_min_idx]
+    best_x = dataset.query_points[arg_min_idx]
 
-            ask_tell.tell(new_data_point)
-
-        result: OptimizationResult[
-            None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
-        ] = ask_tell.to_result()
-        dataset = result.try_get_final_dataset()
-
-        arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-
-        best_y = dataset.observations[arg_min_idx]
-        best_x = dataset.query_points[arg_min_idx]
-
-        if branin:
-            relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
-            # these accuracies are the current best for the given number of optimization steps,
-            # which makes this is a regression test
-            assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
-            npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
-        else:
-            # currently assume that every rule should be able to solve this in 5 steps
-            npt.assert_allclose(best_x, tf.constant([1.0, 1.0], tf.float64), rtol=0.05)
-            npt.assert_allclose(best_y, tf.constant([-4.0], tf.float64), rtol=0.05)
+    if branin:
+        relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+        # these accuracies are the current best for the given number of optimization steps,
+        # which makes this is a regression test
+        assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
+        npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+    else:
+        # currently assume that every rule should be able to solve this in 5 steps
+        npt.assert_allclose(best_x, tf.constant([1.0, 1.0], tf.float64), rtol=0.05)
+        npt.assert_allclose(best_y, tf.constant([-4.0], tf.float64), rtol=0.05)

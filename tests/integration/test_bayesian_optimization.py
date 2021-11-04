@@ -142,99 +142,91 @@ BRANIN_OPTIMIZER_PARAMS = (
 )
 
 
-class TestOptimizerFindsMinimum:
-    @random_seed
-    @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-    @pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
-    def test_optimizer_finds_minima_of_the_scaled_branin_function(
-        self,
-        num_steps: int,
-        acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-        | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-    ) -> None:
-        self._test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
+@random_seed
+@pytest.mark.slow  # to run this, add --runslow yes to the pytest command
+@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+def test_optimizer_finds_minima_of_the_scaled_branin_function(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+) -> None:
+    _test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
 
-    @random_seed
-    @pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
-    def test_optimizer_finds_minima_of_simple_quadratic(
-        self,
-        num_steps: int,
-        acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-        | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-    ) -> None:
-        self._test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
 
-    @staticmethod
-    def _test_optimizer_finds_minimum(
-        branin: bool,
-        num_steps: int,
-        acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-        | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
-    ) -> None:
+@random_seed
+@pytest.mark.parametrize(*BRANIN_OPTIMIZER_PARAMS)
+def test_optimizer_finds_minima_of_simple_quadratic(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+) -> None:
+    _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
 
-        search_space = BRANIN_SEARCH_SPACE
 
-        # for speed reasons we sometimes test with a simple quadratic defined on the
-        # same search space as branin
-        def simple_quadratic(x: TensorType) -> TensorType:
-            return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+def _test_optimizer_finds_minimum(
+    branin: bool,
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+) -> None:
 
-        def build_model(data: Dataset) -> GaussianProcessRegression:
-            variance = tf.math.reduce_variance(data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            scale = tf.constant(1.0, dtype=tf.float64)
-            kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.constant(-2.0, dtype=tf.float64), scale
+    search_space = BRANIN_SEARCH_SPACE
+
+    # for speed reasons we sometimes test with a simple quadratic defined on the
+    # same search space as branin
+    def simple_quadratic(x: TensorType) -> TensorType:
+        return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+
+    def build_model(data: Dataset) -> GaussianProcessRegression:
+        variance = tf.math.reduce_variance(data.observations)
+        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+        scale = tf.constant(1.0, dtype=tf.float64)
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.constant(-2.0, dtype=tf.float64), scale
+        )
+        kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            tf.math.log(kernel.lengthscales), scale
+        )
+        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
+        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        return GaussianProcessRegression(gpr)
+
+    initial_query_points = search_space.sample(5)
+    observer = mk_observer(scaled_branin if branin else simple_quadratic)
+    initial_data = observer(initial_query_points)
+    model = build_model(initial_data)
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        summary_writer = tf.summary.create_file_writer(tmpdirname)
+        with tensorboard_writer(summary_writer):
+
+            dataset = (
+                BayesianOptimizer(observer, search_space)
+                .optimize(num_steps, initial_data, model, acquisition_rule)
+                .try_get_final_dataset()
             )
-            kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log(kernel.lengthscales), scale
-            )
-            gpr = gpflow.models.GPR(
-                (data.query_points, data.observations), kernel, noise_variance=1e-5
-            )
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            return GaussianProcessRegression(gpr)
 
-        initial_query_points = search_space.sample(5)
-        observer = mk_observer(scaled_branin if branin else simple_quadratic)
-        initial_data = observer(initial_query_points)
-        model = build_model(initial_data)
+            arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            summary_writer = tf.summary.create_file_writer(tmpdirname)
-            with tensorboard_writer(summary_writer):
+            best_y = dataset.observations[arg_min_idx]
+            best_x = dataset.query_points[arg_min_idx]
 
-                dataset = (
-                    BayesianOptimizer(observer, search_space)
-                    .optimize(num_steps, initial_data, model, acquisition_rule)
-                    .try_get_final_dataset()
-                )
+            if branin:
+                relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+                # these accuracies are the current best for the given number of optimization
+                # steps, which makes this is a regression test
+                assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
+                npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+            else:
+                # currently assume that every rule should be able to solve this in 5 steps
+                npt.assert_allclose(best_x, tf.constant([1.0, 1.0], tf.float64), rtol=0.05)
+                npt.assert_allclose(best_y, tf.constant([-4.0], tf.float64), rtol=0.05)
 
-                arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-
-                best_y = dataset.observations[arg_min_idx]
-                best_x = dataset.query_points[arg_min_idx]
-
-                if branin:
-                    relative_minimizer_err = tf.abs(
-                        (best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS
-                    )
-                    # these accuracies are the current best for the given number of optimization
-                    # steps, which makes this is a regression test
-                    assert tf.reduce_any(
-                        tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0
-                    )
-                    npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
-                else:
-                    # currently assume that every rule should be able to solve this in 5 steps
-                    npt.assert_allclose(best_x, tf.constant([1.0, 1.0], tf.float64), rtol=0.05)
-                    npt.assert_allclose(best_y, tf.constant([-4.0], tf.float64), rtol=0.05)
-
-                # check that acquisition functions defined as classes aren't retraced unnecessarily
-                if isinstance(acquisition_rule, EfficientGlobalOptimization):
-                    acq_function = acquisition_rule._acquisition_function
-                    if isinstance(acq_function, AcquisitionFunctionClass):
-                        assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
+            # check that acquisition functions defined as classes aren't retraced unnecessarily
+            if isinstance(acquisition_rule, EfficientGlobalOptimization):
+                acq_function = acquisition_rule._acquisition_function
+                if isinstance(acq_function, AcquisitionFunctionClass):
+                    assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
 
 
 @random_seed
