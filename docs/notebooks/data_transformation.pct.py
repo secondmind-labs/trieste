@@ -253,9 +253,79 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # We then create our new model class that handles normalization automatically.
 
 # %%
-from trieste.models.normalization import StandardizationMixin
+from trieste.models.normalization import DataTransformWrapper
 
-class StandardizedGaussianProcessRegression(StandardizationMixin, GaussianProcessRegression):
+class GPRDataTransformWrapper(DataTransformWrapper, GaussianProcessRegression):
+    """DataTransformWrapper for a GaussianProcessRegression model."""
+
+    def _get_unnormalised_hyperparameter_priors(self):
+        """Get hyperparameter priors from the model, and return distributions over hyperparameters
+        for unnormalized data.
+        """
+        pass
+
+    def _update_hyperparameter_priors(self, unnormalised_hyperparameter_priors) -> None:
+        """Update hyperparameter priors based upon the chosen normalizations.
+        
+        :param unnormalized_hyperparameter_priors: Priors over hyperparameters in unnormalized space.
+        """
+        pass
+
+    def _process_hyperparameter_dictionary(self, hyperparameters, inverse_transform):
+        """Transform model hyperparameters based on data transforms.
+
+        :param hyperparameters: The untransformed hyperparameters.
+        :param inverse_transform: Whether to apply the forward transform (if False) or the inverse
+            transform (if True).
+        :returns: The transformed hyperparameters.
+        """
+        prefix = 'inverse_' if inverse_transform else ''
+        processed_hyperparameters = {}
+        for key, value in hyperparameters.items():
+            tf_value = tf.constant(value, dtype=default_float())  # Ensure value is tf Tensor
+            if key.endswith('mean_function.c'):
+                transform = getattr(self._observation_transformer, f'{prefix}transform')
+            elif key.endswith('variance') and not 'likelihood' in key:
+                transform = getattr(self._observation_transformer, f'{prefix}transform_variance')
+            elif key.endswith('lengthscales') or key.endswith('period'):
+                transform = getattr(self._query_point_transformer, f'{prefix}transform')
+            else:
+                transform = lambda x: x
+            processed_hyperparameters[key] = transform(tf_value)
+        return processed_hyperparameters
+
+    def _transform_and_assign_hyperparameters(self, hyperparameters):
+        """Transform hyperparameters for normalized data, and assign to model.
+
+        :param hyperparameters: Hyperparameters for unnormalized data.
+        """
+        normalized_hyperparameters = self._process_hyperparameter_dictionary(hyperparameters)
+        multiple_assign(self._model, normalized_hyperparameters)
+
+    def _initialize_model_parameters(self):
+        """Update initial model hyperparameters by transforming into normalized space."""
+        hyperparameters = read_values(self._model)
+        hyperparameters = {k: tf.constant(v, dtype=default_float()) for k, v in hyperparameters.items()}
+        self._transform_and_assign_hyperparameters(hyperparameters)
+
+    def _update_model_and_normalization_parameters(self, dataset):
+        """Update the model and normalization parameters based on the new dataset.
+        i.e. Denormalize using the old parameters, and renormalize using parameters set from
+        the new dataset.
+
+        :param dataset: New, unnormalized, dataset.
+        """
+        hyperparameters = read_values(self._model)
+        unnormalized_hyperparameters = self._process_hyperparameter_dictionary(
+            hyperparameters, inverse_transform=True
+        )
+        unnormalized_hyperparameter_priors = self._get_unnormalised_hyperparameter_priors()
+        self._update_normalization_parameters(dataset)
+        self._transform_and_assign_hyperparameters(unnormalized_hyperparameters)
+        self._update_hyperparameter_priors(unnormalized_hyperparameter_priors)
+
+
+class NormalizedGPR(GPRDataTransformWrapper, GaussianProcessRegression):
     def __init__(self, dataset, model, optimizer, num_kernel_samples):
         super().__init__(dataset, model, optimizer, num_kernel_samples)
 
@@ -300,7 +370,7 @@ def build_gp_model(data, x_std = 1.0, y_std = 0.1):
 
     # Change `GaussianProcessRegression` to `StandardizedGaussianProcessRegression` and pass
     # dataset to constructor.
-    return StandardizedGaussianProcessRegression(
+    return NormalizedGPR(
         dataset=data,
         model=gpr,
         optimizer=Optimizer(

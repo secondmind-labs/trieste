@@ -24,9 +24,8 @@ class DataTransformWrapper(TrainableProbabilisticModel):
     To update model hyperparameters on each iteration, pass `update_parameters=True` into the
     constructor. It is likely that the user will require a bespoke implementation to handle this
     with their chosen model. For this, they will typically want to subclass the following methods:
-        _process_hyperparameter_dictionary
-        _get_unnormalized_hyperparameter_priors
-        _update_hyperparameter_priors
+        _initialize_model_parameters
+        _update_model_and_normalization_parameters
     """
 
     def __init__(
@@ -44,8 +43,8 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         :param model_args: Positional arguments to be passed into the wrapped model constructor.
         :param query_point_transformer: Transformer for query points.
         :param observation_transformer: Transformer for observations.
-        :param update_parameters: Whether to update the normalization and model
-            parameters at each iteration of the Bayesian optimization loop. If `True` then the methods
+        :param update_parameters: Whether to update the normalization and model parameters at each
+            iteration of the Bayesian optimization loop. If `True` then the methods
             `_update_model_hyperparameters` and `_update_hyperparameter_priors` should be defined.
         :param model_kwargs: Keyword arguments to be passed into the wrapped model constructor.
         """
@@ -85,7 +84,7 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         """Update the model and normalization parameters based on the new dataset.
         i.e. Denormalize using the old parameters, and renormalize using parameters set from
         the new dataset.
-        
+
         :param dataset: New, unnormalized, dataset.
         """
         self._update_normalization_parameters(dataset)
@@ -156,77 +155,3 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         """
         transformed_dataset = self._transform_dataset(dataset)
         return super().optimize(transformed_dataset, *args, **kwargs)
-
-
-class GPRDataTransformWrapper(DataTransformWrapper, GaussianProcessRegression):
-    """DataTransformWrapper for a GaussianProcessRegression model."""
-
-    def _get_unnormalised_hyperparameter_priors(self) -> Mapping[str, Any]:
-        """Get hyperparameter priors from the model, and return distributions over hyperparameters
-        for unnormalized data.
-        """
-        pass
-
-    def _update_hyperparameter_priors(self, unnormalised_hyperparameter_priors: Mapping[str, Any]) -> None:
-        """Update hyperparameter priors based upon the chosen normalizations.
-        
-        :param unnormalized_hyperparameter_priors: Priors over hyperparameters in unnormalized space.
-        """
-        pass
-
-    def _process_hyperparameter_dictionary(
-        self, hyperparameters: Mapping[str, TensorType], inverse_transform: bool = False
-    ) -> Mapping[str, TensorType]:
-        """Transform model hyperparameters based on data transforms.
-
-        :param hyperparameters: The untransformed hyperparameters.
-        :param inverse_transform: Whether to apply the forward transform (if False) or the inverse
-            transform (if True).
-        :returns: The transformed hyperparameters.
-        """
-        prefix = 'inverse_' if inverse_transform else ''
-        processed_hyperparameters = {}
-        for key, value in hyperparameters.items():
-            tf_value = tf.constant(value, dtype=default_float())  # Ensure value is tf Tensor
-            if key.endswith('mean_function.c'):
-                transform = getattr(self._observation_transformer, f'{prefix}transform')
-            elif key.endswith('variance') and not 'likelihood' in key:
-                transform = getattr(self._observation_transformer, f'{prefix}transform_variance')
-            elif key.endswith('lengthscales') or key.endswith('period'):
-                transform = getattr(self._query_point_transformer, f'{prefix}transform')
-            else:
-                transform = lambda x: x
-            processed_hyperparameters[key] = transform(tf_value)
-        return processed_hyperparameters
-
-    def _transform_and_assign_hyperparameters(
-        self, hyperparameters: Mapping[str, TensorType]
-    ) -> None:
-        """Transform hyperparameters for normalized data, and assign to model.
-
-        :param hyperparameters: Hyperparameters for unnormalized data.
-        """
-        normalized_hyperparameters = self._process_hyperparameter_dictionary(hyperparameters)
-        multiple_assign(self._model, normalized_hyperparameters)
-
-    def _initialize_model_parameters(self) -> None:
-        """Update initial model hyperparameters by transforming into normalized space."""
-        hyperparameters = read_values(self._model)
-        hyperparameters = {k: tf.constant(v, dtype=default_float()) for k, v in hyperparameters.items()}
-        self._transform_and_assign_hyperparameters(hyperparameters)
-
-    def _update_model_and_normalization_parameters(self, dataset: Dataset) -> None:
-        """Update the model and normalization parameters based on the new dataset.
-        i.e. Denormalize using the old parameters, and renormalize using parameters set from
-        the new dataset.
-
-        :param dataset: New, unnormalized, dataset.
-        """
-        hyperparameters = read_values(self._model)
-        unnormalized_hyperparameters = self._process_hyperparameter_dictionary(
-            hyperparameters, inverse_transform=True
-        )
-        unnormalized_hyperparameter_priors = self._get_unnormalised_hyperparameter_priors()
-        self._update_normalization_parameters(dataset)
-        self._transform_and_assign_hyperparameters(unnormalized_hyperparameters)
-        self._update_hyperparameter_priors(unnormalized_hyperparameter_priors)
