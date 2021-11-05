@@ -6,7 +6,7 @@ from trieste.models.gpflow.interface import GPflowPredictor
 
 from trieste.models.gpflow.models import GaussianProcessRegression
 
-from .transformers import DataTransformer
+from .transformers import DataTransformer, IdentityTransformer
 from ..interfaces import TrainableProbabilisticModel
 from ...data import Dataset
 from ...types import S, TensorType
@@ -30,10 +30,10 @@ class DataTransformWrapper(TrainableProbabilisticModel):
 
     def __init__(
         self,
-        dataset: Dataset,
         *model_args: Any,
-        query_point_transformer: DataTransformer,
-        observation_transformer: DataTransformer,
+        dataset: Union[Dataset, None] = None,
+        query_point_transformer: Union[DataTransformer, None] = None,
+        observation_transformer: Union[DataTransformer, None] = None,
         update_parameters: bool = False,
         **model_kwargs: Any
     ) -> None:
@@ -49,8 +49,16 @@ class DataTransformWrapper(TrainableProbabilisticModel):
         :param model_kwargs: Keyword arguments to be passed into the wrapped model constructor.
         """
         super().__init__(*model_args, **model_kwargs)
-        self._query_point_transformer = query_point_transformer
-        self._observation_transformer = observation_transformer
+        if dataset is None:
+            raise TypeError('Initial dataset must be passed.')
+        self._query_point_transformer = (
+            query_point_transformer if query_point_transformer is not None
+            else IdentityTransformer(dataset.query_points)
+        )
+        self._observation_transformer = (
+            observation_transformer if observation_transformer is not None
+            else IdentityTransformer(dataset.observations)
+        )
         super().update(self._transform_dataset(dataset))
 
         self._update_parameters = update_parameters
