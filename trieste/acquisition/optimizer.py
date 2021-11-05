@@ -17,7 +17,7 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from typing import Callable, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 import gpflow
 import scipy.optimize as spo
@@ -26,6 +26,7 @@ from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
+from ..utils import DEFAULTS
 from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
@@ -63,7 +64,9 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
-        num_samples = tf.minimum(5000, 1000 * tf.shape(space.lower)[-1])
+        num_samples = tf.minimum(
+            DEFAULTS.NUM_SAMPLES_MIN, DEFAULTS.NUM_SAMPLES_DIM * tf.shape(space.lower)[-1]
+        )
         return generate_continuous_optimizer(num_samples)(space, target_func)
 
     else:
@@ -100,6 +103,7 @@ def generate_continuous_optimizer(
     num_initial_samples: int = 1000,
     num_optimization_runs: int = 1,
     num_recovery_runs: int = 5,
+    optimizer_args: Optional[Dict[str, Any]] = None,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
@@ -107,11 +111,11 @@ def generate_continuous_optimizer(
     gradient-based optimization across all :class:'Box' subspaces, starting from the best location
     found across a sample of `num_initial_samples` random points.
 
-    This optimizer supports Scipy's L-BFGS-B optimizer, which optimizes directly within and up to
-    the bounds of the search space.
+    This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's wrapper), which optimizes
+    directly within and up to the bounds of the search space.
 
     For challenging acquisition function optimizations, we run `num_optimization_runs` separate
-    optimizations, each starting from one of the top  `num_optimization_runs` initial query points.
+    optimizations, each starting from one of the top `num_optimization_runs` initial query points.
 
     If all `num_optimization_runs` optimizations fail to converge then we run up to
     `num_recovery_runs` starting from random locations.
@@ -124,6 +128,9 @@ def generate_continuous_optimizer(
         the optimization.
     :param num_optimization_runs: The number of separate optimizations to run.
     :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
+    :param optimizer_args: The keyword arguments to pass to the GPflow's Scipy optimizer wrapper.
+        Check `minimize` method  of :class:`~gpflow.optimizers.Scipy` for details what arguments
+        can be passed.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
@@ -142,6 +149,9 @@ def generate_continuous_optimizer(
 
     if num_recovery_runs <= -1:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
+
+    if optimizer_args is None:
+        optimizer_args = dict()
 
     def optimize_continuous(
         space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction
@@ -177,7 +187,8 @@ def generate_continuous_optimizer(
 
         def _perform_optimization(starting_point: TensorType, bounds: spo.Bounds) -> OptimizeResult:
             variable.assign(starting_point)  # [1, D]
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), bounds=bounds)
+            optimizer_args["bounds"] = bounds
+            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args)
 
         successful_optimization = False
         chosen_point = variable  # [1, D]

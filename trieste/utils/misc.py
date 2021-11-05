@@ -180,3 +180,15 @@ class DEFAULTS:
     The default jitter, typically used to stabilise computations near singular points, such as in
     Cholesky decomposition.
     """
+
+    NUM_SAMPLES_MIN: int = 5000
+    """
+    The default jitter, typically used to stabilise computations near singular points, such as in
+    Cholesky decomposition.
+    """
+
+    NUM_SAMPLES_DIM: int = 1000
+    """
+    The default jitter, typically used to stabilise computations near singular points, such as in
+    Cholesky decomposition.
+    """
