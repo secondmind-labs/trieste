@@ -17,7 +17,7 @@ This module contains functionality for optimizing
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 import gpflow
 import scipy.optimize as spo
@@ -103,7 +103,7 @@ def generate_continuous_optimizer(
     num_initial_samples: int = 1000,
     num_optimization_runs: int = 1,
     num_recovery_runs: int = 5,
-    optimizer_args: Optional[Dict[str, Any]] = None,
+    optimizer_args: dict[str, Any] = dict(),
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
@@ -149,9 +149,6 @@ def generate_continuous_optimizer(
 
     if num_recovery_runs <= -1:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
-
-    if optimizer_args is None:
-        optimizer_args = dict()
 
     def optimize_continuous(
         space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction
