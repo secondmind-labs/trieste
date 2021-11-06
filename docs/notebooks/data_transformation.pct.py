@@ -204,7 +204,14 @@ dataset = initial_data
 for step in range(num_acquisitions):
 
     if step == 0:
-        model = build_gp_model(normalised_data)
+        model = GaussianProcessRegression(
+            model=build_gp_model(normalised_data),
+            optimizer=Optimizer(
+                gpflow.optimizers.Scipy(),
+                minimize_args={"options": dict(maxiter=100)}
+            ),
+            num_kernel_samples=100,
+        )
         model.optimize(normalised_data)
     else:
         model.update(normalised_data)
@@ -247,27 +254,27 @@ print(f"observation: {observations[arg_min_idx, :]}")
 
 # %% [markdown]
 #
-# Now lets try managing data transformation with a `DataTransformModelWrapper`.
+# Actually, we can achieve the same effect with a standard `BayesianOptimizer` when we use a `DataTransformModelWrapper`.
 #
 # First, we create a new model class that inherits from the model wrapper class and the kind of `TrainableProbabilisticModel` that we want to use.
 
 # %%
-from trieste.models.normalization import DataTransformWrapper
+from trieste.models.normalization import DataTransformModelWrapper
 
-class GPRwithDataNormalization(DataTransformWrapper, GaussianProcessRegression):
+class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
     pass
 
 
 # %% [markdown]
 #
-# Now we create a `DataTransformer` for query_points and observations, and pass these into our new model class when we construct it.
+# Now we create `DataTransformer`s for query_points and observations, and pass these into our new model class when we construct it.
 
 # %%
 from trieste.models.normalization import StandardTransformer
 
 search_space = TRID_10_SEARCH_SPACE  # Restore the original search space
 
-# Build the model. Model priors should assume normalized data.
+# Build the GP model. Model priors should assume normalized data.
 gpflow_model = build_gp_model(initial_data)
 
 # Create transformers and pass these in.
@@ -285,6 +292,14 @@ model = GPRwithDataNormalization(
     num_kernel_samples=100,
 )
 
+# %% [markdown]
+#
+# Then we run Bayesian Optimization as usual and plot the results.
+#
+# Again, normalization has improved BO performance. Notice, however, that this is subtly different to the Ask-Tell implementation. With a `DataTransformModelWrapper` the predict methods of the wrapped models are automatically denormalized. This means that that acquisition function is optimised for the posterior in the original space rather than the normal space. This changes the exploration-exploitation trade off. The exact nature of this depends on the acquisition function and the transform chosen.
+
+
+# %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_acquisitions, initial_data, model)
 dataset = result.try_get_final_dataset()
@@ -304,4 +319,3 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
-

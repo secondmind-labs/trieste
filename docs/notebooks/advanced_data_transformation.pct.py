@@ -1,18 +1,19 @@
 # %% [markdown]
 # # Advanced Data Transformation
 
-# %%
+# %% [markdown]
 #
-# In advanced cases the user may want to update normalization and model parameters based on incoming data. This can be achieved by subclassing `DataTransformWrapper`.
+# In advanced cases the user may want to update normalization and model parameters based on incoming data. This can be achieved by overloading the appropriate methods of `DataTransformModelWrapper`.
 #
-# First, we subclass DataTransformWrapper, and define methods to allow updating the model parameters.
-#
+# The example use case here will be when we have a relatively small budget, so we'd like to avoid spending it on a large number of random initial points.
 
 
 # %%
 import os
 
 import gpflow
+from gpflow.utilities.traversal import read_values, multiple_assign
+from gpflow.models import GPR
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -20,32 +21,46 @@ import tensorflow_probability as tfp
 from util.plotting import plot_regret
 
 import trieste
-from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 from trieste.objectives import TRID_10_MINIMUM, TRID_10_SEARCH_SPACE, trid_10
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
+from trieste.models.normalization import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer
 
+np.random.seed(1794)
+tf.random.set_seed(1794)
+
+
+# %% [markdown]
+#
+# First, define the problem.
 
 # %%
 function = trid_10
 F_MINIMUM = TRID_10_MINIMUM
 search_space = TRID_10_SEARCH_SPACE
 
-
+# %% [markdown]
 # ## Collect initial points
 #
 # We set up the observer as usual over the Trid function search space, using Sobol sampling to sample the initial points.
 
 # %%
-num_initial_points = 50
+num_initial_points = 15
 
 observer = mk_observer(function)
 
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
+
+
+# %% [markdown]
+#
+# Next, let's define the GP model.
+
+# %%
 
 def build_gp_model(data, x_std = 1.0, y_std = 0.1):
 
@@ -75,19 +90,84 @@ def build_gp_model(data, x_std = 1.0, y_std = 0.1):
         noise_variance=1e-5,
     )
     gpflow.set_trainable(gpr.likelihood, False)
+    # gpflow.set_trainable(gpr.mean_function, False)
+    # gpflow.set_trainable(gpr.kernel.kernels[1], False)
 
     return gpr
 
-gp_model = build_gp_model(initial_data)
+# %% [markdown]
+#
+# Build a wrapped model, that handles data transformation using only the initial dataset.
 
 # %%
-class GPRwithNormalizedData(DataTransformWrapper, GaussianProcessRegression):
-    """DataTransformWrapper for a GaussianProcessRegression model."""
-    def __init__(self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_kernel_samples: int = 10):
-        super().__init__(model, optimizer=optimizer, num_kernel_samples=num_kernel_samples)
-        # Assume that model hyperparameters were defined for normalized data.
 
-    def _process_hyperparameter_dictionary(self, hyperparameters, inverse_transform):
+class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
+    pass
+
+# query_point_transformer simply transforms the search space to the unit cube.
+query_point_transformer = MinMaxTransformer(tf.stack((search_space.lower, search_space.upper)))
+observation_transformer = StandardTransformer(initial_data.observations)
+model = GPRwithDataNormalization(
+    dataset=initial_data,
+    query_point_transformer=query_point_transformer,
+    observation_transformer=observation_transformer,
+    model=build_gp_model(initial_data),
+    optimizer=Optimizer(
+        gpflow.optimizers.Scipy(),
+        minimize_args={"options": dict(maxiter=100)}
+    ),
+    num_kernel_samples=100,
+)
+
+
+# %% [markdown]
+#
+# Now we optimize and display the results.
+
+# %%
+num_acquisitions = 85
+
+np.random.seed(1794)
+tf.random.set_seed(1794)
+
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+result = bo.optimize(num_acquisitions, initial_data, model)
+dataset = result.try_get_final_dataset()
+
+query_points = dataset.query_points.numpy()
+observations = dataset.observations.numpy()
+
+arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
+
+print(f"query point: {query_points[arg_min_idx, :]}")
+print(f"observation: {observations[arg_min_idx, :]}")
+
+def plot_regret_with_min(dataset):
+    observations = dataset.observations.numpy()
+    arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
+
+    suboptimality = observations - F_MINIMUM.numpy()
+    ax = plt.gca()
+    plot_regret(suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx)
+
+    ax.set_yscale("log")
+    ax.set_ylabel("Regret")
+    ax.set_ylim(0.001, 100000)
+    ax.set_xlabel("# evaluations")
+
+plot_regret_with_min(dataset)
+
+
+# %% [markdown]
+#
+# Next, we add methods to update model and normalization parameters. Typically, the user will want to overload `_initialise_model_parameters` and `_update_model_parameters`.
+
+# %%
+
+class GPRwithDynamicDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
+    """DataTransformWrapper for a GaussianProcessRegression model."""
+
+    def _process_hyperparameter_dictionary(self, hyperparameters, inverse_transform = False):
         """Transform model hyperparameters based on data transforms.
 
         :param hyperparameters: The untransformed hyperparameters.
@@ -98,10 +178,10 @@ class GPRwithNormalizedData(DataTransformWrapper, GaussianProcessRegression):
         prefix = 'inverse_' if inverse_transform else ''
         processed_hyperparameters = {}
         for key, value in hyperparameters.items():
-            tf_value = tf.constant(value, dtype=default_float())  # Ensure value is tf Tensor
+            tf_value = tf.constant(value, dtype=tf.float64)  # Ensure value is tf Tensor
             if key.endswith('mean_function.c'):
                 transform = getattr(self._observation_transformer, f'{prefix}transform')
-            elif key.endswith('variance') and not 'likelihood' in key:
+            elif key.endswith('variance') and 'likelihood' not in key and '[1]' not in key:
                 transform = getattr(self._observation_transformer, f'{prefix}transform_variance')
             elif key.endswith('lengthscales') or key.endswith('period'):
                 transform = getattr(self._query_point_transformer, f'{prefix}transform')
@@ -118,11 +198,14 @@ class GPRwithNormalizedData(DataTransformWrapper, GaussianProcessRegression):
         normalized_hyperparameters = self._process_hyperparameter_dictionary(hyperparameters)
         multiple_assign(self._model, normalized_hyperparameters)
 
-    def _initialize_model_parameters(self):
-        """Update initial model hyperparameters by transforming into normalized space."""
-        hyperparameters = read_values(self._model)
-        hyperparameters = {k: tf.constant(v, dtype=default_float()) for k, v in hyperparameters.items()}
-        self._transform_and_assign_hyperparameters(hyperparameters)
+    def _update_normalization_parameters(self, dataset: Dataset) -> None:
+        """Update normalization parameters for the new dataset.
+
+        :param dataset: New, unnormalized, dataset.
+        """
+        # self._query_point_transformer.set_parameters(dataset.query_points)
+        # self._observation_transformer.set_parameters(dataset.observations)
+        pass
 
     def _update_model_and_normalization_parameters(self, dataset):
         """Update the model and normalization parameters based on the new dataset.
@@ -132,28 +215,22 @@ class GPRwithNormalizedData(DataTransformWrapper, GaussianProcessRegression):
         :param dataset: New, unnormalized, dataset.
         """
         hyperparameters = read_values(self._model)
+        print(hyperparameters['.mean_function.c'])
         unnormalized_hyperparameters = self._process_hyperparameter_dictionary(
             hyperparameters, inverse_transform=True
         )
-        unnormalized_hyperparameter_priors = self._get_unnormalised_hyperparameter_priors()
         self._update_normalization_parameters(dataset)
         self._transform_and_assign_hyperparameters(unnormalized_hyperparameters)
-        self._update_hyperparameter_priors(unnormalized_hyperparameter_priors)
+        print(read_values(self._model)['.mean_function.c'])
 
-
-# %% [markdown]
-#
-# Next, we define our query point and observation transformers, and run optimization as usual.
-
-# %%
-# Create transformers and pass these in.
-query_point_transformer = StandardTransformer(initial_data.query_points)
+query_point_transformer = MinMaxTransformer(tf.stack((search_space.lower, search_space.upper)))
 observation_transformer = StandardTransformer(initial_data.observations)
-model = GPRwithDataNormalization(
+dynamic_model = GPRwithDynamicDataNormalization(
     dataset=initial_data,
     query_point_transformer=query_point_transformer,
     observation_transformer=observation_transformer,
-    model=gp_model,
+    update_parameters=True,
+    model=build_gp_model(initial_data),
     optimizer=Optimizer(
         gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=100)}
@@ -161,10 +238,17 @@ model = GPRwithDataNormalization(
     num_kernel_samples=100,
 )
 
+
+# %% [markdown]
+#
+# Let's optimize and display the results. Notice that these are better than above.
+
 # %%
-num_acquisitions = 100
+np.random.seed(1794)
+tf.random.set_seed(1794)
+
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, model)
+result = bo.optimize(num_acquisitions, initial_data, dynamic_model)
 dataset = result.try_get_final_dataset()
 
 query_points = dataset.query_points.numpy()
@@ -172,12 +256,13 @@ observations = dataset.observations.numpy()
 
 arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
-plot_regret_with_min(dataset)
-
 print(f"query point: {query_points[arg_min_idx, :]}")
 print(f"observation: {observations[arg_min_idx, :]}")
 
+plot_regret_with_min(dataset)
 
-# %%
+
+# %% [markdown]
+# ## LICENSE
 #
-# Let's have a look at the results.
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
