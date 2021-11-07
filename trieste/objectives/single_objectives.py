@@ -558,3 +558,37 @@ TRID_10_SEARCH_SPACE = Box([-(10 ** 2)], [10 ** 2]) ** 10
 The search space for :func:`trid` function is defined over :math:`[-d^2, d^2]` for all i=1,...,d.
 Here, we define it specifically for the 10-dimensional variant.
 """
+
+
+def beale(x: TensorType) -> TensorType:
+    """
+    The Beale function over :math:`[-4.5, 4.5]^2` is multimodal with sharp peaks at the corners of
+    its domain.
+
+    :param x: Points at which to evaluate the function with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    t1 = (1.5 - x[..., 0:1] + x[..., 0:1] * x[..., 1:]) ** 2
+    t2 = (2.25 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 2) ** 2
+    t3 = (2.625 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 3) ** 2
+    return t1 + t2 + t3
+
+
+BEALE_MINIMIZER = tf.constant([[3, 0.5]], tf.float64)
+"""
+The global minimizer of the :func:`beale` function.
+"""
+
+
+BEALE_MINIMUM = tf.constant([0.0], tf.float64)
+"""
+The global minimum of the :func:`beale` function.
+"""
+
+
+BEALE_SEARCH_SPACE = Box([-4.5], [4.5]) ** 2
+"""
+The search space for the :func:`beale` function is defined over :math:`[-4.5, 4.5]^2`.
+"""

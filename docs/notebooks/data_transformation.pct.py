@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Data transformation with the help of Ask-Tell interface.
+# # Data transformation with the help of Ask-Tell interface and DataTransformModelWrappers.
 
 # %%
 import os
@@ -34,7 +34,7 @@ tf.get_logger().setLevel("ERROR")
 #
 # In this notebook, we show how to perform data transformation during Bayesian optimization. This is usually required by the models. A very common example is normalising the data before fitting the model, either min-max or standard normalization. This is usually done for numerical stability, or to improve or speed up the convergence.
 #
-# In regression problems it is easy to perform data transformations as you do it once before training. In Bayesian optimization this is more complex, as the data added with each iteration and needs to be transformed as well before the model is updated. At the moment Trieste cannot do such transformations for the user. Luckily, this can be easily done by using the [Ask-Tell interface](ask_tell_optimization.ipynb), as it provides greater control of the optimization loop. The disadvantage is that it is up to the user to take care of all the data transformation.
+# In regression problems it is easy to perform data transformations as you do it once before training. In Bayesian optimization this is more complex, as the data added with each iteration and needs to be transformed as well before the model is updated. Trieste can handle such transformations for the user with :class:``DataTransformModelWrapper``s. For more control, this can also be done by using the [Ask-Tell interface](ask_tell_optimization.ipynb). The disadvantage is that it is up to the user to take care of all the data transformation.
 #
 # As an example, we will be searching for a minimum of a 10-dimensional [Trid function](https://www.sfu.ca/~ssurjano/trid.html). The range of variation of the Trid function values is large. It varies from values of $10^5$ to its global minimum $f(x^∗) = −210$. This large variation range makes it difficult for Bayesian optimization with Gaussian processes to find the global minimum. However, with data normalisation it becomes possible (see <cite data-cite="hebbal2019bayesian">[Hebbal et al. 2019](https://arxiv.org/abs/1905.03350)</cite>).
 
@@ -183,14 +183,6 @@ def normalise(x, mean=None, std=None):
 
 # %% [markdown]
 #
-# Note that we also need to modify the search space, from the original $[-100, 100]$ for all 10 dimensions to the normalised space. For illustration, $[-1,1]$ will suffice here.
-
-# %%
-search_space = Box([-1], [1]) ** 10
-
-
-# %% [markdown]
-#
 # Next we have to define our own Bayesian optimization loop where Ask-Tell optimizer performs optimisation, and we take care of data transformation and model fitting.
 #
 # We are using a simple approach whereby we normalize the initial data and use estimated mean and standard deviation from the initial normalization for transforming the new points that the Bayesian optimization loop adds to the dataset.
@@ -200,6 +192,17 @@ x_sta, x_mean, x_std = normalise(initial_data.query_points)
 y_sta, y_mean, y_std = normalise(initial_data.observations)
 normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 
+# %% [markdown]
+#
+# Note that we also need to modify the search space, from the original $[-100, 100]$ for all 10 dimensions to the normalised space.
+
+# %%
+normalised_lower_boundary, _, _ = normalise(search_space.lower, x_mean, x_std)
+normalised_upper_boundary, _, _ = normalise(search_space.upper, x_mean, x_std)
+normalised_search_space = Box(tf.squeeze(normalised_lower_boundary), tf.squeeze(normalised_upper_boundary))
+
+
+# %%
 dataset = initial_data
 for step in range(num_acquisitions):
 
@@ -218,7 +221,7 @@ for step in range(num_acquisitions):
         model.optimize(normalised_data)
 
     # Asking for a new point to observe
-    ask_tell = AskTellOptimizer(search_space, normalised_data, model)
+    ask_tell = AskTellOptimizer(normalised_search_space, normalised_data, model)
     query_point = ask_tell.ask()
 
     # Transforming the query point back to the non-normalised space
@@ -253,8 +256,9 @@ print(f"observation: {observations[arg_min_idx, :]}")
 
 
 # %% [markdown]
+# # Data transformation with the DataTransformModelWrapper class
 #
-# Actually, we can achieve the same effect with a standard `BayesianOptimizer` when we use a `DataTransformModelWrapper`.
+# Actually, we can achieve the same effect with a standard `BayesianOptimizer` by using a `DataTransformModelWrapper`.
 #
 # First, we create a new model class that inherits from the model wrapper class and the kind of `TrainableProbabilisticModel` that we want to use.
 
@@ -274,29 +278,30 @@ from trieste.models.normalization import StandardTransformer
 
 search_space = TRID_10_SEARCH_SPACE  # Restore the original search space
 
-# Build the GP model. Model priors should assume normalized data.
-gpflow_model = build_gp_model(initial_data)
-
 # Create transformers and pass these in.
 query_point_transformer = StandardTransformer(initial_data.query_points)
 observation_transformer = StandardTransformer(initial_data.observations)
+# Note that the underlying model is expected to have normalized data when passed in.
+normalized_data = Dataset(
+    query_point_transformer.transform(initial_data.query_points),
+    observation_transformer.transform(initial_data.observations)
+)
 model = GPRwithDataNormalization(
-    dataset=initial_data,
-    query_point_transformer=query_point_transformer,
-    observation_transformer=observation_transformer,
-    model=gpflow_model,
+    model=build_gp_model(normalized_data),
     optimizer=Optimizer(
         gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=100)}
     ),
     num_kernel_samples=100,
+    query_point_transformer=query_point_transformer,
+    observation_transformer=observation_transformer,
 )
 
 # %% [markdown]
 #
-# Then we run Bayesian Optimization as usual and plot the results.
+# Then we run Bayesian Optimization as usual and display the results.
 #
-# Again, normalization has improved BO performance. Notice, however, that this is subtly different to the Ask-Tell implementation. With a `DataTransformModelWrapper` the predict methods of the wrapped models are automatically denormalized. This means that that acquisition function is optimised for the posterior in the original space rather than the normal space. This changes the exploration-exploitation trade off. The exact nature of this depends on the acquisition function and the transform chosen.
+# Again, normalization has improved BO performance.
 
 
 # %%

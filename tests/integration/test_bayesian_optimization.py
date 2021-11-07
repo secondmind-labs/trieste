@@ -45,7 +45,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.normalization import DataTransformWrapper, StandardTransformer
+from trieste.models.normalization import DataTransformModelWrapper, StandardTransformer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -263,12 +263,12 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
 def test_normalized_optimizer_finds_minima_of_trid_function(
     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], 
 ) -> None:
-    search_space = TRID_10_SEARCH_SPACE  # Restore search space
+    search_space = TRID_10_SEARCH_SPACE
 
-    class NormalizedModel(DataTransformWrapper, GaussianProcessRegression):
+    class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
         pass
 
-    def build_gp_model(data: Dataset, x_std: float = 1.0, y_std: float = 0.1):
+    def build_gp_model(data: Dataset, x_std: float = 1.0, y_std: float = 1.0) -> gpflow.models.GPR:
 
         dim = data.query_points.shape[-1]
         empirical_variance = tf.math.reduce_variance(data.observations)
@@ -297,20 +297,23 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
         )
         gpflow.set_trainable(gpr.likelihood, False)
 
-        query_point_transformer = StandardTransformer(data.query_points)
-        observation_transformer = StandardTransformer(data.observations)
-        return NormalizedModel(
-            data,
-            gpr,
-            query_point_transformer=query_point_transformer,
-            observation_transformer=observation_transformer
-        )
+        return gpr
 
-    # Build the model. Model priors should assume normalized data.
-    initial_query_points = search_space.sample(50)
+    initial_query_points = search_space.sample_sobol(50)
     observer = mk_observer(trid_10, OBJECTIVE)
     initial_data = observer(initial_query_points)
-    model = build_gp_model(initial_data[OBJECTIVE])
+
+    query_point_transformer = StandardTransformer(initial_data[OBJECTIVE].query_points)
+    observation_transformer = StandardTransformer(initial_data[OBJECTIVE].observations)
+    normalized_data = Dataset(
+        query_point_transformer.transform(initial_data[OBJECTIVE].query_points),
+        observation_transformer.transform(initial_data[OBJECTIVE].observations)
+    )
+    model = GPRwithDataNormalization(
+        model=build_gp_model(normalized_data),
+        query_point_transformer=query_point_transformer,
+        observation_transformer=observation_transformer,
+    )
 
     bo = BayesianOptimizer(observer, search_space)
     result = bo.optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
