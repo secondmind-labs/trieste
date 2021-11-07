@@ -1,9 +1,9 @@
+# -*- coding: utf-8 -*-
 # %% [markdown]
 # # Data transformation with the help of Ask-Tell interface and DataTransformModelWrappers.
 
 # %%
 import os
-
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
@@ -121,10 +121,10 @@ model = GaussianProcessRegression(
 # We'll run the optimizer for 100 steps. Note: this may take a while!
 
 # %%
-num_acquisitions = 100
+num_steps = 100
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, model)
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
 
@@ -204,7 +204,7 @@ normalised_search_space = Box(tf.squeeze(normalised_lower_boundary), tf.squeeze(
 
 # %%
 dataset = initial_data
-for step in range(num_acquisitions):
+for step in range(num_steps):
 
     if step == 0:
         model = GaussianProcessRegression(
@@ -306,7 +306,7 @@ model = GPRwithDataNormalization(
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, model)
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
 query_points = dataset.query_points.numpy()

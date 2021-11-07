@@ -99,6 +99,12 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide a kernel")
 
+    def log(self) -> None:
+        """
+        Log model-specific information at a given optimization step.
+        """
+        pass
+
 
 class TrainableProbabilisticModel(ProbabilisticModel):
     """A trainable probabilistic model."""
@@ -226,3 +232,11 @@ class ModelStack(TrainableProbabilisticModel):
 
         for model, obs in zip(self._models, observations):
             model.optimize(Dataset(dataset.query_points, obs))
+
+    def log(self) -> None:
+        """
+        Log model-specific information at a given optimization step.
+        """
+        for i, model in enumerate(self._models):
+            with tf.name_scope(f"{i}"):
+                model.log()
