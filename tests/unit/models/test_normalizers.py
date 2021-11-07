@@ -69,15 +69,15 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
         tf.math.reduce_std(normalized_model._model.data[1]), tf.constant(1, dtype=default_float())
     )
 
+    # Prediction at observations should be equal to unnormalised observations.
     tf.debugging.assert_near(
-        normalized_model.predict(dataset.query_points)[0], dataset.observations, rtol=1e-2
+        normalized_model.predict(dataset.query_points)[0], dataset.observations, rtol=1e-1
     )
 
+    # Make sure that wrapped methods run.
     updated_dataset = dataset + hartmann_6_dataset(num_query_points=5)
     normalized_model.update(updated_dataset)
-
-    tf.debugging.assert_near(
-        normalized_model.predict(updated_dataset.query_points)[0],
-        updated_dataset.observations,
-        rtol=1e-2,
-    )
+    normalized_model.optimize(updated_dataset)
+    _ = normalized_model.predict_joint(random_data)
+    _ = normalized_model.predict_y(random_data)
+    _ = normalized_model.sample(random_data, num_samples=10)
