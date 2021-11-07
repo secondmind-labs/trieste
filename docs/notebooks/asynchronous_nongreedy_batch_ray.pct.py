@@ -104,7 +104,7 @@ enable_sleep_delays = True
 
 # %%
 from trieste.acquisition.rule import AsynchronousOptimization
-from trieste.acquisition import BatchMonteCarloExpectedImprovement
+from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)

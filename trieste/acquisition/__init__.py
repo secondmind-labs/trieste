@@ -36,6 +36,34 @@ UCB.
 """
 from . import optimizer, rule
 from .combination import Product, Reducer, Sum
+from .function import (
+    GIBBON,
+    AugmentedExpectedImprovement,
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    BatchMonteCarloExpectedImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedConstrainedImprovement,
+    ExpectedHypervolumeImprovement,
+    ExpectedImprovement,
+    LocalPenalizationAcquisitionFunction,
+    MinValueEntropySearch,
+    NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
+    PredictiveVariance,
+    ProbabilityOfFeasibility,
+    augmented_expected_improvement,
+    batch_ehvi,
+    expected_hv_improvement,
+    expected_improvement,
+    gibbon_quality_term,
+    gibbon_repulsion_term,
+    hard_local_penalizer,
+    lower_confidence_bound,
+    min_value_entropy_search,
+    predictive_variance,
+    probability_of_feasibility,
+    soft_local_penalizer,
+)
 from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -46,40 +74,10 @@ from .interface import (
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
-from .multi_objective import (
-    BatchMonteCarloExpectedHypervolumeImprovement,
-    ExpectedConstrainedHypervolumeImprovement,
-    ExpectedHypervolumeImprovement,
-    batch_ehvi,
-    expected_hv_improvement,
-)
 from .sampler import (
     BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureThompsonSampler,
-)
-from .single_objective import (
-    GIBBON,
-    AugmentedExpectedImprovement,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedConstrainedImprovement,
-    ExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
-    MinValueEntropySearch,
-    NegativeLowerConfidenceBound,
-    NegativePredictiveMean,
-    PredictiveVariance,
-    ProbabilityOfFeasibility,
-    augmented_expected_improvement,
-    expected_improvement,
-    gibbon_quality_term,
-    gibbon_repulsion_term,
-    hard_local_penalizer,
-    lower_confidence_bound,
-    min_value_entropy_search,
-    predictive_variance,
-    probability_of_feasibility,
-    soft_local_penalizer,
 )

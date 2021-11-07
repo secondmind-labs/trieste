@@ -18,7 +18,7 @@ from util.plotting import (
 
 # %%
 import trieste
-from trieste.acquisition import ExpectedHypervolumeImprovement
+from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
 from trieste.models import create_model, ModelStack
@@ -295,7 +295,7 @@ models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 # We utilize the `ExpectedConstrainedHypervolumeImprovement` acquisition function, which is the product of EHVI (based on the feasible Pareto set) with the probability of feasibility:
 
 # %%
-from trieste.acquisition import ExpectedConstrainedHypervolumeImprovement
+from trieste.acquisition.function import ExpectedConstrainedHypervolumeImprovement
 
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 echvi = ExpectedConstrainedHypervolumeImprovement(OBJECTIVE, pof.using(CONSTRAINT))

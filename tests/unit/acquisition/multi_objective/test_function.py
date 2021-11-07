@@ -36,7 +36,7 @@ from trieste.acquisition import (
     AcquisitionFunctionBuilder,
     ProbabilityOfFeasibility,
 )
-from trieste.acquisition.multi_objective.function import (
+from trieste.acquisition.function.multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,

@@ -24,7 +24,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
-from trieste.acquisition.single_objective.entropy import (
+from trieste.acquisition.function.entropy import (
     GIBBON,
     MinValueEntropySearch,
     gibbon_quality_term,
@@ -72,7 +72,7 @@ def test_min_value_entropy_search_builder_raises_when_given_num_features_and_gum
         MinValueEntropySearch(search_space, use_thompson=False, num_fourier_features=10)
 
 
-@unittest.mock.patch("trieste.acquisition.single_objective.entropy.min_value_entropy_search")
+@unittest.mock.patch("trieste.acquisition.function.entropy.min_value_entropy_search")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_min_value_entropy_search_builder_builds_min_value_samples(
     mocked_mves: MagicMock, use_thompson: bool
@@ -128,7 +128,7 @@ def test_min_value_entropy_search_builder_updates_acquisition_function(use_thomp
 
 
 @random_seed
-@unittest.mock.patch("trieste.acquisition.single_objective.entropy.min_value_entropy_search")
+@unittest.mock.patch("trieste.acquisition.function.entropy.min_value_entropy_search")
 def test_min_value_entropy_search_builder_builds_min_value_samples_rff(
     mocked_mves: MagicMock,
 ) -> None:
@@ -264,7 +264,7 @@ def test_gibbon_quality_term_returns_correct_shape() -> None:
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
 
 
-@unittest.mock.patch("trieste.acquisition.single_objective.entropy.gibbon_quality_term")
+@unittest.mock.patch("trieste.acquisition.function.entropy.gibbon_quality_term")
 @pytest.mark.parametrize("use_thompson", [True, False])
 def test_gibbon_builder_builds_min_value_samples(
     mocked_mves: MagicMock, use_thompson: bool
@@ -363,7 +363,7 @@ def test_gibbon_raises_for_model_without_covariance_between_points_method() -> N
 
 
 @random_seed
-@unittest.mock.patch("trieste.acquisition.single_objective.entropy.gibbon_quality_term")
+@unittest.mock.patch("trieste.acquisition.function.entropy.gibbon_quality_term")
 def test_gibbon_builder_builds_min_value_samples_rff(mocked_mves: MagicMock) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))

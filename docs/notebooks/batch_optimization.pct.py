@@ -80,7 +80,7 @@ model = create_model(model_spec)
 # First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-from trieste.acquisition import BatchMonteCarloExpectedImprovement
+from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 monte_carlo_sample_size = 1000
@@ -107,7 +107,7 @@ points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single
 # and finally we use `GIBBON`.
 
 # %%
-from trieste.acquisition import GIBBON
+from trieste.acquisition.function import GIBBON
 
 gibbon_acq = GIBBON(search_space, grid_size = sample_size)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
@@ -119,7 +119,7 @@ points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocalPenalizationAcquisitionFunction` and `GIBBON` focus evaluations in the most promising areas of the space.
 
 # %%
-from trieste.acquisition import ExpectedImprovement
+from trieste.acquisition.function import ExpectedImprovement
 
 # plot standard EI acquisition function
 ei = ExpectedImprovement()

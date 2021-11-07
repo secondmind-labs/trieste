@@ -39,3 +39,10 @@ from .local_penalization import (
     hard_local_penalizer,
     soft_local_penalizer,
 )
+from .multi_objective import (
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+    batch_ehvi,
+    expected_hv_improvement,
+)
