@@ -261,7 +261,8 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
     ],
 )
 def test_normalized_optimizer_finds_minima_of_trid_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], 
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace],
 ) -> None:
     search_space = TRID_10_SEARCH_SPACE
 
@@ -273,7 +274,7 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
         dim = data.query_points.shape[-1]
         empirical_variance = tf.math.reduce_variance(data.observations)
 
-        prior_lengthscales = [0.2*x_std*np.sqrt(dim)] * dim
+        prior_lengthscales = [0.2 * x_std * np.sqrt(dim)] * dim
         prior_scale = tf.cast(1.0, dtype=tf.float64)
 
         x_std = tf.cast(x_std, dtype=tf.float64)
@@ -283,9 +284,7 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
             variance=empirical_variance,
             lengthscales=prior_lengthscales,
         )
-        kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.math.log(y_std), prior_scale
-        )
+        kernel.variance.prior = tfp.distributions.LogNormal(tf.math.log(y_std), prior_scale)
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
             tf.math.log(kernel.lengthscales), prior_scale
         )
@@ -307,7 +306,7 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
     observation_transformer = StandardTransformer(initial_data[OBJECTIVE].observations)
     normalized_data = Dataset(
         query_point_transformer.transform(initial_data[OBJECTIVE].query_points),
-        observation_transformer.transform(initial_data[OBJECTIVE].observations)
+        observation_transformer.transform(initial_data[OBJECTIVE].observations),
     )
     model = GPRwithDataNormalization(
         model=build_gp_model(normalized_data),

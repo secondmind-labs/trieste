@@ -14,7 +14,7 @@ class DataTransformer(ABC):
 
     def __init__(self, data: TensorType) -> None:
         """Initialize object and set parameters of the transform.
-        
+
         :param data: The unnormalized data.
         """
         super().__init__()
@@ -70,14 +70,14 @@ class IdentityTransformer(DataTransformer):
 
     def transform(self, data: TensorType) -> TensorType:
         """Return data, unchanged.
-        
+
         :param data: Data to be passed through.
         """
         return data
 
     def inverse_transform(self, data: TensorType) -> TensorType:
         """Return data, unchanged.
-        
+
         :param data: Data to be passed through.
         """
         return data
@@ -105,7 +105,7 @@ class StandardTransformer(DataTransformer):
 
     def transform(self, data: TensorType) -> TensorType:
         """Normalize data.
-        
+
         :param data: The unnormalized data. Shape must be [..., D] if transform operates over
         multiple dimensions else any shape.
         :return: The normalized data. Same shape as `data`.
@@ -114,7 +114,7 @@ class StandardTransformer(DataTransformer):
 
     def inverse_transform(self, data: TensorType) -> TensorType:
         """Transform normalized data to unnormalized space.
-        
+
         :param data: The normalized data. Shape must be [..., D] if transform operates over
         multiple dimensions else any shape.
         :return: The unnormalized data. Same shape as `data`.
@@ -123,7 +123,7 @@ class StandardTransformer(DataTransformer):
 
     def transform_variance(self, variance: TensorType) -> TensorType:
         """Transform the variance of unnormalized data to the variance of normalized data.
-        
+
         :param variance: The variance of the unnormalized data. Shape must be [..., D] if transform
         operates over multiple dimensions else any shape.
         :return: The variance of the normalized data. Same shape as `data`.
@@ -217,7 +217,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         *model_args: Any,
         query_point_transformer: Union[DataTransformer, None] = None,
         observation_transformer: Union[DataTransformer, None] = None,
-        **model_kwargs: Any
+        **model_kwargs: Any,
     ) -> None:
         """Construct the wrapped model.
 
@@ -229,11 +229,13 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         """
         super().__init__(*model_args, **model_kwargs)  # type: ignore
         self._query_point_transformer = (
-            query_point_transformer if query_point_transformer is not None
+            query_point_transformer
+            if query_point_transformer is not None
             else IdentityTransformer(data=None)
         )
         self._observation_transformer = (
-            observation_transformer if observation_transformer is not None
+            observation_transformer
+            if observation_transformer is not None
             else IdentityTransformer(data=None)
         )
 
@@ -245,7 +247,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         """
         return Dataset(
             query_points=self._query_point_transformer.transform(dataset.query_points),
-            observations=self._observation_transformer.transform(dataset.observations)
+            observations=self._observation_transformer.transform(dataset.observations),
         )
 
     def _update_model_and_normalization_parameters(self, dataset: Dataset) -> None:
@@ -258,7 +260,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         pass
 
     def _predict(
-        self, query_points: TensorType, predict_type: str = ''
+        self, query_points: TensorType, predict_type: str = ""
     ) -> Tuple[TensorType, TensorType]:
         """For wrapping the model's prediction methods to feed in normalized query points and
         denormalize the output.
@@ -269,19 +271,19 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param kwargs: Keyword arguments to pass to the model's predict function.
         :return: Denormalized predicted mean and denormalized predicted variance or covariance.
         """
-        assert predict_type == '' or '_joint' or '_y', f'predict_type {predict_type} not supported'
+        assert predict_type == "" or "_joint" or "_y", f"predict_type {predict_type} not supported"
         transformed_query_points = self._query_point_transformer.transform(query_points)
-        predict_function = getattr(super(), f'predict{predict_type}')
+        predict_function = getattr(super(), f"predict{predict_type}")
         mean, covariance = predict_function(transformed_query_points)
         return (
             self._observation_transformer.inverse_transform(mean),
-            self._observation_transformer.inverse_transform_variance(covariance)
+            self._observation_transformer.inverse_transform_variance(covariance),
         )
 
     def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """Wrap model's `predict` method to pass in a normalized dataset and return unnormalized
         outputs.
-        
+
         :param query_points: The unnormalized query points [..., D].
         :param args: Arguments to pass to the model's `predict` function.
         :param kwargs: Keyword arguments to pass to the model's `predict` function.
@@ -292,13 +294,13 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
     def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
         """Wrap model's `predict_joint` method to pass in a normalized dataset and return
         unnormalized outputs.
-        
+
         :param query_points: The unnormalized query points [..., D].
         :param args: Arguments to pass to the model's `predict_joint` function.
         :param kwargs: Keyword arguments to pass to the model's `predict_joint` function.
         :return: Denormalized predicted mean and denormalized predicted variance or covariance.
         """
-        return self._predict(query_points, predict_type='_joint')
+        return self._predict(query_points, predict_type="_joint")
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """Wrap the model's `sample` method to normalize the inputs before sampling, and
@@ -323,10 +325,10 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param kwargs: Keyword arguments to pass to the model's `predict_y` function.
         :return: Denormalized predicted mean and denormalized predicted variance or covariance.
         """
-        return self._predict(query_points, predict_type='_y')
+        return self._predict(query_points, predict_type="_y")
 
     def update(self, dataset: Dataset) -> None:
-        """Wrap the model's `update` method to pass in a normalized dataset. Optionally update 
+        """Wrap the model's `update` method to pass in a normalized dataset. Optionally update
         normalization and model parameters.
 
         :param dataset: Unnormalized dataset.

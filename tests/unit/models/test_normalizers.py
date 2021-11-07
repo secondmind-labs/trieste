@@ -1,16 +1,17 @@
+import gpflow
 import pytest
 import tensorflow as tf
-import gpflow
 from gpflow import default_float
 from gpflow.models import GPR
-from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models import normalization
 
 from tests.util.trieste.utils.objectives import hartmann_6_dataset
 from trieste.data import Dataset
+from trieste.models import normalization
+from trieste.models.gpflow import GaussianProcessRegression
 from trieste.types import TensorType
 
 # Verify that functions in transformed space and untransformed space are same.
+
 
 @pytest.fixture
 def random_data() -> TensorType:
@@ -18,21 +19,17 @@ def random_data() -> TensorType:
     return 200 * tf.random.uniform((10, 6), dtype=default_float()) - 50
 
 
-@pytest.mark.parametrize('transformer_type', ['Identity', 'Standard', 'MinMax'])
+@pytest.mark.parametrize("transformer_type", ["Identity", "Standard", "MinMax"])
 def test_inverse_forward_transform(random_data: TensorType, transformer_type: str) -> None:
-    transfomer_class = getattr(normalization, f'{transformer_type}Transformer')
+    transfomer_class = getattr(normalization, f"{transformer_type}Transformer")
     transformer = transfomer_class(data=random_data)
-    identity_transformed_data = transformer.inverse_transform(
-        transformer.transform(random_data)
-    )
+    identity_transformed_data = transformer.inverse_transform(transformer.transform(random_data))
     tf.debugging.assert_near(random_data, identity_transformed_data)
 
 
-@pytest.mark.parametrize('transformer_type', ['Identity', 'Standard', 'MinMax'])
-def test_variance_inverse_forward_transform(
-    random_data: TensorType, transformer_type: str
-) -> None:
-    transfomer_class = getattr(normalization, f'{transformer_type}Transformer')
+@pytest.mark.parametrize("transformer_type", ["Identity", "Standard", "MinMax"])
+def test_variance_inverse_forward_transform(random_data: TensorType, transformer_type: str) -> None:
+    transfomer_class = getattr(normalization, f"{transformer_type}Transformer")
     transformer = transfomer_class(data=random_data)
     variance = tf.math.reduce_variance(random_data, axis=0)
     identity_transformed_data = transformer.inverse_transform_variance(
@@ -53,12 +50,12 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
     observation_transformer = normalization.StandardTransformer(dataset.observations)
     normalized_dataset = Dataset(
         query_point_transformer.transform(dataset.query_points),
-        observation_transformer.transform(dataset.observations)
+        observation_transformer.transform(dataset.observations),
     )
 
     model = GPR(normalized_dataset.astuple(), gpflow.kernels.Matern32(lengthscales=[1] * 6))
     model.likelihood.variance.assign(1e-5)
-    
+
     normalized_model = NormalizedModel(
         model,
         query_point_transformer=query_point_transformer,
@@ -82,5 +79,5 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
     tf.debugging.assert_near(
         normalized_model.predict(updated_dataset.query_points)[0],
         updated_dataset.observations,
-        rtol=1e-2
+        rtol=1e-2,
     )
