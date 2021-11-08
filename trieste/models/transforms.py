@@ -1,3 +1,17 @@
+# Copyright 2021 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import ABC, abstractmethod
 from typing import Any, Tuple, Union
 
@@ -208,8 +222,11 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
     ```
     Ensure that this class is the first class inherited from.
 
+    **Note:** that this wrapper only handles methods defined in `TrainableProbabilisticModel`. The
+    user must add additional methods for any specific model class themselves.
+
     To update model and normalization parameters on each iteration, subclass the
-    ``_update_model_and_normalization_parameters`` method appropriately.
+    `_update_model_and_normalization_parameters` method appropriately.
     """
 
     def __init__(
@@ -327,7 +344,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         """
         return self._predict(query_points, predict_type="_y")
 
-    def update(self, dataset: Dataset) -> None:
+    def update(self, dataset: Dataset, *args: Any, **kwargs: Any) -> None:
         """Wrap the model's `update` method to pass in a normalized dataset. Optionally update
         normalization and model parameters.
 
@@ -337,7 +354,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         """
         self._update_model_and_normalization_parameters(dataset)
         transformed_dataset = self._transform_dataset(dataset)
-        super().update(transformed_dataset)  # Will update data only.
+        super().update(transformed_dataset, *args, **kwargs)  # type: ignore
 
     def optimize(self, dataset: Dataset) -> None:
         """Wrap the model's `optimize` method to pass in a normalized dataset.

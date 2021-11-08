@@ -6,7 +6,7 @@ from gpflow.models import GPR
 
 from tests.util.trieste.utils.objectives import hartmann_6_dataset
 from trieste.data import Dataset
-from trieste.models import normalization
+from trieste.models import transforms
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.types import TensorType
 
@@ -21,7 +21,7 @@ def random_data() -> TensorType:
 
 @pytest.mark.parametrize("transformer_type", ["Identity", "Standard", "MinMax"])
 def test_inverse_forward_transform(random_data: TensorType, transformer_type: str) -> None:
-    transfomer_class = getattr(normalization, f"{transformer_type}Transformer")
+    transfomer_class = getattr(transforms, f"{transformer_type}Transformer")
     transformer = transfomer_class(data=random_data)
     identity_transformed_data = transformer.inverse_transform(transformer.transform(random_data))
     tf.debugging.assert_near(random_data, identity_transformed_data)
@@ -29,7 +29,7 @@ def test_inverse_forward_transform(random_data: TensorType, transformer_type: st
 
 @pytest.mark.parametrize("transformer_type", ["Identity", "Standard", "MinMax"])
 def test_variance_inverse_forward_transform(random_data: TensorType, transformer_type: str) -> None:
-    transfomer_class = getattr(normalization, f"{transformer_type}Transformer")
+    transfomer_class = getattr(transforms, f"{transformer_type}Transformer")
     transformer = transfomer_class(data=random_data)
     variance = tf.math.reduce_variance(random_data, axis=0)
     identity_transformed_data = transformer.inverse_transform_variance(
@@ -42,12 +42,12 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
     dataset = hartmann_6_dataset(num_query_points=10)
     random_data = (random_data + 50) / 200
 
-    class NormalizedModel(normalization.DataTransformModelWrapper, GaussianProcessRegression):
+    class NormalizedModel(transforms.DataTransformModelWrapper, GaussianProcessRegression):
         def _update_model_and_normalization_parameters(self, dataset: Dataset) -> None:
             return super()._update_model_and_normalization_parameters(dataset)
 
-    query_point_transformer = normalization.IdentityTransformer(dataset.query_points)
-    observation_transformer = normalization.StandardTransformer(dataset.observations)
+    query_point_transformer = transforms.IdentityTransformer(dataset.query_points)
+    observation_transformer = transforms.StandardTransformer(dataset.observations)
     normalized_dataset = Dataset(
         query_point_transformer.transform(dataset.query_points),
         observation_transformer.transform(dataset.observations),

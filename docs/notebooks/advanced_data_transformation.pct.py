@@ -17,7 +17,7 @@ from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 from trieste.objectives.single_objectives import BEALE_MINIMUM, BEALE_SEARCH_SPACE, beale
 from trieste.objectives.utils import mk_observer
-from trieste.models.normalization import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer
+from trieste.models.transforms import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer
 
 np.random.seed(1794)
 tf.random.set_seed(1794)

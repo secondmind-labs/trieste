@@ -592,7 +592,7 @@ Here, we define it specifically for the 10-dimensional variant.
 def beale(x: TensorType) -> TensorType:
     """
     The Beale function over :math:`[-4.5, 4.5]^2` is multimodal with sharp peaks at the corners of
-    its domain.
+    its domain. See https://www.sfu.ca/~ssurjano/beale.html for details.
 
     :param x: Points at which to evaluate the function with shape [..., 2].
     :return: The function values at ``x``, with shape [..., 1].
