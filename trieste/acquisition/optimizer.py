@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 r"""
 This module contains functionality for optimizing
 :data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
 """
+
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, TypeVar
+import copy
+from typing import Any, Callable, TypeVar
 
 import gpflow
 import scipy.optimize as spo
@@ -26,11 +29,26 @@ from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from ..utils import DEFAULTS
 from .function import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
+
+
+NUM_SAMPLES_MIN: int = 5000
+"""
+The default minimum number of initial samples for :func:`generate_continuous_optimizer` function in
+:func:`automatic_optimizer_selector`, used for determining the number of initial samples in the
+multi-start acquisition function optimization.
+"""
+
+
+NUM_SAMPLES_DIM: int = 1000
+"""
+The default minimum number of initial samples per dimension of the search space for
+:func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
+determining the number of initial samples in the multi-start acquisition function optimization.
+"""
 
 
 class FailedOptimizationError(Exception):
@@ -64,9 +82,7 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
-        num_samples = tf.minimum(
-            DEFAULTS.NUM_SAMPLES_MIN, DEFAULTS.NUM_SAMPLES_DIM * tf.shape(space.lower)[-1]
-        )
+        num_samples = tf.minimum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
         return generate_continuous_optimizer(num_samples)(space, target_func)
 
     else:
@@ -111,8 +127,8 @@ def generate_continuous_optimizer(
     gradient-based optimization across all :class:'Box' subspaces, starting from the best location
     found across a sample of `num_initial_samples` random points.
 
-    This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's wrapper), which optimizes
-    directly within and up to the bounds of the search space.
+    This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's Scipy optimizer wrapper),
+    which optimizes directly within and up to the bounds of the search space.
 
     For challenging acquisition function optimizations, we run `num_optimization_runs` separate
     optimizations, each starting from one of the top `num_optimization_runs` initial query points.
@@ -178,13 +194,16 @@ def generate_continuous_optimizer(
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
 
         variable = tf.Variable(initial_points[0:1])  # [1, D]
+        optimizer_args_local = copy.deepcopy(optimizer_args)
 
         def _objective() -> TensorType:
             return -target_func(variable[:, None, :])  # [1]
 
-        def _perform_optimization(starting_point: TensorType, bounds: spo.Bounds) -> OptimizeResult:
+        def _perform_optimization(
+            starting_point: TensorType,
+            optimizer_args: dict[str, Any],
+        ) -> OptimizeResult:
             variable.assign(starting_point)  # [1, D]
-            optimizer_args["bounds"] = bounds
             return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args)
 
         successful_optimization = False
@@ -198,8 +217,8 @@ def generate_continuous_optimizer(
                 bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
             else:
                 bounds = spo.Bounds(space.lower, space.upper)
-
-            opt_result = _perform_optimization(initial_points[i : i + 1], bounds)
+            optimizer_args_local["bounds"] = bounds
+            opt_result = _perform_optimization(initial_points[i : i + 1], optimizer_args_local)
             if opt_result.success:
                 successful_optimization = True
 
@@ -217,7 +236,8 @@ def generate_continuous_optimizer(
                     bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
                 else:
                     bounds = spo.Bounds(space.lower, space.upper)
-                opt_result = _perform_optimization(random_start, bounds)
+                optimizer_args_local["bounds"] = bounds
+                opt_result = _perform_optimization(random_start, optimizer_args_local)
                 if opt_result.success:
                     chosen_point = variable  # [1, D]
                     successful_optimization = True
