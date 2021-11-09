@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import pickle
 from typing import Callable, List, Tuple, Union, cast
 
@@ -49,6 +50,9 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
+# Optimizer parameters for testing against the branin function.
+# We use a copy of these for a quicker test against a simple quadratic function
+# (copying is necessary as some of the acquisition rules are stateful).
 OPTIMIZER_PARAMS = (
     "num_steps, reload_state, acquisition_rule_fn",
     cast(
@@ -116,7 +120,7 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*copy.deepcopy(OPTIMIZER_PARAMS))
 def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     reload_state: bool,
