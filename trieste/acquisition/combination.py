@@ -22,7 +22,7 @@ import tensorflow as tf
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..types import TensorType
-from .function import AcquisitionFunction, AcquisitionFunctionBuilder
+from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
 class Reducer(AcquisitionFunctionBuilder):
