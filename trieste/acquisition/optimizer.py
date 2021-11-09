@@ -37,9 +37,9 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 NUM_SAMPLES_MIN: int = 5000
 """
-The default minimum number of initial samples for :func:`generate_continuous_optimizer` function in
-:func:`automatic_optimizer_selector`, used for determining the number of initial samples in the
-multi-start acquisition function optimization.
+The default minimum number of initial samples for :func:`generate_continuous_optimizer` and
+:func:`generate_random_search_optimizer` function, used for determining the number of initial
+samples in the multi-start acquisition function optimization.
 """
 
 
@@ -116,7 +116,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def generate_continuous_optimizer(
-    num_initial_samples: int = 1000,
+    num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 1,
     num_recovery_runs: int = 5,
     optimizer_args: dict[str, Any] = dict(),
@@ -137,7 +137,7 @@ def generate_continuous_optimizer(
     `num_recovery_runs` starting from random locations.
 
     The default behavior of this method is to return a L-BFGS-B optimizer that performs
-    a single optimization from the best of 1000 initial locations. If this optimization fails then
+    a single optimization from the best of 5000 initial locations. If this optimization fails then
     we run up to `num_recovery_runs` recovery runs starting from additional random locations.
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
@@ -314,7 +314,9 @@ def batchify(
     return optimizer
 
 
-def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:
+def generate_random_search_optimizer(
+    num_samples: int = NUM_SAMPLES_MIN,
+) -> AcquisitionOptimizer[SP]:
     """
     Generate an acquisition optimizer that samples `num_samples` random points across the space.
 
