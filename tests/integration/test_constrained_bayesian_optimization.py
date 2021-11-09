@@ -21,7 +21,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import ExpectedConstrainedImprovement, ProbabilityOfFeasibility
+from trieste.acquisition import ExpectedConstrainedImprovement, ProbabilityOfFeasibility
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset

@@ -32,11 +32,10 @@ from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
-from .function import (
+from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,

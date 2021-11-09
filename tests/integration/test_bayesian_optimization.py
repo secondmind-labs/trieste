@@ -25,7 +25,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import two_layer_dgp_model
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
