@@ -202,7 +202,7 @@ def build_gp_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     num_kernel_samples = 100
 
-   return GaussianProcessRegression(gpr)
+    return GaussianProcessRegression(gpr)
 
 
 gp_model = build_gp_model(initial_data)
