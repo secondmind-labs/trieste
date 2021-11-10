@@ -1,9 +1,9 @@
+# -*- coding: utf-8 -*-
 # %% [markdown]
 # # Data transformation with the help of Ask-Tell interface.
 
 # %%
 import os
-
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
@@ -113,10 +113,10 @@ model = build_gp_model(initial_data, 20, 10000)
 # We'll run the optimizer for 100 steps. Note: this may take a while!
 
 # %%
-num_acquisitions = 100
+num_steps = 100
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, model)
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
 
@@ -193,7 +193,7 @@ y_sta, y_mean, y_std = normalise(initial_data.observations)
 normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 
 dataset = initial_data
-for step in range(num_acquisitions):
+for step in range(num_steps):
 
     if step == 0:
         model = build_gp_model(normalised_data)

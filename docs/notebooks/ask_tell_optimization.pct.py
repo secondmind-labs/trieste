@@ -18,7 +18,6 @@ from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
-from trieste.observer import OBJECTIVE
 from trieste.space import Box
 
 from util.plotting import plot_regret
@@ -129,7 +128,7 @@ plot_ask_tell_regret(ask_tell.to_result())
 # ## External experiment: storing optimizer state
 #
 # Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results. 
-# 
+#
 # In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it by using pickle to write optimization state and read it back.
 
 # %%

@@ -199,7 +199,8 @@ class BatchExpectedConstrainedImprovement(
 
 
 num_query_points = 4
-batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
+sample_size = 50
+batch_eci = BatchExpectedConstrainedImprovement(sample_size, Sim.threshold)
 batch_rule = EfficientGlobalOptimization(  # type: ignore
     batch_eci, num_query_points=num_query_points
 )

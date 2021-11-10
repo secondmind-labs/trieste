@@ -53,6 +53,8 @@ from trieste.objectives import (
     SHEKEL_4_MINIMIZER,
     SHEKEL_4_MINIMUM,
     SHEKEL_4_SEARCH_SPACE,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
     TRID_10_MINIMIZER,
     TRID_10_MINIMUM,
     TRID_10_SEARCH_SPACE,
@@ -68,6 +70,7 @@ from trieste.objectives import (
     rosenbrock_4,
     scaled_branin,
     shekel_4,
+    simple_quadratic,
     trid_10,
 )
 from trieste.space import Box
@@ -79,6 +82,7 @@ from trieste.types import TensorType
     [
         (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
         (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
+        (simple_quadratic, SIMPLE_QUADRATIC_MINIMIZER, SIMPLE_QUADRATIC_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
         (michalewicz_2, MICHALEWICZ_2_MINIMIZER, MICHALEWICZ_2_MINIMUM),
         (michalewicz_5, MICHALEWICZ_5_MINIMIZER, MICHALEWICZ_5_MINIMUM),

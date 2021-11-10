@@ -99,7 +99,7 @@ def trieste_deep_gaussian_process(
 ) -> Tuple[DeepGaussianProcess, Dict[str, Any]]:
     dgp = build_vanilla_deep_gp(query_points, num_layers=depth, num_inducing=num_inducing)
     if fix_noise:
-        dgp.likelihood_layer.likelihood.variance.assign(1e-4)
+        dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
 
     def scheduler(epoch: int, lr: float) -> float:

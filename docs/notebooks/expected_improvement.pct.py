@@ -86,8 +86,12 @@ model = build_model(initial_data)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(15, initial_data, model)
+num_steps = 15
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
+
+# %% [markdown]
+# In this tutorial we will manually explore the results once the optimization loop completes. For how to monitor the loop in realtime, including some of the plots shown below, see [visualizing and tracking optimizations using Tensorboard](visualizing_with_tensorboard.ipynb).
 
 # %% [markdown]
 # ## Explore the results
@@ -219,7 +223,8 @@ fig.tight_layout()
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.try_get_final_dataset(), result.try_get_final_model())
+num_steps = 10
+result = bo.optimize(num_steps, result.try_get_final_dataset(), result.try_get_final_model())
 dataset = result.try_get_final_dataset()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))

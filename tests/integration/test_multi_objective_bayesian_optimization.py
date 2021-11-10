@@ -17,7 +17,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
