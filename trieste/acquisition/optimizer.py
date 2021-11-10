@@ -125,7 +125,10 @@ def generate_continuous_optimizer(
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
     spaces and batches of size 1. In the case of a :class:'TaggedProductSearchSpace', We perform
     gradient-based optimization across all :class:'Box' subspaces, starting from the best location
-    found across a sample of `num_initial_samples` random points.
+    found across a sample of `num_initial_samples` random points. 
+
+    We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_initial_samples`, or
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller. 
 
     This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's Scipy optimizer wrapper),
     which optimizes directly within and up to the bounds of the search space.
@@ -320,6 +323,9 @@ def generate_random_search_optimizer(
 ) -> AcquisitionOptimizer[SP]:
     """
     Generate an acquisition optimizer that samples `num_samples` random points across the space.
+
+    We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_samples`, or
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller. 
 
     :param num_samples: The number of random points to sample.
     :return: The acquisition optimizer.
