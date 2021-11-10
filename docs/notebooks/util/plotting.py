@@ -287,7 +287,7 @@ def plot_mobo_points_in_obj_space(
         np.where(dom == 0) if mask_fail is None else np.where(np.logical_and(dom == 0, ~mask_fail))
     )
 
-    pts = obs_values
+    pts = obs_values.numpy() if tf.is_tensor(obs_values) else obs_values
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(

@@ -1,2 +1,6 @@
 box2d
 gym
+jupyter
+matplotlib
+
+gpflux==0.2.3 # temp fix
