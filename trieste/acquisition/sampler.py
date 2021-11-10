@@ -219,7 +219,7 @@ class IndependentReparametrizationSampler(Sampler):
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
 
-    def sample(self, at: TensorType) -> TensorType:
+    def sample(self, at: TensorType, jitter=0.0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
