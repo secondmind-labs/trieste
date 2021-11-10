@@ -89,7 +89,6 @@ plt.show()
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 
 def create_bo_model(data):
@@ -99,9 +98,7 @@ def create_bo_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return GaussianProcessRegression(
-        gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
-    )
+    return GaussianProcessRegression(gpr)
 
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 

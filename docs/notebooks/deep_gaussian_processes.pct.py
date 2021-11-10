@@ -189,7 +189,6 @@ fig.show()
 import gpflow
 import tensorflow_probability as tfp
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 
 def build_gp_model(data):
@@ -201,11 +200,7 @@ def build_gp_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}),
-        num_kernel_samples=100
-    )
+    return GaussianProcessRegression(gpr)
 
 
 gp_model = build_gp_model(initial_data)

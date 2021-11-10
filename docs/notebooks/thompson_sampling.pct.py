@@ -33,7 +33,6 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 observations = initial_data.observations
 kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
@@ -42,9 +41,7 @@ gpr = gpflow.models.GPR(
 )
 gpflow.set_trainable(gpr.likelihood, False)
 
-model = GaussianProcessRegression(
-    gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
-)
+model = GaussianProcessRegression(gpr)
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule

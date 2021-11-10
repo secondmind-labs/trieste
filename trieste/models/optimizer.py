@@ -15,7 +15,7 @@
 r"""
 This module contains common optimizers based on :class:`~tf.optimizers.Optimizer` that can be used
 with models. Specific models can also sub-class these optimizers or implement their own, and should
-register register their loss functions using a :func:`create_loss_function`.
+register their loss functions using a :func:`create_loss_function`.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 # %% [markdown]
 # # Building models with configuration dictionaries
 #
-# If you are an expert user of Trieste and some modelling library, GPflow for example, then building models via a configuration dictionary might be a useful alternative to working with model and optimizer interfaces. Here we provide an overview of how to use configuration dictionaries.
+# If you are an expert user of Trieste and some modelling library, GPflow for example, then building models via a configuration dictionary might be a useful alternative to working with model and optimizer wrappers. Here we provide an overview of how to use configuration dictionaries.
 
 # %%
 import os
@@ -26,7 +26,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Finding a minimum of the Branin function
 #
-# In this example, as in most other tutorial, we look to find the minimum value of the familiar two-dimensional Branin function over the hypercube $[0, 1]^2$.
+# In this example, as in many other tutorials, we look to find the minimum value of the familiar two-dimensional Branin function over the hypercube $[0, 1]^2$.
 
 # %%
 # convert the objective function to a single-output observer
@@ -44,7 +44,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression in this tutorial, as provided by GPflow.
 #
-# GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model interface. Trieste typically has a separate interface for each model. For instance, `GPR` model from GPflow has to be used with `GaussianProcessRegression` interface. These interfaces standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
+# GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste typically has a separate interface for each model. For instance, `GPR` model from GPflow has to be used with `GaussianProcessRegression` interface. These interfaces standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
 #
 # Typical process of setting up a valid model would go as follow.  We first set up a GPR model, using some initial data to set some parameters.
 

@@ -41,7 +41,6 @@ initial_data = observer(initial_query_points)
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 import tensorflow_probability as tfp
 
 
@@ -53,9 +52,8 @@ def build_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return GaussianProcessRegression(
-        gpr, Optimizer(gpflow.optimizers.Scipy(), {"options": dict(maxiter=100)})
-    )
+    return GaussianProcessRegression(gpr)
+
 
 model = build_model(initial_data)
 

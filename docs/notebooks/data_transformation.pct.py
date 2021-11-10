@@ -97,16 +97,9 @@ def build_gp_model(data, x_std = 1.0, y_std = 0.1):
     )
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(
-            gpflow.optimizers.Scipy(),
-            minimize_args={"options": dict(maxiter=100)}
-        ),
-        num_kernel_samples=100,
-    )
+    return GaussianProcessRegression(gpr)
 
-# build the model
+
 model = build_gp_model(initial_data, 20, 10000)
 
 
