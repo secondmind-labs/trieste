@@ -17,6 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from itertools import combinations, product
 from typing import Callable, Mapping, Optional, Union, cast
@@ -2262,5 +2263,82 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
                 """
             )
         return tf.exp(tf.linalg.logdet(covariance + jitter))
+
+    return acquisition
+
+
+class BALD(SingleModelAcquisitionBuilder):
+    """
+    bald bla bla
+    """
+
+    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        """
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BALD(jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return bald(model, self._jitter)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+def bald(model: ProbabilisticModel, jitter: float) -> TensorType:
+    """
+    bald bla bla
+
+    :param model: The model of the objective function.
+    :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+    """
+
+    def acquisition(x: TensorType) -> TensorType:
+
+        mean, variance = model.predict(tf.squeeze(x, -2))
+        variance = tf.maximum(variance, jitter)
+
+        xx = mean / tf.sqrt(variance + 1)
+
+        normal = tfp.distributions.Normal(tf.cast(0, mean.dtype), tf.cast(1, mean.dtype))
+
+        p = normal.cdf(xx)
+        
+        #normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        #p = normal.cdf(xx)
+
+        two = tf.constant(2, dtype=tf.float64)
+        C2 = (math.pi * tf.math.log(two)) / 2
+        Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
+
+        #return variance
+        return -p * tf.math.log(p + jitter) - (1 - p) * tf.math.log(1 - p + jitter) - Ef
 
     return acquisition
