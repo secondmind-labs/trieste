@@ -31,6 +31,7 @@ from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSp
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
+
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
 
@@ -137,8 +138,9 @@ def generate_continuous_optimizer(
     `num_recovery_runs` starting from random locations.
 
     The default behavior of this method is to return a L-BFGS-B optimizer that performs
-    a single optimization from the best of 5000 initial locations. If this optimization fails then
-    we run up to `num_recovery_runs` recovery runs starting from additional random locations.
+    a single optimization from the best of `NUM_SAMPLES_MIN` initial locations. If this
+    optimization fails then we run up to `num_recovery_runs` recovery runs starting from additional
+    random locations.
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
