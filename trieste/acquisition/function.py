@@ -24,6 +24,8 @@ from typing import Callable, Mapping, Optional, Union, cast
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from ..observer import OBJECTIVE
+
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..space import SearchSpace
@@ -217,8 +219,9 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         tf.debugging.Assert(isinstance(function, expected_improvement), [])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        function.update(eta)  # type: ignore
-        return function
+        # function.update(eta)  # type: ignore
+        # return function
+        return expected_improvement(model, eta)
 
 
 class expected_improvement(AcquisitionFunctionClass):
@@ -837,24 +840,23 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         )
         tf.debugging.Assert(self._constraint_fn is not None, [])
 
-        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
-        self._constraint_builder.update_acquisition_function(
-            constraint_fn, models, datasets=datasets
+        self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
+            models, datasets=datasets
         )
-        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
+        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
-            return constraint_fn
+            return self._constraint_fn
 
         feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         self._update_expected_improvement_fn(objective_model, feasible_mean)
 
-        if self._constrained_improvement_fn is not None:
-            return self._constrained_improvement_fn
+        # if self._constrained_improvement_fn is not None:
+        #     return self._constrained_improvement_fn
 
-        @tf.function
+        # @tf.function
         def constrained_function(x: TensorType) -> TensorType:
             return cast(AcquisitionFunction, self._expected_improvement_fn)(x) * cast(
                 AcquisitionFunction, self._constraint_fn
@@ -874,11 +876,12 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         """
         eta = tf.reduce_min(feasible_mean, axis=0)
 
-        if self._expected_improvement_fn is None:
-            self._expected_improvement_fn = expected_improvement(objective_model, eta)
-        else:
-            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
-            self._expected_improvement_fn.update(eta)  # type: ignore
+        # if self._expected_improvement_fn is None:
+        #     self._expected_improvement_fn = expected_improvement(objective_model, eta)
+        # else:
+        #     tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
+        #     self._expected_improvement_fn.update(eta)  # type: ignore
+        self._expected_improvement_fn = expected_improvement(objective_model, eta)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
@@ -1468,7 +1471,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         )
 
 
-class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
+class LocalPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
@@ -1534,8 +1537,8 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -1545,21 +1548,21 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
-        dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        # tf.debugging.Assert(dataset is not None, [])
+        # dataset = cast(Dataset, dataset)
+        # tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        acq = self._update_base_acquisition_function(dataset, model)
+        acq = self._update_base_acquisition_function(datasets, models)
         if pending_points is not None and len(pending_points) != 0:
-            acq = self._update_penalization(acq, dataset, model, pending_points)
+            acq = self._update_penalization(acq, datasets[OBJECTIVE], models[OBJECTIVE], pending_points)
 
         return acq
 
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -1574,19 +1577,19 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
-        dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
+        # tf.debugging.Assert(dataset is not None, [])
+        # dataset = cast(Dataset, dataset)
+        # tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        # tf.debugging.Assert(self._base_acquisition_function is not None, [])
 
         if new_optimization_step:
-            self._update_base_acquisition_function(dataset, model)
+            self._update_base_acquisition_function(datasets, models)
 
         if pending_points is None or len(pending_points) == 0:
             # no penalization required if no pending_points
             return cast(AcquisitionFunction, self._base_acquisition_function)
 
-        return self._update_penalization(function, dataset, model, pending_points)
+        return self._update_penalization(function, datasets[OBJECTIVE], models[OBJECTIVE], pending_points)
 
     def _update_penalization(
         self,
@@ -1609,7 +1612,7 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
                 model, pending_points, self._lipschitz_constant, self._eta
             )
 
-            @tf.function
+            # @tf.function
             def penalized_acquisition(x: TensorType) -> TensorType:
                 log_acq = tf.math.log(
                     cast(AcquisitionFunction, self._base_acquisition_function)(x)
@@ -1633,12 +1636,12 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         return max_grads_norm, eta
 
     def _update_base_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+        self, datasets: Dataset, models: ProbabilisticModel
     ) -> AcquisitionFunction:
         samples = self._search_space.sample(num_samples=self._num_samples)
-        samples = tf.concat([dataset.query_points, samples], 0)
+        samples = tf.concat([datasets[OBJECTIVE].query_points, samples], 0)
 
-        lipschitz_constant, eta = self._get_lipschitz_estimate(model, samples)
+        lipschitz_constant, eta = self._get_lipschitz_estimate(models[OBJECTIVE], samples)
         if lipschitz_constant < 1e-5:  # threshold to improve numerical stability for 'flat' models
             lipschitz_constant = 10
 
@@ -1648,17 +1651,17 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._base_builder.update_acquisition_function(
                 self._base_acquisition_function,
-                model,
-                dataset=dataset,
+                models,
+                datasets=datasets,
             )
-        elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
-            self._base_acquisition_function = cast(
-                AcquisitionFunction, expected_improvement(model, self._eta)
-            )
+        # elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
+        #     self._base_acquisition_function = cast(
+        #         AcquisitionFunction, expected_improvement(models, self._eta)
+        #     )
         else:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
-                model,
-                dataset=dataset,
+                models,
+                datasets=datasets,
             )
         return self._base_acquisition_function
 
