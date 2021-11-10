@@ -31,7 +31,6 @@ from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSp
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
-
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
 
