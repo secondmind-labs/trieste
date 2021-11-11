@@ -45,7 +45,11 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    GPflowPredictor,
+    VariationalGaussianProcess,
+)
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -157,7 +161,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
 ) -> None:
-    _test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
+    _test_optimizer_finds_minimum(num_steps, acquisition_rule, optimize_branin=True)
 
 
 @random_seed
@@ -169,19 +173,26 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
+    _test_optimizer_finds_minimum(min(num_steps, 5), acquisition_rule)
+
+
+@random_seed
+def test_optimizer_finds_minima_with_vgp_model() -> None:
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
+    _test_optimizer_finds_minimum(5, acquisition_rule, vgp_model=True)
 
 
 def _test_optimizer_finds_minimum(
-    optimize_branin: bool,
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    optimize_branin: bool = False,
+    vgp_model: bool = False,
 ) -> None:
 
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
+    def build_model(data: Dataset) -> GPflowPredictor:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
         scale = tf.constant(1.0, dtype=tf.float64)
@@ -191,6 +202,11 @@ def _test_optimizer_finds_minimum(
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
             tf.math.log(kernel.lengthscales), scale
         )
+        if vgp_model:
+            likelihood = gpflow.likelihoods.Gaussian()
+            vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+            return VariationalGaussianProcess(vgp)
+
         gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         return GaussianProcessRegression(gpr)
