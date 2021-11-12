@@ -24,7 +24,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import LocalPenalizationAcquisitionFunction
+from trieste.acquisition import LocalPenalizationAcquisitionFunction
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,

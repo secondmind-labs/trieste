@@ -29,7 +29,7 @@ from scipy.optimize import OptimizeResult
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from .function import AcquisitionFunction
+from .interface import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
@@ -37,9 +37,9 @@ SP = TypeVar("SP", bound=SearchSpace)
 
 NUM_SAMPLES_MIN: int = 5000
 """
-The default minimum number of initial samples for :func:`generate_continuous_optimizer` function in
-:func:`automatic_optimizer_selector`, used for determining the number of initial samples in the
-multi-start acquisition function optimization.
+The default minimum number of initial samples for :func:`generate_continuous_optimizer` and
+:func:`generate_random_search_optimizer` function, used for determining the number of initial
+samples in the multi-start acquisition function optimization.
 """
 
 
@@ -116,7 +116,7 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 
 def generate_continuous_optimizer(
-    num_initial_samples: int = 1000,
+    num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 1,
     num_recovery_runs: int = 5,
     optimizer_args: dict[str, Any] = dict(),
@@ -126,6 +126,9 @@ def generate_continuous_optimizer(
     spaces and batches of size 1. In the case of a :class:'TaggedProductSearchSpace', We perform
     gradient-based optimization across all :class:'Box' subspaces, starting from the best location
     found across a sample of `num_initial_samples` random points.
+
+    We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_initial_samples`, or
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller.
 
     This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's Scipy optimizer wrapper),
     which optimizes directly within and up to the bounds of the search space.
@@ -137,8 +140,9 @@ def generate_continuous_optimizer(
     `num_recovery_runs` starting from random locations.
 
     The default behavior of this method is to return a L-BFGS-B optimizer that performs
-    a single optimization from the best of 1000 initial locations. If this optimization fails then
-    we run up to `num_recovery_runs` recovery runs starting from additional random locations.
+    a single optimization from the best of `NUM_SAMPLES_MIN` initial locations. If this
+    optimization fails then we run up to `num_recovery_runs` recovery runs starting from additional
+    random locations.
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
@@ -314,9 +318,15 @@ def batchify(
     return optimizer
 
 
-def generate_random_search_optimizer(num_samples: int = 1000) -> AcquisitionOptimizer[SP]:
+def generate_random_search_optimizer(
+    num_samples: int = NUM_SAMPLES_MIN,
+) -> AcquisitionOptimizer[SP]:
     """
     Generate an acquisition optimizer that samples `num_samples` random points across the space.
+    The default is to sample at `NUM_SAMPLES_MIN` locations.
+
+    We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_samples`, or
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller.
 
     :param num_samples: The number of random points to sample.
     :return: The acquisition optimizer.
