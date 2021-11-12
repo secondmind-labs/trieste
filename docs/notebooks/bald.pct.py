@@ -20,10 +20,8 @@ from trieste.models.gpflow.models import GaussianProcessRegression,VariationalGa
 np.random.seed(1965)
 tf.random.set_seed(1965)
 
-
-inDim = 2
 sp = trieste.space.Box([-1, -1], [1, 1])
-
+inDim = 2
 def circle(x):
     return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) -  0.5) > 0, tf.float64)
 
@@ -47,38 +45,13 @@ def create_bo_model(data):
     }))
 
 
-"""
-def create_bo_model(data):
-    #kernel = gpflow.kernels.SquaredExponential()
-    #kernel = gpflow.kernels.Matern52(lengthscales=[2, 2])
-    kernel = gpflow.kernels.RBF(lengthscales=[2, 2])
-    m = gpflow.models.VGP(
-        astuple(data), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel
-    )
-    return VariationalGaussianProcess(m)
-"""
-"""def create_bo_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[2, 2])
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-
-    return GaussianProcessRegression(gpr)"""
-
 # %%
 density = 100
 xx = np.linspace(sp.lower[0], sp.upper[0], density)
-#yy = forrester(xx)
-
-print('xx:', xx.shape)
-#print('yy:', yy.shape)
 
 grid_xx = np.meshgrid(*[xx]*inDim)
 xx = np.vstack([g.ravel() for g in grid_xx]).T
-print('xx:', xx.shape)
 yy = circle(xx).numpy()
-
-print('yy:', yy.shape)
 
 plt.figure()
 plt.contour(*grid_xx, np.reshape(yy, [density]*inDim), levels=[0.5])
@@ -88,24 +61,9 @@ plt.scatter(xx[np.logical_not(idx)][:,0],xx[np.logical_not(idx)][:,1], label="0"
 plt.legend()
 plt.show()
 
-if 1:
-    numSamples = 10
-    X = sp.sample_halton(numSamples)
-else:
-    numSamples = 5
-    lhd = [[0, 2],
-    [1, 5],
-    [2, 8],
-    [3, 1],
-    [4, 4],
-    [5, 7],
-    [6, 0],
-    [7, 3],
-    [8, 6],
-    [9, 9]]
+numSamples = 10
+X = sp.sample_halton(numSamples)
 
-    X = tf.cast(lhd, gpflow.default_float())
-    X = (X - 5) / 5
 
 
 observer = mk_observer(circle, OBJECTIVE)
@@ -138,9 +96,6 @@ plt.show()
 initial_models = trieste.utils.map_values(create_bo_model, datasets)
 
 # %%
-datasets
-
-# %%
 acq = BALD()
 # %% BO
 numIter = 50
@@ -155,11 +110,6 @@ final_model = results.try_get_final_models()[OBJECTIVE]
 
 xmax = final_dataset.query_points[-numIter:,:]
 
-print('xmax:', xmax)
-
-# %%
-print('xmax:', xmax)
-
 # %% Plot BO results
 mean, variance = final_model.predict(xx)
 
@@ -170,19 +120,6 @@ plt.plot(final_dataset.query_points[:-numIter,0], final_dataset.query_points[:-n
 plt.plot(final_dataset.query_points[-numIter:,0], final_dataset.query_points[-numIter:,1], 'rx', mew=10)
 plt.contour(*grid_xx, np.reshape(yy, [density]*inDim), levels=[0.5])
 plt.title('Updated Mean')
-plt.show()
-
-# %% Updated acquisition
-acq = BALD()
-alpha = acq.prepare_acquisition_function(final_dataset, final_model)
-values = alpha(xx)
-
-plt.figure()
-plt.contourf(*grid_xx, np.reshape(values, [density]*inDim))
-plt.colorbar()
-plt.plot(final_dataset.query_points[:-numIter,0], final_dataset.query_points[:-numIter,1], 'ko', markersize=10)
-plt.plot(final_dataset.query_points[-numIter:,0], final_dataset.query_points[-numIter:,1], 'rx', mew=10)
-plt.title('Updated acquisition')
 plt.show()
 
 # %%
