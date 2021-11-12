@@ -33,6 +33,7 @@ from .function import (
     lower_confidence_bound,
     predictive_variance,
     probability_of_feasibility,
+    BALD,
 )
 from .local_penalization import (
     LocalPenalizationAcquisitionFunction,
