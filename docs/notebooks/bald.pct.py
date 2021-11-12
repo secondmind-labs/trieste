@@ -17,8 +17,8 @@ from trieste.models import create_model
 from trieste.utils import map_values
 from trieste.models.gpflow.models import GaussianProcessRegression,VariationalGaussianProcess
 
-np.random.seed(888)
-tf.random.set_seed(888)
+np.random.seed(1965)
+tf.random.set_seed(1965)
 
 
 inDim = 2
@@ -31,9 +31,10 @@ def circle(x):
 
 # %%
 from trieste.models.gpflow import GPflowModelConfig
-"""def create_bo_model(data):
+def create_bo_model(data):
     #kernel = gpflow.kernels.SquaredExponential()
-    kernel = gpflow.kernels.Matern52()
+    #kernel = gpflow.kernels.Matern52()
+    kernel = gpflow.kernels.SquaredExponential()
     m = gpflow.models.VGP(
         astuple(data), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel
     )   
@@ -41,11 +42,12 @@ from trieste.models.gpflow import GPflowModelConfig
         "model": m,
         "optimizer": gpflow.optimizers.Scipy(),
         "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
+            "minimize_args": {"options": dict(maxiter=100.)},
         },
     }))
-"""
 
+
+"""
 def create_bo_model(data):
     #kernel = gpflow.kernels.SquaredExponential()
     #kernel = gpflow.kernels.Matern52(lengthscales=[2, 2])
@@ -54,7 +56,7 @@ def create_bo_model(data):
         astuple(data), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel
     )
     return VariationalGaussianProcess(m)
-
+"""
 """def create_bo_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[2, 2])
@@ -64,7 +66,7 @@ def create_bo_model(data):
     return GaussianProcessRegression(gpr)"""
 
 # %%
-density = 20
+density = 100
 xx = np.linspace(sp.lower[0], sp.upper[0], density)
 #yy = forrester(xx)
 
@@ -161,18 +163,18 @@ print('xmax:', xmax)
 # %% Plot BO results
 mean, variance = final_model.predict(xx)
 
-plt.figure()
+plt.figure(figsize=(10, 8))
 plt.contourf(*grid_xx, np.reshape(mean, [density]*inDim))
 plt.colorbar()
 plt.plot(final_dataset.query_points[:-numIter,0], final_dataset.query_points[:-numIter,1], 'ko', markersize=10)
 plt.plot(final_dataset.query_points[-numIter:,0], final_dataset.query_points[-numIter:,1], 'rx', mew=10)
+plt.contour(*grid_xx, np.reshape(yy, [density]*inDim), levels=[0.5])
 plt.title('Updated Mean')
 plt.show()
 
 # %% Updated acquisition
 acq = BALD()
 alpha = acq.prepare_acquisition_function(final_dataset, final_model)
-
 values = alpha(xx)
 
 plt.figure()

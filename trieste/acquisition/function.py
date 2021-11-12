@@ -2319,26 +2319,19 @@ def bald(model: ProbabilisticModel, jitter: float) -> TensorType:
     :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
     """
-
+    
+    #tf.function
     def acquisition(x: TensorType) -> TensorType:
 
         mean, variance = model.predict(tf.squeeze(x, -2))
         variance = tf.maximum(variance, jitter)
 
-        xx = mean / tf.sqrt(variance + 1)
-
         normal = tfp.distributions.Normal(tf.cast(0, mean.dtype), tf.cast(1, mean.dtype))
+        p = normal.cdf((mean / tf.sqrt(variance + 1)))
 
-        p = normal.cdf(xx)
-        
-        #normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        #p = normal.cdf(xx)
-
-        two = tf.constant(2, dtype=tf.float64)
-        C2 = (math.pi * tf.math.log(two)) / 2
+        C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
         Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
 
-        #return variance
         return -p * tf.math.log(p + jitter) - (1 - p) * tf.math.log(1 - p + jitter) - Ef
 
     return acquisition
