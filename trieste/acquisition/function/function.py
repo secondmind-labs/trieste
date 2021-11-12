@@ -17,11 +17,11 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
+import math
 from typing import Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-import math
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
@@ -817,12 +817,12 @@ class bald(AcquisitionFunctionClass):
 
         :param model: The model of the objective function.
         :param jitter: The size of the jitter to avoid numerical problem caused by the variance value.
-        :return: The Bayesian Active Learning By Disagreement acquisition function. 
+        :return: The Bayesian Active Learning By Disagreement acquisition function.
         """
         self._model = model
         self._jitter = jitter
 
-    #@tf.function
+    # @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         variance = tf.maximum(variance, self._jitter)

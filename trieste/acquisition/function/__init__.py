@@ -20,6 +20,7 @@ from .entropy import (
     min_value_entropy_search,
 )
 from .function import (
+    BALD,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
@@ -33,7 +34,6 @@ from .function import (
     lower_confidence_bound,
     predictive_variance,
     probability_of_feasibility,
-    BALD,
 )
 from .local_penalization import (
     LocalPenalizationAcquisitionFunction,
