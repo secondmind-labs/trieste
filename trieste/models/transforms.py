@@ -356,7 +356,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         transformed_dataset = self._transform_dataset(dataset)
         super().update(transformed_dataset, *args, **kwargs)  # type: ignore
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset, *args: Any, **kwargs: Any) -> None:
         """Wrap the model's `optimize` method to pass in a normalized dataset.
 
         :param dataset: Unnormalized dataset.
@@ -364,4 +364,4 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param kwargs: Keyword arguments to pass to the model's `optimize` function.
         """
         transformed_dataset = self._transform_dataset(dataset)
-        super().optimize(transformed_dataset)
+        super().optimize(transformed_dataset, *args, **kwargs)
