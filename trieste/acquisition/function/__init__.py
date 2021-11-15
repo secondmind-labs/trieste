@@ -20,9 +20,9 @@ from .entropy import (
     min_value_entropy_search,
 )
 from .function import (
-    BALD,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
+    BayesianActiveLearningByDisagreement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,

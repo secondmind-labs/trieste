@@ -765,7 +765,7 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
     return acquisition
 
 
-class BALD(SingleModelAcquisitionBuilder):
+class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
     :cite:`houlsby2011bayesian`. The acquisition function computes the information gains of the predictive entropy.
@@ -795,7 +795,7 @@ class BALD(SingleModelAcquisitionBuilder):
         :return: The determinant of the predictive function.
         """
 
-        return bald(model, self._jitter)
+        return bayesian_active_learning_by_disagreement(model, self._jitter)
 
     def update_acquisition_function(
         self,
@@ -811,7 +811,7 @@ class BALD(SingleModelAcquisitionBuilder):
         return function  # no need to update anything
 
 
-class bald(AcquisitionFunctionClass):
+class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, jitter: float):
         """
 

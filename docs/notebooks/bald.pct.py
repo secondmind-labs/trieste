@@ -8,7 +8,7 @@ import tensorflow as tf
 from gpflow.utilities import print_summary, set_trainable
 
 import trieste
-from trieste.acquisition.function import BALD, PredictiveVariance
+from trieste.acquisition.function import BayesianActiveLearningByDisagreement, PredictiveVariance
 from trieste.acquisition.rule import OBJECTIVE
 from trieste.models import create_model
 from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
@@ -108,7 +108,7 @@ plt.show()
 initial_models = trieste.utils.map_values(create_bo_model, datasets)
 
 # %%
-acq = BALD()
+acq = BayesianActiveLearningByDisagreement()
 # %% BO
 numIter = 50
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, sp)
