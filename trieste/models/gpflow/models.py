@@ -21,6 +21,9 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
+from gpflow.utilities.ops import leading_transpose
+from gpflux.math import _cholesky_with_jitter, compute_A_inv_b
+from gpflow.conditionals.util import sample_mvn
 
 from ...data import Dataset
 from ...types import TensorType
@@ -210,6 +213,70 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
+
+
+    def fantasized_predict_f(self, query_points: TensorType, fantasized_data: Dataset) -> tuple[TensorType, TensorType]:
+        '''
+
+        :param query_points: [M, D] tensor
+        :param fantasized_data: Dataset with query_points = [N, D] tensor, observations = [N, L] tensor
+        :return: mnew: [M, L] tensor, s2new: [M, L] tensor
+        '''
+
+        tf.debugging.assert_shapes([(query_points, ["M", "D"]), (fantasized_data.query_points, ["N", "D"])])
+
+        mean_old, cov_old = self.model.predict_f(fantasized_data.query_points, full_cov=True)  # [N, L], [L, N, N]
+        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
+
+        cov_cross = self.covariance_between_points(fantasized_data.query_points, query_points)  # [L, N, M]
+
+        L_old = _cholesky_with_jitter(cov_old)  # [L, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
+        var_new = var_new - tf.reduce_mean(A ** 2, axis=-1)  # [L, M]
+
+        mean_old_diff = (fantasized_data.observations - mean_old)  # [N, L]
+        mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
+        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
+        mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
+
+        return mean_new, var_new
+
+
+    def fantasized_predict_joint(self, query_points: TensorType, fantasized_data: Dataset) -> tuple[TensorType, TensorType]:
+
+        tf.debugging.assert_shapes([(query_points, ["M", "D"]), (fantasized_data.query_points, ["N", "D"])])
+
+        points = tf.concat([fantasized_data.query_points, query_points], axis=0)
+        mean, cov = self.model.predict_f(points, full_cov=True)  # [N+M, L], [L, N+M, N+M]
+
+        M, D = tf.shape(query_points)[-2], tf.shape(query_points)[-1]  # noqa: F841
+        N = tf.shape(mean)[-1] - M
+
+        mean_old = mean[..., :N]  # [N, L]
+        mean_new = mean[..., -M:]  # [M, L]
+
+        cov_old = cov[..., :N, :N]  # [L, N, N]
+        cov_new = cov[..., -M:, -M:]  # [L, M, M]
+        cov_cross = cov[..., :N, -M:]  # [L, N, M]
+
+        L_old = _cholesky_with_jitter(cov_old)  # [L, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
+        var_new = cov_new - tf.matmul(A, A, transpose_a=True)  # [L, M, M]
+
+        mean_old_diff = (fantasized_data.observations - mean_old)  # [N, L]
+        mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
+        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
+        mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
+
+        return mean_new, var_new
+
+    def fantasized_predict_f_sample(self, query_points: TensorType, fantasized_data: Dataset, num_samples: int) -> TensorType:
+        mean_new, var_new = self.model.fantasized_predict_joint(query_points, fantasized_data)
+        return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
+
+    def fantasized_predict_y(self, query_points: TensorType, fantasized_data: Dataset) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.fantasized_predict_f(query_points, fantasized_data)
+        return self.likelihood.predict_mean_and_var(f_mean, f_var)
 
 
 class NumDataPropertyMixin:
