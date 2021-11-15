@@ -25,7 +25,7 @@ from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_poi
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
-    AsynchronousOptimization,
+    AsynchronousGreedy,
     EfficientGlobalOptimization,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -71,7 +71,7 @@ from trieste.types import TensorType
         ),
         pytest.param(
             10,
-            EfficientGlobalOptimization(
+            AsynchronousGreedy(
                 BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
                 num_query_points=4,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),

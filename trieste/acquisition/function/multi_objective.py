@@ -26,9 +26,12 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder, \
-    SingleModelGreedyAcquisitionBuilder
-
+from ..interface import (
+    AcquisitionFunction,
+    AcquisitionFunctionClass,
+    SingleModelAcquisitionBuilder,
+    SingleModelGreedyAcquisitionBuilder,
+)
 from ..multi_objective.pareto import (
     Pareto,
     get_reference_point,
