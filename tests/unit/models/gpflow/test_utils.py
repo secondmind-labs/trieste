@@ -76,9 +76,9 @@ if parse(tfp.__version__) < parse("0.12"):
             copy.deepcopy(module)
 
 
-def test_gaussian_process_deep_copyable(gpr_interface_factory: ModelFactoryType) -> None:
+def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model, _ = gpr_interface_factory(x, fnc_2sin_x_over_3(x))
+    model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
     model_copy = copy.deepcopy(model)
     x_predict = tf.constant([[50.5]], gpflow.default_float())
 

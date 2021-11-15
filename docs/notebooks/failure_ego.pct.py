@@ -55,7 +55,7 @@ fig.show()
 #   - one containing only those query_points and observations where the observations are finite.
 #     We'll label this with `OBJECTIVE`.
 #   - the other containing all the query points, but whose observations indicate if evaluating the
-#     observer failed at that point, using `1` if the evaluation failed, else `0`. We'll label this
+#     observer failed at that point, using `0` if the evaluation failed, else `1`. We'll label this
 #     with `FAILURE`.
 #
 # Let's define an observer that outputs the data in these formats.
@@ -147,11 +147,11 @@ models: dict[str, trieste.models.ModelSpec] = {
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product, lower_confidence_bound
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
 )
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
-    def prepare_acquisition_function(self, dataset, model):
+    def prepare_acquisition_function(self, model, dataset = None):
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
@@ -170,7 +170,8 @@ rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(20, initial_data, models, rule).final_result.unwrap()
+num_steps = 20
+result = bo.optimize(num_steps, initial_data, models, rule).final_result.unwrap()
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")

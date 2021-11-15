@@ -24,11 +24,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
 
+import numpy as np
 import tensorflow as tf
 from absl import logging
 
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
+from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
@@ -154,7 +156,11 @@ class BayesianOptimizer(Generic[SP]):
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(self, observer: Observer, search_space: SP):
+    def __init__(
+        self,
+        observer: Observer,
+        search_space: SP,
+    ):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -352,6 +358,7 @@ class BayesianOptimizer(Generic[SP]):
         history: list[Record[S]] = []
 
         for step in range(num_steps):
+            set_step_number(step)
             try:
                 if track_state:
                     models_copy = copy.deepcopy(models)
@@ -364,7 +371,9 @@ class BayesianOptimizer(Generic[SP]):
                         model.update(dataset)
                         model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(self._search_space, datasets, models)
+                points_or_stateful = acquisition_rule.acquire(
+                    self._search_space, models, datasets=datasets
+                )
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)
@@ -385,6 +394,23 @@ class BayesianOptimizer(Generic[SP]):
                     dataset = datasets[tag]
                     model.update(dataset)
                     model.optimize(dataset)
+
+                summary_writer = get_tensorboard_writer()
+                if summary_writer:
+                    with summary_writer.as_default():
+                        for tag in datasets:
+                            with tf.name_scope(f"{tag}.model"):
+                                models[tag].log()
+                            tf.summary.scalar(
+                                f"{tag}.observation.best_overall",
+                                np.min(datasets[tag].observations),
+                                step=step,
+                            )
+                            tf.summary.scalar(
+                                f"{tag}.observation.best_new",
+                                np.min(tagged_output[tag].observations),
+                                step=step,
+                            )
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(

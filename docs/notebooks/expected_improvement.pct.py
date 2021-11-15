@@ -47,7 +47,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
 #
-# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estiamte of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
+# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estimate of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
 #
 # If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 
@@ -93,8 +93,12 @@ model = build_model(initial_data)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(15, initial_data, model)
+num_steps = 15
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
+
+# %% [markdown]
+# In this tutorial we will manually explore the results once the optimization loop completes. For how to monitor the loop in realtime, including some of the plots shown below, see [visualizing and tracking optimizations using Tensorboard](visualizing_with_tensorboard.ipynb).
 
 # %% [markdown]
 # ## Explore the results
@@ -226,7 +230,8 @@ fig.tight_layout()
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-result = bo.optimize(5, result.try_get_final_dataset(), result.try_get_final_model())
+num_steps = 10
+result = bo.optimize(num_steps, result.try_get_final_dataset(), result.try_get_final_model())
 dataset = result.try_get_final_dataset()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))

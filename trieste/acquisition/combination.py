@@ -15,13 +15,14 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
+from typing import Optional
 
 import tensorflow as tf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..types import TensorType
-from .function import AcquisitionFunction, AcquisitionFunctionBuilder
+from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
 class Reducer(AcquisitionFunctionBuilder):
@@ -47,7 +48,9 @@ class Reducer(AcquisitionFunctionBuilder):
         return ", ".join(map(repr, self._acquisitions))
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         r"""
         Return an acquisition function. This acquisition function is defined by first building
@@ -61,13 +64,15 @@ class Reducer(AcquisitionFunctionBuilder):
         :return: The reduced acquisition function.
         """
         functions = tuple(
-            acq.prepare_acquisition_function(datasets, models) for acq in self.acquisitions
+            acq.prepare_acquisition_function(models, datasets=datasets) for acq in self.acquisitions
         )
 
         def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
             return self._reduce_acquisition_functions(at, functions)
 
         return evaluate_acquisition_function_fn
+
+    # TODO: define update_acquisition_function to avoid unnecessary retracing
 
     @property
     def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:

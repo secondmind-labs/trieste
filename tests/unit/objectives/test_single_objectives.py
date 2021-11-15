@@ -53,6 +53,11 @@ from trieste.objectives import (
     SHEKEL_4_MINIMIZER,
     SHEKEL_4_MINIMUM,
     SHEKEL_4_SEARCH_SPACE,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
+    TRID_10_MINIMIZER,
+    TRID_10_MINIMUM,
+    TRID_10_SEARCH_SPACE,
     ackley_5,
     branin,
     gramacy_lee,
@@ -65,6 +70,8 @@ from trieste.objectives import (
     rosenbrock_4,
     scaled_branin,
     shekel_4,
+    simple_quadratic,
+    trid_10,
 )
 from trieste.space import Box
 from trieste.types import TensorType
@@ -75,6 +82,7 @@ from trieste.types import TensorType
     [
         (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
         (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
+        (simple_quadratic, SIMPLE_QUADRATIC_MINIMIZER, SIMPLE_QUADRATIC_MINIMUM),
         (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
         (michalewicz_2, MICHALEWICZ_2_MINIMIZER, MICHALEWICZ_2_MINIMUM),
         (michalewicz_5, MICHALEWICZ_5_MINIMIZER, MICHALEWICZ_5_MINIMUM),
@@ -89,6 +97,7 @@ from trieste.types import TensorType
         (shekel_4, SHEKEL_4_MINIMIZER, SHEKEL_4_MINIMUM),
         (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM),
         (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM),
+        (trid_10, TRID_10_MINIMIZER, TRID_10_MINIMUM),
     ],
 )
 def test_objective_maps_minimizers_to_minimum(
@@ -118,6 +127,7 @@ def test_objective_maps_minimizers_to_minimum(
         (shekel_4, SHEKEL_4_SEARCH_SPACE, SHEKEL_4_MINIMUM),
         (ackley_5, ACKLEY_5_SEARCH_SPACE, ACKLEY_5_MINIMUM),
         (hartmann_6, HARTMANN_6_SEARCH_SPACE, HARTMANN_6_MINIMUM),
+        (trid_10, TRID_10_SEARCH_SPACE, TRID_10_MINIMUM),
     ],
 )
 def test_no_function_values_are_less_than_global_minimum(

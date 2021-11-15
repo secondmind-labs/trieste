@@ -215,8 +215,8 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
         def acquire(
             self,
             search_space: Box,
-            datasets: Mapping[str, Dataset],
             models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)

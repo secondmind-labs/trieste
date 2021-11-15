@@ -17,13 +17,17 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.optimizer import generate_continuous_optimizer
-from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import (
+    AcquisitionRule,
+    AsynchronousOptimization,
+    EfficientGlobalOptimization,
+)
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
@@ -63,6 +67,16 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.49,
+            id="qehvi_vlmop2_q_4",
+        ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+                num_query_points=4,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.2095,
             id="qehvi_vlmop2_q_4",
         ),
     ],

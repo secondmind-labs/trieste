@@ -167,7 +167,7 @@ class BatchExpectedConstrainedImprovement(
         self._sample_size = sample_size
         self._threshold = threshold
 
-    def prepare_acquisition_function(self, datasets, models):
+    def prepare_acquisition_function(self, models, datasets):
         objective_model = models[OBJECTIVE]
         objective_dataset = datasets[OBJECTIVE]
 
@@ -205,7 +205,8 @@ class BatchExpectedConstrainedImprovement(
 
 
 num_query_points = 4
-batch_eci = BatchExpectedConstrainedImprovement(50, Sim.threshold)
+sample_size = 50
+batch_eci = BatchExpectedConstrainedImprovement(sample_size, Sim.threshold)
 batch_rule = EfficientGlobalOptimization(  # type: ignore
     batch_eci, num_query_points=num_query_points
 )
