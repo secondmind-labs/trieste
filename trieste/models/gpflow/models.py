@@ -21,8 +21,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
-from gpflow.utilities.ops import leading_transpose
-from gpflux.math import _cholesky_with_jitter, compute_A_inv_b
+from gpflux.math import _cholesky_with_jitter
 from gpflow.conditionals.util import sample_mvn
 
 from ...data import Dataset
