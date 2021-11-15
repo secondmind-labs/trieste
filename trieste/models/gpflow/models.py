@@ -384,14 +384,12 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     shape=[None, *self._model.data[1].shape[1:]],
                 ),
             )
-            self._model.q_mu = tf.Variable(
-                self._model.q_mu, trainable=False, shape=[None, *self._model.q_mu.shape[1:]]
-            )
-            self._model.q_sqrt = tf.Variable(
-                self._model.q_sqrt,
-                trainable=False,
-                shape=[*self._model.q_sqrt.shape[:-2], None, None],
-            )
+
+            self._model.q_mu = gpflow.Parameter(self._model.q_mu, shape=[None, *self._model.q_mu.shape[1:]])
+            self._model.q_sqrt = gpflow.Parameter(self._model.q_sqrt, shape=[*self._model.q_sqrt.shape[:-2], None, None])
+            gpflow.set_trainable(self._model.q_mu, self._use_natgrads)
+            gpflow.set_trainable(self._model.q_sqrt, self._use_natgrads)
+
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.

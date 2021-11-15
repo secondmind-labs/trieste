@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 import tempfile
-from typing import List, Tuple, Union, cast
+from typing import Any, List, Mapping, Optional, Tuple, Union, cast
 
 import gpflow
 import numpy.testing as npt
@@ -177,9 +177,10 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 
 
 @random_seed
-def test_optimizer_finds_minima_with_vgp_model() -> None:
+@pytest.mark.parametrize("use_natgrads", [False, True])
+def test_optimizer_finds_minima_with_vgp_model(use_natgrads: bool) -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(5, acquisition_rule, vgp_model=True)
+    _test_optimizer_finds_minimum(5, acquisition_rule, vgp_model=True, model_args={"use_natgrads": use_natgrads})
 
 
 def _test_optimizer_finds_minimum(
@@ -188,8 +189,10 @@ def _test_optimizer_finds_minimum(
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
     optimize_branin: bool = False,
     vgp_model: bool = False,
+    model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
 
+    model_args = model_args or {}
     search_space = BRANIN_SEARCH_SPACE
 
     def build_model(data: Dataset) -> GPflowPredictor:
@@ -205,11 +208,11 @@ def _test_optimizer_finds_minimum(
         if vgp_model:
             likelihood = gpflow.likelihoods.Gaussian()
             vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
-            return VariationalGaussianProcess(vgp)
+            return VariationalGaussianProcess(vgp, **model_args)
 
         gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
         gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
+        return GaussianProcessRegression(gpr, **model_args)
 
     initial_query_points = search_space.sample(5)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
