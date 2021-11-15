@@ -769,10 +769,11 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
     :cite:`houlsby2011bayesian`. The acquisition function computes the information gains
-    of the predictive entropy.
+    of the predictive entropy.  
 
     This acquisition function is intended to use for Binary Gaussian Process Classification
-    model with Bernoulli likelihood.
+    model with Bernoulli likelihood. integrating over nuisance parameters is not currently 
+    supported (equation 6 of the paper)
     """
 
     def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
