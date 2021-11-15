@@ -768,14 +768,17 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
 class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
-    :cite:`houlsby2011bayesian`. The acquisition function computes the information gains of the predictive entropy.
+    :cite:`houlsby2011bayesian`. The acquisition function computes the information gains
+    of the predictive entropy.
 
-    This acquisition function is intended to use for Binary Gaussian Process Classification model with Bernoulli likelihood.
+    This acquisition function is intended to use for Binary Gaussian Process Classification
+    model with Bernoulli likelihood.
     """
 
     def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
         """
-        :param jitter: The size of the jitter to avoid numerical problem caused by the variance value.
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
         """
         self._jitter = jitter
 
@@ -816,7 +819,8 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         """
 
         :param model: The model of the objective function.
-        :param jitter: The size of the jitter to avoid numerical problem caused by the variance value.
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
         :return: The Bayesian Active Learning By Disagreement acquisition function.
         """
         self._model = model
