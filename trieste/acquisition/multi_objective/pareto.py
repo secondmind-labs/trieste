@@ -14,8 +14,11 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
+from typing import Optional
+
 import tensorflow as tf
 
+from ...acquisition.interface import AcquisitionFunctionBuilder
 from ...types import TensorType
 from .dominance import non_dominated
 from .partition import prepare_default_non_dominated_partition_bounds
@@ -74,12 +77,19 @@ class Pareto:
         return hypervolume_indicator
 
 
-def get_reference_point(observations: TensorType) -> TensorType:
+def get_reference_point(
+    observations: TensorType,
+    objective_builder: Optional[AcquisitionFunctionBuilder] = None,
+    constraint_builder: Optional[AcquisitionFunctionBuilder] = None,
+) -> TensorType:
     """
     reference point calculation method.
 
     :param observations: observations referred to calculate the reference
         point, with shape [..., N, D]
+    :param objective_builder: acquisition function builder containing objective function models
+    :param constraint_builder: constraint acquisition function builder containing
+        constraint function models
     :return: a reference point to use, with shape [..., D].
     :raise ValueError: If ``observations`` is empty
     """
