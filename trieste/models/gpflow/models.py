@@ -14,13 +14,23 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.base import (
+    DType,
+    Prior,
+    PriorOn,
+    TensorData,
+    Transform,
+    _cast_to_dtype,
+    _validate_unconstrained_value,
+)
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
+from tensorflow_probability.python.util import TransformedVariable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -238,6 +248,68 @@ class SVGPWrapper(SVGP, NumDataPropertyMixin):
     it as a property."""
 
 
+class Parameter(gpflow.Parameter):
+    """A modified version of gpflow.Parameter that supports variable shapes."""
+
+    def __init__(
+        self,
+        value: TensorData,
+        *,
+        transform: Optional[Transform] = None,
+        prior: Optional[Prior] = None,
+        prior_on: Union[str, PriorOn] = PriorOn.CONSTRAINED,
+        trainable: bool = True,
+        dtype: Optional[DType] = None,
+        name: Optional[str] = None,
+        **kwargs: Any,
+    ):
+        """
+        A copy of gpflow.Parameter's __init__ but with an additional **kwargs argument that is
+         passed to a (slightly modified) TransformedVariable.
+        """
+        if transform is None:
+            transform = tfp.bijectors.Identity()
+
+        value = _cast_to_dtype(value, dtype)
+        _validate_unconstrained_value(value, transform, dtype)
+
+        # An inlined, modified version of TransformedVariable's __init__ that also passes any shape
+        # parameter specified in kwargs to the DeferredTensor parent's __init__.
+        # (use same parameter names as TransformedVariable)
+        bijector = transform
+        initial_value = value
+
+        for attr in {
+            "forward",
+            "forward_event_shape",
+            "inverse",
+            "inverse_event_shape",
+            "name",
+            "dtype",
+        }:
+            if not hasattr(bijector, attr):
+                raise TypeError(
+                    "Argument `bijector` missing required `Bijector` "
+                    'attribute "{}".'.format(attr)
+                )
+
+        if callable(initial_value):
+            initial_value = initial_value()
+        initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
+        super(TransformedVariable, self).__init__(  # type: ignore
+            pretransformed_input=tf.Variable(
+                initial_value=bijector.inverse(initial_value), name=name, dtype=dtype, **kwargs
+            ),
+            transform_fn=bijector,
+            shape=kwargs.get("shape", initial_value.shape),
+            name=bijector.name,
+        )
+        self._bijector = bijector
+
+        self.prior = prior
+        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
+
+
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
@@ -385,11 +457,14 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                 ),
             )
 
-            self._model.q_mu = gpflow.Parameter(self._model.q_mu, shape=[None, *self._model.q_mu.shape[1:]])
-            self._model.q_sqrt = gpflow.Parameter(self._model.q_sqrt, shape=[*self._model.q_sqrt.shape[:-2], None, None])
+            self._model.q_mu = Parameter(
+                self._model.q_mu, shape=[None, *self._model.q_mu.shape[1:]]
+            )
+            self._model.q_sqrt = Parameter(
+                self._model.q_sqrt, shape=[*self._model.q_sqrt.shape[:-2], None, None]
+            )
             gpflow.set_trainable(self._model.q_mu, self._use_natgrads)
             gpflow.set_trainable(self._model.q_sqrt, self._use_natgrads)
-
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
@@ -440,8 +515,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.data[0].assign(dataset.query_points)
         model.data[1].assign(dataset.observations)
         model.num_data = len(dataset)
-        model.q_mu.assign(gpflow.Parameter(new_q_mu))
-        model.q_sqrt.assign(gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular()))
+        model.q_mu.assign(Parameter(new_q_mu))
+        model.q_sqrt.assign(Parameter(new_q_sqrt, transform=gpflow.utilities.triangular()))
 
     def optimize(self, dataset: Dataset) -> None:
         """

@@ -48,7 +48,8 @@ from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
-    SparseVariational, VariationalGaussianProcess,
+    SparseVariational,
+    VariationalGaussianProcess,
 )
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.objectives import (
@@ -180,7 +181,9 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize("use_natgrads", [False, True])
 def test_optimizer_finds_minima_with_vgp_model(use_natgrads: bool) -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="VGP", model_args={"use_natgrads": use_natgrads})
+    _test_optimizer_finds_minimum(
+        5, acquisition_rule, model_type="VGP", model_args={"use_natgrads": use_natgrads}
+    )
 
 
 @random_seed
@@ -202,6 +205,8 @@ def _test_optimizer_finds_minimum(
     search_space = BRANIN_SEARCH_SPACE
 
     def build_model(data: Dataset) -> GPflowPredictor:
+        assert model_args is not None
+
         if model_type == "GPR":
             variance = tf.math.reduce_variance(data.observations)
             kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
@@ -212,7 +217,9 @@ def _test_optimizer_finds_minimum(
             kernel.lengthscales.prior = tfp.distributions.LogNormal(
                 tf.math.log(kernel.lengthscales), scale
             )
-            gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
+            gpr = gpflow.models.GPR(
+                (data.query_points, data.observations), kernel, noise_variance=1e-5
+            )
             gpflow.utilities.set_trainable(gpr.likelihood, False)
             return GaussianProcessRegression(gpr, **model_args)
         elif model_type == "VGP":
@@ -223,8 +230,10 @@ def _test_optimizer_finds_minimum(
         elif model_type == "SVGP":
             kernel = gpflow.kernels.Matern32()
             likelihood = gpflow.likelihoods.Gaussian()
-            svgp = gpflow.models.SVGP(kernel, likelihood, initial_query_points[:2], num_data=len(initial_query_points))
-            return SparseVariational(svgp)
+            svgp = gpflow.models.SVGP(
+                kernel, likelihood, initial_query_points[:2], num_data=len(initial_query_points)
+            )
+            return SparseVariational(svgp, **model_args)
         else:
             raise ValueError(f"Unsupported model_type '{model_type}'")
 
