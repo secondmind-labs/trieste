@@ -21,8 +21,8 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
-from gpflux.math import _cholesky_with_jitter
 from gpflow.conditionals.util import sample_mvn
+from gpflux.math import _cholesky_with_jitter
 
 from ...data import Dataset
 from ...types import TensorType
@@ -213,46 +213,56 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         multiple_assign(self.model, current_best_parameters)
 
-
-    def conditional_predict_f(self, query_points: TensorType, additional_data: Dataset) -> tuple[TensorType, TensorType]:
-        '''
+    def conditional_predict_f(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
         Returns the marginal GP distribution at query_points conditioned on both the model and and some additional data, using exact formula.
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [N, D] and observations with shape [N, L]
         :return: mean_new: predictive variance at query_points, with shape [M, L],
         and var_new: predictive variance at query_points, with shape [M, L]
-        '''
+        """
 
-        tf.debugging.assert_shapes([(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])])
+        tf.debugging.assert_shapes(
+            [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
+        )
 
-        mean_old, cov_old = self.model.predict_f(additional_data.query_points, full_cov=True)  # [N, L], [L, N, N]
+        mean_old, cov_old = self.model.predict_f(
+            additional_data.query_points, full_cov=True
+        )  # [N, L], [L, N, N]
         mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
 
-        cov_cross = self.covariance_between_points(additional_data.query_points, query_points)  # [L, N, M]
+        cov_cross = self.covariance_between_points(
+            additional_data.query_points, query_points
+        )  # [L, N, M]
 
         L_old = _cholesky_with_jitter(cov_old)  # [L, N, N]
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
         var_new = var_new - tf.reduce_mean(A ** 2, axis=-1)  # [L, M]
 
-        mean_old_diff = (additional_data.observations - mean_old)  # [N, L]
+        mean_old_diff = additional_data.observations - mean_old  # [N, L]
         mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
         AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
         mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
 
         return mean_new, var_new
 
-
-    def conditional_predict_joint(self, query_points: TensorType, additional_data: Dataset) -> tuple[TensorType, TensorType]:
-        '''
+    def conditional_predict_joint(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
         Predicts the joint GP distribution at query_points conditioned on both the model and and some additional data, using exact formula.
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [N, D] and observations with shape [N, L]
         :return: mean_new: predictive variance at query_points, with shape [M, L],
         and cov_new: predictive covariance between query_points, with shape [L, M, M]
-        '''
-        tf.debugging.assert_shapes([(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])])
+        """
+        tf.debugging.assert_shapes(
+            [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
+        )
 
         points = tf.concat([additional_data.query_points, query_points], axis=0)
         mean, cov = self.model.predict_f(points, full_cov=True)  # [N+M, L], [L, N+M, N+M]
@@ -271,24 +281,28 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
         cov_new = cov_new - tf.matmul(A, A, transpose_a=True)  # [L, M, M]
 
-        mean_old_diff = (additional_data.observations - mean_old)  # [N, L]
+        mean_old_diff = additional_data.observations - mean_old  # [N, L]
         mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
         AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
         mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
 
         return mean_new, cov_new
 
-    def conditional_predict_f_sample(self, query_points: TensorType, additional_data: Dataset, num_samples: int) -> TensorType:
-        '''
+    def conditional_predict_f_sample(
+        self, query_points: TensorType, additional_data: Dataset, num_samples: int
+    ) -> TensorType:
+        """
         Generates samples of the GP at query_points conditioned on both the model and and some additional data.
-        '''
+        """
         mean_new, var_new = self.model.conditional_predict_joint(query_points, additional_data)
         return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
 
-    def conditional_predict_y(self, query_points: TensorType, additional_data: Dataset) -> tuple[TensorType, TensorType]:
-        '''
+    def conditional_predict_y(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
         Generates samples of y from the GP at query_points conditioned on both the model and and some additional data.
-        '''
+        """
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
         return self.likelihood.predict_mean_and_var(f_mean, f_var)
 
