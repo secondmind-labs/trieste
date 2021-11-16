@@ -633,3 +633,32 @@ def test_gpflow_predictor_get_observation_noise_raises_for_likelihood_with_varia
     model.model.likelihood = gpflow.likelihoods.Bernoulli()  # does not have variance attribute
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
+
+
+def test_gaussian_process_regression_conditional_predict_equations() -> None:
+    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [7, 1]
+    y = fnc_3x_plus_10(x)
+
+    model7, _ = GaussianProcessRegression(gpr_model(x, y))
+    model5, _ = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    additional_data = Dataset(x[5:, :], y[5:, :])
+
+    query_points = tf.concat([0.5 * x, 2 * x], 0)  # shape: [14, 1]
+
+    pred_mean7, pred_cov7 = model7.predict_joint(query_points)
+    pred_mean5, pred_cov5 = model5.conditional_predict_joint(query_points, additional_data)
+
+    np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
+    np.testing.assert_allclose(pred_cov7, pred_cov5, atol=1e-5)
+
+    pred_mean7, pred_var7 = model7.predict_f(query_points)
+    pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
+
+    np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
+    np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
+
+    pred_y_mean7, pred_y_var7 = model7.predict_y(query_points)
+    pred_y_mean5, pred_y_var5 = model5.conditional_predict_y(query_points, additional_data)
+
+    np.testing.assert_allclose(pred_y_mean7, pred_y_mean5, atol=1e-5)
+    np.testing.assert_allclose(pred_y_var7, pred_y_var5, atol=1e-5)
