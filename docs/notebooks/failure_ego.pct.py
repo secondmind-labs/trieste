@@ -121,6 +121,7 @@ classification_model = create_classification_model(initial_data[FAILURE])
 
 # %%
 from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.optimizer import BatchOptimizer
 
 models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
