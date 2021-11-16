@@ -5,10 +5,11 @@
 # Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with `trieste`.
 
 # %%
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from util.plotting import plot_acq_function_2d
-import matplotlib.pyplot as plt
+
 import trieste
 
 np.random.seed(1234)
@@ -22,7 +23,7 @@ tf.random.set_seed(1234)
 # We begin our optimization after collecting five function evaluations from random locations in the search space.
 
 # %%
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import SCALED_BRANIN_MINIMUM, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
@@ -35,12 +36,14 @@ initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # ## Surrogate model
-# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data.
+#
+# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models.gpflow.models import GaussianProcessRegression
 import tensorflow_probability as tfp
+
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def build_model(data):

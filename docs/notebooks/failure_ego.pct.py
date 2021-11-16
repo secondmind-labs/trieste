@@ -20,6 +20,7 @@ tf.random.set_seed(1234)
 # %%
 import trieste
 
+
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
     y = np.array(trieste.objectives.branin(x))
@@ -82,10 +83,11 @@ initial_data = observer(search_space.sample(num_init_points))
 # %% [markdown]
 # ## Build GPflow models
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood.
 
 # %%
 import gpflow
+
 
 def create_regression_model(data):
     variance = tf.math.reduce_variance(data.observations)
@@ -112,17 +114,19 @@ classification_model = create_classification_model(initial_data[FAILURE])
 #
 # We now specify how Trieste will use our GPflow models within the BO loop.
 #
-# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
+# For our `VGP` model we will use a non-default optimization: alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters). For this we need to use the `BatchOptimizer` wrapper and set the `use_natgrads` model argument to `True` in our `VariationalGaussianProcess` model wrapper.
 
 # %% [markdown]
-# We'll train the GPR model with the default L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
+# We'll train the GPR model with the default Scipy-based L-BFGS optimizer, and the VGP model with the custom algorithm above.
 
 # %%
 from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
 
 models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
-    FAILURE: VariationalGaussianProcess(classification_model),
+    FAILURE: VariationalGaussianProcess(
+        classification_model, BatchOptimizer(tf.optimizers.Adam(1e-3)), use_natgrads=True
+    ),
 }
 
 # %% [markdown]
@@ -131,10 +135,10 @@ models: dict[str, trieste.models.ModelSpec] = {
 # We'll need a custom acquisition function for this problem. This function is the product of the expected improvement for the objective data and the predictive mean for the failure data. We can specify which data and model to use in each acquisition function builder with the `OBJECTIVE` and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
 
 # %%
+from trieste.acquisition import ExpectedImprovement, Product, SingleModelAcquisitionBuilder
+
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
-)
+
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, model, dataset = None):
@@ -167,7 +171,7 @@ print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
+from util.plotting import plot_bo_points, plot_function_2d, plot_gp_2d
 
 mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(
@@ -189,7 +193,7 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
-from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+from util.plotting_plotly import add_bo_points_plotly, plot_gp_plotly
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 

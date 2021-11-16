@@ -44,13 +44,15 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression in this tutorial, as provided by GPflow.
 #
-# GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste typically has a separate interface for each model. For instance, `GPR` model from GPflow has to be used with `GaussianProcessRegression` interface. These interfaces standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
+# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular model. For instance, `GPR` and `SGPR` models from GPflow have to be used with `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
 #
 # Typical process of setting up a valid model would go as follow.  We first set up a GPR model, using some initial data to set some parameters.
 
 # %%
-from trieste.models.optimizer import Optimizer
+from gpflow.models import GPR
+
 from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.optimizer import Optimizer
 
 
 def build_model(data):
@@ -63,9 +65,13 @@ def build_model(data):
 gpflow_model = build_model(initial_data)
 
 # %% [markdown]
-# Before using the model interface we might want to set the optimizer for it as well
-# and set some arguments that we want to pass to it. We need to use Trieste's optimizer
-# interfaces, here `Optimizer` would be the suitable interface. We'll optimize our model with GPflow's Scipy optimizer.
+# Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments - an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building. 
+
+# %%
+model = GaussianProcessRegression(gpflow_model)
+
+# %% [markdown]
+# However, as expert users, we might want to customize the optimizer for the model and set some arguments that we want to pass to it. We need to use Trieste's optimizer wrappers for that; here `Optimizer` would be the suitable wrapper. We'll optimize our model with GPflow's Scipy optimizer and pass some custom parameters to it.
 
 # %%
 optimizer = Optimizer(
@@ -73,12 +79,10 @@ optimizer = Optimizer(
 )
 
 # %% [markdown]
-# Finally we build a valid model that can be used with `BayesianOptimizer`.
-# For the `GPR` model we need to use the `GaussianProcessRegression` interface.
-# We also set an interface specific parameter for initialising the kernel.
+# Finally we build a valid model that can be used with `BayesianOptimizer`. For the `GPR` model we need to use the `GaussianProcessRegression` wrapper. We also set a wrapper specific parameter for initialising the kernel.
 
 # %%
-model = GaussianProcessRegression(model=gpflow_model, optimizer=optimizer, num_kernel_samples=100)
+model = GaussianProcessRegression(gpflow_model, optimizer=optimizer, num_kernel_samples=100)
 
 # %% [markdown]
 # We can now run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its `optimize` method. We are not interested in results here, but for the sake of completeness, lets run the Bayesian optimization as well.
@@ -91,9 +95,9 @@ result = bo.optimize(2, initial_data, model)
 # %% [markdown]
 # ## Using configuration dictionaries
 #
-# Instead of working direclty with model and optimization interfaces, after you know them sufficiently well, you can skip them by using configuration dictionary. It consists of a dictionary with same four arguments that can be passed to any model interface: `model`, `model_args`, `optimizer` and `optimizer_args`.
+# Instead of working directly with model and optimizer wrappers, after you know them sufficiently well, you can skip them by using configuration dictionary. It consists of a dictionary with same four arguments that can be passed to any model wrapper: `model`, `model_args`, `optimizer` and `optimizer_args`.
 #
-# In the background Trieste combines the `optimizer` and `optimizer_args` to build an optimizer interface and then combines the `model`, `model_args` and optimizer interface to build a model using the appropriate model interface.
+# In the background Trieste combines the `optimizer` and `optimizer_args` to build an optimizer wrapper and then combines the `model`, `model_args` and optimizer wrapper to build a model using the appropriate model wrapper.
 #
 # Let's see this in action. We will re-use the `GPR` model we have created above and use the same additional arguments. As you can see, you retain all the flexibility but can skip working with the interfaces if you know them well already.
 
@@ -110,7 +114,7 @@ model_config = {
 }
 
 # %% [markdown]
-# Next you simply pass the configuration dictionary to the `optimize` function and `BayesianOptimizer` will sort out which model and optimizer interface needs to be used to build a valid model.
+# Next you simply pass the configuration dictionary to the `optimize` function and `BayesianOptimizer` will sort out which model and optimizer wrapper needs to be used to build a valid model.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -118,11 +122,71 @@ result = bo.optimize(2, initial_data, model_config)
 
 
 # %% [markdown]
+# ## Using configuration dictionaries for setting up experiments
+#
+# Another use case is in setting up experiments, where it becomes easier to benchmark Bayesian optimization algorithms. The advantage is that we can easily change the models and set up any argument for them from one condition to another - only object with the experiment specification needs to change (`experiment_conditions` below), while the rest of the code for executing experiments can stay the same. 
+
+# %%
+from copy import deepcopy
+
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+
+
+def build_gp_model(data):
+    variance = tf.math.reduce_variance(data.observations)
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    model = GPR(data.astuple(), kernel, noise_variance=1e-5)
+    return model
+
+
+def build_dgp_model(data):
+    variance = tf.math.reduce_variance(data.observations)
+    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
+    dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
+    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
+    dgp.likelihood_layer.likelihood.variance.assign(1e-5)
+    return dgp
+
+
+def run_experiment(model_config):
+    bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+    result = bo.optimize(2, initial_data, model_config)
+    return result
+
+
+# configuration shared by all experiments, this is modified by each experiment condition
+basic_config = {
+    "model": gpflow_model,
+    "model_args": {
+        "num_kernel_samples": 100,
+    },
+    "optimizer": gpflow.optimizers.Scipy(),
+    "optimizer_args": {
+        "minimize_args": {"options": dict(maxiter=100)},
+    },
+}
+
+# here we specify our experiments
+experiment_conditions = [
+    {"model_args": {"num_kernel_samples": 500}},
+    {"model_args": {"num_kernel_samples": 1000}},
+    {"model": build_dgp_model(initial_data)},
+]
+
+results = []
+for exp in experiment_conditions:
+    model_config = deepcopy(basic_config)
+    for key in exp:
+        model_config[key] = exp[key]
+    results.append(run_experiment(model_config))
+
+
+# %% [markdown]
 # ## Registry of supported models
 #
-# Configuration dictionaries are made possible with the `ModelRegistry` that contains mapping between each model (e.g. GPflow or GPflux) and corresponding model interface and optimizer. All models that Trieste currently supports are registered there.
+# Configuration dictionaries are made possible with the `ModelRegistry` that contains mapping between each model (e.g. GPflow or GPflux) and corresponding model wrapper and optimizer wrapper. All models that Trieste currently supports are registered there.
 #
-# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model interface and perhaps a new optimizer interface as well, but just for the sake of an example we will borrow here existing interfaces, `GaussianProcessRegression` and `Optimizer`.
+# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model wrapper and perhaps a new optimizer wrapper as well, but just for the sake of an example we will borrow here existing wrappers, `GaussianProcessRegression` and `Optimizer`.
 
 # %%
 from trieste.models import ModelRegistry

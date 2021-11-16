@@ -16,6 +16,7 @@ tf.random.set_seed(1793)
 # %%
 from trieste.space import Box
 
+
 class Sim:
     threshold = 0.5
 
@@ -38,9 +39,10 @@ search_space = Box([0, 0], [6, 6])
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
-import trieste
 import matplotlib.pyplot as plt
 from util.inequality_constraints_utils import plot_objective_and_constraints
+
+import trieste
 
 plot_objective_and_constraints(search_space, Sim)
 plt.show()
@@ -84,10 +86,11 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# We'll model the objective and constraint data with their own Gaussian process regression models.
+# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
+
 from trieste.models.gpflow.models import GaussianProcessRegression
 
 
@@ -292,6 +295,7 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %%
 from trieste.acquisition.combination import Product
+
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
 pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
@@ -327,7 +331,7 @@ mask_fail2 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.
 mask_fail = np.logical_or(mask_fail1, mask_fail2)
 
 import matplotlib.pyplot as plt
-from util.plotting import plot_function_2d, plot_bo_points
+from util.plotting import plot_bo_points, plot_function_2d
 
 fig, ax = plot_function_2d(
     masked_objective,

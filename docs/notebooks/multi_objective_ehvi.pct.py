@@ -19,13 +19,13 @@ from util.plotting import (
 # %%
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
 from trieste.models import ModelStack
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.space import Box
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -88,7 +88,7 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
 #
-# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. 
+# We use a model wrapper: `ModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model.
 
 
 # %%

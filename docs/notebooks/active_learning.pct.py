@@ -17,10 +17,10 @@ tf.random.set_seed(1793)
 #
 # In this example, we will perform active learning for the scaled Branin function.
 
-
 # %%
-from trieste.objectives import scaled_branin
 from util.plotting_plotly import plot_function_plotly
+
+from trieste.objectives import scaled_branin
 from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
@@ -45,10 +45,11 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model to the initial data.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
+
 from trieste.models.gpflow.models import GaussianProcessRegression
 
 
@@ -72,9 +73,9 @@ model = build_model(initial_data)
 #
 
 # %%
+from trieste.acquisition.function import PredictiveVariance
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition.function import PredictiveVariance
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(

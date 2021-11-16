@@ -17,7 +17,7 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.objectives import branin, BRANIN_MINIMUM
+from trieste.objectives import BRANIN_MINIMUM, branin
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 
@@ -27,10 +27,11 @@ observer = trieste.objectives.utils.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
-# We'll use Gaussian process regression to model the function.
+# We'll use Gaussian process regression to model the function, as implemented in GPflow. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
+
 from trieste.models.gpflow.models import GaussianProcessRegression
 
 observations = initial_data.observations
@@ -72,7 +73,7 @@ dataset = result.try_get_final_dataset()
 # We can take a look at where we queried the observer, both the original query points (crosses) and new query points (dots), and where they lie with respect to the contours of the Branin.
 
 # %%
-from util.plotting import plot_function_2d, plot_bo_points
+from util.plotting import plot_bo_points, plot_function_2d
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
@@ -87,7 +88,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # We can also visualise the observations on a three-dimensional plot of the Branin. We'll add the contours of the mean and variance of the model's predictive distribution as translucent surfaces.
 
 # %%
-from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+from util.plotting_plotly import add_bo_points_plotly, plot_gp_plotly
 
 fig = plot_gp_plotly(
     result.try_get_final_model().model, # type: ignore

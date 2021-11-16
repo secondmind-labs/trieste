@@ -15,14 +15,13 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import tensorflow as tf
+from gpflow.models import GPModel
+from gpflux.models import DeepGP
+from plotly.subplots import make_subplots
 
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-
-from gpflow.models import GPModel
-from gpflux.models import DeepGP
 
 from .plotting import create_grid
 

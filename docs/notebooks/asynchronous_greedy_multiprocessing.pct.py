@@ -9,18 +9,20 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.get_logger().setLevel("ERROR")
-import numpy as np
+
 import time
 import timeit
-
+import numpy as np
 
 # %% [markdown]
 # First, let's define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html) with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
 # %%
 from trieste.objectives import scaled_branin
+
 
 def objective(points, sleep=True):
     if points.shape[1] != 2:
@@ -51,9 +53,9 @@ objective(np.array([[0.1, 0.5]]), sleep=False)
 # As always, we need to prepare the model and some initial data to kick-start the optimization process.
 
 # %%
-from trieste.space import Box
 from trieste.data import Dataset
 from trieste.objectives import SCALED_BRANIN_MINIMUM
+from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
 num_initial_points = 3
@@ -75,11 +77,14 @@ def build_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     return GaussianProcessRegression(gpr)
 
+# %%
+# Necessary multiprocessing primitives
+from multiprocessing import Manager, Process
+
 # these imports will be used later for optimization
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 from trieste.acquisition.rule import AsynchronousGreedy, EfficientGlobalOptimization
 from trieste.ask_tell_optimization import AskTellOptimizer
-
 
 # %% [markdown]
 # ## Multiprocessing setup
@@ -91,9 +96,6 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 # The overall setup is illustrated in this diagram:
 # ![multiprocessing setup](figures/async_bo.png)
 
-# %%
-# Necessary multiprocessing primitives
-from multiprocessing import Manager, Process
 
 # %% [markdown]
 # We now define several common functions to implement the described setup. First we define a worker function that will be running a single observation in a separate process. Worker takes both queues as an input, reads next point from the points queue, makes an observation, and inserts observed data into the observations queue.
@@ -298,8 +300,8 @@ print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
 # To compare outcomes of sync and async runs, let's plot their respective regrets side by side, and print out the running time. For this toy problem we expect async scenario to run a little bit faster on machines with multiple CPU.
 
 # %%
-from util.plotting import plot_regret
 import matplotlib.pyplot as plt
+from util.plotting import plot_regret
 
 fig, ax = plt.subplots(1, 2)
 

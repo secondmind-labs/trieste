@@ -11,19 +11,23 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.get_logger().setLevel("ERROR")
-import ray
-import numpy as np
+
+
+# %%
 import time
 
+import numpy as np
+import ray
+
+from trieste.objectives import scaled_branin
 
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
 
-# %%
-from trieste.objectives import scaled_branin
 
 def objective(points, sleep=True):
     if points.shape[1] != 2:
@@ -61,8 +65,8 @@ def ray_objective(points, sleep=True):
 # We prepare the model and some initial data to kick-start the optimization process.
 
 # %%
-from trieste.space import Box
 from trieste.data import Dataset
+from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
 num_initial_points = 3
@@ -103,8 +107,8 @@ enable_sleep_delays = True
 # Now we are ready to define the optimizer. Notice how we set the acquisition function to be `BatchMonteCarloExpectedImprovement`. It is also the default function used by the `AsynchronousOptimization` rule, but here we specify it explicitly for clarity. We also set the batch size.
 
 # %%
-from trieste.acquisition.rule import AsynchronousOptimization
 from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
+from trieste.acquisition.rule import AsynchronousOptimization
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
@@ -168,7 +172,7 @@ while points_observed < num_observations:
 # Let's plot the objective function and the points the optimization procedure explored.
 
 # %%
-from util.plotting import plot_function_2d, plot_bo_points
+from util.plotting import plot_bo_points, plot_function_2d
 
 dataset = async_bo.to_result().try_get_final_dataset()
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))

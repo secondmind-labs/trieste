@@ -2,9 +2,10 @@
 # # Recovering from errors during optimization
 
 # %%
+import random
+
 import numpy as np
 import tensorflow as tf
-import random
 
 np.random.seed(1793)
 tf.random.set_seed(1793)

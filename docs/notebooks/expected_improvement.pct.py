@@ -15,9 +15,10 @@ tf.random.set_seed(1793)
 #
 
 # %%
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
-from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
+
+from trieste.objectives import SCALED_BRANIN_MINIMUM, scaled_branin
+from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
@@ -47,13 +48,15 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, by default it uses GPflow's Scipy optimizer.
 #
-# We put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estimate of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors.  
+# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular models. For instance, `GPR` and `SGPR` models from GPflow have to be used with `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization. Below we construct a `GPR` model from GPflow and pass it to the `GaussianProcessRegression` wrapper. Wrappers as a rule have an `optimizer` argument and potentially some additional model arguments (for example, `num_kernel_samples` as explained below). All arguments except for the model are set to sensible defaults, users will need to look up the wrapper to check how to customize these settings. 
 #
-# If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
+# Note below that we put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estimate of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors. For illustration we set the `num_kernel_samples` to 100 (default value is 10). If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
+#
 
 # %%
 import gpflow
 import tensorflow_probability as tfp
+
 from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 
@@ -67,7 +70,7 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GaussianProcessRegression(gpr)
+    return GaussianProcessRegression(gpr, num_kernel_samples=100)
 
 
 model = build_model(initial_data)

@@ -7,20 +7,19 @@
 # First, some code to set up the problem we will be using throughout the notebook. If you would like more details about this problem setup, please refer to [introductory EI notebook](expected_improvement.ipynb).
 
 # %%
+import gpflow
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
-import gpflow
+from util.plotting import plot_regret
 
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import SCALED_BRANIN_MINIMUM, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
-
-from util.plotting import plot_regret
 
 np.random.seed(1234)
 tf.random.set_seed(1234)
