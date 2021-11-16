@@ -265,16 +265,23 @@ def plot_mobo_points_in_obj_space(
     only_plot_pareto=False,
 ):
     """
-    Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
+    Adds scatter points in objective space, used for multi-objective optimization (2 or 3 objectives only).
     Markers and colors are chosen according to BO factors.
-    :param obs_values:
+
+    :param obs_values: TF Tensor or numpy array of objective values, shape (N, 2) or (N, 3).
     :param num_init: initial number of BO points
     :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
-    :param title:
-    :param xlabel:
-    :param ylabel:
-    :param figsize:
-    :param only_plot_pareto: if set true, only plot the pareto points
+    :param figsize: Size of the figure.
+    :param xlabel: Label of the X axis.
+    :param ylabel: Label of the Y axis.
+    :param zlabel: Label of the Z axis (in 3d case).
+    :param title: Title of the plot.
+    :param m_init: Marker for initial points.
+    :param m_add: Marker for the points observed during the BO loop.
+    :param c_pass: color for the regular BO points
+    :param c_fail: color for the failed BO points
+    :param c_pareto: color for the Pareto front points
+    :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.
     """
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
@@ -287,7 +294,7 @@ def plot_mobo_points_in_obj_space(
         np.where(dom == 0) if mask_fail is None else np.where(np.logical_and(dom == 0, ~mask_fail))
     )
 
-    pts = obs_values
+    pts = obs_values.numpy() if tf.is_tensor(obs_values) else obs_values
     num_pts = pts.shape[0]
 
     col_pts, mark_pts = format_point_markers(

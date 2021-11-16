@@ -8,7 +8,6 @@
 # %matplotlib inline
 import numpy as np
 import tensorflow as tf
-import pandas as pd
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -79,7 +78,7 @@ from trieste.acquisition.function import PredictiveVariance
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
+    builder=acq, optimizer=generate_continuous_optimizer()
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -145,7 +144,7 @@ num_query = 3
 model = build_model(initial_data)
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
+    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer()
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -168,3 +167,8 @@ observations = dataset.observations.numpy()
 from util.plotting import plot_bo_points, plot_function_2d
 
 plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

@@ -7,8 +7,7 @@
 # %%
 import numpy as np
 import tensorflow as tf
-from util.plotting import create_grid, plot_acq_function_2d
-from util.plotting_plotly import plot_function_plotly
+from util.plotting import plot_acq_function_2d
 import matplotlib.pyplot as plt
 import trieste
 
@@ -81,12 +80,14 @@ model = create_model(model_spec)
 # First, we collect the batch of ten points recommended by `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-from trieste.acquisition import BatchMonteCarloExpectedImprovement
+from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=1000, jitter=1e-5)
+monte_carlo_sample_size = 1000
+batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size, jitter=1e-5)
+batch_size = 10
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=batch_ei_acq)
+    num_query_points=batch_size, builder=batch_ei_acq)
 points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model, dataset=initial_data)
 
 # %% [markdown]
@@ -95,9 +96,10 @@ points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model
 # %%
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
+sample_size = 2000
+local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=sample_size)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=local_penalization_acq)
+    num_query_points=batch_size, builder=local_penalization_acq)
 points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single(
     search_space, model, dataset=initial_data)
 
@@ -105,11 +107,11 @@ points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single
 # and finally we use `GIBBON`.
 
 # %%
-from trieste.acquisition import GIBBON
+from trieste.acquisition.function import GIBBON
 
-gibbon_acq = GIBBON(search_space, grid_size = 2000)
+gibbon_acq = GIBBON(search_space, grid_size = sample_size)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=10, builder=gibbon_acq)
+    num_query_points=batch_size, builder=gibbon_acq)
 points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
     search_space, model, dataset=initial_data)
 
@@ -117,7 +119,7 @@ points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocalPenalizationAcquisitionFunction` and `GIBBON` focus evaluations in the most promising areas of the space.
 
 # %%
-from trieste.acquisition import ExpectedImprovement
+from trieste.acquisition.function import ExpectedImprovement
 
 # plot standard EI acquisition function
 ei = ExpectedImprovement()
@@ -174,7 +176,8 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
-qei_result = bo.optimize(10, initial_data, model, acquisition_rule=batch_ei_rule)
+num_steps = 10
+qei_result = bo.optimize(num_steps, initial_data, model, acquisition_rule=batch_ei_rule)
 
 # %% [markdown]
 # then we repeat the same optimization with `LocalPenalizationAcquisitionFunction`...
@@ -184,7 +187,7 @@ local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=local_penalization_acq
 )
 local_penalization_result = bo.optimize(
-    10, initial_data, model, acquisition_rule=local_penalization_rule
+    num_steps, initial_data, model, acquisition_rule=local_penalization_rule
 )
 
 # %% [markdown]
@@ -195,7 +198,7 @@ gibbon_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=gibbon_acq
 )
 gibbon_result = bo.optimize(
-    10, initial_data, model, acquisition_rule=gibbon_rule
+    num_steps, initial_data, model, acquisition_rule=gibbon_rule
 )
 
 # %% [markdown]

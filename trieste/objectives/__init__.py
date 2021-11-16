@@ -52,6 +52,9 @@ from .single_objectives import (
     SHEKEL_4_MINIMIZER,
     SHEKEL_4_MINIMUM,
     SHEKEL_4_SEARCH_SPACE,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
+    SIMPLE_QUADRATIC_SEARCH_SPACE,
     TRID_10_MINIMIZER,
     TRID_10_MINIMUM,
     TRID_10_SEARCH_SPACE,
@@ -68,6 +71,7 @@ from .single_objectives import (
     rosenbrock_4,
     scaled_branin,
     shekel_4,
+    simple_quadratic,
     trid,
     trid_10,
 )
