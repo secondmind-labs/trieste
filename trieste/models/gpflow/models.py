@@ -19,9 +19,9 @@ from typing import Optional
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
-from gpflow.conditionals.util import sample_mvn
 from gpflux.math import _cholesky_with_jitter
 
 from ...data import Dataset
@@ -217,10 +217,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
-        Returns the marginal GP distribution at query_points conditioned on both the model and and some additional data, using exact formula.
+        Returns the marginal GP distribution at query_points conditioned on both the model
+        and some additional data, using exact formula.
 
         :param query_points: Set of query points with shape [M, D]
-        :param additional_data: Dataset with query_points with shape [N, D] and observations with shape [N, L]
+        :param additional_data: Dataset with query_points with shape [N, D] and observations
+         with shape [N, L]
         :return: mean_new: predictive variance at query_points, with shape [M, L],
         and var_new: predictive variance at query_points, with shape [M, L]
         """
@@ -253,10 +255,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
-        Predicts the joint GP distribution at query_points conditioned on both the model and and some additional data, using exact formula.
+        Predicts the joint GP distribution at query_points conditioned on both the model
+        and some additional data, using exact formula.
 
         :param query_points: Set of query points with shape [M, D]
-        :param additional_data: Dataset with query_points with shape [N, D] and observations with shape [N, L]
+        :param additional_data: Dataset with query_points with shape [N, D] and observations
+        with shape [N, L]
         :return: mean_new: predictive variance at query_points, with shape [M, L],
         and cov_new: predictive covariance between query_points, with shape [L, M, M]
         """
@@ -292,7 +296,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self, query_points: TensorType, additional_data: Dataset, num_samples: int
     ) -> TensorType:
         """
-        Generates samples of the GP at query_points conditioned on both the model and and some additional data.
+        Generates samples of the GP at query_points conditioned on both the model
+        and some additional data.
         """
         mean_new, var_new = self.model.conditional_predict_joint(query_points, additional_data)
         return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
@@ -301,7 +306,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
-        Generates samples of y from the GP at query_points conditioned on both the model and and some additional data.
+        Generates samples of y from the GP at query_points conditioned on both the model
+        and some additional data.
         """
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
         return self.likelihood.predict_mean_and_var(f_mean, f_var)
