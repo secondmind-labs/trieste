@@ -272,10 +272,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         mean, cov = self.model.predict_f(points, full_cov=True)  # [N+M, L], [L, N+M, N+M]
 
         M, D = tf.shape(query_points)[-2], tf.shape(query_points)[-1]  # noqa: F841
-        N = tf.shape(mean)[-1] - M
+        N = tf.shape(mean)[-2] - M
 
-        mean_old = mean[..., :N]  # [N, L]
-        mean_new = mean[..., -M:]  # [M, L]
+        mean_old = mean[:N, :]  # [N, L]
+        mean_new = mean[-M:, :]  # [M, L]
 
         cov_old = cov[..., :N, :N]  # [L, N, N]
         cov_new = cov[..., -M:, -M:]  # [L, M, M]

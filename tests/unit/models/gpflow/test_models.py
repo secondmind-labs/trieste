@@ -636,11 +636,11 @@ def test_gpflow_predictor_get_observation_noise_raises_for_likelihood_with_varia
 
 
 def test_gaussian_process_regression_conditional_predict_equations() -> None:
-    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [7, 1]
+    x = tf.constant(np.arange(1, 8).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [7, 1]
     y = fnc_3x_plus_10(x)
 
-    model7, _ = GaussianProcessRegression(gpr_model(x, y))
-    model5, _ = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    model7 = GaussianProcessRegression(gpr_model(x, y))
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
     additional_data = Dataset(x[5:, :], y[5:, :])
 
     query_points = tf.concat([0.5 * x, 2 * x], 0)  # shape: [14, 1]
