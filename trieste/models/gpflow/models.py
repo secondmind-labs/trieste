@@ -23,8 +23,6 @@ from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 
-# from gpflux.math import _cholesky_with_jitter
-
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
