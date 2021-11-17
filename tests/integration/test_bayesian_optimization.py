@@ -207,32 +207,33 @@ def _test_optimizer_finds_minimum(
     def build_model(data: Dataset) -> GPflowPredictor:
         assert model_args is not None
 
+        variance = tf.math.reduce_variance(data.observations)
+        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+        scale = tf.constant(1.0, dtype=tf.float64)
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.constant(-2.0, dtype=tf.float64), scale
+        )
+        kernel.lengthscales.prior = tfp.distributions.LogNormal(
+            tf.math.log(kernel.lengthscales), scale
+        )
+
         if model_type == "GPR":
-            variance = tf.math.reduce_variance(data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            scale = tf.constant(1.0, dtype=tf.float64)
-            kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.constant(-2.0, dtype=tf.float64), scale
-            )
-            kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log(kernel.lengthscales), scale
-            )
             gpr = gpflow.models.GPR(
                 (data.query_points, data.observations), kernel, noise_variance=1e-5
             )
             gpflow.utilities.set_trainable(gpr.likelihood, False)
             return GaussianProcessRegression(gpr, **model_args)
         elif model_type == "VGP":
-            kernel = gpflow.kernels.Matern32()
-            likelihood = gpflow.likelihoods.Gaussian()
+            likelihood = gpflow.likelihoods.Gaussian(1e-3)
             vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+            gpflow.utilities.set_trainable(vgp.likelihood, False)
             return VariationalGaussianProcess(vgp, **model_args)
         elif model_type == "SVGP":
-            kernel = gpflow.kernels.Matern32()
-            likelihood = gpflow.likelihoods.Gaussian()
+            likelihood = gpflow.likelihoods.Gaussian(1e-3)
             svgp = gpflow.models.SVGP(
-                kernel, likelihood, initial_query_points[:2], num_data=len(initial_query_points)
+                kernel, likelihood, search_space.sample(10), num_data=len(initial_query_points)
             )
+            gpflow.utilities.set_trainable(svgp.likelihood, False)
             return SparseVariational(svgp, **model_args)
         else:
             raise ValueError(f"Unsupported model_type '{model_type}'")
@@ -265,6 +266,7 @@ def _test_optimizer_finds_minimum(
                 npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
             else:
                 absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
+                tf.print(absolute_minimizer_err)
                 assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
