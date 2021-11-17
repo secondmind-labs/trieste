@@ -22,6 +22,7 @@ import tensorflow_probability as tfp
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
+
 # from gpflux.math import _cholesky_with_jitter
 
 from ...data import Dataset
@@ -241,7 +242,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [L, N, M]
 
         cov_shape = tf.shape(cov_old)
-        noise = self.model.likelihood.variance * tf.eye(cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype)
+        noise = self.model.likelihood.variance * tf.eye(
+            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
+        )
         L_old = tf.linalg.cholesky(cov_old + noise)  # [L, N, N]
         A = tf.linalg.triangular_solve(L_old, cov_cross[None, ...], lower=True)  # [L, N, M]
         var_new = var_new - tf.transpose(tf.reduce_sum(A ** 2, axis=-2))  # [M, L]
@@ -283,7 +286,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         cov_cross = cov[..., :N, N:]  # [L, N, M]
 
         cov_shape = tf.shape(cov_old)
-        noise = self.model.likelihood.variance * tf.eye(cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype)
+        noise = self.model.likelihood.variance * tf.eye(
+            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
+        )
         L_old = tf.linalg.cholesky(cov_old + noise)
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
         cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [L, M, M]
