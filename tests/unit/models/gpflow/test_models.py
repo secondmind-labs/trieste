@@ -533,8 +533,8 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
     )
     sv = SparseVariational(model)
     assert sv.model is model
-    assert isinstance(sv.model, SVGPSubclass)
     assert isinstance(sv.model, NumDataPropertyMixin)
+    assert isinstance(sv.model, SVGPSubclass)
     assert sv.model.mol == 42
 
 
