@@ -641,8 +641,6 @@ def test_gaussian_process_regression_conditional_predict_equations() -> None:
     )  # shape: [7, 1]
     y = fnc_2sin_x_over_3(x)
 
-    ker = gpflow.kernels.Matern32(lengthscales=0.2, variance=2.0)
-
     model7 = GaussianProcessRegression(gpr_model(x, y))
     model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
 

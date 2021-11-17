@@ -424,7 +424,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
             """
             )
 
-        self._feature_functions = RandomFourierFeatures(
+        self._feature_functions = RandomFourierFeaturesCosine(
             self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
         )  # prep feature functions at data
 
