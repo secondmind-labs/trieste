@@ -452,9 +452,9 @@ def plot_gp_2d(
             ax[k, 1].set_ylabel(ylabel)
         else:
             ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")
-            plot_surface(xx, yy, fmean, axx, contour=contour, alpha=0.5)
-            ucb = fmean + 2.0 * np.sqrt(fvar)
-            lcb = fmean - 2.0 * np.sqrt(fvar)
+            plot_surface(xx, yy, model.likelihood.invlink(fmean).numpy(), axx, contour=contour, alpha=0.5)
+            ucb = model.likelihood.invlink(fmean + 2.0 * np.sqrt(fvar)).numpy()
+            lcb = model.likelihood.invlink(fmean - 2.0 * np.sqrt(fvar)).numpy()
             plot_surface(xx, yy, ucb, axx, contour=contour, alpha=0.1)
             plot_surface(xx, yy, lcb, axx, contour=contour, alpha=0.1)
             axx.set_xlabel(xlabel)
