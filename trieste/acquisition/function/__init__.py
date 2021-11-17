@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ This folder contains single-objective optimization functions. """
+from .active_learning import (
+    PredictiveVariance,
+    predictive_variance,
+)
 from .entropy import (
     GIBBON,
     MinValueEntropySearch,
@@ -26,12 +30,10 @@ from .function import (
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
-    PredictiveVariance,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
-    predictive_variance,
     probability_of_feasibility,
 )
 from .local_penalization import (
