@@ -22,7 +22,7 @@ import tensorflow_probability as tfp
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
-from gpflux.math import _cholesky_with_jitter
+# from gpflux.math import _cholesky_with_jitter
 
 from ...data import Dataset
 from ...types import TensorType
@@ -240,9 +240,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             additional_data.query_points, query_points
         )  # [L, N, M]
 
-        L_old = _cholesky_with_jitter(cov_old)  # [L, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
-        var_new = var_new - tf.reduce_mean(A ** 2, axis=-1)  # [L, M]
+        cov_shape = tf.shape(cov_old)
+        noise = self.model.likelihood.variance * tf.eye(cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype)
+        L_old = tf.linalg.cholesky(cov_old + noise)  # [L, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross[None, ...], lower=True)  # [L, N, M]
+        var_new = var_new - tf.transpose(tf.reduce_sum(A ** 2, axis=-2))  # [M, L]
 
         mean_old_diff = additional_data.observations - mean_old  # [N, L]
         mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
@@ -271,24 +273,25 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         points = tf.concat([additional_data.query_points, query_points], axis=0)
         mean, cov = self.model.predict_f(points, full_cov=True)  # [N+M, L], [L, N+M, N+M]
 
-        M, D = tf.shape(query_points)[-2], tf.shape(query_points)[-1]  # noqa: F841
-        N = tf.shape(mean)[-2] - M
+        N = tf.shape(additional_data.query_points)[0]
 
         mean_old = mean[:N, :]  # [N, L]
-        mean_new = mean[-M:, :]  # [M, L]
+        m_new = mean[N:, :]  # [M, L]
 
         cov_old = cov[..., :N, :N]  # [L, N, N]
-        cov_new = cov[..., -M:, -M:]  # [L, M, M]
-        cov_cross = cov[..., :N, -M:]  # [L, N, M]
+        c_new = cov[..., N:, N:]  # [L, M, M]
+        cov_cross = cov[..., :N, N:]  # [L, N, M]
 
-        L_old = _cholesky_with_jitter(cov_old)  # [L, N, N]
+        cov_shape = tf.shape(cov_old)
+        noise = self.model.likelihood.variance * tf.eye(cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype)
+        L_old = tf.linalg.cholesky(cov_old + noise)
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [L, N, M]
-        cov_new = cov_new - tf.matmul(A, A, transpose_a=True)  # [L, M, M]
+        cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [L, M, M]
 
         mean_old_diff = additional_data.observations - mean_old  # [N, L]
         mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
         AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
-        mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
+        mean_new = m_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
 
         return mean_new, cov_new
 
