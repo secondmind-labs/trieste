@@ -22,13 +22,14 @@ import tensorflow_probability as tfp
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     random_seed,
+    various_shapes,
 )
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
-from trieste.acquisition.function.function import (
+from trieste.acquisition.function.active_learning import (
     PredictiveVariance,
     predictive_variance,
-    ExpectedFeasibility
+    ExpectedFeasibility,
     bichon_ranjan_criterion,
 )
 from trieste.objectives import branin
@@ -122,11 +123,94 @@ def test_predictive_variance_raises_for_void_predict_joint() -> None:
         acq_fn(tf.zeros([0, 1]))
 
 
-def test_expected_feasibility_builder_builds_acquisition_function() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    acq_fn = ExpectedFeasibility().prepare_acquisition_function(model)
+@pytest.mark.parametrize("delta", [1, 2])
+def test_expected_feasibility_builder_builds_acquisition_function(delta: int) -> None:
+    threshold = 1
+    alpha = 1
     query_at = tf.linspace([[-10]], [[10]], 100)
-    _, covariance = model.predict_joint(query_at)
-    expected = tf.linalg.det(covariance)
+
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ExpectedFeasibility(threshold, alpha, delta).prepare_acquisition_function(model)
+    expected = bichon_ranjan_criterion(model, threshold, alpha, delta)(query_at)
+
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
+
+@pytest.mark.parametrize(
+    "at, acquisition_shape",
+    [
+        (tf.constant([[[1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0]], [[10.0]], 5), tf.constant([5, 1])),
+        (tf.constant([[[1.0, 1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
+    ],
+)
+@pytest.mark.parametrize("delta", [1, 2])
+def test_expected_feasibility_returns_correct_shape(
+    at: TensorType, acquisition_shape: TensorType, delta: int
+) -> None:
+    threshold = 1
+    alpha = 1
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ExpectedFeasibility(threshold, alpha, delta).prepare_acquisition_function(model)
+    npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
+
+
+@pytest.mark.parametrize("delta", [1, 2])
+def test_expected_feasibility_builder_updates_without_retracing(delta: int) -> None:
+    threshold = 1
+    alpha = 1
+
+    model = QuadraticMeanAndRBFKernel()
+    builder = ExpectedFeasibility(threshold, alpha, delta)
+    acq_fn = builder.prepare_acquisition_function(model)
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = bichon_ranjan_criterion(model, threshold, alpha, delta)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
+@pytest.mark.parametrize("shape", various_shapes() - {()})
+def test_expected_feasibility_builder_raises_on_non_scalar_threshold(
+    shape: ShapeLike,
+) -> None:
+    threshold, alpha, delta = tf.ones(shape), tf.ones(shape), tf.ones(shape)
+    
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ExpectedFeasibility(threshold, 1, 1)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ExpectedFeasibility(1, alpha, 1)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ExpectedFeasibility(1, 1, delta)
+
+
+@pytest.mark.parametrize("alpha", [0.0, -1.0])
+def test_expected_feasibility_builder_raises_on_non_positive_alpha(alpha: float) -> None:
+    
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ExpectedFeasibility(1, alpha, 1)
+
+
+@pytest.mark.parametrize("delta", [-1, 0, 1.5, 3])
+def test_expected_feasibility_raises_for_invalid_delta(delta: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ExpectedFeasibility(1, 1, delta)
+
+
+@pytest.mark.parametrize("delta", [1, 2])
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_expected_feasibility_raises_for_invalid_batch_size(at: TensorType, delta: int) -> None:
+    ef = bichon_ranjan_criterion(QuadraticMeanAndRBFKernel(), 1, 1, delta)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        ef(at)

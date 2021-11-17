@@ -15,6 +15,8 @@
 from .active_learning import (
     PredictiveVariance,
     predictive_variance,
+    ExpectedFeasibility,
+    bichon_ranjan_criterion,
 )
 from .entropy import (
     GIBBON,

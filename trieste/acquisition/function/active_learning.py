@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Optional
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
@@ -107,41 +108,22 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
 
 class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     """
-    Builder for the determinant of the predictive covariance matrix over the batch points.
-    For a batch of size 1 it is the same as maximizing the predictive variance.
-
+    
     that the
-interesting points xn+1 ∈ X to evaluate f at are the points having both a high kriging
-variance and an excursion probability close to 1/2.
+    interesting points xn+1 ∈ X to evaluate f at are the points having both a high kriging
+    variance and an excursion probability close to 1/2.
 
- Criteria proposed by Ranjan et al.
-(2008), Bichon et al. (2008)
+    Criteria proposed by Ranjan et al.
+    (2008), Bichon et al. (2008)
 
     Aim is not to find the optimum of f, but to estimate the excursion set Γ∗ = {x ∈ X : f(x) ≥ T}, or the contour line C*:= {x ∈ X : f(x) = T}, where T is a fixed threshold.
-    """
-
-
-
-    r"""
-    Builder for the :func:`probability_of_feasibility` acquisition function, defined in
-    :cite:`gardner14` as
-
-    .. math::
-
-        \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
-        \qquad ,
-
-    where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
-    constraint function. See also :cite:`schonlau1998global` for details.
     """
 
     def __init__(self, threshold: float, alpha: float = 1, delta: int = 1) -> None:
         """
         :param threshold: The (scalar) probability of feasibility threshold.
-        :param alpha: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        :param delta: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+        :param alpha: ??
+        :param delta: ??
         :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
         """
         tf.debugging.assert_scalar(threshold)
@@ -196,22 +178,12 @@ def bichon_ranjan_criterion(
     delta: int,
 ) -> TensorType:
     """
-    The predictive variance acquisition function for active learning, based on
-    the determinant of the covariance (see :cite:`MacKay1992` for details).
-    Note that the model needs to supply covariance of the joint marginal distribution,
-    which can be expensive to compute.
-
-
-
-
     Calculations detailed in Bect et al. (2012) w
 
     :param model: The model of the objective function.
-    :param threshold: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+    :param threshold: ??
     :param alpha: alpha as percentage of stdev
-    :param delta: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+    :param delta: ??
     """
 
     @tf.function
@@ -227,7 +199,7 @@ def bichon_ranjan_criterion(
         t = (mean - threshold)/stdev
         t_plus = t + alpha
         t_minus = t - alpha
-        normal = tfp.distributions.Normal(0, 1)
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
 
         if delta == 1:
             G = alpha*(normal.cdf(t_plus) - normal.cdf(t_minus)) - \
@@ -245,7 +217,6 @@ def bichon_ranjan_criterion(
     return acquisition
 
 # we are MAXIMISING this, so we should return the negative?
-# bichon states alpha as percentage of stdev
 # bichon suggests a stopping criterion of 0.001
 # is jitter needed anywhere, stdev close to 0?
 # tf.cast(threshold, x.dtype)?
