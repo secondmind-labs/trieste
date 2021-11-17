@@ -19,23 +19,18 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import (
-    TF_DEBUGGING_ERROR_TYPES,
-    random_seed,
-    various_shapes,
-)
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, various_shapes
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function.active_learning import (
-    PredictiveVariance,
-    predictive_variance,
     ExpectedFeasibility,
+    PredictiveVariance,
     bichon_ranjan_criterion,
+    predictive_variance,
 )
 from trieste.objectives import branin
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
-
 
 
 def test_predictive_variance_builder_builds_predictive_variance() -> None:
@@ -165,7 +160,7 @@ def test_expected_feasibility_builder_updates_without_retracing(delta: int) -> N
     builder = ExpectedFeasibility(threshold, alpha, delta)
     acq_fn = builder.prepare_acquisition_function(model)
     assert acq_fn._get_tracing_count() == 0  # type: ignore
-    
+
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = bichon_ranjan_criterion(model, threshold, alpha, delta)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
@@ -183,7 +178,7 @@ def test_expected_feasibility_builder_raises_on_non_scalar_threshold(
     shape: ShapeLike,
 ) -> None:
     threshold, alpha, delta = tf.ones(shape), tf.ones(shape), tf.ones(shape)
-    
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ExpectedFeasibility(threshold, 1, 1)
 
@@ -196,7 +191,7 @@ def test_expected_feasibility_builder_raises_on_non_scalar_threshold(
 
 @pytest.mark.parametrize("alpha", [0.0, -1.0])
 def test_expected_feasibility_builder_raises_on_non_positive_alpha(alpha: float) -> None:
-    
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ExpectedFeasibility(1, alpha, 1)
 

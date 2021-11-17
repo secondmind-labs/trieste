@@ -108,7 +108,7 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
 
 class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     """
-    
+
     that the
     interesting points xn+1 ∈ X to evaluate f at are the points having both a high kriging
     variance and an excursion probability close to 1/2.
@@ -116,7 +116,8 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     Criteria proposed by Ranjan et al.
     (2008), Bichon et al. (2008)
 
-    Aim is not to find the optimum of f, but to estimate the excursion set Γ∗ = {x ∈ X : f(x) ≥ T}, or the contour line C*:= {x ∈ X : f(x) = T}, where T is a fixed threshold.
+    Aim is not to find the optimum of f, but to estimate the excursion set Γ∗ = {x ∈ X : f(x) ≥ T},
+    or the contour line C*:= {x ∈ X : f(x) = T}, where T is a fixed threshold.
     """
 
     def __init__(self, threshold: float, alpha: float = 1, delta: int = 1) -> None:
@@ -128,11 +129,9 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
         """
         tf.debugging.assert_scalar(threshold)
         tf.debugging.assert_scalar(alpha)
-        tf.debugging.assert_positive(
-            alpha, message="Parameter alpha must be positive."
-        )
+        tf.debugging.assert_positive(alpha, message="Parameter alpha must be positive.")
         tf.debugging.assert_scalar(delta)
-        tf.debugging.Assert(delta in [1,2], [delta])
+        tf.debugging.Assert(delta in [1, 2], [delta])
 
         super().__init__()
 
@@ -160,7 +159,7 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
             greater than one.
         """
         return bichon_ranjan_criterion(model, self._threshold, self._alpha, self._delta)
-        
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -188,7 +187,7 @@ def bichon_ranjan_criterion(
 
     @tf.function
     def acquisition(x: TensorType) -> TensorType:
-        
+
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -196,25 +195,31 @@ def bichon_ranjan_criterion(
 
         mean, variance = model.predict(tf.squeeze(x, -2))
         stdev = tf.sqrt(variance)
-        t = (mean - threshold)/stdev
+        t = (mean - threshold) / stdev
         t_plus = t + alpha
         t_minus = t - alpha
         normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
 
         if delta == 1:
-            G = alpha*(normal.cdf(t_plus) - normal.cdf(t_minus)) - \
-                t*(2*normal.cdf(t) - normal.cdf(t_plus) - normal.cdf(t_minus)) - \
-                (2*normal.prob(t) - normal.prob(t_plus) - normal.prob(t_minus))
-            criterion = G*stdev
+            G = (
+                alpha * (normal.cdf(t_plus) - normal.cdf(t_minus))
+                - t * (2 * normal.cdf(t) - normal.cdf(t_plus) - normal.cdf(t_minus))
+                - (2 * normal.prob(t) - normal.prob(t_plus) - normal.prob(t_minus))
+            )
+            criterion = G * stdev
         elif delta == 2:
-            G = (alpha**2 - 1 - t**2)*(normal.cdf(t_plus) - normal.cdf(t_minus)) - \
-                2*t*(normal.prob(t_plus) - normal.prob(t_minus)) + \
-                t_plus*normal.prob(t_plus) - t_minus*normal.prob(t_minus)
-            criterion = G*variance
-        
+            G = (
+                (alpha ** 2 - 1 - t ** 2) * (normal.cdf(t_plus) - normal.cdf(t_minus))
+                - 2 * t * (normal.prob(t_plus) - normal.prob(t_minus))
+                + t_plus * normal.prob(t_plus)
+                - t_minus * normal.prob(t_minus)
+            )
+            criterion = G * variance
+
         return criterion
 
     return acquisition
+
 
 # we are MAXIMISING this, so we should return the negative?
 # bichon suggests a stopping criterion of 0.001

@@ -32,7 +32,6 @@ from tests.util.misc import (
     various_shapes,
 )
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -51,7 +50,6 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.types import TensorType
-from trieste.utils import DEFAULTS
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:

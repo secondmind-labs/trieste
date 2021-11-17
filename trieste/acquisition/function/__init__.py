@@ -13,10 +13,10 @@
 # limitations under the License.
 """ This folder contains single-objective optimization functions. """
 from .active_learning import (
-    PredictiveVariance,
-    predictive_variance,
     ExpectedFeasibility,
+    PredictiveVariance,
     bichon_ranjan_criterion,
+    predictive_variance,
 )
 from .entropy import (
     GIBBON,
