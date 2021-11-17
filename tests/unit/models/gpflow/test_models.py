@@ -54,6 +54,7 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
+from trieste.models.gpflow.models import NumDataPropertyMixin
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer, create_optimizer
 
 
@@ -516,6 +517,25 @@ def test_sparse_variational_model_attribute() -> None:
     model = svgp_model(*mock_data())
     sv = SparseVariational(model)
     assert sv.model is model
+    assert isinstance(sv.model, SVGP)
+    assert isinstance(sv.model, NumDataPropertyMixin)
+
+
+def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
+    class SVGPSubclass(SVGP):
+        @property
+        def mol(self):
+            return 42
+
+    x = mock_data()[0]
+    model = SVGPSubclass(
+        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x)
+    )
+    sv = SparseVariational(model)
+    assert sv.model is model
+    assert isinstance(sv.model, SVGPSubclass)
+    assert isinstance(sv.model, NumDataPropertyMixin)
+    assert sv.model.mol == 42
 
 
 def test_sparse_variational_update_updates_num_data() -> None:

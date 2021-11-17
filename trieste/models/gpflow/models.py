@@ -243,11 +243,6 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class SVGPWrapper(SVGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
-
-
 class Parameter(gpflow.Parameter):
     """A modified version of gpflow.Parameter that supports variable shapes."""
 
@@ -296,7 +291,7 @@ class Parameter(gpflow.Parameter):
         if callable(initial_value):
             initial_value = initial_value()
         initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
-        super(TransformedVariable, self).__init__(  # type: ignore
+        super(TransformedVariable, self).__init__(
             pretransformed_input=tf.Variable(
                 initial_value=bijector.inverse(initial_value), name=name, dtype=dtype, **kwargs
             ),
@@ -307,7 +302,7 @@ class Parameter(gpflow.Parameter):
         self._bijector = bijector
 
         self.prior = prior
-        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
+        self.prior_on = prior_on
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
@@ -332,7 +327,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, SVGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class SVGPWrapper(type(self._model), NumDataPropertyMixin):
+                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
 
@@ -362,11 +362,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
-
-
-class VGPWrapper(VGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
@@ -469,7 +464,12 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, VGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class VGPWrapper(type(self._model), NumDataPropertyMixin):
+                """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(
                 self._model.num_data or 0, trainable=False, dtype=tf.float64
             )
