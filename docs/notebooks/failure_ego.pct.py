@@ -20,7 +20,6 @@ tf.random.set_seed(1234)
 # %%
 import trieste
 
-
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
     y = np.array(trieste.objectives.branin(x))
@@ -136,10 +135,10 @@ models: dict[str, trieste.models.ModelSpec] = {
 # We'll need a custom acquisition function for this problem. This function is the product of the expected improvement for the objective data and the predictive mean for the failure data. We can specify which data and model to use in each acquisition function builder with the `OBJECTIVE` and `FAILURE` labels. We'll optimize the function using EfficientGlobalOptimization.
 
 # %%
-from trieste.acquisition import ExpectedImprovement, Product, SingleModelAcquisitionBuilder
-
 from trieste.acquisition.rule import EfficientGlobalOptimization
-
+from trieste.acquisition import (
+    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
+)
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
     def prepare_acquisition_function(self, model, dataset = None):
@@ -172,7 +171,7 @@ print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_bo_points, plot_function_2d, plot_gp_2d
+from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
 mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
 fig, ax = plot_function_2d(
@@ -194,7 +193,7 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
-from util.plotting_plotly import add_bo_points_plotly, plot_gp_plotly
+from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
 

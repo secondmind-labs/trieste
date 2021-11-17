@@ -19,16 +19,17 @@ from util.plotting import (
 # %%
 import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import ModelStack
+from trieste.models import create_model, ModelStack
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.objectives.multi_objectives import VLMOP2
 from trieste.space import Box
+from trieste.objectives.multi_objectives import VLMOP2
+from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
+
 
 # %% [markdown]
 # ## Describe the problem

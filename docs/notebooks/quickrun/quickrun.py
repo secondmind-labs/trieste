@@ -16,14 +16,13 @@
 A script to apply modifications to the notebook scripts based on YAML config,
 used to make them run more quickly in continuous integration.
 """
-import argparse
-import logging
+from jsonschema import validate
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
-
 import yaml
-from jsonschema import validate
+import logging
+import argparse
 
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)

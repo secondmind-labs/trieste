@@ -24,17 +24,16 @@ tf.keras.backend.set_floatx("float64")
 
 # %%
 import gpflow
-from util.plotting_plotly import plot_function_plotly
-
 from trieste.objectives import (
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_MINIMUM,
-    MICHALEWICZ_5_SEARCH_SPACE,
     michalewicz_2,
     michalewicz_5,
+    MICHALEWICZ_2_MINIMUM,
+    MICHALEWICZ_5_MINIMUM,
+    MICHALEWICZ_2_SEARCH_SPACE,
+    MICHALEWICZ_5_SEARCH_SPACE
 )
 from trieste.objectives.utils import mk_observer
+from util.plotting_plotly import plot_function_plotly
 
 function = michalewicz_2
 F_MINIMIZER = MICHALEWICZ_2_MINIMUM

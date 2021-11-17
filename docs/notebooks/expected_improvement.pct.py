@@ -10,18 +10,21 @@ tf.random.set_seed(1793)
 
 # %% [markdown]
 # ## Describe the problem
-# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. We can represent the search space using a `Box`, and plot contours of the Branin over this space.
+#
+# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. The Branin function is a popular toy function used in Bayesian optimization literature. Trieste provides a selection of toy functions in `trieste.objectives` package, where besides the functions we also provide their minimizers, minima and search space definitions. 
+#
+# Below we use a version of the Branin function scaled to the hypercube search space. For the Branin we use the predefined search space `BRANIN_SEARCH_SPACE`, but otherwise one would define the search space directly using a `Box` object (illustrated below as well). We also plot contours of the Branin over the search space.
 #
 #
 
 # %%
-from util.plotting_plotly import plot_function_plotly
-
-from trieste.objectives import SCALED_BRANIN_MINIMUM, scaled_branin
+from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM, BRANIN_SEARCH_SPACE
 from trieste.objectives.utils import mk_observer
+from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
-search_space = Box([0, 0], [1, 1])
+search_space = BRANIN_SEARCH_SPACE  # predefined search space, for convenience
+search_space = Box([0, 0], [1, 1])  # define the search space directly
 
 fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
 fig.update_layout(height=400, width=400)
@@ -58,7 +61,6 @@ import gpflow
 import tensorflow_probability as tfp
 
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 
 def build_model(data):

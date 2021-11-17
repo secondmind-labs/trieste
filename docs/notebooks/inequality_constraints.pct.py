@@ -16,7 +16,6 @@ tf.random.set_seed(1793)
 # %%
 from trieste.space import Box
 
-
 class Sim:
     threshold = 0.5
 
@@ -39,10 +38,9 @@ search_space = Box([0, 0], [6, 6])
 # The objective and constraint functions are accessible as methods on the `Sim` class. Let's visualise these functions, as well as the constrained objective.  We get the constrained objective by masking out regions where the constraint function is above the threshold.
 
 # %%
+import trieste
 import matplotlib.pyplot as plt
 from util.inequality_constraints_utils import plot_objective_and_constraints
-
-import trieste
 
 plot_objective_and_constraints(search_space, Sim)
 plt.show()
@@ -331,7 +329,7 @@ mask_fail2 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.
 mask_fail = np.logical_or(mask_fail1, mask_fail2)
 
 import matplotlib.pyplot as plt
-from util.plotting import plot_bo_points, plot_function_2d
+from util.plotting import plot_function_2d, plot_bo_points
 
 fig, ax = plot_function_2d(
     masked_objective,

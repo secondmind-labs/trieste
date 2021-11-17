@@ -17,9 +17,8 @@ tf.random.set_seed(1793)
 # For this tutorial, we'll use the same set up as before.
 
 # %%
-import gpflow
-
 import trieste
+import gpflow
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 observer = trieste.objectives.utils.mk_observer(trieste.objectives.scaled_branin)

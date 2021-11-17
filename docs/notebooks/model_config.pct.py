@@ -5,19 +5,18 @@
 
 # %%
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import gpflow
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+tf.get_logger().setLevel("ERROR")
 
 import trieste
 from trieste.objectives import BRANIN_SEARCH_SPACE, SCALED_BRANIN_MINIMUM, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-tf.get_logger().setLevel("ERROR")
 
 np.random.seed(1793)
 tf.random.set_seed(1793)

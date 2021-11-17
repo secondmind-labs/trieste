@@ -17,10 +17,10 @@ tf.random.set_seed(1793)
 #
 # In this example, we will perform active learning for the scaled Branin function.
 
-# %%
-from util.plotting_plotly import plot_function_plotly
 
+# %%
 from trieste.objectives import scaled_branin
+from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
@@ -49,7 +49,6 @@ initial_data = observer(initial_query_points)
 
 # %%
 import gpflow
-
 from trieste.models.gpflow.models import GaussianProcessRegression
 
 
