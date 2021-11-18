@@ -110,9 +110,8 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     """
     Builder for the Expected feasibility acquisition function for identifying a failure or
     feasibility region. It implements two related sampling strategies called *bichon* criterion
-    (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion
-    (<cite data-cite="ranjan2008sequential"/>). The goal of both criteria is to sample points with
-    a mean close to the threshold and a high variance.
+    (:cite:`bichon2008efficient`) and *ranjan* criterion (:cite:`ranjan2008sequential`). The goal
+    of both criteria is to sample points with a mean close to the threshold and a high variance.
     """
 
     def __init__(self, threshold: float, alpha: float = 1, delta: int = 1) -> None:
@@ -175,19 +174,31 @@ def bichon_ranjan_criterion(
     alpha: float,
     delta: int,
 ) -> TensorType:
-    """
+    r"""
     Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
     (:cite:`ranjan2008sequential`) used in Expected feasibility aquisition function for active
-    learning of failure or feasibility regions. 
-    
-    The problem of identifying a failure or feasibility region of a function :math:`f` can be formalized as estimating the excursion set, :math:`\Gamma* = \{ x \in X: f(x) \ge T\}`, or estimating the contour line, :math:`C* = \{ x \in X: f(x) = T\}`, for some threshold :math:`T` (see :cite:`bect2012sequential` for more details).
+    learning of failure or feasibility regions.
 
-    It turns out that probabilistic models can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. We follow :cite:`bect2012sequential` and use a formulation which provides a common expression for these two criteria:
+    The problem of identifying a failure or feasibility region of a function :math:`f` can be
+    formalized as estimating the excursion set, :math:`\Gamma* = \{ x \in X: f(x) \ge T\}`, or
+    estimating the contour line, :math:`C* = \{ x \in X: f(x) = T\}`, for some threshold :math:`T`
+    (see :cite:`bect2012sequential` for more details).
+
+    It turns out that probabilistic models can be used as classifiers for identifying where
+    excursion probability is larger than 1/2 and this idea is used to build many sequential
+    sampling strategies. We follow :cite:`bect2012sequential` and use a formulation which provides
+    a common expression for these two criteria:
 
     .. math:: E[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$
 
-    Here :math:`m(x)` and :math:`s(x)` are the mean and standard deviation of the predictive posterior of a probabilistic model. Bichon criterion is obtained when :math:`\delta = 1` while ranjan criterion is obtained when :math:`\delta = 2`. :math:`\alpha>0` is another parameter that acts as a percentage of standard deviation of the posterior around the current boundary estimate where we want to sample. The goal is to sample a point with a mean close to the threshold :math:`T` and a high variance, so that the positive difference in the equation above is as large as possible.
-    
+    Here :math:`m(x)` and :math:`s(x)` are the mean and standard deviation of the predictive
+    posterior of a probabilistic model. Bichon criterion is obtained when :math:`\delta = 1` while
+    ranjan criterion is obtained when :math:`\delta = 2`. :math:`\alpha>0` is another parameter
+    that acts as a percentage of standard deviation of the posterior around the current boundary
+    estimate where we want to sample. The goal is to sample a point with a mean close to the
+    threshold :math:`T` and a high variance, so that the positive difference in the equation above
+    is as large as possible.
+
     Only batches of size 1 are allowed.
 
     :param model: The probabilistic model of the objective function.
