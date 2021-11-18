@@ -8,8 +8,16 @@
 
 # %%
 # %matplotlib inline
-import numpy as np
+
+# silence TF warnings and info messages, only print errors
+# https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import tensorflow as tf
+tf.get_logger().setLevel("ERROR")
+
+import numpy as np
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -18,7 +26,9 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## A toy problem
 #
-# Throughout the tutorial we will use the standard Branin function as a stand-in for an expensive-to-evaluate system. We create a failure region by thresholding the value at 80, space with value above 80 is considered a failure region. If we are interested in a feasibility region instead, it is simply a complement of the failure region, space with the value below 80.
+# Throughout the tutorial we will use the standard Branin function as a stand-in for an expensive-to-evaluate system. We create a failure region by thresholding the value at 80, space with value above 80 is considered a failure region. This region needs to be learned as efficiently as possible by the active learning algorithm.
+#
+# Note that if we are interested in a feasibility region instead, it is simply a complement of the failure region, space with the value below 80.
 #
 # We illustrate the thresholded Branin function below, you can note that above the threshold of 80 there are no more values observed.
 
@@ -82,17 +92,17 @@ model = build_model(initial_data)
 
 
 # %% [markdown]
-# ## Active learning 
+# ## Active learning with Expected feasibility acquisition function
 #
-# TODO
+# The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function $f$ can be formalized as estimating the excursion set, $\Gamma* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C* = \{ x \in X: f(x) = T\}$, for some threshold $T$ (see <cite data-cite="bect2012sequential"/> for more details). 
 #
-# expensive-to-evaluate function $f$ 
-# This problem can be formalized as estimating the excursion set, $\Gamma* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C* = \{ x \in X: f(x) = T\}$.
+# It turns out that Gaussian processes can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. Here we introduce Expected feasibility acquisition function that implements two related sampling strategies called *bichon* criterion (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion (<cite data-cite="ranjan2008sequential"/>). <cite data-cite="bect2012sequential"/> provides a common expression for these two criteria: $$E[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$$.
 #
-# as discussed in <cite data-cite="ranjan2008sequential,bichon2008efficient,bect2012sequential"/>
+# Here $m(x)$ and $s(x)$ are the mean and standard deviation of the predictive posterior of the Gaussian process model. Bichon criterion is obtained when $\delta = 1$ while ranjan criterion is obtained when $\delta = 2$. $\alpha>0$ is another parameter that acts as a percentage of standard deviation of the posterior around the current boundary estimate where we want to sample. The goal is to sample a point with a mean close to the threshold $T$ and a high variance, so that the positive difference in the equation above is as large as possible.
+
 
 # %% [markdown]
-# We implemented Bichon and Ranjan criterion as a single acquisition function called `ExpectedFeasibility`. It takes threshold as an input and has two parameters, `alpha` and `delta` following the description above. Parameter `delta` determines whether Bichon criterion (value of 1) or Ranjan criterion (value of 2) is used.
+# We now illustrate `ExpectedFeasibility` acquisition function using the Bichon criterion. Performance for the Ranjan criterion is typically very similar. `ExpectedFeasibility` takes threshold as an input and has two parameters, `alpha` and `delta` following the description above. 
 #
 # Note that even though we use below `ExpectedFeasibility` with `EfficientGlobalOptimization`  `BayesianOptimizer` routine, we are actually performing active learning. The only relevant difference between the two is the nature of the acquisition function - optimization ones are designed with the goal of finding the optimum of a function, while active learning ones are designed to learn the function (or some aspect of it, like here).
 
@@ -100,7 +110,7 @@ model = build_model(initial_data)
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition.function import ExpectedFeasibility
 
-# we use Bichon criterion here, but performance is very similar for the Ranjan criterion
+# Bichon criterion
 delta = 1
 
 # set up the acquisition rule and initialize the Bayesian optimizer
@@ -115,7 +125,7 @@ result = bo.optimize(num_steps, initial_data, model, rule)
 # %% [markdown]
 # Let's illustrate the results.
 #
-# What we are interested in is excursion probability... TODO
+# To identify the failure or feasibility region we compute the excursion probability using our Gaussian process model: $$P\left(\frac{m(x) - T}{s(x)}\right)$$ where $m(x)$ and $s(x)$ are the mean and standard deviation of the predictive posterior of the model given the data. 
 #
 # We plot a two-dimensional contour map of our thresholded Branin function as a reference, excursion probability map using the model fitted to the initial data alone, and updated excursion probability map after all the active learning steps.
 #

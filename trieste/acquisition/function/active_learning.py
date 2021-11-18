@@ -108,24 +108,23 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
 
 class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     """
-
-    that the
-    interesting points xn+1 ∈ X to evaluate f at are the points having both a high kriging
-    variance and an excursion probability close to 1/2.
-
-    Criteria proposed by Ranjan et al.
-    (2008), Bichon et al. (2008)
-
-    Aim is not to find the optimum of f, but to estimate the excursion set Γ∗ = {x ∈ X : f(x) ≥ T},
-    or the contour line C*:= {x ∈ X : f(x) = T}, where T is a fixed threshold.
+    Builder for the Expected feasibility acquisition function for identifying a failure or
+    feasibility region. It implements two related sampling strategies called *bichon* criterion
+    (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion
+    (<cite data-cite="ranjan2008sequential"/>). The goal of both criteria is to sample points with
+    a mean close to the threshold and a high variance.
     """
 
     def __init__(self, threshold: float, alpha: float = 1, delta: int = 1) -> None:
         """
-        :param threshold: The (scalar) probability of feasibility threshold.
-        :param alpha: ??
-        :param delta: ??
-        :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
+        :param threshold: The failure or feasibility threshold.
+        :param alpha: The parameter which determines the neihbourhood around the estimated contour
+            line as a percentage of the posterior variance in which to allocate new points. Defaults
+            to value of 1.
+        :param delta: The parameter identifying which criterion is returned, Bichon for value of 1
+            (default) and Ranjan for value of 2.
+        :raise ValueError (or InvalidArgumentError): If arguments are not a scalar, or `alpha` is
+            not positive, or `delta` is not 1 or 2.
         """
         tf.debugging.assert_scalar(threshold)
         tf.debugging.assert_scalar(alpha)
@@ -177,12 +176,26 @@ def bichon_ranjan_criterion(
     delta: int,
 ) -> TensorType:
     """
-    Calculations detailed in Bect et al. (2012) w
+    Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
+    (:cite:`ranjan2008sequential`) used in Expected feasibility aquisition function for active
+    learning of failure or feasibility regions. 
+    
+    The problem of identifying a failure or feasibility region of a function :math:`f` can be formalized as estimating the excursion set, :math:`\Gamma* = \{ x \in X: f(x) \ge T\}`, or estimating the contour line, :math:`C* = \{ x \in X: f(x) = T\}`, for some threshold :math:`T` (see :cite:`bect2012sequential` for more details).
 
-    :param model: The model of the objective function.
-    :param threshold: ??
-    :param alpha: alpha as percentage of stdev
-    :param delta: ??
+    It turns out that probabilistic models can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. We follow :cite:`bect2012sequential` and use a formulation which provides a common expression for these two criteria:
+
+    .. math:: E[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$
+
+    Here :math:`m(x)` and :math:`s(x)` are the mean and standard deviation of the predictive posterior of a probabilistic model. Bichon criterion is obtained when :math:`\delta = 1` while ranjan criterion is obtained when :math:`\delta = 2`. :math:`\alpha>0` is another parameter that acts as a percentage of standard deviation of the posterior around the current boundary estimate where we want to sample. The goal is to sample a point with a mean close to the threshold :math:`T` and a high variance, so that the positive difference in the equation above is as large as possible.
+    
+    Only batches of size 1 are allowed.
+
+    :param model: The probabilistic model of the objective function.
+    :param threshold: The failure or feasibility threshold.
+    :param alpha: The parameter which determines the neihbourhood around the estimated contour
+        line as a percentage of the posterior variance in which to allocate new points.
+    :param delta: The parameter identifying which criterion is returned, Bichon for value of 1
+        and Ranjan for value of 2.
     """
 
     @tf.function
@@ -219,9 +232,3 @@ def bichon_ranjan_criterion(
         return criterion
 
     return acquisition
-
-
-# we are MAXIMISING this, so we should return the negative?
-# bichon suggests a stopping criterion of 0.001
-# is jitter needed anywhere, stdev close to 0?
-# tf.cast(threshold, x.dtype)?
