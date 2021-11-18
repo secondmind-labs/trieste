@@ -457,7 +457,7 @@ class TaggedProductSearchSpace(SearchSpace):
     @property
     def dimension(self) -> int:
         """The number of inputs in this product search space."""
-        return self._dimension
+        return int(self._dimension)
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """
