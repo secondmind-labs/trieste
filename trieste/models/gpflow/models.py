@@ -22,6 +22,7 @@ import tensorflow_probability as tfp
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
+from gpflow.utilities.ops import leading_transpose
 
 from ...data import Dataset
 from ...types import TensorType
@@ -113,35 +114,36 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
 
-        :param query_points_1: Set of query points with shape [N, D]
+        :param query_points_1: Set of query points with shape [..., N, D]
         :param query_points_2: Sets of query points with shape [M, D]
 
-        :return: Covariance matrix between the sets of query points with shape [N, M]
+        :return: Covariance matrix between the sets of query points with shape [..., N, M]
         """
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Covariance between points is not supported for SGPR.")
 
-        tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
+        # tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
 
         x = self.model.data[0].value()
         num_data = tf.shape(x)[0]
         s = tf.linalg.diag(tf.fill([num_data], self.model.likelihood.variance))
 
-        K = self.model.kernel(x)
+        K = self.model.kernel(x)  # [num_data, num_data]
         L = tf.linalg.cholesky(K + s)
 
-        Kx1 = self.model.kernel(x, query_points_1)
-        Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)
+        Kx1 = self.model.kernel(query_points_1, x)  # [..., N, num_data]
+        Kx1 = leading_transpose(Kx1, [..., -1, -2])  # [..., num_data, N]
+        Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., num_data, N]
 
-        Kx2 = self.model.kernel(x, query_points_2)
-        Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)
+        Kx2 = self.model.kernel(x, query_points_2)  # [num_data, M]
+        Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [num_data, M]
 
-        K12 = self.model.kernel(query_points_1, query_points_2)
-        cov = K12 - tf.tensordot(tf.transpose(Linv_Kx1), Linv_Kx2, [[-1], [-2]])
+        K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M]
+        cov = K12 - tf.tensordot(leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]])  # [..., N, M]
 
-        tf.debugging.assert_shapes(
-            [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
-        )
+        # tf.debugging.assert_shapes(
+        #     [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
+        # )
 
         return cov
 
@@ -220,37 +222,41 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         and some additional data, using exact formula.
 
         :param query_points: Set of query points with shape [M, D]
-        :param additional_data: Dataset with query_points with shape [N, D] and observations
-         with shape [N, L]
-        :return: mean_new: predictive variance at query_points, with shape [M, L],
-        and var_new: predictive variance at query_points, with shape [M, L]
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+         with shape [..., N, 1]
+        :return: mean_new: predictive variance at query_points, with shape [..., M, 1],
+        and var_new: predictive variance at query_points, with shape [..., M, 1]
         """
 
-        tf.debugging.assert_shapes(
-            [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
-        )
+        # tf.debugging.assert_shapes(
+        #     [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
+        # )
 
         mean_old, cov_old = self.model.predict_f(
             additional_data.query_points, full_cov=True
-        )  # [N, L], [L, N, N]
-        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
+        )  # [..., N, 1], [..., 1, N, N]
+        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, 1], [M, 1]
 
-        cov_cross = self.covariance_between_points(
+        cov_cross = tf.expand_dims(self.covariance_between_points(
             additional_data.query_points, query_points
-        )  # [L, N, M]
+        ), -3)  # [..., 1, N, M]  TODO: change covariance_between_points to return the latent dimension
 
         cov_shape = tf.shape(cov_old)
         noise = self.model.likelihood.variance * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise)  # [L, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross[None, ...], lower=True)  # [L, N, M]
-        var_new = var_new - tf.transpose(tf.reduce_sum(A ** 2, axis=-2))  # [M, L]
+        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., 1, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., 1, N, M]
+        var_new = var_new - leading_transpose(tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2])  # [M, 1]
 
-        mean_old_diff = additional_data.observations - mean_old  # [N, L]
-        mean_old_diff = tf.transpose(mean_old_diff)[..., None]  # [L, N, 1]
-        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [L, N, 1]
-        mean_new = mean_new + tf.transpose((tf.matmul(A, AM, transpose_a=True)[..., 0]))  # [M, L]
+        mean_old_diff = additional_data.observations - mean_old  # [..., N, 1]
+        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., 1, N, 1]
+        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., 1, N, 1]
+
+        mean_new = mean_new + leading_transpose(
+            (tf.matmul(A, AM, transpose_a=True)[..., 0]),
+            [..., -1, -2]
+        )  # [..., M, 1]
 
         return mean_new, var_new
 
@@ -264,12 +270,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [N, D] and observations
         with shape [N, L]
-        :return: mean_new: predictive variance at query_points, with shape [M, L],
-        and cov_new: predictive covariance between query_points, with shape [L, M, M]
+        :return: mean_new: predictive variance at query_points, with shape [M, 1],
+        and cov_new: predictive covariance between query_points, with shape [1, M, M]
         """
-        tf.debugging.assert_shapes(
-            [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
-        )
+        # tf.debugging.assert_shapes(
+        #     [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
+        # )
 
         points = tf.concat([additional_data.query_points, query_points], axis=0)
         mean, cov = self.model.predict_f(points, full_cov=True)  # [N+M, L], [L, N+M, N+M]

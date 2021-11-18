@@ -24,6 +24,7 @@ from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    IntegratedVarianceReduction,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     PredictiveVariance,

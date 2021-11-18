@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from typing import Mapping, Optional, cast, Sequence
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -762,3 +762,93 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
         return tf.exp(tf.linalg.logdet(covariance + jitter))
 
     return acquisition
+
+
+
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
+    """
+    Builder for the reduction of the integral of the predicted variance over the search
+    space given a batch of query points.
+    """
+
+    def __init__(self, integration_points: TensorType, threshold: Sequence[float]=None) -> None:
+        '''
+        :param integration_points: set of points to integrate the prediction variance over.
+        '''
+        self._integration_points = integration_points
+        self._threshold = threshold
+
+    def __repr__(self) -> str:
+        """"""
+        return f"IntegratedVarianceReduction(threshold={self._threshold!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return integrated_variance_reduction(model, self._integration_points, self._threshold)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class integrated_variance_reduction(AcquisitionFunctionClass):
+    def __init__(
+            self,
+            model: ProbabilisticModel,
+            integration_points: TensorType,
+            threshold: Sequence[float]=None
+    ):
+        """
+    The reduction of the average of the predicted variance over the integration points
+    (a.k.a. IMSE criterion)
+
+    :param model: The model of the objective function.
+    :param integration_points: points over which to integrate the objective prediction variance
+    :param threshold:
+    """
+        self._model = model
+        self._integration_points = integration_points
+        self._threshold = threshold
+
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+
+        additional_data = Dataset(tf.squeeze(x, -2), tf.ones_like(x[:, 0, 0:1]))
+
+        try:
+            mean, variance = self._model.conditional_predict_f(
+                query_points=self._integration_points,
+                additional_data=additional_data
+            )
+        except NotImplementedError:
+            raise ValueError(
+                """
+                PredictiveVariance only supports models with a conditional_predict_ft method.
+                """
+            )
+
+        if self._threshold is None:
+            return tf.reduce_sum(variance, axis=0)
+        else:
+            distr = tfp.distributions.Normal(mean, tf.sqrt(variance))
+            weights = distr.cdf(tf.cast(self._threshold[1], x.dtype)) - distr.cdf(tf.cast(self._threshold[0], x.dtype))
+            return tf.reduce_sum(variance * weights, axis=0)

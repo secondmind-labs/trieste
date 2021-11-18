@@ -660,3 +660,5 @@ def test_gaussian_process_regression_conditional_predict_equations() -> None:
     np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
     np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
     np.testing.assert_allclose(predj_cov7, predj_cov5, atol=1e-5)
+
+test_gaussian_process_regression_conditional_predict_equations()
