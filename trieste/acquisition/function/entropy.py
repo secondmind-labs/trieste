@@ -76,7 +76,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-       if min_value_sampler is None:
+        if min_value_sampler is None:
             min_value_sampler = ExactThompsonSampler
 
         self._min_value_sampler = min_value_sampler
@@ -104,7 +104,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(num_samples, model, sample_min_value=True)
+        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
         min_value_samples = min_value_sampler.sample(query_points)
 
         return min_value_entropy_search(model, min_value_samples)
@@ -128,7 +128,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(num_samples, model, sample_min_value=True)
+        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
         min_value_samples = min_value_sampler.sample(query_points)
         function.update(min_value_samples)  # type: ignore
         return function
@@ -334,7 +334,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(num_samples, model, sample_min_value=True)
+        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
         self._min_value_samples = min_value_sampler.sample(query_points)
 
         if self._quality_term is not None:  # if possible, just update the quality term

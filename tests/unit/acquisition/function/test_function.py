@@ -30,7 +30,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf, QuadraticMeanAndRBFKernelWithSamplers
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
@@ -546,6 +546,9 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 
 
+
+
+
 @pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
     sample_size: int,
@@ -581,10 +584,19 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
 
 
 @random_seed
-def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
     known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernel()
+    with pytest.raises(ValueError):
+        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(model, dataset=data)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+    known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
         model, dataset=data
     )
@@ -598,8 +610,8 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
 @random_seed
 def test_batch_monte_carlo_expected_improvement() -> None:
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    model = QuadraticMeanAndRBFKernel()
-
+    data = Dataset(xs, quadratic(xs))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     mean, cov = model.predict_joint(xs)
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10_000)
@@ -622,7 +634,7 @@ def test_batch_monte_carlo_expected_improvement() -> None:
 def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
     data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     builder = BatchMonteCarloExpectedImprovement(10_000)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)

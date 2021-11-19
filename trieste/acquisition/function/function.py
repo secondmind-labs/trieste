@@ -583,21 +583,27 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+
+
+
+
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the batch expected hypervolume improvement acquisition function.
-    The implementation of the acquisition function largely
-    follows :cite:`daulton2020differentiable`
+    Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
+    estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
+    Improvement is measured with respect to the minimum predictive mean at observed query points.
+    This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
+    at new points are independent from those at known query points. This is faster, but is an
+    approximation for noisy observers.
     """
 
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
-        :param sample_size: The number of samples from model predicted distribution for
-            each batch of points.
+        :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
-            ``jitter`` is negative.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter``
+            is negative.
         """
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
@@ -609,10 +615,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
 
     def __repr__(self) -> str:
         """"""
-        return (
-            f"BatchMonteCarloExpectedHypervolumeImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r})"
-        )
+        return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
@@ -622,96 +625,83 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
         """
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
-        :return: The batch expected hypervolume improvement acquisition function.
+        :return: The batch *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+            does not have an event shape of [1].
         """
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+
         mean, _ = model.predict(dataset.query_points)
 
-        _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
-        # prepare the partitioned bounds of non-dominated region for calculating of the
-        # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        return batch_monte_carlo_expected_improvement(self._sample_size, model, eta, self._jitter)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model. Must have event shape [1].
+        :param dataset: The data from the observer. Must be populated.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, batch_monte_carlo_expected_improvement), [])
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
+
+
+class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
+        """
+        :param sampler:  ReparametrizationSampler.
+        :param eta: The "best" observation.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._sample_size = sample_size
 
         try:
             sampler = model.reparam_sampler(self._sample_size)
         except (NotImplementedError):
             raise ValueError(
                 """
-                The batch Monte-Carlo expected hyper-volume improvment acquisition function
+                The batch Monte-Carlo expected improvment acquisition function
                 only supports models with a reparam_sampler method.
                 """
             )
 
-        return batch_ehvi(sampler, self._jitter, _partition_bounds)
+        self._sampler = sampler
+        self._eta = tf.Variable(eta)
+        self._jitter = jitter
 
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value."""
+        self._eta.assign(eta)
+        self._sampler._initialized.assign(False)
 
-def batch_ehvi(
-    sampler: ReparametrizationSampler,
-    sampler_jitter: float,
-    partition_bounds: tuple[TensorType, TensorType],
-) -> AcquisitionFunction:
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        samples = tf.squeeze(self._sampler.sample(x, jitter=self._jitter), axis=-1)  # [..., S, B]
+        min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
+        batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
+        return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
-    """
-    :param sampler: The posterior sampler, which given query points `at`, is able to sample
-        the possible observations at 'at'.
-    :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
-        decomposition of the covariance matrix.
-    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
-        bounds for hypervolume improvement calculation
-    :return: The batch expected hypervolume improvement acquisition
-        function for objective minimisation.
-    """
-
-    def acquisition(at: TensorType) -> TensorType:
-        _batch_size = at.shape[-2]  # B
-
-        def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
-            # generate all subsets of [1, ..., q] as indices
-            indices = list(range(q))
-            return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
-
-        samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
-
-        q_subset_indices = gen_q_subset_indices(_batch_size)
-
-        hv_contrib = tf.zeros(tf.shape(samples)[:-2], dtype=samples.dtype)
-        lb_points, ub_points = partition_bounds
-
-        def hv_contrib_on_samples(
-            obj_samples: TensorType,
-        ) -> TensorType:  # calculate samples overlapped area's hvi for obj_samples
-            # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
-            overlap_vertices = tf.reduce_max(obj_samples, axis=-2)
-
-            overlap_vertices = tf.maximum(  # compare overlap vertices and lower bound of each cell:
-                tf.expand_dims(overlap_vertices, -3),  # expand a cell dimension
-                lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
-            )  # [..., S, K, Cq_j, num_obj]
-
-            lengths_j = tf.maximum(  # get hvi length per obj within each cell
-                (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
-            )  # [..., S, K, Cq_j, num_obj]
-
-            areas_j = tf.reduce_sum(  # sum over all subsets Cq_j -> [..., S, K]
-                tf.reduce_prod(lengths_j, axis=-1), axis=-1  # calc hvi within each K
-            )
-
-            return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
-
-        for j in tf.range(1, _batch_size + 1):  # Inclusion-Exclusion loop
-            q_choose_j = tf.gather(q_subset_indices, j - 1).to_tensor()
-            # gather all combinations having j points from q batch points (Cq_j)
-            j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
-            hv_contrib += tf.cast((-1) ** (j + 1), dtype=samples.dtype) * hv_contrib_on_samples(
-                j_sub_samples
-            )
-
-        return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
-
-    return acquisition
 
 
 class PredictiveVariance(SingleModelAcquisitionBuilder):
