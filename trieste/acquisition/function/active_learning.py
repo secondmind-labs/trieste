@@ -219,7 +219,7 @@ def bichon_ranjan_criterion(
 
         mean, variance = model.predict(tf.squeeze(x, -2))
         stdev = tf.sqrt(variance)
-        t = (mean - threshold) / stdev
+        t = (threshold - mean) / stdev
         t_plus = t + alpha
         t_minus = t - alpha
         normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
