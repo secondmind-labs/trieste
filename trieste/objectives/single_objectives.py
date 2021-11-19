@@ -93,6 +93,35 @@ BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 """ The search space for the :func:`branin` function. """
 
 
+def simple_quadratic(x: TensorType) -> TensorType:
+    """
+    A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
+
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+
+    return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+
+
+SIMPLE_QUADRATIC_MINIMIZER = tf.constant([[1.0, 1.0]], tf.float64)
+"""
+The global minimizer of the :func:`simple_quadratic` function over :math:`[0, 1]^2`,
+with shape [1, 2] and dtype float64.
+"""
+
+SIMPLE_QUADRATIC_MINIMUM = tf.constant([-4.0], tf.float64)
+"""
+The global minimum of the :func:`simple_quadratic` function over :math:`[0, 1]^2`, with shape [1]
+and dtype float64.
+"""
+
+SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
+""" The search space for the :func:`simple_quadratic` function. """
+
+
 def gramacy_lee(x: TensorType) -> TensorType:
     """
     The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See

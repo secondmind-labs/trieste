@@ -49,6 +49,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models import TrajectorySampler
+from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseVariational,
@@ -391,6 +392,28 @@ def test_gaussian_process_regression_predict_y(gpflow_interface_factory: ModelFa
     npt.assert_array_less(variance_f, variance_y)
 
 
+@unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
+def test_gaussian_process_regression_log(
+    mocked_summary_scalar: unittest.mock.MagicMock, gpflow_interface_factory: ModelFactoryType
+) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x))
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            model.log()
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    assert mocked_summary_scalar.call_count == 2
+    assert mocked_summary_scalar.call_args_list[0][0][0] == "kernel.variance"
+    assert mocked_summary_scalar.call_args_list[0][0][1].numpy() == 1
+    assert mocked_summary_scalar.call_args_list[1][0][0] == "kernel.lengthscale"
+    assert mocked_summary_scalar.call_args_list[1][0][1].numpy() == 1
+
+
 def test_vgp_raises_for_invalid_init() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -401,6 +424,10 @@ def test_vgp_raises_for_invalid_init() -> None:
 
     with pytest.raises(ValueError):
         optimizer = Optimizer(gpflow.optimizers.Scipy())
+        VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
+
+    with pytest.raises(ValueError):
+        optimizer = BatchOptimizer(gpflow.optimizers.Scipy())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
 
 

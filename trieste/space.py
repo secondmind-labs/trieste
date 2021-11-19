@@ -390,40 +390,45 @@ class TaggedProductSearchSpace(SearchSpace):
         ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
         subspaces are labelled numerically.
 
-        :param spaces: A list of tag-space tuples summarizing the names and domains of
-            the space's subspaces.
+        :param spaces: A sequence of :class:`SearchSpace` objects representing the space's subspaces
         :param tags: An optional list of tags giving the unique identifiers of
             the space's subspaces.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
             length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
         """
 
+        number_of_subspaces = len(spaces)
         if tags is None:
-            tags = [str(i) for i, _ in enumerate(spaces)]
+            tags = [str(index) for index in range(number_of_subspaces)]
         else:
+            number_of_tags = len(tags)
             tf.debugging.assert_equal(
-                len(tags),
-                len(spaces),
+                number_of_tags,
+                number_of_subspaces,
                 message=f"""
                     Number of tags must match number of subspaces but
-                    received {len(tags)} tags and {len(spaces)} subspaces.
+                    received {number_of_tags} tags and {number_of_subspaces} subspaces.
                 """,
             )
+            number_of_unique_tags = len(set(tags))
             tf.debugging.assert_equal(
-                len(tags),
-                len(set(tags)),
+                number_of_tags,
+                number_of_unique_tags,
                 message=f"Subspace names must be unique but received {tags}.",
             )
 
         self._spaces = dict(zip(tags, spaces))
-        self._tags = tuple(tags)  # avoid accidental modification by users
 
-        subspace_sizes = [self._spaces[tag].dimension for tag in list(self._tags)]
-        self._subspace_sizes_by_tag = dict(zip(self._tags, subspace_sizes))
-        self._subspace_starting_indices = dict(
-            zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
-        )
+        subspace_sizes = [space.dimension for space in spaces]
+
+        self._subspace_sizes_by_tag = {
+            tag: subspace_size for tag, subspace_size in zip(tags, subspace_sizes)
+        }
+
+        self._subspace_starting_indices = dict(zip(tags, tf.cumsum(subspace_sizes, exclusive=True)))
+
         self._dimension = tf.reduce_sum(subspace_sizes)
+        self._tags = tuple(tags)  # avoid accidental modification by users
 
     def __repr__(self) -> str:
         """"""
@@ -452,7 +457,7 @@ class TaggedProductSearchSpace(SearchSpace):
     @property
     def dimension(self) -> int:
         """The number of inputs in this product search space."""
-        return self._dimension
+        return int(self._dimension)
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """

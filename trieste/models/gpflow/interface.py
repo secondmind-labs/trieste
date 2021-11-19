@@ -21,6 +21,7 @@ import tensorflow as tf
 from gpflow.models import GPModel
 
 from ...data import Dataset
+from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel, ReparametrizationSampler
 from ..optimizer import Optimizer
@@ -93,6 +94,22 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
+
+    def log(self) -> None:
+        """
+        Log model-specific information at a given optimization step.
+        """
+        summary_writer = get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=get_step_number()):
+                tf.summary.scalar("kernel.variance", self.get_kernel().variance)
+                lengthscales = self.get_kernel().lengthscales
+                if tf.rank(lengthscales) == 0:
+                    tf.summary.scalar("kernel.lengthscale", lengthscales)
+                elif tf.rank(lengthscales) == 1:
+                    for i, lengthscale in enumerate(lengthscales):
+                        tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
+
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
         Return a reparametrization sampler providing `num_samples` samples.
@@ -100,3 +117,4 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :return: The reparametrization sampler.
         """
         return BatchReparametrizationSampler(num_samples, self)
+
