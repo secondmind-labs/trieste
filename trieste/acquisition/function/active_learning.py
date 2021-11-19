@@ -230,6 +230,7 @@ def bichon_ranjan_criterion(
                 - t * (2 * normal.cdf(t) - normal.cdf(t_plus) - normal.cdf(t_minus))
                 - (2 * normal.prob(t) - normal.prob(t_plus) - normal.prob(t_minus))
             )
+            tf.debugging.check_numerics(G, "NaN or Inf values encountered in criterion")
             criterion = G * stdev
         elif delta == 2:
             G = (
@@ -238,6 +239,7 @@ def bichon_ranjan_criterion(
                 + t_plus * normal.prob(t_plus)
                 - t_minus * normal.prob(t_minus)
             )
+            tf.debugging.check_numerics(G, "NaN or Inf values encountered in criterion")
             criterion = G * variance
 
         return criterion
