@@ -79,6 +79,7 @@ def plot_function_2d(
     ylabel=None,
     figsize=None,
     colorbar=False,
+    alpha=1.,
 ):
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
@@ -93,6 +94,7 @@ def plot_function_2d(
     :param ylabel:
     :param figsize:
     :param colorbar
+    :param alpha: transparency
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -126,7 +128,7 @@ def plot_function_2d(
         else:
             ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")
 
-        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
+        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=alpha)
         if title is not None:
             axx.set_title(title[k])
         if colorbar:
