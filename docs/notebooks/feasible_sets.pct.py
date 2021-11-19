@@ -72,16 +72,19 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Probabilistic model of the objective function
 #
-# Just like in sequential optimization, we use a probabilistic model of the objective function. Acquisition functions will exploit the predictive posterior of the model to identify the failure region. We use a `GPR` model from the GPflow library to formulate a Gaussian process model, wrapping it in Trieste's `GaussianProcessRegression` model wrapper.
+# Just like in sequential optimization, we use a probabilistic model of the objective function. Acquisition functions will exploit the predictive posterior of the model to identify the failure region. We use a `GPR` model from the GPflow library to formulate a Gaussian process model, wrapping it in Trieste's `GaussianProcessRegression` model wrapper. As a good practice, we use priors for the kernel hyperparameters.
 
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
-
+import tensorflow_probability as tfp
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern32(variance=variance, lengthscales=[2, 2])
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -94,9 +97,9 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Active learning with Expected feasibility acquisition function
 #
-# The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function $f$ can be formalized as estimating the excursion set, $\Gamma* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C* = \{ x \in X: f(x) = T\}$, for some threshold $T$ (see <cite data-cite="bect2012sequential"/> for more details). 
+# The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function $f$ can be formalized as estimating the excursion set, $\Gamma^* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C^* = \{ x \in X: f(x) = T\}$, for some threshold $T$ (see <cite data-cite="bect2012sequential"/> for more details). 
 #
-# It turns out that Gaussian processes can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. Here we introduce Expected feasibility acquisition function that implements two related sampling strategies called *bichon* criterion (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion (<cite data-cite="ranjan2008sequential"/>). <cite data-cite="bect2012sequential"/> provides a common expression for these two criteria: $$E[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$$.
+# It turns out that Gaussian processes can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. Here we introduce Expected feasibility acquisition function that implements two related sampling strategies called *bichon* criterion (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion (<cite data-cite="ranjan2008sequential"/>). <cite data-cite="bect2012sequential"/> provides a common expression for these two criteria: $$\mathbb{E}[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$$
 #
 # Here $m(x)$ and $s(x)$ are the mean and standard deviation of the predictive posterior of the Gaussian process model. Bichon criterion is obtained when $\delta = 1$ while ranjan criterion is obtained when $\delta = 2$. $\alpha>0$ is another parameter that acts as a percentage of standard deviation of the posterior around the current boundary estimate where we want to sample. The goal is to sample a point with a mean close to the threshold $T$ and a high variance, so that the positive difference in the equation above is as large as possible.
 
@@ -133,7 +136,6 @@ result = bo.optimize(num_steps, initial_data, model, rule)
 
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
-import tensorflow_probability as tfp
 
 
 def excursion_probability(x, model, threshold=80):

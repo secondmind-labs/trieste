@@ -120,8 +120,8 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
         :param alpha: The parameter which determines the neighbourhood around the estimated contour
             line as a percentage of the posterior variance in which to allocate new points. Defaults
             to value of 1.
-        :param delta: The parameter identifying which criterion is used, Bichon for value of 1
-            (default) and Ranjan for value of 2.
+        :param delta: The parameter identifying which criterion is used, *bichon* for value of 1
+            (default) and *ranjan* for value of 2.
         :raise ValueError (or InvalidArgumentError): If arguments are not a scalar, or `alpha` is
             not positive, or `delta` is not 1 or 2.
         """
@@ -180,8 +180,8 @@ def bichon_ranjan_criterion(
     learning of failure or feasibility regions.
 
     The problem of identifying a failure or feasibility region of a function :math:`f` can be
-    formalized as estimating the excursion set, :math:`\Gamma* = \{ x \in X: f(x) \ge T\}`, or
-    estimating the contour line, :math:`C* = \{ x \in X: f(x) = T\}`, for some threshold :math:`T`
+    formalized as estimating the excursion set, :math:`\Gamma^* = \{ x \in X: f(x) \ge T\}`, or
+    estimating the contour line, :math:`C^* = \{ x \in X: f(x) = T\}`, for some threshold :math:`T`
     (see :cite:`bect2012sequential` for more details).
 
     It turns out that probabilistic models can be used as classifiers for identifying where
@@ -189,11 +189,11 @@ def bichon_ranjan_criterion(
     sampling strategies. We follow :cite:`bect2012sequential` and use a formulation which provides
     a common expression for these two criteria:
 
-    .. math:: E[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$
+    .. math:: \mathbb{E}[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]
 
     Here :math:`m(x)` and :math:`s(x)` are the mean and standard deviation of the predictive
-    posterior of a probabilistic model. Bichon criterion is obtained when :math:`\delta = 1` while
-    ranjan criterion is obtained when :math:`\delta = 2`. :math:`\alpha>0` is another parameter
+    posterior of a probabilistic model. *Bichon* criterion is obtained when :math:`\delta = 1` while
+    *ranjan* criterion is obtained when :math:`\delta = 2`. :math:`\alpha>0` is another parameter
     that acts as a percentage of standard deviation of the posterior around the current boundary
     estimate where we want to sample. The goal is to sample a point with a mean close to the
     threshold :math:`T` and a high variance, so that the positive difference in the equation above
@@ -205,8 +205,8 @@ def bichon_ranjan_criterion(
     :param threshold: The failure or feasibility threshold.
     :param alpha: The parameter which determines the neighbourhood around the estimated contour
         line as a percentage of the posterior variance in which to allocate new points.
-    :param delta: The parameter identifying which criterion is used, Bichon for value of 1
-        and Ranjan for value of 2.
+    :param delta: The parameter identifying which criterion is used, *bichon* for value of 1
+        and *ranjan* for value of 2.
     """
 
     @tf.function
