@@ -27,7 +27,7 @@ from gpflow.utilities.ops import leading_transpose
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import TrainableProbabilisticModel
+from ..interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
@@ -587,3 +587,32 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         else:
             self.optimizer.optimize(model, dataset)
+
+
+class FantasizedGPRModel(ProbabilisticModel):
+
+    def __init__(self, model: GaussianProcessRegression, fantasized_data):
+        self._model = model
+        self._fantasized_data = fantasized_data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_f(query_points, self._fantasized_data)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_joint(query_points, self._fantasized_data)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self._model.conditional_predict_f_sample(query_points, self._fantasized_data, num_samples)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_y(query_points, self._fantasized_data)
+
+    def get_observation_noise(self) -> TensorType:
+        return self._model.get_observation_noise()
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        return self._model.get_kernel()
+
+    def log(self) -> None:
+        return self._model.log()
+

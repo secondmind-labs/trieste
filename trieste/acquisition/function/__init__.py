@@ -35,7 +35,7 @@ from .function import (
     predictive_variance,
     probability_of_feasibility,
 )
-from .local_penalization import (
+from .greedy import (
     LocalPenalizationAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,

@@ -18,15 +18,19 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Union, cast
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.gpflow import GaussianProcessRegression, FantasizedGPRModel
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -349,3 +353,68 @@ class hard_local_penalizer(local_penalizer):
         p = -5  # following experiments of :cite:`Alvi:2019`.
         penalization = ((pairwise_distances / (self._radius + self._scale)) ** p + 1) ** (1 / p)
         return tf.reduce_prod(penalization, axis=-1)
+
+
+
+class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches, following the
+    kriging believer heuristic.
+
+    TODO: add stuff
+
+    Kriging believer allows us to perform batch Bayesian optimization with a standard (non-batch)
+    acquisition function.
+    By iteratively building a batch of points though sequentially maximizing
+    this acquisition function,
+    TODO: add stuff
+    it provides diverse batches of candidate points.
+    """
+
+    def __init__(
+        self,
+        acquisition_function_builder: AcquisitionFunctionBuilder = None,
+        fantasize_method: str = "KB"
+    ):
+        """
+        :param acquisition_function_builder:
+        :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
+        """
+        if acquisition_function_builder is None:
+            self._builder = ExpectedImprovement()
+        else:
+            self._builder = acquisition_function_builder
+
+        # TODO assert fantasize mode
+        self._fantasize_method = fantasize_method
+
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+
+        if pending_points is not None:
+            if self._fantasize_method == "KB":
+                fantasized_obs, _ = model.predict(pending_points)
+            elif self._fantasize_method == "sample":
+                fantasized_obs = model.sample(pending_points, num_samples=1)  # check dim
+            else:
+                raise NotImplementedError(f"Fantasize method not supported. "
+                                          f"Expected KB or sample, received "
+                                          f"{self._fantasize_method}")
+
+            fantasized_data = Dataset(pending_points, fantasized_obs)
+            model = FantasizedGPRModel(model, fantasized_data)
+
+        return self._builder.prepare_acquisition_function(model, dataset)
+
