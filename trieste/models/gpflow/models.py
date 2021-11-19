@@ -590,7 +590,6 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class FantasizedGPRModel(ProbabilisticModel):
-
     def __init__(self, model: GaussianProcessRegression, fantasized_data):
         self._model = model
         self._fantasized_data = fantasized_data
@@ -602,7 +601,9 @@ class FantasizedGPRModel(ProbabilisticModel):
         return self._model.conditional_predict_joint(query_points, self._fantasized_data)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self._model.conditional_predict_f_sample(query_points, self._fantasized_data, num_samples)
+        return self._model.conditional_predict_f_sample(
+            query_points, self._fantasized_data, num_samples
+        )
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self._model.conditional_predict_y(query_points, self._fantasized_data)
@@ -615,4 +616,3 @@ class FantasizedGPRModel(ProbabilisticModel):
 
     def log(self) -> None:
         return self._model.log()
-

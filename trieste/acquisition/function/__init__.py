@@ -35,11 +35,7 @@ from .function import (
     predictive_variance,
     probability_of_feasibility,
 )
-from .greedy import (
-    LocalPenalizationAcquisitionFunction,
-    hard_local_penalizer,
-    soft_local_penalizer,
-)
+from .greedy import LocalPenalizationAcquisitionFunction, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,

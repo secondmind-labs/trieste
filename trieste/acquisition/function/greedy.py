@@ -18,19 +18,17 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Union, cast
 
-import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow import GaussianProcessRegression, FantasizedGPRModel
+from ...models.gpflow import FantasizedGPRModel
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -355,7 +353,6 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-
 class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     r"""
     Builder of the acquisition function maker for greedily collecting batches, following the
@@ -374,7 +371,7 @@ class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
     def __init__(
         self,
         acquisition_function_builder: AcquisitionFunctionBuilder = None,
-        fantasize_method: str = "KB"
+        fantasize_method: str = "KB",
     ):
         """
         :param acquisition_function_builder:
@@ -387,7 +384,6 @@ class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
 
         # TODO assert fantasize mode
         self._fantasize_method = fantasize_method
-
 
     def prepare_acquisition_function(
         self,
@@ -409,12 +405,13 @@ class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             elif self._fantasize_method == "sample":
                 fantasized_obs = model.sample(pending_points, num_samples=1)  # check dim
             else:
-                raise NotImplementedError(f"Fantasize method not supported. "
-                                          f"Expected KB or sample, received "
-                                          f"{self._fantasize_method}")
+                raise NotImplementedError(
+                    f"Fantasize method not supported. "
+                    f"Expected KB or sample, received "
+                    f"{self._fantasize_method}"
+                )
 
             fantasized_data = Dataset(pending_points, fantasized_obs)
             model = FantasizedGPRModel(model, fantasized_data)
 
         return self._builder.prepare_acquisition_function(model, dataset)
-
