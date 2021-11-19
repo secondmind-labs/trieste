@@ -79,7 +79,7 @@ def plot_function_2d(
     ylabel=None,
     figsize=None,
     colorbar=False,
-    alpha=1.,
+    alpha=1.0,
 ):
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
@@ -172,7 +172,17 @@ def plot_acq_function_2d(
         return acq_func(tf.expand_dims(x, axis=-2))
 
     return plot_function_2d(
-        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize, colorbar
+        batched_func,
+        mins,
+        maxs,
+        grid_density,
+        contour,
+        log,
+        title,
+        xlabel,
+        ylabel,
+        figsize,
+        colorbar,
     )
 
 

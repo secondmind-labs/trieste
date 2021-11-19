@@ -139,7 +139,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [num_data, M]
 
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M]
-        cov = K12 - tf.tensordot(leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]])  # [..., N, M]
+        cov = K12 - tf.tensordot(
+            leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
+        )  # [..., N, M]
 
         # tf.debugging.assert_shapes(
         #     [(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])]
@@ -237,9 +239,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [..., N, 1], [..., 1, N, N]
         mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, 1], [M, 1]
 
-        cov_cross = tf.expand_dims(self.covariance_between_points(
-            additional_data.query_points, query_points
-        ), -3)  # [..., 1, N, M]  TODO: change covariance_between_points to return the latent dimension
+        cov_cross = tf.expand_dims(
+            self.covariance_between_points(additional_data.query_points, query_points), -3
+        )  # [..., 1, N, M]  TODO: change covariance_between_points to return the latent dimension
 
         cov_shape = tf.shape(cov_old)
         noise = self.model.likelihood.variance * tf.eye(
@@ -247,15 +249,16 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )
         L_old = tf.linalg.cholesky(cov_old + noise)  # [..., 1, N, N]
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., 1, N, M]
-        var_new = var_new - leading_transpose(tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2])  # [M, 1]
+        var_new = var_new - leading_transpose(
+            tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2]
+        )  # [M, 1]
 
         mean_old_diff = additional_data.observations - mean_old  # [..., N, 1]
         mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., 1, N, 1]
         AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., 1, N, 1]
 
         mean_new = mean_new + leading_transpose(
-            (tf.matmul(A, AM, transpose_a=True)[..., 0]),
-            [..., -1, -2]
+            (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
         )  # [..., M, 1]
 
         return mean_new, var_new
@@ -298,7 +301,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         noise = self.model.likelihood.variance * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise) # [..., 1, N, N]
+        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., 1, N, N]
         A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., 1, N, M]
         cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [..., 1, M, M]
 
@@ -306,8 +309,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., 1, N, 1]
         AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., 1, N, 1]
         mean_new = m_new + leading_transpose(
-            (tf.matmul(A, AM, transpose_a=True)[..., 0]),
-            [..., -1, -2]
+            (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
         )  # [..., M, 1]
 
         return mean_new, cov_new

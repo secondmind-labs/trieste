@@ -661,6 +661,7 @@ def test_gaussian_process_regression_conditional_predict_equations() -> None:
     np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
     np.testing.assert_allclose(predj_cov7, predj_cov5, atol=1e-5)
 
+
 def test_gaussian_process_regression_conditional_predict_equations_broadcast() -> None:
     x = gpflow.utilities.to_default_float(
         tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
@@ -669,8 +670,7 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
 
     model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
 
-    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]),
-                              tf.reshape(y[5:, :], [3, 6, -1]))
+    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
 
     query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
 
@@ -678,10 +678,8 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
     pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
 
     for i in range(3):
-        xi = tf.concat([x[:5, :],
-                        additional_data.query_points[i, ...]], axis=0)
-        yi = tf.concat([y[:5, :],
-                        additional_data.observations[i, ...]], axis=0)
+        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
+        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
 
         modeli = GaussianProcessRegression(gpr_model(xi, yi))
         predj_meani, predj_covi = modeli.predict_joint(query_points)

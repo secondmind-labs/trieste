@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast, Sequence
+from typing import Mapping, Optional, Sequence, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -764,17 +764,16 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
     return acquisition
 
 
-
 class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
     """
     Builder for the reduction of the integral of the predicted variance over the search
     space given a batch of query points.
     """
 
-    def __init__(self, integration_points: TensorType, threshold: Sequence[float]=None) -> None:
-        '''
+    def __init__(self, integration_points: TensorType, threshold: Sequence[float] = None) -> None:
+        """
         :param integration_points: set of points to integrate the prediction variance over.
-        '''
+        """
         self._integration_points = integration_points
         self._threshold = threshold
 
@@ -812,29 +811,30 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 
 class integrated_variance_reduction(AcquisitionFunctionClass):
     def __init__(
-            self,
-            model: ProbabilisticModel,
-            integration_points: TensorType,
-            threshold: Sequence[float]=None
+        self,
+        model: ProbabilisticModel,
+        integration_points: TensorType,
+        threshold: Sequence[float] = None,
     ):
         """
-    The reduction of the average of the predicted variance over the integration points
-    (a.k.a. IMSE criterion)
+        The reduction of the average of the predicted variance over the integration points
+        (a.k.a. IMSE criterion)
 
-    :param model: The model of the objective function.
-    :param integration_points: points over which to integrate the objective prediction variance
-    :param threshold:
-    """
+        :param model: The model of the objective function.
+        :param integration_points: points over which to integrate the objective prediction variance
+        :param threshold:
+        """
         self._model = model
         self._integration_points = integration_points
         # self._threshold = threshold
         if threshold is None:
-            self._weights = tf.cast(1., integration_points.dtype)
+            self._weights = tf.cast(1.0, integration_points.dtype)
         else:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - \
-                           distr.cdf(tf.cast(threshold[0], mean_old.dtype))
+            self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - distr.cdf(
+                tf.cast(threshold[0], mean_old.dtype)
+            )
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -845,8 +845,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         try:
             mean, variance = self._model.conditional_predict_f(
-                query_points=self._integration_points,
-                additional_data=additional_data
+                query_points=self._integration_points, additional_data=additional_data
             )
         except NotImplementedError:
             raise ValueError(
