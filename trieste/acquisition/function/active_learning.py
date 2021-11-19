@@ -117,10 +117,10 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder):
     def __init__(self, threshold: float, alpha: float = 1, delta: int = 1) -> None:
         """
         :param threshold: The failure or feasibility threshold.
-        :param alpha: The parameter which determines the neihbourhood around the estimated contour
+        :param alpha: The parameter which determines the neighbourhood around the estimated contour
             line as a percentage of the posterior variance in which to allocate new points. Defaults
             to value of 1.
-        :param delta: The parameter identifying which criterion is returned, Bichon for value of 1
+        :param delta: The parameter identifying which criterion is used, Bichon for value of 1
             (default) and Ranjan for value of 2.
         :raise ValueError (or InvalidArgumentError): If arguments are not a scalar, or `alpha` is
             not positive, or `delta` is not 1 or 2.
@@ -176,7 +176,7 @@ def bichon_ranjan_criterion(
 ) -> TensorType:
     r"""
     Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
-    (:cite:`ranjan2008sequential`) used in Expected feasibility aquisition function for active
+    (:cite:`ranjan2008sequential`) used in Expected feasibility acquisition function for active
     learning of failure or feasibility regions.
 
     The problem of identifying a failure or feasibility region of a function :math:`f` can be
@@ -199,13 +199,13 @@ def bichon_ranjan_criterion(
     threshold :math:`T` and a high variance, so that the positive difference in the equation above
     is as large as possible.
 
-    Only batches of size 1 are allowed.
+    Note that only batches of size 1 are allowed.
 
     :param model: The probabilistic model of the objective function.
     :param threshold: The failure or feasibility threshold.
-    :param alpha: The parameter which determines the neihbourhood around the estimated contour
+    :param alpha: The parameter which determines the neighbourhood around the estimated contour
         line as a percentage of the posterior variance in which to allocate new points.
-    :param delta: The parameter identifying which criterion is returned, Bichon for value of 1
+    :param delta: The parameter identifying which criterion is used, Bichon for value of 1
         and Ranjan for value of 2.
     """
 

@@ -219,7 +219,7 @@ def test_expected_feasibility_raises_for_invalid_batch_size(at: TensorType, delt
         (-0.25, tf.constant([[-0.5]])),
     ],
 )
-@pytest.mark.parametrize("delta", [1])
+@pytest.mark.parametrize("delta", [1, 2])
 @pytest.mark.parametrize("alpha", [0.1, 1, 2])
 def test_bichon_ranjan_criterion(threshold: float, at: tf.Tensor, alpha: float, delta: int) -> None:
     model = QuadraticMeanAndRBFKernel()
@@ -228,9 +228,10 @@ def test_bichon_ranjan_criterion(threshold: float, at: tf.Tensor, alpha: float, 
     # approach is to sample based on the model and compute the expectation eq directly
     mean, variance = model.predict(tf.squeeze(at, -2))
     stdev = tf.sqrt(variance)
-    normal = tfp.distributions.Normal(tf.cast(0, at.dtype), tf.cast(1, at.dtype))
+    normal = tfp.distributions.Normal(mean, stdev)
     samples = normal.sample(1000000)
-    t = (threshold - mean) / stdev
-    expected = tf.reduce_mean(tf.maximum(0, alpha ** delta - tf.abs(t + samples)))
+    expected = tf.reduce_mean(
+        tf.maximum(0, (alpha * stdev) ** delta - tf.abs(threshold - samples) ** delta)
+    )
 
     npt.assert_allclose(actual, expected, rtol=0.01)

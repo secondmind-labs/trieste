@@ -213,12 +213,6 @@ plot_excursion_probability("Final probability of excursion", final_model, query_
 
 
 # %% [markdown]
-# ## Additional considerations
-#
-# One might be interested in both identifying the feasible region *and* identifying the optimal point in the feasible region. A simple solution is an active learning stage followed by a function optimization stage. More sophisticated solutions where these two objectives are traded-off are possible as well and these could provide further budget savings.
-
-
-# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
