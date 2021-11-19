@@ -854,4 +854,4 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
                 """
             )
 
-        return -tf.reduce_sum(variance * self._weights, axis=-2)
+        return -tf.reduce_mean(variance * self._weights, axis=-2)
