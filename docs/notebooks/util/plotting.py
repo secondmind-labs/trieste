@@ -150,6 +150,7 @@ def plot_acq_function_2d(
     xlabel=None,
     ylabel=None,
     figsize=None,
+    colorbar=None,
 ):
     """
     Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
@@ -169,7 +170,7 @@ def plot_acq_function_2d(
         return acq_func(tf.expand_dims(x, axis=-2))
 
     return plot_function_2d(
-        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize
+        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize, colorbar
     )
 
 

@@ -827,12 +827,21 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
     """
         self._model = model
         self._integration_points = integration_points
-        self._threshold = threshold
+        # self._threshold = threshold
+        if threshold is None:
+            self._weights = tf.cast(1., integration_points.dtype)
+        else:
+            mean_old, var_old = self._model.predict(query_points=integration_points)
+            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+            self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - \
+                           distr.cdf(tf.cast(threshold[0], mean_old.dtype))
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
 
-        additional_data = Dataset(tf.squeeze(x, -2), tf.ones_like(x[:, 0, 0:1]))
+        # additional_data = Dataset(tf.squeeze(x, -2), tf.ones_like(x[:, 0, 0:1]))
+
+        additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
         try:
             mean, variance = self._model.conditional_predict_f(
@@ -846,9 +855,4 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
                 """
             )
 
-        if self._threshold is None:
-            return tf.reduce_sum(variance, axis=0)
-        else:
-            distr = tfp.distributions.Normal(mean, tf.sqrt(variance))
-            weights = distr.cdf(tf.cast(self._threshold[1], x.dtype)) - distr.cdf(tf.cast(self._threshold[0], x.dtype))
-            return tf.reduce_sum(variance * weights, axis=0)
+        return -tf.reduce_sum(variance * self._weights, axis=-2)
