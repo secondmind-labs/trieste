@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -31,7 +32,6 @@ from tests.util.misc import (
     various_shapes,
 )
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
-from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -40,19 +40,16 @@ from trieste.acquisition.function.function import (
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
-    PredictiveVariance,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
-    predictive_variance,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.types import TensorType
-from trieste.utils import DEFAULTS
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
@@ -638,88 +635,3 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
-
-
-def test_predictive_variance_builder_builds_predictive_variance() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    acq_fn = PredictiveVariance().prepare_acquisition_function(model)
-    query_at = tf.linspace([[-10]], [[10]], 100)
-    _, covariance = model.predict_joint(query_at)
-    expected = tf.linalg.det(covariance)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-
-
-@pytest.mark.parametrize(
-    "at, acquisition_shape",
-    [
-        (tf.constant([[[1.0]]]), tf.constant([1, 1])),
-        (tf.linspace([[-10.0]], [[10.0]], 5), tf.constant([5, 1])),
-        (tf.constant([[[1.0, 1.0]]]), tf.constant([1, 1])),
-        (tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
-    ],
-)
-def test_predictive_variance_returns_correct_shape(
-    at: TensorType, acquisition_shape: TensorType
-) -> None:
-    model = QuadraticMeanAndRBFKernel()
-    acq_fn = PredictiveVariance().prepare_acquisition_function(model)
-    npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
-
-
-@random_seed
-@pytest.mark.parametrize(
-    "variance_scale, num_samples_per_point, rtol, atol",
-    [
-        (0.1, 10_000, 0.05, 1e-6),
-        (1.0, 50_000, 0.05, 1e-3),
-        (10.0, 100_000, 0.05, 1e-2),
-        (100.0, 150_000, 0.05, 1e-1),
-    ],
-)
-def test_predictive_variance(
-    variance_scale: float,
-    num_samples_per_point: int,
-    rtol: float,
-    atol: float,
-) -> None:
-    variance_scale = tf.constant(variance_scale, tf.float64)
-
-    x_range = tf.linspace(0.0, 1.0, 11)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-
-    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcess([branin], [kernel])
-
-    mean, variance = model.predict(xs)
-    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
-    predvar_approx = tf.math.reduce_variance(samples, axis=0)
-
-    detcov = predictive_variance(model, DEFAULTS.JITTER)
-    predvar = detcov(xs[..., None, :])
-
-    npt.assert_allclose(predvar, predvar_approx, rtol=rtol, atol=atol)
-
-
-def test_predictive_variance_builder_updates_without_retracing() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    builder = PredictiveVariance()
-    acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn._get_tracing_count() == 0  # type: ignore
-    query_at = tf.linspace([[-10]], [[10]], 100)
-    expected = predictive_variance(model, DEFAULTS.JITTER)(query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
-
-    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert up_acq_fn == acq_fn
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
-
-
-def test_predictive_variance_raises_for_void_predict_joint() -> None:
-    model, _ = trieste_deep_gaussian_process(tf.zeros([0, 1]), 2, 20, 0.01, 100, 100)
-    acq_fn = predictive_variance(model, DEFAULTS.JITTER)
-
-    with pytest.raises(ValueError):
-        acq_fn(tf.zeros([0, 1]))
