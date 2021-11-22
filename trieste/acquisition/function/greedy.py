@@ -18,12 +18,13 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Union, cast
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow import FantasizedGPRModel
+from ...models.gpflow import GaussianProcessRegression
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -415,3 +416,55 @@ class FantasizeAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
             model = FantasizedGPRModel(model, fantasized_data)
 
         return self._builder.prepare_acquisition_function(model, dataset)
+
+
+class FantasizedGPRModel(ProbabilisticModel):
+    '''
+    Creates new model from an existing GPR model and additional data.
+    This new model posterior is conditioned and the GPR data and the additional one.
+    '''
+    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
+        '''
+
+        :param model: a GPR model
+        :param fantasized_data: additional dataset to condition on
+        :raise NotImplementedError: If model is not of class GaussianProcessRegression.
+        '''
+
+        if not isinstance(model, GaussianProcessRegression):
+            raise NotImplementedError(
+                f"FantasizedGPRModel only works with GPR models, received "
+                f"{model.__repr__()}"
+            )
+
+        self._model = model
+        self._fantasized_data = fantasized_data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_f(query_points, self._fantasized_data)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_joint(query_points, self._fantasized_data)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self._model.conditional_predict_f_sample(
+            query_points, self._fantasized_data, num_samples
+        )
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_y(query_points, self._fantasized_data)
+
+    def get_observation_noise(self) -> TensorType:
+        return self._model.get_observation_noise()
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        return self._model.get_kernel()
+
+    def log(self) -> None:
+        return self._model.log()
+
+    def update(self, dataset: Dataset) -> None:
+        raise NotImplementedError
+
+    def optimize(self, dataset: Dataset) -> None:
+        raise NotImplementedError
