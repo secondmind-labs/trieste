@@ -599,9 +599,9 @@ def beale(x: TensorType) -> TensorType:
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
-    t1 = (1.5 - x[..., 0:1] + x[..., 0:1] * x[..., 1:]) ** 2
-    t2 = (2.25 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 2) ** 2
-    t3 = (2.625 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 3) ** 2
+    t1 = (1.5 - x[..., 0:1] + x[..., 0:1] * x[..., 1:]) ** 2  # [..., 1]
+    t2 = (2.25 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 2) ** 2  # [..., 1]
+    t3 = (2.625 - x[..., 0:1] + x[..., 0:1] * x[..., 1:] ** 3) ** 2  # [..., 1]
     return t1 + t2 + t3
 
 
@@ -620,4 +620,183 @@ The global minimum of the :func:`beale` function.
 BEALE_SEARCH_SPACE = Box([-4.5], [4.5]) ** 2
 """
 The search space for the :func:`beale` function is defined over :math:`[-4.5, 4.5]^2`.
+"""
+
+def drop_wave(x: TensorType) -> TensorType:
+    """
+    The Drop-Wave function on :math:`[-5.12, 5.12]^2` is multimodel with strong radial structure.
+    See https://www.sfu.ca/~ssurjano/drop.html for details.
+
+    :param x: Points at which to evaluate the function with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    squared_sum = tf.math.reduce_sum(x ** 2, axis=-1, keepdims=True)  # [..., 1]
+    numerator = 1 + tf.math.cos(12 * tf.math.sqrt(squared_sum))
+    denominator = 0.5 * squared_sum + 2
+    return -numerator / denominator
+
+
+DROP_WAVE_MINIMIZER = tf.constant([[0.0, 0.0]], tf.float64)
+"""
+The global minimizer of the :func:`drop_wave` function.
+"""
+
+
+DROP_WAVE_MINIMUM = tf.constant([-1.0], tf.float64)
+"""
+The global minimum of the :func:`drop_wave` function.
+"""
+
+
+DROP_WAVE_SEARCH_SPACE = Box([-5.12], [5.12]) ** 2
+"""
+The search space for the :func:`drop_wave` function is defined over :math:`[-5.12, 5.12]^2`.
+"""
+
+
+def eggholder(x: TensorType) -> TensorType:
+    """
+    The Eggholder function on :math:`[-512, 512]^2` is highly multimodal. See
+    https://www.sfu.ca/~ssurjano/egg.html for details.
+
+    :param x: Points at which to evaluate the function with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    t1 = (x[..., 1:2] + 47) * tf.math.sin(tf.math.sqrt(tf.math.abs(
+        x[..., 1:2] + x[..., 0:1] / 2 + 47
+    )))
+    t2 = x[..., 0:1] * tf.math.sin(tf.math.sqrt(tf.math.abs(x[..., 0:1] - x[..., 1:2] - 47)))
+    return -t1 - t2
+
+
+EGGHOLDER_MINIMIZER = tf.constant([[512.0, 404.2319]], tf.float64)
+"""
+The global minimizer of the :func:`eggholder` function.
+"""
+
+
+EGGHOLDER_MINIMUM = tf.constant([-959.6407], tf.float64)
+"""
+The global minimum of the :func:`eggholder` function.
+"""
+
+
+EGGHOLDER_SEARCH_SPACE = Box([-512], [512]) ** 2
+"""
+The search space for the :func:`eggholder` function is defined over :math:`[-512, 512]^2`.
+"""
+
+
+def griewank(x: TensorType, d: int = 5) -> TensorType:
+    """
+    The Griewank function on :math:`[-600, 600]^d` has regular local minima with strong global
+    structure. See https://www.sfu.ca/~ssurjano/griewank.html for details.
+
+    :param x: Points at which to evaluate the function with shape [..., d].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., d))])
+    sum_term = tf.math.reduce_sum(x ** 2, axis=-1, keepdims=True) / 4000  # [..., 1]
+    prod_term = tf.math.reduce_prod(
+        tf.math.cos(x / tf.math.sqrt(tf.range(1, d + 1, dtype=tf.float64)))
+    )
+    return sum_term - prod_term + 1
+
+
+def griewank_5(x: TensorType) -> TensorType:
+    return griewank(x, d=5)
+
+
+GRIEWANK_5_MINIMIZER = tf.constant([[0.0, 0.0]], tf.float64)
+"""
+The global minimizer of the :func:`griewank` function.
+"""
+
+
+GRIEWANK_5_MINIMUM = tf.constant([0.0], tf.float64)
+"""
+The global minimum of the :func:`griewank` function.
+"""
+
+
+GRIEWANK_5_SEARCH_SPACE = Box([-600], [600]) ** 5
+"""
+The search space for the :func:`griewank` function is defined over :math:`[-600, 600]^2`.
+"""
+
+
+def schwefel(x: TensorType, d: int = 8) -> TensorType:
+    """
+    The Schwefel function on :math:`[-500, 500]^d` has many local minima. See
+    https://www.sfu.ca/~ssurjano/schwef.html for details.
+
+    :param x: Points at which to evaluate the function with shape [..., d].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., d))])
+    sumands = x * tf.math.sin(tf.math.sqrt(tf.math.abs(x)))
+    return 418.9829 * d - tf.math.reduce_sum(sumands, axis=-1, keepdims=True)
+
+
+def schwefel_8(x: TensorType) -> TensorType:
+    return schwefel(x, d=8)
+
+
+SCHWEFEL_8_MINIMIZER = tf.constant([[0.0, 0.0]], tf.float64)
+"""
+The global minimizer of the :func:`schwefel` function.
+"""
+
+
+SCHWEFEL_8_MINIMUM = tf.constant([0.0], tf.float64)
+"""
+The global minimum of the :func:`schwefel` function.
+"""
+
+
+SCHWEFEL_8_SEARCH_SPACE = Box([-500], [500]) ** 8
+"""
+The search space for the :func:`schwefel` function is defined over :math:`[-500, 500]^2`.
+"""
+
+
+def shubert(x: TensorType) -> TensorType:
+    """
+    The shubert function on :math:`[-10.0, 10.0]^2` has many global minima. See
+    https://www.sfu.ca/~ssurjano/shubert.html for details.
+
+    :param x: Points at which to evaluate the function with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    ies = tf.range(1, 6, dtype=tf.float64)
+    cosands = tf.expand_dims(x, axis=-1) * ies + ies  # [..., 2, 5]
+    sum1 = tf.math.reduce_sum(cosands[..., 0:1, :] * ies, axis=-1)
+    sum2 = tf.math.reduce_sum(cosands[..., 1:2, :] * ies, axis=-1)
+    return sum1 * sum2
+
+
+import numpy as np
+SHUBERT_MINIMIZERS = tf.constant([[np.nan, np.nan]], tf.float64)
+"""
+The :func:`shubert` function has several global minimizers
+"""
+
+
+SHUBERT_MINIMUM = tf.constant([-186.7309], tf.float64)
+"""
+The global minimum of the :func:`shubert` function.
+"""
+
+
+SHUBERT_SEARCH_SPACE = Box([-10.0], [10.0]) ** 2
+"""
+The search space for the :func:`shubert` function is defined over :math:`[-10.0, 10.0]^2`.
 """
