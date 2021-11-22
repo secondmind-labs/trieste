@@ -35,7 +35,7 @@ from trieste.models.optimizer import BatchOptimizer, Optimizer
     [
         (GPR, GaussianProcessRegression, Optimizer),
         (SGPR, GaussianProcessRegression, Optimizer),
-        (VGP, VariationalGaussianProcess, BatchOptimizer),
+        (VGP, VariationalGaussianProcess, Optimizer),
         (SVGP, SparseVariational, BatchOptimizer),
     ],
 )

@@ -28,7 +28,7 @@ from .models import GaussianProcessRegression, SparseVariational, VariationalGau
 _SUPPORTED_MODELS: Dict[Type[Any], Tuple[Type[TrainableProbabilisticModel], Type[Optimizer]]] = {
     GPR: (GaussianProcessRegression, Optimizer),
     SGPR: (GaussianProcessRegression, Optimizer),
-    VGP: (VariationalGaussianProcess, BatchOptimizer),
+    VGP: (VariationalGaussianProcess, Optimizer),
     SVGP: (SparseVariational, BatchOptimizer),
 }
 for model_type, (interface, optimizer) in _SUPPORTED_MODELS.items():

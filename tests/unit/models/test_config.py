@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import gpflow
 import pytest
 from gpflow.models import GPR, SVGP
 
@@ -26,8 +27,10 @@ from trieste.models.optimizer import Optimizer
 class GPRcopy(GPR):
     """A copy of the GPR model."""
 
+
 class SVGPcopy(SVGP):
     """A copy of the SVGP model."""
+
 
 def gpr_copy_model() -> GPRcopy:
     return GPRcopy(mock_data(), gpflow.kernels.Matern32())

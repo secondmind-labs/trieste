@@ -98,9 +98,7 @@ class ModelRegistry:
         :param optimizer_type: The optimizer to be used with the model type.
         """
         if model_type in cls._REGISTRY.keys():
-            warn(
-                f"Model {model_type} has already been registered, you have now overwritten it. "
-            )
+            warn(f"Model {model_type} has already been registered, you have now overwritten it. ")
 
         cls._REGISTRY[model_type] = (interface_type, optimizer_type)
 
