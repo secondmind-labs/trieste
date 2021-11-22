@@ -2,21 +2,16 @@
 # # Active Learning for Gaussian Process Classification Model
 
 # %%
-from dataclasses import astuple
-
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from gpflow.utilities import print_summary, set_trainable
 
 import trieste
-from trieste.acquisition.function import BayesianActiveLearningByDisagreement, PredictiveVariance
+from trieste.acquisition.function import BayesianActiveLearningByDisagreement
 from trieste.acquisition.rule import OBJECTIVE
-from trieste.models import create_model
-from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.gpflow.models import VariationalGaussianProcess
 from trieste.objectives.utils import mk_observer
-from trieste.utils import map_values
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -27,11 +22,12 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # In Trieste, it is also possible to query most interesting points for learning the problem, i.e we want to have as little data as possible to construct the best possible model (active learning). In this tutorial we will try to do active learning for binary classification problem using Bayesain Active Learning by Disagreement (BALD) for a Gaussian Process Classification Model.
 #
-# Our problem is classification problem of circle dataset. In this toturial we assume that the input space is continous so we can use continuous optimiser for our BALD acquisition function. 
+# Our problem is classification problem of circle dataset. In this toturial we assume that the input space is continous so we can use continuous optimiser for our BALD acquisition function.
 
 # %%
 search_space = trieste.space.Box([-1, -1], [1, 1])
 input_dim = 2
+
 
 def circle(x):
     return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
@@ -45,7 +41,7 @@ grid_xx = np.meshgrid(*[xx] * input_dim)
 xx = np.vstack([g.ravel() for g in grid_xx]).T
 yy = circle(xx).numpy()
 
-plt.figure(figsize=(5,5))
+plt.figure(figsize=(5, 5))
 plt.contour(*grid_xx, np.reshape(yy, [density] * input_dim), levels=[0.5])
 idx = np.squeeze(yy).astype(bool)
 plt.scatter(xx[idx][:, 0], xx[idx][:, 1], label="1")
@@ -66,7 +62,7 @@ datasets = observer(X)
 # ## Modelling the binary classification task
 
 # %% [markdown]
-# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see BLABLA. 
+# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see BLABLA.
 
 # %%
 from trieste.models.gpflow import GPflowModelConfig, VariationalGaussianProcess
@@ -74,7 +70,7 @@ from trieste.models.gpflow import GPflowModelConfig, VariationalGaussianProcess
 
 def create_bo_model(data):
     kernel = gpflow.kernels.SquaredExponential(lengthscales=[0.2, 0.2])
-    m = gpflow.models.VGP(astuple(data), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
+    m = gpflow.models.VGP(data.astuple(), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
     return trieste.models.create_model(
         GPflowModelConfig(
             **{
@@ -87,12 +83,13 @@ def create_bo_model(data):
         )
     )
 
+
 """
 # model seems harder to train using default VariationalGaussianProcess() optimiser which is adam?
 
 def create_bo_model(data):
     kernel = gpflow.kernels.SquaredExponential()
-    m = gpflow.models.VGP(astuple(data), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
+    m = gpflow.models.VGP(data.astuple(), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
     return VariationalGaussianProcess(m)
 """
 
@@ -139,7 +136,7 @@ plt.show()
 #
 # $$\mathbb{I}\left[y, \boldsymbol{\theta} \mid \mathbf{x}, \mathcal{D}\right]=\mathbb{H}\left[y \mid \mathbf{x}, \mathcal{D}\right]-\mathbb{E}_{p\left(\boldsymbol{\theta} \mid \mathcal{D}\right)}[\mathbb{H}[y \mid \mathbf{x}, \boldsymbol{\theta}]]$$
 #
-# See BLABLA for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule: 
+# See BLABLA for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
 
 # %%
 initial_models = trieste.utils.map_values(create_bo_model, datasets)
@@ -167,12 +164,14 @@ xmax = final_dataset.query_points[-n_steps:, :]
 # %% Plot BO results
 mean, variance = final_model.predict(xx)
 
+
 def invlink(f):
     return gpflow.likelihoods.Bernoulli().invlink(f).numpy()
 
+
 mean = invlink(mean)
 
-plt.figure(figsize=(7,5))
+plt.figure(figsize=(7, 5))
 plt.contourf(*grid_xx, np.reshape(mean, [density] * input_dim))
 plt.colorbar()
 plt.plot(
@@ -189,4 +188,4 @@ plt.title("Updated Mean")
 plt.show()
 
 # %% [markdown]
-# As expected, BALD will query in important regions like points near the domain boundary and class boundary. 
+# As expected, BALD will query in important regions like points near the domain boundary and class boundary.
