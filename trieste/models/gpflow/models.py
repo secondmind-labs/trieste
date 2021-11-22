@@ -27,7 +27,7 @@ from gpflow.utilities.ops import leading_transpose
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import ProbabilisticModel, TrainableProbabilisticModel
+from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
