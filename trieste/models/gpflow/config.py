@@ -31,5 +31,5 @@ _SUPPORTED_MODELS: Dict[Type[Any], Tuple[Type[TrainableProbabilisticModel], Type
     VGP: (VariationalGaussianProcess, BatchOptimizer),
     SVGP: (SparseVariational, BatchOptimizer),
 }
-for model_type, interface_optimizer in _SUPPORTED_MODELS.items():
-    ModelRegistry.register_model(model_type, interface_optimizer[0], interface_optimizer[1])
+for model_type, (interface, optimizer) in _SUPPORTED_MODELS.items():
+    ModelRegistry.register_model(model_type, interface, optimizer)

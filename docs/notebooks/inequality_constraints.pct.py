@@ -84,7 +84,7 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
+# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow

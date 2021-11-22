@@ -2,7 +2,7 @@
 # # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization and GIBBON
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with `trieste`.
+# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with Trieste.
 
 # %%
 import numpy as np
@@ -36,7 +36,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
+# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow

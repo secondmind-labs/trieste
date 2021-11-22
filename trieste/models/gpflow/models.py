@@ -316,7 +316,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
     def __init__(
         self,
         model: VGP,
-        optimizer: Optimizer | None = None,
+        optimizer: BatchOptimizer | None = None,
         use_natgrads: bool = False,
         natgrad_gamma: Optional[float] = None,
     ):
@@ -327,7 +327,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             batch size 100.
         :param use_natgrads: If True then alternate model optimization steps with natural
             gradient updates. Note that natural gradients requires
-            an :class:`~trieste.models.optimizer.Optimizer` optimizer.
+            an :class:`~trieste.models.optimizer.BatchOptimizer` optimizer.
         :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`

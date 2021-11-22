@@ -2,7 +2,7 @@
 # # Active Learning
 
 # %% [markdown]
-# Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates how to perform Bayesian active learning using `trieste`.
+# Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates how to perform Bayesian active learning using Trieste.
 
 # %%
 # %matplotlib inline
@@ -45,7 +45,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. As usual, the GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
@@ -68,7 +68,7 @@ model = build_model(initial_data)
 #
 # For our first active learning example, we will use a simple acquisition function known as `PredictiveVariance` which chooses points for which we are highly uncertain (i.e. the predictive posterior covariance matrix at these points has large determinant), as discussed in <cite data-cite="MacKay1992"/>. Note that this also implies that our model needs to have `predict_joint` method to be able to return the full covariance, and it's likely to be expensive to compute.
 #
-# We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize trieste's `BayesianOptimizer` to do the active learning steps.
+# We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize Trieste's `BayesianOptimizer` to do the active learning steps.
 #
 
 # %%
@@ -83,7 +83,7 @@ rule = EfficientGlobalOptimization(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
-# To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iteration.
+# To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make Trieste record our model at each iteration.
 
 # %%
 bo_iter = 5

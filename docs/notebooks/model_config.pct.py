@@ -43,7 +43,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression in this tutorial, as provided by GPflow.
 #
-# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular model. For instance, `GPR` and `SGPR` models from GPflow have to be used with `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
+# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular models. For instance, `GPR` and `SGPR` models from GPflow have to be used with the `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.
 #
 # Typical process of setting up a valid model would go as follow.  We first set up a GPR model, using some initial data to set some parameters.
 
@@ -64,7 +64,7 @@ def build_model(data):
 gpflow_model = build_model(initial_data)
 
 # %% [markdown]
-# Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments - an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building. 
+# Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building. 
 
 # %%
 model = GaussianProcessRegression(gpflow_model)
@@ -123,7 +123,7 @@ result = bo.optimize(2, initial_data, model_config)
 # %% [markdown]
 # ## Using configuration dictionaries for setting up experiments
 #
-# Another use case is in setting up experiments, where it becomes easier to benchmark Bayesian optimization algorithms. The advantage is that we can easily change the models and set up any argument for them from one condition to another - only object with the experiment specification needs to change (`experiment_conditions` below), while the rest of the code for executing experiments can stay the same. 
+# Another use case is in setting up experiments, where it becomes easier to benchmark Bayesian optimization algorithms. The advantage is that we can easily change the models and set up any argument for them from one experiment to another. We only need to change the object with the experiment specification (`experiment_conditions` below), while the rest of the code for executing experiments can stay the same. Below is an illustration of how could that look like.
 
 # %%
 from copy import deepcopy
@@ -167,8 +167,7 @@ basic_config = {
 
 # here we specify our experiments
 experiment_conditions = [
-    {"model_args": {"num_kernel_samples": 500}},
-    {"model_args": {"num_kernel_samples": 1000}},
+    {"model_args": {"num_kernel_samples": 50}},
     {"model": build_dgp_model(initial_data)},
 ]
 
@@ -183,9 +182,9 @@ for exp in experiment_conditions:
 # %% [markdown]
 # ## Registry of supported models
 #
-# Configuration dictionaries are made possible with the `ModelRegistry` that contains mapping between each model (e.g. GPflow or GPflux) and corresponding model wrapper and optimizer wrapper. All models that Trieste currently supports are registered there.
+# Configuration dictionaries are made possible with the `ModelRegistry` that contains mapping between each model (e.g. GPflow or GPflux) and the corresponding model wrapper and optimizer wrapper. All models that Trieste currently supports are registered there.
 #
-# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model wrapper and perhaps a new optimizer wrapper as well, but just for the sake of an example we will borrow here existing wrappers, `GaussianProcessRegression` and `Optimizer`.
+# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let's see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model wrapper and perhaps a new optimizer wrapper as well, but just for the sake of an example we will borrow here existing wrappers, `GaussianProcessRegression` and `Optimizer`.
 
 # %%
 from trieste.models import ModelRegistry

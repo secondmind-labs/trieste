@@ -15,11 +15,22 @@
 from __future__ import annotations
 
 import pytest
+from gpflow.models import GPR, SVGP
 
-from tests.util.models.gpflow.models import GPRcopy, gpr_copy_model
+from tests.util.models.gpflow.models import mock_data
 from trieste.models import ModelConfig, ModelRegistry, create_model
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, SparseVariational
 from trieste.models.optimizer import Optimizer
+
+
+class GPRcopy(GPR):
+    """A copy of the GPR model."""
+
+class SVGPcopy(SVGP):
+    """A copy of the SVGP model."""
+
+def gpr_copy_model() -> GPRcopy:
+    return GPRcopy(mock_data(), gpflow.kernels.Matern32())
 
 
 def test_model_config_raises_not_supported_model_type() -> None:
@@ -51,8 +62,10 @@ def test_model_registry_register_model() -> None:
 
 def test_model_registry_register_model_warning() -> None:
 
+    ModelRegistry.register_model(SVGPcopy, SparseVariational, Optimizer)
+
     with pytest.warns(UserWarning) as record:
-        ModelRegistry.register_model(GPRcopy, GaussianProcessRegression, Optimizer)
+        ModelRegistry.register_model(SVGPcopy, SparseVariational, Optimizer)
 
     assert len(record) == 1
     assert "you have now overwritten it" in record[0].message.args[0]

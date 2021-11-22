@@ -116,10 +116,6 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
         return self.kernel
 
 
-class GPRcopy(GPR):
-    """A copy of the GPR model."""
-
-
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     return (
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
@@ -132,10 +128,6 @@ class ModelFactoryType(Protocol):
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
         pass
-
-
-def gpr_copy_model() -> GPRcopy:
-    return GPRcopy(mock_data(), gpflow.kernels.Matern32())
 
 
 def gpr_model(x: tf.Tensor, y: tf.Tensor) -> GPR:

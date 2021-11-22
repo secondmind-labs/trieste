@@ -99,7 +99,7 @@ class ModelRegistry:
         """
         if model_type in cls._REGISTRY.keys():
             warn(
-                f"Model {model_type} has already been registered, " f"you have now overwritten it. "
+                f"Model {model_type} has already been registered, you have now overwritten it. "
             )
 
         cls._REGISTRY[model_type] = (interface_type, optimizer_type)
@@ -170,7 +170,10 @@ class ModelConfig:
         return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
 
 
-ModelSpec = Union[Dict[str, Any], ModelConfig, TrainableProbabilisticModel]
+ModelDictConfig = Dict[str, Any]
+""" Type alias for a config type specification of a model. """
+
+ModelSpec = Union[ModelDictConfig, ModelConfig, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
