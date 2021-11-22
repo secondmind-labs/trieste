@@ -95,7 +95,7 @@ from .single_objectives import (
     beale,
     drop_wave,
     eggholder,
-    griewank,
-    schwefel,
+    griewank_5,
+    schwefel_8,
     shubert
 )
