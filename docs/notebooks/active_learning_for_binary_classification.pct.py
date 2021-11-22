@@ -62,7 +62,7 @@ datasets = observer(X)
 # ## Modelling the binary classification task
 
 # %% [markdown]
-# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see BLABLA.
+# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see <cite data-cite="Nickisch08a">[Nickisch et al.](https://www.jmlr.org/papers/volume9/nickisch08a/nickisch08a.pdf)</cite>.
 
 # %%
 from trieste.models.gpflow import GPflowModelConfig, VariationalGaussianProcess
@@ -136,7 +136,7 @@ plt.show()
 #
 # $$\mathbb{I}\left[y, \boldsymbol{\theta} \mid \mathbf{x}, \mathcal{D}\right]=\mathbb{H}\left[y \mid \mathbf{x}, \mathcal{D}\right]-\mathbb{E}_{p\left(\boldsymbol{\theta} \mid \mathcal{D}\right)}[\mathbb{H}[y \mid \mathbf{x}, \boldsymbol{\theta}]]$$
 #
-# See BLABLA for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
+# See <cite data-cite="houlsby2011bayesian">[Houlsby et al.](https://arxiv.org/pdf/1112.5745.pdf)</cite> for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
 
 # %%
 initial_models = trieste.utils.map_values(create_bo_model, datasets)
