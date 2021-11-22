@@ -21,7 +21,6 @@ from . import optimizer
 from .config import GPflowModelConfig
 from .interface import GPflowPredictor
 from .models import (
-    FantasizedGPRModel,
     GaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,

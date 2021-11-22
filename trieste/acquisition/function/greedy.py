@@ -394,13 +394,12 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
-        :param model: The model.
-        :param dataset: The data from the observer (optional).
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
-
         if pending_points is not None:
             fantasized_data = {
                 tag: _generate_fantasized_data(model, pending_points, self._fantasize_method)
