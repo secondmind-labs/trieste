@@ -777,9 +777,9 @@ def shubert(x: TensorType) -> TensorType:
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
     ies = tf.range(1, 6, dtype=tf.float64)
-    cosands = tf.expand_dims(x, axis=-1) * ies + ies  # [..., 2, 5]
-    sum1 = tf.math.reduce_sum(cosands[..., 0:1, :] * ies, axis=-1)
-    sum2 = tf.math.reduce_sum(cosands[..., 1:2, :] * ies, axis=-1)
+    cosands = tf.expand_dims(x, axis=-1) * (ies + 1) + ies  # [..., 2, 5]
+    sum1 = tf.math.reduce_sum(tf.math.cos(cosands[..., 0:1, :]) * ies, axis=-1)
+    sum2 = tf.math.reduce_sum(tf.math.cos(cosands[..., 1:2, :]) * ies, axis=-1)
     return sum1 * sum2
 
 
