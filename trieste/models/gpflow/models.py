@@ -19,8 +19,8 @@ from typing import Optional
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.conditionals.util import sample_mvn
+from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
@@ -122,7 +122,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Covariance between points is not supported for SGPR.")
 
-        # tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"])])
+        tf.debugging.assert_shapes([(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"])])
 
         x = self.model.data[0].value()
         num_data = tf.shape(x)[0]
@@ -143,7 +143,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
         )  # [..., N, M]
 
-        # tf.debugging.assert_shapes([(query_points_1, ["N", "D"]), (query_points_2, ["M", "D"]), (cov, ["N", "M"])])
+        tf.debugging.assert_shapes([(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"]), (cov, [..., "N", "M"])])
 
         return cov
 
@@ -215,7 +215,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         multiple_assign(self.model, current_best_parameters)
 
     def conditional_predict_f(
-            self, query_points: TensorType, additional_data: Dataset
+        self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
         Returns the marginal GP distribution at query_points conditioned on both the model
@@ -265,7 +265,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return mean_new, var_new
 
     def conditional_predict_joint(
-            self, query_points: TensorType, additional_data: Dataset
+        self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
         Predicts the joint GP distribution at query_points conditioned on both the model
@@ -315,7 +315,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return mean_new, cov_new
 
     def conditional_predict_f_sample(
-            self, query_points: TensorType, additional_data: Dataset, num_samples: int
+        self, query_points: TensorType, additional_data: Dataset, num_samples: int
     ) -> TensorType:
         """
         Generates samples of the GP at query_points conditioned on both the model
@@ -325,7 +325,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
 
     def conditional_predict_y(
-            self, query_points: TensorType, additional_data: Dataset
+        self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
         Generates samples of y from the GP at query_points conditioned on both the model
