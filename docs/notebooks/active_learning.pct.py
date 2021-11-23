@@ -45,7 +45,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
