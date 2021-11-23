@@ -1,2 +1,0 @@
-replace:
-  - { from: "experiment_conditions = [\n    {\"model_args\": {\"num_kernel_samples\": 50}},\n    {\"model\": build_dgp_model(initial_data)},\n]", to: "experiment_conditions = []" }
