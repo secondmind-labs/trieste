@@ -31,6 +31,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/multi_objective_ehvi
    notebooks/deep_gaussian_processes
    notebooks/active_learning
+   notebooks/feasible_sets
 
    
 
