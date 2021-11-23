@@ -116,7 +116,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points_1: Set of query points with shape [..., N, D]
         :param query_points_2: Sets of query points with shape [M, D]
-
         :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
         """
         if isinstance(self.model, SGPR):
@@ -134,7 +133,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Kx1 = self.model.kernel(query_points_1, x)  # [..., N, num_data] or [..., L, N, num_data]
         Kx2 = self.model.kernel(x, query_points_2)  # [num_data, M] or [L, num_data, M]
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M] or [..., L, N, M]
-        if tf.rank(K) == 2:
+
+        if len(tf.shape(K)) == 2:
             K = tf.expand_dims(K, -3)
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
@@ -152,9 +152,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, num_data, N]
         Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [L, num_data, M]
 
-        cov = K12 - tf.tensordot(
-            leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
-        )  # [..., L, N, M]
+        cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
 
         tf.debugging.assert_shapes(
             [
@@ -242,9 +240,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-         with shape [..., N, L]
+                 with shape [..., N, L]
         :return: mean_new: predictive variance at query_points, with shape [..., M, L],
-        and var_new: predictive variance at query_points, with shape [..., M, L]
+                 and var_new: predictive variance at query_points, with shape [..., M, L]
         """
 
         tf.debugging.assert_shapes(
@@ -306,9 +304,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-        with shape [..., N, L]
+                 with shape [..., N, L]
         :return: mean_new: predictive variance at query_points, with shape [..., M, L],
-        and cov_new: predictive covariance between query_points, with shape [..., L, M, M]
+                 and cov_new: predictive covariance between query_points, with shape [..., L, M, M]
         """
 
         tf.debugging.assert_shapes(
@@ -371,7 +369,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-        with shape [..., N, L]
+                 with shape [..., N, L]
         :param num_samples: number of samples
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
@@ -389,7 +387,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
          with shape [..., N, L]
         :return: predictive variance at query_points, with shape [..., M, L],
-        and predictive variance at query_points, with shape [..., M, L]
+            and predictive variance at query_points, with shape [..., M, L]
         """
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")

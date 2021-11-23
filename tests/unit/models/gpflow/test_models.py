@@ -161,7 +161,7 @@ def test_gaussian_process_regression_pairwise_covariance(
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
 
 
 def test_sgpr_raises_for_covariance_between_points() -> None:
@@ -699,3 +699,6 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
         np.testing.assert_allclose(pred_meani, pred_mean5[i, ...], atol=1e-5)
         np.testing.assert_allclose(pred_vari, pred_var5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
+
+
+test_gaussian_process_regression_conditional_predict_equations()
