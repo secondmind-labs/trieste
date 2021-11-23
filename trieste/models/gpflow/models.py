@@ -140,9 +140,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             Kx2 = tf.expand_dims(Kx2, -3)
             K12 = tf.expand_dims(K12, -3)
         elif tf.rank(K) > 3:
-            raise NotImplementedError("Covariance between points is not supported "
-                                      f"for kernels of type "
-                                      f"{type(self.model.kernel)}.")
+            raise NotImplementedError(
+                "Covariance between points is not supported "
+                f"for kernels of type "
+                f"{type(self.model.kernel)}."
+            )
 
         L = tf.linalg.cholesky(K + s)  # [L, num_data, num_data]
 
@@ -261,8 +263,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [..., N, L], [..., L, N, N]
         mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
 
-        cov_cross = self.covariance_between_points(additional_data.query_points,
-                                                   query_points)  # [..., L, N, M]
+        cov_cross = self.covariance_between_points(
+            additional_data.query_points, query_points
+        )  # [..., L, N, M]
 
         cov_shape = tf.shape(cov_old)
         noise = self.model.likelihood.variance * tf.eye(

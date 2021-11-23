@@ -542,10 +542,11 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         )  # need predictive variance of observations
         A = tf.squeeze(
             tf.expand_dims(
-            self._model.covariance_between_points(  # type: ignore
-                tf.squeeze(x, -2), self._pending_points
+                self._model.covariance_between_points(  # type: ignore
+                    tf.squeeze(x, -2), self._pending_points
+                ),
+                -1,
             ),
-            -1),
             0,
         )  # [N, m, 1]
         L_inv_A = tf.linalg.triangular_solve(L, A)
