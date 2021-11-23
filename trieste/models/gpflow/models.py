@@ -223,44 +223,54 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-         with shape [..., N, 1]
-        :return: mean_new: predictive variance at query_points, with shape [..., M, 1],
-        and var_new: predictive variance at query_points, with shape [..., M, 1]
+         with shape [..., N, L]
+        :return: mean_new: predictive variance at query_points, with shape [..., M, L],
+        and var_new: predictive variance at query_points, with shape [..., M, L]
         """
 
-        # tf.debugging.assert_shapes(
-        #     [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
-        # )
+        tf.debugging.assert_shapes(
+            [(additional_data.query_points, [..., "N", "D"]),
+             (additional_data.observations, [..., "N", "L"]),
+             (query_points, ["M", "D"])]
+        )
 
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
         mean_old, cov_old = self.model.predict_f(
             additional_data.query_points, full_cov=True
-        )  # [..., N, 1], [..., 1, N, N]
-        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, 1], [M, 1]
+        )  # [..., N, L], [..., L, N, N]
+        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
 
         cov_cross = tf.expand_dims(
             self.covariance_between_points(additional_data.query_points, query_points), -3
-        )  # [..., 1, N, M]  TODO: change covariance_between_points to return the latent dimension
+        )  # [..., L, N, M]  TODO: change covariance_between_points to return the latent dimension
 
         cov_shape = tf.shape(cov_old)
         noise = self.model.likelihood.variance * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., 1, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., 1, N, M]
+        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., L, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., L, N, M]
         var_new = var_new - leading_transpose(
             tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2]
-        )  # [M, 1]
+        )  # [M, L]
 
-        mean_old_diff = additional_data.observations - mean_old  # [..., N, 1]
-        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., 1, N, 1]
-        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., 1, N, 1]
+        mean_old_diff = additional_data.observations - mean_old  # [..., N, L]
+        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
+        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., L, N, 1]
 
         mean_new = mean_new + leading_transpose(
             (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
-        )  # [..., M, 1]
+        )  # [..., M, L]
+
+        tf.debugging.assert_shapes(
+            [(additional_data.query_points, [..., "N", "D"]),
+             (additional_data.observations, [..., "N", "L"]),
+             (query_points, ["M", "D"]),
+             (mean_new, [..., "M", "L"]),
+             (var_new, [..., "M", "L"])]
+        )
 
         return mean_new, var_new
 
@@ -274,12 +284,15 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
         with shape [..., N, L]
-        :return: mean_new: predictive variance at query_points, with shape [..., M, 1],
-        and cov_new: predictive covariance between query_points, with shape [..., 1, M, M]
+        :return: mean_new: predictive variance at query_points, with shape [..., M, L],
+        and cov_new: predictive covariance between query_points, with shape [..., L, M, M]
         """
-        # tf.debugging.assert_shapes(
-        #     [(query_points, ["M", "D"]), (additional_data.query_points, ["N", "D"])]
-        # )
+
+        tf.debugging.assert_shapes(
+            [(additional_data.query_points, [..., "N", "D"]),
+             (additional_data.observations, [..., "N", "L"]),
+             (query_points, ["M", "D"])]
+        )
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
         new_shape = tf.concat([leading_dims, tf.shape(query_points)], axis=0)  # [..., M, D]
@@ -301,16 +314,24 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         noise = self.model.likelihood.variance * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., 1, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., 1, N, M]
-        cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [..., 1, M, M]
+        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., L, N, N]
+        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., L, N, M]
+        cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [..., L, M, M]
 
-        mean_old_diff = additional_data.observations - mean_old  # [..., N, 1]
-        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., 1, N, 1]
-        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., 1, N, 1]
+        mean_old_diff = additional_data.observations - mean_old  # [..., N, L]
+        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
+        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., L, N, 1]
         mean_new = m_new + leading_transpose(
             (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
-        )  # [..., M, 1]
+        )  # [..., M, L]
+
+        tf.debugging.assert_shapes(
+            [(additional_data.query_points, [..., "N", "D"]),
+             (additional_data.observations, [..., "N", "L"]),
+             (query_points, ["M", "D"]),
+             (mean_new, [..., "M", "L"]),
+             (cov_new, [..., "L", "M", "M"])]
+        )
 
         return mean_new, cov_new
 
