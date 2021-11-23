@@ -69,13 +69,15 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
 #
-# We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
+# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` function which returns a GPflux model of `DeepGP` class. As with other models (e.g. GPflow), we cannot use it directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepGaussianProcess` wrapper in this case.
 #
-# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` method.
+# Few other useful notes regarding building a DGP model. The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model. For this problem we need to modify the default optimizer settings slightly, so we initialize a new optimizer wrapper instance (`Optimizer`) with custom minimization arguments `minimize_args` which are passed to Keras' `fit` method (check [Keras API documentation](https://keras.io/api/models/model_training_apis/#fit-method) for a list of possible arguments).
 
 # %%
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from gpflow.utilities import set_trainable
+
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.optimizer import Optimizer
 
 
 def build_dgp_model(data):
@@ -87,18 +89,15 @@ def build_dgp_model(data):
     dgp.likelihood_layer.likelihood.variance.assign(1e-5)
     set_trainable(dgp.likelihood_layer.likelihood.variance, False)
 
-    epochs = 200
-    batch_size = 100
-
-    optimizer = tf.optimizers.Adam(0.01)
     # These are just arguments for the Keras `fit` method.
-    fit_args = {
-        "batch_size": batch_size,
-        "epochs": epochs,
+    minimize_args = {
+        "batch_size": 100,
+        "epochs": 200,
         "verbose": 0,
     }
+    optimizer = Optimizer(tf.optimizers.Adam(0.01), minimize_args)
 
-    return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+    return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
 
 dgp_model = build_dgp_model(initial_data)
@@ -191,8 +190,8 @@ fig.show()
 # %%
 import gpflow
 import tensorflow_probability as tfp
+
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 
 def build_gp_model(data):
@@ -205,11 +204,7 @@ def build_gp_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     num_kernel_samples = 100
 
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}),
-        num_kernel_samples=num_kernel_samples
-    )
+    return GaussianProcessRegression(gpr)
 
 
 gp_model = build_gp_model(initial_data)
@@ -363,9 +358,9 @@ ax[1].set_xlabel("# evaluations")
 
 # %% [markdown]
 # While still far from the optimum, it is considerably better than the GP.
-#
-#
-#
+
+
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

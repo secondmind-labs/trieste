@@ -84,11 +84,12 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# We'll model the objective and constraint data with their own Gaussian process regression models.
+# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models.gpflow import GPflowModelConfig
+
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def create_bo_model(data):
@@ -98,13 +99,7 @@ def create_bo_model(data):
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig(**{
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }))
+    return GaussianProcessRegression(gpr)
 
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
@@ -298,6 +293,7 @@ initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %%
 from trieste.acquisition.combination import Product
+
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
 pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore

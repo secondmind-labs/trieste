@@ -57,7 +57,7 @@ trieste.logging.set_tensorboard_writer(summary_writer)
 # %% [markdown]
 # ## Running and tracking the Bayesian Optimizer
 #
-# By setting the summary writer, we tell trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
+# By setting the summary writer, we tell Trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
 
 # %%
 num_steps = 15
@@ -73,7 +73,7 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # %% [markdown]
 # ## Logging additional model parameters
 #
-# When logging is enabled, trieste decides what information is interesting enough to log. This includes objective and acquisition function values, and some (but not all) model parameters. To log additional model parameters, you can define your own model subclass and override the `log` method. For example, the following GPR subclass also logs the average lengthscale at each step.
+# When logging is enabled, Trieste decides what information is interesting enough to log. This includes objective and acquisition function values, and some (but not all) model parameters. To log additional model parameters, you can define your own model subclass and override the `log` method. For example, the following GPR subclass also logs the average lengthscale at each step.
 
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):

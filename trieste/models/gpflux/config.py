@@ -14,35 +14,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, Tuple, Type
 
-import tensorflow as tf
 from gpflux.models import DeepGP
 
-from ..config import ModelConfig
+from ..config import ModelRegistry
 from ..interfaces import TrainableProbabilisticModel
+from ..optimizer import Optimizer
 from .models import DeepGaussianProcess
 
-
-@dataclass(frozen=True)
-class GPfluxModelConfig(ModelConfig):
-    """
-    Specification for building a GPflux instance of
-    :class:`~trieste.models.TrainableProbabilisticModel`. Note that `optimizer_args` are not used
-    for GPflux models.
-    """
-
-    def supported_models(
-        self,
-    ) -> dict[Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]]:
-        models_mapping: dict[
-            Any, Callable[[Any, tf.optimizers.Optimizer], TrainableProbabilisticModel]
-        ] = {
-            DeepGP: DeepGaussianProcess,
-        }
-        return models_mapping
-
-    def create_optimizer(self) -> tf.optimizers.Optimizer:
-        return self.optimizer
+# Here we list all the GPflux models currently supported by model interfaces
+# and optimizers, and register them for usage with ModelConfig.
+_SUPPORTED_MODELS: Dict[Type[Any], Tuple[Type[TrainableProbabilisticModel], Type[Optimizer]]] = {
+    DeepGP: (DeepGaussianProcess, Optimizer),
+}
+for model_type, (interface, optimizer) in _SUPPORTED_MODELS.items():
+    ModelRegistry.register_model(model_type, interface, optimizer)

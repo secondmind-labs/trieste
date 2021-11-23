@@ -21,6 +21,7 @@ from gpflow.base import Module
 
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
+from ..optimizer import Optimizer
 
 
 class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -30,24 +31,23 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
     dtype errors."""
 
-    def __init__(self, optimizer: tf.optimizers.Optimizer | None = None):
+    def __init__(self, optimizer: Optimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~tf.optimizers.Optimizer` with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
         """
         super().__init__()
 
         if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
-        else:
-            self._optimizer = optimizer
+            optimizer = Optimizer(tf.optimizers.Adam())
 
-        if not isinstance(self._optimizer, tf.optimizers.Optimizer):
+        self._optimizer = optimizer
+
+        if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `DeepGaussianProcess` must be an instance of a "
                 f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer)} instead. Note that the optimizer should "
-                f"therefore not be wrapped in the Trieste `BatchOptimizer` wrapper."
+                f"received {type(optimizer.optimizer)} instead."
             )
 
     @property
@@ -61,7 +61,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+    def optimizer(self) -> Optimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
 
