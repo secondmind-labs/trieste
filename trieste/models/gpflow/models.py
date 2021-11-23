@@ -139,7 +139,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
             K12 = tf.expand_dims(K12, -3)
-        elif tf.rank(K) > 3:
+        elif len(tf.shape(K)) > 3:
             raise NotImplementedError(
                 "Covariance between points is not supported "
                 f"for kernels of type "
