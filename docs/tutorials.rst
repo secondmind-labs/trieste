@@ -49,6 +49,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
 * :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
 * How do I use Trieste in asynchronous objective evaluation mode?
+
   * :doc:`Example of using greedy batch acquisition functions and Python multiprocessing module.<notebooks/asynchronous_greedy_multiprocessing>`
   * :doc:`Example of using non-greedy batch acquisition functions and Ray.<notebooks/asynchronous_nongreedy_batch_ray>`
 
