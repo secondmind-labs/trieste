@@ -133,7 +133,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Kx1 = self.model.kernel(query_points_1, x)  # [..., N, num_data] or [..., L, N, num_data]
         Kx2 = self.model.kernel(x, query_points_2)  # [num_data, M] or [L, num_data, M]
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M] or [..., L, N, M]
-        if tf.rank(K) == 2:
+
+        if len(tf.shape(K)) == 2:
             K = tf.expand_dims(K, -3)
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
