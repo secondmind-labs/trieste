@@ -23,7 +23,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, QuadraticMeanAndRBFKernelWithSamplers
 from trieste.acquisition.function.entropy import (
     GIBBON,
     MinValueEntropySearch,
@@ -31,6 +31,7 @@ from trieste.acquisition.function.entropy import (
     gibbon_repulsion_term,
     min_value_entropy_search,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory, ExactThompsonSampler, GumbelSampler, ThompsonSampler
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import branin
@@ -63,31 +64,60 @@ def test_min_value_entropy_search_builder_raises_for_invalid_init_params(param: 
         MinValueEntropySearch(search_space, grid_size=param)
 
 
-def test_min_value_entropy_search_builder_raises_when_given_fourier_features_and_gumbel() -> None:
-    # cannot do feature-based approx of Gumbel sampler
-    search_space = Box([0, 0], [1, 1])
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        MinValueEntropySearch(search_space, use_thompson=False, use_fourier_features=True)
 
 
-def test_mes_raises_when_use_fourier_features_and_model_without_trajectories() -> None:
-    # cannot do feature-based approx of Gumbel sampler
+
+
+
+
+
+
+
+
+
+
+def test_mes_default_sampler_is_exact_thompson() -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = MinValueEntropySearch(search_space, use_thompson=True, use_fourier_features=True)
+    builder = MinValueEntropySearch(search_space)
+    assert builder._min_value_sampler == ExactThompsonSampler
+
+
+@pytest.mark.parametrize("sampler", [ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory])
+def test_mes_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = MinValueEntropySearch(search_space, min_value_sampler = sampler)
+    assert builder._min_value_sampler == sampler
+
+
+def test_mes_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = MinValueEntropySearch(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
         builder.prepare_acquisition_function(model, dataset=dataset)
 
 
+
+
+
+
+
+
+
+
+
+
 @unittest.mock.patch("trieste.acquisition.function.min_value_entropy_search")
-@pytest.mark.parametrize("use_thompson", [True, False])
+@pytest.mark.parametrize("min_value_sampler", [ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory])
 def test_min_value_entropy_search_builder_builds_min_value_samples(
-    mocked_mves: MagicMock, use_thompson: bool
+    mocked_mves: MagicMock, min_value_sampler: ThompsonSampler
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = MinValueEntropySearch(search_space, use_thompson=use_thompson)
+    builder = MinValueEntropySearch(search_space,min_value_sampler = min_value_sampler)
     model = QuadraticMeanAndRBFKernel()
     builder.prepare_acquisition_function(model, dataset=dataset)
     mocked_mves.assert_called_once()
@@ -216,7 +246,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
 
 
 
-    
+
 
 
 
@@ -247,11 +277,31 @@ def test_gibbon_builder_raises_for_invalid_init_params(param: int) -> None:
         GIBBON(search_space, grid_size=param)
 
 
-def test_gibbon_builder_raises_when_given_use_features_and_gumbel() -> None:
-    # cannot do feature-based approx of Gumbel sampler
+
+
+def test_gibbon_default_sampler_is_exact_thompson() -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        GIBBON(search_space, use_thompson=False, use_fourier_features=True)
+    builder = GIBBON(search_space)
+    assert builder._min_value_sampler == ExactThompsonSampler
+
+
+@pytest.mark.parametrize("sampler", [ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory])
+def test_gibbon_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space, min_value_sampler = sampler)
+    assert builder._min_value_sampler == sampler
+
+
+def test_gibbon_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
+    dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    search_space = Box([0, 0], [1, 1])
+    builder = GIBBON(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
+    model = QuadraticMeanAndRBFKernel()
+    with pytest.raises(ValueError):
+        builder.prepare_acquisition_function(model, dataset=dataset)
+
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])

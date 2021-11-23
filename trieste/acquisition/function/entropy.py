@@ -59,7 +59,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler] = None,
+        min_value_sampler: Optional[Callable[ , []]] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
