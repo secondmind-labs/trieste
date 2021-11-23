@@ -38,7 +38,7 @@ from .function import (
     lower_confidence_bound,
     probability_of_feasibility,
 )
-from .local_penalization import (
+from .greedy import (
     LocalPenalizationAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,

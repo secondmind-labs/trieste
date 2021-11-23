@@ -16,17 +16,21 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Mapping, Optional, Union, cast
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.gpflow import GaussianProcessRegression
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -349,3 +353,127 @@ class hard_local_penalizer(local_penalizer):
         p = -5  # following experiments of :cite:`Alvi:2019`.
         penalization = ((pairwise_distances / (self._radius + self._scale)) ** p + 1) ** (1 / p)
         return tf.reduce_prod(penalization, axis=-1)
+
+
+class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches, following the
+    kriging believer heuristic.
+
+    TODO: add stuff
+
+    Kriging believer allows us to perform batch Bayesian optimization with a standard (non-batch)
+    acquisition function.
+    By iteratively building a batch of points though sequentially maximizing
+    this acquisition function,
+    TODO: add stuff
+    it provides diverse batches of candidate points.
+    """
+
+    def __init__(
+        self,
+        acquisition_function_builder: AcquisitionFunctionBuilder = None,
+        fantasize_method: str = "KB",
+    ):
+        """
+        :param acquisition_function_builder:
+        :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
+        """
+        if acquisition_function_builder is None:
+            self._builder = ExpectedImprovement()
+        else:
+            self._builder = acquisition_function_builder
+
+        # TODO assert fantasize mode
+        self._fantasize_method = fantasize_method
+
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+        if pending_points is not None:
+            fantasized_data = {
+                tag: _generate_fantasized_data(model, pending_points, self._fantasize_method)
+                for tag, model in models.items()
+            }
+            models = {
+                tag: FantasizedGPRModel(model, fantasized_data[tag])
+                for tag, model in models.items()
+            }
+
+        return self._builder.prepare_acquisition_function(models, datasets)
+
+
+def _generate_fantasized_data(model, pending_points, fantasize_method):
+    if fantasize_method == "KB":
+        fantasized_obs, _ = model.predict(pending_points)
+    elif fantasize_method == "sample":
+        fantasized_obs = model.sample(pending_points, num_samples=1)  # TODO check dim
+    else:
+        raise NotImplementedError(
+            f"Fantasize method not supported. "
+            f"Expected KB or sample, received "
+            f"{fantasize_method}"
+        )
+    return Dataset(pending_points, fantasized_obs)
+
+
+class FantasizedGPRModel(ProbabilisticModel):
+    """
+    Creates new model from an existing GPR model and additional data.
+    This new model posterior is conditioned and the GPR data and the additional one.
+    """
+
+    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
+        """
+
+        :param model: a GPR model
+        :param fantasized_data: additional dataset to condition on
+        :raise NotImplementedError: If model is not of class GaussianProcessRegression.
+        """
+
+        if not isinstance(model, GaussianProcessRegression):
+            raise NotImplementedError(
+                f"FantasizedGPRModel only works with GPR models, received " f"{model.__repr__()}"
+            )
+
+        self._model = model
+        self._fantasized_data = fantasized_data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_f(query_points, self._fantasized_data)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_joint(query_points, self._fantasized_data)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self._model.conditional_predict_f_sample(
+            query_points, self._fantasized_data, num_samples
+        )
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._model.conditional_predict_y(query_points, self._fantasized_data)
+
+    def get_observation_noise(self) -> TensorType:
+        return self._model.get_observation_noise()
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        return self._model.get_kernel()
+
+    def log(self) -> None:
+        return self._model.log()
+
+    def update(self, dataset: Dataset) -> None:
+        raise NotImplementedError
+
+    def optimize(self, dataset: Dataset) -> None:
+        raise NotImplementedError

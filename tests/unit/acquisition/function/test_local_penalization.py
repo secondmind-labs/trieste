@@ -27,7 +27,7 @@ from trieste.acquisition import (
     PenalizationFunction,
     UpdatablePenalizationFunction,
 )
-from trieste.acquisition.function.local_penalization import (
+from trieste.acquisition.function.greedy import (
     LocalPenalizationAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,
