@@ -737,15 +737,16 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 
 
 class integrated_variance_reduction(AcquisitionFunctionClass):
-    '''
-        The reduction of the average of the predicted variance over the integration points
-        (a.k.a. IMSE criterion). See :cite:`Picheny2010` for details.
+    """
+    The reduction of the average of the predicted variance over the integration points
+    (a.k.a. IMSE criterion). See :cite:`Picheny2010` for details.
 
-        If no threshold is provided, the original variance is used. Otherwise,
-        the variance is weighted by the posterior GP pdf evaluated at the threshold
-        (if a single value is given) or by the probability that the GP posterior belongs
-        to the interval between the 2 thresholds.
-    '''
+    If no threshold is provided, the original variance is used. Otherwise,
+    the variance is weighted by the posterior GP pdf evaluated at the threshold
+    (if a single value is given) or by the probability that the GP posterior belongs
+    to the interval between the 2 thresholds.
+    """
+
     def __init__(
         self,
         model: ProbabilisticModel,

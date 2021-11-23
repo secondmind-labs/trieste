@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Optional
 
+import gpflow
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -31,7 +32,13 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    QuadraticMeanAndRBFKernel,
+    gpr_model,
+    rbf,
+)
+from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -39,6 +46,7 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    IntegratedVarianceReduction,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
@@ -48,6 +56,7 @@ from trieste.acquisition.function.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.types import TensorType
 
