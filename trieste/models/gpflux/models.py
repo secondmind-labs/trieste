@@ -50,8 +50,21 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         """
+        for layer in model.f_layers:
+            if not isinstance(layer, (GPLayer, LatentVariableLayer)):
+                raise ValueError(
+                    f"`DeepGaussianProcess` can only be built out of `GPLayer` or"
+                    f"`LatentVariableLayer`, received {type(layer)} instead."
+                )
 
         super().__init__(optimizer)
+
+        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(optimizer.optimizer)} instead."
+            )
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
@@ -64,13 +77,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         else:
             self._fit_args = self.optimizer.minimize_args
 
-        for layer in model.f_layers:
-            if not isinstance(layer, (GPLayer, LatentVariableLayer)):
-                raise ValueError(
-                    f"`DeepGaussianProcess` can only be built out of `GPLayer` or"
-                    f"`LatentVariableLayer`, received {type(layer)} instead."
-                )
-
         self._model_gpflux = model
 
         self._model_keras = model.as_training_model()
@@ -78,7 +84,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer.optimizer!r})"
+        return f"DeepGaussianProcess({self.model_gpflux!r}, {self.optimizer.optimizer!r})"
 
     @property
     def model_gpflux(self) -> DeepGP:

@@ -43,13 +43,6 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
 
         self._optimizer = optimizer
 
-        if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
-            )
-
     @property
     @abstractmethod
     def model_gpflux(self) -> Module:
