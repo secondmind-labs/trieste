@@ -51,6 +51,16 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+        if isinstance(self.optimizer, BatchOptimizer) or not isinstance(
+            self.optimizer.optimizer, gpflow.optimizers.Scipy
+        ):
+            raise ValueError(
+                f"""
+                GaussianProcessRegression wrapper can only be used with an Optimizer wrapper using
+                the gpflow.optimizers.Scipy, however received {self.optimizer}.
+                """
+            )
+
         if num_kernel_samples <= 0:
             raise ValueError(
                 f"num_kernel_samples must be greater or equal to zero but got {num_kernel_samples}."
@@ -61,7 +71,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
+        return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> GPR | SGPR:
@@ -243,7 +253,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
+    def __init__(self, model: SVGP, optimizer: BatchOptimizer | None = None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
@@ -253,6 +263,16 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         if optimizer is None:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
+
+        if not isinstance(optimizer, BatchOptimizer) or not isinstance(
+            optimizer.optimizer, tf.optimizers.Optimizer
+        ):
+            raise ValueError(
+                f"""
+                SparseVariational wrapper can only be used with a BatchOptimizer wrapper using an
+                instance of tf.optimizers.Optimizer, however received {optimizer}.
+                """
+            )
 
         super().__init__(optimizer)
         self._model = model
@@ -266,7 +286,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self._model!r}, {self.optimizer!r})"
+        return f"SparseVariational({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
@@ -338,29 +358,25 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         if optimizer is None and not use_natgrads:
             optimizer = Optimizer(gpflow.optimizers.Scipy())
         elif optimizer is None and use_natgrads:
-            optimizer = BatchOptimizer(tf.optimizers.Adam())
-
-        super().__init__(optimizer)
-        self._model = model
+            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
 
         if use_natgrads:
-            if not isinstance(self._optimizer, BatchOptimizer) or not isinstance(
-                self._optimizer.optimizer, tf.optimizers.Optimizer
+            if not isinstance(optimizer, BatchOptimizer) or not isinstance(
+                optimizer.optimizer, tf.optimizers.Optimizer
             ):
                 raise ValueError(
                     f"""
                     Natgrads can only be used with a BatchOptimizer wrapper using an instance of
-                    tf.optimizers.Optimizer, however received f{self._optimizer}.
+                    tf.optimizers.Optimizer, however received {optimizer}.
                     """
                 )
-
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
-            if isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
+            if isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
                 raise ValueError(
                     f"""
-                    Natgrads can only be used with a BatchOptimizer wrapper using an instance of
-                    tf.optimizers.Optimizer, however received f{self._optimizer}.
+                    If not using natgrads an Optimizer wrapper should be used with
+                    gpflow.optimizers.Scipy, however received {optimizer}.
                     """
                 )
             if natgrad_gamma is not None:
@@ -370,6 +386,9 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     """
                 )
 
+        super().__init__(optimizer)
+
+        self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
 
@@ -395,7 +414,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
+        return f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> VGP:
