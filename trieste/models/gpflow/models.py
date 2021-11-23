@@ -338,7 +338,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         if optimizer is None and not use_natgrads:
             optimizer = Optimizer(gpflow.optimizers.Scipy())
         elif optimizer is None and use_natgrads:
-            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
+            optimizer = BatchOptimizer(tf.optimizers.Adam())
 
         super().__init__(optimizer)
         self._model = model
@@ -356,6 +356,13 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
+            if isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
+                raise ValueError(
+                    f"""
+                    Natgrads can only be used with a BatchOptimizer wrapper using an instance of
+                    tf.optimizers.Optimizer, however received f{self._optimizer}.
+                    """
+                )
             if natgrad_gamma is not None:
                 raise ValueError(
                     """

@@ -381,6 +381,11 @@ def test_vgp_raises_for_invalid_init() -> None:
         optimizer = BatchOptimizer(gpflow.optimizers.Scipy())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
 
+    with pytest.raises(ValueError):
+        optimizer = Optimizer(tf.optimizers.Adam())
+        VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
+
+
 
 def test_vgp_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
@@ -582,13 +587,17 @@ def test_vgp_optimize_with_and_without_natgrads(
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    optimizer = BatchOptimizer(
-        tf.optimizers.Adam(),
-        max_iter=10,
-        batch_size=10,
-        dataset_builder=batcher,
-        compile=compile,
-    )
+    if use_natgrads:
+        optimizer = BatchOptimizer(
+            tf.optimizers.Adam(),
+            max_iter=10,
+            batch_size=10,
+            dataset_builder=batcher,
+            compile=compile,
+        )
+    else:
+        optimizer = Optimizer(gpflow.optimizers.Scipy())
+
     model = VariationalGaussianProcess(
         vgp_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=use_natgrads
     )
