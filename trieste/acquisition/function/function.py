@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from typing import Mapping, Optional, Sequence, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -689,3 +689,99 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
         batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
+
+
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
+    """
+    Builder for the reduction of the integral of the predicted variance over the search
+    space given a batch of query points.
+    """
+
+    def __init__(self, integration_points: TensorType, threshold: Sequence[float] = None) -> None:
+        """
+        :param integration_points: set of points to integrate the prediction variance over.
+        """
+        self._integration_points = integration_points
+        self._threshold = threshold
+
+    def __repr__(self) -> str:
+        """"""
+        return f"IntegratedVarianceReduction(threshold={self._threshold!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return integrated_variance_reduction(model, self._integration_points, self._threshold)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class integrated_variance_reduction(AcquisitionFunctionClass):
+    '''
+        The reduction of the average of the predicted variance over the integration points
+        (a.k.a. IMSE criterion). See :cite:`Picheny2010` for details.
+
+        If no threshold is provided, the original variance is used. Otherwise,
+        the variance is weighted by the posterior GP pdf evaluated at the threshold
+        (if a single value is given) or by the probability that the GP posterior belongs
+        to the interval between the 2 thresholds.
+    '''
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        integration_points: TensorType,
+        threshold: Sequence[float] = None,
+    ):
+        """
+        :param model: The model of the objective function.
+        :param integration_points: points over which to integrate the objective prediction variance
+        :param threshold:
+        """
+        self._model = model
+        self._integration_points = integration_points
+        if threshold is None:
+            self._weights = tf.cast(1.0, integration_points.dtype)
+        else:
+            mean_old, var_old = self._model.predict(query_points=integration_points)
+            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+            self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - distr.cdf(
+                tf.cast(threshold[0], mean_old.dtype)
+            )
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+
+        additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
+
+        try:
+            mean, variance = self._model.conditional_predict_f(
+                query_points=self._integration_points, additional_data=additional_data
+            )
+        except NotImplementedError:
+            raise ValueError(
+                """
+                PredictiveVariance only supports models with a conditional_predict_ft method.
+                """
+            )
+
+        return -tf.reduce_mean(variance * self._weights, axis=-2)
