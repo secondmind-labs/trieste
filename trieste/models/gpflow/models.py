@@ -122,7 +122,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Covariance between points is not supported for SGPR.")
 
-        tf.debugging.assert_shapes([(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"])])
+        tf.debugging.assert_shapes(
+            [(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"])]
+        )
 
         x = self.model.data[0].value()
         num_data = tf.shape(x)[0]
@@ -143,7 +145,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
             leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
         )  # [..., N, M]
 
-        tf.debugging.assert_shapes([(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"]), (cov, [..., "N", "M"])])
+        tf.debugging.assert_shapes(
+            [
+                (query_points_1, [..., "N", "D"]),
+                (query_points_2, ["M", "D"]),
+                (cov, [..., "N", "M"]),
+            ]
+        )
 
         return cov
 
@@ -229,9 +237,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
 
         tf.debugging.assert_shapes(
-            [(additional_data.query_points, [..., "N", "D"]),
-             (additional_data.observations, [..., "N", "L"]),
-             (query_points, ["M", "D"])]
+            [
+                (additional_data.query_points, [..., "N", "D"]),
+                (additional_data.observations, [..., "N", "L"]),
+                (query_points, ["M", "D"]),
+            ]
         )
 
         if isinstance(self.model, SGPR):
@@ -265,11 +275,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [..., M, L]
 
         tf.debugging.assert_shapes(
-            [(additional_data.query_points, [..., "N", "D"]),
-             (additional_data.observations, [..., "N", "L"]),
-             (query_points, ["M", "D"]),
-             (mean_new, [..., "M", "L"]),
-             (var_new, [..., "M", "L"])]
+            [
+                (additional_data.query_points, [..., "N", "D"]),
+                (additional_data.observations, [..., "N", "L"]),
+                (query_points, ["M", "D"]),
+                (mean_new, [..., "M", "L"]),
+                (var_new, [..., "M", "L"]),
+            ]
         )
 
         return mean_new, var_new
@@ -289,9 +301,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
 
         tf.debugging.assert_shapes(
-            [(additional_data.query_points, [..., "N", "D"]),
-             (additional_data.observations, [..., "N", "L"]),
-             (query_points, ["M", "D"])]
+            [
+                (additional_data.query_points, [..., "N", "D"]),
+                (additional_data.observations, [..., "N", "L"]),
+                (query_points, ["M", "D"]),
+            ]
         )
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
@@ -326,11 +340,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [..., M, L]
 
         tf.debugging.assert_shapes(
-            [(additional_data.query_points, [..., "N", "D"]),
-             (additional_data.observations, [..., "N", "L"]),
-             (query_points, ["M", "D"]),
-             (mean_new, [..., "M", "L"]),
-             (cov_new, [..., "L", "M", "M"])]
+            [
+                (additional_data.query_points, [..., "N", "D"]),
+                (additional_data.observations, [..., "N", "L"]),
+                (query_points, ["M", "D"]),
+                (mean_new, [..., "M", "L"]),
+                (cov_new, [..., "L", "M", "M"]),
+            ]
         )
 
         return mean_new, cov_new
