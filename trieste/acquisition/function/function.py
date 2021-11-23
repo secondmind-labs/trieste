@@ -810,6 +810,15 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 
 
 class integrated_variance_reduction(AcquisitionFunctionClass):
+    '''
+        The reduction of the average of the predicted variance over the integration points
+        (a.k.a. IMSE criterion). See :cite:`Picheny2010` for details.
+
+        If no threshold is provided, the original variance is used. Otherwise,
+        the variance is weighted by the posterior GP pdf evaluated at the threshold
+        (if a single value is given) or by the probability that the GP posterior belongs
+        to the interval between the 2 thresholds.
+    '''
     def __init__(
         self,
         model: ProbabilisticModel,
@@ -817,16 +826,12 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         threshold: Sequence[float] = None,
     ):
         """
-        The reduction of the average of the predicted variance over the integration points
-        (a.k.a. IMSE criterion)
-
         :param model: The model of the objective function.
         :param integration_points: points over which to integrate the objective prediction variance
         :param threshold:
         """
         self._model = model
         self._integration_points = integration_points
-        # self._threshold = threshold
         if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
         else:
@@ -838,8 +843,6 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-
-        # additional_data = Dataset(tf.squeeze(x, -2), tf.ones_like(x[:, 0, 0:1]))
 
         additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
