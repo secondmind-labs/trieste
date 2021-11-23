@@ -42,8 +42,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
-            This optimizer itself is not used, instead only its `optimizer` and `minimize_args` are
+            :class:`~trieste.models.optimizer.Optimizer` wrapper with :class:`~tf.optimizers.Adam`.
+            This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
             used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
             a dictionary of arguments to be used in the Keras `fit` method. Defaults to
             using 100 epochs, batch size 100, and verbose 0. See
@@ -55,14 +55,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
-        if self.optimizer.minimize_args is None:
-            self._fit_args: Dict[str, Any] | None = dict(
-                {
-                    "verbose": 0,
-                    "epochs": 100,
-                    "batch_size": 100,
-                }
-            )
+        if not self.optimizer.minimize_args:
+            self._fit_args: Dict[str, Any] | None = {
+                "verbose": 0,
+                "epochs": 100,
+                "batch_size": 100,
+            }
         else:
             self._fit_args = self.optimizer.minimize_args
 
