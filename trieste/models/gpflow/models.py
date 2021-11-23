@@ -357,6 +357,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         Generates samples of the GP at query_points conditioned on both the model
         and some additional data.
+
+        :param query_points: Set of query points with shape [M, D]
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+        with shape [..., N, L]
+        :param num_samples: number of samples
+        :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
         mean_new, var_new = self.model.conditional_predict_joint(query_points, additional_data)
         return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
@@ -367,6 +373,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         """
         Generates samples of y from the GP at query_points conditioned on both the model
         and some additional data.
+
+        :param query_points: Set of query points with shape [M, D]
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+         with shape [..., N, L]
+        :return: predictive variance at query_points, with shape [..., M, L],
+        and predictive variance at query_points, with shape [..., M, L]
         """
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
