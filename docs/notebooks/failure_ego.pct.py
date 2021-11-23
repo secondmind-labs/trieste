@@ -160,7 +160,7 @@ rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 2 # quickrun num_steps = 20
+num_steps = 20
 result = bo.optimize(num_steps, initial_data, models, rule).final_result.unwrap()
 
 arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))

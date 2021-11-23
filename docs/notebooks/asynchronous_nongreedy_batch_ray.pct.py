@@ -91,13 +91,13 @@ def build_model(data):
 # %%
 # Number of worker processes to run simultaneously
 # Setting this to 1 will reduce our optimization to non-batch sequential
-num_workers = 2 # quickrun num_workers = 6
+num_workers = 6
 # Number of observations to collect
-num_observations = 3 # quickrun num_observations = 30
+num_observations = 30
 # Batch size of the acquisition function. We will wait for that many workers to return before launching a new batch
 batch_size = 2
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = False # quickrun enable_sleep_delays = True
+enable_sleep_delays = True
 
 # %% [markdown]
 # Now we are ready to define the optimizer. Notice how we set the acquisition function to be `BatchMonteCarloExpectedImprovement`. It is also the default function used by the `AsynchronousOptimization` rule, but here we specify it explicitly for clarity. We also set the batch size.
@@ -108,7 +108,7 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
-monte_carlo_sample_size = 3 # quickrun monte_carlo_sample_size = 10000
+monte_carlo_sample_size = 10000
 acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size)
 async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)

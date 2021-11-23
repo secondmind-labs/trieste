@@ -74,7 +74,7 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 2 # quickrun num_steps = 15
+num_steps = 15
 result, history = bo.optimize(num_steps, initial_data, model, acquisition_rule).astuple()
 
 # %% [markdown]

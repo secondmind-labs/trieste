@@ -91,7 +91,7 @@ model = build_model(initial_data)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 2 # quickrun num_steps = 15
+num_steps = 15
 result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
@@ -228,7 +228,7 @@ fig.tight_layout()
 # If we need more iterations for better convergence, we can run the optimizer again using the data produced from the last run, as well as the model. We'll visualise the final data.
 
 # %%
-num_steps = 2 # quickrun num_steps = 10
+num_steps = 10
 result = bo.optimize(num_steps, result.try_get_final_dataset(), result.try_get_final_model())
 dataset = result.try_get_final_dataset()
 

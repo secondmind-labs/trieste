@@ -60,7 +60,7 @@ trieste.logging.set_tensorboard_writer(summary_writer)
 # By setting the summary writer, we tell Trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.
 
 # %%
-num_steps = 2 # quickrun num_steps = 15
+num_steps = 15
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result, history = bo.optimize(num_steps, initial_data, model).astuple()
 

@@ -60,7 +60,7 @@ import trieste
 observer = mk_observer(function)
 
 num_initial_points = 20
-num_steps = 2 # quickrun num_steps = 20
+num_steps = 20
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -114,7 +114,7 @@ dgp_model = build_dgp_model(initial_data)
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-grid_size = 10 # quickrun grid_size = 1000
+grid_size = 1000
 acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
 # Note that the GPflux interface does not currently support using `track_state=True`. This will be
@@ -202,7 +202,7 @@ def build_gp_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    num_kernel_samples = 2 # quickrun     num_kernel_samples = 100
+    num_kernel_samples = 100
 
     return GaussianProcessRegression(gpr)
 
@@ -285,7 +285,7 @@ search_space = MICHALEWICZ_5_SEARCH_SPACE
 observer = mk_observer(function)
 
 num_initial_points = 50
-num_steps = 2 # quickrun num_steps = 50
+num_steps = 50
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 

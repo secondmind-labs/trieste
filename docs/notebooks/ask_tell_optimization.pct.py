@@ -27,7 +27,7 @@ tf.random.set_seed(1234)
 
 
 search_space = Box([0, 0], [1, 1])
-n_steps = 2 # quickrun n_steps = 5
+n_steps = 5
 
 def build_model(data, kernel_func=None):
     """kernel_func should be a function that takes variance as a single input parameter"""

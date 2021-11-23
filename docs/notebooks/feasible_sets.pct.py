@@ -121,7 +121,7 @@ acq = ExpectedFeasibility(threshold, delta=delta)
 rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 2 # quickrun num_steps = 10
+num_steps = 10
 result = bo.optimize(num_steps, initial_data, model, rule)
 
 
@@ -204,7 +204,7 @@ plot_excursion_probability(
 # We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line. 
 
 # %%
-num_steps = 2 # quickrun num_steps = 90
+num_steps = 90
 result = bo.optimize(num_steps, dataset, model, rule)
 
 final_model = result.history[-1].models["OBJECTIVE"]

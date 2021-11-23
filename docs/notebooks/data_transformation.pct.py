@@ -112,7 +112,7 @@ model = build_gp_model(initial_data, 20, 10000)
 # We'll run the optimizer for 100 steps. Note: this may take a while!
 
 # %%
-num_steps = 2 # quickrun num_steps = 100
+num_steps = 100
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model)

@@ -48,8 +48,8 @@ model = GaussianProcessRegression(gpr)
 # We achieve Bayesian optimization with Thompson sampling by specifying `DiscreteThompsonSampling` as the acquisition rule. Unlike the `EfficientGlobalOptimization` acquisition rule, `DiscreteThompsonSampling` does not use an acquisition function. Instead, in each optimization step, the rule samples `num_query_points` samples from the model posterior at `num_search_space_samples` points on the search space. It then returns the `num_query_points` points of those that minimise the model posterior.
 
 # %%
-num_search_space_samples = 10 # quickrun num_search_space_samples = 1000
-num_query_points = 2 # quickrun num_query_points = 10
+num_search_space_samples = 1000
+num_query_points = 10
 acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
     num_search_space_samples=num_search_space_samples, num_query_points=num_query_points
 )
@@ -62,7 +62,7 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 2 # quickrun num_steps = 5
+num_steps = 5
 result = bo.optimize(num_steps, initial_data, model, acq_rule, track_state=False)
 dataset = result.try_get_final_dataset()
 

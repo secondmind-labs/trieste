@@ -145,11 +145,11 @@ def terminate_processes(processes):
 # Setting this to 1 will turn both setups into non-batch sequential optimization
 num_workers = 3
 # Number of iterations to run the sycnhronous scenario for
-num_iterations = 2 # quickrun num_iterations = 10
+num_iterations = 10
 # Number of observations to collect in the asynchronous scenario
 num_observations = num_workers * num_iterations
 # Set this flag to False to disable sleep delays in case you want the notebook to execute quickly
-enable_sleep_delays = False # quickrun enable_sleep_delays = True
+enable_sleep_delays = True
 
 # %% [markdown]
 # ## Asynchronous optimization
