@@ -116,7 +116,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points_1: Set of query points with shape [..., N, D]
         :param query_points_2: Sets of query points with shape [M, D]
-
         :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
         """
         if isinstance(self.model, SGPR):
