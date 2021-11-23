@@ -176,7 +176,7 @@ for exp in experiment_conditions:
     model_config = deepcopy(basic_config)
     for key in exp:
         model_config[key] = exp[key]
-    results.append(run_experiment(model_config))
+    results.append('not run') # quickrun     results.append(run_experiment(model_config))
 
 
 # %% [markdown]

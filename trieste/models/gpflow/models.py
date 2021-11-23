@@ -152,9 +152,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, num_data, N]
         Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [L, num_data, M]
 
-        cov = K12 - tf.tensordot(
-            leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
-        )  # [..., L, N, M]
+
+        cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
+
+        # cov = K12 - tf.tensordot(
+        #     leading_transpose(Linv_Kx1, [..., -1, -2]), Linv_Kx2, [[-1], [-2]]
+        # )  # [..., L, N, M]
 
         tf.debugging.assert_shapes(
             [

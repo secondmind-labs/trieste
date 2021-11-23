@@ -123,7 +123,7 @@ rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=ehvi)
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 2 # quickrun num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
@@ -293,7 +293,7 @@ rule = EfficientGlobalOptimization(builder=echvi)
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 2 # quickrun num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
 result = bo.optimize(num_steps, initial_data_with_cst, models, acquisition_rule=rule)
 

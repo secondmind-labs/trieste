@@ -86,7 +86,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 # To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make Trieste record our model at each iteration.
 
 # %%
-bo_iter = 5
+bo_iter = 2 # quickrun bo_iter = 5
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)
 
 # %% [markdown]
@@ -139,7 +139,7 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 # For some cases, query several points at a time can be convenient by doing batch active learning. For this case, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is, it tends to query in high variance area less accurately, compared to the sequentially drawing one point at a time.
 
 # %%
-bo_iter = 5
+bo_iter = 2 # quickrun bo_iter = 5
 num_query = 3
 model = build_model(initial_data)
 acq = PredictiveVariance()
