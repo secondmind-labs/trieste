@@ -242,7 +242,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-         with shape [..., N, L]
+                 with shape [..., N, L]
         :return: mean_new: predictive variance at query_points, with shape [..., M, L],
                  and var_new: predictive variance at query_points, with shape [..., M, L]
         """
@@ -306,7 +306,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-        with shape [..., N, L]
+                 with shape [..., N, L]
         :return: mean_new: predictive variance at query_points, with shape [..., M, L],
                  and cov_new: predictive covariance between query_points, with shape [..., L, M, M]
         """
@@ -371,7 +371,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-        with shape [..., N, L]
+                 with shape [..., N, L]
         :param num_samples: number of samples
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
