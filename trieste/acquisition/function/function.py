@@ -761,7 +761,8 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         if not hasattr(model, "conditional_predict_f"):
             raise AttributeError(
                 """
-                Integrated variance reduction only supports models with a conditional_predict_f method.
+                Integrated variance reduction only supports models with a
+                conditional_predict_f method.
                 """
             )
 
