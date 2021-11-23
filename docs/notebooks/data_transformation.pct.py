@@ -4,6 +4,7 @@
 
 # %%
 import os
+
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,11 +62,9 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Model the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Gaussian process (GP) model, built using GPflow. The model will need to be trained on each step as more points are evaluated, so we'll package it with GPflow's Scipy optimizer.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a Gaussian process (GP) model, built using GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model from and pass it to the `GaussianProcessRegression` wrapper.
 #
-# Here as the first example, we model the objective function using the original data, without performing any data transformation. In the next example we will model it using normalised data.
-#
-# We also put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an output normalised to have zero mean and unit variance. Since the non-normalised data from the original objective function comes with different scaling, we rescale the priors based on approximate standard deviation of inputs and outputs.
+# Here as the first example, we model the objective function using the original data, without performing any data transformation. In the next example we will model it using normalised data. We also put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an output normalised to have zero mean and unit variance. Since the non-normalised data from the original objective function comes with different scaling, we rescale the priors based on approximate standard deviation of inputs and outputs.
 
 # %%
 def build_gp_model(data, x_std = 1.0, y_std = 0.1):
@@ -97,16 +96,9 @@ def build_gp_model(data, x_std = 1.0, y_std = 0.1):
     )
     gpflow.set_trainable(gpr.likelihood, False)
 
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(
-            gpflow.optimizers.Scipy(),
-            minimize_args={"options": dict(maxiter=100)}
-        ),
-        num_kernel_samples=100,
-    )
+    return GaussianProcessRegression(gpr)
 
-# build the model
+
 model = build_gp_model(initial_data, 20, 10000)
 
 

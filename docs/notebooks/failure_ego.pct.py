@@ -82,7 +82,7 @@ initial_data = observer(search_space.sample(num_init_points))
 # %% [markdown]
 # ## Build GPflow models
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR`, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` with Bernoulli likelihood.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood.
 
 # %%
 import gpflow
@@ -95,7 +95,6 @@ def create_regression_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
-
 def create_classification_model(data):
     kernel = gpflow.kernels.SquaredExponential(
         variance=100.0, lengthscales=[0.2, 0.2]
@@ -105,38 +104,29 @@ def create_classification_model(data):
     gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
 
-
 regression_model = create_regression_model(initial_data[OBJECTIVE])
 classification_model = create_classification_model(initial_data[FAILURE])
+
 
 # %% [markdown]
 # ## Build Trieste models
 #
 # We now specify how Trieste will use our GPflow models within the BO loop.
 #
-# For our `GPR` model, we will use a standard L-BFGS optimizer from Scipy, whereas we will optimze our `VGP` model using alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters).
+# For our `VGP` model we will use a non-default optimization: alternate Adam steps (to optimize kernel parameter) and NatGrad steps (to optimize variational parameters). For this we need to use the `BatchOptimizer` wrapper and set the `use_natgrads` model argument to `True` in our `VariationalGaussianProcess` model wrapper.
 
 # %% [markdown]
-# We'll train the GPR model with an L-BFGS-based optimizer, and the GPC model with the custom algorithm above.
+# We'll train the GPR model with the default Scipy-based L-BFGS optimizer, and the VGP model with the custom algorithm above.
 
 # %%
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.optimizer import BatchOptimizer
 
 models: dict[str, trieste.models.ModelSpec] = {
-    OBJECTIVE: GPflowModelConfig(**{
-        "model": regression_model,
-        "optimizer": gpflow.optimizers.Scipy(),
-    }),
-    FAILURE: GPflowModelConfig(**{
-        "model": classification_model,
-        "model_args": {
-            "use_natgrads": True,
-        },
-        "optimizer": tf.optimizers.Adam(1e-3),
-        "optimizer_args": {
-            "max_iter": 50,
-        },       
-    }),
+    OBJECTIVE: GaussianProcessRegression(regression_model),
+    FAILURE: VariationalGaussianProcess(
+        classification_model, BatchOptimizer(tf.optimizers.Adam(1e-3)), use_natgrads=True
+    ),
 }
 
 # %% [markdown]
