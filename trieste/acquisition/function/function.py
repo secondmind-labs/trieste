@@ -758,6 +758,13 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         :param integration_points: points over which to integrate the objective prediction variance
         :param threshold:
         """
+        if not hasattr(model, "conditional_predict_f"):
+            raise AttributeError(
+                """
+                Integrated variance reduction only supports models with a conditional_predict_f method.
+                """
+            )
+
         self._model = model
         self._integration_points = integration_points
         if threshold is None:
@@ -775,7 +782,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
         try:
-            mean, variance = self._model.conditional_predict_f(
+            mean, variance = self._model.conditional_predict_f(  # type: ignore
                 query_points=self._integration_points, additional_data=additional_data
             )
         except NotImplementedError:
