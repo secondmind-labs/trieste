@@ -45,7 +45,9 @@ plt.figure(figsize=(5, 5))
 plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
 idx = np.squeeze(observations).astype(bool)
 plt.scatter(query_points[idx][:, 0], query_points[idx][:, 1], label="1")
-plt.scatter(query_points[np.logical_not(idx)][:, 0], query_points[np.logical_not(idx)][:, 1], label="0")
+plt.scatter(
+    query_points[np.logical_not(idx)][:, 0], query_points[np.logical_not(idx)][:, 1], label="0"
+)
 plt.legend()
 plt.show()
 
@@ -53,10 +55,10 @@ plt.show()
 # Let's generate some data for our initial model. Here we randomly sample 10 data points.
 
 # %%
-numSamples = 10
-X = search_space.sample(numSamples)
-observer = mk_observer(circle, OBJECTIVE)
-datasets = observer(X)
+num_initial_points = 10
+X = search_space.sample(num_initial_points)
+observer = mk_observer(circle)
+initial_data = observer(X)
 
 # %% [markdown]
 # ## Modelling the binary classification task
@@ -65,50 +67,36 @@ datasets = observer(X)
 # For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see <cite data-cite="Nickisch08a">[Nickisch et al.](https://www.jmlr.org/papers/volume9/nickisch08a/nickisch08a.pdf)</cite>.
 
 # %%
-from trieste.models.gpflow import GPflowModelConfig, VariationalGaussianProcess
+from trieste.models.gpflow import VariationalGaussianProcess
+from trieste.models.optimizer import Optimizer
+
+optimizer = Optimizer(
+    optimizer=gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}
+)
 
 
 def create_bo_model(data):
     kernel = gpflow.kernels.SquaredExponential(lengthscales=[0.2, 0.2])
     m = gpflow.models.VGP(data.astuple(), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
-    return trieste.models.create_model(
-        GPflowModelConfig(
-            **{
-                "model": m,
-                "optimizer": gpflow.optimizers.Scipy(),
-                "optimizer_args": {
-                    "minimize_args": {"options": dict(maxiter=100.0)},
-                },
-            }
-        )
-    )
+    return VariationalGaussianProcess(m, optimizer)
 
-
-"""
-# model seems harder to train using default VariationalGaussianProcess() optimiser which is adam?
-
-def create_bo_model(data):
-    kernel = gpflow.kernels.SquaredExponential()
-    m = gpflow.models.VGP(data.astuple(), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
-    return VariationalGaussianProcess(m)
-"""
 
 # %% [markdown]
 # Lets see our model landscape using only those initial data
 
 # %%
-model = create_bo_model(datasets[OBJECTIVE])
+model = create_bo_model(initial_data)
 
-model.update(datasets[OBJECTIVE])
-model.optimize(datasets[OBJECTIVE])
+model.update(initial_data)
+model.optimize(initial_data)
 
 mean, variance = model.predict(query_points)
 
 plt.figure()
 plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
 plt.plot(
-    datasets[OBJECTIVE].query_points[:, 0],
-    datasets[OBJECTIVE].query_points[:, 1],
+    initial_data.query_points[:, 0],
+    initial_data.query_points[:, 1],
     "ko",
     markersize=10,
 )
@@ -120,8 +108,8 @@ plt.figure()
 plt.contourf(*grid_query_points, np.reshape(variance, [density] * input_dim))
 plt.colorbar()
 plt.plot(
-    datasets[OBJECTIVE].query_points[:, 0],
-    datasets[OBJECTIVE].query_points[:, 1],
+    initial_data.query_points[:, 0],
+    initial_data.query_points[:, 1],
     "ko",
     markersize=10,
 )
@@ -139,9 +127,9 @@ plt.show()
 # See <cite data-cite="houlsby2011bayesian">[Houlsby et al.](https://arxiv.org/pdf/1112.5745.pdf)</cite> for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
 
 # %%
-initial_models = trieste.utils.map_values(create_bo_model, datasets)
+initial_models = create_bo_model(initial_data)
 acq = BayesianActiveLearningByDisagreement()
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq.using(OBJECTIVE))
+rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)
 
 # %% [markdown]
 # ## Run the active learning loop
@@ -150,16 +138,13 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq.using(OBJECTIVE)
 # %%
 n_steps = 25
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-results = bo.optimize(n_steps, datasets, initial_models, rule, track_state=False)
+results = bo.optimize(n_steps, initial_data, initial_models, rule, track_state=False)
 final_dataset = results.try_get_final_datasets()[OBJECTIVE]
 final_model = results.try_get_final_models()[OBJECTIVE]
 
 # %% [markdown]
 # ## Visualising the result
 # Now, we can visualize our model after the active learning run
-
-# %%
-xmax = final_dataset.query_points[-n_steps:, :]
 
 # %% Plot BO results
 mean, variance = final_model.predict(query_points)
@@ -179,12 +164,18 @@ plt.plot(
     final_dataset.query_points[:-n_steps, 1],
     "ko",
     markersize=10,
+    label="Initial points",
 )
 plt.plot(
-    final_dataset.query_points[-n_steps:, 0], final_dataset.query_points[-n_steps:, 1], "rx", mew=10
+    final_dataset.query_points[-n_steps:, 0],
+    final_dataset.query_points[-n_steps:, 1],
+    "rx",
+    mew=10,
+    label="queried points",
 )
 plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
 plt.title("Updated Mean")
+plt.legend()
 plt.show()
 
 # %% [markdown]
