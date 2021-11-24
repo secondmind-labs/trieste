@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import unittest.mock
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Callable
 
 import gpflow
 import numpy.testing as npt
@@ -34,6 +34,20 @@ from trieste.acquisition.optimizer import (
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
+)
+from trieste.objectives import (
+    ackley_5, 
+    ACKLEY_5_MINIMIZER, 
+    ACKLEY_5_MINIMUM, 
+    ACKLEY_5_SEARCH_SPACE,
+    hartmann_3, 
+    HARTMANN_3_MINIMIZER,
+    HARTMANN_3_MINIMUM, 
+    HARTMANN_3_SEARCH_SPACE,
+    hartmann_6, 
+    HARTMANN_6_MINIMIZER,
+    HARTMANN_6_MINIMUM,
+    HARTMANN_6_SEARCH_SPACE
 )
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
@@ -91,7 +105,7 @@ SP = TypeVar("SP", bound=SearchSpace)
         ),  # 2D with maximum outside search space
     ],
 )
-def test_discrete_and_random_optimizer(
+def test_discrete_and_random_optimizer_on_quadratic(
     search_space: SP,
     shift: list[float],
     expected_maximizer: list[list[float]],
@@ -204,16 +218,12 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
 @pytest.mark.parametrize(
     "optimizer",
     [
-        generate_continuous_optimizer(),
-        generate_continuous_optimizer(num_optimization_runs=3),
-        generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
-        generate_continuous_optimizer(),
         generate_continuous_optimizer(num_optimization_runs=3),
         generate_continuous_optimizer(num_optimization_runs=3, num_recovery_runs=0),
         generate_continuous_optimizer(num_optimization_runs=1, num_initial_samples=5),
     ],
 )
-def test_continuous_optimizer(
+def test_continuous_optimizer_on_quadratic(
     search_space: Box,
     shift: list[float],
     expected_maximizer: list[list[float]],
@@ -221,6 +231,51 @@ def test_continuous_optimizer(
 ) -> None:
     maximizer = optimizer(search_space, _quadratic_sum(shift))
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
+
+
+
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "neg_function, expected_maximizer, expected_minimum, search_space",
+    [
+    #(ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
+    #(hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
+    (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
+    ],
+)
+def test_continuous_optimizer_on_toy_problems(
+    neg_function: Callable[[TensorType], TensorType],
+    expected_maximizer: TensorType,
+    expected_minimum: TensorType,
+    search_space: SearchSpace,
+) -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1*neg_function(tf.squeeze(x, 1))
+    optimizer = generate_continuous_optimizer(num_initial_samples = 1_000_000, num_optimization_runs=5)
+    maximizer = optimizer(search_space, target_function)
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @pytest.mark.parametrize(

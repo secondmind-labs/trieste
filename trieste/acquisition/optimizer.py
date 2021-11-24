@@ -31,6 +31,9 @@ from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSp
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
+
+import ray 
+
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
 
@@ -115,6 +118,34 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     return space.points[max_value_idx : max_value_idx + 1]
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def generate_continuous_optimizer(
     num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 1,
@@ -197,54 +228,61 @@ def generate_continuous_optimizer(
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
 
-        variable = tf.Variable(initial_points[0:1])  # [1, D]
-        optimizer_args_local = copy.deepcopy(optimizer_args)
+        
 
-        def _objective() -> TensorType:
-            return -target_func(variable[:, None, :])  # [1]
-
-        def _perform_optimization(
-            starting_point: TensorType,
-            optimizer_args: dict[str, Any],
-        ) -> OptimizeResult:
-            variable.assign(starting_point)  # [1, D]
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args)
-
-        successful_optimization = False
-        chosen_point = variable  # [1, D]
-        chosen_point_score = target_func(chosen_point[:, None, :])  # [1, 1]
-
-        for i in tf.range(
-            num_optimization_runs
-        ):  # perform optimization for each chosen starting point
-            if isinstance(space, TaggedProductSearchSpace):
-                bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
+        @ray.remote
+        def _perform_optimization(starting_point: TensorType, optimizer_args: dict[str, Any]) -> scipy.optimize.OptimizeResult:
+            variable = tf.Variable(starting_point)  # [1, D]
+            
+            if isinstance(space, TaggedProductSearchSpace): # only optimize over continuous variables
+                bounds = get_bounds_of_box_relaxation_around_point(space, starting_point)
             else:
                 bounds = spo.Bounds(space.lower, space.upper)
+
+            optimizer_args_local = copy.deepcopy(optimizer_args)
             optimizer_args_local["bounds"] = bounds
-            opt_result = _perform_optimization(initial_points[i : i + 1], optimizer_args_local)
+
+            def _objective() -> TensorType:
+                return -target_func(variable[:, None, :])  # [1]
+
+            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args) 
+
+
+        if num_optimization_runs==1:
+            opt_result = _perform_optimization(initial_points[i : i + 1], optimizer_args)
             if opt_result.success:
                 successful_optimization = True
+                chosen_point = tf.convert_to_tensor(opt_result.x, dtype= initial_points.dtype) # [D]
+                chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
+        
+        else: # parallelize using ray
+            ray.init()
+            try:
+                result_ids = []
+                for i in tf.range(num_optimization_runs): # start num_optimization_runs optimizations in parallel
+                    result_ids.append(_perform_optimization.remote(initial_points[i : i + 1], optimizer_args))
+                results = ray.get(result_ids)
 
-                new_point = variable  # [1, D]
-                new_point_score = -opt_result.fun  # [1, 1]
 
-                if new_point_score > chosen_point_score:  # if found a better point then keep
-                    chosen_point = new_point  # [1, D]
-                    chosen_point_score = new_point_score  # [1, 1]
 
-        if not successful_optimization:  # if all optimizations failed then try from random start
+            finally: # clean up 
+                ray.shutdown()
+            if tf.math.reduce_any([result.success for result in results]): # TODO
+                successful_optimization = True
+                new_point_scores = [-result.fun[0][0] for result in results]
+                chosen_point = results[tf.argmax(new_point_scores)].x
+                chosen_point = tf.convert_to_tensor(chosen_point, dtype= initial_points.dtype) # [D]
+                chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
+
+
+        if not successful_optimization:  # if all optimizations failed then try from random starts
             for i in tf.range(num_recovery_runs):
-                random_start = space.sample(1)
-                if isinstance(space, TaggedProductSearchSpace):
-                    bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
-                else:
-                    bounds = spo.Bounds(space.lower, space.upper)
-                optimizer_args_local["bounds"] = bounds
-                opt_result = _perform_optimization(random_start, optimizer_args_local)
+                random_start = space.sample(1) # [1, D]
+                opt_result= _perform_optimization(random_start, optimizer_args)
                 if opt_result.success:
-                    chosen_point = variable  # [1, D]
                     successful_optimization = True
+                    chosen_point = tf.convert_to_tensor(opt_result.x, dtype= initial_points.dtype) # [D]
+                    chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
                     break
             if not successful_optimization:  # return error if still failed
                 raise FailedOptimizationError(
@@ -254,9 +292,10 @@ def generate_continuous_optimizer(
                     """
                 )
 
-        return tf.convert_to_tensor(chosen_point)  # convert chosen point back from a variable
+        return chosen_point
 
     return optimize_continuous
+
 
 
 def get_bounds_of_box_relaxation_around_point(
@@ -348,7 +387,7 @@ def generate_random_search_optimizer(
         """
         samples = space.sample(num_samples)
         target_func_values = target_func(samples[:, None, :])
-        max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-        return samples[max_value_idx : max_value_idx + 1]
+        max_value_idx = tf.argmax(target_func_values, axis=0)
+        return tf.gather(samples, max_value_idx)
 
     return optimize_random
