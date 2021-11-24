@@ -13,8 +13,10 @@
 # limitations under the License.
 """ This folder contains single-objective optimization functions. """
 from .active_learning import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     PredictiveVariance,
+    bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
     predictive_variance,
 )
@@ -28,7 +30,6 @@ from .entropy import (
 from .function import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    BayesianActiveLearningByDisagreement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     NegativeLowerConfidenceBound,
