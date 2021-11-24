@@ -254,8 +254,8 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     of the predictive entropy.  
 
     This acquisition function is intended to use for Binary Gaussian Process Classification
-    model with Bernoulli likelihood. integrating over nuisance parameters is not currently 
-    supported (equation 6 of the paper)
+    model with Bernoulli likelihood. integrating over nuisance parameters is currently not 
+    supported (see equation 6 of the paper)
     """
 
     def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
