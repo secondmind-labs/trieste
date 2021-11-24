@@ -259,8 +259,8 @@ class Parameter(gpflow.Parameter):
         **kwargs: Any,
     ):
         """
-        A copy of gpflow.Parameter's __init__ but with an additional **kwargs argument that is
-         passed to a (slightly modified) TransformedVariable.
+        A copy of gpflow.Parameter's init but with an additional kwargs argument that is
+        passed to a (slightly modified) TransformedVariable.
         """
         if transform is None:
             transform = tfp.bijectors.Identity()
