@@ -71,6 +71,7 @@ def test_model_registry_register_model_warning() -> None:
         ModelRegistry.register_model(SVGPcopy, SparseVariational, Optimizer)
 
     assert len(record) == 1
+    assert isinstance(record[0].message, Warning)
     assert "you have now overwritten it" in record[0].message.args[0]
 
 

@@ -54,6 +54,7 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
+from trieste.models.gpflow.models import NumDataPropertyMixin
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 
 
