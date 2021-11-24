@@ -2,7 +2,7 @@
 # # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization and GIBBON
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with `trieste`.
+# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with Trieste.
 
 # %%
 import numpy as np
@@ -35,13 +35,13 @@ initial_data = observer(initial_query_points)
 
 # %% [markdown]
 # ## Surrogate model
-# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data.
+#
+# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models import create_model
-from trieste.models.gpflow import GPflowModelConfig
 import tensorflow_probability as tfp
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def build_model(data):
@@ -52,18 +52,11 @@ def build_model(data):
     kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    model_spec = {
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }
-    return GPflowModelConfig(**model_spec)
+    return GaussianProcessRegression(gpr)
 
 
-model_spec = build_model(initial_data)
-model = create_model(model_spec)
+model = build_model(initial_data)
+
 
 # %% [markdown]
 # ## Batch acquisition functions.

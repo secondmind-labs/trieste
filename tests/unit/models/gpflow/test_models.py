@@ -54,7 +54,7 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer, create_optimizer
+from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -108,7 +108,7 @@ def test_gaussian_process_regression_ref_optimize(
     y = fnc_2sin_x_over_3(x)
 
     model, _reference_model = gpflow_interface_factory(
-        x, y, optimizer=create_optimizer(gpflow.optimizers.Scipy(), {})
+        x, y, optimizer=Optimizer(gpflow.optimizers.Scipy())
     )
 
     reference_model = _reference_model(x, y)
@@ -459,7 +459,11 @@ def test_gaussian_process_regression_optimize(
     compile: bool,
 ) -> None:
     data = mock_data()
-    optimizer_wrapper = create_optimizer(optimizer, dict(compile=compile))
+    if isinstance(optimizer, gpflow.optimizers.Scipy):
+        create_optimizer = Optimizer
+    elif isinstance(optimizer, tf.optimizers.Optimizer):
+        create_optimizer = BatchOptimizer
+    optimizer_wrapper = create_optimizer(optimizer, compile=compile)
     model, _ = gpflow_interface_factory(*data, optimizer=optimizer_wrapper)
     internal_model = model.model
     if isinstance(internal_model, SVGP):
@@ -543,7 +547,7 @@ def test_sparse_variational_optimize_with_defaults() -> None:
     y_observed = _3x_plus_gaussian_noise(x_observed)
     data = x_observed, y_observed
     dataset = Dataset(*data)
-    optimizer = create_optimizer(tf.optimizers.Adam(), dict(max_iter=20))
+    optimizer = BatchOptimizer(tf.optimizers.Adam(), max_iter=20)
     model = SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
@@ -556,9 +560,12 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    optimizer = create_optimizer(
+    optimizer = BatchOptimizer(
         tf.optimizers.Adam(),
-        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
+        max_iter=10,
+        batch_size=10,
+        dataset_builder=batcher,
+        compile=compile,
     )
     model = SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer)
     loss = model.model.training_loss(data)
@@ -575,9 +582,12 @@ def test_vgp_optimize_with_and_without_natgrads(
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    optimizer = create_optimizer(
+    optimizer = BatchOptimizer(
         tf.optimizers.Adam(),
-        dict(max_iter=10, batch_size=10, dataset_builder=batcher, compile=compile),
+        max_iter=10,
+        batch_size=10,
+        dataset_builder=batcher,
+        compile=compile,
     )
     model = VariationalGaussianProcess(
         vgp_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=use_natgrads

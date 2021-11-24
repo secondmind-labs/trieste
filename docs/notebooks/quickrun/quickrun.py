@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # The YAML config files specify a sequence of line replacements to apply.
-# The "from" field must match the entire line (apart from leading whitespace).
+# The "from" field is a regular expression that must match the entire line (apart from leading
+# whitespace).
 YAML_CONFIG_SCHEMA = """
 type: object
 properties:
