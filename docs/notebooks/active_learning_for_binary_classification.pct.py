@@ -189,3 +189,8 @@ plt.show()
 
 # %% [markdown]
 # As expected, BALD will query in important regions like points near the domain boundary and class boundary.
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
