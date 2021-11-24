@@ -19,10 +19,9 @@ from typing import Any, Callable
 
 import pytest
 import tensorflow as tf
-from gpflux.models import DeepGP
 from gpflow.models import GPModel
+from gpflux.models import DeepGP
 
-from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
 from tests.util.models.gpflow.models import (
     ModelFactoryType,
     gpr_model,
@@ -30,16 +29,15 @@ from tests.util.models.gpflow.models import (
     svgp_model,
     vgp_model,
 )
-
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+from trieste.data import Dataset
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.optimizer import Optimizer
-from trieste.data import Dataset
-from trieste.models.optimizer import DatasetTransformer
+from trieste.models.optimizer import DatasetTransformer, Optimizer
 from trieste.types import TensorType
 
 

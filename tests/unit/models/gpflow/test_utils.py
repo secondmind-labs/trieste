@@ -29,7 +29,12 @@ from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import ModelFactoryType
 from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
-from trieste.models.gpflow import randomize_hyperparameters, squeeze_hyperparameters
+from trieste.models.gpflow import (
+    check_optimizer,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
+)
+from trieste.models.optimizer import BatchOptimizer, Optimizer
 
 
 class _ModuleWithBijector(tf.Module):
@@ -221,3 +226,14 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
     )
     with pytest.raises(ValueError):
         squeeze_hyperparameters(kernel, alpha)
+
+
+def test_scheck_optimizer_raises_for_invalid_optimizer_wrapper_combination() -> None:
+
+    with pytest.raises(ValueError):
+        optimizer1 = BatchOptimizer(gpflow.optimizers.Scipy())
+        check_optimizer(optimizer1)
+
+    with pytest.raises(ValueError):
+        optimizer2 = Optimizer(tf.optimizers.Adam())
+        check_optimizer(optimizer2)

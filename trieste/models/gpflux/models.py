@@ -63,7 +63,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             raise ValueError(
                 f"Optimizer for `DeepGaussianProcess` must be an instance of a "
                 f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
+                f"received {type(self.optimizer.optimizer)} instead."
             )
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()

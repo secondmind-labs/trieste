@@ -44,7 +44,9 @@ from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
 
-def test_deep_gaussian_process_raises_for_non_tf_optimizer(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_raises_for_non_tf_optimizer(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
     optimizer = Optimizer(gpflow.optimizers.Scipy())

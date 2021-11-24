@@ -21,6 +21,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
+from ..optimizer import BatchOptimizer, Optimizer
 
 M = TypeVar("M", bound=tf.Module)
 """ A type variable bound to :class:`tf.Module`. """
@@ -100,3 +101,33 @@ def squeeze_hyperparameters(
                 low = param.bijector.bijectors[0].shift
                 squeezed_param = tf.math.maximum(param, low + epsilon * tf.ones_like(param))
                 param.assign(squeezed_param)
+
+
+def check_optimizer(optimizer: BatchOptimizer | Optimizer) -> None:
+    """
+    Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
+    or strictly greater than the limit defined by the Shift+Softplus.
+    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+
+    :param object: Any gpflow Module.
+    :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
+    :param epsilon: the value with which to offset the shift for the Softplus case.
+    :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
+    """
+    if isinstance(optimizer.optimizer, gpflow.optimizers.Scipy):
+        if isinstance(optimizer, BatchOptimizer):
+            raise ValueError(
+                f"""
+                The gpflow.optimizers.Scipy can only be used with an Optimizer wrapper,
+                however received {optimizer}.
+                """
+            )
+
+    if isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(optimizer, BatchOptimizer):
+            raise ValueError(
+                f"""
+                The tf.optimizers.Optimizer can only be used with a BatchOptimizer wrapper,
+                however received {optimizer}.
+                """
+            )
