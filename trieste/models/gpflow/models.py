@@ -142,7 +142,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         elif len(tf.shape(K)) > 3:
             raise NotImplementedError(
                 "Covariance between points is not supported "
-                f"for kernels of type "
+                "for kernels of type "
                 f"{type(self.model.kernel)}."
             )
 
@@ -152,6 +152,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, num_data, N]
         Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [L, num_data, M]
 
+        # The line below is just A^T*B over the last 2 dimensions.
         cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
 
         tf.debugging.assert_shapes(
@@ -250,7 +251,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
-            ]
+            ],
+            message="additional_data must have query_points with shape [..., N, D]"
+                    " and observations with shape [..., N, L], and query_points "
+                    "should have shape [M, D]"
         )
 
         if isinstance(self.model, SGPR):
@@ -290,7 +294,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (query_points, ["M", "D"]),
                 (mean_new, [..., "M", "L"]),
                 (var_new, [..., "M", "L"]),
-            ]
+            ],
+            message="received unexpected shapes computing conditional_predict_f,"
+                    "check model kernel structure?"
         )
 
         return mean_new, var_new
@@ -314,7 +320,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
-            ]
+            ],
+            message="additional_data must have query_points with shape [..., N, D]"
+                    " and observations with shape [..., N, L], and query_points "
+                    "should have shape [M, D]"
         )
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
@@ -355,7 +364,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (query_points, ["M", "D"]),
                 (mean_new, [..., "M", "L"]),
                 (cov_new, [..., "L", "M", "M"]),
-            ]
+            ],
+            message="received unexpected shapes computing conditional_predict_joint,"
+                    "check model kernel structure?"
         )
 
         return mean_new, cov_new
@@ -373,8 +384,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param num_samples: number of samples
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
-        mean_new, var_new = self.model.conditional_predict_joint(query_points, additional_data)
-        return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
+        mean_new, cov_new = self.conditional_predict_joint(query_points, additional_data)
+        mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., P, N]
+        samples = sample_mvn(
+            mean_for_sample, cov_new, full_cov=True, num_samples=num_samples
+        )  # [..., (S), P, N]
+        return tf.linalg.adjoint(samples)  # [..., (S), N, P]
 
     def conditional_predict_y(
         self, query_points: TensorType, additional_data: Dataset
@@ -385,14 +400,14 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-         with shape [..., N, L]
+                 with shape [..., N, L]
         :return: predictive variance at query_points, with shape [..., M, L],
-            and predictive variance at query_points, with shape [..., M, L]
+                 and predictive variance at query_points, with shape [..., M, L]
         """
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
-        return self.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
 
 class NumDataPropertyMixin:

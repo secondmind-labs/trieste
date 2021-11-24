@@ -451,3 +451,6 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
         npt.assert_array_almost_equal(
             calculated_batch_gibbon[i : i + 1], reconstructed_batch_gibbon
         )
+
+
+test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(True, 0.1)
