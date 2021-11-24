@@ -545,7 +545,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
                 self._model.covariance_between_points(  # type: ignore
                     tf.squeeze(x, -2), self._pending_points
                 ),
-                -1,
+                axis=-1,
             ),
             0,
         )  # [N, m, 1]
