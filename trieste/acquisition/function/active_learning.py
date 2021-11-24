@@ -267,7 +267,7 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
 
     def __repr__(self) -> str:
         """"""
-        return f"BALD(jitter={self._jitter!r})"
+        return f"BayesianActiveLearningByDisagreement(jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
