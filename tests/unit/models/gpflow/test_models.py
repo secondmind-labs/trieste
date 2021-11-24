@@ -699,6 +699,3 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
         np.testing.assert_allclose(pred_meani, pred_mean5[i, ...], atol=1e-5)
         np.testing.assert_allclose(pred_vari, pred_var5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
-
-
-test_gaussian_process_regression_conditional_predict_equations()
