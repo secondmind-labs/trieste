@@ -35,17 +35,17 @@ def circle(x):
 
 # %%
 density = 100
-xx = np.linspace(search_space.lower[0], search_space.upper[0], density)
+query_points = np.linspace(search_space.lower[0], search_space.upper[0], density)
 
-grid_xx = np.meshgrid(*[xx] * input_dim)
-xx = np.vstack([g.ravel() for g in grid_xx]).T
-yy = circle(xx).numpy()
+grid_query_points = np.meshgrid(*[query_points] * input_dim)
+query_points = np.vstack([g.ravel() for g in grid_query_points]).T
+observations = circle(query_points).numpy()
 
 plt.figure(figsize=(5, 5))
-plt.contour(*grid_xx, np.reshape(yy, [density] * input_dim), levels=[0.5])
-idx = np.squeeze(yy).astype(bool)
-plt.scatter(xx[idx][:, 0], xx[idx][:, 1], label="1")
-plt.scatter(xx[np.logical_not(idx)][:, 0], xx[np.logical_not(idx)][:, 1], label="0")
+plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
+idx = np.squeeze(observations).astype(bool)
+plt.scatter(query_points[idx][:, 0], query_points[idx][:, 1], label="1")
+plt.scatter(query_points[np.logical_not(idx)][:, 0], query_points[np.logical_not(idx)][:, 1], label="0")
 plt.legend()
 plt.show()
 
@@ -102,10 +102,10 @@ model = create_bo_model(datasets[OBJECTIVE])
 model.update(datasets[OBJECTIVE])
 model.optimize(datasets[OBJECTIVE])
 
-mean, variance = model.predict(xx)
+mean, variance = model.predict(query_points)
 
 plt.figure()
-plt.contourf(*grid_xx, np.reshape(mean, [density] * input_dim))
+plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
 plt.plot(
     datasets[OBJECTIVE].query_points[:, 0],
     datasets[OBJECTIVE].query_points[:, 1],
@@ -117,7 +117,7 @@ plt.colorbar()
 plt.show()
 
 plt.figure()
-plt.contourf(*grid_xx, np.reshape(variance, [density] * input_dim))
+plt.contourf(*grid_query_points, np.reshape(variance, [density] * input_dim))
 plt.colorbar()
 plt.plot(
     datasets[OBJECTIVE].query_points[:, 0],
@@ -162,7 +162,7 @@ final_model = results.try_get_final_models()[OBJECTIVE]
 xmax = final_dataset.query_points[-n_steps:, :]
 
 # %% Plot BO results
-mean, variance = final_model.predict(xx)
+mean, variance = final_model.predict(query_points)
 
 
 def invlink(f):
@@ -172,7 +172,7 @@ def invlink(f):
 mean = invlink(mean)
 
 plt.figure(figsize=(7, 5))
-plt.contourf(*grid_xx, np.reshape(mean, [density] * input_dim))
+plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
 plt.colorbar()
 plt.plot(
     final_dataset.query_points[:-n_steps, 0],
@@ -183,7 +183,7 @@ plt.plot(
 plt.plot(
     final_dataset.query_points[-n_steps:, 0], final_dataset.query_points[-n_steps:, 1], "rx", mew=10
 )
-plt.contour(*grid_xx, np.reshape(yy, [density] * input_dim), levels=[0.5])
+plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
 plt.title("Updated Mean")
 plt.show()
 
