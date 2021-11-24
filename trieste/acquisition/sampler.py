@@ -23,7 +23,7 @@ from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions.fourier_features import RandomFourierFeatures
+from gpflux.layers.basis_functions import RandomFourierFeatures
 from scipy.optimize import bisect
 
 from ..data import Dataset
