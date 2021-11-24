@@ -250,7 +250,7 @@ def bichon_ranjan_criterion(
 class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
-    :cite:`houlsby2011bayesian`. The acquisition function computes the information gains
+    :cite:`houlsby2011bayesian`. The acquisition function computes the information gain
     of the predictive entropy.  
 
     This acquisition function is intended to use for Binary Gaussian Process Classification
