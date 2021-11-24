@@ -708,3 +708,26 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
         np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
+
+def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
+    x = gpflow.utilities.to_default_float(
+        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
+    )  # shape: [23, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
+    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
+    samples = model5.conditional_predict_f_sample(query_points, additional_data, num_samples=100000)
+    npt.assert_array_equal([3, 100000, 46, 1], samples.shape)
+
+    for i in range(3):
+        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
+        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
+
+        modeli = GaussianProcessRegression(gpr_model(xi, yi))
+        predj_meani, predj_covi = modeli.predict_joint(query_points)
+        sample_mean = tf.reduce_mean(samples[i], axis=0)
+        sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
+        np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
+        np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)

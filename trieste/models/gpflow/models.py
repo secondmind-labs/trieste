@@ -374,8 +374,14 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         :param num_samples: number of samples
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
-        mean_new, var_new = self.model.conditional_predict_joint(query_points, additional_data)
-        return sample_mvn(mean_new, var_new, full_cov=True, num_samples=num_samples)
+        mean_new, cov_new = self.conditional_predict_joint(query_points, additional_data)
+        mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., P, N]
+        samples = sample_mvn(
+            mean_for_sample, cov_new, full_cov=True, num_samples=num_samples
+        )  # [..., (S), P, N]
+        return tf.linalg.adjoint(samples)  # [..., (S), N, P]
+
+        # return sample_mvn(leading_transpose(mean_new, [..., -1, -2]), var_new, full_cov=True, num_samples=num_samples)
 
     def conditional_predict_y(
         self, query_points: TensorType, additional_data: Dataset
