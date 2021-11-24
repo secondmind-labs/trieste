@@ -547,7 +547,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
                 ),
                 axis=-1,
             ),
-            0,
+            axis=0,
         )  # [N, m, 1]
         L_inv_A = tf.linalg.triangular_solve(L, A)
         V_det = yvar - tf.squeeze(
