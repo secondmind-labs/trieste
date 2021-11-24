@@ -791,7 +791,8 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         except NotImplementedError:
             raise ValueError(
                 """
-                PredictiveVariance only supports models with a conditional_predict_ft method.
+                integrated_variance_reductione only supports models with a conditional_predict_f 
+                method.
                 """
             )
 
