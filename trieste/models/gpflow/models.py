@@ -253,8 +253,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (query_points, ["M", "D"]),
             ],
             message="additional_data must have query_points with shape [..., N, D]"
-                    " and observations with shape [..., N, L], and query_points "
-                    "should have shape [M, D]"
+            " and observations with shape [..., N, L], and query_points "
+            "should have shape [M, D]",
         )
 
         if isinstance(self.model, SGPR):
@@ -296,7 +296,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (var_new, [..., "M", "L"]),
             ],
             message="received unexpected shapes computing conditional_predict_f,"
-                    "check model kernel structure?"
+            "check model kernel structure?",
         )
 
         return mean_new, var_new
@@ -322,8 +322,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (query_points, ["M", "D"]),
             ],
             message="additional_data must have query_points with shape [..., N, D]"
-                    " and observations with shape [..., N, L], and query_points "
-                    "should have shape [M, D]"
+            " and observations with shape [..., N, L], and query_points "
+            "should have shape [M, D]",
         )
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
@@ -366,7 +366,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
                 (cov_new, [..., "L", "M", "M"]),
             ],
             message="received unexpected shapes computing conditional_predict_joint,"
-                    "check model kernel structure?"
+            "check model kernel structure?",
         )
 
         return mean_new, cov_new

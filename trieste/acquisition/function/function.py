@@ -739,13 +739,13 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 class integrated_variance_reduction(AcquisitionFunctionClass):
     """
     The reduction of the average of the predicted variance over the integration points
-    (a.k.a. Integrated Means Square Error or IMSE criterion). 
+    (a.k.a. Integrated Means Square Error or IMSE criterion).
     See :cite:`Picheny2010` for details.
 
-    If no threshold is provided, the goal is to learn a globally accurate model, and 
-    the original variance is used. Otherwise, learning is 'targeted' towards regions 
-    where the GP is close to particular values, and the variance is weighted by the 
-    posterior GP pdf evaluated at the threshold (if a single value is given) or by the 
+    If no threshold is provided, the goal is to learn a globally accurate model, and
+    the original variance is used. Otherwise, learning is 'targeted' towards regions
+    where the GP is close to particular values, and the variance is weighted by the
+    posterior GP pdf evaluated at the threshold (if a single value is given) or by the
     probability that the GP posterior belongs to the interval between the 2 thresholds.
     """
 
@@ -791,7 +791,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         except NotImplementedError:
             raise ValueError(
                 """
-                integrated_variance_reductione only supports models with a conditional_predict_f 
+                integrated_variance_reduction only supports models with a conditional_predict_f
                 method.
                 """
             )
