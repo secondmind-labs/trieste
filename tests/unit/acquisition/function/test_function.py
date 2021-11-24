@@ -16,8 +16,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Optional
 
-import gpflow
-import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -35,10 +33,9 @@ from tests.util.misc import (
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
-    gpr_model,
     rbf,
 )
-from tests.util.models.models import fnc_2sin_x_over_3
+
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -46,7 +43,6 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    IntegratedVarianceReduction,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
@@ -56,7 +52,6 @@ from trieste.acquisition.function.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.types import TensorType
 
@@ -644,59 +639,3 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
-
-
-def test_integrated_variance_reduction() -> None:
-
-    x = gpflow.utilities.to_default_float(
-        tf.constant(np.arange(1, 7).reshape(-1, 1) / 8.0)
-    )  # shape: [6, 1]
-    y = fnc_2sin_x_over_3(x)
-
-    model6 = GaussianProcessRegression(gpr_model(x, y))
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
-    reduced_data = Dataset(x[:5, :], y[:5, :])
-    query_points = x[5:, :]
-    integration_points = tf.concat([0.37 * x, 1.7 * x], 0)  # shape: [14, 1]
-
-    _, pred_var6 = model6.predict(integration_points)
-
-    acq_noweight = IntegratedVarianceReduction(integration_points=integration_points)
-    acq = IntegratedVarianceReduction(threshold=[0.5, 0.8], integration_points=integration_points)
-
-    acq_function = acq.prepare_acquisition_function(model=model5, dataset=reduced_data)
-    acq_function_noweight = acq_noweight.prepare_acquisition_function(
-        model=model5, dataset=reduced_data
-    )
-    acq_values = -acq_function(tf.expand_dims(query_points, axis=-2))
-    acq_values_noweight = -acq_function_noweight(tf.expand_dims(query_points, axis=-2))
-
-    # Weighted criterion is always smaller than non-weighted
-    np.testing.assert_array_less(acq_values, acq_values_noweight)
-
-    # Non-weighted variance integral should match the one with fully updated model
-    np.testing.assert_allclose(tf.reduce_mean(pred_var6), acq_values_noweight[0], atol=1e-5)
-
-
-def test_integrated_variance_reduction_works_with_batch() -> None:
-
-    x = gpflow.utilities.to_default_float(
-        tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0)
-    )  # shape: [7, 1]
-    y = fnc_2sin_x_over_3(x)
-
-    model7 = GaussianProcessRegression(gpr_model(x, y))
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
-    reduced_data = Dataset(x[:5, :], y[:5, :])
-    query_points = tf.expand_dims(x[5:, :], axis=0)  # one batch of 2
-
-    integration_points = tf.concat([0.37 * x, 1.7 * x], 0)  # shape: [14, 1]
-
-    _, pred_var7 = model7.predict(integration_points)
-
-    acq = IntegratedVarianceReduction(integration_points=integration_points)
-    acq_function = acq.prepare_acquisition_function(model=model5, dataset=reduced_data)
-    acq_values = -acq_function(query_points)
-
-    # Variance integral should match the one with fully updated model
-    np.testing.assert_allclose(tf.reduce_mean(pred_var7), acq_values, atol=1e-5)

@@ -14,9 +14,11 @@
 """ This folder contains single-objective optimization functions. """
 from .active_learning import (
     ExpectedFeasibility,
+    IntegratedVarianceReduction,
     PredictiveVariance,
     bichon_ranjan_criterion,
     predictive_variance,
+    integrated_variance_reduction,
 )
 from .entropy import (
     GIBBON,
@@ -30,7 +32,6 @@ from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    IntegratedVarianceReduction,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
