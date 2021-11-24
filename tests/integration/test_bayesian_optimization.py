@@ -52,6 +52,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.optimizer import Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -305,15 +306,15 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             else:
                 return lr
 
-        optimizer = tf.optimizers.Adam(0.01)
         fit_args = {
             "batch_size": batch_size,
             "epochs": epochs,
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
+        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
 
-        return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+        return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
     initial_query_points = search_space.sample_sobol(20)
     observer = mk_observer(michalewicz, OBJECTIVE)

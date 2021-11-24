@@ -84,27 +84,22 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# We'll model the objective and constraint data with their own Gaussian process regression models.
+# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models.gpflow import GPflowModelConfig
+
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def create_bo_model(data):
-    variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
+    variance = tf.math.reduce_variance(data.observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     jitter = gpflow.kernels.White(1e-12)
     gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig(**{
-        "model": gpr,
-        "optimizer": gpflow.optimizers.Scipy(),
-        "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)},
-        },
-    }))
+    return GaussianProcessRegression(gpr)
 
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
@@ -268,7 +263,7 @@ plot_regret(
 # %% [markdown]
 # ## Constrained optimization with more than one constraint
 #
-# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherets from the previous one its objective and first constraint, but possess a second constraint. We start by adding an output to our observer, and creating a set of three models.
+# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherits from the previous one its objective and first constraint, but also adds a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
 # %%
 class Sim2(Sim):
@@ -294,10 +289,11 @@ initial_data = observer_two_constraints(search_space.sample(num_initial_points))
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
-# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` into one quantity by using a `Product` `Reducer`:
+# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` functions into one quantity by using a `Product` `Reducer`:
 
 # %%
 from trieste.acquisition.combination import Product
+
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
 pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore

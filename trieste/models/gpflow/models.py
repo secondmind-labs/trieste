@@ -390,11 +390,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
-            batch size 100.
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         :param use_natgrads: If True then alternate model optimization steps with natural
             gradient updates. Note that natural gradients requires
-            an :class:`~trieste.models.optimizer.Optimizer` optimizer.
+            a :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
+            :class:`~tf.optimizers.Optimizer` optimizer.
         :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
@@ -402,18 +402,22 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
 
-        if optimizer is None:
+        if optimizer is None and not use_natgrads:
+            optimizer = Optimizer(gpflow.optimizers.Scipy())
+        elif optimizer is None and use_natgrads:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
 
         super().__init__(optimizer)
         self._model = model
 
         if use_natgrads:
-            if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
+            if not isinstance(self._optimizer, BatchOptimizer) or not isinstance(
+                self._optimizer.optimizer, tf.optimizers.Optimizer
+            ):
                 raise ValueError(
                     f"""
-                    Natgrads can only be used alongside an optimizer built from tf.optimizers
-                    however received f{self._optimizer}.
+                    Natgrads can only be used with a BatchOptimizer wrapper using an instance of
+                    tf.optimizers.Optimizer, however received f{self._optimizer}.
                     """
                 )
 
