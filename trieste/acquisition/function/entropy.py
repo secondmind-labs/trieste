@@ -537,9 +537,13 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         yvar = fvar + noise_variance  # need predictive variance of observations
 
         _, B = self._model.predict_joint(self._pending_points)  # [1, m, m]
-        L = tf.linalg.cholesky(
-            B + noise_variance * tf.eye(len(self._pending_points), dtype=B.dtype)
+
+        B_shape = tf.shape(B)
+        noise = noise_variance * tf.eye(
+            B_shape[-2], batch_shape=B_shape[:-2], dtype=B.dtype
         )  # need predictive variance of observations
+        L = tf.linalg.cholesky(B + noise)
+
         A = tf.squeeze(
             tf.expand_dims(
                 self._model.covariance_between_points(  # type: ignore
