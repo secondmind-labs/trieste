@@ -742,10 +742,11 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
     (a.k.a. Integrated Means Square Error or IMSE criterion). 
     See :cite:`Picheny2010` for details.
 
-    If no threshold is provided, the original variance is used. Otherwise,
-    the variance is weighted by the posterior GP pdf evaluated at the threshold
-    (if a single value is given) or by the probability that the GP posterior belongs
-    to the interval between the 2 thresholds.
+    If no threshold is provided, the goal is to learn a globally accurate model, and 
+    the original variance is used. Otherwise, learning is 'targeted' towards regions 
+    where the GP is close to particular values, and the variance is weighted by the 
+    posterior GP pdf evaluated at the threshold (if a single value is given) or by the 
+    probability that the GP posterior belongs to the interval between the 2 thresholds.
     """
 
     def __init__(
