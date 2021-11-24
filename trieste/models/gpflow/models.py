@@ -381,8 +381,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         )  # [..., (S), P, N]
         return tf.linalg.adjoint(samples)  # [..., (S), N, P]
 
-        # return sample_mvn(leading_transpose(mean_new, [..., -1, -2]), var_new, full_cov=True, num_samples=num_samples)
-
     def conditional_predict_y(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:

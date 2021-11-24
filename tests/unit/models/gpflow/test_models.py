@@ -709,6 +709,7 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
         np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
 
+
 def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
     x = gpflow.utilities.to_default_float(
         tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
