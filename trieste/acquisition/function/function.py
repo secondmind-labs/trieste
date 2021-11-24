@@ -758,7 +758,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         """
         :param model: The model of the objective function.
         :param integration_points: points over which to integrate the objective prediction variance
-        :param threshold:
+        :param threshold: either None, or a sequence of 1 or 2 float values
         """
         if not hasattr(model, "conditional_predict_f"):
             raise AttributeError(
