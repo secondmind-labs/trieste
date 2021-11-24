@@ -128,23 +128,22 @@ result = bo.optimize(2, initial_data, model_config)
 # %%
 from copy import deepcopy
 
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from gpflow.models import SVGP
 
 
-def build_gp_model(data):
+def build_gpr_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     model = GPR(data.astuple(), kernel, noise_variance=1e-5)
     return model
 
 
-def build_dgp_model(data):
+def build_svgp_model(data):
+    inputs = data.query_points
     variance = tf.math.reduce_variance(data.observations)
-    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
-    dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
-    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
-    dgp.likelihood_layer.likelihood.variance.assign(1e-5)
-    return dgp
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    model = SVGP(kernel, gpflow.likelihoods.Gaussian(), inputs[:2], num_data=len(inputs))
+    return model
 
 
 def run_experiment(model_config):
@@ -154,21 +153,12 @@ def run_experiment(model_config):
 
 
 # configuration shared by all experiments, this is modified by each experiment condition
-basic_config = {
-    "model": gpflow_model,
-    "model_args": {
-        "num_kernel_samples": 100,
-    },
-    "optimizer": gpflow.optimizers.Scipy(),
-    "optimizer_args": {
-        "minimize_args": {"options": dict(maxiter=100)},
-    },
-}
+basic_config = {"model": build_gpr_model(initial_data)}
 
 # here we specify our experiments
 experiment_conditions = [
     {"model_args": {"num_kernel_samples": 50}},
-    {"model": build_dgp_model(initial_data)},
+    {"model": build_svgp_model(initial_data)},
 ]
 
 results = []
