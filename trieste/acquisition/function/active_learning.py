@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import math
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -28,7 +29,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder
+from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder, AcquisitionFunctionClass
 
 
 class PredictiveVariance(SingleModelAcquisitionBuilder):
@@ -245,3 +246,78 @@ def bichon_ranjan_criterion(
         return criterion
 
     return acquisition
+
+class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
+    :cite:`houlsby2011bayesian`. The acquisition function computes the information gains
+    of the predictive entropy.  
+
+    This acquisition function is intended to use for Binary Gaussian Process Classification
+    model with Bernoulli likelihood. integrating over nuisance parameters is not currently 
+    supported (equation 6 of the paper)
+    """
+
+    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
+        """
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BALD(jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return bayesian_active_learning_by_disagreement(model, self._jitter)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, jitter: float):
+        """
+
+        :param model: The model of the objective function.
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
+        :return: The Bayesian Active Learning By Disagreement acquisition function.
+        """
+        self._model = model
+        self._jitter = jitter
+
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
+        variance = tf.maximum(variance, self._jitter)
+
+        normal = tfp.distributions.Normal(tf.cast(0, mean.dtype), tf.cast(1, mean.dtype))
+        p = normal.cdf((mean / tf.sqrt(variance + 1)))
+
+        C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
+        Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
+
+        return -p * tf.math.log(p + self._jitter) - (1 - p) * tf.math.log(1 - p + self._jitter) - Ef
