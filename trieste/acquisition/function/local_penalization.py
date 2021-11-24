@@ -90,7 +90,9 @@ class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
         if base_acquisition_function_builder is None:
-            self._base_builder: SingleModelAcquisitionBuilder = ExpectedImprovement()
+            self._base_builder: SingleModelAcquisitionBuilder[
+                ProbabilisticModel
+            ] = ExpectedImprovement()
         else:
             self._base_builder = base_acquisition_function_builder
 

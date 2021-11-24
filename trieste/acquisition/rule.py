@@ -118,9 +118,9 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder
+            AcquisitionFunctionBuilder[ProbabilisticModel]
             | GreedyAcquisitionFunctionBuilder
-            | SingleModelAcquisitionBuilder
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
             | SingleModelGreedyAcquisitionBuilder
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
@@ -162,7 +162,9 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
+        self._builder: Union[
+            AcquisitionFunctionBuilder[ProbabilisticModel], GreedyAcquisitionFunctionBuilder
+        ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
         self._acquisition_function: Optional[AcquisitionFunction] = None
@@ -348,7 +350,10 @@ class AsynchronousOptimization(
 
     def __init__(
         self,
-        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
+        builder: Optional[
+            AcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+        ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -380,7 +385,7 @@ class AsynchronousOptimization(
         if num_query_points > 1:
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder: AcquisitionFunctionBuilder = builder
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
 

@@ -43,7 +43,7 @@ from ..sampler import (
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution

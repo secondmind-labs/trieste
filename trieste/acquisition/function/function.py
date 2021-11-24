@@ -35,7 +35,7 @@ from ..interface import (
 from ..sampler import BatchReparametrizationSampler
 
 
-class ExpectedImprovement(SingleModelAcquisitionBuilder):
+class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
@@ -122,7 +122,7 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -231,7 +231,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         return expected_improvement * augmentation
 
 
-class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
+class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the negative of the lower confidence bound. The lower confidence bound is typically
     minimised, so the negative is suitable for maximisation.
@@ -324,7 +324,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     return acquisition
 
 
-class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
+class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the :func:`probability_of_feasibility` acquisition function, defined in
     :cite:`gardner14` as
@@ -422,7 +422,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModel]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -433,7 +433,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder,
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -584,7 +584,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
