@@ -739,7 +739,8 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 class integrated_variance_reduction(AcquisitionFunctionClass):
     """
     The reduction of the average of the predicted variance over the integration points
-    (a.k.a. IMSE criterion). See :cite:`Picheny2010` for details.
+    (a.k.a. Integrated Means Square Error or IMSE criterion). 
+    See :cite:`Picheny2010` for details.
 
     If no threshold is provided, the original variance is used. Otherwise,
     the variance is weighted by the posterior GP pdf evaluated at the threshold
