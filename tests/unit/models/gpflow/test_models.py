@@ -664,12 +664,17 @@ def test_gaussian_process_regression_conditional_predict_equations() -> None:
     pred_mean7, pred_var7 = model7.predict(query_points)
     pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
 
+    predy_mean7, predy_var7 = model7.predict_y(query_points)
+    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
+
     np.testing.assert_allclose(tf.transpose(tf.linalg.diag_part(predj_cov5)), pred_var5, atol=1e-5)
     np.testing.assert_allclose(predj_mean5, pred_mean5, atol=1e-5)
     np.testing.assert_allclose(predj_mean5, predj_mean7, atol=1e-5)
     np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
     np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
     np.testing.assert_allclose(predj_cov7, predj_cov5, atol=1e-5)
+    np.testing.assert_allclose(predy_mean7, predy_mean5, atol=1e-5)
+    np.testing.assert_allclose(predy_var7, predy_var5, atol=1e-5)
 
 
 def test_gaussian_process_regression_conditional_predict_equations_broadcast() -> None:
@@ -686,6 +691,7 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
 
     predj_mean5, predj_cov5 = model5.conditional_predict_joint(query_points, additional_data)
     pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
+    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
 
     for i in range(3):
         xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
@@ -694,8 +700,11 @@ def test_gaussian_process_regression_conditional_predict_equations_broadcast() -
         modeli = GaussianProcessRegression(gpr_model(xi, yi))
         predj_meani, predj_covi = modeli.predict_joint(query_points)
         pred_meani, pred_vari = modeli.predict(query_points)
+        predy_meani, predy_vari = modeli.predict_y(query_points)
 
         np.testing.assert_allclose(predj_mean5[i, ...], predj_meani, atol=1e-5)
         np.testing.assert_allclose(pred_meani, pred_mean5[i, ...], atol=1e-5)
         np.testing.assert_allclose(pred_vari, pred_var5[i, ...], atol=1e-5)
         np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)

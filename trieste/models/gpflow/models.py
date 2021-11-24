@@ -393,7 +393,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
-        return self.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
 
 class NumDataPropertyMixin:
