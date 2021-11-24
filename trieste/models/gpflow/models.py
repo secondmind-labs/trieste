@@ -385,9 +385,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
-         with shape [..., N, L]
+                 with shape [..., N, L]
         :return: predictive variance at query_points, with shape [..., M, L],
-            and predictive variance at query_points, with shape [..., M, L]
+                 and predictive variance at query_points, with shape [..., M, L]
         """
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
