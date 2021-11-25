@@ -5,8 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-np.random.seed(1793)
-tf.random.set_seed(1793)
+np.random.seed(1799)
+tf.random.set_seed(1799)
 
 # %% [markdown]
 # ## The problem
@@ -96,7 +96,7 @@ from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def create_bo_model(data):
-    variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
+    variance = tf.math.reduce_variance(data.observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(
         variance=variance, lengthscales=lengthscale
@@ -270,7 +270,7 @@ plot_regret(
 # %% [markdown]
 # ## Constrained optimization with more than one constraint
 #
-# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherets from the previous one its objective and first constraint, but possess a second constraint. We start by adding an output to our observer, and creating a set of three models.
+# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherits from the previous one its objective and first constraint, but also adds a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
 # %%
 class Sim2(Sim):
@@ -299,7 +299,7 @@ initial_data = observer_two_constraints(search_space.sample(num_initial_points))
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
-# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` into one quantity by using a `Product` `Reducer`:
+# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` functions into one quantity by using a `Product` `Reducer`:
 
 # %%
 from trieste.acquisition.combination import Product
