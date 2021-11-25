@@ -26,11 +26,14 @@ import gpflow
 import scipy.optimize as spo
 import tensorflow as tf
 from scipy.optimize import OptimizeResult
+import greenlet as gr
+import numpy as np
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
+import tensorflow_probability as tfp
 
 import ray 
 
@@ -228,73 +231,138 @@ def generate_continuous_optimizer(
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
 
-        
-
-        @ray.remote
-        def _perform_optimization(starting_point: TensorType, optimizer_args: dict[str, Any]) -> scipy.optimize.OptimizeResult:
-            variable = tf.Variable(starting_point)  # [1, D]
-            
-            if isinstance(space, TaggedProductSearchSpace): # only optimize over continuous variables
-                bounds = get_bounds_of_box_relaxation_around_point(space, starting_point)
-            else:
-                bounds = spo.Bounds(space.lower, space.upper)
-
-            optimizer_args_local = copy.deepcopy(optimizer_args)
-            optimizer_args_local["bounds"] = bounds
-
-            def _objective() -> TensorType:
-                return -target_func(variable[:, None, :])  # [1]
-
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args) 
 
 
-        if num_optimization_runs==1:
-            opt_result = _perform_optimization(initial_points[i : i + 1], optimizer_args)
-            if opt_result.success:
-                successful_optimization = True
-                chosen_point = tf.convert_to_tensor(opt_result.x, dtype= initial_points.dtype) # [D]
-                chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
-        
-        else: # parallelize using ray
-            ray.init()
-            try:
-                result_ids = []
-                for i in tf.range(num_optimization_runs): # start num_optimization_runs optimizations in parallel
-                    result_ids.append(_perform_optimization.remote(initial_points[i : i + 1], optimizer_args))
-                results = ray.get(result_ids)
+        chosen_point, successful_optimization = _perform_parallel_continuous_optimization(target_func ,num_optimization_runs ,initial_points, optimizer_args, space)
+        if not successful_optimization: # if all optimizations failed then try from random starts
+            random_points = space.sample(num_recovery_runs) # [num_recovery_runs, D]
+            chosen_point, successful_optimization = _perform_parallel_continuous_optimization(target_func ,num_optimization_runs, random_points, optimizer_args, space)  
 
-
-
-            finally: # clean up 
-                ray.shutdown()
-            if tf.math.reduce_any([result.success for result in results]): # TODO
-                successful_optimization = True
-                new_point_scores = [-result.fun[0][0] for result in results]
-                chosen_point = results[tf.argmax(new_point_scores)].x
-                chosen_point = tf.convert_to_tensor(chosen_point, dtype= initial_points.dtype) # [D]
-                chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
-
-
-        if not successful_optimization:  # if all optimizations failed then try from random starts
-            for i in tf.range(num_recovery_runs):
-                random_start = space.sample(1) # [1, D]
-                opt_result= _perform_optimization(random_start, optimizer_args)
-                if opt_result.success:
-                    successful_optimization = True
-                    chosen_point = tf.convert_to_tensor(opt_result.x, dtype= initial_points.dtype) # [D]
-                    chosen_point = tf.expand_dims(chosen_point,0) # [1, D]
-                    break
-            if not successful_optimization:  # return error if still failed
+        if not successful_optimization:  # return error if still failed
                 raise FailedOptimizationError(
                     f"""
                     Acquisition function optimization failed,
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
                 )
-
         return chosen_point
-
+       
     return optimize_continuous
+
+
+
+def _perform_parallel_continuous_optimization(target_func: AcquisitionFunction, num_optimization_runs:int,starting_points: TensorType, optimizer_args: dict[str, Any], space: SearchSpace) -> Tuple[TensorType]:
+    """
+    TODO sort out arg order
+    """     
+    def _objective(x: TensorType) -> TensorType:
+        return -target_func(x[:, None, :])  # [len(x),1]
+
+    optimizer_args_local = copy.deepcopy(optimizer_args)
+    optimizer_args_local["bounds"] = spo.Bounds(space.lower, space.upper)
+    optimizer_args_indiv = [optimizer_args_local] * num_optimization_runs
+
+    if isinstance(space, TaggedProductSearchSpace): 
+        optimizer_args_indiv = [optimizer_args_local] * num_optimization_runs
+        for i in tf.range(num_optimization_runs):# get bounds for each problem TODO REMOVE THIS FOR LOOP
+            bounds = get_bounds_of_box_relaxation_around_point(space, starting_points[i,i+1]) # only optimize over continuous variables
+            optimizer_args_indiv[i]["bounds"] = bounds
+
+
+    # todo lazy init 
+    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64)
+    np_batch_y = np.zeros((num_optimization_runs,), dtype=np.float64)
+    np_batch_dy_dx = np.zeros((num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64)
+
+
+     # Set up child greenlets:
+    np_starting_points = starting_points.numpy()
+    child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
+    child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+        gr.switch(np_starting_points[i], optimizer_args_indiv[i]) for i, gr in enumerate(child_greenlets)
+    ]
+
+    while True:
+        all_done = True
+        for i, result in enumerate(child_results): # Process results from children.
+            if isinstance(result, spo.OptimizeResult):
+                continue # children return a `spo.OptimizeResult` if they are finished
+            all_done = False
+            assert isinstance(result, np.ndarray) # or an `np.ndarray` with the query `x` otherwise
+            np_batch_x[i, :] = result
+
+        if all_done:
+            break
+
+        # Batch evaluate query `x`s from all children.
+        batch_x = tf.constant(np_batch_x, dtype=starting_points.dtype) # [num_optimization_runs, d]
+        batch_x = tf.expand_dims(batch_x,1) # [num_optimization_runs, 1, d]
+        batch_y, batch_dy_dx = tfp.math.value_and_gradient(_objective, batch_x) # [num_optimization_runs,1], [num_optimization_runs,1,d]
+        batch_y = tf.squeeze(batch_y,1) # [num_optimization_runs,1]
+        batch_dy_dx = tf.squeeze(batch_dy_dx, 1) #[num_optimization_runs,1,d]
+   
+        np_batch_y = batch_y.numpy()
+        np_batch_dy_dx = batch_dy_dx.numpy()
+
+        # Feed `y` and `dy_dx` back to children.
+        for i, greenlet in enumerate(child_greenlets):
+            if greenlet.dead: # todo what is this?
+                continue
+            child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
+
+    # Collect aggregate results
+
+    np_chosen_points = np.zeros((num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64)
+    np_chosen_point_scores = np.zeros((num_optimization_runs, 1), dtype=np.float64)
+    np_success = np.full((num_optimization_runs,), False, dtype=np.bool)
+    for i, result in enumerate(child_results):
+        np_chosen_points[i, :] = result.x
+        np_chosen_point_scores[i] = -result.fun
+        np_success[i] = result.success
+
+
+    np_chosen_point = np_chosen_points[np.argmax(np_chosen_point_scores)] # [D]
+    np_chosen_point = np_chosen_point.reshape(1,-1) # [1, D]
+    success = np.any(np_success)
+
+    return tf.constant(np_chosen_point), tf.constant(success)
+
+
+
+
+class ScipyLbfgsBGreenlet(gr.greenlet):
+    """
+    Worker greenlet that runs a single Scipy L-BFGS-B.
+    """
+
+   
+    def run(self, start: np.ndarray, optimizer_args: dict[str, Any] = dict()) -> spo.OptimizeResult:
+        cache_x = start + 1  # Any value different from `start`.
+        cache_y: Optional[np.ndarray] = None
+        cache_dy_dx: Optional[np.ndarray] = None
+
+        def value_and_gradient(x: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            nonlocal cache_x
+            nonlocal cache_y
+            nonlocal cache_dy_dx
+
+            if not (cache_x == x).all():
+                cache_x[:] = x  # Copy the value of `x`. DO NOT copy the reference.
+                # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
+                cache_y, cache_dy_dx = self.parent.switch(cache_x)
+
+            return cache_y, cache_dy_dx
+        return spo.minimize(
+            lambda x: value_and_gradient(x)[0],
+            start,
+            jac=lambda x: value_and_gradient(x)[1],
+            method="l-bfgs-b",
+            **optimizer_args
+        )
+
+
+
+
 
 
 
