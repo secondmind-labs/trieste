@@ -5,8 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-np.random.seed(1793)
-tf.random.set_seed(1793)
+np.random.seed(1799)
+tf.random.set_seed(1799)
 
 # %% [markdown]
 # ## The problem
