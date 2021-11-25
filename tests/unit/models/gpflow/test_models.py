@@ -49,6 +49,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
+from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseVariational,
@@ -337,6 +338,28 @@ def test_gaussian_process_regression_default_optimizer_is_correct() -> None:
     assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
 
 
+def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
+    data = mock_data()
+
+    model_config = {"model": gpr_model(*data)}
+    model = create_model(model_config)
+
+    assert isinstance(model, GaussianProcessRegression)
+    assert isinstance(model.optimizer, Optimizer)
+    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
+def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
+    data = mock_data()
+
+    model_config = {"model": sgpr_model(*data)}
+    model = create_model(model_config)
+
+    assert isinstance(model, GaussianProcessRegression)
+    assert isinstance(model.optimizer, Optimizer)
+    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
 def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model, _ = gpflow_interface_factory(x, _3x_plus_gaussian_noise(x))
@@ -581,6 +604,17 @@ def test_sparse_variational_default_optimizer_is_correct() -> None:
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
 
 
+def test_svgp_config_builds_and_default_optimizer_is_correct() -> None:
+    data = mock_data()
+
+    model_config = {"model": svgp_model(*data)}
+    model = create_model(model_config)
+
+    assert isinstance(model, SparseVariational)
+    assert isinstance(model.optimizer, BatchOptimizer)
+    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+
+
 def test_sparse_variational_raises_for_invalid_init() -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -667,6 +701,22 @@ def test_variational_gaussian_process_default_optimizer_is_correct(use_natgrads:
         vgp_model(x_observed[:10], y_observed[:10]), use_natgrads=use_natgrads
     )
 
+    if use_natgrads:
+        assert isinstance(model.optimizer, BatchOptimizer)
+        assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    else:
+        assert isinstance(model.optimizer, Optimizer)
+        assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
+@pytest.mark.parametrize("use_natgrads", [True, False])
+def test_vgp_config_builds_and_default_optimizer_is_correct(use_natgrads: bool) -> None:
+    data = mock_data()
+
+    model_config = {"model": vgp_model(*data), "model_args": {"use_natgrads": use_natgrads}}
+    model = create_model(model_config)
+
+    assert isinstance(model, VariationalGaussianProcess)
     if use_natgrads:
         assert isinstance(model.optimizer, BatchOptimizer)
         assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)

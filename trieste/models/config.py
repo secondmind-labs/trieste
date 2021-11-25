@@ -24,8 +24,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Tuple, Type, Union
 from warnings import warn
 
-import tensorflow as tf
-
 from .interfaces import TrainableProbabilisticModel
 from .optimizer import Optimizer
 
@@ -135,7 +133,7 @@ class ModelConfig:
     :class:`ModelRegistry`.
     """
 
-    optimizer: Any = field(default_factory=lambda: tf.optimizers.Adam())
+    optimizer: Any = None
     """
     The low-level optimizer to pass to the :class:`~trieste.models.Optimizer` interface
     registered with the `model` via :class:`ModelRegistry`, with which to train the model (by
@@ -162,10 +160,13 @@ class ModelConfig:
         Builds a Trieste model from the model and optimizer configuration.
         """
         model_interface = ModelRegistry.get_interface(type(self.model))
-        model_optimizer = ModelRegistry.get_optimizer(type(self.model))
-        optimizer = model_optimizer(self.optimizer, **self.optimizer_args)
 
-        return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
+        if self.optimizer is not None:
+            model_optimizer = ModelRegistry.get_optimizer(type(self.model))
+            optimizer = model_optimizer(self.optimizer, **self.optimizer_args)
+            return model_interface(self.model, optimizer, **self.model_args)  # type: ignore
+        else:
+            return model_interface(self.model, **self.model_args)  # type: ignore
 
 
 ModelDictConfig = Dict[str, Any]

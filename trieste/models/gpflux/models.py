@@ -24,7 +24,7 @@ from gpflux.models import DeepGP
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer
+from ..optimizer import BatchOptimizer
 from .interface import GPfluxPredictor
 from .utils import sample_dgp
 
@@ -38,11 +38,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None):
+    def __init__(self, model: DeepGP, optimizer: BatchOptimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` wrapper with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
+            :class:`~tf.optimizers.Adam`.
             This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
             used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
             a dictionary of arguments to be used in the Keras `fit` method. Defaults to
