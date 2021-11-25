@@ -292,7 +292,7 @@ class Parameter(gpflow.Parameter):
         if callable(initial_value):
             initial_value = initial_value()
         initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
-        super(TransformedVariable, self).__init__(  # type: ignore
+        super(TransformedVariable, self).__init__(
             pretransformed_input=tf.Variable(
                 initial_value=bijector.inverse(initial_value),
                 name=name,
@@ -306,7 +306,7 @@ class Parameter(gpflow.Parameter):
         self._bijector = bijector
 
         self.prior = prior
-        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
+        self.prior_on = prior_on
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):

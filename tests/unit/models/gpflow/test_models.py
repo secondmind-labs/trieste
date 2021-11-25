@@ -460,12 +460,6 @@ def test_gaussian_process_regression_optimize(
     compile: bool,
 ) -> None:
 
-    # TODO: VariationalGaussianProcess doens't currently support Adam() unless use_natgrads is True
-    if gpflow_interface_factory.__closure__[0].cell_contents.param[
-        0
-    ] == VariationalGaussianProcess and isinstance(optimizer, tf.optimizers.Optimizer):
-        return
-
     data = mock_data()
     if isinstance(optimizer, gpflow.optimizers.Scipy):
         create_optimizer = Optimizer
@@ -479,6 +473,11 @@ def test_gaussian_process_regression_optimize(
     else:
         args = {}
     loss = internal_model.training_loss(**args)
+
+    # TODO: VariationalGaussianProcess doesn't currently support Adam() unless use_natgrads is True
+    if isinstance(internal_model, VGP) and isinstance(optimizer, tf.optimizers.Optimizer):
+        return
+
     model.optimize(Dataset(*data))
     assert internal_model.training_loss(**args) < loss
 
