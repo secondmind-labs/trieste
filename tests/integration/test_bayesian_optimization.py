@@ -48,7 +48,7 @@ from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.transforms import DataTransformModelWrapper, StandardTransformer
+from trieste.models.transforms import StandardTransformer, transform_data
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -309,9 +309,6 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
 ) -> None:
     search_space = TRID_10_SEARCH_SPACE
 
-    class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
-        pass
-
     def build_gp_model(data: Dataset, x_std: float = 1.0, y_std: float = 1.0) -> gpflow.models.GPR:
 
         dim = data.query_points.shape[-1]
@@ -351,7 +348,12 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
         query_point_transformer.transform(initial_data[OBJECTIVE].query_points),
         observation_transformer.transform(initial_data[OBJECTIVE].observations),
     )
-    model = GPRwithDataNormalization(
+
+    @transform_data(query_point_transformer, observation_transformer)
+    class GPRwithDataTransforms(GaussianProcessRegression):
+        pass
+
+    model = GPRwithDataTransforms(
         model=build_gp_model(normalized_data),
         query_point_transformer=query_point_transformer,
         observation_transformer=observation_transformer,

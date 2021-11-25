@@ -286,7 +286,7 @@ normalized_data = Dataset(
 
 # %% [markdown]
 #
-# Behind the scenes, `transform_data` uses `trieste.models.transforms.DataTransformModelWrapper` to wrap the desired `TrainableProbabilisticModel` (in this case `GaussianProcessRegression`). Under the hood this is using multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details. Note that, for convenience, wrapped models are provided in the `trieste.models.gpflow.transform` and `trieste.models.gpflux.transform` packages.
+# Behind the scenes, `transform_data` uses `trieste.models.transforms.DataTransformModelWrapper` to wrap the desired `TrainableProbabilisticModel` (in this case `GaussianProcessRegression`). We use multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details.
 
 #%%
 @transform_data(query_point_transformer, observation_transformer)

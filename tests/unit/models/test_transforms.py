@@ -42,10 +42,6 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
     dataset = hartmann_6_dataset(num_query_points=10)
     random_data = (random_data + 50) / 200
 
-    class NormalizedModel(transforms.DataTransformModelWrapper, GaussianProcessRegression):
-        def _update_model_and_normalization_parameters(self, dataset: Dataset) -> None:
-            return super()._update_model_and_normalization_parameters(dataset)
-
     query_point_transformer = transforms.IdentityTransformer(dataset.query_points)
     observation_transformer = transforms.StandardTransformer(dataset.observations)
     normalized_dataset = Dataset(
@@ -53,14 +49,14 @@ def test_data_transformer_wrapper(random_data: TensorType) -> None:
         observation_transformer.transform(dataset.observations),
     )
 
+    @transforms.transform_data(query_point_transformer, observation_transformer)
+    class NormalizedModel(GaussianProcessRegression):
+        pass
+
     model = GPR(normalized_dataset.astuple(), gpflow.kernels.Matern32(lengthscales=[1] * 6))
     model.likelihood.variance.assign(1e-5)
 
-    normalized_model = NormalizedModel(
-        model,
-        query_point_transformer=query_point_transformer,
-        observation_transformer=observation_transformer,
-    )
+    normalized_model = NormalizedModel(model)
 
     tf.debugging.assert_near(
         tf.math.reduce_mean(normalized_model._model.data[1]), tf.constant(0, dtype=default_float())
