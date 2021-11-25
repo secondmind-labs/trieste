@@ -256,11 +256,12 @@ class Parameter(gpflow.Parameter):
         trainable: bool = True,
         dtype: Optional[DType] = None,
         name: Optional[str] = None,
-        **kwargs: Any,
+        transformed_shape: Any = None,
+        pretransformed_shape: Any = None,
     ):
         """
-        A copy of gpflow.Parameter's init but with an additional kwargs argument that is
-        passed to a (slightly modified) TransformedVariable.
+        A copy of gpflow.Parameter's init but with additional shape arguments that are passed
+        to a modified TransformedVariable.
         """
         if transform is None:
             transform = tfp.bijectors.Identity()
@@ -293,10 +294,13 @@ class Parameter(gpflow.Parameter):
         initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
         super(TransformedVariable, self).__init__(  # type: ignore
             pretransformed_input=tf.Variable(
-                initial_value=bijector.inverse(initial_value), name=name, dtype=dtype, **kwargs
+                initial_value=bijector.inverse(initial_value),
+                name=name,
+                dtype=dtype,
+                shape=pretransformed_shape,
             ),
             transform_fn=bijector,
-            shape=kwargs.get("shape", initial_value.shape),
+            shape=transformed_shape or initial_value.shape,
             name=bijector.name,
         )
         self._bijector = bijector
@@ -457,10 +461,26 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             )
 
             self._model.q_mu = Parameter(
-                self._model.q_mu, shape=[None, *self._model.q_mu.shape[1:]]
+                self._model.q_mu,
+                transform=self._model.q_mu.bijector,
+                prior=self._model.q_mu.prior,
+                prior_on=self._model.q_mu.prior_on,
+                dtype=self._model.q_mu.dtype,
+                name=self._model.q_mu.unconstrained_variable.name,
+                trainable=self._model.q_mu.trainable,
+                transformed_shape=[None, *self._model.q_mu.shape[1:]],
+                pretransformed_shape=[None, *self._model.q_mu.unconstrained_variable.shape[1:]],
             )
             self._model.q_sqrt = Parameter(
-                self._model.q_sqrt, shape=[*self._model.q_sqrt.shape[:-2], None, None]
+                self._model.q_sqrt,
+                transform=self._model.q_sqrt.bijector,
+                prior=self._model.q_sqrt.prior,
+                prior_on=self._model.q_sqrt.prior_on,
+                dtype=self._model.q_sqrt.dtype,
+                name=self._model.q_sqrt.unconstrained_variable.name,
+                trainable=self._model.q_sqrt.trainable,
+                transformed_shape=[*self._model.q_sqrt.shape[:-2], None, None],
+                pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
             )
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
