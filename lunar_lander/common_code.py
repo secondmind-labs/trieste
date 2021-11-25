@@ -1,17 +1,17 @@
 import tensorflow as tf
 import trieste
 
-class SpecialSampler(trieste.acquisition.sampler.IndependentReparametrizationSampler):
-    def sample(self, at, jitter=0.0):
-        sample = super().sample(at, jitter)
+class SpecialSampler(trieste.acquisition.sampler.BatchReparametrizationSampler):
+    def sample(self, at, jitter=trieste.utils.DEFAULTS.JITTER):
+        sample = super().sample(at, jitter=jitter)
 
-        fuel_part = sample[:, :, :, 0]
-        failure_part = sample[:, :, :, 1]
-        
-        failure_part = self._model._models[1]._model.likelihood.invlink(failure_part)
-        
-        sample = tf.stack([fuel_part, failure_part], axis=-1)
-        
+        gpr_part = sample[:, :, :, 0]
+        vgp_part = sample[:, :, :, 1]
+
+        vgp_part = self._model._models[1]._model.likelihood.invlink(vgp_part)
+
+        sample = tf.stack([gpr_part, vgp_part], axis=-1)
+
         return sample
 
 
