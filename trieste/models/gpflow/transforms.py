@@ -4,9 +4,7 @@ from ..transforms import DataTransformModelWrapper
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 
 
-class GaussianProcessRegressionwithDataTransform(
-    DataTransformModelWrapper, GaussianProcessRegression
-):
+class GaussianProcessRegressionDataTransformWrapper(DataTransformModelWrapper):
     """A wrapped `GaussianProcessRegression` model that handles data transformation. Inputs are
     transformed before passing to the superclass implementation. The outputs are inverse
     transformed before returning.

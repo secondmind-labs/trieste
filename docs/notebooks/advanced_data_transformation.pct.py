@@ -17,7 +17,7 @@ from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 from trieste.objectives.single_objectives import BEALE_MINIMUM, BEALE_SEARCH_SPACE, beale
 from trieste.objectives.utils import mk_observer
-from trieste.models.transforms import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer
+from trieste.models.transforms import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer, transform_data
 
 np.random.seed(1794)
 tf.random.set_seed(1794)
@@ -95,8 +95,6 @@ def build_gp_model(data):
 # Build a wrapped model, that handles data transformation using only the initial dataset.
 
 # %%
-class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
-    pass
 
 # query_point_transformer simply transforms the search space to the unit cube.
 query_point_transformer = MinMaxTransformer(tf.stack((search_space.lower, search_space.upper)))
@@ -105,15 +103,18 @@ normalized_data = Dataset(
     query_point_transformer.transform(initial_data.query_points),
     observation_transformer.transform(initial_data.observations)
 )
-model = GPRwithDataNormalization(
+
+@transform_data(query_point_transformer, observation_transformer)
+class GPRwithDataTransforms(GaussianProcessRegression):
+    pass
+
+model = GPRwithDataTransforms(
     model=build_gp_model(normalized_data),
     optimizer=Optimizer(
         gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=100)}
     ),
-    num_kernel_samples=100,
-    query_point_transformer=query_point_transformer,
-    observation_transformer=observation_transformer,
+    num_kernel_samples=100
 )
 
 
@@ -161,7 +162,7 @@ plot_regret_with_min(dataset)
 # We now show how to modify the above to add methods to update model and normalization parameters. To achieve this, the user simply needs to define a method ``_update_model_and_normalization_parameters``.
 
 # %%
-class GPRwithDynamicDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
+class DynamicDataTransformModelWrapper(DataTransformModelWrapper):
     """DataTransformWrapper for a GaussianProcessRegression model."""
 
     def _update_model_and_normalization_parameters(self, dataset):
@@ -187,15 +188,18 @@ normalized_data = Dataset(
     query_point_transformer.transform(initial_data.query_points),
     observation_transformer.transform(initial_data.observations)
 )
-dynamic_model = GPRwithDynamicDataNormalization(
+
+@transform_data(query_point_transformer, observation_transformer, DynamicDataTransformModelWrapper)
+class GPRwithDynamicDataTransforms(GaussianProcessRegression):
+    pass
+
+dynamic_model = GPRwithDynamicDataTransforms(
     model=build_gp_model(normalized_data),
     optimizer=Optimizer(
         gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=100)}
     ),
-    num_kernel_samples=100,
-    query_point_transformer=query_point_transformer,
-    observation_transformer=observation_transformer,
+    num_kernel_samples=100
 )
 
 np.random.seed(1794)

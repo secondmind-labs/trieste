@@ -262,21 +262,15 @@ print(f"observation: {observations[arg_min_idx, :]}")
 #
 # Actually, we can achieve the same effect with a standard `BayesianOptimizer` by using a `DataTransformModelWrapper`. The advantage of this is that the user does not have to manage the BO loop, several standard normalizers are already defined, and the trained model can be more easily inspected as it automatically denormalizes predictions and samples.
 #
-# First, we create a new model class that inherits from the model wrapper class and the kind of `TrainableProbabilisticModel` that we want to use. Under the hood this is using multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details. Note that, for convenience, wrapped models are provided in the `trieste.models.gpflow.transform` and `trieste.models.gpflux.transform` packages.
-
-# %%
-from trieste.models.transforms import DataTransformModelWrapper
-
-class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
-    pass
-
+# First, we create a new model class that inherits from the model wrapper class and the kind of `TrainableProbabilisticModel` that we want to use.
 
 # %% [markdown]
 #
 # Now we create `DataTransformer`s for query_points and observations, and pass these into our new model class when we construct it.
 
 # %%
-from trieste.models.transforms import StandardTransformer, MinMaxTransformer
+
+from trieste.models.transforms import StandardTransformer, MinMaxTransformer, transform_data
 
 search_space = TRID_10_SEARCH_SPACE  # Restore the original search space
 
@@ -289,16 +283,25 @@ normalized_data = Dataset(
     query_point_transformer.transform(initial_data.query_points),
     observation_transformer.transform(initial_data.observations)
 )
-model = GPRwithDataNormalization(
+
+# %% [markdown]
+#
+# Behind the scenes, `transform_data` uses `trieste.models.transforms.DataTransformModelWrapper` to wrap the desired `TrainableProbabilisticModel` (in this case `GaussianProcessRegression`). Under the hood this is using multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details. Note that, for convenience, wrapped models are provided in the `trieste.models.gpflow.transform` and `trieste.models.gpflux.transform` packages.
+
+#%%
+@transform_data(query_point_transformer, observation_transformer)
+class GPRwithDataTransforms(GaussianProcessRegression):
+    pass
+
+model = GPRwithDataTransforms(
     model=build_gp_model(normalized_data),
     optimizer=Optimizer(
         gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=100)}
     ),
-    num_kernel_samples=100,
-    query_point_transformer=query_point_transformer,
-    observation_transformer=observation_transformer,
+    num_kernel_samples=100
 )
+
 
 # %% [markdown]
 #
