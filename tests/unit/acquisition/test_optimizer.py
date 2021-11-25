@@ -253,23 +253,9 @@ def test_continuous_optimizer_on_toy_problems(
 ) -> None:
     def target_function(x: TensorType) -> TensorType:
         return -1*neg_function(tf.squeeze(x, 1))
-    optimizer = generate_continuous_optimizer(num_initial_samples = 1_000_000, num_optimization_runs=2)
+    optimizer = generate_continuous_optimizer(num_initial_samples = 1_000_000, num_optimization_runs=1000)
     maximizer = optimizer(search_space, target_function)
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
