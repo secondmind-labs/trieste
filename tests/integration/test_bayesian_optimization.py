@@ -47,7 +47,7 @@ from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -268,7 +268,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
+        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 

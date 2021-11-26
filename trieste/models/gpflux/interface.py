@@ -34,7 +34,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     def __init__(self, optimizer: BatchOptimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam`.
         """
         super().__init__()
 
@@ -54,7 +54,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    def optimizer(self) -> Optimizer:
+    def optimizer(self) -> BatchOptimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
 

@@ -28,7 +28,7 @@ from gpflux.models import DeepGP
 
 from trieste.data import TensorType
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import BatchOptimizer
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
@@ -114,7 +114,7 @@ def trieste_deep_gaussian_process(
         "verbose": 0,
         "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = Optimizer(tf.optimizers.Adam(learning_rate), fit_args)
+    optimizer = BatchOptimizer(tf.optimizers.Adam(learning_rate), fit_args)
 
     model = DeepGaussianProcess(dgp, optimizer)
 
