@@ -51,7 +51,7 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder[ProbabilisticModel])
         return raise_exc
 
 
-class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder):
+class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
         self,
         model: ProbabilisticModel,

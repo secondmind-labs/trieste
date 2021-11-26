@@ -119,9 +119,9 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         self,
         builder: Optional[
             AcquisitionFunctionBuilder[ProbabilisticModel]
-            | GreedyAcquisitionFunctionBuilder
+            | GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
             | SingleModelAcquisitionBuilder[ProbabilisticModel]
-            | SingleModelGreedyAcquisitionBuilder
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -163,7 +163,8 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             optimizer = batchify(optimizer, num_query_points)
 
         self._builder: Union[
-            AcquisitionFunctionBuilder[ProbabilisticModel], GreedyAcquisitionFunctionBuilder
+            AcquisitionFunctionBuilder[ProbabilisticModel],
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -498,7 +499,9 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder | SingleModelGreedyAcquisitionBuilder,
+        builder:
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel],
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -533,7 +536,7 @@ class AsynchronousGreedy(
         if isinstance(builder, SingleModelGreedyAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
 
-        self._builder: GreedyAcquisitionFunctionBuilder = builder
+        self._builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
         self._num_query_points = num_query_points

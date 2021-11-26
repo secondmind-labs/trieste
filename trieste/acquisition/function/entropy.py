@@ -205,7 +205,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the

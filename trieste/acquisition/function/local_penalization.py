@@ -36,7 +36,7 @@ from .entropy import MinValueEntropySearch
 from .function import ExpectedImprovement, expected_improvement
 
 
-class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder):
+class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
