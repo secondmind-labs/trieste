@@ -119,7 +119,9 @@ monte_carlo_sample_size = 10000
 acquisition_function = BatchMonteCarloExpectedImprovement(
     sample_size=monte_carlo_sample_size
 )
-async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
+async_rule = AsynchronousOptimization(
+    acquisition_function, num_query_points=batch_size
+)
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)
 
 # %% [markdown]

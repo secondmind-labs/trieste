@@ -97,7 +97,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+    result.try_get_final_model().model,
     search_space.lower,
     search_space.upper,
     grid_density=30,

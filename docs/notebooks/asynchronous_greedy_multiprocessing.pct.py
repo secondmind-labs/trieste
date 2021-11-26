@@ -185,7 +185,7 @@ model = build_model(initial_data)
 local_penalization_acq = LocalPenalizationAcquisitionFunction(
     search_space, num_samples=2000
 )
-local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
+local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)
 
 async_bo = AskTellOptimizer(
     search_space, initial_data, model, local_penalization_rule
@@ -260,7 +260,7 @@ model = build_model(initial_data)
 local_penalization_acq = LocalPenalizationAcquisitionFunction(
     search_space, num_samples=2000
 )
-local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
+local_penalization_rule = EfficientGlobalOptimization(
     num_query_points=num_workers, builder=local_penalization_acq
 )
 

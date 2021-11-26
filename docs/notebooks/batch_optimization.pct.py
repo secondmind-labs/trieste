@@ -85,7 +85,7 @@ batch_ei_acq = BatchMonteCarloExpectedImprovement(
     sample_size=monte_carlo_sample_size, jitter=1e-5
 )
 batch_size = 10
-batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
+batch_ei_acq_rule = EfficientGlobalOptimization(
     num_query_points=batch_size, builder=batch_ei_acq
 )
 points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(
@@ -102,7 +102,7 @@ sample_size = 2000
 local_penalization_acq = LocalPenalizationAcquisitionFunction(
     search_space, num_samples=sample_size
 )
-local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
+local_penalization_acq_rule = EfficientGlobalOptimization(
     num_query_points=batch_size, builder=local_penalization_acq
 )
 points_chosen_by_local_penalization = (
@@ -118,7 +118,7 @@ points_chosen_by_local_penalization = (
 from trieste.acquisition.function import GIBBON
 
 gibbon_acq = GIBBON(search_space, grid_size=sample_size)
-gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
+gibbon_acq_rule = EfficientGlobalOptimization(
     num_query_points=batch_size, builder=gibbon_acq
 )
 points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
@@ -185,7 +185,7 @@ cbar.set_label("EI", rotation=270)
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
+batch_ei_rule = EfficientGlobalOptimization(
     num_query_points=3, builder=batch_ei_acq
 )
 num_steps = 10
@@ -197,7 +197,7 @@ qei_result = bo.optimize(
 # then we repeat the same optimization with `LocalPenalizationAcquisitionFunction`...
 
 # %%
-local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
+local_penalization_rule = EfficientGlobalOptimization(
     num_query_points=3, builder=local_penalization_acq
 )
 local_penalization_result = bo.optimize(
@@ -208,7 +208,7 @@ local_penalization_result = bo.optimize(
 # and finally with the `GIBBON` acquisition function.
 
 # %%
-gibbon_rule = EfficientGlobalOptimization(  # type: ignore
+gibbon_rule = EfficientGlobalOptimization(
     num_query_points=3, builder=gibbon_acq
 )
 gibbon_result = bo.optimize(

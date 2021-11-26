@@ -171,7 +171,7 @@ from util.plotting import plot_regret
 from util.plotting_plotly import plot_dgp_plotly
 
 fig = plot_dgp_plotly(
-    dgp_result.try_get_final_model().model_gpflux,  # type: ignore
+    dgp_result.try_get_final_model().model_gpflux,
     search_space.lower,
     search_space.upper,
     grid_density=100,
@@ -248,7 +248,7 @@ print(f"observation: {gp_observations[gp_arg_min_idx, :]}")
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+    result.try_get_final_model().model,
     search_space.lower,
     search_space.upper,
     grid_density=100,

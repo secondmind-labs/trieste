@@ -190,7 +190,7 @@ ax[0].set_xlabel("# evaluations")
 from util.plotting_plotly import plot_gp_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+    result.try_get_final_model().model,
     search_space.lower,
     search_space.upper,
     grid_density=30,
@@ -212,17 +212,15 @@ fig.show()
 # We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. Note the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
 
 # %%
-gpflow.utilities.print_summary(
-    result.try_get_final_model().model  # type: ignore
-)
+gpflow.utilities.print_summary(result.try_get_final_model().model)
 
 variance_list = [
-    step.model.model.kernel.variance.numpy()  # type: ignore
+    step.model.model.kernel.variance.numpy()
     for step in result.history + [result.final_result.unwrap()]
 ]
 
 ls_list = [
-    step.model.model.kernel.lengthscales.numpy()  # type: ignore
+    step.model.model.kernel.lengthscales.numpy()
     for step in result.history + [result.final_result.unwrap()]
 ]
 
