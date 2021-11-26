@@ -164,7 +164,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
 
         self._builder: Union[
             AcquisitionFunctionBuilder[ProbabilisticModel],
-            GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModel],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -499,9 +499,8 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder:
-            GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
-            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel],
+        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel],
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):

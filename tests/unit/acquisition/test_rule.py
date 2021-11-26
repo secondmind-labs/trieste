@@ -222,7 +222,9 @@ def test_joint_batch_acquisition_rule_acquire(
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
-class _GreedyBatchModelMinusMeanMaximumSingleBuilder(SingleModelGreedyAcquisitionBuilder):
+class _GreedyBatchModelMinusMeanMaximumSingleBuilder(
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
+):
     def __init__(self) -> None:
         self._update_count = 0
 
