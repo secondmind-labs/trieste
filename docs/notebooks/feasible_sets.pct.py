@@ -1,9 +1,9 @@
 # %% [markdown]
-# # Bayesian active learning of failure or feasibility regions 
-# 
-# When designing a system it is important to identify design parameters that may affect the reliability of the system and cause failures, or lead to unsatisfactory performance. Consider designing a communication network that for some design parameters would lead to too long delays for users. A designer of the system would then decide what is the maximum acceptable delay and want to identify a *failure region* in the parameter space that would lead to longer delays., or conversely, a *feasible region* with safe performance. 
+# # Bayesian active learning of failure or feasibility regions
 #
-# When evaluating the system is expensive (e.g. lengthy computer simulations), identification of the failure region needs to be performed with a limited number of evaluations. Traditional Monte Carlo based methods are not suitable here as they require too many evaluations. Bayesian active learning methods, however, are well suited for the task. Here we show how Trieste can be used to identify failure or feasible regions with the help of acquisition functions designed with this goal in mind. 
+# When designing a system it is important to identify design parameters that may affect the reliability of the system and cause failures, or lead to unsatisfactory performance. Consider designing a communication network that for some design parameters would lead to too long delays for users. A designer of the system would then decide what is the maximum acceptable delay and want to identify a *failure region* in the parameter space that would lead to longer delays., or conversely, a *feasible region* with safe performance.
+#
+# When evaluating the system is expensive (e.g. lengthy computer simulations), identification of the failure region needs to be performed with a limited number of evaluations. Traditional Monte Carlo based methods are not suitable here as they require too many evaluations. Bayesian active learning methods, however, are well suited for the task. Here we show how Trieste can be used to identify failure or feasible regions with the help of acquisition functions designed with this goal in mind.
 #
 
 # %%
@@ -12,9 +12,11 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import tensorflow as tf
+
 tf.get_logger().setLevel("ERROR")
 
 import numpy as np
@@ -48,6 +50,7 @@ def thresholded_branin(x):
     y[y > threshold] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
+
 # illustrate the thresholded branin function
 fig = plot_function_plotly(
     thresholded_branin, search_space.lower, search_space.upper, grid_density=700
@@ -79,12 +82,17 @@ import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
 import tensorflow_probability as tfp
 
+
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -97,7 +105,7 @@ model = build_model(initial_data)
 # %% [markdown]
 # ## Active learning with Expected feasibility acquisition function
 #
-# The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function $f$ can be formalized as estimating the excursion set, $\Gamma^* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C^* = \{ x \in X: f(x) = T\}$, for some threshold $T$ (see <cite data-cite="bect2012sequential"/> for more details). 
+# The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function $f$ can be formalized as estimating the excursion set, $\Gamma^* = \{ x \in X: f(x) \ge T\}$, or estimating the contour line, $C^* = \{ x \in X: f(x) = T\}$, for some threshold $T$ (see <cite data-cite="bect2012sequential"/> for more details).
 #
 # It turns out that Gaussian processes can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. Here we introduce Expected feasibility acquisition function that implements two related sampling strategies called *bichon* criterion (<cite data-cite="bichon2008efficient"/>) and *ranjan* criterion (<cite data-cite="ranjan2008sequential"/>). <cite data-cite="bect2012sequential"/> provides a common expression for these two criteria: $$\mathbb{E}[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]$$
 #
@@ -105,7 +113,7 @@ model = build_model(initial_data)
 
 
 # %% [markdown]
-# We now illustrate `ExpectedFeasibility` acquisition function using the Bichon criterion. Performance for the Ranjan criterion is typically very similar. `ExpectedFeasibility` takes threshold as an input and has two parameters, `alpha` and `delta` following the description above. 
+# We now illustrate `ExpectedFeasibility` acquisition function using the Bichon criterion. Performance for the Ranjan criterion is typically very similar. `ExpectedFeasibility` takes threshold as an input and has two parameters, `alpha` and `delta` following the description above.
 #
 # Note that even though we use below `ExpectedFeasibility` with `EfficientGlobalOptimization`  `BayesianOptimizer` routine, we are actually performing active learning. The only relevant difference between the two is the nature of the acquisition function - optimization ones are designed with the goal of finding the optimum of a function, while active learning ones are designed to learn the function (or some aspect of it, like here).
 
@@ -128,7 +136,7 @@ result = bo.optimize(num_steps, initial_data, model, rule)
 # %% [markdown]
 # Let's illustrate the results.
 #
-# To identify the failure or feasibility region we compute the excursion probability using our Gaussian process model: $$P\left(\frac{m(x) - T}{s(x)}\right)$$ where $m(x)$ and $s(x)$ are the mean and standard deviation of the predictive posterior of the model given the data. 
+# To identify the failure or feasibility region we compute the excursion probability using our Gaussian process model: $$P\left(\frac{m(x) - T}{s(x)}\right)$$ where $m(x)$ and $s(x)$ are the mean and standard deviation of the predictive posterior of the model given the data.
 #
 # We plot a two-dimensional contour map of our thresholded Branin function as a reference, excursion probability map using the model fitted to the initial data alone, and updated excursion probability map after all the active learning steps.
 #
@@ -145,11 +153,12 @@ def excursion_probability(x, model, threshold=80):
     return normal.cdf(t)
 
 
-def plot_excursion_probability(title, model = None, query_points = None):
-    
+def plot_excursion_probability(title, model=None, query_points=None):
+
     if model is None:
         objective_function = thresholded_branin
     else:
+
         def objective_function(x):
             return excursion_probability(x, model)
 
@@ -168,6 +177,7 @@ def plot_excursion_probability(title, model = None, query_points = None):
     if query_points is not None:
         plot_bo_points(query_points, ax[0, 0], num_initial_points)
 
+
 plot_excursion_probability("Excursion set, Branin function")
 
 
@@ -185,7 +195,11 @@ initial_model = build_model(initial_data)
 initial_model.optimize(initial_data)
 
 plot_excursion_probability(
-    "Probability of excursion, initial data", initial_model, query_points[:num_initial_points,]
+    "Probability of excursion, initial data",
+    initial_model,
+    query_points[
+        :num_initial_points,
+    ],
 )
 
 
@@ -201,7 +215,7 @@ plot_excursion_probability(
 
 
 # %% [markdown]
-# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line. 
+# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line.
 
 # %%
 num_steps = 90
@@ -211,7 +225,9 @@ final_model = result.history[-1].models["OBJECTIVE"]
 dataset = result.try_get_final_dataset()
 query_points = dataset.query_points.numpy()
 
-plot_excursion_probability("Final probability of excursion", final_model, query_points)
+plot_excursion_probability(
+    "Final probability of excursion", final_model, query_points
+)
 
 
 # %% [markdown]
