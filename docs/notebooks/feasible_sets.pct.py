@@ -126,7 +126,7 @@ delta = 1
 
 # set up the acquisition rule and initialize the Bayesian optimizer
 acq = ExpectedFeasibility(threshold, delta=delta)
-rule = EfficientGlobalOptimization(builder=acq)
+rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10

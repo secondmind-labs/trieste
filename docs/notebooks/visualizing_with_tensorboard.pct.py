@@ -132,7 +132,7 @@ summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment3")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result, history = bo.optimize(
+result, history = bo.optimize(  # type: ignore
     num_steps, initial_data, model, acquisition_rule=EGOExtraLogging()
 ).astuple()
 

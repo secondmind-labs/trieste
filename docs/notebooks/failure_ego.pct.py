@@ -166,7 +166,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
 acq_fn = Product(ei.using(OBJECTIVE), pov.using(FAILURE))
-rule = EfficientGlobalOptimization(acq_fn)
+rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimizer
@@ -222,7 +222,7 @@ arg_min_idx = tf.squeeze(
 )
 
 fig = plot_gp_plotly(
-    result.models[OBJECTIVE].model,
+    result.models[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50,
@@ -245,7 +245,7 @@ fig.show()
 
 # %%
 fig, ax = plot_gp_2d(
-    result.models[FAILURE].model,
+    result.models[FAILURE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
     grid_density=50,

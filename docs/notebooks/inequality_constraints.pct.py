@@ -123,7 +123,7 @@ pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
 eci = trieste.acquisition.ExpectedConstrainedImprovement(
     OBJECTIVE, pof.using(CONSTRAINT)
 )
-rule = EfficientGlobalOptimization(eci)
+rule = EfficientGlobalOptimization(eci)  # type: ignore
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -209,7 +209,7 @@ class BatchExpectedConstrainedImprovement(
 num_query_points = 4
 sample_size = 50
 batch_eci = BatchExpectedConstrainedImprovement(sample_size, Sim.threshold)
-batch_rule = EfficientGlobalOptimization(
+batch_rule = EfficientGlobalOptimization(  # type: ignore
     batch_eci, num_query_points=num_query_points
 )
 
@@ -306,13 +306,13 @@ from trieste.acquisition.combination import Product
 
 pof1 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold)
 pof2 = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim2.threshold2)
-pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))
+pof = Product(pof1.using(CONSTRAINT), pof2.using(CONSTRAINT2))  # type: ignore
 
 # %% [markdown]
 # We can now run the BO loop as before, and visualize the results:
 
 # %%
-eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)
+eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type: ignore
 rule = EfficientGlobalOptimization(eci)
 
 num_steps = 20
