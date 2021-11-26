@@ -183,14 +183,17 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 def test_optimizer_finds_minima_with_vgp_model(use_natgrads: bool) -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
-        5, acquisition_rule, model_type="VGP", model_args={"use_natgrads": use_natgrads}
+        20 if use_natgrads else 5,
+        acquisition_rule,
+        model_type="VGP",
+        model_args={"use_natgrads": use_natgrads},
     )
 
 
 @random_seed
 def test_optimizer_finds_minima_with_svgp_model() -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
+    _test_optimizer_finds_minimum(25, acquisition_rule, model_type="SVGP")
 
 
 def _test_optimizer_finds_minimum(
