@@ -21,7 +21,9 @@ import trieste
 import gpflow
 
 search_space = trieste.space.Box([0, 0], [1, 1])
-observer = trieste.objectives.utils.mk_observer(trieste.objectives.scaled_branin)
+observer = trieste.objectives.utils.mk_observer(
+    trieste.objectives.scaled_branin
+)
 initial_query_points = search_space.sample_sobol(5)
 initial_data = observer(initial_query_points)
 
@@ -77,15 +79,16 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
-
     def log(self):
         super().log()
         summary_writer = trieste.logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=trieste.logging.get_step_number()):
+            with summary_writer.as_default(
+                step=trieste.logging.get_step_number()
+            ):
                 tf.summary.scalar(
                     "kernel.lengthscales.mean",
-                    np.mean(self.get_kernel().lengthscales)
+                    np.mean(self.get_kernel().lengthscales),
                 )
 
 
@@ -112,15 +115,19 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
 # %%
 class EGOExtraLogging(trieste.acquisition.rule.EfficientGlobalOptimization):
-    
-    def acquire(self, search_space, models, datasets = None):
+    def acquire(self, search_space, models, datasets=None):
         points = super().acquire(search_space, models, datasets)
         summary_writer = trieste.logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=trieste.logging.get_step_number()):
-                tf.summary.scalar("EGO.points_selected.mean", tf.math.reduce_mean(points))
+            with summary_writer.as_default(
+                step=trieste.logging.get_step_number()
+            ):
+                tf.summary.scalar(
+                    "EGO.points_selected.mean", tf.math.reduce_mean(points)
+                )
         return points
-    
+
+
 summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment3")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
@@ -141,7 +148,9 @@ result, history = bo.optimize(  # type: ignore
 summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment4")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
-ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(search_space, initial_data, model)
+ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
+    search_space, initial_data, model
+)
 
 for step in range(num_steps):
     trieste.logging.set_step_number(step)

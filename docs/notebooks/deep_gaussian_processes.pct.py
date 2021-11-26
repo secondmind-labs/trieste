@@ -30,7 +30,7 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMUM,
     MICHALEWICZ_5_MINIMUM,
     MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_SEARCH_SPACE
+    MICHALEWICZ_5_SEARCH_SPACE,
 )
 from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
@@ -41,10 +41,7 @@ F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 
 fig = plot_function_plotly(
-    function,
-    search_space.lower,
-    search_space.upper,
-    grid_density=100
+    function, search_space.lower, search_space.upper, grid_density=100
 )
 fig.update_layout(height=800, width=800)
 fig.show()
@@ -83,7 +80,9 @@ from trieste.models.optimizer import Optimizer
 def build_dgp_model(data):
     variance = tf.math.reduce_variance(data.observations)
 
-    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
+    dgp = build_vanilla_deep_gp(
+        data.query_points, num_layers=2, num_inducing=100
+    )
     dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
     dgp.likelihood_layer.likelihood.variance.assign(1e-5)
@@ -119,8 +118,13 @@ acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
 # Note that the GPflux interface does not currently support using `track_state=True`. This will be
 # addressed in a future update.
-dgp_result = bo.optimize(num_steps, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
+dgp_result = bo.optimize(
+    num_steps,
+    initial_data,
+    dgp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
 # %% [markdown]
@@ -143,7 +147,9 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(function, search_space.lower, search_space.upper, grid_density=100)
+fig = plot_function_plotly(
+    function, search_space.lower, search_space.upper, grid_density=100
+)
 fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
@@ -196,11 +202,22 @@ from trieste.models.gpflow import GaussianProcessRegression
 
 def build_gp_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*data.query_points.shape[-1])
+    kernel = gpflow.kernels.Matern52(
+        variance=variance, lengthscales=[0.2] * data.query_points.shape[-1]
+    )
     prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
+    gpr = gpflow.models.GPR(
+        data.astuple(),
+        kernel,
+        mean_function=gpflow.mean_functions.Constant(),
+        noise_variance=1e-5,
+    )
     gpflow.set_trainable(gpr.likelihood, False)
     num_kernel_samples = 100
 
@@ -211,8 +228,13 @@ gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
+result = bo.optimize(
+    num_steps,
+    initial_data,
+    gp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 gp_dataset = result.try_get_final_dataset()
 
 gp_query_points = gp_dataset.query_points.numpy()
@@ -256,8 +278,18 @@ gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
 dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 _, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
+plot_regret(
+    dgp_suboptimality,
+    ax[0],
+    num_init=num_initial_points,
+    idx_best=dgp_arg_min_idx,
+)
+plot_regret(
+    gp_suboptimality,
+    ax[1],
+    num_init=num_initial_points,
+    idx_best=gp_arg_min_idx,
+)
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -299,8 +331,13 @@ dgp_model = build_dgp_model(initial_data)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
-dgp_result = bo.optimize(num_steps, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
+dgp_result = bo.optimize(
+    num_steps,
+    initial_data,
+    dgp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
 dgp_query_points = dgp_dataset.query_points.numpy()
@@ -322,8 +359,13 @@ gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_steps, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
+result = bo.optimize(
+    num_steps,
+    initial_data,
+    gp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 gp_dataset = result.try_get_final_dataset()
 
 gp_query_points = gp_dataset.query_points.numpy()
@@ -342,8 +384,18 @@ gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
 # %%
 
 _, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
+plot_regret(
+    dgp_suboptimality,
+    ax[0],
+    num_init=num_initial_points,
+    idx_best=dgp_arg_min_idx,
+)
+plot_regret(
+    gp_suboptimality,
+    ax[1],
+    num_init=num_initial_points,
+    idx_best=gp_arg_min_idx,
+)
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
