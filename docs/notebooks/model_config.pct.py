@@ -5,16 +5,22 @@
 
 # %%
 import os
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import gpflow
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+
 tf.get_logger().setLevel("ERROR")
 
 import trieste
-from trieste.objectives import BRANIN_SEARCH_SPACE, SCALED_BRANIN_MINIMUM, scaled_branin
+from trieste.objectives import (
+    BRANIN_SEARCH_SPACE,
+    SCALED_BRANIN_MINIMUM,
+    scaled_branin,
+)
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
@@ -64,7 +70,7 @@ def build_model(data):
 gpflow_model = build_model(initial_data)
 
 # %% [markdown]
-# Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building. 
+# Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building.
 
 # %%
 model = GaussianProcessRegression(gpflow_model)
@@ -74,14 +80,17 @@ model = GaussianProcessRegression(gpflow_model)
 
 # %%
 optimizer = Optimizer(
-    optimizer=gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}
+    optimizer=gpflow.optimizers.Scipy(),
+    minimize_args={"options": dict(maxiter=100)},
 )
 
 # %% [markdown]
 # Finally we build a valid model that can be used with `BayesianOptimizer`. For the `GPR` model we need to use the `GaussianProcessRegression` wrapper. We also set a wrapper specific parameter for initialising the kernel.
 
 # %%
-model = GaussianProcessRegression(gpflow_model, optimizer=optimizer, num_kernel_samples=100)
+model = GaussianProcessRegression(
+    gpflow_model, optimizer=optimizer, num_kernel_samples=100
+)
 
 # %% [markdown]
 # We can now run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its `optimize` method. We are not interested in results here, but for the sake of completeness, lets run the Bayesian optimization as well.
@@ -142,7 +151,9 @@ def build_svgp_model(data):
     inputs = data.query_points
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    model = SVGP(kernel, gpflow.likelihoods.Gaussian(), inputs[:2], num_data=len(inputs))
+    model = SVGP(
+        kernel, gpflow.likelihoods.Gaussian(), inputs[:2], num_data=len(inputs)
+    )
     return model
 
 

@@ -25,7 +25,9 @@ from trieste.space import Box
 
 search_space = Box([0, 0], [1, 1])
 
-fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(
+    scaled_branin, search_space.lower, search_space.upper, grid_density=20
+)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -104,7 +106,9 @@ observations = dataset.observations.numpy()
 from util.plotting import plot_bo_points, plot_function_2d
 
 
-def plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query=1):
+def plot_active_learning_query(
+    result, bo_iter, num_initial_points, query_points, num_query=1
+):
 
     for i in range(bo_iter):
 
@@ -120,13 +124,17 @@ def plot_active_learning_query(result, bo_iter, num_initial_points, query_points
             contour=True,
             colorbar=True,
             figsize=(10, 6),
-            title=["Variance contour with queried points at iter:" + str(i + 1)],
+            title=[
+                "Variance contour with queried points at iter:" + str(i + 1)
+            ],
             xlabel="$X_1$",
             ylabel="$X_2$",
         )
 
         plot_bo_points(
-            query_points[: num_initial_points + (i * num_query)], ax[0, 0], num_initial_points
+            query_points[: num_initial_points + (i * num_query)],
+            ax[0, 0],
+            num_initial_points,
         )
 
 
@@ -144,7 +152,9 @@ num_query = 3
 model = build_model(initial_data)
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer()
+    num_query_points=num_query,
+    builder=acq,
+    optimizer=generate_continuous_optimizer(),
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -166,7 +176,9 @@ observations = dataset.observations.numpy()
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
 
-plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
+plot_active_learning_query(
+    result, bo_iter, num_initial_points, query_points, num_query
+)
 
 # %% [markdown]
 # ## LICENSE
