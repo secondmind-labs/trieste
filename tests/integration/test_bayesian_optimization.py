@@ -270,7 +270,6 @@ def _test_optimizer_finds_minimum(
                 npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
             else:
                 absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
-                tf.print(absolute_minimizer_err)
                 assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
