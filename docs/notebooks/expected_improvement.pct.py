@@ -11,14 +11,18 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # ## Describe the problem
 #
-# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. The Branin function is a popular toy function used in Bayesian optimization literature. Trieste provides a selection of toy functions in `trieste.objectives` package, where besides the functions we also provide their minimizers, minima and search space definitions. 
+# In this example, we look to find the minimum value of the two-dimensional Branin function over the hypercube $[0, 1]^2$. The Branin function is a popular toy function used in Bayesian optimization literature. Trieste provides a selection of toy functions in `trieste.objectives` package, where besides the functions we also provide their minimizers, minima and search space definitions.
 #
 # Below we use a version of the Branin function scaled to the hypercube search space. For the Branin we use the predefined search space `BRANIN_SEARCH_SPACE`, but otherwise one would define the search space directly using a `Box` object (illustrated below as well). We also plot contours of the Branin over the search space.
 #
 #
 
 # %%
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM, BRANIN_SEARCH_SPACE
+from trieste.objectives import (
+    scaled_branin,
+    SCALED_BRANIN_MINIMUM,
+    BRANIN_SEARCH_SPACE,
+)
 from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
@@ -26,7 +30,9 @@ from trieste.space import Box
 search_space = BRANIN_SEARCH_SPACE  # predefined search space, for convenience
 search_space = Box([0, 0], [1, 1])  # define the search space directly
 
-fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(
+    scaled_branin, search_space.lower, search_space.upper, grid_density=20
+)
 fig.update_layout(height=400, width=400)
 fig.show()
 
@@ -51,7 +57,7 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use Gaussian Process (GP) regression for this, as provided by GPflow. The model will need to be trained on each step as more points are evaluated, by default it uses GPflow's Scipy optimizer.
 #
-# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular models. For instance, `GPR` and `SGPR` models from GPflow have to be used with `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization. Below we construct a `GPR` model from GPflow and pass it to the `GaussianProcessRegression` wrapper. Wrappers as a rule have an `optimizer` argument and potentially some additional model arguments (for example, `num_kernel_samples` as explained below). All arguments except for the model are set to sensible defaults, users will need to look up the wrapper to check how to customize these settings. 
+# The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular models. For instance, `GPR` and `SGPR` models from GPflow have to be used with `GaussianProcessRegression` wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization. Below we construct a `GPR` model from GPflow and pass it to the `GaussianProcessRegression` wrapper. Wrappers as a rule have an `optimizer` argument and potentially some additional model arguments (for example, `num_kernel_samples` as explained below). All arguments except for the model are set to sensible defaults, users will need to look up the wrapper to check how to customize these settings.
 #
 # Note below that we put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an ouput standardized to have zero mean and unit variance. For objective functions with different scaling, other priors will likely be more appropriate. Our fitted model uses the maximum a posteriori estimate of these kernel parameters, as found by optimizing the kernel parameters starting from the best of `num_kernel_samples` random samples from the kernel parameter priors. For illustration we set the `num_kernel_samples` to 100 (default value is 10). If we do not specify kernel priors, then Trieste returns the maximum likelihood estimate of the kernel parameters.
 #
@@ -67,8 +73,12 @@ def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -119,11 +129,15 @@ print(f"observation: {observations[arg_min_idx, :]}")
 from util.plotting import plot_bo_points, plot_function_2d
 
 _, ax = plot_function_2d(
-    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    scaled_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+    contour=True,
 )
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
-ax[0, 0].set_xlabel(r'$x_1$')
-ax[0, 0].set_xlabel(r'$x_2$')
+ax[0, 0].set_xlabel(r"$x_1$")
+ax[0, 0].set_xlabel(r"$x_2$")
 
 # %% [markdown]
 # ... or as a three-dimensional plot
@@ -131,7 +145,9 @@ ax[0, 0].set_xlabel(r'$x_2$')
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(
+    scaled_branin, search_space.lower, search_space.upper, grid_density=20
+)
 fig.update_layout(height=500, width=500)
 
 fig = add_bo_points_plotly(
@@ -155,8 +171,12 @@ from util.plotting import plot_regret
 
 suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
 _, ax = plt.subplots(1, 2)
-plot_regret(suboptimality, ax[0], num_init=num_initial_points, idx_best=arg_min_idx)
-plot_bo_points(query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx)
+plot_regret(
+    suboptimality, ax[0], num_init=num_initial_points, idx_best=arg_min_idx
+)
+plot_bo_points(
+    query_points, ax[1], num_init=num_initial_points, idx_best=arg_min_idx
+)
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -229,12 +249,18 @@ fig.tight_layout()
 
 # %%
 num_steps = 10
-result = bo.optimize(num_steps, result.try_get_final_dataset(), result.try_get_final_model())
+result = bo.optimize(
+    num_steps, result.try_get_final_dataset(), result.try_get_final_model()
+)
 dataset = result.try_get_final_dataset()
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 _, ax = plot_function_2d(
-    scaled_branin, search_space.lower, search_space.upper, grid_density=40, contour=True
+    scaled_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=40,
+    contour=True,
 )
 
 plot_bo_points(
@@ -244,8 +270,8 @@ plot_bo_points(
     idx_best=arg_min_idx,
 )
 
-ax[0, 0].set_xlabel(r'$x_1$')
-ax[0, 0].set_xlabel(r'$x_2$')
+ax[0, 0].set_xlabel(r"$x_1$")
+ax[0, 0].set_xlabel(r"$x_2$")
 
 # %% [markdown]
 # ## LICENSE

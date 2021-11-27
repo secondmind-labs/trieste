@@ -5,8 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-np.random.seed(1793)
-tf.random.set_seed(1793)
+np.random.seed(1799)
+tf.random.set_seed(1799)
 
 # %% [markdown]
 # ## The problem
@@ -15,6 +15,7 @@ tf.random.set_seed(1793)
 
 # %%
 from trieste.space import Box
+
 
 class Sim:
     threshold = 0.5
@@ -54,11 +55,13 @@ from trieste.data import Dataset
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
+
 def observer(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 # %% [markdown]
 # Let's randomly sample some initial data from the observer ...
@@ -93,13 +96,18 @@ from trieste.models.gpflow.models import GaussianProcessRegression
 
 
 def create_bo_model(data):
-    variance = tf.math.reduce_variance(initial_data[OBJECTIVE].observations)
+    variance = tf.math.reduce_variance(data.observations)
     lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
+    kernel = gpflow.kernels.Matern52(
+        variance=variance, lengthscales=lengthscale
+    )
     jitter = gpflow.kernels.White(1e-12)
-    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(
+        data.astuple(), kernel + jitter, noise_variance=1e-5
+    )
     gpflow.set_trainable(gpr.likelihood, False)
     return GaussianProcessRegression(gpr)
+
 
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
@@ -169,7 +177,8 @@ class BatchExpectedConstrainedImprovement(
         samplers = {
             tag: trieste.acquisition.BatchReparametrizationSampler(
                 self._sample_size, model
-            ) for tag, model in models.items()
+            )
+            for tag, model in models.items()
         }
 
         pf = trieste.acquisition.probability_of_feasibility(
@@ -187,9 +196,7 @@ class BatchExpectedConstrainedImprovement(
             }
             feasible_mask = samples[CONSTRAINT] < self._threshold  # [N, S, B]
             improvement = tf.where(
-                feasible_mask,
-                tf.maximum(eta - samples[OBJECTIVE], 0.),
-                0.
+                feasible_mask, tf.maximum(eta - samples[OBJECTIVE], 0.0), 0.0
             )  # [N, S, B]
             batch_improvement = tf.reduce_max(improvement, axis=-1)  # [N, S]
             return tf.reduce_mean(
@@ -223,8 +230,8 @@ batch_data = bo.optimize(
 # %%
 batch_constraint_data = batch_data[CONSTRAINT]
 new_batch_data = (
-    batch_constraint_data.query_points[-num_query_points * num_steps:],
-    batch_constraint_data.observations[-num_query_points * num_steps:]
+    batch_constraint_data.query_points[-num_query_points * num_steps :],
+    batch_constraint_data.observations[-num_query_points * num_steps :],
 )
 
 plot_init_query_points(
@@ -251,19 +258,19 @@ plot_regret(
     data[OBJECTIVE].observations.numpy(),
     ax[0],
     num_init=num_initial_points,
-    mask_fail=mask_fail.flatten()
+    mask_fail=mask_fail.flatten(),
 )
 plot_regret(
     batch_data[OBJECTIVE].observations.numpy(),
     ax[1],
     num_init=num_initial_points,
-    mask_fail=batch_mask_fail.flatten()
+    mask_fail=batch_mask_fail.flatten(),
 )
 
 # %% [markdown]
 # ## Constrained optimization with more than one constraint
 #
-# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherets from the previous one its objective and first constraint, but possess a second constraint. We start by adding an output to our observer, and creating a set of three models.
+# We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherits from the previous one its objective and first constraint, but also adds a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
 # %%
 class Sim2(Sim):
@@ -275,7 +282,9 @@ class Sim2(Sim):
         z = tf.sin(x) * tf.cos(y) - tf.cos(x) * tf.sin(y)
         return z[:, None]
 
+
 CONSTRAINT2 = "CONSTRAINT2"
+
 
 def observer_two_constraints(query_points):
     return {
@@ -284,12 +293,13 @@ def observer_two_constraints(query_points):
         CONSTRAINT2: Dataset(query_points, Sim2.constraint2(query_points)),
     }
 
+
 num_initial_points = 10
 initial_data = observer_two_constraints(search_space.sample(num_initial_points))
 initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
-# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` into one quantity by using a `Product` `Reducer`:
+# Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` functions into one quantity by using a `Product` `Reducer`:
 
 # %%
 from trieste.acquisition.combination import Product
@@ -306,7 +316,9 @@ eci = trieste.acquisition.ExpectedConstrainedImprovement(OBJECTIVE, pof)  # type
 rule = EfficientGlobalOptimization(eci)
 
 num_steps = 20
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_two_constraints, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer_two_constraints, search_space
+)
 
 data = bo.optimize(
     num_steps, initial_data, initial_models, rule, track_state=False
@@ -317,15 +329,24 @@ new_query_points = constraint_data.query_points[-num_steps:]
 new_observations = constraint_data.observations[-num_steps:]
 new_data = (new_query_points, new_observations)
 
+
 def masked_objective(x):
-    mask_nan = np.logical_or(Sim2.constraint(x) > Sim2.threshold,
-                             Sim2.constraint2(x) > Sim2.threshold2)
+    mask_nan = np.logical_or(
+        Sim2.constraint(x) > Sim2.threshold,
+        Sim2.constraint2(x) > Sim2.threshold2,
+    )
     y = np.array(Sim2.objective(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
-mask_fail1 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold
-mask_fail2 = data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold2
+
+mask_fail1 = (
+    data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold
+)
+mask_fail2 = (
+    data[CONSTRAINT].observations.numpy().flatten().astype(int)
+    > Sim2.threshold2
+)
 mask_fail = np.logical_or(mask_fail1, mask_fail2)
 
 import matplotlib.pyplot as plt
@@ -336,7 +357,7 @@ fig, ax = plot_function_2d(
     search_space.lower,
     search_space.upper,
     grid_density=50,
-    contour=True
+    contour=True,
 )
 plot_bo_points(
     data[OBJECTIVE].query_points.numpy(),
