@@ -139,7 +139,7 @@ def test_random_search_optimizer_on_toy_problems(
     def target_function(x: TensorType) -> TensorType:
         return -1 * neg_function(tf.squeeze(x, 1))
 
-    optimizer = generate_random_search_optimizer(1_000_000)
+    optimizer: AcquisitionOptimizer[SearchSpace] = generate_random_search_optimizer(1_000_000)
     maximizer = optimizer(search_space, target_function)
     npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-1)
 
@@ -355,7 +355,7 @@ def test_continuous_optimizer_on_toy_problems(
     neg_function: Callable[[TensorType], TensorType],
     expected_maximizer: TensorType,
     expected_minimum: TensorType,
-    search_space: SearchSpace,
+    search_space: Box,
 ) -> None:
     def target_function(x: TensorType) -> TensorType:
         return -1 * neg_function(tf.squeeze(x, 1))

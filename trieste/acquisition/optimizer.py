@@ -200,7 +200,10 @@ def generate_continuous_optimizer(
         initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
 
         chosen_point, successful_optimization = _perform_parallel_continuous_optimization(
-            target_func, space, initial_points, optimizer_args # run num_optimization_runs in parallel
+            target_func,
+            space,
+            initial_points,
+            optimizer_args,  # run num_optimization_runs in parallel
         )
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
@@ -226,7 +229,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> Tuple[TensorType]:
+) -> tuple[TensorType, bool]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -248,7 +251,7 @@ def _perform_parallel_continuous_optimization(
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
 
-    :param target_func: 
+    :param target_func:
     :param space: The original search space.
     :param starting_points: The points at which to begin our optimizations.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
@@ -260,12 +263,14 @@ def _perform_parallel_continuous_optimization(
     num_optimization_runs = tf.shape(starting_points)[0].numpy()
 
     def _objective_value(x: TensorType) -> TensorType:
-        return -target_func(tf.expand_dims(x, 1)) # [len(x),1]
+        return -target_func(tf.expand_dims(x, 1))  # [len(x),1]
 
-    def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType]:
-        return tfp.math.value_and_gradient(_objective_value, x) # [len(x), 1], [len(x), D]
+    def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
+        return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
 
-    if isinstance(space, TaggedProductSearchSpace): # build continuous relaxation of discrete subspaces
+    if isinstance(
+        space, TaggedProductSearchSpace
+    ):  # build continuous relaxation of discrete subspaces
         bounds = [
             get_bounds_of_box_relaxation_around_point(space, starting_points[i : i + 1])
             for i in tf.range(num_optimization_runs)
@@ -310,7 +315,7 @@ def _perform_parallel_continuous_optimization(
             child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
     best_run_id = np.argmax([-result.fun for result in child_results])  # identify best solution
-    chosen_point = child_results[best_run_id].x.reshape(1, -1)  # [1, D]
+    np_chosen_point = child_results[best_run_id].x.reshape(1, -1)  # [1, D]
     success = np.any(
         [result.success for result in child_results]
     )  # Check that at least one optimization was successful
@@ -334,8 +339,8 @@ class ScipyLbfgsBGreenlet(gr.greenlet):
         cache_dy_dx: Optional[np.ndarray] = None
 
         def value_and_gradient(
-            x: np.ndarray
-        ) -> Tuple[np.ndarray, np.ndarray]: # Collect function evaluations from parent greenlet
+            x: np.ndarray,
+        ) -> Tuple[np.ndarray, np.ndarray]:  # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
             nonlocal cache_dy_dx
