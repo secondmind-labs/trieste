@@ -260,8 +260,7 @@ def _perform_parallel_continuous_optimization(
         if any of the optimizations were successful.
     """
 
-    original_dtype = starting_points.dtype  # use original type for communication with Trieste
-    starting_points = tf.cast(starting_points, dtype=tf.float64)  # scipy optimizer requires float64
+    tf_dtype = starting_points.dtype  # type for communication with Trieste
 
     num_optimization_runs = tf.shape(starting_points)[0].numpy()
 
@@ -308,7 +307,7 @@ def _perform_parallel_continuous_optimization(
             break
 
         # Batch evaluate query `x`s from all children.
-        batch_x = tf.constant(np_batch_x, dtype=original_dtype)  # [num_optimization_runs, d]
+        batch_x = tf.constant(np_batch_x, dtype=tf_dtype)  # [num_optimization_runs, d]
         batch_y, batch_dy_dx = _objective_value_and_gradient(batch_x)
         np_batch_y, np_batch_dy_dx = np.float64(batch_y.numpy()), np.float64(batch_dy_dx.numpy())
 
@@ -323,7 +322,7 @@ def _perform_parallel_continuous_optimization(
         [result.success for result in child_results]
     )  # Check that at least one optimization was successful
 
-    return tf.constant(np_chosen_point, dtype=original_dtype), success  # convert back to TF
+    return tf.constant(np_chosen_point, dtype=tf_dtype), success  # convert back to TF
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):
