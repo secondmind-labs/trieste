@@ -13,15 +13,11 @@
 # limitations under the License.
 from __future__ import annotations
 
-import unittest.mock
-from typing import Any, TypeVar, Callable
+from typing import Callable, TypeVar
 
-import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from gpflow.optimizers import Scipy
-from scipy.optimize import OptimizeResult
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
 from trieste.acquisition import AcquisitionFunction
@@ -36,18 +32,18 @@ from trieste.acquisition.optimizer import (
     optimize_discrete,
 )
 from trieste.objectives import (
-    ackley_5, 
-    ACKLEY_5_MINIMIZER, 
-    ACKLEY_5_MINIMUM, 
+    ACKLEY_5_MINIMIZER,
+    ACKLEY_5_MINIMUM,
     ACKLEY_5_SEARCH_SPACE,
-    hartmann_3, 
     HARTMANN_3_MINIMIZER,
-    HARTMANN_3_MINIMUM, 
+    HARTMANN_3_MINIMUM,
     HARTMANN_3_SEARCH_SPACE,
-    hartmann_6, 
     HARTMANN_6_MINIMIZER,
     HARTMANN_6_MINIMUM,
-    HARTMANN_6_SEARCH_SPACE
+    HARTMANN_6_SEARCH_SPACE,
+    ackley_5,
+    hartmann_3,
+    hartmann_6,
 )
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
@@ -92,6 +88,12 @@ SP = TypeVar("SP", bound=SearchSpace)
             [generate_random_search_optimizer(10_000)],
         ),  # 1D
         (
+            Box(tf.constant([-1], dtype=tf.float64), tf.constant([2], dtype=tf.float64)),
+            [1.0],
+            [[1.0]],
+            [generate_random_search_optimizer(10_000)],
+        ),  # 1D with tf bounds
+        (
             Box([-1, -2], [1.5, 2.5]),
             [0.3, -0.4],
             [[0.3, -0.4]],
@@ -119,6 +121,29 @@ def test_discrete_and_random_optimizer_on_quadratic(
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
 
 
+@random_seed
+@pytest.mark.parametrize(
+    "neg_function, expected_maximizer, expected_minimum, search_space",
+    [
+        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
+    ],
+)
+def test_random_search_optimizer_on_toy_problems(
+    neg_function: Callable[[TensorType], TensorType],
+    expected_maximizer: TensorType,
+    expected_minimum: TensorType,
+    search_space: SearchSpace,
+) -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1 * neg_function(tf.squeeze(x, 1))
+
+    optimizer = generate_random_search_optimizer(1_000_000)
+    maximizer = optimizer(search_space, target_function)
+    npt.assert_allclose(maximizer, expected_maximizer, rtol=2e-1)
+
+
 def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None:
     with pytest.raises(ValueError):
         generate_continuous_optimizer(num_initial_samples=-5)
@@ -128,6 +153,90 @@ def test_generate_continuous_optimizer_raises_with_invalid_init_params() -> None
         generate_continuous_optimizer(num_optimization_runs=5, num_initial_samples=4)
     with pytest.raises(ValueError):
         generate_continuous_optimizer(num_recovery_runs=-5)
+
+
+@pytest.mark.parametrize("num_optimization_runs", [1, 10])
+@pytest.mark.parametrize("num_recovery_runs", [1, 10])
+def test_optimize_continuous_raises_for_impossible_optimization(
+    num_optimization_runs: int, num_recovery_runs: int
+) -> None:
+    search_space = Box([-1, -1], [1, 2])
+    optimizer = generate_continuous_optimizer(
+        num_optimization_runs=num_optimization_runs, num_recovery_runs=num_recovery_runs
+    )
+    with pytest.raises(FailedOptimizationError) as e:
+        optimizer(search_space, _delta_function(10))
+    assert (
+        str(e.value)
+        == f"""
+                    Acquisition function optimization failed,
+                    even after {num_recovery_runs + num_optimization_runs} restarts.
+                    """
+    )
+
+
+@pytest.mark.parametrize("num_optimization_runs", [1, 10])
+@pytest.mark.parametrize("num_initial_samples", [1000, 5000])
+def test_optimize_continuous_uses_correctly_uses_init_params(
+    num_optimization_runs: int, num_initial_samples: int
+) -> None:
+
+    querying_initial_sample = True
+
+    def _target_fn(x: TensorType) -> TensorType:
+        nonlocal querying_initial_sample
+
+        if querying_initial_sample:  # check size of initial sample
+            assert tf.shape(x)[0] == num_initial_samples
+        else:  # check evaluations are in parallel with correct batch size
+            assert tf.shape(x)[0] == num_optimization_runs
+
+        querying_initial_sample = False
+        return _quadratic_sum([0.5, 0.5])(x)
+
+    optimizer = generate_continuous_optimizer(num_initial_samples, num_optimization_runs)
+    optimizer(Box([-1], [1]), _target_fn)
+
+
+@pytest.mark.parametrize("failed_first_optimziation", [True, False])
+@pytest.mark.parametrize("num_recovery_runs", [0, 2, 10])
+def test_optimize_continuous_recovery_runs(
+    failed_first_optimziation: bool, num_recovery_runs: int
+) -> None:
+
+    currently_failing = failed_first_optimziation
+    num_batch_evals = 0
+
+    def _target_fn(x: TensorType) -> TensorType:
+        nonlocal currently_failing
+        nonlocal num_batch_evals
+
+        if (
+            tf.shape(x)[0] > 1
+        ):  # count when batch eval (i.e. random init or when doing recovery runs)
+            num_batch_evals += 1
+
+        if (
+            num_batch_evals > 2
+        ):  # after random init, the next batch eval will be start of recovery run
+            assert (
+                tf.shape(x)[0] == num_recovery_runs
+            )  # check that we do correct number of recovery runs
+            currently_failing = False
+
+        if currently_failing:  # return function that is impossible to optimize
+            return _delta_function(10)
+        else:
+            return _quadratic_sum([0.5, 0.5])  # return function that is easy to optimize
+
+        optimizer = generate_continuous_optimizer(
+            num_optimization_runs=1, num_recovery_runs=num_recovery_runs
+        )
+        if failed_first_optimziation and (num_recovery_runs == 0):
+            with pytest.raises(FailedOptimizationError):
+                optimizer(Box([-1], [1]), _target_fn)
+        else:
+            optimizer(Box([-1], [1]), _target_fn)
 
 
 @random_seed
@@ -233,16 +342,13 @@ def test_continuous_optimizer_on_quadratic(
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-3)
 
 
-
-
-
 @random_seed
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, expected_minimum, search_space",
     [
-    #(ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
-    #(hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
-    (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
+        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
     ],
 )
 def test_continuous_optimizer_on_toy_problems(
@@ -252,16 +358,11 @@ def test_continuous_optimizer_on_toy_problems(
     search_space: SearchSpace,
 ) -> None:
     def target_function(x: TensorType) -> TensorType:
-        return -1*neg_function(tf.squeeze(x, 1))
-    optimizer = generate_continuous_optimizer(num_initial_samples = 1_000_000, num_optimization_runs=1000)
+        return -1 * neg_function(tf.squeeze(x, 1))
+
+    optimizer = generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10)
     maximizer = optimizer(search_space, target_function)
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
-
-
-
-
-
-
 
 
 @pytest.mark.parametrize(
@@ -341,54 +442,6 @@ def test_get_bounds_of_box_relaxation_around_point(
     bounds = get_bounds_of_box_relaxation_around_point(search_space, point)
     npt.assert_array_equal(bounds.lb, lower)
     npt.assert_array_equal(bounds.ub, upper)
-
-
-@pytest.mark.parametrize("num_optimization_runs", [1, 10])
-@pytest.mark.parametrize("num_recovery_runs", [1, 10])
-def test_optimize_continuous_raises_for_impossible_optimization(
-    num_optimization_runs: int, num_recovery_runs: int
-) -> None:
-    search_space = Box([-1, -1], [1, 2])
-    optimizer = generate_continuous_optimizer(
-        num_optimization_runs=num_optimization_runs, num_recovery_runs=num_recovery_runs
-    )
-    with pytest.raises(FailedOptimizationError) as e:
-        optimizer(search_space, _delta_function(10))
-    assert (
-        str(e.value)
-        == f"""
-                    Acquisition function optimization failed,
-                    even after {num_recovery_runs + num_optimization_runs} restarts.
-                    """
-    )
-
-
-@pytest.mark.parametrize("num_failed_runs", range(4))
-@pytest.mark.parametrize("num_recovery_runs", range(4))
-def test_optimize_continuous_recovery_runs(num_failed_runs: int, num_recovery_runs: int) -> None:
-
-    scipy_minimize = gpflow.optimizers.Scipy.minimize
-    failed_runs = 0
-
-    def mock_minimize(self: Scipy, *args: Any, **kwargs: Any) -> OptimizeResult:
-        nonlocal failed_runs
-        result = scipy_minimize(self, *args, **kwargs)
-        if failed_runs < num_failed_runs:
-            failed_runs += 1
-            result.success = False
-        else:
-            result.success = True
-        return result
-
-    with unittest.mock.patch("gpflow.optimizers.Scipy.minimize", mock_minimize):
-        optimizer = generate_continuous_optimizer(
-            num_optimization_runs=1, num_recovery_runs=num_recovery_runs
-        )
-        if num_failed_runs > num_recovery_runs:
-            with pytest.raises(FailedOptimizationError):
-                optimizer(Box([-1], [1]), _quadratic_sum([0.5]))
-        else:
-            optimizer(Box([-1], [1]), _quadratic_sum([0.5]))
 
 
 def test_optimize_batch_raises_with_invalid_batch_size() -> None:
