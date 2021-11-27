@@ -217,7 +217,7 @@ def test_optimize_continuous_recovery_runs(
             num_batch_evals += 1
 
         if (
-            num_batch_evals > 2
+            num_batch_evals > 1
         ):  # after random init, the next batch eval will be start of recovery run
             assert (
                 tf.shape(x)[0] == num_recovery_runs
