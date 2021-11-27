@@ -462,7 +462,7 @@ def test_optimize_batch_raises_with_invalid_batch_size() -> None:
 def test_optimize_batch(
     search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
 ) -> None:
-    batch_size_one_optimizer = generate_continuous_optimizer()
+    batch_size_one_optimizer = generate_continuous_optimizer(num_optimization_runs=5)
     batch_optimizer = batchify(batch_size_one_optimizer, batch_size)
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
