@@ -24,6 +24,7 @@ from gpflux.models import DeepGP
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
+from ..optimizer import Optimizer
 from .interface import GPfluxPredictor
 from .utils import sample_dgp
 
@@ -37,19 +38,14 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(
-        self,
-        model: DeepGP,
-        optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[str, Any] | None = None,
-    ):
+    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~tf.optimizers.Optimizer` with :class:`~tf.optimizers.Adam`. Only
-            the optimizer itself is used; other args relevant for fitting should be passed as part
-            of `fit_args`.
-        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Defaults to
+        :param optimizer: The optimizer configuration for training the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
+            This optimizer itself is not used, instead only its `optimizer` and `minimize_args` are
+            used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
+            a dictionary of arguments to be used in the Keras `fit` method. Defaults to
             using 100 epochs, batch size 100, and verbose 0. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
@@ -57,10 +53,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         super().__init__(optimizer)
 
-        self.original_lr = self._optimizer.lr.numpy()
+        self.original_lr = self.optimizer.optimizer.lr.numpy()
 
-        if fit_args is None:
-            self.fit_args = dict(
+        if self.optimizer.minimize_args is None:
+            self._fit_args: Dict[str, Any] | None = dict(
                 {
                     "verbose": 0,
                     "epochs": 100,
@@ -68,7 +64,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                 }
             )
         else:
-            self.fit_args = fit_args
+            self._fit_args = self.optimizer.minimize_args
 
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
@@ -80,11 +76,11 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self._model_gpflux = model
 
         self._model_keras = model.as_training_model()
-        self._model_keras.compile(self._optimizer)
+        self._model_keras.compile(self.optimizer.optimizer)
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
+        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer.optimizer!r})"
 
     @property
     def model_gpflux(self) -> DeepGP:
@@ -93,10 +89,6 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     @property
     def model_keras(self) -> tf.keras.Model:
         return self._model_keras
-
-    @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
-        return self._optimizer
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
@@ -147,10 +139,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
+            {"inputs": dataset.query_points, "targets": dataset.observations}, **self._fit_args
         )
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
-        self.optimizer.lr.assign(self.original_lr)
+        self.optimizer.optimizer.lr.assign(self.original_lr)
