@@ -94,7 +94,6 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
-
     def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
@@ -117,4 +116,3 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         :return: The reparametrization sampler.
         """
         return BatchReparametrizationSampler(num_samples, self)
-

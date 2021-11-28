@@ -23,7 +23,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from ...models import ProbabilisticModel, ReparametrizationSampler
+from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import (
@@ -583,10 +583,6 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-
-
-
-
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
@@ -701,77 +697,3 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         min_sample_per_batch = tf.reduce_min(samples, axis=-1)  # [..., S]
         batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
-
-
-
-class PredictiveVariance(SingleModelAcquisitionBuilder):
-    """
-    Builder for the determinant of the predictive covariance matrix over the batch points.
-    For a batch of size 1 it is the same as maximizing the predictive variance.
-    """
-
-    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
-        """
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        """
-        self._jitter = jitter
-
-    def __repr__(self) -> str:
-        """"""
-        return f"PredictiveVariance(jitter={self._jitter!r})"
-
-    def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param model: The model.
-        :param dataset: Unused.
-
-        :return: The determinant of the predictive function.
-        """
-
-        return predictive_variance(model, self._jitter)
-
-    def update_acquisition_function(
-        self,
-        function: AcquisitionFunction,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param function: The acquisition function to update.
-        :param model: The model.
-        :param dataset: Unused.
-        """
-        return function  # no need to update anything
-
-
-def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
-    """
-    The predictive variance acquisition function for active learning, based on
-    the determinant of the covariance (see :cite:`MacKay1992` for details).
-    Note that the model needs to supply covariance of the joint marginal distribution,
-    which can be expensive to compute.
-
-    :param model: The model of the objective function.
-    :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-    """
-
-    @tf.function
-    def acquisition(x: TensorType) -> TensorType:
-
-        try:
-            _, covariance = model.predict_joint(x)
-        except NotImplementedError:
-            raise ValueError(
-                """
-                PredictiveVariance only supports models with a predict_joint method.
-                """
-            )
-        return tf.exp(tf.linalg.logdet(covariance + jitter))
-
-    return acquisition

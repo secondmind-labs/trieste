@@ -264,8 +264,6 @@ class ModelStack(TrainableProbabilisticModel):
             with tf.name_scope(f"{i}"):
                 model.log()
 
-
-
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         """
         Return a reparametrization sampler providing `num_samples` samples across
@@ -364,4 +362,3 @@ class TrajectorySampler(ABC):
         :return: A trajectory function representing an approximate trajectory from the
             model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
-

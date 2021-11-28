@@ -33,6 +33,9 @@ from trieste.acquisition import (
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
 )
+from trieste.acquisition.function.sampler import (
+    ThompsonSamplerFromTrajectory,
+)
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -47,6 +50,7 @@ from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.optimizer import Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -92,7 +96,7 @@ OPTIMIZER_PARAMS = (
                 22,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
-                        BRANIN_SEARCH_SPACE, use_thompson=True, use_fourier_features=True
+                        BRANIN_SEARCH_SPACE, min_value_sampler=ThompsonSamplerFromTrajectory
                     ).using(OBJECTIVE)
                 ),
             ),
@@ -137,7 +141,7 @@ OPTIMIZER_PARAMS = (
                 TrustRegion(
                     EfficientGlobalOptimization(
                         MinValueEntropySearch(
-                            BRANIN_SEARCH_SPACE, use_thompson=True, use_fourier_features=True
+                            BRANIN_SEARCH_SPACE,
                         ).using(OBJECTIVE)
                     )
                 ),
@@ -261,15 +265,15 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             else:
                 return lr
 
-        optimizer = tf.optimizers.Adam(0.01)
         fit_args = {
             "batch_size": batch_size,
             "epochs": epochs,
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
+        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
 
-        return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+        return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
     initial_query_points = search_space.sample_sobol(20)
     observer = mk_observer(michalewicz, OBJECTIVE)

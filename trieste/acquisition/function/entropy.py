@@ -16,7 +16,7 @@ This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Callable, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -33,10 +33,7 @@ from ..interface import (
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
-from ..sampler import (
-    ExactThompsonSampler,
-    ThompsonSampler,
-)
+from ..sampler import ExactThompsonSampler, ThompsonSampler
 
 CLAMP_LB = 1e-8
 
@@ -59,7 +56,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[Callable[ , []]] = None,
+        min_value_sampler: Optional[Callable[..., ThompsonSampler]] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -182,7 +179,6 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
-        return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class GIBBON(SingleModelGreedyAcquisitionBuilder):
@@ -205,7 +201,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler] = None,
+        min_value_sampler: Optional[Callable[..., ThompsonSampler]] = None,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -525,5 +521,3 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
             repulsion_weight = 1.0
 
         return repulsion_weight * repulsion
-
-

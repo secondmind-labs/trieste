@@ -30,7 +30,11 @@ from tests.util.misc import (
     raise_exc,
     random_seed,
 )
-from tests.util.models.gpflow.models import GaussianProcess, GaussianProcessWithSamplers, QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    GaussianProcessWithSamplers,
+    QuadraticMeanAndRBFKernel,
+)
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -263,6 +267,7 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
             model,
         )
 
+
 def test_batch_monte_carlo_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = empty_dataset([2], [num_obj])
@@ -492,7 +497,6 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
         rtol=1e-5,
         atol=1e-5,
     )
-
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])

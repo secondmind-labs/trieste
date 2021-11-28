@@ -32,7 +32,6 @@ from ..multi_objective.pareto import (
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
-
 from .function import ExpectedConstrainedImprovement
 
 

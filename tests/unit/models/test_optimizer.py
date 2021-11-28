@@ -21,12 +21,7 @@ import tensorflow as tf
 
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models.optimizer import BatchOptimizer, create_loss_function, create_optimizer
-
-
-def test_create_optimizer_raises_on_none() -> None:
-    with pytest.raises(NotImplementedError):
-        create_optimizer(None, {})
+from trieste.models.optimizer import create_loss_function
 
 
 def test_create_loss_function_raises_on_none() -> None:
@@ -34,8 +29,3 @@ def test_create_loss_function_raises_on_none() -> None:
     data = Dataset(x, fnc_3x_plus_10(x))
     with pytest.raises(NotImplementedError):
         create_loss_function(None, data)
-
-
-def test_create_optimizer_tf_produces_correct_optimizer() -> None:
-    optim = create_optimizer(tf.optimizers.Adam(), {})
-    assert isinstance(optim, BatchOptimizer)

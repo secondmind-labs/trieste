@@ -35,7 +35,7 @@ class ThompsonSampler(ABC):
 
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = False):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = True):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
@@ -118,14 +118,24 @@ class GumbelSampler(ThompsonSampler):
     its minimiser.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, sample_min_value: bool = True):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
+        :sample_min_value: If True then sample from the minimum value of the function,
+            else sample the function's minimiser.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
 
-        super().__init__(sample_size, model, True)
+        if not sample_min_value:
+            raise ValueError(
+                f"""
+                Gumbel samplers can only sample a function's minimal value,
+                however received sample_min_value={sample_min_value}
+                """
+            )
+
+        super().__init__(sample_size, model, sample_min_value)
 
     def sample(self, at: TensorType) -> TensorType:
         """
@@ -184,7 +194,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
         self,
         sample_size: int,
         model: ProbabilisticModel,
-        sample_min_value: bool = False,
+        sample_min_value: bool = True,
     ):
         """
         :param sample_size: The desired number of samples.
