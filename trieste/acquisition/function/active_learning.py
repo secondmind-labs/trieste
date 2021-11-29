@@ -347,7 +347,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         self._model = model
         self._integration_points = integration_points
-        if (threshold is None):
+        if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
         elif len(threshold) == 1:
             mean_old, var_old = self._model.predict(query_points=integration_points)
