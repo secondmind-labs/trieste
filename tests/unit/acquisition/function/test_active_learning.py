@@ -312,6 +312,7 @@ def test_integrated_variance_reduction_raises_for_invalid_threshold(
 ) -> None:
     integration_points = tf.zeros([2, 2])
 
+    print(threshold)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IntegratedVarianceReduction(integration_points, threshold)
 
@@ -332,7 +333,17 @@ def test_integrated_variance_reduction_builds_acquisition_function() -> None:
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]])])
+@pytest.mark.parametrize(
+    "at",
+    [
+        tf.zeros([3, 2]),
+        tf.zeros(
+            [
+                3,
+            ]
+        ),
+    ],
+)
 def test_integrated_variance_reduction_raises_for_invalid_batch_size(at: TensorType) -> None:
     threshold = [1.0, 2.0]
 
@@ -358,15 +369,15 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
 
     builder = IntegratedVarianceReduction(integration_points, threshold)
     acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
 
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = integrated_variance_reduction(model, integration_points, threshold)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
 
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
