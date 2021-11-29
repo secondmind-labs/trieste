@@ -160,7 +160,7 @@ def excursion_probability(x, model, threshold=80):
         return normal.cdf(t1) - normal.cdf(t0)
 
 
-def plot_excursion_probability(title, model=None, query_points=None, threshold=None):
+def plot_excursion_probability(title, model=None, query_points=None, threshold=80.):
 
     if model is None:
         objective_function = thresholded_branin
@@ -225,7 +225,7 @@ plot_excursion_probability(
 # We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line.
 
 # %%
-num_steps = 90
+num_steps = 9
 result = bo.optimize(num_steps, dataset, model, rule)
 
 final_model = result.try_get_final_model()
@@ -254,11 +254,11 @@ rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=5)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
+result_ivr = bo.optimize(num_steps, initial_data, initial_model, rule_ivr)
 
 final_model_ivr = result_ivr.try_get_final_model()
 dataset_ivr = result_ivr.try_get_final_dataset()
-query_points_ivr = dataset.query_points_ivr.numpy()
+query_points_ivr = dataset_ivr.query_points.numpy()
 
 plot_excursion_probability(
     "Final probability of excursion", final_model_ivr, query_points_ivr
@@ -266,11 +266,11 @@ plot_excursion_probability(
 
 # %% [markdown]
 # One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
-thresholds = [65., 95.]
+thresholds = [60., 100.]
 acq_range = IntegratedVarianceReduction(integration_points=integration_points, threshold=thresholds)
 rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=5)
 
-result_range = bo.optimize(num_steps, initial_data, model, rule_range)
+result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
 
 # %% [markdown]
 # We can finally draw the probability that the GP value belongs to an interval rather than the probability that it exceeds a single value. We also compare to the probability obtained when optimising for a single value at the center of the range. As expected, the `IntegratedVarianceReduction` spreads query points a bit more, which leads to a sharper probability.

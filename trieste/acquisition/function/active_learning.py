@@ -371,7 +371,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         elif len(threshold) == 1:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.prob(threshold[1])
+            self._weights = distr.prob(threshold)
         else:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
