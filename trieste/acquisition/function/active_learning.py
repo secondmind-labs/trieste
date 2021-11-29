@@ -247,7 +247,6 @@ def bichon_ranjan_criterion(
     return acquisition
 
 
-
 class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
     """
     Builder for the reduction of the integral of the predicted variance over the search
@@ -260,16 +259,20 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
         :raise ValueError (or InvalidArgumentError): If ``integration_points`` does not have
                 exactly two dimensions, or if the first dimension has size 0.
         """
-        tf.debugging.assert_equal(len(tf.shape(integration_points)), 2,
-                                  message="integration_points must be of shape"
-                                          "[N, D]")
+        tf.debugging.assert_equal(
+            len(tf.shape(integration_points)),
+            2,
+            message="integration_points must be of shape" "[N, D]",
+        )
 
-        tf.debugging.assert_positive(tf.shape(integration_points)[0],
-                                     message="integration_points should contain at least "
-                                            "one point")
+        tf.debugging.assert_positive(
+            tf.shape(integration_points)[0],
+            message="integration_points should contain at least " "one point",
+        )
 
-        tf.debugging.assert_less_equal(len(threshold), 2,
-                                       message="threshold can only contain 0, 1 or 2 elements")
+        tf.debugging.assert_less_equal(
+            len(threshold), 2, message="threshold can only contain 0, 1 or 2 elements"
+        )
 
         self._integration_points = integration_points
         self._threshold = threshold

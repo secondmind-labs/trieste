@@ -17,8 +17,8 @@ from .active_learning import (
     IntegratedVarianceReduction,
     PredictiveVariance,
     bichon_ranjan_criterion,
-    predictive_variance,
     integrated_variance_reduction,
+    predictive_variance,
 )
 from .entropy import (
     GIBBON,

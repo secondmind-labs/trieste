@@ -30,12 +30,7 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.models.gpflow.models import (
-    GaussianProcess,
-    QuadraticMeanAndRBFKernel,
-    rbf,
-)
-
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
