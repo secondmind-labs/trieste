@@ -214,7 +214,7 @@ plot_excursion_probability(
 # Next we examine an updated excursion probability map after the 10 active learning steps. We can now see that the model is much more accurate and confident, as indicated by a good match with the reference thresholded Branin function and sharp decrease/increase away from the 0.5 excursion probability contour.
 
 # %%
-updated_model = result.history[-1].models["OBJECTIVE"]
+updated_model = result_range.try_get_final_model()
 
 plot_excursion_probability(
     "Updated probability of excursion", updated_model, query_points
