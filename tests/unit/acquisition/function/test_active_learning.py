@@ -312,7 +312,6 @@ def test_integrated_variance_reduction_raises_for_invalid_threshold(
 ) -> None:
     integration_points = tf.zeros([2, 2])
 
-    print(threshold)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IntegratedVarianceReduction(integration_points, threshold)
 
