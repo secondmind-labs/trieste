@@ -181,7 +181,7 @@ def test_gpr_raises_for_invalid_num_kernel_samples() -> None:
         GaussianProcessRegression(gpr_model(x, y), num_kernel_samples=-1)
 
 
-def test_gpr_raises_for_covariance_between_invalid_query_points_2() -> None:
+def test_gaussian_process_regression_raises_for_covariance_between_invalid_query_points_2() -> None:
     data = mock_data()
     model = GaussianProcessRegression(gpr_model(*data))
 
@@ -189,7 +189,7 @@ def test_gpr_raises_for_covariance_between_invalid_query_points_2() -> None:
         model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
 
 
-def test_sgpr_raises_for_conditional_predict() -> None:
+def test_gaussian_process_regression_raises_for_conditionals_with_sgpr() -> None:
     data = mock_data()
     model = GaussianProcessRegression(sgpr_model(*data))
 
