@@ -241,7 +241,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
     ) -> tuple[TensorType, TensorType]:
         """
         Returns the marginal GP distribution at query_points conditioned on both the model
-        and some additional data, using exact formula.
+        and some additional data, using exact formula. See :cite:`chevalier2014corrected`
+        (eqs. 8-10) for details.
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
@@ -310,7 +311,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
     ) -> tuple[TensorType, TensorType]:
         """
         Predicts the joint GP distribution at query_points conditioned on both the model
-        and some additional data, using exact formula.
+        and some additional data, using exact formula. See :cite:`chevalier2014corrected`
+        (eqs. 8-10) for details.
 
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
@@ -329,6 +331,9 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
             " and observations with shape [..., N, L], and query_points "
             "should have shape [M, D]",
         )
+
+        if isinstance(self.model, SGPR):
+            raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
         new_shape = tf.concat([leading_dims, tf.shape(query_points)], axis=0)  # [..., M, D]
@@ -388,6 +393,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param num_samples: number of samples
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
+
+        if isinstance(self.model, SGPR):
+            raise NotImplementedError("Conditional predict y is not supported for SGPR.")
+
         mean_new, cov_new = self.conditional_predict_joint(query_points, additional_data)
         mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., P, N]
         samples = sample_mvn(
@@ -408,6 +417,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :return: predictive variance at query_points, with shape [..., M, L],
                  and predictive variance at query_points, with shape [..., M, L]
         """
+
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
