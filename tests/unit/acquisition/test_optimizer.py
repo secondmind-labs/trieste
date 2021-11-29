@@ -33,13 +33,10 @@ from trieste.acquisition.optimizer import (
 )
 from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
-    ACKLEY_5_MINIMUM,
     ACKLEY_5_SEARCH_SPACE,
     HARTMANN_3_MINIMIZER,
-    HARTMANN_3_MINIMUM,
     HARTMANN_3_SEARCH_SPACE,
     HARTMANN_6_MINIMIZER,
-    HARTMANN_6_MINIMUM,
     HARTMANN_6_SEARCH_SPACE,
     ackley_5,
     hartmann_3,
@@ -123,17 +120,16 @@ def test_discrete_and_random_optimizer_on_quadratic(
 
 @random_seed
 @pytest.mark.parametrize(
-    "neg_function, expected_maximizer, expected_minimum, search_space",
+    "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
+        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
     ],
 )
 def test_random_search_optimizer_on_toy_problems(
     neg_function: Callable[[TensorType], TensorType],
     expected_maximizer: TensorType,
-    expected_minimum: TensorType,
     search_space: SearchSpace,
 ) -> None:
     def target_function(x: TensorType) -> TensorType:
@@ -344,17 +340,16 @@ def test_continuous_optimizer_on_quadratic(
 
 @random_seed
 @pytest.mark.parametrize(
-    "neg_function, expected_maximizer, expected_minimum, search_space",
+    "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM, HARTMANN_6_SEARCH_SPACE),
+        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
     ],
 )
 def test_continuous_optimizer_on_toy_problems(
     neg_function: Callable[[TensorType], TensorType],
     expected_maximizer: TensorType,
-    expected_minimum: TensorType,
     search_space: Box,
 ) -> None:
     def target_function(x: TensorType) -> TensorType:

@@ -198,19 +198,25 @@ def generate_continuous_optimizer(
             target_func_values[:, 0], k=num_optimization_runs
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
+        used_recovery_runs = False
 
-        chosen_point, successful_optimization = _perform_parallel_continuous_optimization(
+        results = _perform_parallel_continuous_optimization(
             target_func,
             space,
             initial_points,
             optimizer_args,
         )
+        successful_optimization = np.any(
+            [result.success for result in results]
+        )  # Check that at least one optimization was successful
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
+            used_recovery_runs = True
             random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            chosen_point, successful_optimization = _perform_parallel_continuous_optimization(
+            results = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
             )
+            successful_optimization = np.any([result.success for result in results])
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -219,6 +225,11 @@ def generate_continuous_optimizer(
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
             )
+
+        best_run_id = np.argmax([-result.fun for result in results])  # identify best solution
+        np_chosen_point = results[best_run_id].x.reshape(1, -1)  # [1, D]
+        chosen_point = tf.constant(np_chosen_point, dtype=initial_points.dtype)  # convert to TF
+
         return chosen_point
 
     return optimize_continuous
@@ -229,7 +240,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> tuple[TensorType, bool]:
+) -> List[spo.OptimizeResult]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -259,9 +270,7 @@ def _perform_parallel_continuous_optimization(
         leading dimension of `starting_points` controls the number of individual
         optimization runs.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A tuple containing  the **one** point in ``space`` that
-        maximises ``target_func``, with shape [1, D] and a boolean denoting
-        if any of the optimizations were successful.
+    :return: A list containing a Scipy OptimizeResult object for each optimization.
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
@@ -321,13 +330,7 @@ def _perform_parallel_continuous_optimization(
                 continue
             child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
-    best_run_id = np.argmax([-result.fun for result in child_results])  # identify best solution
-    np_chosen_point = child_results[best_run_id].x.reshape(1, -1)  # [1, D]
-    success = np.any(
-        [result.success for result in child_results]
-    )  # Check that at least one optimization was successful
-
-    return tf.constant(np_chosen_point, dtype=tf_dtype), success  # convert back to TF
+    return child_results
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):
