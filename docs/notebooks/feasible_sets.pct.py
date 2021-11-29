@@ -214,7 +214,7 @@ plot_excursion_probability(
 # Next we examine an updated excursion probability map after the 10 active learning steps. We can now see that the model is much more accurate and confident, as indicated by a good match with the reference thresholded Branin function and sharp decrease/increase away from the 0.5 excursion probability contour.
 
 # %%
-updated_model = result_range.try_get_final_model()
+updated_model = result.try_get_final_model()
 
 plot_excursion_probability(
     "Updated probability of excursion", updated_model, query_points
@@ -247,21 +247,21 @@ from trieste.acquisition.function import IntegratedVarianceReduction
 
 # Choose integration points uniformly over the design space
 integration_points = search_space.sample_halton(1000)
-acq = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
+acq_ivr = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
 
 # Set a batch size greater than 1
-rule = EfficientGlobalOptimization(builder=acq, num_query_points=5)
+rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=5)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-result = bo.optimize(num_steps, initial_data, model, rule)
+result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
-final_model = result.try_get_final_model()
-dataset = result.try_get_final_dataset()
-query_points = dataset.query_points.numpy()
+final_model_ivr = result_ivr.try_get_final_model()
+dataset_ivr = result_ivr.try_get_final_dataset()
+query_points_ivr = dataset.query_points_ivr.numpy()
 
 plot_excursion_probability(
-    "Final probability of excursion", final_model, query_points
+    "Final probability of excursion", final_model_ivr, query_points_ivr
 )
 
 # %% [markdown]
@@ -286,7 +286,7 @@ plot_excursion_probability(
 )
 
 plot_excursion_probability(
-    "Probability of being in the range (EF)", final_model, query_points, threshold=thresholds
+    "Probability of being in the range (EF)", final_model_ivr, query_points_ivr, threshold=thresholds
 )
 
 # %% [markdown]
