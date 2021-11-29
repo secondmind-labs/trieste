@@ -262,12 +262,12 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
         tf.debugging.assert_equal(
             len(tf.shape(integration_points)),
             2,
-            message="integration_points must be of shape" "[N, D]",
+            message="integration_points must be of shape [N, D]",
         )
 
         tf.debugging.assert_positive(
             tf.shape(integration_points)[0],
-            message="integration_points should contain at least " "one point",
+            message="integration_points should contain at least one point",
         )
 
         tf.debugging.assert_less_equal(
@@ -332,6 +332,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         :param model: The model of the objective function.
         :param integration_points: points over which to integrate the objective prediction variance
         :param threshold: either None, or a sequence of 1 or 2 float values
+        :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
         """
         if not hasattr(model, "conditional_predict_f"):
             raise AttributeError(
@@ -345,11 +346,19 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self._integration_points = integration_points
         if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
-        else:
+        elif len(threshold) == 1:
+            mean_old, var_old = self._model.predict(query_points=integration_points)
+            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+            self._weights = distr.prob(tf.cast(threshold[1], mean_old.dtype))
+        elif len(threshold) == 2:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
             self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - distr.cdf(
                 tf.cast(threshold[0], mean_old.dtype)
+            )
+        else:
+            raise ValueError(
+                f"threshold must be a sequence of 0 to 2 elements, received {threshold}"
             )
 
     @tf.function
