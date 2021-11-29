@@ -282,7 +282,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         A = tf.linalg.triangular_solve(L_add, cov_cross, lower=True)  # [..., L, N, M]
         var_qp_new = var_qp - leading_transpose(
             tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2]
-        )  # [M, L]
+        )  # [..., M, L]
 
         mean_add_diff = additional_data.observations - mean_add  # [..., N, L]
         mean_add_diff = leading_transpose(mean_add_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
@@ -294,7 +294,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         tf.debugging.assert_shapes(
             [
-                (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
                 (mean_qp_new, [..., "M", "L"]),
@@ -368,7 +367,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         tf.debugging.assert_shapes(
             [
-                (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
                 (mean_qp_new, [..., "M", "L"]),
@@ -398,11 +396,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
             raise NotImplementedError("Conditional predict y is not supported for SGPR.")
 
         mean_new, cov_new = self.conditional_predict_joint(query_points, additional_data)
-        mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., P, N]
+        mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., L, N]
         samples = sample_mvn(
             mean_for_sample, cov_new, full_cov=True, num_samples=num_samples
         )  # [..., (S), P, N]
-        return tf.linalg.adjoint(samples)  # [..., (S), N, P]
+        return tf.linalg.adjoint(samples)  # [..., (S), N, L]
 
     def conditional_predict_y(
         self, query_points: TensorType, additional_data: Dataset
