@@ -144,7 +144,7 @@ def generate_continuous_optimizer(
     dimensionality of the search space.
 
     This optimizer uses Scipy's L-BFGS-B optimizer. We run `num_optimization_runs` separate
-    optimizations in parallel, each starting from one of the top `num_optimization_runs` initial
+    optimizations in parallel, each starting from one of the best `num_optimization_runs` initial
     query points.
 
     If all `num_optimization_runs` optimizations fail to converge then we run
@@ -199,22 +199,18 @@ def generate_continuous_optimizer(
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
 
-        results = _perform_parallel_continuous_optimization(
+        results, successful_optimization = _perform_parallel_continuous_optimization(
             target_func,
             space,
             initial_points,
             optimizer_args,
         )
-        successful_optimization = np.any(
-            [result.success for result in results]
-        )  # Check that at least one optimization was successful
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
             random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            results = _perform_parallel_continuous_optimization(
+            results, successful_optimization = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
             )
-            successful_optimization = np.any([result.success for result in results])
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -238,7 +234,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> List[spo.OptimizeResult]:
+) -> Tuple[List[spo.OptimizeResult], bool]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -255,9 +251,9 @@ def _perform_parallel_continuous_optimization(
     (for each optimization step) using Tensorflow.
 
     For :class:'TaggedProductSearchSpace' we only apply gradient updates to
-    its class:'Box' subspaces, fixing the discrete elements to the best values
+    its :class:'Box' subspaces, fixing the discrete elements to the best values
     found across the initial random search. To fix these discrete elements, we
-    optimize over a continuous class:'Box' relaxation of the discrete subspaces
+    optimize over a continuous :class:'Box' relaxation of the discrete subspaces
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
 
@@ -268,7 +264,8 @@ def _perform_parallel_continuous_optimization(
         leading dimension of `starting_points` controls the number of individual
         optimization runs.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A list containing a Scipy OptimizeResult object for each optimization.
+    :return: A tuple of a list containing a Scipy OptimizeResult object for each
+        optimization, and a bool denoting if at least one optimization was successful.
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
@@ -323,12 +320,22 @@ def _perform_parallel_continuous_optimization(
         np_batch_y = batch_y.numpy().astype("float64")
         np_batch_dy_dx = batch_dy_dx.numpy().astype("float64")
 
+        num_dead_greenlets = 0
         for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
             if greenlet.dead:  # Allow for crashed greenlets
+                num_dead_greenlets += 1
                 continue
             child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
-    return child_results
+        if num_dead_greenlets == num_optimization_runs:  # end process if all greenlets died
+            successful_optimization = False
+            break
+
+    successful_optimization = np.any(
+        [result.success for result in child_results]
+    )  # Check that at least one optimization was successful
+
+    return child_results, successful_optimization
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):

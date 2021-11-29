@@ -235,6 +235,23 @@ def test_optimize_continuous_recovery_runs(
             optimizer(Box([-1], [1]), _target_fn)
 
 
+def test_optimize_continuous_when_target_raises_exception() -> None:
+    num_queries = 0
+
+    def _target_fn(x: TensorType) -> TensorType:
+        nonlocal num_queries
+
+        if num_queries > 1:  # check size of initial sample
+            return -1 * hartmann_3(tf.squeeze(x, 1)) / 0.0
+
+        num_queries += 1
+        return -1 * hartmann_3(tf.squeeze(x, 1))
+
+    optimizer = generate_continuous_optimizer()
+    with pytest.raises(FailedOptimizationError):
+        optimizer(HARTMANN_3_SEARCH_SPACE, _target_fn)
+
+
 @random_seed
 @pytest.mark.parametrize(
     "search_space, shift, expected_maximizer",

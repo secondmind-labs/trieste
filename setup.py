@@ -43,6 +43,6 @@ setup(
         "numpy",
         "tensorflow>=2.4",
         "tensorflow-probability>=0.12,<0.14.0",
-        "greenlet>1.1.0",
+        "greenlet>=1.1.0",
     ],
 )
