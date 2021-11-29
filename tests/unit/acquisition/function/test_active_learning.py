@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -298,14 +300,14 @@ def test_integrated_variance_reduction_works_with_batch() -> None:
 
 @pytest.mark.parametrize("integration_points", [tf.zeros([0, 2]), tf.zeros([1, 2, 3])])
 def test_integrated_variance_reduction_raises_for_invalid_integration_points(
-    integration_points,
+    integration_points: tf.Tensor,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         IntegratedVarianceReduction(integration_points)
 
 
 @pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([1, 2])])
-def test_integrated_variance_reduction_raises_for_invalid_threshold(threshold) -> None:
+def test_integrated_variance_reduction_raises_for_invalid_threshold(threshold: tf.Tensor | Sequence) -> None:
     integration_points = tf.zeros([2, 2])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
