@@ -42,7 +42,7 @@ from trieste.space import Box
 search_space = BRANIN_SEARCH_SPACE
 
 # threshold is arbitrary, but has to be within the range of the function
-threshold = 80
+threshold = 80.
 
 # define a modified branin function
 def thresholded_branin(x):
@@ -149,18 +149,25 @@ from util.plotting import plot_bo_points, plot_function_2d
 def excursion_probability(x, model, threshold=80):
     mean, variance = model.model.predict_f(x)
     normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
-    t = (mean - threshold) / tf.sqrt(variance)
-    return normal.cdf(t)
+    threshold = tf.cast(threshold, x.dtype)
+
+    if tf.size(threshold) == 1:
+        t = (mean - threshold) / tf.sqrt(variance)
+        return normal.cdf(t)
+    else:
+        t0 = (mean - threshold[0]) / tf.sqrt(variance)
+        t1 = (mean - threshold[1]) / tf.sqrt(variance)
+        return normal.cdf(t1) - normal.cdf(t0)
 
 
-def plot_excursion_probability(title, model=None, query_points=None):
+def plot_excursion_probability(title, model=None, query_points=None, threshold=None):
 
     if model is None:
         objective_function = thresholded_branin
     else:
 
         def objective_function(x):
-            return excursion_probability(x, model)
+            return excursion_probability(x, model, threshold)
 
     _, ax = plot_function_2d(
         objective_function,
@@ -221,7 +228,7 @@ plot_excursion_probability(
 num_steps = 90
 result = bo.optimize(num_steps, dataset, model, rule)
 
-final_model = result.history[-1].models["OBJECTIVE"]
+final_model = result.try_get_final_model()
 dataset = result.try_get_final_dataset()
 query_points = dataset.query_points.numpy()
 
@@ -229,6 +236,58 @@ plot_excursion_probability(
     "Final probability of excursion", final_model, query_points
 )
 
+
+# %% [markdown]
+# ## Active learning with Integrated Variance Reduction acquisition function
+#
+# An alternative to the `ExpectedFeasibility` function is called `IntegratedVarianceReduction`. This acquisition has the advantage of allowing batches, as we illustrate below. It is more expensive to compute than `ExpectedFeasibility`, as it writes as an integral over a set of input locations.
+
+# %%
+from trieste.acquisition.function import IntegratedVarianceReduction
+
+# Choose integration points uniformly over the design space
+integration_points = search_space.sample_halton(1000)
+acq = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
+
+# Set a batch size greater than 1
+rule = EfficientGlobalOptimization(builder=acq, num_query_points=5)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+num_steps = 10
+result = bo.optimize(num_steps, initial_data, model, rule)
+
+final_model = result.try_get_final_model()
+dataset = result.try_get_final_dataset()
+query_points = dataset.query_points.numpy()
+
+plot_excursion_probability(
+    "Final probability of excursion", final_model, query_points
+)
+
+# %% [markdown]
+# One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
+thresholds = [65., 95.]
+acq_range = IntegratedVarianceReduction(integration_points=integration_points, threshold=thresholds)
+rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=5)
+
+result_range = bo.optimize(num_steps, initial_data, model, rule_range)
+
+# %% [markdown]
+# We can finally draw the probability that the GP value belongs to an interval rather than the probability that it exceeds a single value. We also compare to the probability obtained when optimising for a single value at the center of the range. As expected, the `IntegratedVarianceReduction` spreads query points a bit more, which leads to a sharper probability.
+
+final_model_range = result_range.try_get_final_model()
+dataset_range = result_range.try_get_final_dataset()
+query_points_range = dataset_range.query_points.numpy()
+
+
+
+plot_excursion_probability(
+    "Probability of being in the range (IVE)", final_model_range, query_points_range, threshold=thresholds
+)
+
+plot_excursion_probability(
+    "Probability of being in the range (EF)", final_model, query_points, threshold=thresholds
+)
 
 # %% [markdown]
 # ## LICENSE
