@@ -67,8 +67,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         :param min_value_sampler: Sampler which samples minimum values.
         :raise tf.errors.InvalidArgumentError: If
 
-            - ``num_samples`` or ``grid_size`` are negative, or if
-            - ``use_fourier_features`` is `True` and ``use_thompson`` is `False`
+            - ``num_samples`` or ``grid_size`` are negative.
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
@@ -216,8 +215,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` is not positive, or
-            - ``grid_size`` is not positive, or
-            - ``use_fourier_features`` is `True` and ``use_thompson`` is `False`
+            - ``grid_size`` is not positive.
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
