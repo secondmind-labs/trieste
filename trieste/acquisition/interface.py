@@ -173,7 +173,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     ) -> AcquisitionFunction:
         """
         Generate a new acquisition function. The first time this is called, ``pending_points``
-        will be `None`. Subsequent calls will be via ``update_acquisition_funcion`` below,
+        will be `None`. Subsequent calls will be via ``update_acquisition_function`` below,
         unless that has been overridden.
 
         :param models: The models over each tag.

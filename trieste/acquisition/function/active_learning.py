@@ -19,7 +19,7 @@ learning.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -28,7 +28,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder
+from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
 
 class PredictiveVariance(SingleModelAcquisitionBuilder):
@@ -245,3 +245,153 @@ def bichon_ranjan_criterion(
         return criterion
 
     return acquisition
+
+
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
+    """
+    Builder for the reduction of the integral of the predicted variance over the search
+    space given a batch of query points.
+    """
+
+    def __init__(
+        self, integration_points: TensorType, threshold: Optional[Sequence[float]] = None
+    ) -> None:
+        """
+        :param integration_points: set of points to integrate the prediction variance over.
+        :raise ValueError (or InvalidArgumentError): If ``integration_points`` does not have
+                exactly two dimensions, or if the first dimension has size 0.
+        """
+        self._integration_points = integration_points
+        self._threshold = threshold
+
+    def __repr__(self) -> str:
+        """"""
+        return f"IntegratedVarianceReduction(threshold={self._threshold!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return integrated_variance_reduction(model, self._integration_points, self._threshold)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class integrated_variance_reduction(AcquisitionFunctionClass):
+    """
+    The reduction of the average of the predicted variance over the integration points
+    (a.k.a. Integrated Means Square Error or IMSE criterion).
+    See :cite:`Picheny2010` for details.
+
+    If no threshold is provided, the goal is to learn a globally accurate model, and
+    the original variance is used. Otherwise, learning is 'targeted' towards regions
+    where the GP is close to particular values, and the variance is weighted by the
+    posterior GP pdf evaluated at the threshold (if a single value is given) or by the
+    probability that the GP posterior belongs to the interval between the 2 thresholds.
+    """
+
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        integration_points: TensorType,
+        threshold: Optional[Sequence[float]] = None,
+    ):
+        """
+        :param model: The model of the objective function.
+        :param integration_points: points over which to integrate the objective prediction variance
+        :param threshold: either None, or a sequence of 1 or 2 float values
+        :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
+        """
+        if not hasattr(model, "conditional_predict_f"):
+            raise AttributeError(
+                """
+                Integrated variance reduction only supports models with a
+                conditional_predict_f method.
+                """
+            )
+
+        self._model = model
+
+        tf.debugging.assert_equal(
+            len(tf.shape(integration_points)),
+            2,
+            message="integration_points must be of shape [N, D]",
+        )
+
+        tf.debugging.assert_positive(
+            tf.shape(integration_points)[0],
+            message="integration_points should contain at least one point",
+        )
+
+        self._integration_points = integration_points
+
+        if threshold is not None:
+            threshold = tf.cast(threshold, integration_points.dtype)
+
+            tf.debugging.assert_rank(
+                threshold,
+                1,
+                message=f"threshold should be a sequence "
+                f"or a rank 1 tensor, received {tf.shape(threshold)}",
+            )
+            tf.debugging.assert_less_equal(
+                tf.size(threshold),
+                2,
+                message=f"threshold should have one or two values,"
+                f" received {tf.size(threshold)}",
+            )
+            tf.debugging.assert_greater_equal(
+                tf.size(threshold),
+                1,
+                message=f"threshold should have one or two values,"
+                f" received {tf.size(threshold)}",
+            )
+
+        if threshold is None:
+            self._weights = tf.cast(1.0, integration_points.dtype)
+        elif len(threshold) == 1:
+            mean_old, var_old = self._model.predict(query_points=integration_points)
+            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+            self._weights = distr.prob(threshold[1])
+        else:
+            mean_old, var_old = self._model.predict(query_points=integration_points)
+            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+            self._weights = distr.cdf(threshold[1]) - distr.cdf(threshold[0])
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+
+        additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
+
+        try:
+            mean, variance = self._model.conditional_predict_f(  # type: ignore
+                query_points=self._integration_points, additional_data=additional_data
+            )
+        except NotImplementedError:
+            raise ValueError(
+                """
+                integrated_variance_reduction only supports models with a conditional_predict_f
+                method.
+                """
+            )
+
+        return -tf.reduce_mean(variance * self._weights, axis=-2)
