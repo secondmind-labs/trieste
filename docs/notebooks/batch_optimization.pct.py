@@ -48,8 +48,12 @@ def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     prior_scale = tf.cast(1.09, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
     return GaussianProcessRegression(gpr)
@@ -60,7 +64,7 @@ model = build_model(initial_data)
 
 # %% [markdown]
 # ## Batch acquisition functions.
-# To perform batch BO, we must define a batch acquisition function. Three batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalizationAcquisitionFunction` and `GIBBON`. 
+# To perform batch BO, we must define a batch acquisition function. Three batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalizationAcquisitionFunction` and `GIBBON`.
 #
 # Although all these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, the `LocalPenalizationAcquisitionFunction` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. `GIBBON` also builds batches in a greedy manner but seeks batches that provide a large reduction in our uncertainty around the maximum value of the objective function.
 #
@@ -77,11 +81,16 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 monte_carlo_sample_size = 1000
-batch_ei_acq = BatchMonteCarloExpectedImprovement(sample_size=monte_carlo_sample_size, jitter=1e-5)
+batch_ei_acq = BatchMonteCarloExpectedImprovement(
+    sample_size=monte_carlo_sample_size, jitter=1e-5
+)
 batch_size = 10
 batch_ei_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=batch_size, builder=batch_ei_acq)
-points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model, dataset=initial_data)
+    num_query_points=batch_size, builder=batch_ei_acq
+)
+points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(
+    search_space, model, dataset=initial_data
+)
 
 # %% [markdown]
 # then we do the same with `LocalPenalizationAcquisitionFunction` ...
@@ -90,11 +99,17 @@ points_chosen_by_batch_ei = batch_ei_acq_rule.acquire_single(search_space, model
 from trieste.acquisition import LocalPenalizationAcquisitionFunction
 
 sample_size = 2000
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=sample_size)
+local_penalization_acq = LocalPenalizationAcquisitionFunction(
+    search_space, num_samples=sample_size
+)
 local_penalization_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=batch_size, builder=local_penalization_acq)
-points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single(
-    search_space, model, dataset=initial_data)
+    num_query_points=batch_size, builder=local_penalization_acq
+)
+points_chosen_by_local_penalization = (
+    local_penalization_acq_rule.acquire_single(
+        search_space, model, dataset=initial_data
+    )
+)
 
 # %% [markdown]
 # and finally we use `GIBBON`.
@@ -102,11 +117,13 @@ points_chosen_by_local_penalization = local_penalization_acq_rule.acquire_single
 # %%
 from trieste.acquisition.function import GIBBON
 
-gibbon_acq = GIBBON(search_space, grid_size = sample_size)
+gibbon_acq = GIBBON(search_space, grid_size=sample_size)
 gibbon_acq_rule = EfficientGlobalOptimization(  # type: ignore
-    num_query_points=batch_size, builder=gibbon_acq)
+    num_query_points=batch_size, builder=gibbon_acq
+)
 points_chosen_by_gibbon = gibbon_acq_rule.acquire_single(
-    search_space, model, dataset=initial_data)
+    search_space, model, dataset=initial_data
+)
 
 # %% [markdown]
 # We can now visualize the batch of 10 points chosen by each of these methods overlayed on the standard `ExpectedImprovement` acquisition function. `BatchMonteCarloExpectedImprovement` chooses a more diverse set of points, whereas `LocalPenalizationAcquisitionFunction` and `GIBBON` focus evaluations in the most promising areas of the space.
@@ -117,7 +134,9 @@ from trieste.acquisition.function import ExpectedImprovement
 # plot standard EI acquisition function
 ei = ExpectedImprovement()
 ei_acq_function = ei.prepare_acquisition_function(model, dataset=initial_data)
-plot_acq_function_2d(ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100)
+plot_acq_function_2d(
+    ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100
+)
 
 plt.scatter(
     points_chosen_by_batch_ei[:, 0],
@@ -170,7 +189,9 @@ batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
 )
 num_steps = 10
-qei_result = bo.optimize(num_steps, initial_data, model, acquisition_rule=batch_ei_rule)
+qei_result = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule=batch_ei_rule
+)
 
 # %% [markdown]
 # then we repeat the same optimization with `LocalPenalizationAcquisitionFunction`...
@@ -202,16 +223,21 @@ gibbon_result = bo.optimize(
 # %%
 from util.plotting import plot_regret
 
-qei_observations = qei_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+qei_observations = (
+    qei_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+)
 qei_min_idx = tf.squeeze(tf.argmin(qei_observations, axis=0))
 local_penalization_observations = (
-    local_penalization_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+    local_penalization_result.try_get_final_dataset().observations
+    - SCALED_BRANIN_MINIMUM
 )
-local_penalization_min_idx = tf.squeeze(tf.argmin(local_penalization_observations, axis=0))
-gibbon_observations = gibbon_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+local_penalization_min_idx = tf.squeeze(
+    tf.argmin(local_penalization_observations, axis=0)
+)
+gibbon_observations = (
+    gibbon_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+)
 gibbon_min_idx = tf.squeeze(tf.argmin(gibbon_observations, axis=0))
-
-
 
 
 fig, ax = plt.subplots(1, 3)
@@ -222,13 +248,20 @@ ax[0].set_ylim(0.0000001, 100)
 ax[0].set_xlabel("# evaluations")
 ax[0].set_title("Batch-EI")
 
-plot_regret(local_penalization_observations.numpy(), ax[1], num_init=5, idx_best=local_penalization_min_idx)
+plot_regret(
+    local_penalization_observations.numpy(),
+    ax[1],
+    num_init=5,
+    idx_best=local_penalization_min_idx,
+)
 ax[1].set_yscale("log")
 ax[1].set_xlabel("# evaluations")
 ax[1].set_ylim(0.0000001, 100)
 ax[1].set_title("Local Penalization")
 
-plot_regret(gibbon_observations.numpy(), ax[2], num_init=5, idx_best=gibbon_min_idx)
+plot_regret(
+    gibbon_observations.numpy(), ax[2], num_init=5, idx_best=gibbon_min_idx
+)
 ax[2].set_yscale("log")
 ax[2].set_ylabel("Regret")
 ax[2].set_ylim(0.0000001, 100)
