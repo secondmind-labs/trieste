@@ -199,18 +199,22 @@ def generate_continuous_optimizer(
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
 
-        results, successful_optimization = _perform_parallel_continuous_optimization(
+        results = _perform_parallel_continuous_optimization(
             target_func,
             space,
             initial_points,
             optimizer_args,
         )
+        successful_optimization = np.any(
+            [result.success for result in results]
+        )  # Check that at least one optimization was successful
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
             random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            results, successful_optimization = _perform_parallel_continuous_optimization(
+            results = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
             )
+            successful_optimization = np.any([result.success for result in results])
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -234,7 +238,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> Tuple[List[spo.OptimizeResult], bool]:
+) -> List[spo.OptimizeResult]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -264,8 +268,7 @@ def _perform_parallel_continuous_optimization(
         leading dimension of `starting_points` controls the number of individual
         optimization runs.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A tuple of a list containing a Scipy OptimizeResult object for each
-        optimization, and a bool denoting if at least one optimization was successful.
+    :return: A list containing a Scipy OptimizeResult object for each optimization.
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
@@ -327,15 +330,7 @@ def _perform_parallel_continuous_optimization(
                 continue
             child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
-        if num_dead_greenlets == num_optimization_runs:  # end process if all greenlets died
-            successful_optimization = False
-            break
-
-    successful_optimization = np.any(
-        [result.success for result in child_results]
-    )  # Check that at least one optimization was successful
-
-    return child_results, successful_optimization
+    return child_results
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):

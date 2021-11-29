@@ -241,13 +241,13 @@ def test_optimize_continuous_when_target_raises_exception() -> None:
     def _target_fn(x: TensorType) -> TensorType:
         nonlocal num_queries
 
-        if num_queries > 1:  # check size of initial sample
+        if num_queries > 1:  # after initial sample return inf
             return -1 * hartmann_3(tf.squeeze(x, 1)) / 0.0
 
         num_queries += 1
         return -1 * hartmann_3(tf.squeeze(x, 1))
 
-    optimizer = generate_continuous_optimizer()
+    optimizer = generate_continuous_optimizer(optimizer_args={"options": {"maxiter": 10}})
     with pytest.raises(FailedOptimizationError):
         optimizer(HARTMANN_3_SEARCH_SPACE, _target_fn)
 
