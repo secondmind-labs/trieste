@@ -20,11 +20,13 @@ tf.random.set_seed(1234)
 # %%
 import trieste
 
+
 def masked_branin(x):
-    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - .4) ** 2) < 0.3
+    mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
     y = np.array(trieste.objectives.branin(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
+
 
 # %% [markdown]
 # As mentioned, we'll search over the hypercube $[0, 1]^2$ ...
@@ -64,13 +66,15 @@ fig.show()
 OBJECTIVE = "OBJECTIVE"
 FAILURE = "FAILURE"
 
+
 def observer(x):
     y = masked_branin(x)
     mask = np.isfinite(y).reshape(-1)
     return {
         OBJECTIVE: trieste.data.Dataset(x[mask], y[mask]),
-        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64))
+        FAILURE: trieste.data.Dataset(x, tf.cast(np.isfinite(y), tf.float64)),
     }
+
 
 # %% [markdown]
 # We can evaluate the observer at points sampled from the search space.
@@ -95,6 +99,7 @@ def create_regression_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     return gpr
 
+
 def create_classification_model(data):
     kernel = gpflow.kernels.SquaredExponential(
         variance=100.0, lengthscales=[0.2, 0.2]
@@ -103,6 +108,7 @@ def create_classification_model(data):
     vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
     gpflow.set_trainable(vgp.kernel.variance, False)
     return vgp
+
 
 regression_model = create_regression_model(initial_data[OBJECTIVE])
 classification_model = create_classification_model(initial_data[FAILURE])
@@ -119,13 +125,18 @@ classification_model = create_classification_model(initial_data[FAILURE])
 # We'll train the GPR model with the default Scipy-based L-BFGS optimizer, and the VGP model with the custom algorithm above.
 
 # %%
-from trieste.models.gpflow.models import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.gpflow.models import (
+    GaussianProcessRegression,
+    VariationalGaussianProcess,
+)
 from trieste.models.optimizer import BatchOptimizer
 
 models: dict[str, trieste.models.ModelSpec] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(
-        classification_model, BatchOptimizer(tf.optimizers.Adam(1e-3)), use_natgrads=True
+        classification_model,
+        BatchOptimizer(tf.optimizers.Adam(1e-3)),
+        use_natgrads=True,
     ),
 }
 
@@ -137,15 +148,20 @@ models: dict[str, trieste.models.ModelSpec] = {
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
+    SingleModelAcquisitionBuilder,
+    ExpectedImprovement,
+    Product,
 )
 
+
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
-    def prepare_acquisition_function(self, model, dataset = None):
+    def prepare_acquisition_function(self, model, dataset=None):
         def acquisition(at):
             mean, _ = model.predict_y(tf.squeeze(at, -2))
             return mean
+
         return acquisition
+
 
 ei = ExpectedImprovement()
 pov = ProbabilityOfValidity()
@@ -161,9 +177,13 @@ rule = EfficientGlobalOptimization(acq_fn)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 20
-result = bo.optimize(num_steps, initial_data, models, rule).final_result.unwrap()
+result = bo.optimize(
+    num_steps, initial_data, models, rule
+).final_result.unwrap()
 
-arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
+arg_min_idx = tf.squeeze(
+    tf.argmin(result.datasets[OBJECTIVE].observations, axis=0)
+)
 print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %% [markdown]
@@ -173,13 +193,15 @@ print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 import matplotlib.pyplot as plt
 from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
 
-mask_fail = result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
+mask_fail = (
+    result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
+)
 fig, ax = plot_function_2d(
     masked_branin,
     search_space.lower,
     search_space.upper,
     grid_density=50,
-    contour=True
+    contour=True,
 )
 plot_bo_points(
     result.datasets[FAILURE].query_points.numpy(),
@@ -195,13 +217,15 @@ plt.show()
 # %%
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
-arg_min_idx = tf.squeeze(tf.argmin(result.datasets[OBJECTIVE].observations, axis=0))
+arg_min_idx = tf.squeeze(
+    tf.argmin(result.datasets[OBJECTIVE].observations, axis=0)
+)
 
 fig = plot_gp_plotly(
     result.models[OBJECTIVE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=50
+    grid_density=50,
 )
 fig = add_bo_points_plotly(
     x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),
