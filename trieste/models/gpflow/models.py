@@ -27,13 +27,13 @@ from gpflow.utilities.ops import leading_transpose
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import TrainableProbabilisticModel
+from ..interfaces import FastUpdateModel, TrainableProbabilisticModel
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel):
+class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
