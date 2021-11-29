@@ -253,7 +253,9 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
     space given a batch of query points.
     """
 
-    def __init__(self, integration_points: TensorType, threshold: Sequence[float] = None) -> None:
+    def __init__(
+        self, integration_points: TensorType, threshold: Optional[Sequence[float]] = None
+    ) -> None:
         """
         :param integration_points: set of points to integrate the prediction variance over.
         :raise ValueError (or InvalidArgumentError): If ``integration_points`` does not have
@@ -326,7 +328,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self,
         model: ProbabilisticModel,
         integration_points: TensorType,
-        threshold: Sequence[float] = None,
+        threshold: Optional[Sequence[float]] = None,
     ):
         """
         :param model: The model of the objective function.
