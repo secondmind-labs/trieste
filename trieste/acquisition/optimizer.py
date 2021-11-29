@@ -323,10 +323,8 @@ def _perform_parallel_continuous_optimization(
         np_batch_y = batch_y.numpy().astype("float64")
         np_batch_dy_dx = batch_dy_dx.numpy().astype("float64")
 
-        num_dead_greenlets = 0
         for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
             if greenlet.dead:  # Allow for crashed greenlets
-                num_dead_greenlets += 1
                 continue
             child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
