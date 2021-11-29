@@ -272,9 +272,10 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
             message="integration_points should contain at least one point",
         )
 
-        tf.debugging.assert_less_equal(
-            len(threshold), 2, message="threshold can only contain 0, 1 or 2 elements"
-        )
+        if threshold is not None:
+            tf.debugging.assert_less_equal(
+                len(threshold), 2, message="threshold can only contain 1 or 2 elements"
+            )
 
         self._integration_points = integration_points
         self._threshold = threshold
@@ -346,7 +347,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         self._model = model
         self._integration_points = integration_points
-        if threshold is None:
+        if (threshold is None):
             self._weights = tf.cast(1.0, integration_points.dtype)
         elif len(threshold) == 1:
             mean_old, var_old = self._model.predict(query_points=integration_points)
@@ -360,7 +361,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
             )
         else:
             raise ValueError(
-                f"threshold must be a sequence of 0 to 2 elements, received {threshold}"
+                f"threshold must be None or a sequence of 1 or 2 elements, received {threshold}"
             )
 
     @tf.function
