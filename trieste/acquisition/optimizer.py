@@ -194,16 +194,16 @@ def generate_continuous_optimizer(
 
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
-        _, top_k_indicies = tf.math.top_k(
+        _, top_k_indices = tf.math.top_k(
             target_func_values[:, 0], k=num_optimization_runs
         )  # [num_optimization_runs]
-        initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
+        initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
 
         chosen_point, successful_optimization = _perform_parallel_continuous_optimization(
             target_func,
             space,
             initial_points,
-            optimizer_args,  # run num_optimization_runs in parallel
+            optimizer_args,
         )
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
@@ -233,7 +233,8 @@ def _perform_parallel_continuous_optimization(
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
-    in `starting_points`.
+    in `starting_points`, i.e. the number of individual optimization runs is
+    given by the leading dimension of `starting_points`.
 
     To provide a parallel implementation of Scipy's L-BFGS-B that can leverage
     batch calculations with TensorFlow, this function uses the Greenlet package
@@ -251,9 +252,12 @@ def _perform_parallel_continuous_optimization(
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
 
-    :param target_func:
+    :param target_func: The function to maximise, with input shape [..., 1, D] and
+        output shape [..., 1].
     :param space: The original search space.
-    :param starting_points: The points at which to begin our optimizations.
+    :param starting_points: The points at which to begin our optimizations. The
+        leading dimension of `starting_points` controls the number of individual
+        optimization runs.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
     :return: A tuple containing  the **one** point in ``space`` that
         maximises ``target_func``, with shape [1, D] and a boolean denoting

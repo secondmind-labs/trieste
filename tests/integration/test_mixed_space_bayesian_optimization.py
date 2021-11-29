@@ -79,7 +79,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     acquisition_rule: AcquisitionRule[TensorType, TaggedProductSearchSpace],
 ) -> None:
     search_space = TaggedProductSearchSpace(
-        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 30)[:, None])],
+        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
         tags=["continuous", "discrete"],
     )
 

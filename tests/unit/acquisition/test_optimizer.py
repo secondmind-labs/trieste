@@ -177,7 +177,7 @@ def test_optimize_continuous_raises_for_impossible_optimization(
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])
 @pytest.mark.parametrize("num_initial_samples", [1000, 5000])
-def test_optimize_continuous_uses_correctly_uses_init_params(
+def test_optimize_continuous_correctly_uses_init_params(
     num_optimization_runs: int, num_initial_samples: int
 ) -> None:
 
@@ -198,13 +198,13 @@ def test_optimize_continuous_uses_correctly_uses_init_params(
     optimizer(Box([-1], [1]), _target_fn)
 
 
-@pytest.mark.parametrize("failed_first_optimziation", [True, False])
+@pytest.mark.parametrize("failed_first_optimization", [True, False])
 @pytest.mark.parametrize("num_recovery_runs", [0, 2, 10])
 def test_optimize_continuous_recovery_runs(
-    failed_first_optimziation: bool, num_recovery_runs: int
+    failed_first_optimization: bool, num_recovery_runs: int
 ) -> None:
 
-    currently_failing = failed_first_optimziation
+    currently_failing = failed_first_optimization
     num_batch_evals = 0
 
     def _target_fn(x: TensorType) -> TensorType:
@@ -232,7 +232,7 @@ def test_optimize_continuous_recovery_runs(
         optimizer = generate_continuous_optimizer(
             num_optimization_runs=1, num_recovery_runs=num_recovery_runs
         )
-        if failed_first_optimziation and (num_recovery_runs == 0):
+        if failed_first_optimization and (num_recovery_runs == 0):
             with pytest.raises(FailedOptimizationError):
                 optimizer(Box([-1], [1]), _target_fn)
         else:
