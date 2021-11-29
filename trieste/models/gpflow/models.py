@@ -317,7 +317,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
                  with shape [..., N, L]
         :return: mean_qp_new: predictive mean at query_points, with shape [..., M, L],
-                 and cov_qp_new: predictive covariance between query_points, with shape 
+                 and cov_qp_new: predictive covariance between query_points, with shape
                  [..., L, M, M]
         """
 
