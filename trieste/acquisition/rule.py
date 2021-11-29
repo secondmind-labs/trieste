@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast
+from typing import Callable, Generic, Optional, TypeVar, Union, cast
 
 import tensorflow as tf
 
@@ -41,7 +41,7 @@ from .interface import (
     SingleModelGreedyAcquisitionBuilder,
 )
 from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
-from .sampler import ExactThompsonSampler, ThompsonSampler, ThompsonSamplerFromTrajectory
+from .sampler import ExactThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
 """ Unbound covariant type variable. """
@@ -644,13 +644,12 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         self,
         num_search_space_samples: int,
         num_query_points: int,
-        use_fourier_features: bool = False,
+        thompson_sampler: Optional[Callable[..., ThompsonSampler]] = None,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :nrandom_fourier_features: If True then approximate the kernel using random Fourier
-            features. If False, then we perfom exact Thompson sampling.
+        :thompson_sampler: Sampler to sample maximisers from the underlying model.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -660,16 +659,19 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
+        if thompson_sampler is None:
+            thompson_sampler = ExactThompsonSampler
+
+        self._thompson_sampler = thompson_sampler
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
-        self._use_fourier_features = use_fourier_features
 
     def __repr__(self) -> str:
         """"""
         return f"""DiscreteThompsonSampling(
         {self._num_search_space_samples!r},
         {self._num_query_points!r},
-        {self._use_fourier_features!r})"""
+        {self._thompson_sampler!r})"""
 
     def acquire(
         self,
@@ -699,16 +701,9 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
-        if self._use_fourier_features is False:  # Perform exact Thompson sampling
-            thompson_sampler: ThompsonSampler = ExactThompsonSampler(
-                self._num_query_points, models[OBJECTIVE]
-            )
-        else:  # Perform approximate Thompson sampling
-            thompson_sampler = ThompsonSamplerFromTrajectory(
-                self._num_query_points,
-                models[OBJECTIVE],
-            )
-
+        thompson_sampler = self._thompson_sampler(
+            self._num_query_points, models[OBJECTIVE], sample_min_value=False
+        )
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = thompson_sampler.sample(query_points)
 

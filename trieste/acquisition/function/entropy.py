@@ -64,7 +64,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             objective function.
         :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
-        :param min_value_sampler: TODO
+        :param min_value_sampler: Sampler which samples minimum values.
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` or ``grid_size`` are negative, or if
@@ -210,7 +210,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             the objective function.
         :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
-        :param min_value_sampler: TODO
+        :param min_value_sampler: Sampler which samples minimum values.
         :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
             batch optimization performance.
         :raise tf.errors.InvalidArgumentError: If

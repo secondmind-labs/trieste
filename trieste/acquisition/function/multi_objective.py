@@ -258,7 +258,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilde
             raise ValueError(
                 """
                 The batch Monte-Carlo expected hyper-volume improvment acquisition function
-                only supports models with a reparam_sampler method.
+                only supports models that implement a reparam_sampler method.
                 """
             )
 

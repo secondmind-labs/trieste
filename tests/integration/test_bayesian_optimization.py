@@ -33,9 +33,7 @@ from trieste.acquisition import (
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
 )
-from trieste.acquisition.function.sampler import (
-    ThompsonSamplerFromTrajectory,
-)
+from trieste.acquisition.function.sampler import ThompsonSamplerFromTrajectory
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -147,7 +145,7 @@ OPTIMIZER_PARAMS = (
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, use_fourier_features=True)),
+            (10, DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory)),
         ],
     ),
 )

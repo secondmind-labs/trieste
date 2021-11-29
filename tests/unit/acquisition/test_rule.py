@@ -44,6 +44,12 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import (
+    ExactThompsonSampler,
+    GumbelSampler,
+    ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
+)
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
@@ -114,22 +120,39 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
         rule.acquire(search_space, models, datasets=datasets)
 
 
+@pytest.mark.parametrize("thompson_sampler", [ExactThompsonSampler, ThompsonSamplerFromTrajectory])
+def test_discrete_thompson_sampling_initialized_with_correct_sampler(
+    thompson_sampler: Callable[..., ThompsonSampler]
+) -> None:
+    ts = DiscreteThompsonSampling(100, 10, thompson_sampler=thompson_sampler)
+    assert ts._thompson_sampler == thompson_sampler
+
+
 def test_discrete_thompson_sampling_raises_if_use_fourier_features_with_incorrect_model() -> None:
     search_space = Box([-2.2, -1.0], [1.3, 3.3])
-    ts = DiscreteThompsonSampling(100, 10, use_fourier_features=True)
+    ts = DiscreteThompsonSampling(100, 10, thompson_sampler=ThompsonSamplerFromTrajectory)
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     with pytest.raises(ValueError):
         ts.acquire_single(search_space, model, dataset=dataset)
 
 
-@pytest.mark.parametrize("use_fourier_features", [True, False])
+def test_discrete_thompson_sampling_raises_for_gumbel_sampler() -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    ts = DiscreteThompsonSampling(100, 10, thompson_sampler=GumbelSampler)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    with pytest.raises(ValueError):
+        ts.acquire_single(search_space, model, dataset=dataset)
+
+
+@pytest.mark.parametrize("thompson_sampler", [ExactThompsonSampler, ThompsonSamplerFromTrajectory])
 @pytest.mark.parametrize("num_query_points", [1, 10])
 def test_discrete_thompson_sampling_acquire_returns_correct_shape(
-    use_fourier_features: bool, num_query_points: int
+    thompson_sampler: Callable[..., ThompsonSampler], num_query_points: int
 ) -> None:
     search_space = Box([-2.2, -1.0], [1.3, 3.3])
-    ts = DiscreteThompsonSampling(100, num_query_points, use_fourier_features=use_fourier_features)
+    ts = DiscreteThompsonSampling(100, num_query_points, thompson_sampler=thompson_sampler)
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)

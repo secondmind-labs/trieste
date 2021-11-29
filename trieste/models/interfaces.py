@@ -342,7 +342,7 @@ class TrajectorySampler(ABC):
     underlying :class:`ProbabilisticModel`.
 
     Unlike the :class:`ReparametrizationSampler`, a :class:`TrajectorySampler` provides
-    consistent samples (i.e ensuring that the same sample draw is used for all evalutions
+    consistent samples (i.e ensuring that the same sample draw is used for all evaluations
     of a particular trajectory function).
     """
 

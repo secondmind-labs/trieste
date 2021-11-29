@@ -252,9 +252,9 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
         except (NotImplementedError, AttributeError):
             raise ValueError(
                 """
-            Thompson sampling with random Fourier features only currently supports models
-            with a Gaussian likelihood and an accessible kernel attribute.
-            """
+                Thompson sampling with random Fourier features only currently supports models
+                with a Gaussian likelihood and an accessible kernel attribute.
+                """
             )
 
         self._feature_functions = RandomFourierFeatures(
@@ -267,8 +267,6 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
             self._theta_posterior = self._prepare_theta_posterior_in_design_space()
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             self._theta_posterior = self._prepare_theta_posterior_in_gram_space()
-
-        self._pre_calc = False  # Flag so we only calculate the posterior for the weights once.
 
     def __repr__(self) -> str:
         """"""

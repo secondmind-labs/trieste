@@ -677,8 +677,8 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         except (NotImplementedError):
             raise ValueError(
                 """
-                The batch Monte-Carlo expected improvment acquisition function
-                only supports models with a reparam_sampler method.
+                The batch Monte-Carlo expected improvement acquisition function
+                only supports models that implement a reparam_sampler method.
                 """
             )
 
