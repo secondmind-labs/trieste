@@ -181,6 +181,33 @@ def test_gpr_raises_for_invalid_num_kernel_samples() -> None:
         GaussianProcessRegression(gpr_model(x, y), num_kernel_samples=-1)
 
 
+def test_gpr_raises_for_covariance_between_invalid_query_points_2() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(gpr_model(*data))
+
+    with pytest.raises(ValueError):
+        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
+
+
+def test_sgpr_raises_for_conditional_predict() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(sgpr_model(*data))
+
+    with pytest.raises(NotImplementedError):
+        model.conditional_predict_f(data[0], additional_data=Dataset(data[0], data[1]))
+
+    with pytest.raises(NotImplementedError):
+        model.conditional_predict_joint(data[0], additional_data=Dataset(data[0], data[1]))
+
+    with pytest.raises(NotImplementedError):
+        model.conditional_predict_y(data[0], additional_data=Dataset(data[0], data[1]))
+
+    with pytest.raises(NotImplementedError):
+        model.conditional_predict_f_sample(
+            data[0], additional_data=Dataset(data[0], data[1]), num_samples=1
+        )
+
+
 @random_seed
 @unittest.mock.patch(
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
