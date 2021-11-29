@@ -261,22 +261,6 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
         :raise ValueError (or InvalidArgumentError): If ``integration_points`` does not have
                 exactly two dimensions, or if the first dimension has size 0.
         """
-        tf.debugging.assert_equal(
-            len(tf.shape(integration_points)),
-            2,
-            message="integration_points must be of shape [N, D]",
-        )
-
-        tf.debugging.assert_positive(
-            tf.shape(integration_points)[0],
-            message="integration_points should contain at least one point",
-        )
-
-        if threshold is not None:
-            tf.debugging.assert_less_equal(
-                len(threshold), 2, message="threshold can only contain 1 or 2 elements"
-            )
-
         self._integration_points = integration_points
         self._threshold = threshold
 
@@ -346,24 +330,52 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
             )
 
         self._model = model
+
+        tf.debugging.assert_equal(
+            len(tf.shape(integration_points)),
+            2,
+            message="integration_points must be of shape [N, D]",
+        )
+
+        tf.debugging.assert_positive(
+            tf.shape(integration_points)[0],
+            message="integration_points should contain at least one point",
+        )
+
         self._integration_points = integration_points
+
+        if threshold is not None:
+            threshold = tf.cast(threshold, integration_points.dtype)
+
+            tf.debugging.assert_rank(
+                threshold,
+                1,
+                message=f"threshold should be a sequence "
+                f"or a rank 1 tensor, received {tf.shape(threshold)}",
+            )
+            tf.debugging.assert_less_equal(
+                tf.size(threshold),
+                2,
+                message=f"threshold should have one or two values,"
+                f" received {tf.size(threshold)}",
+            )
+            tf.debugging.assert_greater_equal(
+                tf.size(threshold),
+                1,
+                message=f"threshold should have one or two values,"
+                f" received {tf.size(threshold)}",
+            )
 
         if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
         elif len(threshold) == 1:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.prob(tf.cast(threshold[1], mean_old.dtype))
-        elif len(threshold) == 2:
+            self._weights = distr.prob(threshold[1])
+        else:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.cdf(tf.cast(threshold[1], mean_old.dtype)) - distr.cdf(
-                tf.cast(threshold[0], mean_old.dtype)
-            )
-        else:
-            raise ValueError(
-                f"threshold must be None or a sequence of 1 or 2 elements, received {threshold}"
-            )
+            self._weights = distr.cdf(threshold[1]) - distr.cdf(threshold[0])
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:

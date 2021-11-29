@@ -302,18 +302,30 @@ def test_integrated_variance_reduction_works_with_batch() -> None:
 def test_integrated_variance_reduction_raises_for_invalid_integration_points(
     integration_points: tf.Tensor,
 ) -> None:
+    threshold = [1.0, 2.0]
+    query_at = tf.zeros([1, 1, 1])
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1)))
+    y = fnc_2sin_x_over_3(x)
+    model = GaussianProcessRegression(gpr_model(x, y))
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        IntegratedVarianceReduction(integration_points)
+        integrated_variance_reduction(model, integration_points, threshold)(query_at)
 
 
-@pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([1, 2])])
+@pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([2, 2])])
 def test_integrated_variance_reduction_raises_for_invalid_threshold(
     threshold: tf.Tensor | Sequence[float],
 ) -> None:
-    integration_points = tf.zeros([2, 2])
+    integration_points = to_default_float(tf.zeros([5, 1]))
+    query_at = tf.zeros([1, 1, 1])
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1)))
+    y = fnc_2sin_x_over_3(x)
+    model = GaussianProcessRegression(gpr_model(x, y))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        IntegratedVarianceReduction(integration_points, threshold)
+        integrated_variance_reduction(model, integration_points, threshold)(query_at)
 
 
 def test_integrated_variance_reduction_builds_acquisition_function() -> None:
