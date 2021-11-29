@@ -248,7 +248,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
                  with shape [..., N, L]
         :return: mean_new: predictive variance at query_points, with shape [..., M, L],
-                 and var_new: predictive variance at query_points, with shape [..., M, L]
+                 and var_qp: predictive variance at query_points, with shape [..., M, L]
         """
 
         tf.debugging.assert_shapes(
@@ -265,30 +265,30 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
-        mean_old, cov_old = self.model.predict_f(
+        mean_add, cov_add = self.model.predict_f(
             additional_data.query_points, full_cov=True
         )  # [..., N, L], [..., L, N, N]
-        mean_new, var_new = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
+        mean_qp, var_qp = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
 
         cov_cross = self.covariance_between_points(
             additional_data.query_points, query_points
         )  # [..., L, N, M]
 
-        cov_shape = tf.shape(cov_old)
+        cov_shape = tf.shape(cov_add)
         noise = self.model.likelihood.variance * tf.eye(
-            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
+            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., L, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., L, N, M]
-        var_new = var_new - leading_transpose(
+        L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
+        A = tf.linalg.triangular_solve(L_add, cov_cross, lower=True)  # [..., L, N, M]
+        var_qp_new = var_qp - leading_transpose(
             tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2]
         )  # [M, L]
 
-        mean_old_diff = additional_data.observations - mean_old  # [..., N, L]
-        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
-        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., L, N, 1]
+        mean_add_diff = additional_data.observations - mean_add  # [..., N, L]
+        mean_add_diff = leading_transpose(mean_add_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
+        AM = tf.linalg.triangular_solve(L_add, mean_add_diff)  # [..., L, N, 1]
 
-        mean_new = mean_new + leading_transpose(
+        mean_qp_new = mean_qp + leading_transpose(
             (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
         )  # [..., M, L]
 
@@ -297,14 +297,14 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
-                (mean_new, [..., "M", "L"]),
-                (var_new, [..., "M", "L"]),
+                (mean_qp_new, [..., "M", "L"]),
+                (var_qp_new, [..., "M", "L"]),
             ],
             message="received unexpected shapes computing conditional_predict_f,"
             "check model kernel structure?",
         )
 
-        return mean_new, var_new
+        return mean_qp_new, var_qp_new
 
     def conditional_predict_joint(
         self, query_points: TensorType, additional_data: Dataset
@@ -317,7 +317,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param query_points: Set of query points with shape [M, D]
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
                  with shape [..., N, L]
-        :return: mean_new: predictive variance at query_points, with shape [..., M, L],
+        :return: mean_qp: predictive variance at query_points, with shape [..., M, L],
                  and cov_new: predictive covariance between query_points, with shape [..., L, M, M]
         """
 
@@ -344,25 +344,25 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         N = tf.shape(additional_data.query_points)[-2]
 
-        mean_old = mean[..., :N, :]  # [..., N, L]
-        m_new = mean[..., N:, :]  # [..., M, L]
+        mean_add = mean[..., :N, :]  # [..., N, L]
+        mean_qp = mean[..., N:, :]  # [..., M, L]
 
-        cov_old = cov[..., :N, :N]  # [..., L, N, N]
-        c_new = cov[..., N:, N:]  # [..., L, M, M]
+        cov_add = cov[..., :N, :N]  # [..., L, N, N]
+        cov_qp = cov[..., N:, N:]  # [..., L, M, M]
         cov_cross = cov[..., :N, N:]  # [..., L, N, M]
 
-        cov_shape = tf.shape(cov_old)
+        cov_shape = tf.shape(cov_add)
         noise = self.model.likelihood.variance * tf.eye(
-            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_old.dtype
+            cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
-        L_old = tf.linalg.cholesky(cov_old + noise)  # [..., L, N, N]
-        A = tf.linalg.triangular_solve(L_old, cov_cross, lower=True)  # [..., L, N, M]
-        cov_new = c_new - tf.matmul(A, A, transpose_a=True)  # [..., L, M, M]
+        L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
+        A = tf.linalg.triangular_solve(L_add, cov_cross, lower=True)  # [..., L, N, M]
+        cov_qp_new = cov_qp - tf.matmul(A, A, transpose_a=True)  # [..., L, M, M]
 
-        mean_old_diff = additional_data.observations - mean_old  # [..., N, L]
-        mean_old_diff = leading_transpose(mean_old_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
-        AM = tf.linalg.triangular_solve(L_old, mean_old_diff)  # [..., L, N, 1]
-        mean_new = m_new + leading_transpose(
+        mean_add_diff = additional_data.observations - mean_add  # [..., N, L]
+        mean_add_diff = leading_transpose(mean_add_diff, [..., -1, -2])[..., None]  # [..., L, N, 1]
+        AM = tf.linalg.triangular_solve(L_add, mean_add_diff)  # [..., L, N, 1]
+        mean_qp_new = mean_qp + leading_transpose(
             (tf.matmul(A, AM, transpose_a=True)[..., 0]), [..., -1, -2]
         )  # [..., M, L]
 
@@ -371,14 +371,14 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 (additional_data.query_points, [..., "N", "D"]),
                 (additional_data.observations, [..., "N", "L"]),
                 (query_points, ["M", "D"]),
-                (mean_new, [..., "M", "L"]),
-                (cov_new, [..., "L", "M", "M"]),
+                (mean_qp_new, [..., "M", "L"]),
+                (cov_qp_new, [..., "L", "M", "M"]),
             ],
             message="received unexpected shapes computing conditional_predict_joint,"
             "check model kernel structure?",
         )
 
-        return mean_new, cov_new
+        return mean_qp_new, cov_qp_new
 
     def conditional_predict_f_sample(
         self, query_points: TensorType, additional_data: Dataset, num_samples: int
