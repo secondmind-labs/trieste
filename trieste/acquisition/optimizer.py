@@ -198,7 +198,6 @@ def generate_continuous_optimizer(
             target_func_values[:, 0], k=num_optimization_runs
         )  # [num_optimization_runs]
         initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
-        used_recovery_runs = False
 
         results = _perform_parallel_continuous_optimization(
             target_func,
@@ -211,7 +210,6 @@ def generate_continuous_optimizer(
         )  # Check that at least one optimization was successful
 
         if not successful_optimization:  # if all optimizations failed then try from random starts
-            used_recovery_runs = True
             random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
             results = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
