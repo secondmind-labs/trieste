@@ -89,7 +89,7 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
-        num_samples = tf.minimum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
+        num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
         num_runs = NUM_RUNS_DIM * tf.shape(space.lower)[-1]
         return generate_continuous_optimizer(
             num_initial_samples=num_samples,
@@ -139,11 +139,11 @@ def generate_continuous_optimizer(
     found across a sample of `num_initial_samples` random points.
 
     We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_initial_samples`, or
-    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller.
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is greater.
     Similarly, for `num_optimization_runs`, we recommend using `NUM_RUNS_DIM` times the
     dimensionality of the search space.
 
-    This optimizer supports Scipy's L-BFGS-B optimizer. We run `num_optimization_runs` separate
+    This optimizer uses Scipy's L-BFGS-B optimizer. We run `num_optimization_runs` separate
     optimizations in parallel, each starting from one of the top `num_optimization_runs` initial
     query points.
 
