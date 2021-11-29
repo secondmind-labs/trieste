@@ -1,4 +1,4 @@
-z# %% [markdown]
+z  # %% [markdown]
 # # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization and GIBBON
 
 # %% [markdown]
