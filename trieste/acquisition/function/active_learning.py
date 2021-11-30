@@ -32,7 +32,7 @@ from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder, AcquisitionFunctionClass
 
 
-class PredictiveVariance(SingleModelAcquisitionBuilder):
+class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
@@ -107,7 +107,7 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
     return acquisition
 
 
-class ExpectedFeasibility(SingleModelAcquisitionBuilder):
+class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the Expected feasibility acquisition function for identifying a failure or
     feasibility region. It implements two related sampling strategies called *bichon* criterion
