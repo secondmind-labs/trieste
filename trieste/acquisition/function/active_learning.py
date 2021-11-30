@@ -19,9 +19,9 @@ learning.
 
 from __future__ import annotations
 
+import math
 from typing import Optional
 
-import math
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -29,7 +29,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder, AcquisitionFunctionClass
+from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
 
 class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -247,15 +247,11 @@ def bichon_ranjan_criterion(
 
     return acquisition
 
+
 class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
-    :cite:`houlsby2011bayesian`. The acquisition function computes the information gain
-    of the predictive entropy.  
-
-    This acquisition function is intended to use for Binary Gaussian Process Classification
-    model with Bernoulli likelihood. integrating over nuisance parameters is currently not 
-    supported (see equation 6 of the paper)
+    :cite:`houlsby2011bayesian`.
     """
 
     def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
@@ -299,7 +295,27 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
 
 class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, jitter: float):
-        """
+
+        r"""
+        The Bayesian active learning by disagrement acquisition function computes
+        the information gain of the predictive entropy :cite:`houlsby2011bayesian`. 
+        the acquisiton function is calculated by:
+
+        .. math::
+            \mathrm{h}\left(\Phi\left(\frac{\mu_{\boldsymbol{x}, \mathcal{D}}}
+            {\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+1}}\right)\right)
+            -\frac{C \exp \left(-\frac{\mu_{\boldsymbol{x}, \mathcal{D}}^{2}}
+            {2\left(\sigma_{\boldsymbol{w}, \mathcal{D}}^{+C^{2}}\right)}\right)}
+            {\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+C^{2}}}
+
+        Here :math:`\mathrm{h}(p)` is defined as:
+
+        .. math::
+            \mathrm{h}(p)=-p \log p-(1-p) \log (1-p)
+
+        This acquisition function is intended to use for Binary Gaussian Process Classification
+        model with Bernoulli likelihood. integrating over nuisance parameters is currently not
+        supported (see equation 6 of the paper)
 
         :param model: The model of the objective function.
         :param jitter: The size of the jitter to avoid numerical problem caused by the
