@@ -298,7 +298,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
 
         r"""
         The Bayesian active learning by disagrement acquisition function computes
-        the information gain of the predictive entropy :cite:`houlsby2011bayesian`. 
+        the information gain of the predictive entropy :cite:`houlsby2011bayesian`.
         the acquisiton function is calculated by:
 
         .. math::
@@ -322,6 +322,8 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
                 log operation if variance is close to zero.
         :return: The Bayesian Active Learning By Disagreement acquisition function.
         """
+        tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
+
         self._model = model
         self._jitter = jitter
 
