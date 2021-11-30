@@ -247,7 +247,7 @@ from trieste.acquisition.function import IntegratedVarianceReduction
 
 # Choose integration points uniformly over the design space
 integration_points = search_space.sample_halton(1000)
-acq_ivr = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
+acq_ivr = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])  # type: ignore
 
 # Set a batch size greater than 1
 rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=5)
@@ -268,7 +268,7 @@ plot_excursion_probability(
 # One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
 thresholds = [60., 100.]
 acq_range = IntegratedVarianceReduction(integration_points=integration_points, threshold=thresholds)
-rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=5)
+rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=5)  # type: ignore
 
 result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
 

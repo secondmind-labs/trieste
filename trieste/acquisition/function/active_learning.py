@@ -277,7 +277,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
         :param model: The model.
         :param dataset: Unused.
 
-        :return: The determinant of the predictive function.
+        :return: The integral of the predictive variance.
         """
 
         return integrated_variance_reduction(model, self._integration_points, self._threshold)
