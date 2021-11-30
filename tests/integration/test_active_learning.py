@@ -98,7 +98,7 @@ def test_optimizer_learns_scaled_branin_function(
     final_predicted_means, _ = final_model.model.predict_f(test_query_points)  # type: ignore
     final_accuracy = tf.reduce_max(tf.abs(final_predicted_means - test_data.observations))
 
-    assert initial_accuracy < final_accuracy
+    assert initial_accuracy > final_accuracy
     assert final_accuracy < criterion
 
 
