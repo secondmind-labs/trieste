@@ -23,8 +23,10 @@ from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, va
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from trieste.acquisition.function.active_learning import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     PredictiveVariance,
+    bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
     predictive_variance,
 )
@@ -235,3 +237,44 @@ def test_bichon_ranjan_criterion(threshold: float, at: tf.Tensor, alpha: float, 
     )
 
     npt.assert_allclose(actual, expected, rtol=0.01)
+
+"""
+TODO:
+implement BinaryClassificationVGP on util.model
+"""
+
+def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
+    model = BinaryClassificationVGP()
+    acq_fn = BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = bayesian_active_learning_by_disagreement(model)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+@pytest.mark.parametrize(
+    "at, acquisition_shape",
+    [
+        (tf.constant([[[1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0]], [[10.0]], 5), tf.constant([5, 1])),
+        (tf.constant([[[1.0, 1.0]]]), tf.constant([1, 1])),
+        (tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
+    ],
+)
+
+def test_bayesian_active_learning_by_disagreement_returns_correct_shape(
+    at: TensorType, acquisition_shape: TensorType
+) -> None:
+    model = BinaryClassificationVGP()
+    acq_fn = BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+    npt.assert_array_equal(acq_fn(at).shape, acquisition_shape)
+
+def test_bayesian_active_learning_by_disagreement_builder_updates_without_retracing() -> None:
+    raise NotImplementedError
+
+def test_bayesian_active_learning_by_disagreement_raise_on_non_bernoulli_svgp()->None:
+    raise NotImplementedError
+
+def test_bayesian_active_learning_by_disagreement_raise_on_non_positive_jitter()->None:
+    raise NotImplementedError
+
+def test_bayesian_active_learning_by_disagreement_raise_does_not_contains_batches()->None:
+    raise NotImplementedError
