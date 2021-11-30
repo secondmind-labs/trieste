@@ -32,7 +32,8 @@ from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
 from trieste.objectives.utils import mk_observer
-from trieste.space import SearchSpace
+from trieste.observer import Observer
+from trieste.space import Box, SearchSpace
 from trieste.types import TensorType
 
 
@@ -109,7 +110,7 @@ def test_optimizer_learns_scaled_branin_function(
     [
         (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
         (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        (100, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
     ],
 )
 def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
@@ -144,17 +145,23 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
     initial_data = observer(initial_query_points)
 
     # we set a performance criterion at 0.001 probability of required precision per point
-    n_test = 10000 * search_space.dimension
-    test_query_points = search_space.sample_sobol(n_test)
-    criterion = 0.001 * (1 - 0.001) * tf.cast(n_test, tf.float64)
+    # for global points and 0.01 close to the boundary
+    n_global = 10000 * search_space.dimension
+    n_boundary = 2000 * search_space.dimension
+    global_test, boundary_test = _get_feasible_set_test_data(
+        search_space, observer, n_global, n_boundary, threshold
+    )
+    global_criterion = 0.001 * (1 - 0.001) * tf.cast(n_global, tf.float64)
+    boundary_criterion = 0.01 * (1 - 0.01) * tf.cast(n_boundary, tf.float64)
 
-    # we expect a model with initial data to fail the criterion
+    # we expect a model with initial data to fail the criteria
     initial_model = build_model(initial_data)
     initial_model.optimize(initial_data)
-    initial_prob = _excursion_probability(test_query_points, initial_model, threshold)
-    initial_accuracy = tf.reduce_sum(initial_prob * (1 - initial_prob))
+    initial_accuracy_global = _get_excursion_accuracy(global_test, initial_model, threshold)
+    initial_accuracy_boundary = _get_excursion_accuracy(boundary_test, initial_model, threshold)
 
-    assert not initial_accuracy < criterion
+    assert not initial_accuracy_global < global_criterion
+    assert not initial_accuracy_boundary < boundary_criterion
 
     # after active learning the model should be much more accurate
     model = build_model(initial_data)
@@ -163,11 +170,13 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_model()
     )
-    final_prob = _excursion_probability(test_query_points, final_model, threshold)
-    final_accuracy = tf.reduce_sum(final_prob * (1 - final_prob))
+    final_accuracy_global = _get_excursion_accuracy(global_test, final_model, threshold)
+    final_accuracy_boundary = _get_excursion_accuracy(boundary_test, final_model, threshold)
 
-    assert initial_accuracy > final_accuracy
-    assert final_accuracy < criterion
+    assert initial_accuracy_global > final_accuracy_global
+    assert initial_accuracy_boundary > final_accuracy_boundary
+    assert final_accuracy_global < global_criterion
+    assert final_accuracy_boundary < boundary_criterion
 
 
 def _excursion_probability(
@@ -177,3 +186,66 @@ def _excursion_probability(
     normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
     t = (mean - threshold) / tf.sqrt(variance)
     return normal.cdf(t)
+
+
+def _get_excursion_accuracy(
+    x: TensorType, model: TrainableProbabilisticModel, threshold: int
+) -> float:
+    prob = _excursion_probability(x, model, threshold)
+    accuracy = tf.reduce_sum(prob * (1 - prob))
+
+    return accuracy
+
+
+def _get_feasible_set_test_data(
+    search_space: Box,
+    observer: Observer,
+    n_global: int,
+    n_boundary: int,
+    threshold: float,
+    range_pct: float = 0.01,
+) -> tuple[TensorType, TensorType]:
+
+    boundary_done = False
+    global_done = False
+    boundary_points = tf.constant(0, dtype=tf.float64, shape=(0, search_space.dimension))
+    global_points = tf.constant(0, dtype=tf.float64, shape=(0, search_space.dimension))
+
+    while not boundary_done and not global_done:
+        test_query_points = search_space.sample(100000)
+        test_data = observer(test_query_points)
+        threshold_deviation = range_pct * (
+            tf.reduce_max(test_data.observations)  # type: ignore
+            - tf.reduce_min(test_data.observations)  # type: ignore
+        )
+
+        mask = tf.reduce_all(
+            tf.concat(
+                [
+                    test_data.observations > threshold - threshold_deviation,  # type: ignore
+                    test_data.observations < threshold + threshold_deviation,  # type: ignore
+                ],
+                axis=1,
+            ),
+            axis=1,
+        )
+        boundary_points = tf.concat(
+            [boundary_points, tf.boolean_mask(test_query_points, mask)], axis=0
+        )
+        global_points = tf.concat(
+            [global_points, tf.boolean_mask(test_query_points, tf.logical_not(mask))], axis=0
+        )
+
+        if boundary_points.shape[0] > n_boundary:
+            boundary_done = True
+        if global_points.shape[0] > n_global:
+            global_done = True
+
+    return (
+        global_points[
+            :n_global,
+        ],
+        boundary_points[
+            :n_boundary,
+        ],
+    )
