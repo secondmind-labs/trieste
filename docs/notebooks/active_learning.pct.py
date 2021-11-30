@@ -154,7 +154,7 @@ acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
     num_query_points=num_query,
     builder=acq,
-    optimizer=generate_continuous_optimizer(),
+    optimizer=generate_continuous_optimizer(num_optimization_runs=1),
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
