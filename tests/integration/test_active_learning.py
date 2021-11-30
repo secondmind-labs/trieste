@@ -19,7 +19,6 @@ Integration tests for various forms of active learning implemented in Trieste.
 from __future__ import annotations
 
 import gpflow
-import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -78,7 +77,7 @@ def test_optimizer_learns_scaled_branin_function(
     # max absolute error needs to be bettter than this criterion
     test_query_points = search_space.sample_sobol(10000 * search_space.dimension)
     test_data = observer(test_query_points)
-    test_range = (tf.reduce_max(test_data.observations) - tf.reduce_min(test_data.observations))
+    test_range = tf.reduce_max(test_data.observations) - tf.reduce_min(test_data.observations)
     criterion = 0.01 * test_range
 
     # we expect a model with initial data to fail the criterion
@@ -110,7 +109,7 @@ def test_optimizer_learns_scaled_branin_function(
     [
         (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
         (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        (50, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        (100, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
     ],
 )
 def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
@@ -164,10 +163,10 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_model()
     )
-    final_prob = _excursion_probability(threshold_test_points, final_model, threshold)
+    final_prob = _excursion_probability(test_query_points, final_model, threshold)
     final_accuracy = tf.reduce_sum(final_prob * (1 - final_prob))
 
-    assert initial_accuracy < final_accuracy
+    assert initial_accuracy > final_accuracy
     assert final_accuracy < criterion
 
 
