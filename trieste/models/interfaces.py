@@ -240,3 +240,73 @@ class ModelStack(TrainableProbabilisticModel):
         for i, model in enumerate(self._models):
             with tf.name_scope(f"{i}"):
                 model.log()
+
+
+class FastUpdateModel(ABC):
+    """A model with the ability to predict based on (possibly fantasized) supplementary data."""
+
+    @abstractmethod
+    def conditional_predict_f(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Return the mean and variance of the independent marginal distributions at each point in
+        ``query_points``, given an additional batch of (possibly fantasized) data.
+
+        :param query_points: The points at which to make predictions, of shape [M, D].
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+                 with shape [..., N, L]
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``, with shape [..., L, M, M].
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def conditional_predict_joint(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions, of shape [M, D].
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+                 with shape [..., N, L]
+        :return: The mean and covariance of the joint marginal distribution at each batch of points
+            in ``query_points``, with shape [..., L, M, M].
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def conditional_predict_f_sample(
+        self, query_points: TensorType, additional_data: Dataset, num_samples: int
+    ) -> TensorType:
+        """
+        Return ``num_samples`` samples from the independent marginal distributions at
+        ``query_points``, given an additional batch of (possibly fantasized) data.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+                 with shape [..., N, L]
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        raise NotImplementedError
+
+    def conditional_predict_y(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """
+        Return the mean and variance of the independent marginal distributions at each point in
+        ``query_points`` for the observations, including noise contributions, given an additional
+        batch of (possibly fantasized) data.
+
+        Note that this is not supported by all models.
+
+        :param query_points: The points at which to make predictions, of shape [M, D].
+        :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+                 with shape [..., N, L]
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``.
+        """
+        raise NotImplementedError(
+            f"Model {self!r} does not support predicting observations, just the latent function"
+        )
