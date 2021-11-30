@@ -67,7 +67,7 @@ import trieste
 
 observer = trieste.objectives.utils.mk_observer(branin)
 
-num_initial_points = 12
+num_initial_points = 6
 initial_query_points = search_space.sample_halton(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -88,7 +88,7 @@ def build_model(data):
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
     prior_scale = tf.cast(1.0, dtype=tf.float64)
     kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.cast(-2.0, dtype=tf.float64), prior_scale
+        tf.math.log(variance), prior_scale
     )
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         tf.math.log(kernel.lengthscales), prior_scale
@@ -180,6 +180,7 @@ def plot_excursion_probability(title, model=None, query_points=None, threshold=8
         title=[title],
         xlabel="$X_1$",
         ylabel="$X_2$",
+        fill=True
     )
     if query_points is not None:
         plot_bo_points(query_points, ax[0, 0], num_initial_points)
@@ -225,7 +226,7 @@ plot_excursion_probability(
 # We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line.
 
 # %%
-num_steps = 9
+num_steps = 20
 result = bo.optimize(num_steps, dataset, model, rule)
 
 final_model = result.try_get_final_model()
@@ -250,7 +251,7 @@ integration_points = search_space.sample_halton(1000)
 acq_ivr = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
 
 # Set a batch size greater than 1
-rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=5) # type: ignore
+rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
@@ -266,9 +267,9 @@ plot_excursion_probability(
 
 # %% [markdown]
 # One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
-thresholds = [60., 100.]
+thresholds = [50., 110.]
 acq_range = IntegratedVarianceReduction(integration_points=integration_points, threshold=thresholds)
-rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=5) # type: ignore
+rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3) # type: ignore
 
 result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
 
@@ -282,11 +283,15 @@ query_points_range = dataset_range.query_points.numpy()
 
 
 plot_excursion_probability(
-    "Probability of being in the range (IVE)", final_model_range, query_points_range, threshold=thresholds
+    "Probability of being in the range (IVE range)", final_model_range, query_points_range, threshold=thresholds
 )
 
 plot_excursion_probability(
-    "Probability of being in the range (EF)", final_model_ivr, query_points_ivr, threshold=thresholds
+    "Probability of being in the range (IVE)", final_model_ivr, query_points_ivr, threshold=thresholds
+)
+
+plot_excursion_probability(
+    "Probability of being in the range (EF)", final_model, query_points, threshold=thresholds
 )
 
 # %% [markdown]
