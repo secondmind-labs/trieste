@@ -159,7 +159,11 @@ num_query = 3
 model = build_model(initial_data)
 
 acq = PredictiveVariance()
-rule = EfficientGlobalOptimization(num_query_points=num_query, builder=acq)
+rule = EfficientGlobalOptimization(
+    num_query_points=num_query,
+    builder=acq,
+    optimizer=generate_continuous_optimizer(num_optimization_runs=1),
+)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 result = bo.optimize(bo_iter, initial_data, model, rule, track_state=True)

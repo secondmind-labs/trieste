@@ -43,7 +43,7 @@ from ..sampler import (
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -205,7 +205,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -537,14 +537,21 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         yvar = fvar + noise_variance  # need predictive variance of observations
 
         _, B = self._model.predict_joint(self._pending_points)  # [1, m, m]
-        L = tf.linalg.cholesky(
-            B + noise_variance * tf.eye(len(self._pending_points), dtype=B.dtype)
+
+        B_shape = tf.shape(B)
+        noise = noise_variance * tf.eye(
+            B_shape[-2], batch_shape=B_shape[:-2], dtype=B.dtype
         )  # need predictive variance of observations
-        A = tf.expand_dims(
-            self._model.covariance_between_points(  # type: ignore
-                tf.squeeze(x, -2), self._pending_points
+        L = tf.linalg.cholesky(B + noise)
+
+        A = tf.squeeze(
+            tf.expand_dims(
+                self._model.covariance_between_points(  # type: ignore
+                    tf.squeeze(x, -2), self._pending_points
+                ),
+                axis=-1,
             ),
-            -1,
+            axis=0,
         )  # [N, m, 1]
         L_inv_A = tf.linalg.triangular_solve(L, A)
         V_det = yvar - tf.squeeze(

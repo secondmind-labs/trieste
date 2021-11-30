@@ -19,13 +19,13 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-import copy
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
-import gpflow
+import greenlet as gr
+import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
-from scipy.optimize import OptimizeResult
+import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
@@ -48,6 +48,13 @@ NUM_SAMPLES_DIM: int = 1000
 The default minimum number of initial samples per dimension of the search space for
 :func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
 determining the number of initial samples in the multi-start acquisition function optimization.
+"""
+
+NUM_RUNS_DIM: int = 10
+"""
+The default minimum number of optimization runs per dimension of the search space for
+:func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
+determining the number of acquisition function optimizations to be perfomed in parallel.
 """
 
 
@@ -82,8 +89,12 @@ def automatic_optimizer_selector(
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
-        num_samples = tf.minimum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
-        return generate_continuous_optimizer(num_samples)(space, target_func)
+        num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
+        num_runs = NUM_RUNS_DIM * tf.shape(space.lower)[-1]
+        return generate_continuous_optimizer(
+            num_initial_samples=num_samples,
+            num_optimization_runs=num_runs,
+        )(space, target_func)
 
     else:
         raise NotImplementedError(
@@ -117,8 +128,8 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
 
 def generate_continuous_optimizer(
     num_initial_samples: int = NUM_SAMPLES_MIN,
-    num_optimization_runs: int = 1,
-    num_recovery_runs: int = 5,
+    num_optimization_runs: int = 10,
+    num_recovery_runs: int = 10,
     optimizer_args: dict[str, Any] = dict(),
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
@@ -128,28 +139,23 @@ def generate_continuous_optimizer(
     found across a sample of `num_initial_samples` random points.
 
     We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_initial_samples`, or
-    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller.
+    `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is greater.
+    Similarly, for `num_optimization_runs`, we recommend using `NUM_RUNS_DIM` times the
+    dimensionality of the search space.
 
-    This optimizer supports Scipy's L-BFGS-B optimizer (used via GPflow's Scipy optimizer wrapper),
-    which optimizes directly within and up to the bounds of the search space.
+    This optimizer uses Scipy's L-BFGS-B optimizer. We run `num_optimization_runs` separate
+    optimizations in parallel, each starting from one of the best `num_optimization_runs` initial
+    query points.
 
-    For challenging acquisition function optimizations, we run `num_optimization_runs` separate
-    optimizations, each starting from one of the top `num_optimization_runs` initial query points.
-
-    If all `num_optimization_runs` optimizations fail to converge then we run up to
-    `num_recovery_runs` starting from random locations.
-
-    The default behavior of this method is to return a L-BFGS-B optimizer that performs
-    a single optimization from the best of `NUM_SAMPLES_MIN` initial locations. If this
-    optimization fails then we run up to `num_recovery_runs` recovery runs starting from additional
-    random locations.
+    If all `num_optimization_runs` optimizations fail to converge then we run
+    `num_recovery_runs` additional runs starting from random locations (also ran in parallel).
 
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
     :param num_optimization_runs: The number of separate optimizations to run.
     :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
-    :param optimizer_args: The keyword arguments to pass to the GPflow's Scipy optimizer wrapper.
-        Check `minimize` method  of :class:`~gpflow.optimizers.Scipy` for details what arguments
+    :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
+        Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
         can be passed.
     :return: The acquisition optimizer.
     """
@@ -178,11 +184,7 @@ def generate_continuous_optimizer(
         and :class:`TaggedProductSearchSpace' spaces and batches of size of 1.
 
         For :class:'TaggedProductSearchSpace' we only apply gradient updates to
-        its class:'Box' subspaces, fixing the discrete elements to the best values
-        found across the initial random search. To fix these discrete elements, we
-        optimize over a continuous class:'Box' relaxation of the discrete subspaces
-        which has equal upper and lower bounds, i.e. we specify an equality constraint
-        for this dimension in the scipy optimizer.
+        its class:'Box' subspaces.
 
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
@@ -192,71 +194,180 @@ def generate_continuous_optimizer(
 
         trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
         target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
-        _, top_k_indicies = tf.math.top_k(
+        _, top_k_indices = tf.math.top_k(
             target_func_values[:, 0], k=num_optimization_runs
         )  # [num_optimization_runs]
-        initial_points = tf.gather(trial_search_space, top_k_indicies)  # [num_optimization_runs, D]
+        initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
 
-        variable = tf.Variable(initial_points[0:1])  # [1, D]
-        optimizer_args_local = copy.deepcopy(optimizer_args)
+        results = _perform_parallel_continuous_optimization(
+            target_func,
+            space,
+            initial_points,
+            optimizer_args,
+        )
+        successful_optimization = np.any(
+            [result.success for result in results]
+        )  # Check that at least one optimization was successful
 
-        def _objective() -> TensorType:
-            return -target_func(variable[:, None, :])  # [1]
+        if not successful_optimization:  # if all optimizations failed then try from random starts
+            random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
+            results = _perform_parallel_continuous_optimization(
+                target_func, space, random_points, optimizer_args
+            )
+            successful_optimization = np.any([result.success for result in results])
 
-        def _perform_optimization(
-            starting_point: TensorType,
-            optimizer_args: dict[str, Any],
-        ) -> OptimizeResult:
-            variable.assign(starting_point)  # [1, D]
-            return gpflow.optimizers.Scipy().minimize(_objective, (variable,), **optimizer_args)
-
-        successful_optimization = False
-        chosen_point = variable  # [1, D]
-        chosen_point_score = target_func(chosen_point[:, None, :])  # [1, 1]
-
-        for i in tf.range(
-            num_optimization_runs
-        ):  # perform optimization for each chosen starting point
-            if isinstance(space, TaggedProductSearchSpace):
-                bounds = get_bounds_of_box_relaxation_around_point(space, initial_points[i : i + 1])
-            else:
-                bounds = spo.Bounds(space.lower, space.upper)
-            optimizer_args_local["bounds"] = bounds
-            opt_result = _perform_optimization(initial_points[i : i + 1], optimizer_args_local)
-            if opt_result.success:
-                successful_optimization = True
-
-                new_point = variable  # [1, D]
-                new_point_score = -opt_result.fun  # [1, 1]
-
-                if new_point_score > chosen_point_score:  # if found a better point then keep
-                    chosen_point = new_point  # [1, D]
-                    chosen_point_score = new_point_score  # [1, 1]
-
-        if not successful_optimization:  # if all optimizations failed then try from random start
-            for i in tf.range(num_recovery_runs):
-                random_start = space.sample(1)
-                if isinstance(space, TaggedProductSearchSpace):
-                    bounds = get_bounds_of_box_relaxation_around_point(space, random_start)
-                else:
-                    bounds = spo.Bounds(space.lower, space.upper)
-                optimizer_args_local["bounds"] = bounds
-                opt_result = _perform_optimization(random_start, optimizer_args_local)
-                if opt_result.success:
-                    chosen_point = variable  # [1, D]
-                    successful_optimization = True
-                    break
-            if not successful_optimization:  # return error if still failed
-                raise FailedOptimizationError(
-                    f"""
+        if not successful_optimization:  # return error if still failed
+            raise FailedOptimizationError(
+                f"""
                     Acquisition function optimization failed,
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
-                )
+            )
 
-        return tf.convert_to_tensor(chosen_point)  # convert chosen point back from a variable
+        best_run_id = np.argmax([-result.fun for result in results])  # identify best solution
+        np_chosen_point = results[best_run_id].x.reshape(1, -1)  # [1, D]
+        chosen_point = tf.constant(np_chosen_point, dtype=initial_points.dtype)  # convert to TF
+
+        return chosen_point
 
     return optimize_continuous
+
+
+def _perform_parallel_continuous_optimization(
+    target_func: AcquisitionFunction,
+    space: SearchSpace,
+    starting_points: TensorType,
+    optimizer_args: dict[str, Any],
+) -> List[spo.OptimizeResult]:
+    """
+    A function to perform parallel optimization of our acquisition functions
+    using Scipy. We perform L-BFGS-B starting from each of the locations contained
+    in `starting_points`, i.e. the number of individual optimization runs is
+    given by the leading dimension of `starting_points`.
+
+    To provide a parallel implementation of Scipy's L-BFGS-B that can leverage
+    batch calculations with TensorFlow, this function uses the Greenlet package
+    to run each individual optimization on micro-threads.
+
+    L-BFGS-B updates for each individual optimization are performed by
+    independent greenlets working with Numpy arrays, however, the evaluation
+    of our acquisition function (and its gradients) is calculated in parallel
+    (for each optimization step) using Tensorflow.
+
+    For :class:'TaggedProductSearchSpace' we only apply gradient updates to
+    its :class:'Box' subspaces, fixing the discrete elements to the best values
+    found across the initial random search. To fix these discrete elements, we
+    optimize over a continuous :class:'Box' relaxation of the discrete subspaces
+    which has equal upper and lower bounds, i.e. we specify an equality constraint
+    for this dimension in the scipy optimizer.
+
+    :param target_func: The function to maximise, with input shape [..., 1, D] and
+        output shape [..., 1].
+    :param space: The original search space.
+    :param starting_points: The points at which to begin our optimizations. The
+        leading dimension of `starting_points` controls the number of individual
+        optimization runs.
+    :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
+    :return: A list containing a Scipy OptimizeResult object for each optimization.
+    """
+
+    tf_dtype = starting_points.dtype  # type for communication with Trieste
+
+    num_optimization_runs = tf.shape(starting_points)[0].numpy()
+
+    def _objective_value(x: TensorType) -> TensorType:
+        return -target_func(tf.expand_dims(x, 1))  # [len(x),1]
+
+    def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
+        return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
+
+    if isinstance(
+        space, TaggedProductSearchSpace
+    ):  # build continuous relaxation of discrete subspaces
+        bounds = [
+            get_bounds_of_box_relaxation_around_point(space, starting_points[i : i + 1])
+            for i in tf.range(num_optimization_runs)
+        ]
+    else:
+        bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
+
+    # Initialize the numpy arrays to be passed to the greenlets
+    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64)
+    np_batch_y = np.zeros((num_optimization_runs,), dtype=np.float64)
+    np_batch_dy_dx = np.zeros(
+        (num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64
+    )
+
+    # Set up child greenlets
+    child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
+    child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+        gr.switch(starting_points[i].numpy(), bounds[i], optimizer_args)
+        for i, gr in enumerate(child_greenlets)
+    ]
+
+    while True:
+        all_done = True
+        for i, result in enumerate(child_results):  # Process results from children.
+            if isinstance(result, spo.OptimizeResult):
+                continue  # children return a `spo.OptimizeResult` if they are finished
+            all_done = False
+            assert isinstance(result, np.ndarray)  # or an `np.ndarray` with the query `x` otherwise
+            np_batch_x[i, :] = result
+
+        if all_done:
+            break
+
+        # Batch evaluate query `x`s from all children.
+        batch_x = tf.constant(np_batch_x, dtype=tf_dtype)  # [num_optimization_runs, d]
+        batch_y, batch_dy_dx = _objective_value_and_gradient(batch_x)
+        np_batch_y = batch_y.numpy().astype("float64")
+        np_batch_dy_dx = batch_dy_dx.numpy().astype("float64")
+
+        for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
+            if greenlet.dead:  # Allow for crashed greenlets
+                continue
+            child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
+
+    return child_results
+
+
+class ScipyLbfgsBGreenlet(gr.greenlet):
+    """
+    Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
+    update steps required for an individual optimization. However, the evaluation
+    of our acquisition function (and its gradients) is delegated back to the main Tensorflow
+    process (the parent greenlet) where evaluations can be made efficiently in parallel.
+    """
+
+    def run(
+        self, start: np.ndarray, bounds: spo.Bounds, optimizer_args: dict[str, Any] = dict()
+    ) -> spo.OptimizeResult:
+        cache_x = start + 1  # Any value different from `start`.
+        cache_y: Optional[np.ndarray] = None
+        cache_dy_dx: Optional[np.ndarray] = None
+
+        def value_and_gradient(
+            x: np.ndarray,
+        ) -> Tuple[np.ndarray, np.ndarray]:  # Collect function evaluations from parent greenlet
+            nonlocal cache_x
+            nonlocal cache_y
+            nonlocal cache_dy_dx
+
+            if not (cache_x == x).all():
+                cache_x[:] = x  # Copy the value of `x`. DO NOT copy the reference.
+                # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
+                cache_y, cache_dy_dx = self.parent.switch(cache_x)
+
+            return cache_y, cache_dy_dx
+
+        return spo.minimize(
+            lambda x: value_and_gradient(x)[0],
+            start,
+            jac=lambda x: value_and_gradient(x)[1],
+            method="l-bfgs-b",
+            bounds=bounds,
+            **optimizer_args,
+        )
 
 
 def get_bounds_of_box_relaxation_around_point(
@@ -348,7 +459,7 @@ def generate_random_search_optimizer(
         """
         samples = space.sample(num_samples)
         target_func_values = target_func(samples[:, None, :])
-        max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-        return samples[max_value_idx : max_value_idx + 1]
+        max_value_idx = tf.argmax(target_func_values, axis=0)
+        return tf.gather(samples, max_value_idx)
 
     return optimize_random

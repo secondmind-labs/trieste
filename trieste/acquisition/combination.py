@@ -25,7 +25,7 @@ from ..types import TensorType
 from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
-class Reducer(AcquisitionFunctionBuilder):
+class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     r"""
     A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
@@ -33,7 +33,7 @@ class Reducer(AcquisitionFunctionBuilder):
     by the method :meth:`_reduce`.
     """
 
-    def __init__(self, *builders: AcquisitionFunctionBuilder):
+    def __init__(self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel]):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
@@ -75,7 +75,7 @@ class Reducer(AcquisitionFunctionBuilder):
     # TODO: define update_acquisition_function to avoid unnecessary retracing
 
     @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder]:
+    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel]]:
         """The acquisition function builders specified at class initialisation."""
         return self._acquisitions
 
