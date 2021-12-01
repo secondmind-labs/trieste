@@ -13,9 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import copy
 import tempfile
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, Union
 
 import gpflow
 import numpy.testing as npt
@@ -65,27 +64,30 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-# Optimizer parameters for testing against the Branin function.
+
+# Optimizer parameters for testing against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
-OPTIMIZER_PARAMS = lambda: (
-    "num_steps, acquisition_rule",
-    cast(
-        List[
-            Tuple[
-                int,
-                Union[
-                    AcquisitionRule[TensorType, Box],
-                    AcquisitionRule[
-                        State[
-                            TensorType,
-                            Union[AsynchronousRuleState, TrustRegion.State],
-                        ],
-                        Box,
+def OPTIMIZER_PARAMS() -> Tuple[
+    str,
+    List[
+        Tuple[
+            int,
+            Union[
+                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[
+                    State[
+                        TensorType,
+                        Union[AsynchronousRuleState, TrustRegion.State],
                     ],
+                    Box,
                 ],
-            ]
-        ],
+            ],
+        ]
+    ],
+]:
+    return (
+        "num_steps, acquisition_rule",
         [
             (20, EfficientGlobalOptimization()),
             (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
@@ -146,8 +148,7 @@ OPTIMIZER_PARAMS = lambda: (
             (10, DiscreteThompsonSampling(500, 3)),
             (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
         ],
-    ),
-)
+    )
 
 
 @random_seed
