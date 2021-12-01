@@ -364,9 +364,9 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         if threshold is not None:
             if isinstance(threshold, float):
-                threshold = tf.cast(threshold, integration_points.dtype)[None]
-            else:
-                threshold = tf.cast(threshold, integration_points.dtype)
+                threshold = [threshold]
+
+            threshold = tf.cast(threshold, integration_points.dtype)
 
             tf.debugging.assert_rank(
                 threshold,
