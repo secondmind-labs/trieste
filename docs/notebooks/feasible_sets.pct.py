@@ -274,7 +274,7 @@ plot_excursion_probability(
 )
 
 # %% [markdown]
-# One can also specify a range of thresholds rather than a single value. We can do this by specifying a range with a minimum and a maximum threshold, rather than a single threshold as the `threshold` parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.
+# One can also specify a range of thresholds rather than a single value. We can do this by specifying a minimum and a maximum threshold, rather than a single threshold as the `threshold` parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.
 
 # %%
 thresholds = [50.0, 110.0]
