@@ -330,12 +330,12 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self,
         model: ProbabilisticModel,
         integration_points: TensorType,
-        threshold: Optional[Sequence[float]] = None,
+        threshold: Optional[Sequence[float]] | float = None,
     ):
         """
         :param model: The model of the objective function.
         :param integration_points: Points over which to integrate the objective prediction variance.
-        :param threshold: Either None, or a sequence of 1 or 2 float values.
+        :param threshold: Either None, a float or a sequence of 1 or 2 float values.
             See class docs for details.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
         """
