@@ -42,7 +42,7 @@ from trieste.space import Box
 search_space = BRANIN_SEARCH_SPACE
 
 # threshold is arbitrary, but has to be within the range of the function
-threshold = 80.
+threshold = 80.0
 
 # define a modified branin function
 def thresholded_branin(x):
@@ -160,7 +160,9 @@ def excursion_probability(x, model, threshold=80):
         return normal.cdf(t1) - normal.cdf(t0)
 
 
-def plot_excursion_probability(title, model=None, query_points=None, threshold=80.):
+def plot_excursion_probability(
+    title, model=None, query_points=None, threshold=80.0
+):
 
     if model is None:
         objective_function = thresholded_branin
@@ -180,7 +182,7 @@ def plot_excursion_probability(title, model=None, query_points=None, threshold=8
         title=[title],
         xlabel="$X_1$",
         ylabel="$X_2$",
-        fill=True
+        fill=True,
     )
     if query_points is not None:
         plot_bo_points(query_points, ax[0, 0], num_initial_points)
@@ -248,7 +250,12 @@ from trieste.acquisition.function import IntegratedVarianceReduction
 
 # Choose integration points uniformly over the design space
 integration_points = search_space.sample_halton(1000)
-acq_ivr = IntegratedVarianceReduction(integration_points=integration_points, threshold=[threshold,])
+acq_ivr = IntegratedVarianceReduction(
+    integration_points=integration_points,
+    threshold=[
+        threshold,
+    ],
+)
 
 # Set a batch size greater than 1
 rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)
@@ -267,9 +274,11 @@ plot_excursion_probability(
 
 # %% [markdown]
 # One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
-thresholds = [50., 110.]
-acq_range = IntegratedVarianceReduction(integration_points=integration_points, threshold=thresholds)
-rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3) # type: ignore
+thresholds = [50.0, 110.0]
+acq_range = IntegratedVarianceReduction(
+    integration_points=integration_points, threshold=thresholds
+)
+rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3)  # type: ignore
 
 result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
 
@@ -281,17 +290,25 @@ dataset_range = result_range.try_get_final_dataset()
 query_points_range = dataset_range.query_points.numpy()
 
 
-
 plot_excursion_probability(
-    "Probability of being in the range (IVE range)", final_model_range, query_points_range, threshold=thresholds
+    "Probability of being in the range (IVE range)",
+    final_model_range,
+    query_points_range,
+    threshold=thresholds,
 )
 
 plot_excursion_probability(
-    "Probability of being in the range (IVE)", final_model_ivr, query_points_ivr, threshold=thresholds
+    "Probability of being in the range (IVE)",
+    final_model_ivr,
+    query_points_ivr,
+    threshold=thresholds,
 )
 
 plot_excursion_probability(
-    "Probability of being in the range (EF)", final_model, query_points, threshold=thresholds
+    "Probability of being in the range (EF)",
+    final_model,
+    query_points,
+    threshold=thresholds,
 )
 
 # %% [markdown]

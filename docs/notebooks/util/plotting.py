@@ -188,7 +188,7 @@ def plot_acq_function_2d(
         ylabel,
         figsize,
         colorbar,
-        fill=fill
+        fill=fill,
     )
 
 

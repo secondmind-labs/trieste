@@ -258,8 +258,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
     ) -> None:
         """
         :param integration_points: set of points to integrate the prediction variance over.
-        :raise ValueError (or InvalidArgumentError): If ``integration_points`` does not have
-                exactly two dimensions, or if the first dimension has size 0.
+        :param threshold: either None, or a sequence of 1 or 2 float values
         """
         self._integration_points = integration_points
         self._threshold = threshold
@@ -297,16 +296,34 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
 
 
 class integrated_variance_reduction(AcquisitionFunctionClass):
-    """
-    The reduction of the average of the predicted variance over the integration points
+    r"""
+    The reduction of the (weighted) average of the predicted variance over the integration points
     (a.k.a. Integrated Means Square Error or IMSE criterion).
     See :cite:`Picheny2010` for details.
 
+    The criterion (to maximise) writes as:
+
+        .. math:: \int_x (v_{old}(x) - v_{new}(x)) * weights(x),
+
+    where :math:`v_{old}(x)` is the predictive variance of the model at :math:`x`, and
+    :math:`v_{new}(x)` is the updated predictive variance, given that the GP is further
+    conditioned on the query points.
+
+    Note that since :math:`v_{old}(x)` is constant w.r.t. the query points, this function
+    only returns :math:`-\int_x v_{new}(x) * weights(x)`.
+
     If no threshold is provided, the goal is to learn a globally accurate model, and
-    the original variance is used. Otherwise, learning is 'targeted' towards regions
-    where the GP is close to particular values, and the variance is weighted by the
-    posterior GP pdf evaluated at the threshold (if a single value is given) or by the
-    probability that the GP posterior belongs to the interval between the 2 thresholds.
+    the predictive variance (:math:`v_{new}`) is used. Otherwise, learning is 'targeted'
+    towards regions where the GP is close to particular values, and the variance is weighted
+    by the posterior GP pdf evaluated at the threshold T (if a single value is given) or by the
+    probability that the GP posterior belongs to the interval between the 2 thresholds T1 and T2
+    (note the slightly different parametrisation compared to :cite:`Picheny2010` in that case).
+
+    This criterion allows batch size > 1. Note that the computational cost grows cubically with
+    the batch size.
+
+    This criterion requires a method (conditional_predict_f) to compute the new predictive variance
+    given that query points are added to the data.
     """
 
     def __init__(
@@ -382,16 +399,8 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
-        try:
-            mean, variance = self._model.conditional_predict_f(  # type: ignore
-                query_points=self._integration_points, additional_data=additional_data
-            )
-        except NotImplementedError:
-            raise ValueError(
-                """
-                integrated_variance_reduction only supports models with a conditional_predict_f
-                method.
-                """
-            )
+        _, variance = self._model.conditional_predict_f(  # type: ignore
+            query_points=self._integration_points, additional_data=additional_data
+        )
 
         return -tf.reduce_mean(variance * self._weights, axis=-2)
