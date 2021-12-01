@@ -47,7 +47,7 @@ from trieste.types import TensorType
     [
         (50, EfficientGlobalOptimization(PredictiveVariance())),
         (
-            50,
+            70,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000))
             ),
@@ -118,26 +118,29 @@ def test_optimizer_learns_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, threshold",
     [
-        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
-        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
+        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
+        # (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        # (
+        #     80,
+        #     EfficientGlobalOptimization(
+        #         IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [80.0]),
+        #     ),
+        #     80.0,
+        # ),
+        # (
+        #     80,
+        #     EfficientGlobalOptimization(
+        #         IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0])
+        #     ),
+        #     80.0,
+        # ),
         (
-            50,
+            100,
             EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000), [80.0])
+                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [20.0])
             ),
-        ),
-        (
-            50,
-            EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000), [70.0, 90.0])
-            ),
-        ),
-        (
-            70,
-            EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000), [20.0])
-            ),
+            20.0,
         ),
     ],
 )
@@ -157,7 +160,7 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
         kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
         prior_scale = tf.cast(1.0, dtype=tf.float64)
         kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), prior_scale
+            tf.math.log(kernel.variance), prior_scale
         )
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
             tf.math.log(kernel.lengthscales), prior_scale
