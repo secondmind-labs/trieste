@@ -264,7 +264,8 @@ rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-result_ivr = bo.optimize(num_steps, initial_data, initial_model, rule_ivr)
+model = build_model(initial_data)
+result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
 final_model_ivr = result_ivr.try_get_final_model()
 dataset_ivr = result_ivr.try_get_final_dataset()
@@ -284,7 +285,8 @@ acq_range = IntegratedVarianceReduction(
 )
 rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3)  # type: ignore
 
-result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
+model = build_model(initial_data)
+result_range = bo.optimize(num_steps, initial_data, model, rule_range)
 
 # %% [markdown]
 # We can now illustrate the probability that a point in the search space belongs to the threshold interval rather than the probability that points exceed a single threshold. We compare probability maps obtained with the `IntegratedVarianceReduction` (IVR) when optimising for the threshold range and for the single threshold at the center of the range, as well as to a probability map for the `ExpectedFeasibility` function obtained with a single threshold. As expected, the `IntegratedVarianceReduction` with threshold range spreads query points a bit more, which leads to a sharper probability boundary.
