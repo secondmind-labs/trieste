@@ -225,7 +225,7 @@ plot_excursion_probability(
 
 
 # %% [markdown]
-# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 20 observations more the model is precisely representing the failure region boundary. Most of the additional query points lie close to the threshold line.
+# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 10 observations more the model is precisely representing the failure region boundary. Most of the additional query points lie close to the threshold line.
 
 # %%
 num_steps = 10
@@ -245,7 +245,7 @@ plot_excursion_probability(
 #
 # An alternative to the `ExpectedFeasibility` acquisition function is called `IntegratedVarianceReduction`. This acquisition has the advantage of taking into account reduction of uncertainty in a region of the search space when choosing the next point to sample, instead of considering only the sampling point. This makes it more expensive to compute than `ExpectedFeasibility`, since it involves computing an integral over a set of integration points. This integration region is determined by the user, with the `integration_points` parameter. Another advantage is that `IntegratedVarianceReduction` can produce batches of points, which becomes useful when parallel evaluations are possible.
 #
-# Below we perform 10 active learning steps with `IntegratedVarianceReduction` acquisition function and same as above plot excursion probability of the final model.
+# Below we perform 10 active learning steps of batch size 2, with `IntegratedVarianceReduction` acquisition function and same as above plot excursion probability of the final model.
 
 # %%
 from trieste.acquisition.function import IntegratedVarianceReduction
