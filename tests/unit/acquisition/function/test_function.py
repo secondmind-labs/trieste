@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -393,7 +394,7 @@ def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: Tens
 
 
 def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
-    class _Certainty(AcquisitionFunctionBuilder):
+    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -424,7 +425,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
 
 
 def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -447,7 +448,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
 
 
 def test_expected_constrained_improvement_is_less_for_constrained_points() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -471,7 +472,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
 
 
 def test_expected_constrained_improvement_raises_for_empty_data() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -490,7 +491,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
 
 
 def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -519,7 +520,7 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     def pof(x_: TensorType) -> TensorType:
         return tfp.bijectors.Sigmoid().forward(tf.squeeze(x_, -2))
 
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],

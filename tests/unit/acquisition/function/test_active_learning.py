@@ -313,7 +313,7 @@ def test_integrated_variance_reduction_raises_for_invalid_integration_points(
         integrated_variance_reduction(model, integration_points, threshold)(query_at)
 
 
-@pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([2, 2])])
+@pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([2, 2]), [2.0, 1.0]])
 def test_integrated_variance_reduction_raises_for_invalid_threshold(
     threshold: tf.Tensor | Sequence[float],
 ) -> None:

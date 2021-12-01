@@ -43,7 +43,7 @@ from ..sampler import (
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -205,7 +205,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the

@@ -483,7 +483,7 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
 
-    class _Certainty(AcquisitionFunctionBuilder):
+    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -520,7 +520,7 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
 
 
 def test_echvi_is_constraint_when_no_feasible_points() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -557,7 +557,7 @@ def test_echvi_raises_for_out_of_range_min_pof() -> None:
 
 
 def test_echvi_raises_for_empty_data() -> None:
-    class _Constraint(AcquisitionFunctionBuilder):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],

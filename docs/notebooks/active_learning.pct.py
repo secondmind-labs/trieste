@@ -19,11 +19,11 @@ tf.random.set_seed(1793)
 
 
 # %%
-from trieste.objectives import scaled_branin
+from trieste.objectives import BRANIN_SEARCH_SPACE, scaled_branin
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
-search_space = Box([0, 0], [1, 1])
+search_space = BRANIN_SEARCH_SPACE
 
 fig = plot_function_plotly(
     scaled_branin, search_space.lower, search_space.upper, grid_density=20
@@ -32,7 +32,7 @@ fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
-# We begin our Bayesian active learning from a two-point initial design built from a space-filling Halton sequence.
+# We begin our Bayesian active learning from a small initial design built from a space-filling Halton sequence.
 
 # %%
 import trieste
@@ -47,16 +47,24 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper. As a good practice, we use priors for the kernel hyperparameters.
 
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
+import tensorflow_probability as tfp
 
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[2, 2])
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -79,9 +87,7 @@ from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
 acq = PredictiveVariance()
-rule = EfficientGlobalOptimization(
-    builder=acq, optimizer=generate_continuous_optimizer()
-)
+rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
@@ -144,17 +150,19 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For some cases, query several points at a time can be convenient by doing batch active learning. For this case, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is, it tends to query in high variance area less accurately, compared to the sequentially drawing one point at a time.
+# In cases when we can evaluate the black-box function in parallel, it would be useful to produce a batch of points rather than a single point. `PredictiveVariance` acquisition function can also perform batch active learning. We must pass a `num_query_points` input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is that it tends to query in high variance area less accurately, compared to sequentially drawing one point at a time.
 
 # %%
 bo_iter = 5
 num_query = 3
+
 model = build_model(initial_data)
+
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
     num_query_points=num_query,
     builder=acq,
-    optimizer=generate_continuous_optimizer(),
+    optimizer=generate_continuous_optimizer(num_optimization_runs=1),
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
