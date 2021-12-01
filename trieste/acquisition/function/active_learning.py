@@ -19,7 +19,7 @@ learning.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -254,7 +254,9 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticMod
     """
 
     def __init__(
-        self, integration_points: TensorType, threshold: Optional[Sequence[float]] | float = None
+        self,
+        integration_points: TensorType,
+        threshold: Optional[Union[float, Sequence[float], TensorType]] = None,
     ) -> None:
         """
         :param integration_points: set of points to integrate the prediction variance over.
@@ -330,7 +332,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self,
         model: ProbabilisticModel,
         integration_points: TensorType,
-        threshold: Optional[Sequence[float]] | float = None,
+        threshold: Optional[Union[float, Sequence[float], TensorType]] = None,
     ):
         """
         :param model: The model of the objective function.
@@ -362,48 +364,49 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         self._integration_points = integration_points
 
-        if threshold is not None:
-            if isinstance(threshold, float):
-                threshold = [threshold]
-
-            threshold = tf.cast(threshold, integration_points.dtype)
-
-            tf.debugging.assert_rank(
-                threshold,
-                1,
-                message=f"threshold should be a float, a sequence "
-                f"or a rank 1 tensor, received {tf.shape(threshold)}",
-            )
-            tf.debugging.assert_less_equal(
-                tf.size(threshold),
-                2,
-                message=f"threshold should have one or two values,"
-                f" received {tf.size(threshold)}",
-            )
-            tf.debugging.assert_greater_equal(
-                tf.size(threshold),
-                1,
-                message=f"threshold should have one or two values,"
-                f" received {tf.size(threshold)}",
-            )
-            if len(threshold) > 1:
-                tf.debugging.assert_greater_equal(
-                    threshold[1],
-                    threshold[0],
-                    message=f"threshold values should be in increasing order,"
-                    f" received {threshold}",
-                )
-
         if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
-        elif len(threshold) == 1:
-            mean_old, var_old = self._model.predict(query_points=integration_points)
-            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.prob(threshold[0])
+
         else:
-            mean_old, var_old = self._model.predict(query_points=integration_points)
-            distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.cdf(threshold[1]) - distr.cdf(threshold[0])
+            if isinstance(threshold, float):
+                t_threshold = tf.cast([threshold], integration_points.dtype)
+            else:
+                t_threshold = tf.cast(threshold, integration_points.dtype)
+
+                tf.debugging.assert_rank(
+                    t_threshold,
+                    1,
+                    message=f"threshold should be a float, a sequence "
+                    f"or a rank 1 tensor, received {tf.shape(t_threshold)}",
+                )
+                tf.debugging.assert_less_equal(
+                    tf.size(t_threshold),
+                    2,
+                    message=f"threshold should have one or two values,"
+                    f" received {tf.size(t_threshold)}",
+                )
+                tf.debugging.assert_greater_equal(
+                    tf.size(t_threshold),
+                    1,
+                    message=f"threshold should have one or two values,"
+                    f" received {tf.size(t_threshold)}",
+                )
+                if tf.size(t_threshold) > 1:
+                    tf.debugging.assert_greater_equal(
+                        t_threshold[1],
+                        t_threshold[0],
+                        message=f"threshold values should be in increasing order,"
+                        f" received {t_threshold}",
+                    )
+
+                if tf.size(t_threshold) == 1:
+                    mean_old, var_old = self._model.predict(query_points=integration_points)
+                    distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                    self._weights = distr.prob(t_threshold[0])
+                else:
+                    mean_old, var_old = self._model.predict(query_points=integration_points)
+                    distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                    self._weights = distr.cdf(t_threshold[1]) - distr.cdf(t_threshold[0])
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
