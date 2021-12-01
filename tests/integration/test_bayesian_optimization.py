@@ -65,10 +65,10 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
-# Optimizer parameters for testing against the branin function.
-# We use a copy of these for a quicker test against a simple quadratic function
-# (copying is necessary as some of the acquisition rules are stateful).
-OPTIMIZER_PARAMS = (
+# Optimizer parameters for testing against the Branin function.
+# We also use these for a quicker test against a simple quadratic function
+# (regenerating is necessary as some of the acquisition rules are stateful).
+OPTIMIZER_PARAMS = lambda: (
     "num_steps, acquisition_rule",
     cast(
         List[
@@ -152,7 +152,7 @@ OPTIMIZER_PARAMS = (
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -162,7 +162,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
-@pytest.mark.parametrize(*copy.deepcopy(OPTIMIZER_PARAMS))
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
