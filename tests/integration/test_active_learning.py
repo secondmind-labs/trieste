@@ -118,23 +118,23 @@ def test_optimizer_learns_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, threshold",
     [
-        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
-        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        # (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
-        # (
-        #     80,
-        #     EfficientGlobalOptimization(
-        #         IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [80.0]),
-        #     ),
-        #     80.0,
-        # ),
-        # (
-        #     80,
-        #     EfficientGlobalOptimization(
-        #         IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0])
-        #     ),
-        #     80.0,
-        # ),
+        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
+        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
+        (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        (
+            80,
+            EfficientGlobalOptimization(
+                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [80.0]),
+            ),
+            80.0,
+        ),
+        (
+            80,
+            EfficientGlobalOptimization(
+                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0])
+            ),
+            80.0,
+        ),
         (
             100,
             EfficientGlobalOptimization(
