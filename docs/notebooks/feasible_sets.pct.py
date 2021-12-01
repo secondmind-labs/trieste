@@ -129,7 +129,7 @@ acq = ExpectedFeasibility(threshold, delta=delta)
 rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 1
+num_steps = 10
 result = bo.optimize(num_steps, initial_data, model, rule)
 
 
@@ -228,7 +228,7 @@ plot_excursion_probability(
 # We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 20 observations more the model is precisely representing the failure region boundary. Most of the additional query points lie close to the threshold line.
 
 # %%
-num_steps = 2
+num_steps = 10
 result = bo.optimize(num_steps, dataset, model, rule)
 
 final_model = result.try_get_final_model()
@@ -258,10 +258,10 @@ acq_ivr = IntegratedVarianceReduction(
 )
 
 # Set a batch size greater than 1 with the 'num_query_points' parameter
-rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)  # type: ignore
+rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=2) # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-num_steps = 1
+num_steps = 10
 model = build_model(initial_data)
 result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
@@ -274,14 +274,14 @@ plot_excursion_probability(
 )
 
 # %% [markdown]
-# One can also specify a range of thresholds rather than a single value. We can do this by specifying a minimum and a maximum threshold, rather than a single threshold as the `threshold` parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.
+# One can also specify a range of thresholds rather than a single value. We can do this by specifying a range with a minimum and a maximum threshold, rather than a single threshold as the `threshold` parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.
 
 # %%
 thresholds = [50.0, 110.0]
 acq_range = IntegratedVarianceReduction(
     integration_points=integration_points, threshold=thresholds
 )
-rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3)  # type: ignore
+rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=2)  # type: ignore
 
 model = build_model(initial_data)
 result_range = bo.optimize(num_steps, initial_data, model, rule_range)
