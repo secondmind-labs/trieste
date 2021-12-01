@@ -122,16 +122,18 @@ def test_optimizer_learns_scaled_branin_function(
         (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
         (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
         (
-            70,
+            25,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
+                num_query_points=3,
             ),
             80.0,
         ),
         (
-            70,
+            25,
             EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0])
+                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0]),
+                num_query_points=3,
             ),
             80.0,
         ),
@@ -173,8 +175,9 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
     n_global = 10000 * search_space.dimension
     n_boundary = 2000 * search_space.dimension
     global_test, boundary_test = _get_feasible_set_test_data(
-        search_space, observer, n_global, n_boundary, threshold
+        search_space, observer, n_global, n_boundary, threshold, range_pct=0.03
     )
+
     global_criterion = 0.001 * (1 - 0.001) * tf.cast(n_global, tf.float64)
     boundary_criterion = 0.01 * (1 - 0.01) * tf.cast(n_boundary, tf.float64)
 

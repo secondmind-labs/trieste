@@ -336,7 +336,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         :param model: The model of the objective function.
         :param integration_points: Points over which to integrate the objective prediction variance.
         :param threshold: Either None, or a sequence of 1 or 2 float values.
-        See class docs for details.
+            See class docs for details.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
         """
         if not hasattr(model, "conditional_predict_f"):
@@ -399,7 +399,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         elif len(threshold) == 1:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-            self._weights = distr.prob(threshold)
+            self._weights = distr.prob(threshold[0])
         else:
             mean_old, var_old = self._model.predict(query_points=integration_points)
             distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
