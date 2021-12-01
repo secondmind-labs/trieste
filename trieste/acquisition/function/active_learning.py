@@ -247,7 +247,7 @@ def bichon_ranjan_criterion(
     return acquisition
 
 
-class IntegratedVarianceReduction(SingleModelAcquisitionBuilder):
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the reduction of the integral of the predicted variance over the search
     space given a batch of query points.
