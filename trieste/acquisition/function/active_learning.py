@@ -399,14 +399,14 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
                         f" received {t_threshold}",
                     )
 
-                if tf.size(t_threshold) == 1:
-                    mean_old, var_old = self._model.predict(query_points=integration_points)
-                    distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-                    self._weights = distr.prob(t_threshold[0])
-                else:
-                    mean_old, var_old = self._model.predict(query_points=integration_points)
-                    distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
-                    self._weights = distr.cdf(t_threshold[1]) - distr.cdf(t_threshold[0])
+            if tf.size(t_threshold) == 1:
+                mean_old, var_old = self._model.predict(query_points=integration_points)
+                distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                self._weights = distr.prob(t_threshold[0])
+            else:
+                mean_old, var_old = self._model.predict(query_points=integration_points)
+                distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                self._weights = distr.cdf(t_threshold[1]) - distr.cdf(t_threshold[0])
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
