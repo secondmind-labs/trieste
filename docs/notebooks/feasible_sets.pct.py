@@ -225,7 +225,7 @@ plot_excursion_probability(
 
 
 # %% [markdown]
-# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 90 observations more the model is precisely representing the failure region boundary. It is somewhat difficult to see on the figure, but the most of the additional query points lie exactly on the threshold line.
+# We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 20 observations more the model is precisely representing the failure region boundary. Most of the additional query points lie close to the threshold line.
 
 # %%
 num_steps = 20
@@ -243,7 +243,9 @@ plot_excursion_probability(
 # %% [markdown]
 # ## Active learning with Integrated Variance Reduction acquisition function
 #
-# An alternative to the `ExpectedFeasibility` function is called `IntegratedVarianceReduction`. This acquisition has the advantage of allowing batches, as we illustrate below. It is more expensive to compute than `ExpectedFeasibility`, as it writes as an integral over a set of input locations.
+# An alternative to the `ExpectedFeasibility` acquisition function is called `IntegratedVarianceReduction`. This acquisition has the advantage of taking into account reduction of uncertainty in a region of the search space when choosing the next point to sample, instead of considering only the sampling point. This makes it more expensive to compute than `ExpectedFeasibility`, since it involves computing an integral over a set of integration points. This integration region is determined by the user, with the `integration_points` parameter. Another advantage is that `IntegratedVarianceReduction` can produce batches of points, which becomes useful when parallel evaluations are possible.
+#
+# Below we perform 10 active learning steps with `IntegratedVarianceReduction` acquisition function and same as above plot excursion probability of the final model.
 
 # %%
 from trieste.acquisition.function import IntegratedVarianceReduction
@@ -257,12 +259,13 @@ acq_ivr = IntegratedVarianceReduction(
     ],
 )
 
-# Set a batch size greater than 1
+# Set a batch size greater than 1 with the 'num_query_points' parameter
 rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-result_ivr = bo.optimize(num_steps, initial_data, initial_model, rule_ivr)
+model = build_model(initial_data)
+result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
 final_model_ivr = result_ivr.try_get_final_model()
 dataset_ivr = result_ivr.try_get_final_dataset()
@@ -273,32 +276,36 @@ plot_excursion_probability(
 )
 
 # %% [markdown]
-# One can also specify a range of thresholds rather than a single value. The resulting query points are likely to be more speard out than previously.
+# One can also specify a range of thresholds rather than a single value. We can do this by specifying a range with a minimum and a maximum threshold, rather than a single threshold as the `threshold` parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.
+
+# %%
 thresholds = [50.0, 110.0]
 acq_range = IntegratedVarianceReduction(
     integration_points=integration_points, threshold=thresholds
 )
 rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=3)  # type: ignore
 
-result_range = bo.optimize(num_steps, initial_data, initial_model, rule_range)
+model = build_model(initial_data)
+result_range = bo.optimize(num_steps, initial_data, model, rule_range)
 
 # %% [markdown]
-# We can finally draw the probability that the GP value belongs to an interval rather than the probability that it exceeds a single value. We also compare to the probability obtained when optimising for a single value at the center of the range. As expected, the `IntegratedVarianceReduction` spreads query points a bit more, which leads to a sharper probability.
+# We can now illustrate the probability that a point in the search space belongs to the threshold interval rather than the probability that points exceed a single threshold. We compare probability maps obtained with the `IntegratedVarianceReduction` (IVR) when optimising for the threshold range and for the single threshold at the center of the range, as well as to a probability map for the `ExpectedFeasibility` function obtained with a single threshold. As expected, the `IntegratedVarianceReduction` with threshold range spreads query points a bit more, which leads to a sharper probability boundary.
 
+# %%
 final_model_range = result_range.try_get_final_model()
 dataset_range = result_range.try_get_final_dataset()
 query_points_range = dataset_range.query_points.numpy()
 
 
 plot_excursion_probability(
-    "Probability of being in the range (IVE range)",
+    "Probability of being in the range (IVR range of thresholds)",
     final_model_range,
     query_points_range,
     threshold=thresholds,
 )
 
 plot_excursion_probability(
-    "Probability of being in the range (IVE)",
+    "Probability of being in the range (IVR single threshold)",
     final_model_ivr,
     query_points_ivr,
     threshold=thresholds,
