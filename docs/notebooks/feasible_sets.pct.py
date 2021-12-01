@@ -254,13 +254,11 @@ from trieste.acquisition.function import IntegratedVarianceReduction
 integration_points = search_space.sample_halton(1000)
 acq_ivr = IntegratedVarianceReduction(
     integration_points=integration_points,
-    threshold=[
-        threshold,
-    ],
+    threshold=threshold,
 )
 
 # Set a batch size greater than 1 with the 'num_query_points' parameter
-rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3) # type: ignore
+rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=3)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10

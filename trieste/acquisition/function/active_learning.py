@@ -254,11 +254,11 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticMod
     """
 
     def __init__(
-        self, integration_points: TensorType, threshold: Optional[Sequence[float]] = None
+        self, integration_points: TensorType, threshold: Optional[Sequence[float]] | float = None
     ) -> None:
         """
         :param integration_points: set of points to integrate the prediction variance over.
-        :param threshold: either None, or a sequence of 1 or 2 float values
+        :param threshold: either None, a float or a sequence of 1 or 2 float values.
         """
         self._integration_points = integration_points
         self._threshold = threshold
@@ -363,12 +363,15 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self._integration_points = integration_points
 
         if threshold is not None:
-            threshold = tf.cast(threshold, integration_points.dtype)
+            if isinstance(threshold, float):
+                threshold = tf.cast(threshold, integration_points.dtype)[None]
+            else:
+                threshold = tf.cast(threshold, integration_points.dtype)
 
             tf.debugging.assert_rank(
                 threshold,
                 1,
-                message=f"threshold should be a sequence "
+                message=f"threshold should be a float, a sequence "
                 f"or a rank 1 tensor, received {tf.shape(threshold)}",
             )
             tf.debugging.assert_less_equal(
@@ -383,6 +386,13 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
                 message=f"threshold should have one or two values,"
                 f" received {tf.size(threshold)}",
             )
+            if len(threshold) > 1:
+                tf.debugging.assert_greater_equal(
+                    threshold[1],
+                    threshold[0],
+                    message=f"threshold values should be in increasing order,"
+                    f" received {threshold}",
+                )
 
         if threshold is None:
             self._weights = tf.cast(1.0, integration_points.dtype)
