@@ -118,9 +118,9 @@ def test_optimizer_learns_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, threshold",
     [
-        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
-        # (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        # (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
+        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
+        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
+        (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
         (
             70,
             EfficientGlobalOptimization(
