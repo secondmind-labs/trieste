@@ -45,7 +45,7 @@ def test_reducer__repr_builders() -> None:
 
         _reduce = raise_exc
 
-    class Builder(AcquisitionFunctionBuilder):
+    class Builder(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def __init__(self, name: str):
             self._name = name
 
@@ -63,7 +63,7 @@ def test_reducer__repr_builders() -> None:
     assert repr(Dummy(Builder("foo"), Builder("bar"))) == "Dummy(Builder('foo'), Builder('bar'))"
 
 
-class _Static(AcquisitionFunctionBuilder):
+class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def __init__(self, f: AcquisitionFunction):
         self._f = f
 
