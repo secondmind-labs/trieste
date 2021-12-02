@@ -429,13 +429,13 @@ def _generate_fantasized_data(model, pending_points, fantasize_method):
     return Dataset(pending_points, fantasized_obs)
 
 
-class FantasizedGPRModel(ProbabilisticModel):
+class _fantasized_model(FastUpdateModel):
     """
     Creates new model from an existing GPR model and additional data.
     This new model posterior is conditioned and the GPR data and the additional one.
     """
 
-    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
+    def __init__(self, model: FastUpdateModel, fantasized_data: Dataset):
         """
 
         :param model: a GPR model
