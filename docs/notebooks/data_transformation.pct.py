@@ -264,11 +264,7 @@ print(f"observation: {observations[arg_min_idx, :]}")
 #
 # Actually, we can achieve the same effect with a standard `BayesianOptimizer` by using a `DataTransformModelWrapper`. The advantage of this is that the user does not have to manage the BO loop, several standard normalizers are already defined, and the trained model can be more easily inspected as it automatically denormalizes predictions and samples.
 #
-# First, we create a new model class that inherits from the model wrapper class and the kind of `TrainableProbabilisticModel` that we want to use.
-
-# %% [markdown]
-#
-# Now we create `DataTransformer`s for query_points and observations, and pass these into our new model class when we construct it.
+# First, we create `DataTransformer`s for query_points and observations, and pass these into our new model class when we construct it.
 
 # %%
 
@@ -289,7 +285,7 @@ normalized_data = Dataset(
 
 # %% [markdown]
 #
-# Behind the scenes, `transform_data` uses `trieste.models.transforms.DataTransformModelWrapper` to wrap the desired `TrainableProbabilisticModel` (in this case `GaussianProcessRegression`). We use multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details.
+# Behind the scenes, `transform_data` creates a wrapped version of `GaussianProcessRegression` which handles transformations using `query_point_transformer` and `observation_transformer`. `GaussianProcessRegressionDataTransformWrapper` specifies how to do this for `GaussianProcessRegression` models. Other such wrappers are provided in the `trieste.models.gpflow.transforms` and `trieste.models.gpflux.transforms` modules. This uses multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details.
 
 #%%
 @transform_data(
