@@ -280,7 +280,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param predict_type: The type of prediction; options are '', '_joint', or 'y'.
         :param args: Arguments to pass to the model's predict function.
         :param kwargs: Keyword arguments to pass to the model's predict function.
-        :return: Denormalized predicted mean and denormalized predicted variance or covariance.
+        :return: Denormalized predictive mean and denormalized predictive variance or covariance.
         """
         assert predict_type == "" or "_joint" or "_y", f"predict_type {predict_type} not supported"
         transformed_query_points = self._query_point_transformer.transform(query_points)
@@ -298,7 +298,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param query_points: The unnormalized query points [..., D].
         :param args: Arguments to pass to the model's `predict` function.
         :param kwargs: Keyword arguments to pass to the model's `predict` function.
-        :return: Denormalized predicted mean and denormalized predicted variance or covariance.
+        :return: Denormalized predictive mean and denormalized predictive variance or covariance.
         """
         return self._predict(query_points)
 
@@ -309,7 +309,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param query_points: The unnormalized query points [..., D].
         :param args: Arguments to pass to the model's `predict_joint` function.
         :param kwargs: Keyword arguments to pass to the model's `predict_joint` function.
-        :return: Denormalized predicted mean and denormalized predicted variance or covariance.
+        :return: Denormalized predictive mean and denormalized predictive variance or covariance.
         """
         return self._predict(query_points, predict_type="_joint")
 
@@ -334,7 +334,7 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param query_points: The unnormalized query points [..., D].
         :param args: Arguments to pass to the model's `predict_y` function.
         :param kwargs: Keyword arguments to pass to the model's `predict_y` function.
-        :return: Denormalized predicted mean and denormalized predicted variance or covariance.
+        :return: Denormalized predictive mean and denormalized predictive variance or covariance.
         """
         return self._predict(query_points, predict_type="_y")
 
