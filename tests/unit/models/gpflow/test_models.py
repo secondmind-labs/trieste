@@ -501,7 +501,7 @@ def test_gaussian_process_regression_optimize(
         args = {}
     loss = internal_model.training_loss(**args)
 
-    # TODO: VariationalGaussianProcess doesn't currently support Adam() unless use_natgrads is True
+    # VariationalGaussianProcess doesn't currently support Adam() unless use_natgrads is True
     if isinstance(internal_model, VGP) and isinstance(optimizer, tf.optimizers.Optimizer):
         return
 
@@ -635,7 +635,7 @@ def test_vgp_optimize_with_and_without_natgrads(
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    # TODO: VariationalGaussianProcess doens't currently support Adam() unless use_natgrads is True
+    # VariationalGaussianProcess doens't currently support Adam() unless use_natgrads is True
     optimizer = (
         BatchOptimizer(
             tf.optimizers.Adam(),

@@ -182,7 +182,7 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize("use_natgrads", [False, True])
 def test_optimizer_doesnt_crash_with_vgp_model(use_natgrads: bool) -> None:
     # regression test for [#406]; use natgrads doesn't work well as a model for the objective
-    # so don't both checking the results, just that it doesn't crash
+    # so don'ter both checking the results, just that it doesn't crash
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
         None if use_natgrads else 5,
