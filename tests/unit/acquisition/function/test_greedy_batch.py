@@ -28,6 +28,7 @@ from trieste.acquisition import (
     UpdatablePenalizationFunction,
 )
 from trieste.acquisition.function.greedy_batch import (
+    FantasizeAcquisitionFunction,
     LocalPenalizationAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,
@@ -171,3 +172,9 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     lipshitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+
+
+def test_fantasized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+
+        FantasizeAcquisitionFunction(ExpectedImprovement().using("OBJECTIVE"), "notKB")

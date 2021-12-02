@@ -16,6 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import Callable, Mapping, Optional, Union, cast
 
 import gpflow
@@ -24,7 +25,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ProbabilisticModel
-from ...models.gpflow import GaussianProcessRegression
+from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -34,6 +35,7 @@ from ..interface import (
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    T,
     UpdatablePenalizationFunction,
 )
 from .entropy import MinValueEntropySearch
@@ -357,7 +359,7 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
+class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches, following the
     kriging believer heuristic.
@@ -374,17 +376,26 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
 
     def __init__(
         self,
-        acquisition_function_builder: AcquisitionFunctionBuilder = None,
+        base_acquisition_function_builder: Optional[
+            AcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+        ] = None,
         fantasize_method: str = "KB",
     ):
         """
-        :param acquisition_function_builder:
+        :param base_acquisition_function_builder: The acquisition function builder to use.
+            Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
+        :param fantasize_method" one of "KB", "sample"
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        if acquisition_function_builder is None:
-            self._builder = ExpectedImprovement()
-        else:
-            self._builder = acquisition_function_builder
+
+        if base_acquisition_function_builder is None:
+            base_acquisition_function_builder = ExpectedImprovement()
+
+        if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
+            base_acquisition_function_builder = base_acquisition_function_builder.using(OBJECTIVE)
+
+        self._builder = base_acquisition_function_builder
 
         # TODO assert fantasize mode
         self._fantasize_method = fantasize_method
@@ -414,7 +425,9 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
         return self._builder.prepare_acquisition_function(models, datasets)
 
 
-def _generate_fantasized_data(model, pending_points, fantasize_method):
+def _generate_fantasized_data(
+    model: ProbabilisticModel, pending_points: TensorType, fantasize_method: str
+) -> Dataset:
     if fantasize_method == "KB":
         fantasized_obs, _ = model.predict(pending_points)
     elif fantasize_method == "sample":
@@ -428,21 +441,21 @@ def _generate_fantasized_data(model, pending_points, fantasize_method):
     return Dataset(pending_points, fantasized_obs)
 
 
-class _fantasized_model(FastUpdateModel):
+class _fantasized_model(ProbabilisticModel):
     """
     Creates new model from an existing GPR model and additional data.
     This new model posterior is conditioned and the GPR data and the additional one.
     """
 
-    def __init__(self, model: FastUpdateModel, fantasized_data: Dataset):
+    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
         """
 
         :param model: a GPR model
         :param fantasized_data: additional dataset to condition on
-        :raise NotImplementedError: If model is not of class GaussianProcessRegression.
+        :raise NotImplementedError: If model is not of class FantasizedGPRModel.
         """
 
-        if not isinstance(model, GaussianProcessRegression):
+        if not isinstance(model, FastUpdateModel):
             raise NotImplementedError(
                 f"FantasizedGPRModel only works with GPR models, received " f"{model.__repr__()}"
             )
