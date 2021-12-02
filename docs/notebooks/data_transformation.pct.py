@@ -271,6 +271,7 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # %%
 
 from trieste.models.transforms import StandardTransformer, MinMaxTransformer, transform_data
+from trieste.models.gpflow.transforms import GaussianProcessRegressionDataTransformWrapper
 
 search_space = TRID_10_SEARCH_SPACE  # Restore the original search space
 
@@ -289,8 +290,10 @@ normalized_data = Dataset(
 # Behind the scenes, `transform_data` uses `trieste.models.transforms.DataTransformModelWrapper` to wrap the desired `TrainableProbabilisticModel` (in this case `GaussianProcessRegression`). We use multiple inheritance to wrap the methods of `GaussianProcessRegression` to normalize inputs, pass these to the standard implementation, then denormalize the outputs. This kind of object is often referred to as a "mixin", see https://en.wikipedia.org/wiki/Mixin#In_Python for further details.
 
 #%%
-@transform_data(query_point_transformer, observation_transformer)
-class GPRwithDataTransforms(GaussianProcessRegression):
+@transform_data(
+    query_point_transformer, observation_transformer, GaussianProcessRegressionDataTransformWrapper
+)
+class GPRwithDataTransforms:
     pass
 
 model = GPRwithDataTransforms(

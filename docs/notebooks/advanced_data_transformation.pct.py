@@ -17,7 +17,8 @@ from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 from trieste.objectives.single_objectives import BEALE_MINIMUM, BEALE_SEARCH_SPACE, beale
 from trieste.objectives.utils import mk_observer
-from trieste.models.transforms import DataTransformModelWrapper, MinMaxTransformer, StandardTransformer, transform_data
+from trieste.models.transforms import MinMaxTransformer, StandardTransformer, transform_data
+from trieste.models.gpflow.transforms import GaussianProcessRegressionDataTransformWrapper
 
 np.random.seed(1794)
 tf.random.set_seed(1794)
@@ -104,8 +105,10 @@ normalized_data = Dataset(
     observation_transformer.transform(initial_data.observations)
 )
 
-@transform_data(query_point_transformer, observation_transformer)
-class GPRwithDataTransforms(GaussianProcessRegression):
+@transform_data(
+    query_point_transformer, observation_transformer, GaussianProcessRegressionDataTransformWrapper
+)
+class GPRwithDataTransforms:
     pass
 
 model = GPRwithDataTransforms(
@@ -162,7 +165,7 @@ plot_regret_with_min(dataset)
 # We now show how to modify the above to add methods to update model and normalization parameters. To achieve this, the user simply needs to define a method ``_update_model_and_normalization_parameters``.
 
 # %%
-class DynamicDataTransformModelWrapper(DataTransformModelWrapper):
+class DynamicDataTransformModelWrapper(GaussianProcessRegressionDataTransformWrapper):
     """DataTransformWrapper for a GaussianProcessRegression model."""
 
     def _update_model_and_normalization_parameters(self, dataset):
@@ -190,7 +193,7 @@ normalized_data = Dataset(
 )
 
 @transform_data(query_point_transformer, observation_transformer, DynamicDataTransformModelWrapper)
-class GPRwithDynamicDataTransforms(GaussianProcessRegression):
+class GPRwithDynamicDataTransforms:
     pass
 
 dynamic_model = GPRwithDynamicDataTransforms(
