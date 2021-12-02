@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TypeVar, Union
 
 import gpflow
 import tensorflow as tf
@@ -103,16 +103,20 @@ def squeeze_hyperparameters(
                 param.assign(squeezed_param)
 
 
-def check_optimizer(optimizer: BatchOptimizer | Optimizer) -> None:
+def check_optimizer(optimizer: Union[BatchOptimizer, Optimizer]) -> None:
     """
-    Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
-    or strictly greater than the limit defined by the Shift+Softplus.
-    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+    Check that the optimizer for the GPflow models is using a correct optimizer wrapper.
 
-    :param object: Any gpflow Module.
-    :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
-    :param epsilon: the value with which to offset the shift for the Softplus case.
-    :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
+    Stochastic gradient descent based methods implemented in TensorFlow would not
+    work properly without mini-batches and hence :class:`~trieste.models.optimizers.BatchOptimizer`
+    that prepares mini-batches and calls the optimizer iteratively needs to be used. GPflow's
+    :class:`~gpflow.optimizers.Scipy` optimizer on the other hand should use the non-batch wrapper
+    :class:`~trieste.models.optimizers.Optimizer`.
+
+    :param optimizer: An instance of the optimizer wrapper with the underlying optimizer.
+    :raise ValueError: If :class:`~tf.optimizers.Optimizer` is not using
+        :class:`~trieste.models.optimizers.BatchOptimizer` or :class:`~gpflow.optimizers.Scipy` is
+        using :class:`~trieste.models.optimizers.BatchOptimizer`.
     """
     if isinstance(optimizer.optimizer, gpflow.optimizers.Scipy):
         if isinstance(optimizer, BatchOptimizer):

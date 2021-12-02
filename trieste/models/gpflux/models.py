@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -70,7 +70,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         if not self.optimizer.minimize_args:
-            self._fit_args: Dict[str, Any] | None = {
+            self._fit_args: Optional[Dict[str, Any]] = {
                 "verbose": 0,
                 "epochs": 100,
                 "batch_size": 100,

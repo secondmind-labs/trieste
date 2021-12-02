@@ -40,15 +40,19 @@ def gpr_copy_model() -> GPRcopy:
 
 
 class Scipy_copy(gpflow.optimizers.Scipy):
-    """A copy of the GPR model."""
+    """A copy of the scipy optimizer."""
 
 
 class Adam_copy(tf.optimizers.Adam):
-    """A copy of the SVGP model."""
+    """A copy of the adam optimizer."""
 
 
-def Scipy_copy_optimizer() -> Scipy_copy:
-    return Scipy_copy()
+class DummyOptimizer:
+    """A dummy optimizer."""
+
+
+class DummyModel:
+    """A dummy model."""
 
 
 def test_model_config_raises_not_supported_model_type() -> None:
@@ -60,26 +64,21 @@ def test_model_config_raises_not_supported_model_type() -> None:
 
 def test_model_registry_raises_on_unsupported_model() -> None:
 
-    model = gpr_copy_model()
+    with pytest.raises(ValueError):
+        ModelRegistry.get_model_wrapper(DummyModel)
+
+
+def test_model_registry_raises_on_unsupported_optimizer() -> None:
 
     with pytest.raises(ValueError):
-        ModelRegistry.get_model_wrapper(model)
-
-
-# def test_model_registry_raises_on_unsupported_optimizer() -> None:
-
-#     optimizer = gpr_copy_model()
-
-#     with pytest.raises(ValueError):
-#         ModelRegistry.get_optimizer_wrapper(optimizer)
+        ModelRegistry.get_optimizer_wrapper(DummyOptimizer)
 
 
 def test_model_registry_register_model() -> None:
 
     ModelRegistry.register_model(GPRcopy, GaussianProcessRegression)
-    model_type = type(gpr_copy_model())
 
-    assert ModelRegistry.get_model_wrapper(model_type) == GaussianProcessRegression
+    assert ModelRegistry.get_model_wrapper(GPRcopy) == GaussianProcessRegression
 
 
 def test_model_registry_register_model_warning() -> None:
@@ -96,9 +95,8 @@ def test_model_registry_register_model_warning() -> None:
 def test_model_registry_register_optimizer() -> None:
 
     ModelRegistry.register_optimizer(Scipy_copy, Optimizer)
-    optimizer_type = type(Scipy_copy_optimizer())
 
-    assert ModelRegistry.get_optimizer_wrapper(optimizer_type) == Optimizer
+    assert ModelRegistry.get_optimizer_wrapper(Scipy_copy) == Optimizer
 
 
 def test_model_registry_register_optimizer_warning() -> None:
@@ -129,21 +127,43 @@ def test_create_model_builds_model_correctly() -> None:
 
 
 @pytest.mark.parametrize(
-    "supported_optimizers",
-    [(type(gpflow.optimizers.Scipy()), Optimizer)]
-    + [
-        (optimizer_type, BatchOptimizer)
-        for optimizer_type in tf.optimizers.Optimizer.__subclasses__()
+    "supported_optimizer_types",
+    [
+        (gpflow.optimizers.Scipy, Optimizer),
+        (tf.optimizers.Optimizer, BatchOptimizer),
     ],
 )
-def test_supported_optimizers_are_correctly_registered(
-    supported_optimizers: Tuple[Type[Any], Type[Optimizer]]
+def test_supported_optimizer_types_are_correctly_registered(
+    supported_optimizer_types: Tuple[Type[Any], Type[Optimizer]]
 ) -> None:
 
-    optimizer_type, optimizer_wrapper = supported_optimizers
+    optimizer_type, optimizer_wrapper = supported_optimizer_types
 
     assert optimizer_type in ModelRegistry.get_registered_optimizers()
     assert ModelRegistry.get_optimizer_wrapper(optimizer_type) == optimizer_wrapper
+
+
+@pytest.mark.parametrize(
+    "supported_optimizers",
+    [
+        (gpflow.optimizers.Scipy(), Optimizer),
+        (tf.optimizers.Adam(), BatchOptimizer),
+        (tf.optimizers.RMSprop(), BatchOptimizer),
+        (tf.optimizers.SGD(), BatchOptimizer),
+        (tf.optimizers.Adadelta(), BatchOptimizer),
+        (tf.optimizers.Adagrad(), BatchOptimizer),
+        (tf.optimizers.Adamax(), BatchOptimizer),
+        (tf.optimizers.Nadam(), BatchOptimizer),
+        (tf.optimizers.Ftrl(), BatchOptimizer),
+    ],
+)
+def test_supported_optimizers_are_correctly_registered(
+    supported_optimizers: Tuple[Any, Type[Optimizer]]
+) -> None:
+
+    optimizer, optimizer_wrapper = supported_optimizers
+
+    assert ModelRegistry.get_optimizer_wrapper(type(optimizer)) == optimizer_wrapper
 
 
 def test_config_uses_correct_optimizer_wrappers() -> None:

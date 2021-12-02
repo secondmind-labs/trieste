@@ -59,33 +59,35 @@ class ModelRegistry:
         :param model_type: The model type.
         :return: The wrapper which builds a model.
         """
-        try:
-            return cls._MODEL_TO_WRAPPER[model_type]
-        except KeyError as e:
-            raise ValueError(
-                f"Model {type(model_type)} currently not supported. "
-                f"We only support the following model types: "
-                f"{list(k.__name__ for k in cls._MODEL_TO_WRAPPER.keys())}. "
-                f"You can register more via ModelRegistry.register_model."
-            ) from e
+        for _model_type in model_type.__mro__:
+            if _model_type in cls._MODEL_TO_WRAPPER:
+                return cls._MODEL_TO_WRAPPER[_model_type]
+
+        raise ValueError(
+            f"Model {model_type} currently not supported. "
+            f"We only support the following model types: "
+            f"{list(k.__name__ for k in cls._MODEL_TO_WRAPPER.keys())}. "
+            f"You can register more via ModelRegistry.register_model."
+        )
 
     @classmethod
     def get_optimizer_wrapper(cls, optimizer_type: Type[Any]) -> Type[Optimizer]:
         """
         Get a Trieste model optimizer wrapper for a given optimizer type.
 
-        :param optimizer_type: The model type.
+        :param optimizer_type: The optimizer type.
         :return: The optimizer wrapper to be used with the optimizer type.
         """
-        try:
-            return cls._OPTIMIZER_TO_WRAPPER[optimizer_type]
-        except KeyError as e:
-            raise ValueError(
-                f"Model {type(optimizer_type)} currently not supported. "
-                f"We only support the following optimizer types: "
-                f"{list(k.__name__ for k in cls._OPTIMIZER_TO_WRAPPER.keys())}. "
-                f"You can register more via ModelRegistry.register_optimizer."
-            ) from e
+        for _optimizer_type in optimizer_type.__mro__:
+            if _optimizer_type in cls._OPTIMIZER_TO_WRAPPER:
+                return cls._OPTIMIZER_TO_WRAPPER[_optimizer_type]
+
+        raise ValueError(
+            f"Model {optimizer_type} currently not supported. "
+            f"We only support the following optimizer types: "
+            f"{list(k.__name__ for k in cls._OPTIMIZER_TO_WRAPPER.keys())}. "
+            f"You can register more via ModelRegistry.register_optimizer."
+        )
 
     @classmethod
     def register_model(
@@ -143,13 +145,16 @@ class ModelRegistry:
 
 # We register supported optimizers and their wrappers for usage with ModelConfig.
 # GPflow's Scipy optimizer is not used in the batch mode and hence uses Optimizer wrapper
-ModelRegistry.register_optimizer(type(gpflow.optimizers.Scipy()), Optimizer)
+# ModelRegistry.register_optimizer(type(gpflow.optimizers.Scipy()), Optimizer)
 
 
 # TensorFlow optimizers are stochastic gradient descent variants and should be used
 # with BatchOptimizer wrapper
-for optimizer_type in tf.optimizers.Optimizer.__subclasses__():
-    ModelRegistry.register_optimizer(optimizer_type, BatchOptimizer)
+# for optimizer_type in tf.optimizers.Optimizer.__subclasses__():
+#     ModelRegistry.register_optimizer(optimizer_type, BatchOptimizer)
+
+ModelRegistry.register_optimizer(gpflow.optimizers.Scipy, Optimizer)
+ModelRegistry.register_optimizer(tf.optimizers.Optimizer, BatchOptimizer)
 
 
 @dataclass(frozen=True)
@@ -203,10 +208,10 @@ class ModelConfig:
         raise NotImplementedError(f"Not supported type {type(self.model)}")
 
     def _check_optimizer_type(self) -> None:
-        if (
-            self.optimizer is not None
-            and type(self.optimizer) not in ModelRegistry.get_registered_optimizers()
-        ):
+        if self.optimizer is not None:
+            for optimizer_type in type(self.optimizer).__mro__:
+                if optimizer_type in ModelRegistry.get_registered_optimizers():
+                    return
             raise NotImplementedError(f"Not supported type {type(self.optimizer)}")
         else:
             return
