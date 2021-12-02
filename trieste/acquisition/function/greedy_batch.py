@@ -16,7 +16,6 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import Callable, Mapping, Optional, Union, cast
 
 import gpflow
@@ -35,7 +34,6 @@ from ..interface import (
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
-    T,
     UpdatablePenalizationFunction,
 )
 from .entropy import MinValueEntropySearch
@@ -361,17 +359,21 @@ class hard_local_penalizer(local_penalizer):
 
 class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     r"""
-    Builder of the acquisition function maker for greedily collecting batches, following the
-    kriging believer heuristic.
+    Builder of the acquisition function maker for greedily collecting batches.
+    FantasizeAcquisitionFunction allows us to perform batch Bayesian optimization with any
+    standard (non-batch) acquisition function.
 
-    TODO: add stuff
+    Here, every time a query point is chosen by maximising an acquisition function,
+    its corresponding observation is "fantasized", and the models are conditioned further
+    on this new artificial data.
 
-    Kriging believer allows us to perform batch Bayesian optimization with a standard (non-batch)
-    acquisition function.
-    By iteratively building a batch of points though sequentially maximizing
-    this acquisition function,
-    TODO: add stuff
-    it provides diverse batches of candidate points.
+    This implies that the models need to predict what their updated predictions would be given
+    new data, see :class:`~FantasizedGPRModel`. These equations are for instance in closed form
+    for the GPR model, see :cite:`chevalier2014corrected` (eqs. 8-10) for details.
+
+    There are several ways to "fantasize" data: the "kriging believer" heuristic (KB, see
+    :cite:`ginsbourger2010kriging`) uses the mean of the model as observations.
+    "sample" uses samples from the model.
     """
 
     def __init__(
@@ -388,6 +390,10 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
         :param fantasize_method" one of "KB", "sample"
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
+        tf.debugging.Assert(
+            fantasize_method in ["KB", "sample"],
+            message=f"fantasize_method must be KG or sample," f"received {fantasize_method}",
+        )
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -396,8 +402,6 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
             base_acquisition_function_builder = base_acquisition_function_builder.using(OBJECTIVE)
 
         self._builder = base_acquisition_function_builder
-
-        # TODO assert fantasize mode
         self._fantasize_method = fantasize_method
 
     def prepare_acquisition_function(
@@ -443,21 +447,23 @@ def _generate_fantasized_data(
 
 class _fantasized_model(ProbabilisticModel):
     """
-    Creates new model from an existing GPR model and additional data.
-    This new model posterior is conditioned and the GPR data and the additional one.
+    Creates a new model from an existing one and additional data.
+    This new model posterior is conditioned on both current model data and the additional one.
     """
 
     def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
         """
 
-        :param model: a GPR model
+        :param model: a model, must be of :class:`~FantasizedGPRModel`
         :param fantasized_data: additional dataset to condition on
-        :raise NotImplementedError: If model is not of class FantasizedGPRModel.
+        :raise NotImplementedError: If model is not of :class:`~FantasizedGPRModel`.
         """
 
         if not isinstance(model, FastUpdateModel):
             raise NotImplementedError(
-                f"FantasizedGPRModel only works with GPR models, received " f"{model.__repr__()}"
+                f"FantasizedAcquisitionFunction only works with FastUpdateModel, "
+                f"received "
+                f"{model.__repr__()}"
             )
 
         self._model = model
