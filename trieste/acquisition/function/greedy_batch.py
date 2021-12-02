@@ -23,7 +23,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
+from ...models import FastUpdateModel, ProbabilisticModel
 from ...models.gpflow import GaussianProcessRegression
 from ...space import SearchSpace
 from ...types import TensorType
@@ -408,8 +408,7 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder):
                 for tag, model in models.items()
             }
             models = {
-                tag: FantasizedGPRModel(model, fantasized_data[tag])
-                for tag, model in models.items()
+                tag: _fantasized_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
 
         return self._builder.prepare_acquisition_function(models, datasets)
