@@ -1,10 +1,14 @@
+from trieste.data import Dataset
 from trieste.types import TensorType
+from trieste.utils import DEFAULTS
 
 from ..transforms import DataTransformModelWrapper
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 
 
-class GaussianProcessRegressionDataTransformWrapper(DataTransformModelWrapper):
+class GaussianProcessRegressionDataTransformWrapper(
+    DataTransformModelWrapper, GaussianProcessRegression
+):
     """A wrapped `GaussianProcessRegression` model that handles data transformation. Inputs are
     transformed before passing to the superclass implementation. The outputs are inverse
     transformed before returning.
@@ -27,7 +31,7 @@ class GaussianProcessRegressionDataTransformWrapper(DataTransformModelWrapper):
         return self._observation_transformer.inverse_transform_variance(covariance)
 
 
-class SparseVariationalwithDataTransform(DataTransformModelWrapper, SparseVariational):
+class SparseVariationalDataTransformWrapper(DataTransformModelWrapper, SparseVariational):
     """A wrapped `SparseVariational` model that handles data transformation. Inputs are
     transformed before passing to the superclass implementation. The outputs are inverse
     transformed before returning.
@@ -36,15 +40,23 @@ class SparseVariationalwithDataTransform(DataTransformModelWrapper, SparseVariat
     pass
 
 
-class VariationalGaussianProcesswithDataTransform(
+class VariationalGaussianProcessDataTransformWrapper(
     DataTransformModelWrapper, VariationalGaussianProcess
 ):
     """A wrapped `VariationalGaussianProcess` model that handles data transformation. Inputs are
     transformed before passing to the superclass implementation. The outputs are inverse
     transformed before returning.
-
-    **Note**: The `update` method does not modify the `jitter` keyword argument. If this is
-    desired, the user can achieve this by overloading the `update` method in a subclass.
     """
 
-    pass
+    def update(self, dataset: Dataset, *args, jitter: float = DEFAULTS.JITTER) -> None:
+        """Wraps the `update` method so that jitter is transformed to normalised space.
+        
+        :param dataset: The unnormalised dataset.
+        :param args: Positional arguments to pass through to the superclass implementation.
+        :param jitter: Jitter specified for the normalised space. Used for stabilizing the Cholesky
+            decomposition of the covariance matrix.
+        """
+        transformed_jitter = self._observation_transformer.transform_variance(jitter)
+        # Standard DataTransformModelWrapper update method will take care of transforming dataset
+        # and then calling the VariationalGaussianProcess update method.
+        return super().update(dataset, *args, jitter=transformed_jitter)
