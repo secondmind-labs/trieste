@@ -356,11 +356,7 @@ def test_normalized_optimizer_finds_minima_of_trid_function(
     class GPRwithDataTransforms(GaussianProcessRegression):
         pass
 
-    model = GPRwithDataTransforms(
-        model=build_gp_model(normalized_data),
-        query_point_transformer=query_point_transformer,
-        observation_transformer=observation_transformer,
-    )
+    model = GPRwithDataTransforms(model=build_gp_model(normalized_data))
 
     bo = BayesianOptimizer(observer, search_space)
     result = bo.optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)

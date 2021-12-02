@@ -622,6 +622,7 @@ BEALE_SEARCH_SPACE = Box([-4.5], [4.5]) ** 2
 The search space for the :func:`beale` function is defined over :math:`[-4.5, 4.5]^2`.
 """
 
+
 def drop_wave(x: TensorType) -> TensorType:
     """
     The Drop-Wave function on :math:`[-5.12, 5.12]^2` is multimodel with strong radial structure.
@@ -666,9 +667,9 @@ def eggholder(x: TensorType) -> TensorType:
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
     tf.debugging.assert_shapes([(x, (..., 2))])
-    t1 = (x[..., 1:2] + 47) * tf.math.sin(tf.math.sqrt(tf.math.abs(
-        x[..., 1:2] + x[..., 0:1] / 2 + 47
-    )))
+    t1 = (x[..., 1:2] + 47) * tf.math.sin(
+        tf.math.sqrt(tf.math.abs(x[..., 1:2] + x[..., 0:1] / 2 + 47))
+    )
     t2 = x[..., 0:1] * tf.math.sin(tf.math.sqrt(tf.math.abs(x[..., 0:1] - x[..., 1:2] - 47)))
     return -t1 - t2
 
@@ -763,40 +764,4 @@ The global minimum of the :func:`schwefel` function.
 SCHWEFEL_8_SEARCH_SPACE = Box([-500], [500]) ** 8
 """
 The search space for the :func:`schwefel` function is defined over :math:`[-500, 500]^2`.
-"""
-
-
-def shubert(x: TensorType) -> TensorType:
-    """
-    The shubert function on :math:`[-10.0, 10.0]^2` has many global minima. See
-    https://www.sfu.ca/~ssurjano/shubert.html for details.
-
-    :param x: Points at which to evaluate the function with shape [..., 2].
-    :return: The function values at ``x``, with shape [..., 1].
-    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
-    """
-    tf.debugging.assert_shapes([(x, (..., 2))])
-    ies = tf.range(1, 6, dtype=tf.float64)
-    cosands = tf.expand_dims(x, axis=-1) * (ies + 1) + ies  # [..., 2, 5]
-    sum1 = tf.math.reduce_sum(tf.math.cos(cosands[..., 0:1, :]) * ies, axis=-1)
-    sum2 = tf.math.reduce_sum(tf.math.cos(cosands[..., 1:2, :]) * ies, axis=-1)
-    return sum1 * sum2
-
-
-import numpy as np
-SHUBERT_MINIMIZERS = tf.constant([[np.nan, np.nan]], tf.float64)
-"""
-The :func:`shubert` function has several global minimizers
-"""
-
-
-SHUBERT_MINIMUM = tf.constant([-186.7309], tf.float64)
-"""
-The global minimum of the :func:`shubert` function.
-"""
-
-
-SHUBERT_SEARCH_SPACE = Box([-10.0], [10.0]) ** 2
-"""
-The search space for the :func:`shubert` function is defined over :math:`[-10.0, 10.0]^2`.
 """

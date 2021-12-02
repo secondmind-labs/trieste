@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Tuple, Union, Type
+from typing import Any, Callable, Tuple, Type, Union
 
 import tensorflow as tf
 
@@ -229,32 +229,26 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
     `_update_model_and_normalization_parameters` method appropriately.
     """
 
-    # def __init__(
-    #     self,
-    #     *model_args: Any,
-    #     query_point_transformer: Union[DataTransformer, None] = None,
-    #     observation_transformer: Union[DataTransformer, None] = None,
-    #     **model_kwargs: Any,
-    # ) -> None:
-    #     """Construct the wrapped model.
+    def __init__(
+        self,
+        *model_args: Any,
+        query_point_transformer: DataTransformer = IdentityTransformer(data=None),
+        observation_transformer: DataTransformer = IdentityTransformer(data=None),
+        **model_kwargs: Any,
+    ) -> None:
+        """Construct the wrapped model.
 
-    #     :param dataset: The unnormalized dataset.
-    #     :param model_args: Positional arguments to be passed into the wrapped model constructor.
-    #     :param query_point_transformer: Transformer for query points.
-    #     :param observation_transformer: Transformer for observations.
-    #     :param model_kwargs: Keyword arguments to be passed into the wrapped model constructor.
-    #     """
-    #     super().__init__(*model_args, **model_kwargs)  # type: ignore
-    #     self._query_point_transformer = (
-    #         query_point_transformer
-    #         if query_point_transformer is not None
-    #         else IdentityTransformer(data=None)
-    #     )
-    #     self._observation_transformer = (
-    #         observation_transformer
-    #         if observation_transformer is not None
-    #         else IdentityTransformer(data=None)
-    #     )
+        :param dataset: The unnormalized dataset.
+        :param model_args: Positional arguments to be passed into the wrapped model constructor.
+        :param query_point_transformer: Transformer for query points.
+        :param observation_transformer: Transformer for observations.
+        :param model_kwargs: Keyword arguments to be passed into the wrapped model constructor.
+        """
+        super().__init__(*model_args, **model_kwargs)  # type: ignore
+        if not hasattr(self, "_query_point_transformer"):
+            self._query_point_transformer = query_point_transformer
+        if not hasattr(self, "_observation_transformer"):
+            self._observation_transformer = observation_transformer
 
     def _transform_dataset(self, dataset: Dataset) -> Dataset:
         """Normalize dataset.
@@ -364,13 +358,13 @@ class DataTransformModelWrapper(TrainableProbabilisticModel):
         :param kwargs: Keyword arguments to pass to the model's `optimize` function.
         """
         transformed_dataset = self._transform_dataset(dataset)
-        super().optimize(transformed_dataset, *args, **kwargs)
+        super().optimize(transformed_dataset, *args, **kwargs)  # type: ignore
 
 
 def transform_data(
     query_point_transformer: DataTransformer = IdentityTransformer(data=None),
     observation_transformer: DataTransformer = IdentityTransformer(data=None),
-    model_wrapper: Type[DataTransformModelWrapper] = DataTransformModelWrapper
+    model_wrapper: Type[DataTransformModelWrapper] = DataTransformModelWrapper,
 ) -> Callable[[Type[TrainableProbabilisticModel]], Type[TrainableProbabilisticModel]]:
     """Create a decorator that returns a class that will transform data using
     `query_point_transformer` and `observation_transformer` as specified by `model_wrapper.
@@ -382,8 +376,9 @@ def transform_data(
     :return: A decorator that takes a `TrainableProbabilisticModel` class as input and returns a
     wrapped version that handles data transforms.
     """
+
     def data_transform_decorator(
-        model_class: Type[TrainableProbabilisticModel]
+        model_class: Type[TrainableProbabilisticModel],
     ) -> Type[TrainableProbabilisticModel]:
         """A decorator that creates wrapped :class:`TrainableProbabilisticModel`s.
 
@@ -395,8 +390,9 @@ def transform_data(
             (model_wrapper, model_class),
             dict(
                 _query_point_transformer=query_point_transformer,
-                _observation_transformer=observation_transformer
-            )
+                _observation_transformer=observation_transformer,
+            ),
         )
         return WrappedModel
+
     return data_transform_decorator

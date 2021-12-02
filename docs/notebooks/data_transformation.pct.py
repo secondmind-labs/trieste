@@ -295,7 +295,7 @@ normalized_data = Dataset(
 @transform_data(
     query_point_transformer, observation_transformer, GaussianProcessRegressionDataTransformWrapper
 )
-class GPRwithDataTransforms:
+class GPRwithDataTransforms(GaussianProcessRegression):
     pass
 
 model = GPRwithDataTransforms(

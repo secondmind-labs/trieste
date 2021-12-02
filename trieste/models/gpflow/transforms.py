@@ -1,3 +1,5 @@
+from typing import Any
+
 from trieste.data import Dataset
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -48,9 +50,11 @@ class VariationalGaussianProcessDataTransformWrapper(
     transformed before returning.
     """
 
-    def update(self, dataset: Dataset, *args, jitter: float = DEFAULTS.JITTER) -> None:
+    def update(
+        self, dataset: Dataset, *args: Any, jitter: float = DEFAULTS.JITTER, **kwargs: Any
+    ) -> None:
         """Wraps the `update` method so that jitter is transformed to normalised space.
-        
+
         :param dataset: The unnormalised dataset.
         :param args: Positional arguments to pass through to the superclass implementation.
         :param jitter: Jitter specified for the normalised space. Used for stabilizing the Cholesky
@@ -59,4 +63,4 @@ class VariationalGaussianProcessDataTransformWrapper(
         transformed_jitter = self._observation_transformer.transform_variance(jitter)
         # Standard DataTransformModelWrapper update method will take care of transforming dataset
         # and then calling the VariationalGaussianProcess update method.
-        return super().update(dataset, *args, jitter=transformed_jitter)
+        return super().update(dataset, *args, jitter=transformed_jitter, **kwargs)
