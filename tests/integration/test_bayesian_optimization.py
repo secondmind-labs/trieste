@@ -94,7 +94,8 @@ OPTIMIZER_PARAMS = (
                 22,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
-                        BRANIN_SEARCH_SPACE, min_value_sampler=ThompsonSamplerFromTrajectory
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
                 ),
             ),
@@ -145,7 +146,10 @@ OPTIMIZER_PARAMS = (
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory)),
+            (
+                10,
+                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
         ],
     ),
 )

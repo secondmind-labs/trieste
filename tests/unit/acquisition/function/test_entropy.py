@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import unittest.mock
-from typing import Callable
 from unittest.mock import MagicMock
 
 import gpflow
@@ -74,16 +73,35 @@ def test_min_value_entropy_search_builder_raises_for_invalid_init_params(param: 
         MinValueEntropySearch(search_space, grid_size=param)
 
 
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        ExactThompsonSampler(sample_min_value=False),
+        ThompsonSamplerFromTrajectory(sample_min_value=False),
+    ],
+)
+def test_mes_raises_if_passed_sampler_with_sample_min_value_False(sampler: ThompsonSampler) -> None:
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        MinValueEntropySearch(search_space, min_value_sampler=sampler)
+
+
 def test_mes_default_sampler_is_exact_thompson() -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space)
-    assert builder._min_value_sampler == ExactThompsonSampler
+    assert isinstance(builder._min_value_sampler, ExactThompsonSampler)
+    assert builder._min_value_sampler._sample_min_value
 
 
 @pytest.mark.parametrize(
-    "sampler", [ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory]
+    "sampler",
+    [
+        ExactThompsonSampler(sample_min_value=True),
+        GumbelSampler(sample_min_value=True),
+        ThompsonSamplerFromTrajectory(sample_min_value=True),
+    ],
 )
-def test_mes_initialized_with_passed_sampler(sampler: Callable[..., ThompsonSampler]) -> None:
+def test_mes_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space, min_value_sampler=sampler)
     assert builder._min_value_sampler == sampler
@@ -92,16 +110,21 @@ def test_mes_initialized_with_passed_sampler(sampler: Callable[..., ThompsonSamp
 def test_mes_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = MinValueEntropySearch(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
+    builder = MinValueEntropySearch(
+        search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
+    )
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
         builder.prepare_acquisition_function(model, dataset=dataset)
 
 
 @unittest.mock.patch("trieste.acquisition.function.entropy.min_value_entropy_search")
-@pytest.mark.parametrize("min_value_sampler", [ExactThompsonSampler, GumbelSampler])
+@pytest.mark.parametrize(
+    "min_value_sampler",
+    [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
+)
 def test_min_value_entropy_search_builder_builds_min_value_samples(
-    mocked_mves: MagicMock, min_value_sampler: Callable[..., ThompsonSampler]
+    mocked_mves: MagicMock, min_value_sampler: ThompsonSampler
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -121,9 +144,12 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)
 
 
-@pytest.mark.parametrize("min_value_sampler", [ExactThompsonSampler, GumbelSampler])
+@pytest.mark.parametrize(
+    "min_value_sampler",
+    [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
+)
 def test_min_value_entropy_search_builder_updates_acquisition_function(
-    min_value_sampler: Callable[..., ThompsonSampler]
+    min_value_sampler: ThompsonSampler,
 ) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
@@ -172,7 +198,9 @@ def test_min_value_entropy_search_builder_builds_min_value_samples_trajectory_sa
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    builder = MinValueEntropySearch(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
+    builder = MinValueEntropySearch(
+        search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
+    )
     builder.prepare_acquisition_function(model, dataset=dataset)
     mocked_mves.assert_called_once()
 
@@ -257,16 +285,37 @@ def test_gibbon_builder_raises_for_invalid_init_params(param: int) -> None:
         GIBBON(search_space, grid_size=param)
 
 
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        ExactThompsonSampler(sample_min_value=False),
+        ThompsonSamplerFromTrajectory(sample_min_value=False),
+    ],
+)
+def test_gibbon_raises_if_passed_sampler_with_sample_min_value_False(
+    sampler: ThompsonSampler,
+) -> None:
+    search_space = Box([0, 0], [1, 1])
+    with pytest.raises(ValueError):
+        GIBBON(search_space, min_value_sampler=sampler)
+
+
 def test_gibbon_default_sampler_is_exact_thompson() -> None:
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space)
-    assert builder._min_value_sampler == ExactThompsonSampler
+    assert isinstance(builder._min_value_sampler, ExactThompsonSampler)
+    assert builder._min_value_sampler._sample_min_value
 
 
 @pytest.mark.parametrize(
-    "sampler", [ExactThompsonSampler, GumbelSampler, ThompsonSamplerFromTrajectory]
+    "sampler",
+    [
+        ExactThompsonSampler(sample_min_value=True),
+        GumbelSampler(sample_min_value=True),
+        ThompsonSamplerFromTrajectory(sample_min_value=True),
+    ],
 )
-def test_gibbon_initialized_with_passed_sampler(sampler: Callable[..., ThompsonSampler]) -> None:
+def test_gibbon_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space, min_value_sampler=sampler)
     assert builder._min_value_sampler == sampler
@@ -275,7 +324,9 @@ def test_gibbon_initialized_with_passed_sampler(sampler: Callable[..., ThompsonS
 def test_gibbon_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = GIBBON(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
+    builder = GIBBON(
+        search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
+    )
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
         builder.prepare_acquisition_function(model, dataset=dataset)
@@ -308,10 +359,13 @@ def test_gibbon_quality_term_returns_correct_shape() -> None:
 
 
 @unittest.mock.patch("trieste.acquisition.function.entropy.gibbon_quality_term")
-@pytest.mark.parametrize("min_value_sampler", [ExactThompsonSampler, GumbelSampler])
+@pytest.mark.parametrize(
+    "min_value_sampler",
+    [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
+)
 def test_gibbon_builder_builds_min_value_samples(
     mocked_mves: MagicMock,
-    min_value_sampler: Callable[..., ThompsonSampler],
+    min_value_sampler: ThompsonSampler,
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -328,10 +382,11 @@ def test_gibbon_builder_builds_min_value_samples(
     assert max(min_value_samples) < min(fmean)  # type: ignore
 
 
-@pytest.mark.parametrize("min_value_sampler", [ExactThompsonSampler, GumbelSampler])
-def test_gibbon_builder_updates_acquisition_function(
-    min_value_sampler: Callable[..., ThompsonSampler]
-) -> None:
+@pytest.mark.parametrize(
+    "min_value_sampler",
+    [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
+)
+def test_gibbon_builder_updates_acquisition_function(min_value_sampler: ThompsonSampler) -> None:
 
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     x_range = tf.cast(tf.linspace(0.0, 1.0, 5), dtype=tf.float64)
@@ -425,7 +480,9 @@ def test_gibbon_builder_builds_min_value_samples_using_trajectories(mocked_mves:
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    builder = GIBBON(search_space, min_value_sampler=ThompsonSamplerFromTrajectory)
+    builder = GIBBON(
+        search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
+    )
     builder.prepare_acquisition_function(model, dataset=dataset)
     mocked_mves.assert_called_once()
 

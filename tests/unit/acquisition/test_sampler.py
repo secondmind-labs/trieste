@@ -36,25 +36,25 @@ def test_gumbel_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        GumbelSampler(sample_size, QuadraticMeanAndRBFKernel())
+        GumbelSampler(sample_min_value=True).sample(
+            QuadraticMeanAndRBFKernel(), sample_size, tf.zeros((100, 1))
+        )
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
 def test_gumbel_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
 ) -> None:
-    sampler = GumbelSampler(1, QuadraticMeanAndRBFKernel())
-
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.zeros(shape))
+        GumbelSampler(sample_min_value=True).sample(QuadraticMeanAndRBFKernel(), 1, tf.zeros(shape))
 
 
 @pytest.mark.parametrize("sample_size", [10, 100])
 def test_gumbel_sampler_returns_correctly_shaped_samples(sample_size: int) -> None:
     search_space = Box([0, 0], [1, 1])
-    gumbel_sampler = GumbelSampler(sample_size, QuadraticMeanAndRBFKernel())
+    gumbel_sampler = GumbelSampler(sample_min_value=True)
     query_points = search_space.sample(5)
-    gumbel_samples = gumbel_sampler.sample(query_points)
+    gumbel_samples = gumbel_sampler.sample(QuadraticMeanAndRBFKernel(), sample_size, query_points)
     tf.debugging.assert_shapes([(gumbel_samples, [sample_size, 1])])
 
 
@@ -68,11 +68,11 @@ def test_gumbel_samples_are_minima() -> None:
     dataset = Dataset(xs, ys)
 
     model = QuadraticMeanAndRBFKernel()
-    gumbel_sampler = GumbelSampler(5, model)
+    gumbel_sampler = GumbelSampler(sample_min_value=True)
 
     query_points = search_space.sample(100)
     query_points = tf.concat([dataset.query_points, query_points], 0)
-    gumbel_samples = gumbel_sampler.sample(query_points)
+    gumbel_samples = gumbel_sampler.sample(model, 5, query_points)
 
     fmean, _ = model.predict(dataset.query_points)
     assert max(gumbel_samples) < min(fmean)
@@ -83,17 +83,15 @@ def test_exact_thompson_sampler_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ExactThompsonSampler(sample_size, QuadraticMeanAndRBFKernel())
+        ExactThompsonSampler().sample(QuadraticMeanAndRBFKernel(), sample_size, tf.zeros([100, 1]))
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
 def test_exact_thompson_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
 ) -> None:
-    sampler = ExactThompsonSampler(1, QuadraticMeanAndRBFKernel())
-
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.zeros(shape))
+        ExactThompsonSampler().sample(QuadraticMeanAndRBFKernel(), 5, tf.zeros(shape))
 
 
 @pytest.mark.parametrize("sample_min_value", [True, False])
@@ -102,11 +100,11 @@ def test_exact_thompson_sampler_returns_correctly_shaped_samples(
     sample_min_value: bool, sample_size: int
 ) -> None:
     search_space = Box([0, 0], [1, 1])
-    thompson_sampler = ExactThompsonSampler(
-        sample_size, QuadraticMeanAndRBFKernel(), sample_min_value=sample_min_value
-    )
+    thompson_sampler = ExactThompsonSampler(sample_min_value=sample_min_value)
     query_points = search_space.sample(500)
-    thompson_samples = thompson_sampler.sample(query_points)
+    thompson_samples = thompson_sampler.sample(
+        QuadraticMeanAndRBFKernel(), sample_size, query_points
+    )
     if sample_min_value:
         tf.debugging.assert_shapes([(thompson_samples, [sample_size, 1])])
     else:
@@ -123,14 +121,14 @@ def test_exact_thompson_samples_are_minima() -> None:
     dataset = Dataset(xs, ys)
 
     model = QuadraticMeanAndRBFKernel()
-    gumbel_sampler = ExactThompsonSampler(5, model, sample_min_value=True)
+    thompson_sampler = ExactThompsonSampler(sample_min_value=True)
 
     query_points = search_space.sample(100)
     query_points = tf.concat([dataset.query_points, query_points], 0)
-    gumbel_samples = gumbel_sampler.sample(query_points)
+    thompson_samples = thompson_sampler.sample(model, 5, query_points)
 
     fmean, _ = model.predict(dataset.query_points)
-    assert max(gumbel_samples) < min(fmean)
+    assert max(thompson_samples) < min(fmean)
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -140,7 +138,7 @@ def test_thompson_trajectory_sampler_raises_for_invalid_sample_size(
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ThompsonSamplerFromTrajectory(sample_size, model)
+        ThompsonSamplerFromTrajectory().sample(model, sample_size, tf.zeros([100, 1]))
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [1, 2, 3]])
@@ -157,10 +155,10 @@ def test_thompson_trajectory_sampler_sample_raises_for_invalid_at_shape(
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    sampler = ThompsonSamplerFromTrajectory(1, model)
+    sampler = ThompsonSamplerFromTrajectory()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.zeros(shape))
+        sampler.sample(model, 1, tf.zeros(shape))
 
 
 @pytest.mark.parametrize("sample_min_value", [True, False])
@@ -182,10 +180,10 @@ def test_thompson_trajectory_sampler_returns_correctly_shaped_samples(
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    sampler = ThompsonSamplerFromTrajectory(sample_size, model, sample_min_value=sample_min_value)
+    sampler = ThompsonSamplerFromTrajectory(sample_min_value=sample_min_value)
 
     query_points = search_space.sample(100)
-    thompson_samples = sampler.sample(query_points)
+    thompson_samples = sampler.sample(model, sample_size, query_points)
     if sample_min_value:
         tf.debugging.assert_shapes([(thompson_samples, [sample_size, 1])])
     else:
@@ -201,17 +199,17 @@ def test_rff_thompson_samples_are_minima() -> None:
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
     model = QuadraticMeanAndRBFKernelWithSamplers(
-        dataset=dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
+        dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64)
     )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    sampler = ThompsonSamplerFromTrajectory(1, model, sample_min_value=True)
+    sampler = ThompsonSamplerFromTrajectory(sample_min_value=True)
 
-    query_points = search_space.sample(100)
+    query_points = search_space.sample(1000)
     query_points = tf.concat([dataset.query_points, query_points], 0)
-    thompson_samples = sampler.sample(query_points)
+    thompson_samples = sampler.sample(model, 1, query_points)
 
     fmean, _ = model.predict(dataset.query_points)
     assert max(thompson_samples) < min(fmean)

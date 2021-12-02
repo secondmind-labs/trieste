@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union, cast
+from typing import Generic, Optional, TypeVar, Union, cast
 
 import tensorflow as tf
 
@@ -651,7 +651,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         self,
         num_search_space_samples: int,
         num_query_points: int,
-        thompson_sampler: Optional[Callable[..., ThompsonSampler]] = None,
+        thompson_sampler: Optional[ThompsonSampler] = None,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
@@ -666,8 +666,16 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"Number of query points must be greater than 0, got {num_query_points}"
             )
 
-        if thompson_sampler is None:
-            thompson_sampler = ExactThompsonSampler
+        if thompson_sampler is not None:
+            if thompson_sampler.sample_min_value:
+                raise ValueError(
+                    """
+                    Thompson sampling requires a thompson_sampler that samples minimizers,
+                    not just minimum values. However the passed sampler has sample_min_value=True.
+                    """
+                )
+        else:
+            thompson_sampler = ExactThompsonSampler(sample_min_value=False)
 
         self._thompson_sampler = thompson_sampler
         self._num_search_space_samples = num_search_space_samples
@@ -708,11 +716,10 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
-        thompson_sampler = self._thompson_sampler(
-            self._num_query_points, models[OBJECTIVE], sample_min_value=False
-        )
         query_points = search_space.sample(self._num_search_space_samples)
-        thompson_samples = thompson_sampler.sample(query_points)
+        thompson_samples = self._thompson_sampler.sample(
+            models[OBJECTIVE], self._num_query_points, query_points
+        )
 
         return thompson_samples
 

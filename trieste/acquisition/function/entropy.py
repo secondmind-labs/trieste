@@ -16,7 +16,7 @@ This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Optional, cast
+from typing import Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -56,7 +56,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[Callable[..., ThompsonSampler]] = None,
+        min_value_sampler: Optional[ThompsonSampler] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -72,8 +72,16 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if min_value_sampler is None:
-            min_value_sampler = ExactThompsonSampler
+        if min_value_sampler is not None:
+            if not min_value_sampler.sample_min_value:
+                raise ValueError(
+                    """
+                    Minvalue Entropy Search requires a min_value_sampler that samples minimum
+                    values, however the passed sampler has sample_min_value=False.
+                    """
+                )
+        else:
+            min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
         self._min_value_sampler = min_value_sampler
         self._search_space = search_space
@@ -100,8 +108,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
-        min_value_samples = min_value_sampler.sample(query_points)
+        min_value_samples = self._min_value_sampler.sample(model, self._num_samples, query_points)
 
         return min_value_entropy_search(model, min_value_samples)
 
@@ -124,8 +131,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
-        min_value_samples = min_value_sampler.sample(query_points)
+        min_value_samples = self._min_value_sampler.sample(model, self._num_samples, query_points)
         function.update(min_value_samples)  # type: ignore
         return function
 
@@ -200,7 +206,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[Callable[..., ThompsonSampler]] = None,
+        min_value_sampler: Optional[ThompsonSampler] = None,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -220,8 +226,16 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if min_value_sampler is None:
-            min_value_sampler = ExactThompsonSampler
+        if min_value_sampler is not None:
+            if not min_value_sampler.sample_min_value:
+                raise ValueError(
+                    """
+                    GIBBON requires a min_value_sampler that samples minimum values,
+                    however the passed sampler has sample_min_value=False.
+                    """
+                )
+        else:
+            min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
         self._min_value_sampler = min_value_sampler
         self._search_space = search_space
@@ -328,8 +342,9 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_sampler = self._min_value_sampler(self._num_samples, model, sample_min_value=True)
-        self._min_value_samples = min_value_sampler.sample(query_points)
+        self._min_value_samples = self._min_value_sampler.sample(
+            model, self._num_samples, query_points
+        )
 
         if self._quality_term is not None:  # if possible, just update the quality term
             self._quality_term.update(self._min_value_samples)
