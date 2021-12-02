@@ -14,20 +14,29 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.utilities import to_default_float
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, various_shapes
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, gpr_model
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
+from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.acquisition.function.active_learning import (
     ExpectedFeasibility,
+    IntegratedVarianceReduction,
     PredictiveVariance,
     bichon_ranjan_criterion,
+    integrated_variance_reduction,
     predictive_variance,
 )
+from trieste.data import Dataset
+from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import branin
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -235,3 +244,151 @@ def test_bichon_ranjan_criterion(threshold: float, at: tf.Tensor, alpha: float, 
     )
 
     npt.assert_allclose(actual, expected, rtol=0.01)
+
+
+def test_integrated_variance_reduction() -> None:
+
+    x = to_default_float(tf.constant(np.arange(1, 7).reshape(-1, 1) / 8.0))  # shape: [6, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model6 = GaussianProcessRegression(gpr_model(x, y))
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    reduced_data = Dataset(x[:5, :], y[:5, :])
+    query_points = x[5:, :]
+    integration_points = tf.concat([0.37 * x, 1.7 * x], 0)  # shape: [14, 1]
+
+    _, pred_var6 = model6.predict(integration_points)
+
+    acq_noweight = IntegratedVarianceReduction(integration_points=integration_points)
+    acq = IntegratedVarianceReduction(threshold=[0.5, 0.8], integration_points=integration_points)
+
+    acq_function = acq.prepare_acquisition_function(model=model5, dataset=reduced_data)
+    acq_function_noweight = acq_noweight.prepare_acquisition_function(
+        model=model5, dataset=reduced_data
+    )
+    acq_values = -acq_function(tf.expand_dims(query_points, axis=-2))
+    acq_values_noweight = -acq_function_noweight(tf.expand_dims(query_points, axis=-2))
+
+    # Weighted criterion is always smaller than non-weighted
+    np.testing.assert_array_less(acq_values, acq_values_noweight)
+
+    # Non-weighted variance integral should match the one with fully updated model
+    np.testing.assert_allclose(tf.reduce_mean(pred_var6), acq_values_noweight[0], atol=1e-5)
+
+
+def test_integrated_variance_reduction_works_with_batch() -> None:
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0))  # shape: [7, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model7 = GaussianProcessRegression(gpr_model(x, y))
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    reduced_data = Dataset(x[:5, :], y[:5, :])
+    query_points = tf.expand_dims(x[5:, :], axis=0)  # one batch of 2
+
+    integration_points = tf.concat([0.37 * x, 1.7 * x], 0)  # shape: [14, 1]
+
+    _, pred_var7 = model7.predict(integration_points)
+
+    acq = IntegratedVarianceReduction(integration_points=integration_points)
+    acq_function = acq.prepare_acquisition_function(model=model5, dataset=reduced_data)
+    acq_values = -acq_function(query_points)
+
+    # Variance integral should match the one with fully updated model
+    np.testing.assert_allclose(tf.reduce_mean(pred_var7), acq_values, atol=1e-5)
+
+
+@pytest.mark.parametrize("integration_points", [tf.zeros([0, 2]), tf.zeros([1, 2, 3])])
+def test_integrated_variance_reduction_raises_for_invalid_integration_points(
+    integration_points: tf.Tensor,
+) -> None:
+    threshold = [1.0, 2.0]
+    query_at = tf.zeros([1, 1, 1])
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1)))
+    y = fnc_2sin_x_over_3(x)
+    model = GaussianProcessRegression(gpr_model(x, y))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        integrated_variance_reduction(model, integration_points, threshold)(query_at)
+
+
+@pytest.mark.parametrize("threshold", [[1.0, 2.0, 3.0], tf.zeros([2, 2]), [2.0, 1.0]])
+def test_integrated_variance_reduction_raises_for_invalid_threshold(
+    threshold: tf.Tensor | Sequence[float],
+) -> None:
+    integration_points = to_default_float(tf.zeros([5, 1]))
+    query_at = tf.zeros([1, 1, 1])
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1)))
+    y = fnc_2sin_x_over_3(x)
+    model = GaussianProcessRegression(gpr_model(x, y))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        integrated_variance_reduction(model, integration_points, threshold)(query_at)
+
+
+def test_integrated_variance_reduction_builds_acquisition_function() -> None:
+    threshold = [1.0, 2.0]
+    integration_points = to_default_float(tf.zeros([5, 1]))
+    query_at = to_default_float(tf.linspace([[-10]], [[10]], 100))
+
+    x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0))  # shape: [7, 1]
+    y = fnc_2sin_x_over_3(x)
+    model = GaussianProcessRegression(gpr_model(x, y))
+    acq_fn = IntegratedVarianceReduction(
+        integration_points, threshold
+    ).prepare_acquisition_function(model)
+    expected = integrated_variance_reduction(model, integration_points, threshold)(query_at)
+
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+
+@pytest.mark.parametrize(
+    "at",
+    [
+        tf.zeros([3, 2]),
+        tf.zeros(
+            [
+                3,
+            ]
+        ),
+    ],
+)
+def test_integrated_variance_reduction_raises_for_invalid_batch_size(at: TensorType) -> None:
+    threshold = [1.0, 2.0]
+
+    integration_points = to_default_float(tf.zeros([3, 1]))
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = GaussianProcessRegression(gpr_model(x, y))
+    acq_fn = IntegratedVarianceReduction(
+        integration_points, threshold
+    ).prepare_acquisition_function(model)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        acq_fn(to_default_float(at))
+
+
+def test_integrated_variance_reduction_builder_updates_without_retracing() -> None:
+    threshold = [1.0, 2.0]
+
+    integration_points = to_default_float(tf.zeros([3, 1]))
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = GaussianProcessRegression(gpr_model(x, y))
+
+    builder = IntegratedVarianceReduction(integration_points, threshold)
+    acq_fn = builder.prepare_acquisition_function(model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = integrated_variance_reduction(model, integration_points, threshold)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
