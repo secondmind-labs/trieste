@@ -19,7 +19,7 @@ learning.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -28,10 +28,10 @@ from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder
+from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
 
-class PredictiveVariance(SingleModelAcquisitionBuilder):
+class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
@@ -106,7 +106,7 @@ def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
     return acquisition
 
 
-class ExpectedFeasibility(SingleModelAcquisitionBuilder):
+class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the Expected feasibility acquisition function for identifying a failure or
     feasibility region. It implements two related sampling strategies called *bichon* criterion
@@ -245,3 +245,176 @@ def bichon_ranjan_criterion(
         return criterion
 
     return acquisition
+
+
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    """
+    Builder for the reduction of the integral of the predicted variance over the search
+    space given a batch of query points.
+    """
+
+    def __init__(
+        self,
+        integration_points: TensorType,
+        threshold: Optional[Union[float, Sequence[float], TensorType]] = None,
+    ) -> None:
+        """
+        :param integration_points: set of points to integrate the prediction variance over.
+        :param threshold: either None, a float or a sequence of 1 or 2 float values.
+        """
+        self._integration_points = integration_points
+        self._threshold = threshold
+
+    def __repr__(self) -> str:
+        """"""
+        return f"IntegratedVarianceReduction(threshold={self._threshold!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The integral of the predictive variance.
+        """
+
+        return integrated_variance_reduction(model, self._integration_points, self._threshold)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class integrated_variance_reduction(AcquisitionFunctionClass):
+    r"""
+    The reduction of the (weighted) average of the predicted variance over the integration points
+    (a.k.a. Integrated Means Square Error or IMSE criterion).
+    See :cite:`Picheny2010` for details.
+
+    The criterion (to maximise) writes as:
+
+        .. math:: \int_x (v_{old}(x) - v_{new}(x)) * weights(x),
+
+    where :math:`v_{old}(x)` is the predictive variance of the model at :math:`x`, and
+    :math:`v_{new}(x)` is the updated predictive variance, given that the GP is further
+    conditioned on the query points.
+
+    Note that since :math:`v_{old}(x)` is constant w.r.t. the query points, this function
+    only returns :math:`-\int_x v_{new}(x) * weights(x)`.
+
+    If no threshold is provided, the goal is to learn a globally accurate model, and
+    the predictive variance (:math:`v_{new}`) is used. Otherwise, learning is 'targeted'
+    towards regions where the GP is close to particular values, and the variance is weighted
+    by the posterior GP pdf evaluated at the threshold T (if a single value is given) or by the
+    probability that the GP posterior belongs to the interval between the 2 thresholds T1 and T2
+    (note the slightly different parametrisation compared to :cite:`Picheny2010` in that case).
+
+    This criterion allows batch size > 1. Note that the computational cost grows cubically with
+    the batch size.
+
+    This criterion requires a method (conditional_predict_f) to compute the new predictive variance
+    given that query points are added to the data.
+    """
+
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        integration_points: TensorType,
+        threshold: Optional[Union[float, Sequence[float], TensorType]] = None,
+    ):
+        """
+        :param model: The model of the objective function.
+        :param integration_points: Points over which to integrate the objective prediction variance.
+        :param threshold: Either None, a float or a sequence of 1 or 2 float values.
+            See class docs for details.
+        :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
+        """
+        if not hasattr(model, "conditional_predict_f"):
+            raise AttributeError(
+                """
+                Integrated variance reduction only supports models with a
+                conditional_predict_f method.
+                """
+            )
+
+        self._model = model
+
+        tf.debugging.assert_equal(
+            len(tf.shape(integration_points)),
+            2,
+            message="integration_points must be of shape [N, D]",
+        )
+
+        tf.debugging.assert_positive(
+            tf.shape(integration_points)[0],
+            message="integration_points should contain at least one point",
+        )
+
+        self._integration_points = integration_points
+
+        if threshold is None:
+            self._weights = tf.cast(1.0, integration_points.dtype)
+
+        else:
+            if isinstance(threshold, float):
+                t_threshold = tf.cast([threshold], integration_points.dtype)
+            else:
+                t_threshold = tf.cast(threshold, integration_points.dtype)
+
+                tf.debugging.assert_rank(
+                    t_threshold,
+                    1,
+                    message=f"threshold should be a float, a sequence "
+                    f"or a rank 1 tensor, received {tf.shape(t_threshold)}",
+                )
+                tf.debugging.assert_less_equal(
+                    tf.size(t_threshold),
+                    2,
+                    message=f"threshold should have one or two values,"
+                    f" received {tf.size(t_threshold)}",
+                )
+                tf.debugging.assert_greater_equal(
+                    tf.size(t_threshold),
+                    1,
+                    message=f"threshold should have one or two values,"
+                    f" received {tf.size(t_threshold)}",
+                )
+                if tf.size(t_threshold) > 1:
+                    tf.debugging.assert_greater_equal(
+                        t_threshold[1],
+                        t_threshold[0],
+                        message=f"threshold values should be in increasing order,"
+                        f" received {t_threshold}",
+                    )
+
+            if tf.size(t_threshold) == 1:
+                mean_old, var_old = self._model.predict(query_points=integration_points)
+                distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                self._weights = distr.prob(t_threshold[0])
+            else:
+                mean_old, var_old = self._model.predict(query_points=integration_points)
+                distr = tfp.distributions.Normal(mean_old, tf.sqrt(var_old))
+                self._weights = distr.cdf(t_threshold[1]) - distr.cdf(t_threshold[0])
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+
+        additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
+
+        _, variance = self._model.conditional_predict_f(  # type: ignore
+            query_points=self._integration_points, additional_data=additional_data
+        )
+
+        return -tf.reduce_mean(variance * self._weights, axis=-2)

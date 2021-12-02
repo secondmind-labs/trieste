@@ -102,7 +102,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         covs = [
             k.tensor(query_points_1, query_points_2, 1, 1)[..., None, :, :] for k in self._kernels
         ]
-        return tf.squeeze(tf.concat(covs, axis=-3))
+        return tf.concat(covs, axis=-3)
 
 
 class GaussianProcessWithSamplers(GaussianProcess):

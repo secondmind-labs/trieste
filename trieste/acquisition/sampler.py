@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module is the home of the sampling functionality required by Trieste's
-acquisiiton functions.
+acquisition functions.
 """
 
 from __future__ import annotations
@@ -187,7 +187,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
     This sampler provides approximate Thompson samples of the objective function's
     minimiser :math:`x^*` by minimizing approximate trajectories sampled from the
     underlying probabilistic model. This sampling method can be used for any
-    probabilistic model with a :method:`trajectory_sampler` method.
+    probabilistic model with a :meth:`trajectory_sampler` method.
     """
 
     def __init__(
@@ -201,7 +201,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
         :param model: The model to sample from.
         :sample_min_value: If True then sample from the minimum value of the function,
             else sample the function's minimiser.
-        :raise ValueError: If model does not have a :method:`trajectory_sampler` method.
+        :raise ValueError: If model does not have a :meth:`trajectory_sampler` method.
         """
         super().__init__(sample_size, model, sample_min_value)
 
@@ -214,6 +214,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
             trajectory_sampler method.
             """
             )
+
         self._trajectory_sampler = trajectory_sampler
 
     def __repr__(self) -> str:

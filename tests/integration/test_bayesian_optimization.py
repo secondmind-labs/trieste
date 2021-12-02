@@ -33,7 +33,6 @@ from trieste.acquisition import (
     LocalPenalizationAcquisitionFunction,
     MinValueEntropySearch,
 )
-from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -43,6 +42,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
@@ -229,6 +229,7 @@ def _test_optimizer_finds_minimum(
                 npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
+            # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule._acquisition_function
                 if isinstance(acq_function, AcquisitionFunctionClass):
