@@ -40,7 +40,7 @@ from .function import (
     lower_confidence_bound,
     probability_of_feasibility,
 )
-from .greedy import LocalPenalizationAcquisitionFunction, hard_local_penalizer, soft_local_penalizer
+from .greedy_batch import LocalPenalizationAcquisitionFunction, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
