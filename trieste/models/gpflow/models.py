@@ -55,7 +55,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
             evaluate before beginning model optimization. Therefore, for a kernel with `p`
             (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
         :param num_rff_features: The number of random Foruier features used to approximate the
-            kernel when calling :method:`trajectory_sampler`. We use a default of 1000 as it
+            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
         """
