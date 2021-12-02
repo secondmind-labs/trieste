@@ -13,9 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import copy
 import tempfile
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, Union
 
 import gpflow
 import numpy.testing as npt
@@ -65,27 +64,30 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
+
 # Optimizer parameters for testing against the branin function.
-# We use a copy of these for a quicker test against a simple quadratic function
-# (copying is necessary as some of the acquisition rules are stateful).
-OPTIMIZER_PARAMS = (
-    "num_steps, acquisition_rule",
-    cast(
-        List[
-            Tuple[
-                int,
-                Union[
-                    AcquisitionRule[TensorType, Box],
-                    AcquisitionRule[
-                        State[
-                            TensorType,
-                            Union[AsynchronousRuleState, TrustRegion.State],
-                        ],
-                        Box,
+# We also use these for a quicker test against a simple quadratic function
+# (regenerating is necessary as some of the acquisition rules are stateful).
+def OPTIMIZER_PARAMS() -> Tuple[
+    str,
+    List[
+        Tuple[
+            int,
+            Union[
+                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[
+                    State[
+                        TensorType,
+                        Union[AsynchronousRuleState, TrustRegion.State],
                     ],
+                    Box,
                 ],
-            ]
-        ],
+            ],
+        ]
+    ],
+]:
+    return (
+        "num_steps, acquisition_rule",
         [
             (20, EfficientGlobalOptimization()),
             (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
@@ -146,13 +148,12 @@ OPTIMIZER_PARAMS = (
             (10, DiscreteThompsonSampling(500, 3)),
             (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
         ],
-    ),
-)
+    )
 
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -162,7 +163,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
-@pytest.mark.parametrize(*copy.deepcopy(OPTIMIZER_PARAMS))
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -228,6 +229,7 @@ def _test_optimizer_finds_minimum(
                 npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
+            # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule._acquisition_function
                 if isinstance(acq_function, AcquisitionFunctionClass):

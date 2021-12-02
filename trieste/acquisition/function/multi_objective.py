@@ -36,7 +36,7 @@ from ..sampler import BatchReparametrizationSampler
 from .function import ExpectedConstrainedImprovement
 
 
-class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
@@ -201,7 +201,9 @@ class expected_hv_improvement(AcquisitionFunctionClass):
         )
 
 
-class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+class BatchMonteCarloExpectedHypervolumeImprovement(
+    SingleModelAcquisitionBuilder[ProbabilisticModel]
+):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
