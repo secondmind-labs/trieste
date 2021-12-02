@@ -15,17 +15,76 @@
 from __future__ import annotations
 
 import gpflow
-import numpy as np
 import pytest
-import tensorflow as tf
+from gpflow.models import GPR, SVGP
 
-from tests.util.models.gpflow.models import gpr_model
-from tests.util.models.models import fnc_3x_plus_10
-from trieste.models import ModelConfig
+from tests.util.models.gpflow.models import mock_data
+from trieste.models import ModelConfig, ModelRegistry, create_model
+from trieste.models.gpflow import GaussianProcessRegression, SparseVariational
+from trieste.models.optimizer import Optimizer
 
 
-def test_model_missing_abstract_method() -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model_specs = {"model": gpr_model(x, fnc_3x_plus_10(x))}
+class GPRcopy(GPR):
+    """A copy of the GPR model."""
+
+
+class SVGPcopy(SVGP):
+    """A copy of the SVGP model."""
+
+
+def gpr_copy_model() -> GPRcopy:
+    return GPRcopy(mock_data(), gpflow.kernels.Matern32())
+
+
+def test_model_config_raises_not_supported_model_type() -> None:
+
+    model = gpr_copy_model()
     with pytest.raises(NotImplementedError):
-        ModelConfig(**model_specs)
+        ModelConfig(model)
+
+
+def test_model_registry_raises_on_unsupported_model() -> None:
+
+    model = gpr_copy_model()
+
+    with pytest.raises(ValueError):
+        ModelRegistry.get_interface(model)
+
+    with pytest.raises(ValueError):
+        ModelRegistry.get_optimizer(model)
+
+
+def test_model_registry_register_model() -> None:
+
+    ModelRegistry.register_model(GPRcopy, GaussianProcessRegression, Optimizer)
+    model_type = type(gpr_copy_model())
+
+    assert ModelRegistry.get_interface(model_type) == GaussianProcessRegression
+    assert ModelRegistry.get_optimizer(model_type) == Optimizer
+
+
+def test_model_registry_register_model_warning() -> None:
+
+    ModelRegistry.register_model(SVGPcopy, SparseVariational, Optimizer)
+
+    with pytest.warns(UserWarning) as record:
+        ModelRegistry.register_model(SVGPcopy, SparseVariational, Optimizer)
+
+    assert len(record) == 1
+    assert "you have now overwritten it" in record[0].message.args[0]
+
+
+def test_model_config_builds_model_correctly() -> None:
+
+    model = gpr_copy_model()
+
+    assert isinstance(ModelConfig(model).build_model(), GaussianProcessRegression)
+
+
+def test_create_model_builds_model_correctly() -> None:
+
+    model = gpr_copy_model()
+
+    assert isinstance(create_model(ModelConfig(model)), GaussianProcessRegression)
+    assert isinstance(create_model({"model": model}), GaussianProcessRegression)
+    assert isinstance(create_model(GaussianProcessRegression(model)), GaussianProcessRegression)

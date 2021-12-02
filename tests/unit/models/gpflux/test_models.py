@@ -40,16 +40,17 @@ from tests.util.models.gpflux.models import single_layer_dgp_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
 
 def test_dgp_raises_for_non_tf_optimizer(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
-    optimizer = gpflow.optimizers.Scipy()
+    optimizer = Optimizer(gpflow.optimizers.Scipy())
 
     with pytest.raises(ValueError):
-        DeepGaussianProcess(dgp, optimizer=optimizer)
+        DeepGaussianProcess(dgp, optimizer)
 
 
 def test_dgp_raises_for_keras_layer() -> None:
@@ -130,8 +131,8 @@ def test_dgp_optimize_with_defaults(
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
     dataset = Dataset(*data)
-    optimizer = tf.optimizers.Adam()
-    model = DeepGaussianProcess(two_layer_model(x_observed), optimizer=optimizer)
+    optimizer = Optimizer(tf.optimizers.Adam())
+    model = DeepGaussianProcess(two_layer_model(x_observed), optimizer)
     elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
     assert model.model_gpflux.elbo(data) > elbo
@@ -146,11 +147,10 @@ def test_dgp_optimize(
     data = x_observed, y_observed
     dataset = Dataset(*data)
 
-    optimizer = tf.optimizers.Adam()
-
     fit_args = {"batch_size": batch_size, "epochs": 10, "verbose": 0}
+    optimizer = Optimizer(tf.optimizers.Adam(), fit_args)
 
-    model = DeepGaussianProcess(two_layer_model(x_observed), optimizer, fit_args)
+    model = DeepGaussianProcess(two_layer_model(x_observed), optimizer)
     elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
     assert model.model_gpflux.elbo(data) > elbo
@@ -187,7 +187,7 @@ def test_dgp_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_model(x),
-        optimizer=tf.optimizers.Adam(),
+        Optimizer(tf.optimizers.Adam()),
     )
     num_samples = 50
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
@@ -238,10 +238,9 @@ def test_dgp_resets_lr_with_lr_schedule(
         "verbose": 0,
         "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
     }
+    optimizer = Optimizer(tf.optimizers.Adam(init_lr), fit_args)
 
-    optimizer = tf.optimizers.Adam(init_lr)
-
-    model = DeepGaussianProcess(two_layer_model(x), optimizer=optimizer, fit_args=fit_args)
+    model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 

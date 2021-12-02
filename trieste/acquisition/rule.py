@@ -32,11 +32,10 @@ from ..models import ProbabilisticModel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
-from .function import (
+from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedImprovement,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -119,10 +118,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder
-            | GreedyAcquisitionFunctionBuilder
-            | SingleModelAcquisitionBuilder
-            | SingleModelGreedyAcquisitionBuilder
+            AcquisitionFunctionBuilder[ProbabilisticModel]
+            | GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -163,7 +162,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             # Joint batch acquisitions require batch optimizers
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder: Union[AcquisitionFunctionBuilder, GreedyAcquisitionFunctionBuilder] = builder
+        self._builder: Union[
+            AcquisitionFunctionBuilder[ProbabilisticModel],
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModel],
+        ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
         self._acquisition_function: Optional[AcquisitionFunction] = None
@@ -349,7 +351,10 @@ class AsynchronousOptimization(
 
     def __init__(
         self,
-        builder: Optional[AcquisitionFunctionBuilder | SingleModelAcquisitionBuilder] = None,
+        builder: Optional[
+            AcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+        ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -381,7 +386,7 @@ class AsynchronousOptimization(
         if num_query_points > 1:
             optimizer = batchify(optimizer, num_query_points)
 
-        self._builder: AcquisitionFunctionBuilder = builder
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
@@ -494,7 +499,8 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder | SingleModelGreedyAcquisitionBuilder,
+        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel],
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -529,7 +535,7 @@ class AsynchronousGreedy(
         if isinstance(builder, SingleModelGreedyAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
 
-        self._builder: GreedyAcquisitionFunctionBuilder = builder
+        self._builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
         self._num_query_points = num_query_points

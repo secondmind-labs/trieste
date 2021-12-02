@@ -59,7 +59,7 @@ quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
 mypy = "mypy"
 pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
-format = "black . && flake8 . && isort ."
+format = "black . && flake8 . && isort . && black -l 80 notebooks/*pct.py"
 
 [tool.coverage.report]
 exclude_lines = [
