@@ -26,6 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
+from time import time
 from typing import Any
 
 import gpflow
@@ -500,6 +501,79 @@ def test_gaussian_process_regression_optimize(
     loss = internal_model.training_loss(**args)
     model.optimize(Dataset(*data))
     assert internal_model.training_loss(**args) < loss
+
+
+@random_seed
+@pytest.mark.parametrize("after_model_optimize", [True, False])
+@pytest.mark.parametrize("after_model_update", [True, False])
+def test_gaussian_process_cached_predictions_correct(
+    after_model_optimize: bool,
+    after_model_update: bool,
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 5, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    data = x, y
+    dataset = Dataset(*data)
+    model, _ = gpflow_interface_factory(
+        x,
+        y,
+        optimizer=Optimizer(
+            gpflow.optimizers.Scipy(), minimize_args={"options": {"max_iters": 5}}, compile=True
+        ),
+    )
+
+    if isinstance(model, VariationalGaussianProcess):
+        pytest.skip("Cached predictions are only implemented for the GPR models.")
+
+    if after_model_optimize:
+        model.optimize(dataset)
+
+    if after_model_update:
+        new_x = np.linspace(0, 5, 3).reshape((-1, 1))
+        new_y = fnc_2sin_x_over_3(new_x)
+        new_dataset = Dataset(new_x, new_y)
+        model.update(new_dataset)
+        model.optimize(new_dataset)
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    cached_fmean, cached_fvar = model.predict(x_predict)
+    cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
+    cached_ymean, cached_yvar = model.predict_y(x_predict)
+
+    reference_fmean, reference_fvar = model.model.predict_f(x_predict)
+    reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
+    reference_ymean, reference_yvar = model.model.predict_y(x_predict)
+
+    npt.assert_allclose(cached_fmean, reference_fmean)
+    npt.assert_allclose(cached_ymean, reference_ymean)
+    npt.assert_allclose(cached_joint_mean, reference_joint_mean)
+    npt.assert_allclose(cached_fvar, reference_fvar, atol=1e-5)
+    npt.assert_allclose(cached_yvar, reference_yvar, atol=1e-5)
+    npt.assert_allclose(cached_joint_var, reference_joint_var, atol=1e-5)
+    npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
+
+
+@random_seed
+def test_gaussian_process_cached_predictions_faster(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 10, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if isinstance(model, VariationalGaussianProcess):
+        pytest.skip("Cached predictions are only implemented for the GPR models.")
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    t_0 = time()
+    [model.predict(x_predict) for _ in range(10)]
+    time_with_cache = time() - t_0
+    t_0 = time()
+    [model.model.predict_f(x_predict) for _ in range(10)]
+    time_without_cache = time() - t_0
+
+    npt.assert_array_less(time_with_cache, time_without_cache)
 
 
 @random_seed
