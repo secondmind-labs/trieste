@@ -19,6 +19,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 from gpflow.utilities import to_default_float
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
@@ -36,6 +37,7 @@ from trieste.acquisition.function.greedy_batch import (
     LocalPenalizationAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,
+    _fantasized_model,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
@@ -250,23 +252,55 @@ def test_fantasize_reduces_predictive_variance() -> None:
     tf.assert_less(acq_val1, acq_val0)
 
 
-test_fantasize_reduces_predictive_variance()
-
-
 def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
-    x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
+    x = to_default_float(
+        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
+    )  # shape: [23, 1]
     y = fnc_2sin_x_over_3(x)
 
-    x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
-    pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
 
-    data = {"OBJECTIVE": Dataset(x, y)}
-    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+    query_points = to_default_float(tf.constant(np.arange(1, 21).reshape(-1, 1) / 20.0))[..., None]
+    query_points = tf.reshape(query_points, [4, 5, 1])
 
-    builder = FantasizeAcquisitionFunction(PredictiveVariance())
-    acq0 = builder.prepare_acquisition_function(models, data)
-    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+    fanta_model5 = _fantasized_model(model5, additional_data)
 
-    acq_val0 = acq0(x_test)
-    acq_val1 = acq1(x_test)
-    tf.assert_less(acq_val1, acq_val0)
+    num_samples = 100000
+    samples_fm5 = fanta_model5.sample(query_points, num_samples)
+    pred_f_mean_fm5, pred_f_var_fm5 = fanta_model5.predict(query_points)
+    pred_y_mean_fm5, pred_y_var_fm5 = fanta_model5.predict_y(query_points)
+    pred_j_mean_fm5, pred_j_cov_fm5 = fanta_model5.predict_joint(query_points)
+
+    tf.assert_equal(samples_fm5.shape, [4, 3, num_samples, 5, 1])
+    tf.assert_equal(pred_f_mean_fm5.shape, [4, 3, 5, 1])
+    tf.assert_equal(pred_f_var_fm5.shape, [4, 3, 5, 1])
+    tf.assert_equal(pred_j_cov_fm5.shape, [4, 3, 1, 5, 5])
+
+    np.testing.assert_allclose(pred_f_mean_fm5, pred_j_mean_fm5, atol=1e-5)
+    np.testing.assert_allclose(pred_f_mean_fm5, pred_y_mean_fm5, atol=1e-5)
+
+    samples_fm5_mean = tf.reduce_mean(samples_fm5, axis=-3)
+    samples_fm5_cov = tfp.stats.covariance(samples_fm5[..., 0], sample_axis=-2)
+
+    for j in range(3):
+
+        samples_m5 = model5.conditional_predict_f_sample(query_points[j], additional_data, num_samples)
+
+        pred_f_mean_m5, pred_f_var_m5 = model5.conditional_predict_f(query_points[j], additional_data)
+        pred_j_mean_m5, pred_j_cov_m5 = model5.conditional_predict_joint(query_points[j], additional_data)
+        pred_y_mean_m5, pred_y_var_m5 = model5.conditional_predict_y(query_points[j], additional_data)
+
+        sample_m5_mean = tf.reduce_mean(samples_m5, axis=1)
+        sample_m5_cov = tfp.stats.covariance(samples_m5[..., 0], sample_axis=1)
+
+        np.testing.assert_allclose(sample_m5_mean, samples_fm5_mean[j], atol=1e-2, rtol=1e-2)
+        np.testing.assert_allclose(sample_m5_cov, samples_fm5_cov[j], atol=1e-2, rtol=1e-2)
+
+        np.testing.assert_allclose(pred_f_mean_m5, pred_f_mean_fm5[j], atol=1e-5)
+        np.testing.assert_allclose(pred_y_mean_m5, pred_y_mean_fm5[j], atol=1e-5)
+        np.testing.assert_allclose(pred_j_mean_m5, pred_j_mean_fm5[j], atol=1e-5)
+
+        np.testing.assert_allclose(pred_f_var_m5, pred_f_var_fm5[j], atol=1e-5)
+        np.testing.assert_allclose(pred_y_var_m5, pred_y_var_fm5[j], atol=1e-5)
+        np.testing.assert_allclose(pred_j_cov_m5, pred_j_cov_fm5[j], atol=1e-5)

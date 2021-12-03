@@ -560,7 +560,7 @@ def _broadcast_predict(
 
     :param query_points: shape [...*, n, d]
     :param fun: callable that returns two tensors (e.g. a predict function)
-    :return:
+    :return: two tensors (e.g. mean and variance) with shape [...*, ...]
     """
     leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
     # leading_dim =...*, product = B
