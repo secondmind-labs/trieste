@@ -251,3 +251,22 @@ def test_fantasize_reduces_predictive_variance() -> None:
 
 
 test_fantasize_reduces_predictive_variance()
+
+
+def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
+    x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
+    y = fnc_2sin_x_over_3(x)
+
+    x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
+    pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
+
+    data = {"OBJECTIVE": Dataset(x, y)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+
+    builder = FantasizeAcquisitionFunction(PredictiveVariance())
+    acq0 = builder.prepare_acquisition_function(models, data)
+    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+
+    acq_val0 = acq0(x_test)
+    acq_val1 = acq1(x_test)
+    tf.assert_less(acq_val1, acq_val0)

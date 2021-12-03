@@ -385,6 +385,7 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
         fantasize_method: str = "KB",
     ):
         """
+
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
         :param fantasize_method" one of "KB", "sample"
@@ -408,6 +409,7 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
+
         :param models: The models over each tag.
         :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
