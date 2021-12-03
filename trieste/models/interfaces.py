@@ -18,10 +18,10 @@ from abc import ABC, abstractmethod
 
 import gpflow
 import tensorflow as tf
-from gpflow.sampler import BatchReparameterizationSampler
 
 from ..data import Dataset
 from ..types import TensorType
+from .gpflow.sampler import BatchReparametrizationSampler
 from .sampler import ReparametrizationSampler, TrajectorySampler
 
 
@@ -268,7 +268,7 @@ class ModelStack(TrainableProbabilisticModel):
         """
         Return a reparameterization sampler providing `num_samples` samples across
         all the models in the model stack. This is currently only implemented for
-        stacks made from models that have a :class:`BatchReparameterizationSampler`
+        stacks made from models that have a :class:`BatchReparametrizationSampler`
         as their reparameterization sampler.
 
         :param num_samples: The desired number of samples.
@@ -279,15 +279,15 @@ class ModelStack(TrainableProbabilisticModel):
 
         samplers = [model.reparam_sampler(num_samples) for model in self._models]
 
-        if all(isinstance(sampler, BatchReparameterizationSampler) for sampler in samplers):
-            return BatchReparameterizationSampler(
+        if all(isinstance(sampler, BatchReparametrizationSampler) for sampler in samplers):
+            return BatchReparametrizationSampler(
                 num_samples, self
             )  # return the shared sampler rebuilt for the whole model stack
         else:
             raise NotImplementedError(
                 f"""
                 Reparameterization sampling is only currently supported for model
-                stacks built from models that use the BatchReparameterizationSampler
+                stacks built from models that use the BatchReparametrizationSampler
                 however, received {samplers}.
                 """
             )
