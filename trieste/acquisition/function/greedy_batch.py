@@ -390,10 +390,7 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
         :param fantasize_method" one of "KB", "sample"
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(
-            fantasize_method in ["KB", "sample"],
-            message=f"fantasize_method must be KG or sample," f"received {fantasize_method}",
-        )
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -418,8 +415,10 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
         :return: An acquisition function.
         """
         if pending_points is not None:
+            tf.debugging.assert_rank(pending_points, 2)
+
             fantasized_data = {
-                tag: _generate_fantasized_data(model, pending_points, self._fantasize_method)
+                tag: self._generate_fantasized_data(model, pending_points)
                 for tag, model in models.items()
             }
             models = {
@@ -428,21 +427,15 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
 
         return self._builder.prepare_acquisition_function(models, datasets)
 
+    def _generate_fantasized_data(
+        self, model: ProbabilisticModel, pending_points: TensorType
+    ) -> Dataset:
+        if self._fantasize_method == "KB":
+            fantasized_obs, _ = model.predict(pending_points)
+        else:
+            fantasized_obs = model.sample(pending_points, num_samples=1)  # TODO check dim
 
-def _generate_fantasized_data(
-    model: ProbabilisticModel, pending_points: TensorType, fantasize_method: str
-) -> Dataset:
-    if fantasize_method == "KB":
-        fantasized_obs, _ = model.predict(pending_points)
-    elif fantasize_method == "sample":
-        fantasized_obs = model.sample(pending_points, num_samples=1)  # TODO check dim
-    else:
-        raise NotImplementedError(
-            f"Fantasize method not supported. "
-            f"Expected KB or sample, received "
-            f"{fantasize_method}"
-        )
-    return Dataset(pending_points, fantasized_obs)
+        return Dataset(pending_points, fantasized_obs)
 
 
 class _fantasized_model(ProbabilisticModel):
@@ -470,18 +463,73 @@ class _fantasized_model(ProbabilisticModel):
         self._fantasized_data = fantasized_data
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._model.conditional_predict_f(query_points, self._fantasized_data)
+        """
+        This function wraps conditional_predict_f. It cannot directly call
+        conditional_predict_f, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, n, d]
+        :return: mean, shape [...*, ..., n, L] and cov, shape [...*, ..., L, n],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_f(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._model.conditional_predict_joint(query_points, self._fantasized_data)
+        """
+        This function wraps conditional_predict_joint. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, n, d]
+        :return: mean, shape [...*, ..., n, L] and cov, shape [...*, ..., L, n, n],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_joint(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self._model.conditional_predict_f_sample(
-            query_points, self._fantasized_data, num_samples
-        )
+        """
+        This function wraps conditional_predict_f_sample. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, n, d]
+        :return: samples of shape [...*, ..., S, n, L], where ... are the leading
+            dimensions of fantasized_data
+        """
+        leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
+        # query_points_flatten: [B, n, d], leading_dim =...*, product = B
+
+        samples = tf.map_fn(
+            fn=lambda qp: self._model.conditional_predict_f_sample(
+                qp, self._fantasized_data, num_samples
+            ),
+            elems=query_points_flatten,
+        )  # [B, ..., S, L]
+        return _restore_leading_dim(samples, leading_dim)
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._model.conditional_predict_y(query_points, self._fantasized_data)
+        """
+        This function wraps conditional_predict_y. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, n, d]
+        :return: mean, shape [...*, ..., n, L] and var, shape [...*, ..., L, n],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_y(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
 
     def get_observation_noise(self) -> TensorType:
         return self._model.get_observation_noise()
@@ -497,3 +545,56 @@ class _fantasized_model(ProbabilisticModel):
 
     def optimize(self, dataset: Dataset) -> None:
         raise NotImplementedError
+
+
+def _broadcast_predict(
+    query_points: TensorType, fun: Callable[[TensorType], tuple[TensorType, TensorType]]
+) -> tuple[TensorType, TensorType]:
+    """
+    Utility function that allows leading dimensions for query_points when
+    fun only accepts rank2 tensors. It works by flattening query_points into
+    a rank 3 tensor, evaluate fun(query_points) through tf.map_fn, then
+    restoring the leading dimensions.
+
+    :param query_points: shape [...*, n, d]
+    :param fun: callable that returns two tensors (e.g. a predict function)
+    :return:
+    """
+    leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
+    # leading_dim =...*, product = B
+    # query_points_flatten: [B, n, d]
+
+    mean_signature = tf.TensorSpec(None, query_points.dtype)
+    var_signature = tf.TensorSpec(None, query_points.dtype)
+    mean, var = tf.map_fn(
+        fn=fun,
+        elems=query_points_flatten,
+        fn_output_signature=(mean_signature, var_signature),
+    )  # [B, ..., L, n], [B, ..., L, n] (predict_f) or [B, ..., L, n, n] (predict_joint)
+
+    return _restore_leading_dim(mean, leading_dim), _restore_leading_dim(var, leading_dim)
+
+
+def _get_leading_dim_and_flatten(query_points: TensorType) -> tuple[TensorType, TensorType]:
+    """
+
+    :param query_points: shape [...*, n, d]
+    :return: leading_dim = ....*, query_points_flatten, shape [B, n, d]
+    """
+    leading_dim = tf.shape(query_points)[:-2]  # =...*, product = B
+    nd = tf.shape(query_points)[-2:]
+    query_points_flatten = tf.reshape(query_points, (-1, nd[0], nd[1]))  # [B, n, d]
+    return leading_dim, query_points_flatten
+
+
+def _restore_leading_dim(x: TensorType, leading_dim: TensorType) -> TensorType:
+    """
+    "Un-flatten" the first dimension of x to leading_dim
+
+    :param x: shape [B, ...]
+    :param leading_dim: [...*]
+    :return: shape [...*, ...]
+    """
+    single_x_shape = tf.shape(x[0])  # = [...]
+    output_x_shape = tf.concat([leading_dim, single_x_shape], axis=0)  # = [...*, ...]
+    return tf.reshape(x, output_x_shape)  # [...*, ...]

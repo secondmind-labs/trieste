@@ -15,18 +15,22 @@ from __future__ import annotations
 
 from typing import Callable, Union
 
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from gpflow.utilities import to_default_float
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
-from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel, gpr_model
+from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.acquisition import (
     ExpectedImprovement,
     MinValueEntropySearch,
     PenalizationFunction,
     UpdatablePenalizationFunction,
 )
+from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
 from trieste.acquisition.function.greedy_batch import (
     FantasizeAcquisitionFunction,
     LocalPenalizationAcquisitionFunction,
@@ -34,6 +38,7 @@ from trieste.acquisition.function.greedy_batch import (
     soft_local_penalizer,
 )
 from trieste.data import Dataset
+from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
 
@@ -176,5 +181,73 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-
         FantasizeAcquisitionFunction(ExpectedImprovement().using("OBJECTIVE"), "notKB")
+
+
+def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> None:
+    data = {
+        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    }
+    models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
+    pending_points = tf.zeros([3, 2], dtype=tf.float64)
+    builder = FantasizeAcquisitionFunction()
+
+    with pytest.raises(NotImplementedError):
+        builder.prepare_acquisition_function(models, data, pending_points)
+
+
+@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+def test_fantasized_expected_improvement_builder_raises_for_invalid_pending_points_shape(
+    pending_points: TensorType,
+) -> None:
+    x = tf.zeros([3, 2], dtype=tf.float64)
+    y = tf.ones([3, 1], dtype=tf.float64)
+
+    data = {"OBJECTIVE": Dataset(x, y)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+
+    builder = FantasizeAcquisitionFunction()
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.prepare_acquisition_function(models, data, pending_points)
+
+
+def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mean() -> None:
+    x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
+    y = fnc_2sin_x_over_3(x)
+
+    x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
+    pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
+
+    data = {"OBJECTIVE": Dataset(x, y)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+
+    builder = FantasizeAcquisitionFunction(NegativePredictiveMean())
+    acq0 = builder.prepare_acquisition_function(models, data)
+    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+
+    acq_val0 = acq0(x_test)
+    acq_val1 = acq1(x_test)
+
+    tf.assert_equal(acq_val1, acq_val0)
+
+
+def test_fantasize_reduces_predictive_variance() -> None:
+    x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
+    y = fnc_2sin_x_over_3(x)
+
+    x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
+    pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
+
+    data = {"OBJECTIVE": Dataset(x, y)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+
+    builder = FantasizeAcquisitionFunction(PredictiveVariance())
+    acq0 = builder.prepare_acquisition_function(models, data)
+    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+
+    acq_val0 = acq0(x_test)
+    acq_val1 = acq1(x_test)
+    tf.assert_less(acq_val1, acq_val0)
+
+
+test_fantasize_reduces_predictive_variance()
