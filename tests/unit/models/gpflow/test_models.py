@@ -537,10 +537,13 @@ def test_gaussian_process_cached_predictions_correct(
         model.optimize(new_dataset)
 
     x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+
+    # get cached predictions
     cached_fmean, cached_fvar = model.predict(x_predict)
     cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
     cached_ymean, cached_yvar = model.predict_y(x_predict)
 
+    # get reference (slow) predictions from underlying model
     reference_fmean, reference_fvar = model.model.predict_f(x_predict)
     reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
     reference_ymean, reference_yvar = model.model.predict_y(x_predict)
@@ -567,7 +570,7 @@ def test_gaussian_process_cached_predictions_faster(
 
     x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
     t_0 = time()
-    [model.predict(x_predict) for _ in range(10)]
+    [model.predict(x_predict) for _ in range(10)]  # make sequential predictions
     time_with_cache = time() - t_0
     t_0 = time()
     [model.model.predict_f(x_predict) for _ in range(10)]
