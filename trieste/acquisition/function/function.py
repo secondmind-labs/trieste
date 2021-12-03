@@ -687,9 +687,9 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         self._jitter = jitter
 
     def update(self, eta: TensorType) -> None:
-        """Update the acquisition function with a new eta value."""
+        """Update the acquisition function with a new eta value and reset the reparam sampler."""
         self._eta.assign(eta)
-        self._sampler._initialized.assign(False)
+        self._sampler.reset_sampler()
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:

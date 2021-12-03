@@ -138,6 +138,18 @@ def test_independent_reparametrization_sampler_samples_are_distinct_for_new_inst
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
+def test_independent_reparametrization_sampler_reset_sampler() -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
+    assert not sampler._initialized
+    xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    sampler.sample(xs)
+    assert sampler._initialized
+    sampler.reset_sampler()
+    assert not sampler._initialized
+    sampler.sample(xs)
+    assert sampler._initialized
+
+
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -208,6 +220,18 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0], [1.0]]))
+
+
+def test_batch_reparametrization_sampler_reset_sampler() -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+    assert not sampler._initialized
+    xs = tf.constant([[0.0], [1.0], [2.0]])
+    sampler.sample(xs)
+    assert sampler._initialized
+    sampler.reset_sampler()
+    assert not sampler._initialized
+    sampler.sample(xs)
+    assert sampler._initialized
 
 
 @pytest.mark.parametrize("num_features", [0, -2])

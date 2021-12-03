@@ -25,12 +25,8 @@ from gpflux.layers.basis_functions.fourier_features import RandomFourierFeatures
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interfaces import (
-    ProbabilisticModel,
-    ReparametrizationSampler,
-    TrajectoryFunction,
-    TrajectorySampler,
-)
+from ..interfaces import ProbabilisticModel
+from ..sampler import ReparametrizationSampler, TrajectoryFunction, TrajectorySampler
 
 
 class IndependentReparametrizationSampler(ReparametrizationSampler):
