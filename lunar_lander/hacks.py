@@ -1,7 +1,7 @@
 import tensorflow as tf
 from typing import cast, Mapping, Tuple
 
-from trieste.acquisition.function import AcquisitionFunction, ExpectedImprovement, PenalizationFunction, expected_improvement, ExpectedConstrainedImprovement, GreedyAcquisitionFunctionBuilder, soft_local_penalizer, UpdatablePenalizationFunction
+from trieste.acquisition import AcquisitionFunction, ExpectedImprovement, PenalizationFunction, expected_improvement, ExpectedConstrainedImprovement, GreedyAcquisitionFunctionBuilder, soft_local_penalizer, UpdatablePenalizationFunction
 from trieste.data import Dataset
 from trieste.types import TensorType
 from trieste.space import SearchSpace
