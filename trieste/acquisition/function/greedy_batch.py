@@ -448,7 +448,6 @@ class _fantasized_model(ProbabilisticModel):
 
     def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
         """
-
         :param model: a model, must be of :class:`~FantasizedGPRModel`
         :param fantasized_data: additional dataset to condition on
         :raise NotImplementedError: If model is not of :class:`~FantasizedGPRModel`.
@@ -562,6 +561,7 @@ def _broadcast_predict(
     :param fun: callable that returns two tensors (e.g. a predict function)
     :return: two tensors (e.g. mean and variance) with shape [...*, ...]
     """
+
     leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
     # leading_dim =...*, product = B
     # query_points_flatten: [B, n, d]
@@ -579,7 +579,6 @@ def _broadcast_predict(
 
 def _get_leading_dim_and_flatten(query_points: TensorType) -> tuple[TensorType, TensorType]:
     """
-
     :param query_points: shape [...*, n, d]
     :return: leading_dim = ....*, query_points_flatten, shape [B, n, d]
     """
