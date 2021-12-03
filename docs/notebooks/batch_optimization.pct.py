@@ -121,10 +121,8 @@ kriging_believer_acq = FantasizeAcquisitionFunction()
 kriging_believer_acq_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=batch_size, builder=kriging_believer_acq
 )
-points_chosen_by_kriging_believer = (
-    kriging_believer_acq_rule.acquire_single(
-        search_space, model, dataset=initial_data
-    )
+points_chosen_by_kriging_believer = kriging_believer_acq_rule.acquire_single(
+    search_space, model, dataset=initial_data
 )
 
 # %% [markdown]
