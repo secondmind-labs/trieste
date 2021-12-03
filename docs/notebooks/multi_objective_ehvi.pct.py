@@ -214,6 +214,62 @@ ax.set_xlabel("Iterations")
 ax.set_ylabel("log HV difference")
 plt.show()
 
+
+# %% [markdown]
+# ## Batch multi-objective optimization
+#
+# EHVI can be extended to the case of batches using the `FantasizeAcquisitionFunction`.
+
+model = build_stacked_independent_objectives_model(initial_data, num_objective)
+
+
+from trieste.acquisition.function import FantasizeAcquisitionFunction
+
+batch_ehvi = FantasizeAcquisitionFunction(ExpectedHypervolumeImprovement())
+batch_rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
+    builder=batch_ehvi, num_query_points=3
+)
+num_steps = 10
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+batch_result = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule=batch_rule
+)
+
+dataset = batch_result.try_get_final_dataset()
+batch_data_query_points = dataset.query_points
+batch_data_observations = dataset.observations
+
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 0], num_init=num_initial_points
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 1], num_init=num_initial_points
+)
+plt.show()
+
+plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
+plt.show()
+
+fig, ax = plot_mobo_history(
+    batch_data_observations, log_hv, num_init=num_initial_points
+)
+ax.set_xlabel("Iterations")
+ax.set_ylabel("log HV difference")
+plt.show()
+
+
 # %% [markdown]
 # ## Multi-objective optimization with constraints
 #
