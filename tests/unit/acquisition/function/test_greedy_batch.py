@@ -136,8 +136,8 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     base_acq = base_builder.prepare_acquisition_function(model, dataset=data)
 
     best = acq_builder._eta
-    lipshitz_constant = acq_builder._lipschitz_constant
-    penalizer = penalizer(model, pending_points, lipshitz_constant, best)
+    lipschitz_constant = acq_builder._lipschitz_constant
+    penalizer = penalizer(model, pending_points, lipschitz_constant, best)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -162,8 +162,8 @@ def test_lipschitz_penalizers_raises_for_invalid_batch_size(
 ) -> None:
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
     best = tf.constant([0], dtype=tf.float64)
-    lipshitz_constant = tf.constant([1], dtype=tf.float64)
-    lp = penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+    lipschitz_constant = tf.constant([1], dtype=tf.float64)
+    lp = penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         lp(at)
@@ -176,9 +176,9 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     penalizer: Callable[..., PenalizationFunction],
 ) -> None:
     best = tf.constant([0], dtype=tf.float64)
-    lipshitz_constant = tf.constant([1], dtype=tf.float64)
+    lipschitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipshitz_constant, best)
+        soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:

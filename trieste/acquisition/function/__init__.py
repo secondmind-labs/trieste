@@ -42,6 +42,7 @@ from .function import (
 )
 from .greedy_batch import (
     LocalPenalizationAcquisitionFunction,
+    FantasizeAcquisitionFunction,
     hard_local_penalizer,
     soft_local_penalizer,
 )
