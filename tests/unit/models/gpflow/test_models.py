@@ -524,7 +524,7 @@ def test_gaussian_process_cached_predictions_correct(
     )
 
     if isinstance(model, VariationalGaussianProcess):
-        pytest.skip("Cached predictions are only implemented for the GPR models.")
+        pytest.skip("Cached predictions are not yet implemented for the VGP models.")
 
     if after_model_optimize:
         model.optimize(dataset)
@@ -566,7 +566,7 @@ def test_gaussian_process_cached_predictions_faster(
     model, _ = gpflow_interface_factory(x, y)
 
     if isinstance(model, VariationalGaussianProcess):
-        pytest.skip("Cached predictions are only implemented for the GPR models.")
+        pytest.skip("Cached predictions are not yet implemented for the VGP models.")
 
     x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
     t_0 = time()
