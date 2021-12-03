@@ -104,9 +104,6 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self._posterior.predict_f(query_points, full_cov=True)
 
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self._posterior.predict_f_samples(query_points, num_samples)
-
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
@@ -519,8 +516,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self._posterior.predict_f(query_points, full_cov=True)
 
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self._posterior.predict_f_samples(query_points, num_samples)
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)

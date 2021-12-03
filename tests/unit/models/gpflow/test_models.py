@@ -519,7 +519,7 @@ def test_gaussian_process_cached_predictions_correct(
         x,
         y,
         optimizer=Optimizer(
-            gpflow.optimizers.Scipy(), minimize_args={"options": {"max_iters": 5}}, compile=True
+            gpflow.optimizers.Scipy(), minimize_args={"options": {"max_iter": 5}}, compile=True
         ),
     )
 
