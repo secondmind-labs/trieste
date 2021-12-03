@@ -5,6 +5,8 @@ from turbo_test import demo_heuristic_lander
 import tensorflow as tf
 import trieste
 
+from hacks import HackedExpectedImprovement
+
 # this space is created by doing +-0.1 around parameter values
 # set in https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py
 # search_space = trieste.space.Box(
@@ -118,7 +120,7 @@ models = {
 
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition import (
-    SingleModelAcquisitionBuilder, ExpectedImprovement, Product
+    SingleModelAcquisitionBuilder, Product
 )
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
@@ -129,7 +131,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder):
         return acquisition
 
 acq_fn = Product(
-    ExpectedImprovement().using(OBJECTIVE),
+    HackedExpectedImprovement().using(OBJECTIVE),
     ProbabilityOfValidity().using(CRASH),
     ProbabilityOfValidity().using(TIMEOUT),
     ProbabilityOfValidity().using(OUTSIDE),
