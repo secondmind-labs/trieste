@@ -35,9 +35,9 @@ from trieste.acquisition.function import NegativePredictiveMean, PredictiveVaria
 from trieste.acquisition.function.greedy_batch import (
     FantasizeAcquisitionFunction,
     LocalPenalizationAcquisitionFunction,
+    _fantasized_model,
     hard_local_penalizer,
     soft_local_penalizer,
-    _fantasized_model,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
@@ -253,9 +253,7 @@ def test_fantasize_reduces_predictive_variance() -> None:
 
 
 def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
-    x = to_default_float(
-        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
-    )  # shape: [23, 1]
+    x = to_default_float(tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0))  # shape: [23, 1]
     y = fnc_2sin_x_over_3(x)
 
     model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
@@ -285,11 +283,19 @@ def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
 
     for j in range(3):
 
-        samples_m5 = model5.conditional_predict_f_sample(query_points[j], additional_data, num_samples)
+        samples_m5 = model5.conditional_predict_f_sample(
+            query_points[j], additional_data, num_samples
+        )
 
-        pred_f_mean_m5, pred_f_var_m5 = model5.conditional_predict_f(query_points[j], additional_data)
-        pred_j_mean_m5, pred_j_cov_m5 = model5.conditional_predict_joint(query_points[j], additional_data)
-        pred_y_mean_m5, pred_y_var_m5 = model5.conditional_predict_y(query_points[j], additional_data)
+        pred_f_mean_m5, pred_f_var_m5 = model5.conditional_predict_f(
+            query_points[j], additional_data
+        )
+        pred_j_mean_m5, pred_j_cov_m5 = model5.conditional_predict_joint(
+            query_points[j], additional_data
+        )
+        pred_y_mean_m5, pred_y_var_m5 = model5.conditional_predict_y(
+            query_points[j], additional_data
+        )
 
         sample_m5_mean = tf.reduce_mean(samples_m5, axis=1)
         sample_m5_cov = tfp.stats.covariance(samples_m5[..., 0], sample_axis=1)
