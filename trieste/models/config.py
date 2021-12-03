@@ -145,15 +145,11 @@ class ModelRegistry:
 
 # We register supported optimizers and their wrappers for usage with ModelConfig.
 # GPflow's Scipy optimizer is not used in the batch mode and hence uses Optimizer wrapper
-# ModelRegistry.register_optimizer(type(gpflow.optimizers.Scipy()), Optimizer)
+ModelRegistry.register_optimizer(gpflow.optimizers.Scipy, Optimizer)
 
 
 # TensorFlow optimizers are stochastic gradient descent variants and should be used
 # with BatchOptimizer wrapper
-# for optimizer_type in tf.optimizers.Optimizer.__subclasses__():
-#     ModelRegistry.register_optimizer(optimizer_type, BatchOptimizer)
-
-ModelRegistry.register_optimizer(gpflow.optimizers.Scipy, Optimizer)
 ModelRegistry.register_optimizer(tf.optimizers.Optimizer, BatchOptimizer)
 
 
