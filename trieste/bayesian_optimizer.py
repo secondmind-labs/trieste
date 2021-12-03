@@ -326,8 +326,7 @@ class BayesianOptimizer(Generic[SP]):
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            # ignore below is due to MyPy not being able to handle overloads properly
-            model_specs = {OBJECTIVE: model_specs}  # type: ignore
+            model_specs = {OBJECTIVE: model_specs}
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
@@ -399,7 +398,8 @@ class BayesianOptimizer(Generic[SP]):
                 if summary_writer:
                     with summary_writer.as_default():
                         for tag in datasets:
-                            models[tag].log(f"{tag}.model")
+                            with tf.name_scope(f"{tag}.model"):
+                                models[tag].log()
                             tf.summary.scalar(
                                 f"{tag}.observation.best_overall",
                                 np.min(datasets[tag].observations),

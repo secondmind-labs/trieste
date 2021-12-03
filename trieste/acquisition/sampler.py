@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module is the home of the sampling functionality required by Trieste's
-acquisiiton functions.
+acquisition functions.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions import RandomFourierFeatures
+from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from scipy.optimize import bisect
 
 from ..data import Dataset
@@ -424,7 +424,7 @@ class RandomFourierFeatureThompsonSampler(ThompsonSampler):
             """
             )
 
-        self._feature_functions = RandomFourierFeatures(
+        self._feature_functions = RandomFourierFeaturesCosine(
             self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
         )  # prep feature functions at data
 

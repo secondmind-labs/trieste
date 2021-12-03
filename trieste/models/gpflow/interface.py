@@ -93,19 +93,17 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
         """
         self.optimizer.optimize(self.model, dataset)
 
-    def log(self, context: str) -> None:
+    def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
-
-        :param context: A context string to use when logging.
         """
         summary_writer = get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=get_step_number()):
-                tf.summary.scalar(f"{context}.kernel.variance", self.get_kernel().variance)
+                tf.summary.scalar("kernel.variance", self.get_kernel().variance)
                 lengthscales = self.get_kernel().lengthscales
                 if tf.rank(lengthscales) == 0:
-                    tf.summary.scalar(f"{context}.kernel.lengthscale", lengthscales)
+                    tf.summary.scalar("kernel.lengthscale", lengthscales)
                 elif tf.rank(lengthscales) == 1:
                     for i, lengthscale in enumerate(lengthscales):
-                        tf.summary.scalar(f"{context}.kernel.lengthscale.{i}", lengthscale)
+                        tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)

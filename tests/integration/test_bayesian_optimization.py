@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, Union
 
 import gpflow
 import numpy.testing as npt
@@ -24,7 +24,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import two_layer_dgp_model
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
@@ -46,14 +46,18 @@ from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.optimizer import Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
     MICHALEWICZ_2_MINIMIZER,
     MICHALEWICZ_2_MINIMUM,
     SCALED_BRANIN_MINIMUM,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
     michalewicz,
     scaled_branin,
+    simple_quadratic,
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -61,25 +65,29 @@ from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
 
-@random_seed
-@pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
-    cast(
-        List[
-            Tuple[
-                int,
-                Union[
-                    AcquisitionRule[TensorType, Box],
-                    AcquisitionRule[
-                        State[
-                            TensorType,
-                            Union[AsynchronousRuleState, TrustRegion.State],
-                        ],
-                        Box,
+# Optimizer parameters for testing against the branin function.
+# We also use these for a quicker test against a simple quadratic function
+# (regenerating is necessary as some of the acquisition rules are stateful).
+def OPTIMIZER_PARAMS() -> Tuple[
+    str,
+    List[
+        Tuple[
+            int,
+            Union[
+                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[
+                    State[
+                        TensorType,
+                        Union[AsynchronousRuleState, TrustRegion.State],
                     ],
+                    Box,
                 ],
-            ]
-        ],
+            ],
+        ]
+    ],
+]:
+    return (
+        "num_steps, acquisition_rule",
         [
             (20, EfficientGlobalOptimization()),
             (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
@@ -140,13 +148,39 @@ from trieste.types import State, TensorType
             (10, DiscreteThompsonSampling(500, 3)),
             (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
         ],
-    ),
-)
+    )
+
+
+@random_seed
+@pytest.mark.slow  # to run this, add --runslow yes to the pytest command
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
     | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
 ) -> None:
+    _test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
+
+
+@random_seed
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
+def test_optimizer_finds_minima_of_simple_quadratic(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+) -> None:
+    # for speed reasons we sometimes test with a simple quadratic defined on the same search space
+    # branin; currently assume that every rule should be able to solve this in 5 steps
+    _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
+
+
+def _test_optimizer_finds_minimum(
+    optimize_branin: bool,
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+) -> None:
+
     search_space = BRANIN_SEARCH_SPACE
 
     def build_model(data: Dataset) -> GaussianProcessRegression:
@@ -164,7 +198,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         return GaussianProcessRegression(gpr)
 
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(scaled_branin)
+    observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
     initial_data = observer(initial_query_points)
     model = build_model(initial_data)
 
@@ -183,17 +217,23 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
             best_y = dataset.observations[arg_min_idx]
             best_x = dataset.query_points[arg_min_idx]
 
-            relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
-            # these accuracies are the current best for the given number of optimization steps,
-            # which makes this is a regression test
-            assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
-            npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+            if optimize_branin:
+                relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+                # these accuracies are the current best for the given number of optimization
+                # steps, which makes this is a regression test
+                assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
+                npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+            else:
+                absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
+                assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
+                npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
+            # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
-                acquisition_function = acquisition_rule._acquisition_function
-                if isinstance(acquisition_function, AcquisitionFunctionClass):
-                    assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
+                acq_function = acquisition_rule._acquisition_function
+                if isinstance(acq_function, AcquisitionFunctionClass):
+                    assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
 
 
 @random_seed
@@ -224,15 +264,15 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             else:
                 return lr
 
-        optimizer = tf.optimizers.Adam(0.01)
         fit_args = {
             "batch_size": batch_size,
             "epochs": epochs,
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
+        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
 
-        return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+        return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
     initial_query_points = search_space.sample_sobol(20)
     observer = mk_observer(michalewicz, OBJECTIVE)
