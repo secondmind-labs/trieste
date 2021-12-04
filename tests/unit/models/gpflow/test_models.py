@@ -536,7 +536,7 @@ def test_gaussian_process_cached_predictions_correct(
         model.update(new_dataset)
         model.optimize(new_dataset)
 
-    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    x_predict = np.expand_dims(np.linspace(0, 5, 2).reshape((-1, 1)), 1)
 
     # get cached predictions
     cached_fmean, cached_fvar = model.predict(x_predict)

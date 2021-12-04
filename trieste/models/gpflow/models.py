@@ -59,7 +59,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         """
         super().__init__(optimizer)
         self._model = model
-        self._posterior = self._model.posterior()  # cache posterior for fast sequential predictions
+        self._posterior = model.posterior()  # cache posterior for fast sequential predictions
 
         if num_kernel_samples <= 0:
             raise ValueError(
@@ -123,7 +123,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
-        self._posterior = self.model.posterior()  # update cached posterior
+        self.model.posterior().update_cache()  # update cached posterior
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -225,7 +225,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
             )
 
         self.optimizer.optimize(self.model, dataset)
-        self._posterior = self.model.posterior()  # update cached posterior
+        self.model.posterior().update_cache()  # update cached posterior
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -538,7 +538,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
-        self._posterior = self.model.posterior()  # update cached posterior
+        self._posterior.update_cache()  # update cached posterior
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -547,7 +547,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
-        self._posterior = self.model.posterior()  # update cached posterior
+        self._posterior.update_cache()  # update cached posterior
 
 
 class VGPWrapper(VGP, NumDataPropertyMixin):
