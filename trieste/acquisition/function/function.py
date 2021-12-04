@@ -17,7 +17,6 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-import math
 from typing import Mapping, Optional, cast
 
 import tensorflow as tf
