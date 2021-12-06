@@ -242,7 +242,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
-@pytest.mark.parametrize("fantasize_method", ["KB", "sample", "minCL", "meanCL", "maxCL"])
+@pytest.mark.parametrize("fantasize_method", ["KB", "sample"])
 def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method: str) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
