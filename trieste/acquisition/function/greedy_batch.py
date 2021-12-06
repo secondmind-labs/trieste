@@ -40,7 +40,7 @@ from .entropy import MinValueEntropySearch
 from .function import ExpectedImprovement, expected_improvement
 
 
-class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
@@ -357,10 +357,10 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
+class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
-    FantasizeAcquisitionFunction allows us to perform batch Bayesian optimization with any
+    Fantasizer allows us to perform batch Bayesian optimization with any
     standard (non-batch) acquisition function.
 
     Here, every time a query point is chosen by maximising an acquisition function,
@@ -586,13 +586,13 @@ class _fantasized_model(ProbabilisticModel):
     def update(self, dataset: Dataset) -> None:
         raise NotImplementedError(
             "fantasized models should only be used within"
-            "FantasizeAcquisitionFunction, hence should never be updated"
+            "Fantasizer, hence should never be updated"
         )
 
     def optimize(self, dataset: Dataset) -> None:
         raise NotImplementedError(
             "fantasized models should only be used within"
-            "FantasizeAcquisitionFunction, hence should never be updated"
+            "Fantasizer, hence should never be updated"
         )
 
 

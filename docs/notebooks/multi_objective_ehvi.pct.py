@@ -218,14 +218,14 @@ plt.show()
 # %% [markdown]
 # ## Batch multi-objective optimization
 #
-# EHVI can be extended to the case of batches (i.e. query several points at a time) using the `FantasizeAcquisitionFunction`. `FantasizeAcquisitionFunction` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `FantasizeAcquisitionFunction` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
+# EHVI can be extended to the case of batches (i.e. query several points at a time) using the `Fantasizer`. `Fantasizer` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `Fantasizer` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
 
 # %%
 model = build_stacked_independent_objectives_model(initial_data, num_objective)
 
-from trieste.acquisition.function import FantasizeAcquisitionFunction
+from trieste.acquisition.function import Fantasizer
 
-batch_ehvi = FantasizeAcquisitionFunction(ExpectedHypervolumeImprovement())
+batch_ehvi = Fantasizer(ExpectedHypervolumeImprovement())
 batch_rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
     builder=batch_ehvi, num_query_points=3
 )

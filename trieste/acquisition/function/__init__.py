@@ -41,8 +41,8 @@ from .function import (
     probability_of_feasibility,
 )
 from .greedy_batch import (
-    FantasizeAcquisitionFunction,
-    LocalPenalizationAcquisitionFunction,
+    Fantasizer,
+    LocalPenalization,
     hard_local_penalizer,
     soft_local_penalizer,
 )

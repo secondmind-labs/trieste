@@ -34,8 +34,8 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
 from trieste.acquisition.function.greedy_batch import (
-    FantasizeAcquisitionFunction,
-    LocalPenalizationAcquisitionFunction,
+    Fantasizer,
+    LocalPenalization,
     _fantasize_model,
     hard_local_penalizer,
     soft_local_penalizer,
@@ -51,12 +51,12 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
     space = Box([0, 0], [1, 1])
     with pytest.raises(tf.errors.InvalidArgumentError):
-        LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
+        LocalPenalization(search_space=space).prepare_acquisition_function(
             QuadraticMeanAndRBFKernel(),
             dataset=data,
         )
     with pytest.raises(tf.errors.InvalidArgumentError):
-        LocalPenalizationAcquisitionFunction(search_space=space).prepare_acquisition_function(
+        LocalPenalization(search_space=space).prepare_acquisition_function(
             QuadraticMeanAndRBFKernel(),
         )
 
@@ -64,7 +64,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() 
 def test_locally_penalized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(tf.errors.InvalidArgumentError):
-        LocalPenalizationAcquisitionFunction(search_space, num_samples=-5)
+        LocalPenalization(search_space, num_samples=-5)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -73,7 +73,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     space = Box([0, 0], [1, 1])
-    builder = LocalPenalizationAcquisitionFunction(search_space=space)
+    builder = LocalPenalization(search_space=space)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), data, pending_points)
 
@@ -93,7 +93,7 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
 
-    lp_acq_builder = LocalPenalizationAcquisitionFunction(
+    lp_acq_builder = LocalPenalization(
         search_space, base_acquisition_function_builder=base_builder
     )
     lp_acq = lp_acq_builder.prepare_acquisition_function(model, data, None)
@@ -127,7 +127,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     model = QuadraticMeanAndRBFKernel()
     pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
-    acq_builder = LocalPenalizationAcquisitionFunction(
+    acq_builder = LocalPenalization(
         search_space, penalizer=penalizer, base_acquisition_function_builder=base_builder
     )
     lp_acq = acq_builder.prepare_acquisition_function(model, data, None)  # initialize
@@ -185,7 +185,7 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-        FantasizeAcquisitionFunction(ExpectedImprovement().using("OBJECTIVE"), "notKB")
+        Fantasizer(ExpectedImprovement().using("OBJECTIVE"), "notKB")
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> None:
@@ -194,7 +194,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> N
     }
     models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
-    builder = FantasizeAcquisitionFunction()
+    builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
         builder.prepare_acquisition_function(models, data, pending_points)
@@ -210,7 +210,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_pending_poin
     data = {"OBJECTIVE": Dataset(x, y)}
     models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
-    builder = FantasizeAcquisitionFunction()
+    builder = Fantasizer()
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(models, data, pending_points)
 
@@ -231,7 +231,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
-    builder = FantasizeAcquisitionFunction(NegativePredictiveMean())
+    builder = Fantasizer(NegativePredictiveMean())
     acq0 = builder.prepare_acquisition_function(models, data)
     acq1 = builder.prepare_acquisition_function(models, data, pending_points)
 
@@ -256,7 +256,7 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
-    builder = FantasizeAcquisitionFunction(PredictiveVariance(), fantasize_method=fantasize_method)
+    builder = Fantasizer(PredictiveVariance(), fantasize_method=fantasize_method)
     acq0 = builder.prepare_acquisition_function(models, data)
     acq1 = builder.prepare_acquisition_function(models, data, pending_points)
 

@@ -30,7 +30,7 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
     MinValueEntropySearch,
 )
 from trieste.acquisition.rule import (
@@ -108,7 +108,7 @@ OPTIMIZER_PARAMS = (
             (
                 10,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -117,7 +117,7 @@ OPTIMIZER_PARAMS = (
             (
                 10,
                 AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,

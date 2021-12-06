@@ -83,7 +83,7 @@ def build_model(data):
 
 
 # these imports will be used later for optimization
-from trieste.acquisition import LocalPenalizationAcquisitionFunction
+from trieste.acquisition import LocalPenalization
 from trieste.acquisition.rule import (
     AsynchronousGreedy,
     EfficientGlobalOptimization,
@@ -182,7 +182,7 @@ enable_sleep_delays = True
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(
+local_penalization_acq = LocalPenalization(
     search_space, num_samples=2000
 )
 local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
@@ -257,7 +257,7 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(
+local_penalization_acq = LocalPenalization(
     search_space, num_samples=2000
 )
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
