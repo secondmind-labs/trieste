@@ -388,7 +388,7 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
 
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param fantasize_method: one of "KB", "sample"
+        :param fantasize_method: the following options are available: "KB" and "sample".
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
         tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
@@ -446,7 +446,7 @@ def _generate_fantasized_data(
     - KB (kriging believer) uses the mean prediction of the models
     - sample uses samples from the GP posterior.
 
-    :param fantasize_method: one of "KB", "sample"
+    :param fantasize_method: the following options are available: "KB" and "sample".
     :param model: a model with predict method
     :param dataset: past data
     :param pending_points: points at which to fantasize data
