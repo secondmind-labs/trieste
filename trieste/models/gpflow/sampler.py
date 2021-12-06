@@ -206,7 +206,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
 
     If :math:`n<m` then we use the kernel trick to recast computation to revolve around an O(n^3)
     inversion of a gram matrix. As well as being more efficient in early BO
-    steps (where :math:`n<m`), this second computation method allows must larger choices
+    steps (where :math:`n<m`), this second computation method allows much larger choices
     of m (as required to approximate very flexible kernels).
     """
 
