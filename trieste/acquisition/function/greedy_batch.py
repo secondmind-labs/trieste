@@ -426,6 +426,10 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
             models = {
                 tag: _fantasize_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
+            if datasets is None:
+                datasets = fantasized_data
+            else:
+                datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
         return self._builder.prepare_acquisition_function(models, datasets)
 
     def _generate_fantasized_data(
@@ -447,7 +451,10 @@ def _fantasize_model(
         fmods = []
         for mod, obs, event_size in zip(model._models, observations, model._event_sizes):
             fmods.append(
-                (_fantasized_model(mod, Dataset(fantasized_data.query_points, obs)), event_size)
+                (
+                    _fantasized_model(mod, Dataset(fantasized_data.query_points, obs)),
+                    event_size,
+                )
             )
         return ModelStack(*fmods)
     else:

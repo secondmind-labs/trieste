@@ -217,7 +217,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_pending_poin
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
 def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mean(
-    model_type,
+    model_type: str,
 ) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
@@ -242,7 +242,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
-def test_fantasize_reduces_predictive_variance(model_type) -> None:
+def test_fantasize_reduces_predictive_variance(model_type: str) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
 
@@ -265,7 +265,7 @@ def test_fantasize_reduces_predictive_variance(model_type) -> None:
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
-def test_fantasize_allows_query_points_with_leading_dimensions(model_type) -> None:
+def test_fantasize_allows_query_points_with_leading_dimensions(model_type: str) -> None:
     x = to_default_float(tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0))  # shape: [23, 1]
     y = fnc_2sin_x_over_3(x)
 

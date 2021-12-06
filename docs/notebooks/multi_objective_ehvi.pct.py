@@ -229,14 +229,14 @@ batch_ehvi = FantasizeAcquisitionFunction(ExpectedHypervolumeImprovement())
 batch_rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
     builder=batch_ehvi, num_query_points=3
 )
-num_steps = 10
+num_steps = 2
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 batch_result = bo.optimize(
     num_steps, initial_data, model, acquisition_rule=batch_rule
 )
 
 # %% [markdown]
-# We can have a look at the results
+# We can have a look at the results, as in the previous case.
 
 # %%
 
