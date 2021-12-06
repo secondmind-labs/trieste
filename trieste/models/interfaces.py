@@ -15,12 +15,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Callable
 
 import gpflow
 import tensorflow as tf
 
 from ..data import Dataset
 from ..types import TensorType
+from ..utils import DEFAULTS
 
 
 class ProbabilisticModel(ABC):
@@ -91,6 +93,27 @@ class ProbabilisticModel(ABC):
         :return: The observation noise.
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        Note that this is not supported by all models.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        """
+        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
+
+    def trajectory_sampler(self) -> TrajectorySampler:
+        """
+        Return a trajectory sampler.
+
+        Note that this is not supported by all models.
+
+        :return: The trajectory sampler.
+        """
+        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
 
     def get_kernel(self) -> gpflow.kernels.Kernel:
         """
@@ -240,6 +263,121 @@ class ModelStack(TrainableProbabilisticModel):
         for i, model in enumerate(self._models):
             with tf.name_scope(f"{i}"):
                 model.log()
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        """
+        Return a reparameterization sampler providing `num_samples` samples across
+        all the models in the model stack. This is currently only implemented for
+        stacks made from models that have a :class:`BatchReparametrizationSampler`
+        as their reparameterization sampler.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        :raise NotImplementedError: If the models in the stack do not share the
+            same :meth:`reparam_sampler`.
+        """
+
+        samplers = [model.reparam_sampler(num_samples) for model in self._models]
+        unique_sampler_types = set(type(sampler) for sampler in samplers)
+        if len(unique_sampler_types) == 1:
+            # currently assume that all sampler constructors look the same
+            shared_sampler_type = type(samplers[0])
+            return shared_sampler_type(num_samples, self)
+        else:
+            raise NotImplementedError(
+                f"""
+                Reparameterization sampling is only currently supported for model
+                stacks built from models that use the same reparameterization sampler,
+                however, received samplers of types {unique_sampler_types}.
+                """
+            )
+
+
+class ReparametrizationSampler(ABC):
+    r"""
+    These samplers employ the *reparameterization trick* to draw samples from a
+    :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
+    points. See :cite:`wilson2018maximizing` for details.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        r"""
+        Note that our :class:`ModelStack` currently assumes that
+        all :class:`ReparametrizationSampler` constructors have **only** these inputs
+        and so will not work with more complicated constructors.
+
+        :param sample_size: The desired number of samples.
+        :param model: The model to sample from.
+        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+
+        self._sample_size = sample_size
+        self._model = model
+        self._initialized = tf.Variable(False)  # Keep track of when we need to resample
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
+
+    @abstractmethod
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+        """
+        :param at: Input points that define the sampler of shape `[N, D]`.
+        :param jitter: The size of the jitter to use when stabilizing the Cholesky
+            decomposition of the covariance matrix.
+        :return: Samples of shape `[sample_size, D]`.
+        """
+
+        raise NotImplementedError
+
+    def reset_sampler(self) -> None:
+        """
+        Reset the sampler so that new samples are drawn at the next :meth:`sample` call.
+        """
+        self._initialized.assign(False)
+
+
+TrajectoryFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for trajectory functions.
+
+An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
+points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+shape `[N, 1]`.
+
+A key property of these trajectory functions is that the same sample draw is evaluated
+for all queries. This property is known as consistency.
+"""
+
+
+class TrajectorySampler(ABC):
+    r"""
+    This class builds functions that approximate a trajectory sampled from an
+    underlying :class:`ProbabilisticModel`.
+
+    Unlike the :class:`ReparametrizationSampler`, a :class:`TrajectorySampler` provides
+    consistent samples (i.e ensuring that the same sample draw is used for all evaluations
+    of a particular trajectory function).
+    """
+
+    def __init__(self, model: ProbabilisticModel):
+        """
+        :param model: The model to sample from.
+        """
+        self._model = model
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self.__class__.__name__}({self._model!r})"
+
+    @abstractmethod
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        :return: A trajectory function representing an approximate trajectory from the
+            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        """
+        raise NotImplementedError
 
 
 class FastUpdateModel(ABC):

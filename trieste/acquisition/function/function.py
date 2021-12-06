@@ -32,7 +32,6 @@ from ..interface import (
     AcquisitionFunctionClass,
     SingleModelAcquisitionBuilder,
 )
-from ..sampler import BatchReparametrizationSampler
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -588,7 +587,6 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
-
     Improvement is measured with respect to the minimum predictive mean at observed query points.
     This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
     at new points are independent from those at known query points. This is faster, but is an
@@ -664,8 +662,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
         """
-
-        :param sampler:  BatchReparametrizationSampler.
+        :param sample_size: The number of Monte-Carlo samples.
+        :param model: The model of the objective function.
+        :param sampler:  ReparametrizationSampler.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
@@ -674,14 +673,25 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
             greater than one.
         """
         self._sample_size = sample_size
-        self._sampler = BatchReparametrizationSampler(sample_size, model)
+
+        try:
+            sampler = model.reparam_sampler(self._sample_size)
+        except (NotImplementedError):
+            raise ValueError(
+                """
+                The batch Monte-Carlo expected improvement acquisition function
+                only supports models that implement a reparam_sampler method.
+                """
+            )
+
+        self._sampler = sampler
         self._eta = tf.Variable(eta)
         self._jitter = jitter
 
     def update(self, eta: TensorType) -> None:
-        """Update the acquisition function with a new eta value."""
+        """Update the acquisition function with a new eta value and reset the reparam sampler."""
         self._eta.assign(eta)
-        self._sampler._initialized.assign(False)
+        self._sampler.reset_sampler()
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
