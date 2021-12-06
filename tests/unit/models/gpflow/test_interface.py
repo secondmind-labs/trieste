@@ -96,7 +96,7 @@ def test_gpflow_reparam_sampler_returns_a_param_sampler() -> None:
     assert sampler._sample_size == 10
 
 
-def test_gpflow_reparam_sampler_returns_param_sampler_with_correct_samples() -> None:
+def test_gpflow_reparam_sampler_returns_reparam_sampler_with_correct_samples() -> None:
     num_samples = 20_000
     sampler = _QuadraticPredictor().reparam_sampler(num_samples)
 

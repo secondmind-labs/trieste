@@ -371,9 +371,6 @@ def test_gaussian_process_regression_trajectory_sampler_returns_a_trajectory_sam
     model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x)[:, 0:1])
     model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
 
-    if isinstance(model, (VariationalGaussianProcess, SparseVariational)):
-        pytest.skip("trajectory_sampler is only currently implemented for the GPR models.")
-
     trajectory_sampler = model.trajectory_sampler()
 
     assert isinstance(trajectory_sampler, TrajectorySampler)

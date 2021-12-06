@@ -74,3 +74,9 @@ from .interface import (
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
+from .sampler import (
+    ExactThompsonSampler,
+    GumbelSampler,
+    ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
+)

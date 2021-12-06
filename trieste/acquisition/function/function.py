@@ -662,6 +662,8 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
         """
+        :param sample_size: The number of Monte-Carlo samples.
+        :param model: The model of the objective function.
         :param sampler:  ReparametrizationSampler.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of

@@ -191,7 +191,7 @@ def test_thompson_trajectory_sampler_returns_correctly_shaped_samples(
 
 
 @random_seed
-def test_rff_thompson_samples_are_minima() -> None:
+def test_thompson_trajectory_samples_are_minima() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)

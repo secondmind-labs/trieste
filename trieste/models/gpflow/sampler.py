@@ -58,7 +58,6 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
 
-
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
@@ -115,7 +114,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler):
         self._eps = tf.Variable(
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
-
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """

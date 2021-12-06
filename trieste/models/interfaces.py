@@ -277,9 +277,13 @@ class ModelStack(TrainableProbabilisticModel):
             same :meth:`reparam_sampler`.
         """
 
-        sampler_types = [type(model.reparam_sampler(1)) for model in self._models]
-        unique_sampler_types = set(sampler_types)
-        if len(unique_sampler_types) > 1:
+        samplers = [model.reparam_sampler(num_samples) for model in self._models]
+        unique_sampler_types = set(type(sampler) for sampler in samplers)
+        if len(unique_sampler_types) == 1:
+            # currently assume that all sampler constructors look the same
+            shared_sampler_type = type(samplers[0])
+            return shared_sampler_type(num_samples, self)
+        else:
             raise NotImplementedError(
                 f"""
                 Reparameterization sampling is only currently supported for model
@@ -287,20 +291,21 @@ class ModelStack(TrainableProbabilisticModel):
                 however, received samplers of types {unique_sampler_types}.
                 """
             )
-        else:  # return the shared sampler rebuilt for the whole model stack
-            shared_sampler = sampler_types[0]
-            return shared_sampler(num_samples, self)
 
 
 class ReparametrizationSampler(ABC):
     r"""
-    Thes samplers employ the *reparameterization trick* to draw samples from a
+    These samplers employ the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
-    points.
+    points. See :cite:`wilson2018maximizing` for details.
     """
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
-        """
+        r"""
+        Note that our :class:`ModelStack` currently assumes that
+        all :class:`ReparametrizationSampler` constructors have **only** these inputs
+        and so will not work with more complicated constructors.
+
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
@@ -309,7 +314,7 @@ class ReparametrizationSampler(ABC):
 
         self._sample_size = sample_size
         self._model = model
-        self._initialized = tf.Variable(False)
+        self._initialized = tf.Variable(False)  # Keep track of when we need to resample
 
     def __repr__(self) -> str:
         """"""
@@ -318,11 +323,13 @@ class ReparametrizationSampler(ABC):
     @abstractmethod
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
-        :param at: Input points that define the sampler.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky
+        :param at: Input points that define the sampler of shape `[N, D]`.
+        :param jitter: The size of the jitter to use when stabilizing the Cholesky
             decomposition of the covariance matrix.
-        :return: Samples.
+        :return: Samples of shape `[sample_size, D]`.
         """
+
+        raise NotImplementedError
 
     def reset_sampler(self) -> None:
         """
@@ -370,6 +377,7 @@ class TrajectorySampler(ABC):
         :return: A trajectory function representing an approximate trajectory from the
             model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
+        raise NotImplementedError
 
 
 class FastUpdateModel(ABC):
