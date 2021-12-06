@@ -23,7 +23,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from ...models import FastUpdateModel, ProbabilisticModel
+from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
@@ -424,9 +424,8 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
                 for tag, model in models.items()
             }
             models = {
-                tag: _fantasized_model(model, fantasized_data[tag]) for tag, model in models.items()
+                tag: _fantasize_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
-
         return self._builder.prepare_acquisition_function(models, datasets)
 
     def _generate_fantasized_data(
@@ -438,6 +437,21 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
             fantasized_obs = model.sample(pending_points, num_samples=1)  # TODO check dim
 
         return Dataset(pending_points, fantasized_obs)
+
+
+def _fantasize_model(
+    model: ProbabilisticModel, fantasized_data: Dataset
+) -> _fantasized_model | ModelStack:
+    if isinstance(model, ModelStack):
+        observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
+        fmods = []
+        for mod, obs, event_size in zip(model._models, observations, model._event_sizes):
+            fmods.append(
+                (_fantasized_model(mod, Dataset(fantasized_data.query_points, obs)), event_size)
+            )
+        return ModelStack(*fmods)
+    else:
+        return _fantasized_model(model, fantasized_data)
 
 
 class _fantasized_model(ProbabilisticModel):

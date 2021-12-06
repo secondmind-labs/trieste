@@ -134,7 +134,7 @@ rule: EfficientGlobalOptimization = EfficientGlobalOptimization(builder=ehvi)
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 1
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
@@ -218,10 +218,10 @@ plt.show()
 # %% [markdown]
 # ## Batch multi-objective optimization
 #
-# EHVI can be extended to the case of batches using the `FantasizeAcquisitionFunction`.
+# EHVI can be extended to the case of batches (i.e. query several points at a time) using the `FantasizeAcquisitionFunction`. `FantasizeAcquisitionFunction` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `FantasizeAcquisitionFunction` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
 
+# %%
 model = build_stacked_independent_objectives_model(initial_data, num_objective)
-
 
 from trieste.acquisition.function import FantasizeAcquisitionFunction
 
@@ -234,6 +234,11 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 batch_result = bo.optimize(
     num_steps, initial_data, model, acquisition_rule=batch_rule
 )
+
+# %% [markdown]
+# We can have a look at the results
+
+# %%
 
 dataset = batch_result.try_get_final_dataset()
 batch_data_query_points = dataset.query_points
@@ -259,7 +264,9 @@ plot_bo_points(
 )
 plt.show()
 
-plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
+plot_mobo_points_in_obj_space(
+    batch_data_observations, num_init=num_initial_points
+)
 plt.show()
 
 fig, ax = plot_mobo_history(

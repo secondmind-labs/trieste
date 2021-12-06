@@ -21,10 +21,11 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.utilities import to_default_float
+from gpflow.utilities.ops import leading_transpose
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel, gpr_model
-from tests.util.models.models import fnc_2sin_x_over_3
+from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.acquisition import (
     ExpectedImprovement,
     MinValueEntropySearch,
@@ -35,11 +36,12 @@ from trieste.acquisition.function import NegativePredictiveMean, PredictiveVaria
 from trieste.acquisition.function.greedy_batch import (
     FantasizeAcquisitionFunction,
     LocalPenalizationAcquisitionFunction,
-    _fantasized_model,
+    _fantasize_model,
     hard_local_penalizer,
     soft_local_penalizer,
 )
 from trieste.data import Dataset
+from trieste.models import ModelStack
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -213,7 +215,10 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_pending_poin
         builder.prepare_acquisition_function(models, data, pending_points)
 
 
-def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mean() -> None:
+@pytest.mark.parametrize("model_type", ["gpr", "stack"])
+def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mean(
+    model_type,
+) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
 
@@ -221,7 +226,10 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+    if model_type == "stack":
+        models = {"OBJECTIVE": ModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+    else:
+        models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
     builder = FantasizeAcquisitionFunction(NegativePredictiveMean())
     acq0 = builder.prepare_acquisition_function(models, data)
@@ -233,7 +241,8 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     tf.assert_equal(acq_val1, acq_val0)
 
 
-def test_fantasize_reduces_predictive_variance() -> None:
+@pytest.mark.parametrize("model_type", ["gpr", "stack"])
+def test_fantasize_reduces_predictive_variance(model_type) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
 
@@ -241,7 +250,10 @@ def test_fantasize_reduces_predictive_variance() -> None:
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+    if model_type == "stack":
+        models = {"OBJECTIVE": ModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+    else:
+        models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
     builder = FantasizeAcquisitionFunction(PredictiveVariance())
     acq0 = builder.prepare_acquisition_function(models, data)
@@ -252,17 +264,22 @@ def test_fantasize_reduces_predictive_variance() -> None:
     tf.assert_less(acq_val1, acq_val0)
 
 
-def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
+@pytest.mark.parametrize("model_type", ["gpr", "stack"])
+def test_fantasize_allows_query_points_with_leading_dimensions(model_type) -> None:
     x = to_default_float(tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0))  # shape: [23, 1]
     y = fnc_2sin_x_over_3(x)
 
     model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+
     additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
 
     query_points = to_default_float(tf.constant(np.arange(1, 21).reshape(-1, 1) / 20.0))[..., None]
     query_points = tf.reshape(query_points, [4, 5, 1])
 
-    fanta_model5 = _fantasized_model(model5, additional_data)
+    if model_type == "stack":
+        fanta_model5 = _fantasize_model(ModelStack((model5, 1)), additional_data)
+    else:
+        fanta_model5 = _fantasize_model(model5, additional_data)
 
     num_samples = 100000
     samples_fm5 = fanta_model5.sample(query_points, num_samples)
@@ -310,3 +327,94 @@ def test_fantasize_allows_query_points_with_leading_dimensions() -> None:
         np.testing.assert_allclose(pred_f_var_m5, pred_f_var_fm5[j], atol=1e-5)
         np.testing.assert_allclose(pred_y_var_m5, pred_y_var_fm5[j], atol=1e-5)
         np.testing.assert_allclose(pred_j_cov_m5, pred_j_cov_fm5[j], atol=1e-5)
+
+
+def test_fantasized_stack_is_the_same_as_individually_fantasized() -> None:
+    x = to_default_float(tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0))  # shape: [23, 1]
+    y1 = fnc_2sin_x_over_3(x)
+    y2 = fnc_3x_plus_10(x)
+    model1 = GaussianProcessRegression(gpr_model(x[:5, :], y1[:5, :]))
+    model2 = GaussianProcessRegression(gpr_model(x[:5, :], y2[:5, :]))
+    stacked_models = ModelStack((model1, 1), (model2, 1))
+
+    additional_data1 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y1[5:, :], [3, 6, -1]))
+    additional_data2 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y2[5:, :], [3, 6, -1]))
+
+    additional_data_stacked = Dataset(
+        tf.reshape(x[5:, :], [3, 6, -1]),
+        tf.reshape(tf.concat([y1[5:, :], y2[5:, :]], axis=-1), [3, 6, -1]),
+    )
+
+    query_points = to_default_float(tf.constant(np.arange(1, 21).reshape(-1, 1) / 20.0))[..., None]
+    query_points = tf.reshape(query_points, [4, 5, 1])
+
+    stack_fanta_model = _fantasize_model(stacked_models, additional_data_stacked)
+
+    fanta_model1 = _fantasize_model(model1, additional_data1)
+    fanta_model2 = _fantasize_model(model2, additional_data2)
+
+    num_samples = 100000
+    samples_fm1 = fanta_model1.sample(query_points, num_samples)
+    pred_f_mean_fm1, pred_f_var_fm1 = fanta_model1.predict(query_points)
+    pred_y_mean_fm1, pred_y_var_fm1 = fanta_model1.predict_y(query_points)
+    pred_j_mean_fm1, pred_j_cov_fm1 = fanta_model1.predict_joint(query_points)
+
+    samples_fm2 = fanta_model2.sample(query_points, num_samples)
+    pred_f_mean_fm2, pred_f_var_fm2 = fanta_model2.predict(query_points)
+    pred_y_mean_fm2, pred_y_var_fm2 = fanta_model2.predict_y(query_points)
+    pred_j_mean_fm2, pred_j_cov_fm2 = fanta_model2.predict_joint(query_points)
+
+    samples_fms = stack_fanta_model.sample(query_points, num_samples)
+    pred_f_mean_fms, pred_f_var_fms = stack_fanta_model.predict(query_points)
+    pred_y_mean_fms, pred_y_var_fms = stack_fanta_model.predict_y(query_points)
+    pred_j_mean_fms, pred_j_cov_fms = stack_fanta_model.predict_joint(query_points)
+
+    np.testing.assert_equal(pred_f_mean_fms.shape, [4, 3, 5, 2])
+    np.testing.assert_equal(pred_f_var_fms.shape, [4, 3, 5, 2])
+    np.testing.assert_equal(pred_f_mean_fm1.shape, [4, 3, 5, 1])
+    np.testing.assert_equal(pred_f_var_fm1.shape, [4, 3, 5, 1])
+    np.testing.assert_equal(pred_j_cov_fms.shape, [4, 3, 2, 5, 5])
+    np.testing.assert_equal(pred_j_cov_fm1.shape, [4, 3, 1, 5, 5])
+
+    np.testing.assert_equal(samples_fms.shape, [4, 3, 100000, 5, 2])
+    np.testing.assert_equal(samples_fm1.shape, [4, 3, 100000, 5, 1])
+
+    np.testing.assert_allclose(
+        pred_f_mean_fms, tf.concat([pred_f_mean_fm1, pred_f_mean_fm2], axis=-1), atol=1e-5
+    )
+    np.testing.assert_allclose(
+        pred_y_mean_fms, tf.concat([pred_y_mean_fm1, pred_y_mean_fm2], axis=-1), atol=1e-5
+    )
+    np.testing.assert_allclose(
+        pred_j_mean_fms, tf.concat([pred_j_mean_fm1, pred_j_mean_fm2], axis=-1), atol=1e-5
+    )
+
+    np.testing.assert_allclose(
+        pred_f_var_fms, tf.concat([pred_f_var_fm1, pred_f_var_fm2], axis=-1), atol=1e-5
+    )
+    np.testing.assert_allclose(
+        pred_y_var_fms, tf.concat([pred_y_var_fm1, pred_y_var_fm2], axis=-1), atol=1e-5
+    )
+    np.testing.assert_allclose(
+        pred_j_cov_fms, tf.concat([pred_j_cov_fm1, pred_j_cov_fm2], axis=-3), atol=1e-5
+    )
+
+    sample_fms_mean = tf.reduce_mean(samples_fms, axis=2)
+    sample_fms_cov = tfp.stats.covariance(
+        leading_transpose(samples_fms, [..., -1, -2]), sample_axis=2
+    )
+
+    sample_fm1_mean = tf.reduce_mean(samples_fm1, axis=2)
+    sample_fm1_cov = tfp.stats.covariance(samples_fm1[..., 0], sample_axis=2, keepdims=True)
+    sample_fm2_mean = tf.reduce_mean(samples_fm2, axis=2)
+    sample_fm2_cov = tfp.stats.covariance(samples_fm2[..., 0], sample_axis=2, keepdims=True)
+
+    np.testing.assert_allclose(
+        sample_fms_mean,
+        tf.concat([sample_fm1_mean, sample_fm2_mean], axis=-1),
+        atol=1e-2,
+        rtol=1e-2,
+    )
+    np.testing.assert_allclose(
+        sample_fms_cov, tf.concat([sample_fm1_cov, sample_fm2_cov], axis=2), atol=1e-2, rtol=1e-2
+    )
