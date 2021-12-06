@@ -58,7 +58,6 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
 
-        self._initialized = tf.Variable(False)
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -117,9 +116,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler):
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
 
-        # for some reason graph compilation is resulting in self._eps reporting the wrong shape
-        # we therefore use an extra boolean variable to keep track of whether it's initialised
-        self._initialized = tf.Variable(False)
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
