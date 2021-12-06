@@ -251,7 +251,7 @@ gibbon_result = bo.optimize(
 # %% [markdown]
 # We can visualize the performance of each of these methods by plotting the trajectory of the regret (suboptimality) of the best observed solution as the optimization progresses. We denote this trajectory with the orange line, the start of the optimization loop with the blue line and the best overall point as a purple dot.
 #
-# For this particular problem (and random seed), we see that `GIBBON` provides the fastest initial optimization and all `GIBBON`, `LocalPenalizationAcquisitionFunction` and 'FantasizeAcquisitionFunction` are able to find solutions with a magnitude smaller regret than `BatchMonteCarloExpectedImprovement`.
+# For this particular problem (and random seed), we see that `GIBBON` provides the fastest initial optimization but all methods have overall a roughly similar performance.
 
 # %%
 from util.plotting import plot_regret
@@ -280,7 +280,7 @@ gibbon_observations = (
 gibbon_min_idx = tf.squeeze(tf.argmin(gibbon_observations, axis=0))
 
 
-fig, ax = plt.subplots(1, 3)
+fig, ax = plt.subplots(1, 4)
 plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -301,23 +301,23 @@ ax[1].set_title("Local Penalization")
 
 plot_regret(
     kriging_believer_observations.numpy(),
-    ax[1],
+    ax[2],
     num_init=5,
     idx_best=kriging_believer_min_idx,
 )
-ax[1].set_yscale("log")
-ax[1].set_xlabel("# evaluations")
-ax[1].set_ylim(0.0000001, 100)
-ax[1].set_title("Kriging Believer")
+ax[2].set_yscale("log")
+ax[2].set_xlabel("# evaluations")
+ax[2].set_ylim(0.0000001, 100)
+ax[2].set_title("Kriging Believer")
 
 plot_regret(
     gibbon_observations.numpy(), ax[2], num_init=5, idx_best=gibbon_min_idx
 )
-ax[2].set_yscale("log")
-ax[2].set_ylabel("Regret")
-ax[2].set_ylim(0.0000001, 100)
-ax[2].set_xlabel("# evaluations")
-ax[2].set_title("GIBBON")
+ax[3].set_yscale("log")
+ax[3].set_ylabel("Regret")
+ax[3].set_ylim(0.0000001, 100)
+ax[3].set_xlabel("# evaluations")
+ax[3].set_title("GIBBON")
 
 fig.tight_layout()
 
