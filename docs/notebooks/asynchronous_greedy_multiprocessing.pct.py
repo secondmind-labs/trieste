@@ -182,9 +182,7 @@ enable_sleep_delays = True
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalization(
-    search_space, num_samples=2000
-)
+local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
 
 async_bo = AskTellOptimizer(
@@ -257,9 +255,7 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalization(
-    search_space, num_samples=2000
-)
+local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=num_workers, builder=local_penalization_acq
 )

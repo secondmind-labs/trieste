@@ -93,9 +93,7 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
     search_space = Box([0, 0], [1, 1])
     model = QuadraticMeanAndRBFKernel()
 
-    lp_acq_builder = LocalPenalization(
-        search_space, base_acquisition_function_builder=base_builder
-    )
+    lp_acq_builder = LocalPenalization(search_space, base_acquisition_function_builder=base_builder)
     lp_acq = lp_acq_builder.prepare_acquisition_function(model, data, None)
 
     base_acq = base_builder.prepare_acquisition_function(model, dataset=data)
