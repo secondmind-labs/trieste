@@ -388,10 +388,10 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
 
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param fantasize_method: one of "KB", "sample", "minCL", "meanCL", "maxCL"
+        :param fantasize_method: one of "KB", "sample"
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(fantasize_method in ["KB", "sample", "minCL", "meanCL", "maxCL"], [])
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -444,7 +444,6 @@ def _generate_fantasized_data(
     """
     Generates "fantasized" data at pending_points depending on the chosen heuristic:
     - KB (kriging believer) uses the mean prediction of the models
-    - minCL, meanCL, maxCL (CL=constant liar) uses the min/mean/max of the observations.
     - sample uses samples from the GP posterior.
 
     :param fantasize_method: one of "KB", "sample"
