@@ -273,6 +273,27 @@ def test_deep_gaussian_process_default_optimizer_is_correct(
     assert model._fit_args == fit_args
 
 
+def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
+
+    class DummySubClass(DeepGaussianProcess):
+        """ Dummy subclass"""
+
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+
+    model = DummySubClass(two_layer_model(x))
+    fit_args = {
+        "verbose": 0,
+        "epochs": 100,
+        "batch_size": 100,
+    }
+
+    assert isinstance(model.optimizer, BatchOptimizer)
+    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert model._fit_args == fit_args
+
+
 def test_deepgp_config_builds_and_default_optimizer_is_correct(
     two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
 ) -> None:

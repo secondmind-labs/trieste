@@ -59,6 +59,7 @@ class ModelRegistry:
         :param model_type: The model type.
         :return: The wrapper which builds a model.
         """
+        # Check against all the supertypes in order, from most specific to most general
         for _model_type in model_type.__mro__:
             if _model_type in cls._MODEL_TO_WRAPPER:
                 return cls._MODEL_TO_WRAPPER[_model_type]
@@ -78,6 +79,7 @@ class ModelRegistry:
         :param optimizer_type: The optimizer type.
         :return: The optimizer wrapper to be used with the optimizer type.
         """
+        # Check against all the supertypes in order, from most specific to most general
         for _optimizer_type in optimizer_type.__mro__:
             if _optimizer_type in cls._OPTIMIZER_TO_WRAPPER:
                 return cls._OPTIMIZER_TO_WRAPPER[_optimizer_type]
@@ -205,9 +207,8 @@ class ModelConfig:
 
     def _check_optimizer_type(self) -> None:
         if self.optimizer is not None:
-            for optimizer_type in type(self.optimizer).__mro__:
-                if optimizer_type in ModelRegistry.get_registered_optimizers():
-                    return
+            if ModelRegistry.get_optimizer_wrapper(type(self.optimizer)):
+                return
             raise NotImplementedError(f"Not supported type {type(self.optimizer)}")
         else:
             return
