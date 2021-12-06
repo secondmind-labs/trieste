@@ -1,8 +1,8 @@
 # %% [markdown]
-# # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization and GIBBON
+# # Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization, Kriging Believer and GIBBON
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates three ways to perfom batch Bayesian optimization with Trieste.
+# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates four ways to perfom batch Bayesian optimization with Trieste.
 
 # %%
 import numpy as np
@@ -64,11 +64,11 @@ model = build_model(initial_data)
 
 # %% [markdown]
 # ## Batch acquisition functions.
-# To perform batch BO, we must define a batch acquisition function. Four batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalizationAcquisitionFunction`, `FantasizeAcquisitionFunction` and `GIBBON`.
+# To perform batch BO, we must define a batch acquisition function. Four batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalizationAcquisitionFunction` (see <cite data-cite="Gonzalez:2016"/>), `FantasizeAcquisitionFunction` (see <cite data-cite="ginsbourger2010kriging"/>) and `GIBBON` (see <cite data-cite="moss2021gibbon"/>).
 #
 # Although all these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, the `LocalPenalizationAcquisitionFunction` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. `FantasizeAcquisitionFunction` works similarly, but instead of penalizing the acquisition model, it iteratively updates the predictive equations after "fantasizing" obervations at the previously chosen query points. `GIBBON` also builds batches in a greedy manner but seeks batches that provide a large reduction in our uncertainty around the maximum value of the objective function.
 #
-# In practice, `BatchMonteCarloExpectedImprovement` can be expected to have superior performance for small batches (`batch_size`<5) but scales poorly for larger batches.
+# In practice, `BatchMonteCarloExpectedImprovement` can be expected to have superior performance for small batches (`batch_size`<4) but scales poorly for larger batches, especially in high dimension.
 #
 # Note that all these acquisition functions have controllable parameters. In particular, `BatchMonteCarloExpectedImprovement` is computed using a Monte-Carlo method (so it requires a `sample_size`), but uses a reparametrisation trick to make it deterministic. The `LocalPenalizationAcquisitionFunction` has parameters controlling the degree of penalization that must be estimated from a random sample of `num_samples` model predictions (we recommend at least 1_000 for each search space dimension). Similarly, `GIBBON` requires a `grid_size` parameter that controls its approximation accuracy (which should also be larger than 1_000 for each search space dimension). `FantasizeAcquisitionFunction` requires a method for "fantasizing" the observations, which can be done by sampling from the GP posterior, using the GP posterior mean (a.k.a "kriging believer" heuristic, our default setup) or using a constant value (a.k.a. "constant liar heuristic)
 #

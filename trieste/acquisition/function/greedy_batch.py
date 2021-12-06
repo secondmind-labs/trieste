@@ -490,9 +490,9 @@ class _fantasized_model(ProbabilisticModel):
 
     def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
         """
-        :param model: a model, must be of :class:`~FantasizedGPRModel`
+        :param model: a model, must be of :class:`~FastUpdateModel`
         :param fantasized_data: additional dataset to condition on
-        :raise NotImplementedError: If model is not of :class:`~FantasizedGPRModel`.
+        :raise NotImplementedError: If model is not of :class:`~FastUpdateModel`.
         """
 
         if not isinstance(model, FastUpdateModel):
@@ -511,8 +511,8 @@ class _fantasized_model(ProbabilisticModel):
         conditional_predict_f, since it does not accept query_points with rank > 2.
         We use map_fn to allow leading dimensions for query_points.
 
-        :param query_points: shape [...*, n, d]
-        :return: mean, shape [...*, ..., n, L] and cov, shape [...*, ..., L, n],
+        :param query_points: shape [...*, N, d]
+        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N],
             where ... are the leading dimensions of fantasized_data
         """
 
@@ -527,8 +527,8 @@ class _fantasized_model(ProbabilisticModel):
         conditional_predict_joint, since it does not accept query_points with rank > 2.
         We use map_fn to allow leading dimensions for query_points.
 
-        :param query_points: shape [...*, n, d]
-        :return: mean, shape [...*, ..., n, L] and cov, shape [...*, ..., L, n, n],
+        :param query_points: shape [...*, N, D]
+        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N, N],
             where ... are the leading dimensions of fantasized_data
         """
 
@@ -543,8 +543,8 @@ class _fantasized_model(ProbabilisticModel):
         conditional_predict_joint, since it does not accept query_points with rank > 2.
         We use map_fn to allow leading dimensions for query_points.
 
-        :param query_points: shape [...*, n, d]
-        :return: samples of shape [...*, ..., S, n, L], where ... are the leading
+        :param query_points: shape [...*, N, D]
+        :return: samples of shape [...*, ..., S, N, L], where ... are the leading
             dimensions of fantasized_data
         """
         leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
@@ -562,10 +562,10 @@ class _fantasized_model(ProbabilisticModel):
         """
         This function wraps conditional_predict_y. It cannot directly call
         conditional_predict_joint, since it does not accept query_points with rank > 2.
-        We use map_fn to allow leading dimensions for query_points.
+        We use tf.map_fn to allow leading dimensions for query_points.
 
-        :param query_points: shape [...*, n, d]
-        :return: mean, shape [...*, ..., n, L] and var, shape [...*, ..., L, n],
+        :param query_points: shape [...*, N, D]
+        :return: mean, shape [...*, ..., N, L] and var, shape [...*, ..., L, N],
             where ... are the leading dimensions of fantasized_data
         """
 
@@ -601,18 +601,18 @@ def _broadcast_predict(
 ) -> tuple[TensorType, TensorType]:
     """
     Utility function that allows leading dimensions for query_points when
-    fun only accepts rank2 tensors. It works by flattening query_points into
+    fun only accepts rank 2 tensors. It works by flattening query_points into
     a rank 3 tensor, evaluate fun(query_points) through tf.map_fn, then
     restoring the leading dimensions.
 
-    :param query_points: shape [...*, n, d]
+    :param query_points: shape [...*, N, D]
     :param fun: callable that returns two tensors (e.g. a predict function)
     :return: two tensors (e.g. mean and variance) with shape [...*, ...]
     """
 
     leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
     # leading_dim =...*, product = B
-    # query_points_flatten: [B, n, d]
+    # query_points_flatten: [B, N, D]
 
     mean_signature = tf.TensorSpec(None, query_points.dtype)
     var_signature = tf.TensorSpec(None, query_points.dtype)
@@ -620,19 +620,19 @@ def _broadcast_predict(
         fn=fun,
         elems=query_points_flatten,
         fn_output_signature=(mean_signature, var_signature),
-    )  # [B, ..., L, n], [B, ..., L, n] (predict_f) or [B, ..., L, n, n] (predict_joint)
+    )  # [B, ..., L, N], [B, ..., L, N] (predict_f) or [B, ..., L, N, N] (predict_joint)
 
     return _restore_leading_dim(mean, leading_dim), _restore_leading_dim(var, leading_dim)
 
 
 def _get_leading_dim_and_flatten(query_points: TensorType) -> tuple[TensorType, TensorType]:
     """
-    :param query_points: shape [...*, n, d]
-    :return: leading_dim = ....*, query_points_flatten, shape [B, n, d]
+    :param query_points: shape [...*, N, D]
+    :return: leading_dim = ....*, query_points_flatten, shape [B, N, D]
     """
     leading_dim = tf.shape(query_points)[:-2]  # =...*, product = B
     nd = tf.shape(query_points)[-2:]
-    query_points_flatten = tf.reshape(query_points, (-1, nd[0], nd[1]))  # [B, n, d]
+    query_points_flatten = tf.reshape(query_points, (-1, nd[0], nd[1]))  # [B, N, D]
     return leading_dim, query_points_flatten
 
 
