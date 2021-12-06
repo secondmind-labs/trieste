@@ -388,10 +388,10 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
 
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param fantasize_method" one of "KB", "sample"
+        :param fantasize_method: one of "KB", "sample", "minCL", "meanCL", "maxCL"
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
+        tf.debugging.Assert(fantasize_method in ["KB", "sample", "minCL", "meanCL", "maxCL"], [])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -420,27 +420,49 @@ class FantasizeAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Probabilisti
             tf.debugging.assert_rank(pending_points, 2)
 
             fantasized_data = {
-                tag: self._generate_fantasized_data(model, pending_points)
+                tag: _generate_fantasized_data(
+                    fantasize_method=self._fantasize_method,
+                    model=model,
+                    pending_points=pending_points,
+                )
                 for tag, model in models.items()
             }
             models = {
                 tag: _fantasize_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
+
             if datasets is None:
                 datasets = fantasized_data
             else:
                 datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
         return self._builder.prepare_acquisition_function(models, datasets)
 
-    def _generate_fantasized_data(
-        self, model: ProbabilisticModel, pending_points: TensorType
-    ) -> Dataset:
-        if self._fantasize_method == "KB":
-            fantasized_obs, _ = model.predict(pending_points)
-        else:
-            fantasized_obs = model.sample(pending_points, num_samples=1)  # TODO check dim
 
-        return Dataset(pending_points, fantasized_obs)
+def _generate_fantasized_data(
+    fantasize_method: str, model: ProbabilisticModel, pending_points: TensorType
+) -> Dataset:
+    """
+    Generates "fantasized" data at pending_points depending on the chosen heuristic:
+    - KB (kriging believer) uses the mean prediction of the models
+    - minCL, meanCL, maxCL (CL=constant liar) uses the min/mean/max of the observations.
+    - sample uses samples from the GP posterior.
+
+    :param fantasize_method: one of "KB", "sample"
+    :param model: a model with predict method
+    :param dataset: past data
+    :param pending_points: points at which to fantasize data
+    :return: a fantasized dataset
+    """
+    if fantasize_method == "KB":
+        fantasized_obs, _ = model.predict(pending_points)
+    elif fantasize_method == "sample":
+        fantasized_obs = model.sample(pending_points, num_samples=1)[0]
+    else:
+        raise NotImplementedError(
+            f"fantasize_method must be KB or sample, " f"received {model.__repr__()}"
+        )
+
+    return Dataset(pending_points, fantasized_obs)
 
 
 def _fantasize_model(
@@ -563,10 +585,16 @@ class _fantasized_model(ProbabilisticModel):
         return self._model.log()
 
     def update(self, dataset: Dataset) -> None:
-        raise NotImplementedError
+        raise NotImplementedError(
+            "fantasized models should only be used within"
+            "FantasizeAcquisitionFunction, hence should never be updated"
+        )
 
     def optimize(self, dataset: Dataset) -> None:
-        raise NotImplementedError
+        raise NotImplementedError(
+            "fantasized models should only be used within"
+            "FantasizeAcquisitionFunction, hence should never be updated"
+        )
 
 
 def _broadcast_predict(

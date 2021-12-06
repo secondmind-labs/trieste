@@ -242,7 +242,8 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
-def test_fantasize_reduces_predictive_variance(model_type: str) -> None:
+@pytest.mark.parametrize("fantasize_method", ["KB", "sample", "minCL", "meanCL", "maxCL"])
+def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method: str) -> None:
     x = to_default_float(tf.constant(np.arange(1, 6).reshape(-1, 1) / 5.0))
     y = fnc_2sin_x_over_3(x)
 
@@ -255,7 +256,7 @@ def test_fantasize_reduces_predictive_variance(model_type: str) -> None:
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
-    builder = FantasizeAcquisitionFunction(PredictiveVariance())
+    builder = FantasizeAcquisitionFunction(PredictiveVariance(), fantasize_method=fantasize_method)
     acq0 = builder.prepare_acquisition_function(models, data)
     acq1 = builder.prepare_acquisition_function(models, data, pending_points)
 
