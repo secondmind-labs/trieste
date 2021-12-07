@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 r"""
-This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
-and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
-creating :class:`TrainableProbabilisticModel`\ s from config.
+This package contains the primary interface for deep neural network models. It also contains a
+number of :class:`TrainableProbabilisticModel` wrappers for Keras-based models. Note that currently
+copying/saving models is not supported, so in a Bayes Opt loop `track_state` should be set False.
+Note as well that `tf.keras.backend.set_floatx()` should be used to set the desired float type.
 """
 
-from . import gpflow, gpflux, keras, optimizer
-from .config import ModelConfig, ModelRegistry, ModelSpec, create_model
-from .interfaces import ModelStack, ProbabilisticModel, TrainableProbabilisticModel
+from .interface import KerasPredictor
