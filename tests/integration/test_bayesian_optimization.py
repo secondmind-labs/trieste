@@ -52,7 +52,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import Optimizer, BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -186,9 +186,9 @@ def test_optimizer_finds_minima_of_simple_quadratic(
 
 @random_seed
 @pytest.mark.parametrize("use_natgrads", [False, True])
-def test_optimizer_doesnt_crash_with_vgp_model(use_natgrads: bool) -> None:
+def test_optimizer_with_vgp_model(use_natgrads: bool) -> None:
     # regression test for [#406]; use natgrads doesn't work well as a model for the objective
-    # so don'ter both checking the results, just that it doesn't crash
+    # so don't bother checking the results, just that it doesn't crash
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
         None if use_natgrads else 5,
@@ -199,10 +199,9 @@ def test_optimizer_doesnt_crash_with_vgp_model(use_natgrads: bool) -> None:
 
 
 @random_seed
-def test_optimizer_doesnt_crash_with_svgp_model() -> None:
+def test_optimizer_with_svgp_model() -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
-    # not enough data to work well for the objective; just check it doesn't crash
-    _test_optimizer_finds_minimum(None, acquisition_rule, model_type="SVGP")
+    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
 
 
 def _test_optimizer_finds_minimum(
@@ -242,12 +241,10 @@ def _test_optimizer_finds_minimum(
             gpflow.utilities.set_trainable(vgp.likelihood, False)
             return VariationalGaussianProcess(vgp, **model_args)
         elif model_type == "SVGP":
-            likelihood = gpflow.likelihoods.Gaussian(1e-3)
-            svgp = gpflow.models.SVGP(
-                kernel, likelihood, search_space.sample(10), num_data=len(initial_query_points)
-            )
+            Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
+            svgp = gpflow.models.SVGP(kernel, gpflow.likelihoods.Gaussian(variance=1e-5), Z, num_data=len(data.observations))
             gpflow.utilities.set_trainable(svgp.likelihood, False)
-            return SparseVariational(svgp, **model_args)
+            return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
         else:
             raise ValueError(f"Unsupported model_type '{model_type}'")
 
