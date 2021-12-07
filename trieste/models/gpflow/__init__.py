@@ -20,6 +20,11 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 from . import config, optimizer
 from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
+from .sampler import (
+    BatchReparametrizationSampler,
+    IndependentReparametrizationSampler,
+    RandomFourierFeatureTrajectorySampler,
+)
 from .utils import (
     M,
     assert_data_is_compatible,

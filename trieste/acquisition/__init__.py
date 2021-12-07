@@ -75,9 +75,8 @@ from .interface import (
     UpdatablePenalizationFunction,
 )
 from .sampler import (
-    BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
-    IndependentReparametrizationSampler,
-    RandomFourierFeatureThompsonSampler,
+    ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
 )

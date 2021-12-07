@@ -41,6 +41,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
@@ -94,9 +95,10 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                        OBJECTIVE
-                    )
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
                 ),
             ),
             (
@@ -139,14 +141,17 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                            OBJECTIVE
-                        )
+                        MinValueEntropySearch(
+                            BRANIN_SEARCH_SPACE,
+                        ).using(OBJECTIVE)
                     )
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+            (
+                10,
+                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
         ],
     )
 
