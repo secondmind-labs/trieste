@@ -52,7 +52,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer, BatchOptimizer
+from trieste.models.optimizer import BatchOptimizer, Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -242,7 +242,12 @@ def _test_optimizer_finds_minimum(
             return VariationalGaussianProcess(vgp, **model_args)
         elif model_type == "SVGP":
             Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
-            svgp = gpflow.models.SVGP(kernel, gpflow.likelihoods.Gaussian(variance=1e-5), Z, num_data=len(data.observations))
+            svgp = gpflow.models.SVGP(
+                kernel,
+                gpflow.likelihoods.Gaussian(variance=1e-5),
+                Z,
+                num_data=len(data.observations),
+            )
             gpflow.utilities.set_trainable(svgp.likelihood, False)
             return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
         else:
