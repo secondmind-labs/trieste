@@ -152,25 +152,24 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         raise NotImplementedError
 
 
-class ModelStack(TrainableProbabilisticModel):
+class ModelStack(ProbabilisticModel):
     r"""
-    A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.
-    It combines the outputs of each model for predictions and sampling, and delegates training data
-    to each model for updates and optimization.
+    A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s.
+    It combines the outputs of each model for predictions and sampling.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
     multi-output model may have dependence between its outputs. When we speak of *event size* in
-    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,
+    this class, we mean the output dimension for a given :class:`ProbabilisticModel`,
     whether that is the :class:`ModelStack` itself, or one of the subsidiary
-    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+    :class:`ProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
     size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
     """
 
     def __init__(
         self,
-        model_with_event_size: tuple[TrainableProbabilisticModel, int],
-        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
+        model_with_event_size: tuple[ProbabilisticModel, int],
+        *models_with_event_sizes: tuple[ProbabilisticModel, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -230,32 +229,6 @@ class ModelStack(TrainableProbabilisticModel):
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def update(self, dataset: Dataset) -> None:
-        """
-        Update all the wrapped models on their corresponding data. The data for each model is
-        extracted by splitting the observations in ``dataset`` along the event axis according to the
-        event sizes specified at :meth:`__init__`.
-
-        :param dataset: The query points and observations for *all* the wrapped models.
-        """
-        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
-
-        for model, obs in zip(self._models, observations):
-            model.update(Dataset(dataset.query_points, obs))
-
-    def optimize(self, dataset: Dataset) -> None:
-        """
-        Optimize all the wrapped models on their corresponding data. The data for each model is
-        extracted by splitting the observations in ``dataset`` along the event axis according to the
-        event sizes specified at :meth:`__init__`.
-
-        :param dataset: The query points and observations for *all* the wrapped models.
-        """
-        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
-
-        for model, obs in zip(self._models, observations):
-            model.optimize(Dataset(dataset.query_points, obs))
-
     def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
@@ -293,6 +266,61 @@ class ModelStack(TrainableProbabilisticModel):
             )
 
 
+class TrainableModelStack(ModelStack, TrainableProbabilisticModel):
+    r"""
+    A :class:`TrainableModelStack` is a wrapper around a number of
+    :class:`TrainableProbabilisticModel`\ s.
+    It delegates training data to each model for updates and optimization.
+
+    :class:`TrainableProbabilisticModel`\ s within the :class:`TrainableModelStack`.
+    Of course, the event size for a :class:`TrainableModelStack` will be the sum of the
+    event sizes of each subsidiary model.
+    """
+
+    def __init__(
+        self,
+        model_with_event_size: tuple[TrainableProbabilisticModel, int],
+        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
+    ):
+        r"""
+        The order of individual models specified at :meth:`__init__` determines the order of the
+        :class:`TrainableModelStack` output dimensions.
+
+        :param model_with_event_size: The first model, and the size of its output events.
+            **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
+            method signature requires at least one model. It is not treated specially.
+        :param \*models_with_event_sizes: The other models, and sizes of their output events.
+        """
+        super().__init__(model_with_event_size, *models_with_event_sizes)
+        self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
+
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update all the wrapped models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` along the event axis according to the
+        event sizes specified at :meth:`__init__`.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
+
+        for model, obs in zip(self._models, observations):
+            model.update(Dataset(dataset.query_points, obs))
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize all the wrapped models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` along the event axis according to the
+        event sizes specified at :meth:`__init__`.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
+
+        for model, obs in zip(self._models, observations):
+            model.optimize(Dataset(dataset.query_points, obs))
+
+
 class ReparametrizationSampler(ABC):
     r"""
     These samplers employ the *reparameterization trick* to draw samples from a
@@ -302,7 +330,7 @@ class ReparametrizationSampler(ABC):
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
         r"""
-        Note that our :class:`ModelStack` currently assumes that
+        Note that our :class:`TrainableModelStack` currently assumes that
         all :class:`ReparametrizationSampler` constructors have **only** these inputs
         and so will not work with more complicated constructors.
 
@@ -380,7 +408,7 @@ class TrajectorySampler(ABC):
         raise NotImplementedError
 
 
-class FastUpdateModel(ABC):
+class FastUpdateModel(ProbabilisticModel):
     """A model with the ability to predict based on (possibly fantasized) supplementary data."""
 
     @abstractmethod

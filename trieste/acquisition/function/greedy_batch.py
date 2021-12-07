@@ -416,7 +416,9 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
-        if pending_points is not None:
+        if pending_points is None:
+            return self._builder.prepare_acquisition_function(models, datasets)
+        else:
             tf.debugging.assert_rank(pending_points, 2)
 
             fantasized_data = {
@@ -427,7 +429,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 )
                 for tag, model in models.items()
             }
-            models = {
+            new_models = {
                 tag: _fantasize_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
 
@@ -435,7 +437,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 datasets = fantasized_data
             else:
                 datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
-        return self._builder.prepare_acquisition_function(models, datasets)
+
+            return self._builder.prepare_acquisition_function(new_models, datasets)
 
 
 def _generate_fantasized_data(
@@ -465,7 +468,7 @@ def _generate_fantasized_data(
 
 
 def _fantasize_model(
-    model: ProbabilisticModel, fantasized_data: Dataset
+    model: ProbabilisticModel | ModelStack, fantasized_data: Dataset
 ) -> _fantasized_model | ModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
@@ -582,18 +585,6 @@ class _fantasized_model(ProbabilisticModel):
 
     def log(self) -> None:
         return self._model.log()
-
-    def update(self, dataset: Dataset) -> None:
-        raise NotImplementedError(
-            "fantasized models should only be used within"
-            "Fantasizer, hence should never be updated"
-        )
-
-    def optimize(self, dataset: Dataset) -> None:
-        raise NotImplementedError(
-            "fantasized models should only be used within"
-            "Fantasizer, hence should never be updated"
-        )
 
 
 def _broadcast_predict(
