@@ -37,9 +37,10 @@ from tensorflow_probability.python.util import TransformedVariable
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import FastUpdateModel, TrainableProbabilisticModel
+from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
+from .sampler import RandomFourierFeatureTrajectorySampler
 from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
 
 
@@ -50,7 +51,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
     """
 
     def __init__(
-        self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_kernel_samples: int = 10
+        self,
+        model: GPR | SGPR,
+        optimizer: Optimizer | None = None,
+        num_kernel_samples: int = 10,
+        num_rff_features: int = 1000,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -59,6 +64,10 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
             evaluate before beginning model optimization. Therefore, for a kernel with `p`
             (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
+        :param num_rff_features: The number of random Foruier features used to approximate the
+            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
+            typically perfoms well for a wide range of kernels. Note that very smooth
+            kernels (e.g. RBF) can be well-approximated with fewer features.
         """
         super().__init__(optimizer)
         self._model = model
@@ -68,6 +77,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 f"num_kernel_samples must be greater or equal to zero but got {num_kernel_samples}."
             )
         self._num_kernel_samples = num_kernel_samples
+
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
 
         self._ensure_variable_model_data()
 
@@ -245,6 +260,16 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
+
+    def trajectory_sampler(self) -> TrajectorySampler:
+        """
+        Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
+        trajectories using a random Fourier feature approximation.
+
+        :return: The trajectory sampler.
+        """
+        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
+        return RandomFourierFeatureTrajectorySampler(self, models_data, self._num_rff_features)
 
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset

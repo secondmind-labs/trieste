@@ -23,8 +23,9 @@ from gpflow.models import GPModel
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import ProbabilisticModel, ReparametrizationSampler
 from ..optimizer import Optimizer
+from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -75,6 +76,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
     def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise for homoscedastic likelihoods.
+
         :return: The observation noise.
         :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
         """
@@ -107,3 +109,11 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
                 elif tf.rank(lengthscales) == 1:
                     for i, lengthscale in enumerate(lengthscales):
                         tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        :return: The reparametrization sampler.
+        """
+        return BatchReparametrizationSampler(num_samples, self)

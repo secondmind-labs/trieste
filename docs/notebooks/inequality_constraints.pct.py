@@ -175,7 +175,7 @@ class BatchExpectedConstrainedImprovement(
         objective_dataset = datasets[OBJECTIVE]
 
         samplers = {
-            tag: trieste.acquisition.BatchReparametrizationSampler(
+            tag: trieste.models.gpflow.BatchReparametrizationSampler(
                 self._sample_size, model
             )
             for tag, model in models.items()
