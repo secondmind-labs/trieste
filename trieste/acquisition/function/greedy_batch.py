@@ -493,9 +493,9 @@ class _fantasized_model(ProbabilisticModel):
 
     def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
         """
-        :param model: a model, must be of :class:`~FastUpdateModel`
+        :param model: a model, must be of class `FastUpdateModel`
         :param fantasized_data: additional dataset to condition on
-        :raise NotImplementedError: If model is not of :class:`~FastUpdateModel`.
+        :raise NotImplementedError: If model is not of class `FastUpdateModel`.
         """
 
         if not isinstance(model, FastUpdateModel):
