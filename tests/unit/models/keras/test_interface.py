@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tests.util.misc import empty_dataset, raise_exc
 from trieste.models.keras import KerasPredictor
-from trieste.models.optimizer import BatchOptimizer, Optimizer
+from trieste.models.optimizer import BatchOptimizer
 
 
 class _DummyKerasPredictor(KerasPredictor):
@@ -63,7 +63,7 @@ def test_keras_predictor_raises_on_predict_joint_call() -> None:
 def test_keras_predictor_raises_for_non_tf_optimizer() -> None:
 
     with pytest.raises(ValueError):
-        _DummyKerasPredictor(optimizer=Optimizer(gpflow.optimizers.Scipy()))
+        _DummyKerasPredictor(optimizer=BatchOptimizer(gpflow.optimizers.Scipy()))
 
 
 def test_keras_predictor_deepcopy_raises_not_implemented() -> None:
