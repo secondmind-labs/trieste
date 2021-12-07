@@ -39,21 +39,24 @@ from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import single_layer_dgp_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
+from trieste.models.config import create_model
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import BatchOptimizer
 from trieste.types import TensorType
 
 
-def test_dgp_raises_for_non_tf_optimizer(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_raises_for_non_tf_optimizer(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
-    optimizer = Optimizer(gpflow.optimizers.Scipy())
+    optimizer = BatchOptimizer(gpflow.optimizers.Scipy())
 
     with pytest.raises(ValueError):
         DeepGaussianProcess(dgp, optimizer)
 
 
-def test_dgp_raises_for_keras_layer() -> None:
+def test_deep_gaussian_process_raises_for_keras_layer() -> None:
     keras_layer_1 = tf.keras.layers.Dense(50, activation="relu")
     keras_layer_2 = tf.keras.layers.Dense(2, activation="relu")
 
@@ -83,7 +86,9 @@ def test_dgp_raises_for_keras_layer() -> None:
         DeepGaussianProcess(dgp)
 
 
-def test_dgp_model_attribute(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_model_attribute(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
@@ -91,7 +96,7 @@ def test_dgp_model_attribute(two_layer_model: Callable[[TensorType], DeepGP]) ->
     assert model.model_gpflux is dgp
 
 
-def test_dgp_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.zeros([1, 4])
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
@@ -113,7 +118,7 @@ def test_dgp_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     "new_data",
     [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
 )
-def test_dgp_update_raises_for_invalid_shapes(
+def test_deep_gaussian_process_update_raises_for_invalid_shapes(
     two_layer_model: Callable[[TensorType], DeepGP], new_data: Dataset
 ) -> None:
     x = tf.zeros([1, 4])
@@ -124,14 +129,14 @@ def test_dgp_update_raises_for_invalid_shapes(
         model.update(new_data)
 
 
-def test_dgp_optimize_with_defaults(
+def test_deep_gaussian_process_optimize_with_defaults(
     two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
 ) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     data = x_observed, y_observed
     dataset = Dataset(*data)
-    optimizer = Optimizer(tf.optimizers.Adam())
+    optimizer = BatchOptimizer(tf.optimizers.Adam())
     model = DeepGaussianProcess(two_layer_model(x_observed), optimizer)
     elbo = model.model_gpflux.elbo(data)
     model.optimize(dataset)
@@ -139,7 +144,7 @@ def test_dgp_optimize_with_defaults(
 
 
 @pytest.mark.parametrize("batch_size", [10, 100])
-def test_dgp_optimize(
+def test_deep_gaussian_process_optimize(
     two_layer_model: Callable[[TensorType], DeepGP], batch_size: int, keras_float: None
 ) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
@@ -148,7 +153,7 @@ def test_dgp_optimize(
     dataset = Dataset(*data)
 
     fit_args = {"batch_size": batch_size, "epochs": 10, "verbose": 0}
-    optimizer = Optimizer(tf.optimizers.Adam(), fit_args)
+    optimizer = BatchOptimizer(tf.optimizers.Adam(), fit_args)
 
     model = DeepGaussianProcess(two_layer_model(x_observed), optimizer)
     elbo = model.model_gpflux.elbo(data)
@@ -156,7 +161,7 @@ def test_dgp_optimize(
     assert model.model_gpflux.elbo(data) > elbo
 
 
-def test_dgp_loss(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_loss(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
@@ -167,7 +172,7 @@ def test_dgp_loss(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     npt.assert_allclose(internal_model.elbo((x, y)), reference_model.elbo((x, y)), rtol=1e-6)
 
 
-def test_dgp_predict() -> None:
+def test_deep_gaussian_process_predict() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
     reference_model = single_layer_dgp_model(x)
@@ -183,11 +188,11 @@ def test_dgp_predict() -> None:
 
 
 @random_seed
-def test_dgp_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
+def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(
         two_layer_model(x),
-        Optimizer(tf.optimizers.Adam()),
+        BatchOptimizer(tf.optimizers.Adam()),
     )
     num_samples = 50
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
@@ -217,7 +222,7 @@ def test_dgp_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
 
 
-def test_dgp_resets_lr_with_lr_schedule(
+def test_deep_gaussian_process_resets_lr_with_lr_schedule(
     two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
@@ -238,7 +243,7 @@ def test_dgp_resets_lr_with_lr_schedule(
         "verbose": 0,
         "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = Optimizer(tf.optimizers.Adam(init_lr), fit_args)
+    optimizer = BatchOptimizer(tf.optimizers.Adam(init_lr), fit_args)
 
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
@@ -249,3 +254,59 @@ def test_dgp_resets_lr_with_lr_schedule(
     model.optimize(dataset)
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
+def test_deep_gaussian_process_default_optimizer_is_correct(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+
+    model = DeepGaussianProcess(two_layer_model(x))
+    fit_args = {
+        "verbose": 0,
+        "epochs": 100,
+        "batch_size": 100,
+    }
+
+    assert isinstance(model.optimizer, BatchOptimizer)
+    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert model._fit_args == fit_args
+
+
+def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
+    class DummySubClass(DeepGaussianProcess):
+        """Dummy subclass"""
+
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+
+    model = DummySubClass(two_layer_model(x))
+    fit_args = {
+        "verbose": 0,
+        "epochs": 100,
+        "batch_size": 100,
+    }
+
+    assert isinstance(model.optimizer, BatchOptimizer)
+    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert model._fit_args == fit_args
+
+
+def test_deepgp_config_builds_and_default_optimizer_is_correct(
+    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+
+    model_config = {"model": two_layer_model(x)}
+    model = create_model(model_config)
+    fit_args = {
+        "verbose": 0,
+        "epochs": 100,
+        "batch_size": 100,
+    }
+
+    assert isinstance(model, DeepGaussianProcess)
+    assert isinstance(model.optimizer, BatchOptimizer)
+    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert model._fit_args == fit_args

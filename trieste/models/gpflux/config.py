@@ -14,19 +14,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Type
+from typing import Any, Dict, Type
 
 from gpflux.models import DeepGP
 
 from ..config import ModelRegistry
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer
 from .models import DeepGaussianProcess
 
 # Here we list all the GPflux models currently supported by model interfaces
 # and optimizers, and register them for usage with ModelConfig.
-_SUPPORTED_MODELS: Dict[Type[Any], Tuple[Type[TrainableProbabilisticModel], Type[Optimizer]]] = {
-    DeepGP: (DeepGaussianProcess, Optimizer),
+_SUPPORTED_MODELS: Dict[Type[Any], Type[TrainableProbabilisticModel]] = {
+    DeepGP: DeepGaussianProcess,
 }
-for model_type, (interface, optimizer) in _SUPPORTED_MODELS.items():
-    ModelRegistry.register_model(model_type, interface, optimizer)
+for model_type, model_wrapper in _SUPPORTED_MODELS.items():
+    ModelRegistry.register_model(model_type, model_wrapper)
