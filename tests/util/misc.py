@@ -13,11 +13,11 @@
 # limitations under the License.
 from __future__ import annotations
 
-import os
 import functools
+import os
+import random
 from collections.abc import Container, Mapping
 from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast
-import random
 
 import numpy as np
 import numpy.testing as npt
@@ -50,7 +50,7 @@ def random_seed(f: C) -> C:
     @functools.wraps(f)
     def decorated(*args: Any, **kwargs: Any) -> Any:
         # tf.random.set_seed(0)
-        os.environ['PYTHONHASHSEED']=str(0)
+        os.environ["PYTHONHASHSEED"] = str(0)
         tf.random.set_seed(0)
         np.random.seed(0)
         random.seed(0)
