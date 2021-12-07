@@ -49,8 +49,8 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models.config import create_model
 from trieste.models import TrajectorySampler
+from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseVariational,

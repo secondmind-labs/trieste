@@ -276,9 +276,8 @@ def test_deep_gaussian_process_default_optimizer_is_correct(
 def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
     two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
 ) -> None:
-
     class DummySubClass(DeepGaussianProcess):
-        """ Dummy subclass"""
+        """Dummy subclass"""
 
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
