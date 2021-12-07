@@ -292,7 +292,6 @@ class TrainableModelStack(ModelStack, TrainableProbabilisticModel):
         :param \*models_with_event_sizes: The other models, and sizes of their output events.
         """
         super().__init__(model_with_event_size, *models_with_event_sizes)
-        self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -408,7 +407,7 @@ class TrajectorySampler(ABC):
         raise NotImplementedError
 
 
-class FastUpdateModel(ProbabilisticModel):
+class FastUpdateModel(ABC):
     """A model with the ability to predict based on (possibly fantasized) supplementary data."""
 
     @abstractmethod

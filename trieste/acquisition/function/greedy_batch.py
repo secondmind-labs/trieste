@@ -468,7 +468,7 @@ def _generate_fantasized_data(
 
 
 def _fantasize_model(
-    model: ProbabilisticModel | ModelStack, fantasized_data: Dataset
+    model: ProbabilisticModel, fantasized_data: Dataset
 ) -> _fantasized_model | ModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
