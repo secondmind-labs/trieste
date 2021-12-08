@@ -368,7 +368,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     on this new artificial data.
 
     This implies that the models need to predict what their updated predictions would be given
-    new data, see :class:`~FantasizedGPRModel`. These equations are for instance in closed form
+    new data, see :class:`~FastUpdateModel`. These equations are for instance in closed form
     for the GPR model, see :cite:`chevalier2014corrected` (eqs. 8-10) for details.
 
     There are several ways to "fantasize" data: the "kriging believer" heuristic (KB, see
