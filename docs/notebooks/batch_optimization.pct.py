@@ -64,7 +64,7 @@ model = build_model(initial_data)
 
 # %% [markdown]
 # ## Batch acquisition functions.
-# To perform batch BO, we must define a batch acquisition function. Four batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalization` (see <cite data-cite="Gonzalez:2016"/>), `Fantasizer` (see <cite data-cite="ginsbourger2010kriging"/>) and `GIBBON` (see <cite data-cite="moss2021gibbon"/>).
+# To perform batch BO, we must define a batch acquisition function. Four batch acquisition functions supported in Trieste are `BatchMonteCarloExpectedImprovement`, `LocalPenalization` (see <cite data-cite="Gonzalez:2016"/>), `Fantasizer` (see <cite data-cite="ginsbourger2010kriging"/>) and `GIBBON` (see <cite data-cite="Moss:2021"/>).
 #
 # Although all these acquisition functions recommend batches of diverse query points, the batches are chosen in very different ways. `BatchMonteCarloExpectedImprovement` jointly allocates the batch of points as those with the largest expected improvement over our current best solution. In contrast, the `LocalPenalization` greedily builds the batch, sequentially adding the maximizers of the standard (non-batch) `ExpectedImprovement` function penalized around the current pending batch points. `Fantasizer` works similarly, but instead of penalizing the acquisition model, it iteratively updates the predictive equations after "fantasizing" obervations at the previously chosen query points. `GIBBON` also builds batches in a greedy manner but seeks batches that provide a large reduction in our uncertainty around the maximum value of the objective function.
 #
