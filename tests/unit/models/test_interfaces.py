@@ -33,7 +33,7 @@ from tests.util.models.gpflow.models import (
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models import ModelStack, TrainableProbabilisticModel
+from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.types import TensorType
 
 
@@ -51,11 +51,11 @@ class _QuadraticModel(GaussianProcessWithSamplers, PseudoTrainableProbModel):
         )
 
 
-def _model_stack() -> tuple[ModelStack, tuple[TrainableProbabilisticModel, ...]]:
+def _model_stack() -> tuple[TrainableModelStack, tuple[TrainableProbabilisticModel, ...]]:
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = _QuadraticModel([2.0], [2.0])
     model3 = _QuadraticModel([-1.0], [0.1])
-    return ModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
+    return TrainableModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
 
 
 def test_model_stack_predict() -> None:
@@ -109,7 +109,7 @@ def test_model_stack_missing_predict_y() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model1 = gpr_model(x, fnc_3x_plus_10(x))
     model2 = _QuadraticModel([1.0], [2.0])
-    stack = ModelStack((model1, 1), (model2, 1))
+    stack = TrainableModelStack((model1, 1), (model2, 1))
     x_predict = tf.constant([[0]], gpflow.default_float())
     with pytest.raises(NotImplementedError):
         stack.predict_y(x_predict)
@@ -119,7 +119,7 @@ def test_model_stack_predict_y() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model1 = gpr_model(x, fnc_3x_plus_10(x))
     model2 = sgpr_model(x, fnc_2sin_x_over_3(x))
-    stack = ModelStack((model1, 1), (model2, 1))
+    stack = TrainableModelStack((model1, 1), (model2, 1))
     mean, variance = stack.predict_y(x)
     npt.assert_allclose(mean[:, 0:1], model1.predict_y(x)[0])
     npt.assert_allclose(mean[:, 1:2], model2.predict_y(x)[0])
@@ -174,7 +174,7 @@ def test_model_stack_training() -> None:
     model2 = Model([quadratic], [rbf], slice(2, 3))
     model3 = Model([quadratic], [rbf], slice(3, 4))
 
-    stack = ModelStack((model01, 2), (model2, 1), (model3, 1))
+    stack = TrainableModelStack((model01, 2), (model2, 1), (model3, 1))
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
     stack.optimize(data)
@@ -183,7 +183,7 @@ def test_model_stack_training() -> None:
 def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sampler() -> None:
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = QuadraticMeanAndRBFKernel()
-    model_stack, _ = ModelStack((model01, 2), (model2, 1)), (model01, model2)  # type: ignore
+    model_stack = TrainableModelStack((model01, 2), (model2, 1))  # type: ignore
 
     with pytest.raises(NotImplementedError):
         model_stack.reparam_sampler(1)
