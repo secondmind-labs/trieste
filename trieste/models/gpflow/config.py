@@ -14,22 +14,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Type
+from typing import Any, Dict, Type
 
 from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from ..config import ModelRegistry
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import BatchOptimizer, Optimizer
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 
 # Here we list all the GPflow models currently supported by model interfaces
 # and optimizers, and register them for usage with ModelConfig.
-_SUPPORTED_MODELS: Dict[Type[Any], Tuple[Type[TrainableProbabilisticModel], Type[Optimizer]]] = {
-    GPR: (GaussianProcessRegression, Optimizer),
-    SGPR: (GaussianProcessRegression, Optimizer),
-    VGP: (VariationalGaussianProcess, Optimizer),
-    SVGP: (SparseVariational, BatchOptimizer),
+_SUPPORTED_MODELS: Dict[Type[Any], Type[TrainableProbabilisticModel]] = {
+    GPR: GaussianProcessRegression,
+    SGPR: GaussianProcessRegression,
+    VGP: VariationalGaussianProcess,
+    SVGP: SparseVariational,
 }
-for model_type, (interface, optimizer) in _SUPPORTED_MODELS.items():
-    ModelRegistry.register_model(model_type, interface, optimizer)
+for model_type, wrapper in _SUPPORTED_MODELS.items():
+    ModelRegistry.register_model(model_type, wrapper)

@@ -27,26 +27,22 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.optimizer import BatchOptimizer, Optimizer
 
 
 @pytest.mark.parametrize(
     "supported_models",
     [
-        (GPR, GaussianProcessRegression, Optimizer),
-        (SGPR, GaussianProcessRegression, Optimizer),
-        (VGP, VariationalGaussianProcess, Optimizer),
-        (SVGP, SparseVariational, BatchOptimizer),
+        (GPR, GaussianProcessRegression),
+        (SGPR, GaussianProcessRegression),
+        (VGP, VariationalGaussianProcess),
+        (SVGP, SparseVariational),
     ],
 )
 def test_supported_gpflow_models_are_correctly_registered(
-    supported_models: Tuple[
-        Type[gpflow.models.GPModel], Type[TrainableProbabilisticModel], Type[Optimizer]
-    ]
+    supported_models: Tuple[Type[gpflow.models.GPModel], Type[TrainableProbabilisticModel]]
 ) -> None:
 
-    model_type, interface, optimizer = supported_models
+    model_type, model_wrapper = supported_models
 
     assert model_type in ModelRegistry.get_registered_models()
-    assert ModelRegistry.get_interface(model_type) == interface
-    assert ModelRegistry.get_optimizer(model_type) == optimizer
+    assert ModelRegistry.get_model_wrapper(model_type) == model_wrapper
