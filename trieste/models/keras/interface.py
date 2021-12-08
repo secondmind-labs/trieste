@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractproperty
-from typing import Optional
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -24,10 +24,11 @@ from ..interfaces import ProbabilisticModel
 from ..optimizer import BatchOptimizer
 
 
-class KerasPredictor(ProbabilisticModel, tf.Module, ABC):
+class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
     """
-    A trainable wrapper for a Keras neural network models. Note: the user should
-    remember to use `tf.keras.backend.set_floatx()` with the desired value to avoid dtype errors.
+    This is an interface for trainable wrappers of TensorFlow and Keras neural network models. 
+    Note: the user should remember to use `tf.keras.backend.set_floatx()` with the desired value to
+    avoid dtype errors.
     """
 
     def __init__(self, optimizer: Optional[BatchOptimizer] = None):
@@ -45,15 +46,15 @@ class KerasPredictor(ProbabilisticModel, tf.Module, ABC):
 
         if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
             raise ValueError(
-                f"Optimizer for `KerasPredictor` models must be an instance of a "
+                f"Optimizer for `NeuralNetworkPredictor` models must be an instance of a "
                 f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
                 f"received {type(optimizer.optimizer)} instead."
             )
 
     @property
     @abstractproperty
-    def model(self) -> tf.keras.Model:
-        """The compiled Keras neural network model."""
+    def model(self) -> Union[tf.keras.Model, tf.Module]:
+        """The compiled Keras or generic TensorFlow neural network model."""
         raise NotImplementedError
 
     @property
@@ -67,7 +68,7 @@ class KerasPredictor(ProbabilisticModel, tf.Module, ABC):
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         raise NotImplementedError(
             """
-            KerasPredictor class does not implement joint predictions. Acquisition
+            NeuralNetworkPredictor class does not implement joint predictions. Acquisition
             functions relying on it cannot be used with this class by default. Certain
             types of neural networks might be able to generate joint predictions and
             such subclasses should overwrite this method.
@@ -77,5 +78,5 @@ class KerasPredictor(ProbabilisticModel, tf.Module, ABC):
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.sample(query_points, num_samples)
 
-    def __deepcopy__(self, memo: dict[int, object]) -> KerasPredictor:
-        raise NotImplementedError("`deepcopy` not yet supported for `KerasPredictor`")
+    def __deepcopy__(self, memo: dict[int, object]) -> NeuralNetworkPredictor:
+        raise NotImplementedError("`deepcopy` not yet supported for `NeuralNetworkPredictor`")

@@ -19,4 +19,4 @@ copying/saving models is not supported, so in a Bayes Opt loop `track_state` sho
 Note as well that `tf.keras.backend.set_floatx()` should be used to set the desired float type.
 """
 
-from .interface import KerasPredictor
+from .interface import NeuralNetworkPredictor

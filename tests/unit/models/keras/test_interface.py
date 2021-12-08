@@ -21,24 +21,24 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, raise_exc
-from trieste.models.keras import KerasPredictor
+from trieste.models.keras import NeuralNetworkPredictor
 from trieste.models.optimizer import BatchOptimizer
 
 
-class _DummyKerasPredictor(KerasPredictor):
+class _DummyNeuralNetworkPredictor(NeuralNetworkPredictor):
     @property
     def model(self) -> tf.keras.Model:
         return raise_exc
 
 
 def test_keras_predictor_repr_includes_class_name() -> None:
-    model = _DummyKerasPredictor()
+    model = _DummyNeuralNetworkPredictor()
 
     assert type(model).__name__ in repr(model)
 
 
 def test_keras_predictor_default_optimizer_is_correct() -> None:
-    model = _DummyKerasPredictor()
+    model = _DummyNeuralNetworkPredictor()
 
     assert isinstance(model._optimizer, BatchOptimizer)
     assert isinstance(model._optimizer.optimizer, tf.optimizers.Adam)
@@ -48,13 +48,13 @@ def test_keras_predictor_default_optimizer_is_correct() -> None:
 
 def test_keras_predictor_check_optimizer_property() -> None:
     optimizer = BatchOptimizer(tf.optimizers.RMSprop())
-    model = _DummyKerasPredictor(optimizer)
+    model = _DummyNeuralNetworkPredictor(optimizer)
 
     assert model.optimizer == optimizer
 
 
 def test_keras_predictor_raises_on_predict_joint_call() -> None:
-    model = _DummyKerasPredictor()
+    model = _DummyNeuralNetworkPredictor()
 
     with pytest.raises(NotImplementedError):
         model.predict_joint(empty_dataset([1], [1]).query_points)
@@ -63,11 +63,11 @@ def test_keras_predictor_raises_on_predict_joint_call() -> None:
 def test_keras_predictor_raises_for_non_tf_optimizer() -> None:
 
     with pytest.raises(ValueError):
-        _DummyKerasPredictor(optimizer=BatchOptimizer(gpflow.optimizers.Scipy()))
+        _DummyNeuralNetworkPredictor(optimizer=BatchOptimizer(gpflow.optimizers.Scipy()))
 
 
 def test_keras_predictor_deepcopy_raises_not_implemented() -> None:
-    model = _DummyKerasPredictor()
+    model = _DummyNeuralNetworkPredictor()
 
     with pytest.raises(NotImplementedError):
         copy.deepcopy(model)
