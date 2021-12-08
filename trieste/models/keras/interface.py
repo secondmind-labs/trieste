@@ -26,7 +26,7 @@ from ..optimizer import BatchOptimizer
 
 class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
     """
-    This is an interface for trainable wrappers of TensorFlow and Keras neural network models. 
+    This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
     Note: the user should remember to use `tf.keras.backend.set_floatx()` with the desired value to
     avoid dtype errors.
     """
