@@ -236,7 +236,7 @@ batch_result = bo.optimize(
 )
 
 # %% [markdown]
-# We can have a look at the results, as in the previous case.
+# We can have a look at the results, as in the previous case. For this relatively simple problem, the greedy heuristic works quite well, and the performance is similar to the non-batch run.
 
 # %%
 
