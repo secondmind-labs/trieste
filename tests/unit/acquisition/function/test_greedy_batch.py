@@ -36,7 +36,7 @@ from trieste.acquisition.function import NegativePredictiveMean, PredictiveVaria
 from trieste.acquisition.function.greedy_batch import (
     Fantasizer,
     LocalPenalization,
-    _fantasize_model,
+    _generate_fantasized_model,
     hard_local_penalizer,
     soft_local_penalizer,
 )
