@@ -388,7 +388,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param fantasize_method: the following options are available: "KB" and "sample".
+        :param fantasize_method: The following options are available: "KB" and "sample". See class docs for more details.
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
         tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
@@ -430,7 +430,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 for tag, model in models.items()
             }
             new_models = {
-                tag: _fantasize_model(model, fantasized_data[tag]) for tag, model in models.items()
+                tag: _generate_fantasized_model(model, fantasized_data[tag]) for tag, model in models.items()
             }
 
             if datasets is None:
@@ -467,7 +467,7 @@ def _generate_fantasized_data(
     return Dataset(pending_points, fantasized_obs)
 
 
-def _fantasize_model(
+def _generate_fantasized_model(
     model: ProbabilisticModel, fantasized_data: Dataset
 ) -> _fantasized_model | ModelStack:
     if isinstance(model, ModelStack):
