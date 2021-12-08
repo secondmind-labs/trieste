@@ -276,9 +276,9 @@ def test_fantasize_allows_query_points_with_leading_dimensions(model_type: str) 
     query_points = tf.reshape(query_points, [4, 5, 1])
 
     if model_type == "stack":
-        fanta_model5 = _fantasize_model(TrainableModelStack((model5, 1)), additional_data)
+        fanta_model5 = _generate_fantasized_model(TrainableModelStack((model5, 1)), additional_data)
     else:
-        fanta_model5 = _fantasize_model(model5, additional_data)
+        fanta_model5 = _generate_fantasized_model(model5, additional_data)
 
     num_samples = 100000
     samples_fm5 = fanta_model5.sample(query_points, num_samples)
@@ -347,10 +347,10 @@ def test_fantasized_stack_is_the_same_as_individually_fantasized() -> None:
     query_points = to_default_float(tf.constant(np.arange(1, 21).reshape(-1, 1) / 20.0))[..., None]
     query_points = tf.reshape(query_points, [4, 5, 1])
 
-    stack_fanta_model = _fantasize_model(stacked_models, additional_data_stacked)
+    stack_fanta_model = _generate_fantasized_model(stacked_models, additional_data_stacked)
 
-    fanta_model1 = _fantasize_model(model1, additional_data1)
-    fanta_model2 = _fantasize_model(model2, additional_data2)
+    fanta_model1 = _generate_fantasized_model(model1, additional_data1)
+    fanta_model2 = _generate_fantasized_model(model2, additional_data2)
 
     num_samples = 100000
     samples_fm1 = fanta_model1.sample(query_points, num_samples)

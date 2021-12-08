@@ -430,7 +430,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 for tag, model in models.items()
             }
             new_models = {
-                tag: _generate_fantasized_model(model, fantasized_data[tag]) for tag, model in models.items()
+                tag: _generate_fantasized_model(model, fantasized_data[tag])
+                for tag, model in models.items()
             }
 
             if datasets is None:
