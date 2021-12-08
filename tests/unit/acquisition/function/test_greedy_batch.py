@@ -181,7 +181,7 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
         soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
 
 
-def test_fantasized_expected_improvement_builder_raises_for_invalid_num_samples() -> None:
+def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_method() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         Fantasizer(ExpectedImprovement().using("OBJECTIVE"), "notKB")
 
