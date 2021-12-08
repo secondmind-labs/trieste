@@ -388,7 +388,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
         :param base_acquisition_function_builder: The acquisition function builder to use.
             Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
-        :param fantasize_method: The following options are available: "KB" and "sample". See class docs for more details.
+        :param fantasize_method: The following options are available: "KB" and "sample".
+            See class docs for more details.
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
         tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
