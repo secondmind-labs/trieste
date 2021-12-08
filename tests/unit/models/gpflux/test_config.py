@@ -22,21 +22,19 @@ from gpflux.models import DeepGP
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.config import ModelRegistry
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
 
 
 @pytest.mark.parametrize(
     "supported_models",
     [
-        (DeepGP, DeepGaussianProcess, Optimizer),
+        (DeepGP, DeepGaussianProcess),
     ],
 )
-def test_supported_gpflow_models_are_correctly_registered(
-    supported_models: Tuple[Type[DeepGP], Type[TrainableProbabilisticModel], Type[Optimizer]]
+def test_supported_gpflux_models_are_correctly_registered(
+    supported_models: Tuple[Type[DeepGP], Type[TrainableProbabilisticModel]]
 ) -> None:
 
-    model_type, interface, optimizer = supported_models
+    model_type, model_wrapper = supported_models
 
     assert model_type in ModelRegistry.get_registered_models()
-    assert ModelRegistry.get_interface(model_type) == interface
-    assert ModelRegistry.get_optimizer(model_type) == optimizer
+    assert ModelRegistry.get_model_wrapper(model_type) == model_wrapper

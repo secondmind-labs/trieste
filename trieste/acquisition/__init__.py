@@ -45,7 +45,8 @@ from .function import (
     ExpectedConstrainedImprovement,
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    Fantasizer,
+    LocalPenalization,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
@@ -75,9 +76,8 @@ from .interface import (
     UpdatablePenalizationFunction,
 )
 from .sampler import (
-    BatchReparametrizationSampler,
     ExactThompsonSampler,
     GumbelSampler,
-    IndependentReparametrizationSampler,
-    RandomFourierFeatureThompsonSampler,
+    ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
 )

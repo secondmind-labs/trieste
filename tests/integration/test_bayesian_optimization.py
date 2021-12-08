@@ -13,9 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import copy
 import tempfile
-from typing import List, Tuple, Union, cast
+from typing import List, Tuple, Union
 
 import gpflow
 import numpy.testing as npt
@@ -30,7 +29,7 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
     MinValueEntropySearch,
 )
 from trieste.acquisition.rule import (
@@ -42,12 +41,13 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -65,36 +65,40 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
+
 # Optimizer parameters for testing against the branin function.
-# We use a copy of these for a quicker test against a simple quadratic function
-# (copying is necessary as some of the acquisition rules are stateful).
-OPTIMIZER_PARAMS = (
-    "num_steps, acquisition_rule",
-    cast(
-        List[
-            Tuple[
-                int,
-                Union[
-                    AcquisitionRule[TensorType, Box],
-                    AcquisitionRule[
-                        State[
-                            TensorType,
-                            Union[AsynchronousRuleState, TrustRegion.State],
-                        ],
-                        Box,
+# We also use these for a quicker test against a simple quadratic function
+# (regenerating is necessary as some of the acquisition rules are stateful).
+def OPTIMIZER_PARAMS() -> Tuple[
+    str,
+    List[
+        Tuple[
+            int,
+            Union[
+                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[
+                    State[
+                        TensorType,
+                        Union[AsynchronousRuleState, TrustRegion.State],
                     ],
+                    Box,
                 ],
-            ]
-        ],
+            ],
+        ]
+    ],
+]:
+    return (
+        "num_steps, acquisition_rule",
         [
             (20, EfficientGlobalOptimization()),
             (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                        OBJECTIVE
-                    )
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
                 ),
             ),
             (
@@ -108,7 +112,7 @@ OPTIMIZER_PARAMS = (
             (
                 10,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -117,7 +121,7 @@ OPTIMIZER_PARAMS = (
             (
                 10,
                 AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -137,22 +141,24 @@ OPTIMIZER_PARAMS = (
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                            OBJECTIVE
-                        )
+                        MinValueEntropySearch(
+                            BRANIN_SEARCH_SPACE,
+                        ).using(OBJECTIVE)
                     )
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+            (
+                10,
+                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
         ],
-    ),
-)
+    )
 
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS)
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -162,7 +168,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
-@pytest.mark.parametrize(*copy.deepcopy(OPTIMIZER_PARAMS))
+@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
@@ -269,7 +275,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
+        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 

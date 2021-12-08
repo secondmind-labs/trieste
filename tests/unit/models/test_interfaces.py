@@ -25,18 +25,19 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.models.gpflow.models import (
-    GaussianProcess,
+    GaussianProcessWithSamplers,
     PseudoTrainableProbModel,
+    QuadraticMeanAndRBFKernel,
     gpr_model,
     sgpr_model,
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models import ModelStack, TrainableProbabilisticModel
+from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.types import TensorType
 
 
-class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
+class _QuadraticModel(GaussianProcessWithSamplers, PseudoTrainableProbModel):
     def __init__(
         self,
         mean_shifts: list[float],
@@ -50,11 +51,11 @@ class _QuadraticModel(GaussianProcess, PseudoTrainableProbModel):
         )
 
 
-def _model_stack() -> tuple[ModelStack, tuple[TrainableProbabilisticModel, ...]]:
+def _model_stack() -> tuple[TrainableModelStack, tuple[TrainableProbabilisticModel, ...]]:
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = _QuadraticModel([2.0], [2.0])
     model3 = _QuadraticModel([-1.0], [0.1])
-    return ModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
+    return TrainableModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
 
 
 def test_model_stack_predict() -> None:
@@ -108,7 +109,7 @@ def test_model_stack_missing_predict_y() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model1 = gpr_model(x, fnc_3x_plus_10(x))
     model2 = _QuadraticModel([1.0], [2.0])
-    stack = ModelStack((model1, 1), (model2, 1))
+    stack = TrainableModelStack((model1, 1), (model2, 1))
     x_predict = tf.constant([[0]], gpflow.default_float())
     with pytest.raises(NotImplementedError):
         stack.predict_y(x_predict)
@@ -118,7 +119,7 @@ def test_model_stack_predict_y() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model1 = gpr_model(x, fnc_3x_plus_10(x))
     model2 = sgpr_model(x, fnc_2sin_x_over_3(x))
-    stack = ModelStack((model1, 1), (model2, 1))
+    stack = TrainableModelStack((model1, 1), (model2, 1))
     mean, variance = stack.predict_y(x)
     npt.assert_allclose(mean[:, 0:1], model1.predict_y(x)[0])
     npt.assert_allclose(mean[:, 1:2], model2.predict_y(x)[0])
@@ -150,7 +151,7 @@ def test_model_stack_sample() -> None:
 
 
 def test_model_stack_training() -> None:
-    class Model(GaussianProcess, TrainableProbabilisticModel):
+    class Model(GaussianProcessWithSamplers, TrainableProbabilisticModel):
         def __init__(
             self,
             mean_functions: Sequence[Callable[[TensorType], TensorType]],
@@ -173,7 +174,40 @@ def test_model_stack_training() -> None:
     model2 = Model([quadratic], [rbf], slice(2, 3))
     model3 = Model([quadratic], [rbf], slice(3, 4))
 
-    stack = ModelStack((model01, 2), (model2, 1), (model3, 1))
+    stack = TrainableModelStack((model01, 2), (model2, 1), (model3, 1))
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
     stack.optimize(data)
+
+
+def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sampler() -> None:
+    model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
+    model2 = QuadraticMeanAndRBFKernel()
+    model_stack = TrainableModelStack((model01, 2), (model2, 1))  # type: ignore
+
+    with pytest.raises(NotImplementedError):
+        model_stack.reparam_sampler(1)
+
+
+def test_model_stack_reparam_sampler() -> None:
+    query_points = tf.random.uniform([5, 7, 3], maxval=10.0)
+    stack, (model01, model2, model3) = _model_stack()
+    sampler = stack.reparam_sampler(10_000)
+
+    samples = sampler.sample(query_points)
+
+    assert samples.shape == [5, 10_000, 7, 4]
+
+    mean = tf.reduce_mean(samples, axis=1)
+    var = tf.math.reduce_variance(samples, axis=1)
+
+    mean01, var01 = model01.predict(query_points)
+    mean2, var2 = model2.predict(query_points)
+    mean3, var3 = model3.predict(query_points)
+
+    npt.assert_allclose(mean[..., :2], mean01, rtol=0.01)
+    npt.assert_allclose(mean[..., 2:3], mean2, rtol=0.01)
+    npt.assert_allclose(mean[..., 3:], mean3, rtol=0.01)
+    npt.assert_allclose(var[..., :2], var01, rtol=0.04)
+    npt.assert_allclose(var[..., 2:3], var2, rtol=0.04)
+    npt.assert_allclose(var[..., 3:], var3, rtol=0.04)

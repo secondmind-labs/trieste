@@ -16,17 +16,21 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Mapping, Optional, Union, cast
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
+from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
+from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -36,7 +40,7 @@ from .entropy import MinValueEntropySearch
 from .function import ExpectedImprovement, expected_improvement
 
 
-class LocalPenalizationAcquisitionFunction(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
@@ -351,3 +355,288 @@ class hard_local_penalizer(local_penalizer):
         p = -5  # following experiments of :cite:`Alvi:2019`.
         penalization = ((pairwise_distances / (self._radius + self._scale)) ** p + 1) ** (1 / p)
         return tf.reduce_prod(penalization, axis=-1)
+
+
+class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
+    r"""
+    Builder of the acquisition function maker for greedily collecting batches.
+    Fantasizer allows us to perform batch Bayesian optimization with any
+    standard (non-batch) acquisition function.
+
+    Here, every time a query point is chosen by maximising an acquisition function,
+    its corresponding observation is "fantasized", and the models are conditioned further
+    on this new artificial data.
+
+    This implies that the models need to predict what their updated predictions would be given
+    new data, see :class:`~FastUpdateModel`. These equations are for instance in closed form
+    for the GPR model, see :cite:`chevalier2014corrected` (eqs. 8-10) for details.
+
+    There are several ways to "fantasize" data: the "kriging believer" heuristic (KB, see
+    :cite:`ginsbourger2010kriging`) uses the mean of the model as observations.
+    "sample" uses samples from the model.
+    """
+
+    def __init__(
+        self,
+        base_acquisition_function_builder: Optional[
+            AcquisitionFunctionBuilder[ProbabilisticModel]
+            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+        ] = None,
+        fantasize_method: str = "KB",
+    ):
+        """
+
+        :param base_acquisition_function_builder: The acquisition function builder to use.
+            Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.
+        :param fantasize_method: The following options are available: "KB" and "sample".
+            See class docs for more details.
+        :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
+        """
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
+
+        if base_acquisition_function_builder is None:
+            base_acquisition_function_builder = ExpectedImprovement()
+
+        if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
+            base_acquisition_function_builder = base_acquisition_function_builder.using(OBJECTIVE)
+
+        self._builder = base_acquisition_function_builder
+        self._fantasize_method = fantasize_method
+
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+        pending_points: Optional[TensorType] = None,
+    ) -> AcquisitionFunction:
+        """
+
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :return: An acquisition function.
+        """
+        if pending_points is None:
+            return self._builder.prepare_acquisition_function(models, datasets)
+        else:
+            tf.debugging.assert_rank(pending_points, 2)
+
+            fantasized_data = {
+                tag: _generate_fantasized_data(
+                    fantasize_method=self._fantasize_method,
+                    model=model,
+                    pending_points=pending_points,
+                )
+                for tag, model in models.items()
+            }
+            new_models = {
+                tag: _generate_fantasized_model(model, fantasized_data[tag])
+                for tag, model in models.items()
+            }
+
+            if datasets is None:
+                datasets = fantasized_data
+            else:
+                datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
+
+            return self._builder.prepare_acquisition_function(new_models, datasets)
+
+
+def _generate_fantasized_data(
+    fantasize_method: str, model: ProbabilisticModel, pending_points: TensorType
+) -> Dataset:
+    """
+    Generates "fantasized" data at pending_points depending on the chosen heuristic:
+    - KB (kriging believer) uses the mean prediction of the models
+    - sample uses samples from the GP posterior.
+
+    :param fantasize_method: the following options are available: "KB" and "sample".
+    :param model: a model with predict method
+    :param dataset: past data
+    :param pending_points: points at which to fantasize data
+    :return: a fantasized dataset
+    """
+    if fantasize_method == "KB":
+        fantasized_obs, _ = model.predict(pending_points)
+    elif fantasize_method == "sample":
+        fantasized_obs = model.sample(pending_points, num_samples=1)[0]
+    else:
+        raise NotImplementedError(
+            f"fantasize_method must be KB or sample, " f"received {model.__repr__()}"
+        )
+
+    return Dataset(pending_points, fantasized_obs)
+
+
+def _generate_fantasized_model(
+    model: ProbabilisticModel, fantasized_data: Dataset
+) -> _fantasized_model | ModelStack:
+    if isinstance(model, ModelStack):
+        observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
+        fmods = []
+        for mod, obs, event_size in zip(model._models, observations, model._event_sizes):
+            fmods.append(
+                (
+                    _fantasized_model(mod, Dataset(fantasized_data.query_points, obs)),
+                    event_size,
+                )
+            )
+        return ModelStack(*fmods)
+    else:
+        return _fantasized_model(model, fantasized_data)
+
+
+class _fantasized_model(ProbabilisticModel):
+    """
+    Creates a new model from an existing one and additional data.
+    This new model posterior is conditioned on both current model data and the additional one.
+    """
+
+    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
+        """
+        :param model: a model, must be of class `FastUpdateModel`
+        :param fantasized_data: additional dataset to condition on
+        :raise NotImplementedError: If model is not of class `FastUpdateModel`.
+        """
+
+        if not isinstance(model, FastUpdateModel):
+            raise NotImplementedError(
+                f"FantasizedAcquisitionFunction only works with FastUpdateModel, "
+                f"received "
+                f"{model.__repr__()}"
+            )
+
+        self._model = model
+        self._fantasized_data = fantasized_data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        This function wraps conditional_predict_f. It cannot directly call
+        conditional_predict_f, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, N, d]
+        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_f(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        This function wraps conditional_predict_joint. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, N, D]
+        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N, N],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_joint(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        This function wraps conditional_predict_f_sample. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, N, D]
+        :return: samples of shape [...*, ..., S, N, L], where ... are the leading
+            dimensions of fantasized_data
+        """
+        leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
+        # query_points_flatten: [B, n, d], leading_dim =...*, product = B
+
+        samples = tf.map_fn(
+            fn=lambda qp: self._model.conditional_predict_f_sample(
+                qp, self._fantasized_data, num_samples
+            ),
+            elems=query_points_flatten,
+        )  # [B, ..., S, L]
+        return _restore_leading_dim(samples, leading_dim)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        This function wraps conditional_predict_y. It cannot directly call
+        conditional_predict_joint, since it does not accept query_points with rank > 2.
+        We use tf.map_fn to allow leading dimensions for query_points.
+
+        :param query_points: shape [...*, N, D]
+        :return: mean, shape [...*, ..., N, L] and var, shape [...*, ..., L, N],
+            where ... are the leading dimensions of fantasized_data
+        """
+
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+            return self._model.conditional_predict_y(qp, self._fantasized_data)
+
+        return _broadcast_predict(query_points, fun)
+
+    def get_observation_noise(self) -> TensorType:
+        return self._model.get_observation_noise()
+
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        return self._model.get_kernel()
+
+    def log(self) -> None:
+        return self._model.log()
+
+
+def _broadcast_predict(
+    query_points: TensorType, fun: Callable[[TensorType], tuple[TensorType, TensorType]]
+) -> tuple[TensorType, TensorType]:
+    """
+    Utility function that allows leading dimensions for query_points when
+    fun only accepts rank 2 tensors. It works by flattening query_points into
+    a rank 3 tensor, evaluate fun(query_points) through tf.map_fn, then
+    restoring the leading dimensions.
+
+    :param query_points: shape [...*, N, D]
+    :param fun: callable that returns two tensors (e.g. a predict function)
+    :return: two tensors (e.g. mean and variance) with shape [...*, ...]
+    """
+
+    leading_dim, query_points_flatten = _get_leading_dim_and_flatten(query_points)
+    # leading_dim =...*, product = B
+    # query_points_flatten: [B, N, D]
+
+    mean_signature = tf.TensorSpec(None, query_points.dtype)
+    var_signature = tf.TensorSpec(None, query_points.dtype)
+    mean, var = tf.map_fn(
+        fn=fun,
+        elems=query_points_flatten,
+        fn_output_signature=(mean_signature, var_signature),
+    )  # [B, ..., L, N], [B, ..., L, N] (predict_f) or [B, ..., L, N, N] (predict_joint)
+
+    return _restore_leading_dim(mean, leading_dim), _restore_leading_dim(var, leading_dim)
+
+
+def _get_leading_dim_and_flatten(query_points: TensorType) -> tuple[TensorType, TensorType]:
+    """
+    :param query_points: shape [...*, N, D]
+    :return: leading_dim = ....*, query_points_flatten, shape [B, N, D]
+    """
+    leading_dim = tf.shape(query_points)[:-2]  # =...*, product = B
+    nd = tf.shape(query_points)[-2:]
+    query_points_flatten = tf.reshape(query_points, (-1, nd[0], nd[1]))  # [B, N, D]
+    return leading_dim, query_points_flatten
+
+
+def _restore_leading_dim(x: TensorType, leading_dim: TensorType) -> TensorType:
+    """
+    "Un-flatten" the first dimension of x to leading_dim
+
+    :param x: shape [B, ...]
+    :param leading_dim: [...*]
+    :return: shape [...*, ...]
+    """
+    single_x_shape = tf.shape(x[0])  # = [...]
+    output_x_shape = tf.concat([leading_dim, single_x_shape], axis=0)  # = [...*, ...]
+    return tf.reshape(x, output_x_shape)  # [...*, ...]
