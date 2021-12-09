@@ -421,7 +421,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         return -tf.reduce_mean(variance * self._weights, axis=-2)
 
 
-class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder):
+class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
     :cite:`houlsby2011bayesian`.
@@ -498,7 +498,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
         assert (
             type(model).__name__ == "VariationalGaussianProcess"
-            and type(model.model.likelihood).__name__ == "Bernoulli"
+            and type(model.model.likelihood).__name__ == "Bernoulli" # type: ignore
         ), "Only support VGP with Bernoulli likelihood"
 
         self._model = model
