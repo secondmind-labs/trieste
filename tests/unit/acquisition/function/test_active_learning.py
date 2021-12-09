@@ -453,7 +453,7 @@ def test_bayesian_active_learning_by_disagreement_returns_correct_shape(
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_expected_feasibility_raises_for_invalid_batch_size(at: TensorType) -> None:
+def test_bayesian_active_learning_raises_for_invalid_batch_size(at: TensorType) -> None:
     x = to_default_float(tf.zeros([1, 1]))
     y = to_default_float(tf.zeros([1, 1]))
     model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
