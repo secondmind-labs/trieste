@@ -149,7 +149,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             ),
             (10, DiscreteThompsonSampling(500, 3)),
             (
-                10,
+                15,
                 DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
             ),
         ],
