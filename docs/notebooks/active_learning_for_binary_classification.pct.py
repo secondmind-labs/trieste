@@ -129,7 +129,7 @@ plt.show()
 # %%
 initial_models = create_bo_model(initial_data)
 acq = BayesianActiveLearningByDisagreement()
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq) # type: ignore
+rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 
 # %% [markdown]
 # ## Run the active learning loop

@@ -498,7 +498,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
         assert (
             type(model).__name__ == "VariationalGaussianProcess"
-            and type(model.model.likelihood).__name__ == "Bernoulli" # type: ignore
+            and type(model.model.likelihood).__name__ == "Bernoulli"  # type: ignore
         ), "Only support VGP with Bernoulli likelihood"
 
         self._model = model
