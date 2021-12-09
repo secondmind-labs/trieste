@@ -506,6 +506,11 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
 
     # @tf.function
     def __call__(self, x: TensorType) -> TensorType:
+
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         variance = tf.maximum(variance, self._jitter)
 

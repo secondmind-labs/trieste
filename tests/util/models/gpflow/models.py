@@ -196,3 +196,10 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
     return m
+
+
+def vgp_model_bernoulli(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Bernoulli()
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
+    m = VGP((x, y), kernel, likelihood)
+    return m
