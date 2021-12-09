@@ -188,7 +188,7 @@ def custom_get_ref_point(
     ],
 )
 def test_ehvi_builder_builds_expected_hv_improvement_based_on_specified_ref_points(
-    specify_ref_points: TensorType | Sequence[float] | Callable[[TensorType], TensorType]
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
 ) -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [0.0]])
@@ -382,7 +382,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_s
     ],
 )
 def test_batch_monte_carlo_expected_hypervolume_improvement_based_on_specified_ref_points(
-    specify_ref_points: TensorType | Sequence[float] | Callable[[TensorType], TensorType],
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType],
     sample_size: int,
 ) -> None:
     num_obj = 2
@@ -624,6 +624,72 @@ def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_s
 
 
 def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+
+    obj_model = _mo_test_model(num_obj, *[None] * num_obj)
+    model_pred_observation = obj_model.predict(train_x)[0]
+
+    class _Certainty(AcquisitionFunctionBuilder):
+        def prepare_acquisition_function(
+            self,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
+        ) -> AcquisitionFunction:
+            return lambda x: tf.ones_like(tf.squeeze(x, -2))
+
+    data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
+    models_ = {"foo": obj_model}
+
+    builder = ExpectedConstrainedHypervolumeImprovement(
+        "foo",
+        _Certainty(),
+        0,
+        reference_point_spec=get_reference_point(Pareto(data["foo"].observations).front),
+    )
+    echvi = builder.prepare_acquisition_function(models_, datasets=data)
+
+    ehvi = (
+        ExpectedHypervolumeImprovement()
+        .using("foo")
+        .prepare_acquisition_function(models_, datasets=data)
+    )
+
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
+    npt.assert_allclose(echvi(at), ehvi(at))
+
+    new_data = {"foo": Dataset(train_x, model_pred_observation)}
+    up_echvi = builder.update_acquisition_function(echvi, models_, datasets=new_data)
+    assert up_echvi == echvi
+    up_ehvi = (
+        ExpectedHypervolumeImprovement()
+        .using("foo")
+        .prepare_acquisition_function(models_, datasets=new_data)
+    )
+
+    npt.assert_allclose(up_echvi(at), up_ehvi(at))
+    assert up_echvi._get_tracing_count() == 1  # type: ignore
+
+
+def custom_get_ref_point_echvi(
+    observations: TensorType,
+    objective_builder: Optional[AcquisitionFunctionBuilder] = None,
+    constraint_builder: Optional[AcquisitionFunctionBuilder] = None,
+) -> TensorType:
+    return tf.reduce_min(observations, -2)
+
+
+@pytest.mark.parametrize(
+    "specify_ref_points",
+    [
+        pytest.param(
+            custom_get_ref_point_echvi,
+            id="callable_func_input",
+        ),
+    ],
+)
+def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_points(
+        specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]) -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
 
