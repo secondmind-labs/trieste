@@ -24,7 +24,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
-from trieste.acquisition import LocalPenalizationAcquisitionFunction
+from trieste.acquisition import LocalPenalization
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -84,7 +84,7 @@ OPTIMIZER_PARAMS = (
                 10,
                 False,
                 lambda: EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -94,7 +94,7 @@ OPTIMIZER_PARAMS = (
                 30,
                 False,
                 lambda: AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                 ),
