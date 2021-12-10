@@ -27,15 +27,15 @@ from ..optimizer import BatchOptimizer
 class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
     """
     This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
-    Note: the user should remember to use `tf.keras.backend.set_floatx()` with the desired value to
-    avoid dtype errors.
+    We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with the Trieste
+    toolbox.
     """
 
     def __init__(self, optimizer: Optional[BatchOptimizer] = None):
         """
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
-            be an instance of a :class:`~tf.optimizers.Optimizer. Defaults to
+            be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
             :class:`~tf.optimizers.Adam` optimizer with default parameters.
         """
         super().__init__()
@@ -76,7 +76,14 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
         )
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self.model.sample(query_points, num_samples)
+        raise NotImplementedError(
+            """
+            NeuralNetworkPredictor class does not implement sampling. Acquisition
+            functions relying on it cannot be used with this class by default. Certain
+            types of neural networks might be able to generate samples and
+            such subclasses should overwrite this method.
+            """
+        )
 
     def __deepcopy__(self, memo: dict[int, object]) -> NeuralNetworkPredictor:
         raise NotImplementedError("`deepcopy` not yet supported for `NeuralNetworkPredictor`")

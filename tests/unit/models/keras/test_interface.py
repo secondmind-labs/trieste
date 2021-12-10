@@ -60,6 +60,13 @@ def test_keras_predictor_raises_on_predict_joint_call() -> None:
         model.predict_joint(empty_dataset([1], [1]).query_points)
 
 
+def test_keras_predictor_raises_on_sample_call() -> None:
+    model = _DummyNeuralNetworkPredictor()
+
+    with pytest.raises(NotImplementedError):
+        model.sample(empty_dataset([1], [1]).query_points, 1)
+
+
 def test_keras_predictor_raises_for_non_tf_optimizer() -> None:
 
     with pytest.raises(ValueError):

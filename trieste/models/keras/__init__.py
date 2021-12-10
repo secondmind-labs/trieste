@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""
+"""
 This package contains the primary interface for deep neural network models. It also contains a
-number of :class:`TrainableProbabilisticModel` wrappers for Keras-based models. Note that currently
-copying/saving models is not supported, so in a Bayes Opt loop `track_state` should be set False.
-Note as well that `tf.keras.backend.set_floatx()` should be used to set the desired float type.
+number of :class:`TrainableProbabilisticModel` wrappers for neural network models. Note that
+currently copying/saving models is not supported, so when
+:class:`~trieste.bayesian_optimizer.BayesianOptimizer` is used ``track_state`` should be set
+to `False`. We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with
+the Trieste toolbox.
 """
 
 from .interface import NeuralNetworkPredictor
