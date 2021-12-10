@@ -17,7 +17,6 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
-
 from trieste.data import Dataset
 from trieste.models.keras.utils import get_tensor_spec_from_data, sample_with_replacement
 
@@ -29,9 +28,9 @@ def test_get_tensor_spec_from_data_raises_for_incorrect_dataset() -> None:
     with pytest.raises(ValueError):
         get_tensor_spec_from_data(dataset.query_points)
 
+
 @pytest.mark.parametrize(
-    "query_point_shape, observation_shape", 
-    [([1], [1]), ([2], [1]), ([5], [1]), ([5], [2])]
+    "query_point_shape, observation_shape", [([1], [1]), ([2], [1]), ([5], [1]), ([5], [2])]
 )
 def test_get_tensor_spec_from_data(
     query_point_shape: ShapeLike, observation_shape: ShapeLike
@@ -89,9 +88,9 @@ def test_sample_with_replacement_seems_correct() -> None:
 
     # mean of bootstrap samples should be close to true mean
     mean = [
-        tf.reduce_mean(tf.cast(sample_with_replacement(dataset).query_points, dtype=tf.float32)) 
+        tf.reduce_mean(tf.cast(sample_with_replacement(dataset).query_points, dtype=tf.float32))
         for _ in range(100)
     ]
     x = tf.cast(x, dtype=tf.float32)
     assert (tf.reduce_mean(mean) - tf.reduce_mean(x)) < 1
-    assert tf.math.abs(tf.math.reduce_std(mean) - tf.math.reduce_std(x)/10.0) < 0.1
+    assert tf.math.abs(tf.math.reduce_std(mean) - tf.math.reduce_std(x) / 10.0) < 0.1

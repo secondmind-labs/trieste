@@ -14,12 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Union
-
 import tensorflow as tf
 
 from ...data import Dataset
-from ...types import TensorType
 
 
 def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.TensorSpec]:
