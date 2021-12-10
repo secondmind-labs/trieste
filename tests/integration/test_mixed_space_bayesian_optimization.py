@@ -25,7 +25,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
 )
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -65,7 +65,7 @@ from trieste.types import TensorType
             (
                 5,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -124,4 +124,4 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
         if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() == 2  # type: ignore
+            assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore
