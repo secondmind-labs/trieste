@@ -133,6 +133,25 @@ num_steps = 10
 result = bo.optimize(num_steps, initial_data, model, rule)
 
 
+
+
+num_search_space_samples = 1000
+num_query_points = 1
+acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
+    num_search_space_samples=num_search_space_samples,
+    num_query_points=num_query_points,
+    thompson_sampler = trieste.acquisition.sampler.ExactThompsonSampler(
+        sample_min_value=False, 80.0)
+)
+
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+num_steps = 10
+result = bo.optimize(
+    num_steps, initial_data, model, acq_rule, track_state=False
+)
+
+
 # %% [markdown]
 # Let's illustrate the results.
 #

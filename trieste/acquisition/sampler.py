@@ -73,6 +73,12 @@ class ExactThompsonSampler(ThompsonSampler):
 
     """
 
+    def __init__(self, sample_min_value: bool = False, threshold: float = None):
+        
+        super().__init__(sample_min_value)
+
+        self._threshold = threshold
+
     def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
         """
         Return exact samples from either the objective function's minimser or its minimal value
@@ -91,10 +97,16 @@ class ExactThompsonSampler(ThompsonSampler):
 
         samples = model.sample(at, sample_size)  # [S, N, 1]
 
-        if self._sample_min_value:
-            thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
+        if not self._threshold:
+            if self._sample_min_value:
+                thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
+            else:
+                samples_2d = tf.squeeze(samples, -1)  # [S, N]
+                indices = tf.math.argmin(samples_2d, axis=1)
+                thompson_samples = tf.gather(at, indices)  # [S, D]
         else:
-            samples_2d = tf.squeeze(samples, -1)  # [S, N]
+            # breakpoint()
+            samples_2d = tf.math.abs(tf.squeeze(samples, -1) - self._threshold) # [S, N]
             indices = tf.math.argmin(samples_2d, axis=1)
             thompson_samples = tf.gather(at, indices)  # [S, D]
 
