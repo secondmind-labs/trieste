@@ -50,7 +50,7 @@ class Dataset:
 
         if (
             self.query_points.shape[:-1] != self.observations.shape[:-1]
-            # can't easily check dynamic shapes, so trust that they're ok (if not, they'll fail later)
+            # can't check dynamic shapes, so trust that they're ok (if not, they'll fail later)
             and None not in self.query_points.shape[:-1]
         ):
             raise ValueError(

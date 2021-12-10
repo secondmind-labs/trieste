@@ -457,8 +457,14 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
         else:
             for tag, model in self._fantasized_models.items():
                 if isinstance(model, ModelStack):
-                    for submodel in model._models:
-                        submodel.update_fantasized_data(fantasized_data[tag])
+                    observations = tf.split(
+                        fantasized_data[tag].observations, model._event_sizes, axis=-1
+                    )
+                    for submodel, obs in zip(model._models, observations):
+                        submodel.update_fantasized_data(
+                            Dataset(fantasized_data[tag].query_points, obs)
+                        )
+
                 else:
                     model.update_fantasized_data(fantasized_data[tag])
             self._builder.update_acquisition_function(
