@@ -188,14 +188,15 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_me
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> None:
     data = {
-        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 1], dtype=tf.float64))
     }
     models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
-        builder.prepare_acquisition_function(models, data, pending_points)
+        acq = builder.prepare_acquisition_function(models, data)
+        builder.update_acquisition_function(acq, models, data, pending_points)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])

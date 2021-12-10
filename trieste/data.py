@@ -48,7 +48,7 @@ class Dataset:
                 f" {self.query_points.shape} and {self.observations.shape}."
             )
 
-        if self.query_points.shape[:-1] != self.observations.shape[:-1]:
+        if self.query_points.shape[:-1].as_list() != self.observations.shape[:-1].as_list():
             raise ValueError(
                 f"Leading shapes of query_points and observations must match. Got shapes"
                 f" {self.query_points.shape}, {self.observations.shape}."
