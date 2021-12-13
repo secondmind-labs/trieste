@@ -27,10 +27,16 @@ from gpflow.utilities.ops import leading_transpose
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import FastUpdateModel, TrainableProbabilisticModel
+from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
-from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
+from .sampler import RandomFourierFeatureTrajectorySampler
+from .utils import (
+    assert_data_is_compatible,
+    check_optimizer,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
+)
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
@@ -40,7 +46,11 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
     """
 
     def __init__(
-        self, model: GPR | SGPR, optimizer: Optimizer | None = None, num_kernel_samples: int = 10
+        self,
+        model: GPR | SGPR,
+        optimizer: Optimizer | None = None,
+        num_kernel_samples: int = 10,
+        num_rff_features: int = 1000,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -49,9 +59,15 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
             evaluate before beginning model optimization. Therefore, for a kernel with `p`
             (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
+        :param num_rff_features: The number of random Foruier features used to approximate the
+            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
+            typically perfoms well for a wide range of kernels. Note that very smooth
+            kernels (e.g. RBF) can be well-approximated with fewer features.
         """
         super().__init__(optimizer)
         self._model = model
+
+        check_optimizer(self.optimizer)
 
         if num_kernel_samples <= 0:
             raise ValueError(
@@ -59,11 +75,17 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
             )
         self._num_kernel_samples = num_kernel_samples
 
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
+
         self._ensure_variable_model_data()
 
     def __repr__(self) -> str:
         """"""
-        return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
+        return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> GPR | SGPR:
@@ -235,6 +257,16 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 current_best_parameters = read_values(self.model)
 
         multiple_assign(self.model, current_best_parameters)
+
+    def trajectory_sampler(self) -> TrajectorySampler:
+        """
+        Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
+        trajectories using a random Fourier feature approximation.
+
+        :return: The trajectory sampler.
+        """
+        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
+        return RandomFourierFeatureTrajectorySampler(self, models_data, self._num_rff_features)
 
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset
@@ -468,6 +500,8 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+        check_optimizer(optimizer)
+
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
@@ -477,7 +511,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self._model!r}, {self.optimizer!r})"
+        return f"SparseVariational({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
@@ -552,21 +586,26 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
 
         super().__init__(optimizer)
-        self._model = model
+
+        check_optimizer(self.optimizer)
 
         if use_natgrads:
-            if not isinstance(self._optimizer, BatchOptimizer) or not isinstance(
-                self._optimizer.optimizer, tf.optimizers.Optimizer
-            ):
+            if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
                 raise ValueError(
                     f"""
                     Natgrads can only be used with a BatchOptimizer wrapper using an instance of
-                    tf.optimizers.Optimizer, however received f{self._optimizer}.
+                    tf.optimizers.Optimizer, however received {self.optimizer}.
                     """
                 )
-
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
+            if isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+                raise ValueError(
+                    f"""
+                    If not using natgrads an Optimizer wrapper should be used with
+                    gpflow.optimizers.Scipy, however received {self.optimizer}.
+                    """
+                )
             if natgrad_gamma is not None:
                 raise ValueError(
                     """
@@ -574,6 +613,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     """
                 )
 
+        self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
 
@@ -599,7 +639,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
+        return f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> VGP:

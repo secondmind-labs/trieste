@@ -21,7 +21,7 @@ from gpflow.base import Module
 
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
-from ..optimizer import Optimizer
+from ..optimizer import BatchOptimizer
 
 
 class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -31,24 +31,17 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
     dtype errors."""
 
-    def __init__(self, optimizer: Optimizer | None = None):
+    def __init__(self, optimizer: BatchOptimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam`.
         """
         super().__init__()
 
         if optimizer is None:
-            optimizer = Optimizer(tf.optimizers.Adam())
+            optimizer = BatchOptimizer(tf.optimizers.Adam())
 
         self._optimizer = optimizer
-
-        if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
-            )
 
     @property
     @abstractmethod
@@ -61,7 +54,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    def optimizer(self) -> Optimizer:
+    def optimizer(self) -> BatchOptimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
 

@@ -30,7 +30,7 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
     MinValueEntropySearch,
 )
 from trieste.acquisition.rule import (
@@ -42,13 +42,14 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
 from trieste.models.transforms import StandardTransformer, transform_data
+from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -100,9 +101,10 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                        OBJECTIVE
-                    )
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
                 ),
             ),
             (
@@ -116,7 +118,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -125,7 +127,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -145,14 +147,17 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                            OBJECTIVE
-                        )
+                        MinValueEntropySearch(
+                            BRANIN_SEARCH_SPACE,
+                        ).using(OBJECTIVE)
                     )
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+            (
+                15,
+                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
         ],
     )
 
@@ -276,7 +281,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
+        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 

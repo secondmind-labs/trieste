@@ -23,7 +23,8 @@ from gpflow.models import GPModel
 
 from tests.util.misc import random_seed
 from trieste.data import Dataset
-from trieste.models.gpflow import GPflowPredictor
+from trieste.models import ReparametrizationSampler
+from trieste.models.gpflow import BatchReparametrizationSampler, GPflowPredictor
 
 
 class _QuadraticPredictor(GPflowPredictor):
@@ -33,6 +34,9 @@ class _QuadraticPredictor(GPflowPredictor):
 
     def update(self, dataset: Dataset) -> None:
         pass
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        return BatchReparametrizationSampler(num_samples, self)
 
 
 class _QuadraticGPModel(GPModel):
@@ -84,3 +88,25 @@ def test_gpflow_predictor_sample() -> None:
 def test_gpflow_predictor_sample_0_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
+
+
+def test_gpflow_reparam_sampler_returns_a_param_sampler() -> None:
+    sampler = _QuadraticPredictor().reparam_sampler(10)
+    assert isinstance(sampler, BatchReparametrizationSampler)
+    assert sampler._sample_size == 10
+
+
+def test_gpflow_reparam_sampler_returns_reparam_sampler_with_correct_samples() -> None:
+    num_samples = 20_000
+    sampler = _QuadraticPredictor().reparam_sampler(num_samples)
+
+    samples = sampler.sample(tf.constant([[2.5]], gpflow.default_float()))
+
+    assert samples.shape == [num_samples, 1, 1]
+
+    sample_mean = tf.reduce_mean(samples, axis=0)
+    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
+
+    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, [[6.25]], rtol=linear_error)
+    npt.assert_allclose(sample_variance, 1.0, rtol=2 * linear_error)
