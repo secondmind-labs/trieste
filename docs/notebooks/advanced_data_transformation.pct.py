@@ -127,13 +127,14 @@ model = GPRwithDataTransforms(
 # Now we optimize and display the results.
 
 # %%
-num_acquisitions = 30 * num_dims - num_initial_points
+# 30 * num_dims - num_initial_points
+num_steps = 56
 
 np.random.seed(1794)
 tf.random.set_seed(1794)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, model)
+result = bo.optimize(num_steps, initial_data, model)
 dataset = result.try_get_final_dataset()
 
 query_points = dataset.query_points.numpy()
@@ -210,7 +211,7 @@ np.random.seed(1794)
 tf.random.set_seed(1794)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(num_acquisitions, initial_data, dynamic_model)
+result = bo.optimize(num_steps, initial_data, dynamic_model)
 dataset = result.try_get_final_dataset()
 
 query_points = dataset.query_points.numpy()

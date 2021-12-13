@@ -48,7 +48,11 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`How do I track and visualize an optimization loop in realtime using TensorBoard?<notebooks/visualizing_with_tensorboard>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
-* :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
+* How do I perform data transformations required for training the model?
+  
+  * :doc:`Example of performing transformations based on the initial dataset. We recommend this approach.<notebooks/data_transformation>`
+  * :doc:`Example of updating model or normalization parameters at each iteration. This may be useful in some advanced cases.<notebooks/advanced_data_transformation>`
+
 * How do I use Trieste in asynchronous objective evaluation mode?
 
   * :doc:`Example of using greedy batch acquisition functions and Python multiprocessing module.<notebooks/asynchronous_greedy_multiprocessing>`
@@ -58,6 +62,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    :hidden:
    :maxdepth: 1
 
+   notebooks/advanced_data_transformation
    notebooks/ask_tell_optimization
    notebooks/data_transformation
    notebooks/model_config

@@ -48,8 +48,8 @@ from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.transforms import StandardTransformer, transform_data
 from trieste.models.optimizer import BatchOptimizer
+from trieste.models.transforms import StandardTransformer, transform_data
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,

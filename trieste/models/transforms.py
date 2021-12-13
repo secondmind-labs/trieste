@@ -40,9 +40,9 @@ class DataTransformer(ABC):
         arguments, or based on the unnormalized data.
 
         :param data: The unnormalized data. If this argument is used is then the transform's
-        parameters will be set from the data and should not be passed explicitly.
+            parameters will be set from the data and should not be passed explicitly.
         :param transform_parameters: Keyword arguments for explicitly setting the transform's
-        parameters. If these are used then the `data` keyword argument should be `None`.
+            parameters. If these are used then the `data` keyword argument should be `None`.
         """
         raise NotImplementedError
 
@@ -121,7 +121,7 @@ class StandardTransformer(DataTransformer):
         """Normalize data.
 
         :param data: The unnormalized data. Shape must be [..., D] if transform operates over
-        multiple dimensions else any shape.
+            multiple dimensions else any shape.
         :return: The normalized data. Same shape as `data`.
         """
         return (data - self._mean) / self._std
@@ -130,7 +130,7 @@ class StandardTransformer(DataTransformer):
         """Transform normalized data to unnormalized space.
 
         :param data: The normalized data. Shape must be [..., D] if transform operates over
-        multiple dimensions else any shape.
+            multiple dimensions else any shape.
         :return: The unnormalized data. Same shape as `data`.
         """
         return data * self._std + self._mean
@@ -139,7 +139,7 @@ class StandardTransformer(DataTransformer):
         """Transform the variance of unnormalized data to the variance of normalized data.
 
         :param variance: The variance of the unnormalized data. Shape must be [..., D] if transform
-        operates over multiple dimensions else any shape.
+            operates over multiple dimensions else any shape.
         :return: The variance of the normalized data. Same shape as `data`.
         """
         return variance / self._std ** 2
@@ -148,7 +148,7 @@ class StandardTransformer(DataTransformer):
         """Transform the variance of normalized data to the variance of unnormalized data.
 
         :param variance: The variance of the unnormalized data. Shape must be [..., D] if transform
-        operates over multiple dimensions else any shape.
+            operates over multiple dimensions else any shape.
         :return: The variance of the normalized data. Same shape as `data`.
         """
         return variance * self._std ** 2
@@ -178,7 +178,7 @@ class MinMaxTransformer(DataTransformer):
         """Normalize data.
 
         :param data: The unnormalized data. Shape must be [..., D] if transform operates over
-        multiple dimensions else any shape.
+            multiple dimensions else any shape.
         :return: The normalized data. Same shape as `data`.
         """
         return (data - self._min) / self._delta
@@ -187,7 +187,7 @@ class MinMaxTransformer(DataTransformer):
         """Transform normalized data to unnormalized space.
 
         :param data: The normalized data. Shape [..., D] if transform operates over multiple
-        dimensions else any shape.
+            dimensions else any shape.
         :return: The unnormalized data. Same shape as `data`.
         """
         return data * self._delta + self._min
@@ -196,7 +196,7 @@ class MinMaxTransformer(DataTransformer):
         """Transform the variance of unnormalized data to the variance of normalized data.
 
         :param variance: The variance of the unnormalized data. Shape [..., D] if transform
-        operates over multiple dimensions else any shape.
+            operates over multiple dimensions else any shape.
         :return: The variance of the normalized data. Same shape as `data`.
         """
         return variance / self._delta ** 2
@@ -205,7 +205,7 @@ class MinMaxTransformer(DataTransformer):
         """Transform the variance of normalized data to the variance of unnormalized data.
 
         :param variance: The variance of the unnormalized data. Shape [..., D] if transform
-        operates over multiple dimensions else any shape.
+            operates over multiple dimensions else any shape.
         :return: The variance of the normalized data. Same shape as `data`.
         """
         return variance * self._delta ** 2
@@ -213,17 +213,20 @@ class MinMaxTransformer(DataTransformer):
 
 class DataTransformModelWrapper(TrainableProbabilisticModel):
     """
-    A wrapper that handles data transformations for :class: `TrainableProbabilisticModel`s.
+    A wrapper that handles data transformations for :class:`TrainableProbabilisticModel` models.
 
-    Usage requires creating a new class that inherits from this class and the desired model, e.g.
-    ```
-    class GPRwithDataNormalization(DataTransformModelWrapper, GaussianProcessRegression):
-        pass
-    ```
-    Ensure that this class is the first class inherited from.
+    This class is intended to be used via the `transform_data` decorator, but can also be used
+    directly. Direct usage requires creating a new class that inherits from this class and the
+    desired model, e.g.::
 
-    **Note:** that this wrapper only handles methods defined in `TrainableProbabilisticModel`. The
-    user must add additional methods for any specific model class themselves.
+        class SVGPwithDataNormalization(DataTransformModelWrapper, SparseVariational):
+            pass
+
+    This new class will have the same interface as `SparseVariational`, but handle data transforms
+    appropriately for all methods defined by the :class:`TrainableProbabilisticModel` interface.
+    The user must add additional methods themselves for models that deviate from the standard
+    interface. If using the wrapper directly, ensure that 'DataTransformModelWrapper` is the
+    first class inherited from.
 
     To update model and normalization parameters on each iteration, subclass the
     `_update_model_and_normalization_parameters` method appropriately.
@@ -367,22 +370,22 @@ def transform_data(
     model_wrapper: Type[DataTransformModelWrapper] = DataTransformModelWrapper,
 ) -> Callable[[Type[TrainableProbabilisticModel]], Type[TrainableProbabilisticModel]]:
     """Create a decorator that returns a class that will transform data using
-    `query_point_transformer` and `observation_transformer` as specified by `model_wrapper.
+    `query_point_transformer` and `observation_transformer` as specified by `model_wrapper`.
 
     :param query_point_transformer: The object that will be used to transform query points.
     :param observation_transformer: The object that will be used to transform observations.
     :param model_wrapper: The mixin class that will be inherited from to provide the data
-    transforming functionality for the model's methods.
+        transforming functionality for the model's methods.
     :return: A decorator that takes a `TrainableProbabilisticModel` class as input and returns a
-    wrapped version that handles data transforms.
+        wrapped version that handles data transforms.
     """
 
     def data_transform_decorator(
         model_class: Type[TrainableProbabilisticModel],
     ) -> Type[TrainableProbabilisticModel]:
-        """A decorator that creates wrapped :class:`TrainableProbabilisticModel`s.
+        """A decorator that creates a wrapped :class:`TrainableProbabilisticModel`.
 
-        :param model_class: The :class:`TrainableProbabilisticModel` class to be wrapped.
+        :param model_class: The :class:`TrainableProbabilisticModel` to be wrapped.
         :return: A class with inheritance structure `WrappedModel(model_wrapper, model_class)`
         """
         WrappedModel = type(
