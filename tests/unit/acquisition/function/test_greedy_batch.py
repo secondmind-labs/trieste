@@ -195,8 +195,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> N
     builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
-        acq = builder.prepare_acquisition_function(models, data)
-        builder.update_acquisition_function(acq, models, data, pending_points)
+        builder.prepare_acquisition_function(models, data, pending_points)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
@@ -232,7 +231,10 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
 
     builder = Fantasizer(NegativePredictiveMean())
     acq0 = builder.prepare_acquisition_function(models, data)
-    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+
+    acq1 = builder.update_acquisition_function(acq0, models, data, pending_points[:1])
+    up_acq1 = builder.update_acquisition_function(acq1, models, data, pending_points)
+    assert up_acq1 == acq1  # in-place updates
 
     acq_val0 = acq0(x_test)
     acq_val1 = acq1(x_test)
