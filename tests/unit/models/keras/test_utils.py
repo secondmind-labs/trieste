@@ -30,7 +30,8 @@ def test_get_tensor_spec_from_data_raises_for_incorrect_dataset() -> None:
 
 
 @pytest.mark.parametrize(
-    "query_point_shape, observation_shape", [([1], [1]), ([2], [1]), ([5], [1]), ([5], [2])]
+    "query_point_shape, observation_shape",
+    [([1], [1]), ([2], [1]), ([5], [1]), ([5], [2]), ([3, 2], [3, 1])],
 )
 def test_get_tensor_spec_from_data(
     query_point_shape: ShapeLike, observation_shape: ShapeLike
@@ -64,11 +65,16 @@ def test_sample_with_replacement_raises_for_empty_dataset() -> None:
 
 
 @random_seed
-def test_sample_with_replacement_seems_correct() -> None:
+@pytest.mark.parametrize("rank", [2, 3])
+def test_sample_with_replacement_seems_correct(rank: int) -> None:
 
     n_rows = 100
-    x = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
-    y = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
+    if rank == 2:
+        x = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
+        y = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
+    elif rank == 3:
+        x = tf.constant(np.arange(0, n_rows, 1).repeat(2), shape=[n_rows, 2, 1])
+        y = tf.constant(np.arange(0, n_rows, 1).repeat(2), shape=[n_rows, 2, 1])
     dataset = Dataset(x, y)
 
     dataset_resampled = sample_with_replacement(dataset)
@@ -83,14 +89,16 @@ def test_sample_with_replacement_seems_correct() -> None:
     assert tf.reduce_any(dataset_resampled.observations != y)
 
     # values are likely to repeat due to replacement
-    _, _, count = tf.unique_with_counts(tf.squeeze(dataset_resampled.query_points))
+    _, _, count = tf.unique_with_counts(tf.squeeze(dataset_resampled.query_points[:, 0]))
     assert tf.reduce_any(count > 1)
 
     # mean of bootstrap samples should be close to true mean
     mean = [
-        tf.reduce_mean(tf.cast(sample_with_replacement(dataset).query_points, dtype=tf.float32))
+        tf.reduce_mean(
+            tf.cast(sample_with_replacement(dataset).query_points[:, 0], dtype=tf.float32)
+        )
         for _ in range(100)
     ]
-    x = tf.cast(x, dtype=tf.float32)
+    x = tf.cast(x[:, 0], dtype=tf.float32)
     assert (tf.reduce_mean(mean) - tf.reduce_mean(x)) < 1
     assert tf.math.abs(tf.math.reduce_std(mean) - tf.math.reduce_std(x) / 10.0) < 0.1

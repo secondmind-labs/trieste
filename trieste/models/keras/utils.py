@@ -20,9 +20,20 @@ from ...data import Dataset
 
 
 def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.TensorSpec]:
-    """
+    r"""
     Extract tensor specifications for inputs and outputs of neural network models, based on the
-    dataset. This utility faciliates constructing neural networks.
+    dataset. This utility faciliates constructing neural networks, providing the required
+    dimensions for the input and the output of the network. For example
+
+    >>> data = Dataset(
+    ...     tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+    ...     tf.constant([[0.5], [0.7]])
+    ... )
+    >>> input_spec, output_spec = get_tensor_spec_from_data(data)
+    >>> input_spec
+    <TensorSpec(shape=(2,), dtype=tf.float32, name='query_points')>
+    >>> output_spec
+    <TensorSpec(shape=(1,), dtype=tf.float32, name='observations')>
 
     :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
     :return: Tensor specification objects for the ``query_points`` and ``observations`` tensors.
@@ -34,12 +45,12 @@ def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.Tenso
             f"{type(dataset)} which is incompatible."
         )
     input_tensor_spec = tf.TensorSpec(
-        shape=(dataset.query_points.shape[-1],),
+        shape=(dataset.query_points.shape[1:]),
         dtype=dataset.query_points.dtype,
         name="query_points",
     )
     output_tensor_spec = tf.TensorSpec(
-        shape=(dataset.observations.shape[-1],),
+        shape=(dataset.observations.shape[1:]),
         dtype=dataset.observations.dtype,
         name="observations",
     )
@@ -65,11 +76,9 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
 
     n_rows = dataset.observations.shape[0]
 
-    index_tensor = tf.random.uniform(
-        (n_rows,), maxval=n_rows, dtype=tf.dtypes.int32
-    )  # pylint: disable=all
+    index_tensor = tf.random.uniform((n_rows,), maxval=n_rows, dtype=tf.dtypes.int32)
 
-    observations = tf.gather(dataset.observations, index_tensor)  # pylint: disable=all
-    query_points = tf.gather(dataset.query_points, index_tensor)  # pylint: disable=all
+    observations = tf.gather(dataset.observations, index_tensor, axis=0)
+    query_points = tf.gather(dataset.query_points, index_tensor, axis=0)
 
     return Dataset(query_points=query_points, observations=observations)
