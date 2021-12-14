@@ -31,14 +31,15 @@ def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.Tenso
     ... )
     >>> input_spec, output_spec = get_tensor_spec_from_data(data)
     >>> input_spec
-    <TensorSpec(shape=(2,), dtype=tf.float32, name='query_points')>
+    TensorSpec(shape=(2,), dtype=tf.float32, name='query_points')
     >>> output_spec
-    <TensorSpec(shape=(1,), dtype=tf.float32, name='observations')>
+    TensorSpec(shape=(1,), dtype=tf.float32, name='observations')
 
     :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
     :return: Tensor specification objects for the ``query_points`` and ``observations`` tensors.
     :raise ValueError: If the dataset is not an instance of :class:`~trieste.data.Dataset`.
     """
+    data = Dataset(tf.constant([[0.1, 0.2], [0.3, 0.4]]), tf.constant([[0.5], [0.7]]))
     if not isinstance(dataset, Dataset):
         raise ValueError(
             f"This function works only on trieste.data.Dataset objects, however got"
