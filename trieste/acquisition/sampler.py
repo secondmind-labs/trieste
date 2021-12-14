@@ -113,6 +113,88 @@ class ExactThompsonSampler(ThompsonSampler):
         return thompson_samples
 
 
+
+class ExpectedFeasibilitySampler(ThompsonSampler):
+    r"""
+    This sampler provides exact Thompson samples of the objective function's
+    minimiser :math:`x^*` over a discrete set of input locations.
+
+    Although exact Thompson sampling is costly (incuring with an :math:`O(N^3)` complexity to
+    sample over a set of `N` locations), this method can be used for any probabilistic model
+    with a sampling method.
+
+    """
+
+    def __init__(
+        self,
+        threshold: float = None,
+        alpha: float = 1,
+        delta: int = 1
+    ) -> None:
+        
+        super().__init__(False)
+
+        tf.debugging.assert_scalar(threshold)
+        tf.debugging.assert_scalar(alpha)
+        tf.debugging.assert_positive(alpha, message="Parameter alpha must be positive.")
+        tf.debugging.assert_scalar(delta)
+        tf.debugging.Assert(delta in [1, 2], [delta])
+
+        self._threshold = threshold
+        self._alpha = alpha
+        self._delta = delta
+
+    def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
+        """
+        Return exact samples from either the objective function's minimser or its minimal value
+        over the candidate set `at`.
+
+        :param model: The model to sample from.
+        :param sample_size: The desired number of samples.
+        :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+            of dimension `D`.
+        :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
+            the function's minimser or shape `[S, 1]` if sampling the function's mimimal value.
+        :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
+        """
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_shapes([(at, ["N", None])])
+
+        # we use predictive variance everywhere but sample means from the posterior
+        _, variance = model.predict(at)
+        mean = model.sample(at, sample_size)  # [S, N, 1]
+
+        stdev = tf.sqrt(variance)
+        t = (self._threshold - mean) / stdev
+        t_plus = t + self._alpha
+        t_minus = t - self._alpha
+        normal = tfp.distributions.Normal(tf.cast(0, at.dtype), tf.cast(1, at.dtype))
+
+        if self._delta == 1:
+            G = (
+                self._alpha * (normal.cdf(t_plus) - normal.cdf(t_minus))
+                - t * (2 * normal.cdf(t) - normal.cdf(t_plus) - normal.cdf(t_minus))
+                - (2 * normal.prob(t) - normal.prob(t_plus) - normal.prob(t_minus))
+            )
+            tf.debugging.check_numerics(G, "NaN or Inf values encountered in criterion")
+            criterion = G * stdev
+        elif self._delta == 2:
+            G = (
+                (self._alpha ** 2 - 1 - t ** 2) * (normal.cdf(t_plus) - normal.cdf(t_minus))
+                - 2 * t * (normal.prob(t_plus) - normal.prob(t_minus))
+                + t_plus * normal.prob(t_plus)
+                - t_minus * normal.prob(t_minus)
+            )
+            tf.debugging.check_numerics(G, "NaN or Inf values encountered in criterion")
+            criterion = G * variance
+
+        samples_2d = tf.squeeze(criterion, -1) # [S, N]
+        indices = tf.math.argmax(samples_2d, axis=1)
+        thompson_samples = tf.gather(at, indices)  # [S, D]
+
+        return thompson_samples
+
+
 class GumbelSampler(ThompsonSampler):
     r"""
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective

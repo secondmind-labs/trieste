@@ -24,6 +24,7 @@ from tests.util.models.gpflow.models import (
 )
 from trieste.acquisition.sampler import (
     ExactThompsonSampler,
+    ExpectedFeasibilitySampler,
     GumbelSampler,
     ThompsonSamplerFromTrajectory,
 )
@@ -129,6 +130,28 @@ def test_exact_thompson_samples_are_minima() -> None:
 
     fmean, _ = model.predict(dataset.query_points)
     assert max(thompson_samples) < min(fmean)
+
+
+def test_sampleEF() -> None:
+    search_space = Box([0, 0], [1, 1])
+
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+
+    model = QuadraticMeanAndRBFKernel()
+    thompson_sampler = ExpectedFeasibilitySampler(0.0,1,1)
+
+    query_points = search_space.sample(100)
+    query_points = tf.concat([dataset.query_points, query_points], 0)
+    thompson_samples = thompson_sampler.sample(model, 5, query_points)
+
+    fmean, _ = model.predict(dataset.query_points)
+    assert max(thompson_samples) < min(fmean)
+
+
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
