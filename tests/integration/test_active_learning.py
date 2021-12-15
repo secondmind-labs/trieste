@@ -47,7 +47,7 @@ from trieste.types import TensorType
     [
         (50, EfficientGlobalOptimization(PredictiveVariance())),
         (
-            70,
+            75,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000))
             ),

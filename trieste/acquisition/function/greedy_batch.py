@@ -403,6 +403,76 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
         self._builder = base_acquisition_function_builder
         self._fantasize_method = fantasize_method
 
+        self._base_acquisition_function: Optional[AcquisitionFunction] = None
+        self._fantasized_acquisition: Optional[AcquisitionFunction] = None
+        self._fantasized_models: Mapping[str, _fantasized_model | ModelStack] = {}
+
+    def _update_base_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]],
+    ) -> AcquisitionFunction:
+
+        if self._base_acquisition_function is not None:
+            self._base_acquisition_function = self._builder.update_acquisition_function(
+                self._base_acquisition_function, models, datasets
+            )
+        else:
+            self._base_acquisition_function = self._builder.prepare_acquisition_function(
+                models, datasets
+            )
+        return self._base_acquisition_function
+
+    def _update_fantasized_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]],
+        pending_points: TensorType,
+    ) -> AcquisitionFunction:
+
+        tf.debugging.assert_rank(pending_points, 2)
+
+        fantasized_data = {
+            tag: _generate_fantasized_data(
+                fantasize_method=self._fantasize_method,
+                model=model,
+                pending_points=pending_points,
+            )
+            for tag, model in models.items()
+        }
+
+        if datasets is None:
+            datasets = fantasized_data
+        else:
+            datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
+
+        if self._fantasized_acquisition is None:
+            self._fantasized_models = {
+                tag: _generate_fantasized_model(model, fantasized_data[tag])
+                for tag, model in models.items()
+            }
+            self._fantasized_acquisition = self._builder.prepare_acquisition_function(
+                self._fantasized_models, datasets
+            )
+        else:
+            for tag, model in self._fantasized_models.items():
+                if isinstance(model, ModelStack):
+                    observations = tf.split(
+                        fantasized_data[tag].observations, model._event_sizes, axis=-1
+                    )
+                    for submodel, obs in zip(model._models, observations):
+                        submodel.update_fantasized_data(
+                            Dataset(fantasized_data[tag].query_points, obs)
+                        )
+
+                else:
+                    model.update_fantasized_data(fantasized_data[tag])
+            self._builder.update_acquisition_function(
+                self._fantasized_acquisition, self._fantasized_models, datasets
+            )
+
+        return self._fantasized_acquisition
+
     def prepare_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
@@ -418,29 +488,33 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
         :return: An acquisition function.
         """
         if pending_points is None:
-            return self._builder.prepare_acquisition_function(models, datasets)
+            return self._update_base_acquisition_function(models, datasets)
         else:
-            tf.debugging.assert_rank(pending_points, 2)
+            return self._update_fantasized_acquisition_function(models, datasets, pending_points)
 
-            fantasized_data = {
-                tag: _generate_fantasized_data(
-                    fantasize_method=self._fantasize_method,
-                    model=model,
-                    pending_points=pending_points,
-                )
-                for tag, model in models.items()
-            }
-            new_models = {
-                tag: _generate_fantasized_model(model, fantasized_data[tag])
-                for tag, model in models.items()
-            }
-
-            if datasets is None:
-                datasets = fantasized_data
-            else:
-                datasets = {tag: data + fantasized_data[tag] for tag, data in datasets.items()}
-
-            return self._builder.prepare_acquisition_function(new_models, datasets)
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+        pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param models: The models over each tag.
+        :param datasets: The data from the observer (optional).
+        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+            where M is the number of pending points and D is the search space dimension.
+        :param new_optimization_step: Indicates whether this call to update_acquisition_function
+            is to start of a new optimization step, of to continue collecting batch of points
+            for the current step. Defaults to ``True``.
+        :return: The updated acquisition function.
+        """
+        if pending_points is None:
+            return self._update_base_acquisition_function(models, datasets)
+        else:
+            return self._update_fantasized_acquisition_function(models, datasets, pending_points)
 
 
 def _generate_fantasized_data(
@@ -508,7 +582,23 @@ class _fantasized_model(ProbabilisticModel):
             )
 
         self._model = model
-        self._fantasized_data = fantasized_data
+        self._fantasized_query_points = tf.Variable(
+            fantasized_data.query_points,
+            trainable=False,
+            shape=[None, *fantasized_data.query_points.shape[1:]],
+        )
+        self._fantasized_observations = tf.Variable(
+            fantasized_data.observations,
+            trainable=False,
+            shape=[None, *fantasized_data.observations.shape[1:]],
+        )
+
+    def update_fantasized_data(self, fantasized_data: Dataset) -> None:
+        """
+        :param fantasized_data: new additional dataset to condition on
+        """
+        self._fantasized_query_points.assign(fantasized_data.query_points)
+        self._fantasized_observations.assign(fantasized_data.observations)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -522,7 +612,10 @@ class _fantasized_model(ProbabilisticModel):
         """
 
         def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
-            return self._model.conditional_predict_f(qp, self._fantasized_data)
+            fantasized_data = Dataset(
+                self._fantasized_query_points.value(), self._fantasized_observations.value()
+            )
+            return self._model.conditional_predict_f(qp, fantasized_data)
 
         return _broadcast_predict(query_points, fun)
 
@@ -538,7 +631,10 @@ class _fantasized_model(ProbabilisticModel):
         """
 
         def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
-            return self._model.conditional_predict_joint(qp, self._fantasized_data)
+            fantasized_data = Dataset(
+                self._fantasized_query_points.value(), self._fantasized_observations.value()
+            )
+            return self._model.conditional_predict_joint(qp, fantasized_data)
 
         return _broadcast_predict(query_points, fun)
 
@@ -557,7 +653,11 @@ class _fantasized_model(ProbabilisticModel):
 
         samples = tf.map_fn(
             fn=lambda qp: self._model.conditional_predict_f_sample(
-                qp, self._fantasized_data, num_samples
+                qp,
+                Dataset(
+                    self._fantasized_query_points.value(), self._fantasized_observations.value()
+                ),
+                num_samples,
             ),
             elems=query_points_flatten,
         )  # [B, ..., S, L]
@@ -575,7 +675,10 @@ class _fantasized_model(ProbabilisticModel):
         """
 
         def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
-            return self._model.conditional_predict_y(qp, self._fantasized_data)
+            fantasized_data = Dataset(
+                self._fantasized_query_points.value(), self._fantasized_observations.value()
+            )
+            return self._model.conditional_predict_y(qp, fantasized_data)
 
         return _broadcast_predict(query_points, fun)
 

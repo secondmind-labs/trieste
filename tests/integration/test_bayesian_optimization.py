@@ -30,6 +30,7 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
+    Fantasizer,
     LocalPenalization,
     MinValueEntropySearch,
 )
@@ -157,6 +158,13 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 15,
                 DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
+            (
+                15,
+                EfficientGlobalOptimization(
+                    Fantasizer(),
+                    num_query_points=3,
+                ),
             ),
         ],
     )
