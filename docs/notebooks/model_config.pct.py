@@ -185,21 +185,20 @@ for exp in experiment_conditions:
 #
 # Configuration dictionaries are made possible with the `ModelRegistry` that contains mapping between each model (e.g. GPflow or GPflux) and the corresponding model wrapper and optimizer wrapper. All models that Trieste currently supports are registered there.
 #
-# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let's see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model wrapper and perhaps a new optimizer wrapper as well, but just for the sake of an example we will borrow here existing wrappers, `GaussianProcessRegression` and `Optimizer`.
+# You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let's see an example of this. We will register the `GPMC` model from GPflow that is currently not supported. You would likely need to create a new model wrapper (and perhaps a new optimizer wrapper as well), but just for the sake of an example we will borrow here an existing `GaussianProcessRegression` wrapper.
 
 # %%
 from trieste.models import ModelRegistry
 
 # adding the GPMC model to the registry
-ModelRegistry.register_model(
-    gpflow.models.GPMC, GaussianProcessRegression, Optimizer
-)
+ModelRegistry.register_model(gpflow.models.GPMC, GaussianProcessRegression)
 
 # check if it has been registered
 print(gpflow.models.GPMC in ModelRegistry.get_registered_models())
 
-# you can use the same command to get a list of all supported models
+# you can use the same command to get a list of all supported models and optimizers
 list(ModelRegistry.get_registered_models())
+list(ModelRegistry.get_registered_optimizers())
 
 # %% [markdown]
 # Note that you can use the same operation to overwrite an existing entry in the registry. For example, if you want to modify the interface used with a registered model and use the modified one instead.

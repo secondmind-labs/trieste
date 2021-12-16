@@ -17,13 +17,14 @@ and its trainable subclass :class:`TrainableProbabilisticModel`. It also contain
 creating :class:`TrainableProbabilisticModel`\ s from config.
 """
 
-from . import gpflow, gpflux, optimizer
+from . import gpflow, gpflux, keras, optimizer
 from .config import ModelConfig, ModelRegistry, ModelSpec, create_model
 from .interfaces import (
     FastUpdateModel,
     ModelStack,
     ProbabilisticModel,
     ReparametrizationSampler,
+    TrainableModelStack,
     TrainableProbabilisticModel,
     TrajectoryFunction,
     TrajectorySampler,

@@ -29,7 +29,8 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    Fantasizer,
+    LocalPenalization,
     MinValueEntropySearch,
 )
 from trieste.acquisition.rule import (
@@ -117,7 +118,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -126,7 +127,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -154,8 +155,15 @@ def OPTIMIZER_PARAMS() -> Tuple[
             ),
             (10, DiscreteThompsonSampling(500, 3)),
             (
-                10,
+                15,
                 DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
+            (
+                15,
+                EfficientGlobalOptimization(
+                    Fantasizer(),
+                    num_query_points=3,
+                ),
             ),
         ],
     )
@@ -329,7 +337,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
+        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 

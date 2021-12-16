@@ -41,7 +41,12 @@ from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, Trajector
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .sampler import RandomFourierFeatureTrajectorySampler
-from .utils import assert_data_is_compatible, randomize_hyperparameters, squeeze_hyperparameters
+from .utils import (
+    assert_data_is_compatible,
+    check_optimizer,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
+)
 
 
 class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
@@ -72,6 +77,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         super().__init__(optimizer)
         self._model = model
 
+        check_optimizer(self.optimizer)
+
         if num_kernel_samples <= 0:
             raise ValueError(
                 f"num_kernel_samples must be greater or equal to zero but got {num_kernel_samples}."
@@ -88,7 +95,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
     def __repr__(self) -> str:
         """"""
-        return f"GaussianProcessRegression({self._model!r}, {self.optimizer!r})"
+        return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> GPR | SGPR:
@@ -564,6 +571,8 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+        check_optimizer(optimizer)
+
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
@@ -578,7 +587,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self._model!r}, {self.optimizer!r})"
+        return f"SparseVariational({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> SVGP:
@@ -648,21 +657,26 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
 
         super().__init__(optimizer)
-        self._model = model
+
+        check_optimizer(self.optimizer)
 
         if use_natgrads:
-            if not isinstance(self._optimizer, BatchOptimizer) or not isinstance(
-                self._optimizer.optimizer, tf.optimizers.Optimizer
-            ):
+            if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
                 raise ValueError(
                     f"""
                     Natgrads can only be used with a BatchOptimizer wrapper using an instance of
-                    tf.optimizers.Optimizer, however received f{self._optimizer}.
+                    tf.optimizers.Optimizer, however received {self.optimizer}.
                     """
                 )
-
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
+            if isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+                raise ValueError(
+                    f"""
+                    If not using natgrads an Optimizer wrapper should be used with
+                    gpflow.optimizers.Scipy, however received {self.optimizer}.
+                    """
+                )
             if natgrad_gamma is not None:
                 raise ValueError(
                     """
@@ -670,6 +684,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     """
                 )
 
+        self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
         self._ensure_variable_model_data()
@@ -735,7 +750,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"VariationalGaussianProcess({self._model!r}, {self.optimizer!r})"
+        return f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
 
     @property
     def model(self) -> VGP:
