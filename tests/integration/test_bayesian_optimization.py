@@ -53,7 +53,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import BatchOptimizer, Optimizer
+from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
