@@ -36,6 +36,7 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
 )
+from trieste.models.interfaces import SupportsPredictJoint
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -67,7 +68,7 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
-class GaussianProcess(GaussianMarginal, ProbabilisticModel):
+class GaussianProcess(GaussianMarginal, SupportsPredictJoint):
     """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
@@ -108,7 +109,7 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 class GaussianProcessWithSamplers(GaussianProcess):
     """A (static) Gaussian process over a vector random variable with a reparam sampler"""
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
         return BatchReparametrizationSampler(num_samples, self)
 
 
@@ -161,7 +162,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
     def trajectory_sampler(self) -> TrajectorySampler:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
         return BatchReparametrizationSampler(num_samples, self)
 
 

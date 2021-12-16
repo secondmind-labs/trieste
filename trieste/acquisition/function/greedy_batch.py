@@ -24,6 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
+from ...models.interfaces import SupportsPredictJoint, PredictJointModelStack
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
@@ -405,7 +406,9 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._fantasized_acquisition: Optional[AcquisitionFunction] = None
-        self._fantasized_models: Mapping[str, _fantasized_model | ModelStack] = {}
+        self._fantasized_models: Mapping[
+            str, _fantasized_model | ModelStack[ProbabilisticModel]
+        ] = {}
 
     def _update_base_acquisition_function(
         self,
@@ -545,7 +548,7 @@ def _generate_fantasized_data(
 
 def _generate_fantasized_model(
     model: ProbabilisticModel, fantasized_data: Dataset
-) -> _fantasized_model | ModelStack:
+) -> _fantasized_model | PredictJointModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
         fmods = []
@@ -556,12 +559,12 @@ def _generate_fantasized_model(
                     event_size,
                 )
             )
-        return ModelStack(*fmods)
+        return PredictJointModelStack(*fmods)
     else:
         return _fantasized_model(model, fantasized_data)
 
 
-class _fantasized_model(ProbabilisticModel):
+class _fantasized_model(SupportsPredictJoint):
     """
     Creates a new model from an existing one and additional data.
     This new model posterior is conditioned on both current model data and the additional one.

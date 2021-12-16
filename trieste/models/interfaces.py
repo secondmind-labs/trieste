@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -42,16 +42,6 @@ class ProbabilisticModel(ABC):
         :return: The mean and variance of the independent marginal distributions at each point in
             ``query_points``. For a predictive distribution with event shape E, the mean and
             variance will both have shape [...] + E.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        :param query_points: The points at which to make predictions, of shape [..., B, D].
-        :return: The mean and covariance of the joint marginal distribution at each batch of points
-            in ``query_points``. For a predictive distribution with event shape E, the mean will
-            have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
         """
         raise NotImplementedError
 
@@ -94,7 +84,7 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
@@ -152,7 +142,24 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         raise NotImplementedError
 
 
-class ModelStack(ProbabilisticModel):
+class SupportsPredictJoint(ProbabilisticModel):
+    """A probabilistic model that supports predict_joint."""
+
+    @abstractmethod
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        :param query_points: The points at which to make predictions, of shape [..., B, D].
+        :return: The mean and covariance of the joint marginal distribution at each batch of points
+            in ``query_points``. For a predictive distribution with event shape E, the mean will
+            have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
+        """
+        raise NotImplementedError
+
+
+T = TypeVar("T", bound=ProbabilisticModel, covariant=True)
+
+
+class ModelStack(Generic[T], ProbabilisticModel):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s.
     It combines the outputs of each model for predictions and sampling.
@@ -168,8 +175,8 @@ class ModelStack(ProbabilisticModel):
 
     def __init__(
         self,
-        model_with_event_size: tuple[ProbabilisticModel, int],
-        *models_with_event_sizes: tuple[ProbabilisticModel, int],
+        model_with_event_size: tuple[T, int],
+        *models_with_event_sizes: tuple[T, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -193,18 +200,6 @@ class ModelStack(ProbabilisticModel):
         """
         means, vars_ = zip(*[model.predict(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        r"""
-        :param query_points: The points at which to make predictions, of shape [..., B, D].
-        :return: The predictions from all the wrapped models, concatenated along the event axis in
-            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
-            distributions with event shapes [:math:`E_i`], the mean will have shape
-            [..., B, :math:`\sum_i E_i`], and the covariance shape
-            [..., :math:`\sum_i E_i`, B, B].
-        """
-        means, covs = zip(*[model.predict_joint(query_points) for model in self._models])
-        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
@@ -237,7 +232,7 @@ class ModelStack(ProbabilisticModel):
             with tf.name_scope(f"{i}"):
                 model.log()
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
         """
         Return a reparameterization sampler providing `num_samples` samples across
         all the models in the model stack. This is currently only implemented for
@@ -266,7 +261,7 @@ class ModelStack(ProbabilisticModel):
             )
 
 
-class TrainableModelStack(ModelStack, TrainableProbabilisticModel):
+class TrainableModelStack(TrainableProbabilisticModel, ModelStack[TrainableProbabilisticModel]):
     r"""
     A :class:`TrainableModelStack` is a wrapper around a number of
     :class:`TrainableProbabilisticModel`\ s.
@@ -276,22 +271,6 @@ class TrainableModelStack(ModelStack, TrainableProbabilisticModel):
     Of course, the event size for a :class:`TrainableModelStack` will be the sum of the
     event sizes of each subsidiary model.
     """
-
-    def __init__(
-        self,
-        model_with_event_size: tuple[TrainableProbabilisticModel, int],
-        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
-    ):
-        r"""
-        The order of individual models specified at :meth:`__init__` determines the order of the
-        :class:`TrainableModelStack` output dimensions.
-
-        :param model_with_event_size: The first model, and the size of its output events.
-            **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
-            method signature requires at least one model. It is not treated specially.
-        :param \*models_with_event_sizes: The other models, and sizes of their output events.
-        """
-        super().__init__(model_with_event_size, *models_with_event_sizes)
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -320,14 +299,38 @@ class TrainableModelStack(ModelStack, TrainableProbabilisticModel):
             model.optimize(Dataset(dataset.query_points, obs))
 
 
-class ReparametrizationSampler(ABC):
+class PredictJointModelStack(SupportsPredictJoint, ModelStack[SupportsPredictJoint]):
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., B, D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean will have shape
+            [..., B, :math:`\sum_i E_i`], and the covariance shape
+            [..., :math:`\sum_i E_i`, B, B].
+        """
+        means, covs = zip(*[model.predict_joint(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
+
+
+class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel):
+    pass
+
+
+class TrainablePredictJointModelStack(
+    TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
+):
+    pass
+
+
+class ReparametrizationSampler(ABC, Generic[T]):
     r"""
     These samplers employ the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
     points. See :cite:`wilson2018maximizing` for details.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: T):
         r"""
         Note that our :class:`TrainableModelStack` currently assumes that
         all :class:`ReparametrizationSampler` constructors have **only** these inputs

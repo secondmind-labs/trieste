@@ -26,12 +26,13 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.interfaces import SupportsPredictJoint
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
 
-class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
@@ -52,7 +53,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: SupportsPredictJoint,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -67,7 +68,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: SupportsPredictJoint,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -78,7 +79,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         return function  # no need to update anything
 
 
-def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
+def predictive_variance(model: SupportsPredictJoint, jitter: float) -> TensorType:
     """
     The predictive variance acquisition function for active learning, based on
     the determinant of the covariance (see :cite:`MacKay1992` for details).

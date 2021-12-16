@@ -23,12 +23,12 @@ from gpflow.models import GPModel
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel, ReparametrizationSampler
+from ..interfaces import ProbabilisticModel, ReparametrizationSampler, SupportsPredictJoint
 from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
+class GPflowPredictor(SupportsPredictJoint, tf.Module, ABC):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
@@ -110,7 +110,7 @@ class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
                     for i, lengthscale in enumerate(lengthscales):
                         tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 

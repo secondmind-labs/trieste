@@ -30,10 +30,11 @@ from ..interfaces import (
     ReparametrizationSampler,
     TrajectoryFunction,
     TrajectorySampler,
+    SupportsPredictJoint,
 )
 
 
-class IndependentReparametrizationSampler(ReparametrizationSampler):
+class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
@@ -89,7 +90,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
-class BatchReparametrizationSampler(ReparametrizationSampler):
+class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoint]):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -101,7 +102,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler):
     form a continuous curve.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: SupportsPredictJoint):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from.
