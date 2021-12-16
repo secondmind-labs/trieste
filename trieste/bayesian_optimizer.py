@@ -43,6 +43,9 @@ S = TypeVar("S")
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
+udzM = TypeVar("M", bound=TrainableProbabilisticModel)
+""" Type variable bound to :class:`SearchSpace`. """
+
 
 @dataclass(frozen=True)
 class Record(Generic[S]):
