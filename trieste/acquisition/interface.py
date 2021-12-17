@@ -37,6 +37,23 @@ Note that :const:`AcquisitionFunction`s which do not support batch optimization 
 with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
+VectorizedAcquisitionFunction = Callable[[TensorType], TensorType]
+"""
+Type alias for acquisition functions.
+
+An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
+value that describes how useful it would be evaluate all these points together (to our goal of
+optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
+takes input shape `[..., B, D]` and returns shape `[..., B]`.
+
+Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
+with a batch dimension, i.e. an input of shape `[..., 1, D]`.
+"""
+
+
+
+
+
 
 class AcquisitionFunctionClass(ABC):
     """An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class

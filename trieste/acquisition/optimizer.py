@@ -186,35 +186,46 @@ def generate_continuous_optimizer(
         For :class:'TaggedProductSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
+        TODO
+
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
 
-        trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
-        target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
-        _, top_k_indices = tf.math.top_k(
-            target_func_values[:, 0], k=num_optimization_runs
-        )  # [num_optimization_runs]
-        initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
+        batch_size = 1#target_func.batch_size
 
-        results = _perform_parallel_continuous_optimization(
+        trial_search_space = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
+        trial_search_space =  tf.tile(trial_search_space, [1,batch_size,1]) # [num_initial_samples, batch_size, D]
+        target_func_values = target_func(trial_search_space)  # [num_samples, batch_size]
+        _, top_k_indices = tf.math.top_k(
+            tf.transpose(target_func_values), k=num_optimization_runs
+        )  # [batch_size, num_optimization_runs]
+
+        initial_points = tf.gather(tf.transpose(trial_search_space,perm=[1,0,2]), top_k_indices, batch_dims=1)  # [batch_size, num_optimization_runs, D]
+        vectorized_initial_points = tf.squeeze(tf.reshape(1,-1,tf.shape(trial_search_space[-1]), axis=0)) # [batch_size*num_optimization_runs, D]
+
+        vectorized_results = _perform_parallel_continuous_optimization(
             target_func,
             space,
             initial_points,
             optimizer_args,
-        )
-        successful_optimization = np.any(
-            [result.success for result in results]
-        )  # Check that at least one optimization was successful
+        ) 
 
-        if not successful_optimization:  # if all optimizations failed then try from random starts
+        vectorized_successes = tf.constant([result.success for result in vectorized_results]) # [batch_size*num_optimization_runs]
+        successes = tf.reshape(revectorized_successes, [batch_size, num_optimization_runs]) # [batch_size, num_optimization_runs]  TODO CHECK THIS OP!!!!
+
+        successful_optimization = np.all(np.any(successes, axis=-1))  # Check that at least one optimization was successful for each function
+
+
+        if not successful_optimization:  # if all optimizations failed for a function then try again from random starts
             random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            results = _perform_parallel_continuous_optimization(
+            vectorized_fall_back_results = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
             )
-            successful_optimization = np.any([result.success for result in results])
+            successes = tf.reshape(revectorized_successes, [batch_size, num_optimization_runs]) # [batch_size, num_optimization_runs]  TODO CHECK THIS OP!!!!
+            successful_optimization = np.all(np.any(successes, axis=-1))  # Check that at least one optimization was successful for each function
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -230,7 +241,37 @@ def generate_continuous_optimizer(
 
         return chosen_point
 
+
+
     return optimize_continuous
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def _perform_parallel_continuous_optimization(
