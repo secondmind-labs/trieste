@@ -202,7 +202,7 @@ model = build_model(initial_data)
 
 # %%
 acq_fn = trieste.acquisition.function.ExpectedImprovement()
-rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)
+rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)  # type: ignore
 
 # %%
 N_OPTIMIZATION_STEPS = 200

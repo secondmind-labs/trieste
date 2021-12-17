@@ -94,4 +94,4 @@ def demo_heuristic_lander(env, w, seed=None):
 # seed = 1
 # w = np.array([0.3408491530995111, 0.21393609845608644, 0.6957018757563389, 0.0, 0.9776271241238772, 0.2960463399024492, 0.7020102045624167, 1.006012538196605, 0.0, 0.0, 0.0, 0.0])
 
-demo_heuristic_lander(gym.make("LunarLander-v2"), w, seed)
+demo_heuristic_lander(gym.make("LunarLander-v2"), w, seed)  # type: ignore
