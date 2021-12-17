@@ -19,3 +19,4 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
+tensorflow ~= 2.4.1
