@@ -25,8 +25,16 @@ import numpy as np
 import trieste
 import gpflow
 
+
 import gym
 ENV_NAME = "LunarLander-v2"
+env = gym.make(ENV_NAME)
+
+SEED = 1793
+
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+env.seed(SEED)
 
 
 # %% [markdown]
@@ -110,7 +118,7 @@ search_space = trieste.space.Box([0.0] * 12, [1.2] * 12)
 # %%
 for _ in range(10):
     sample_w = search_space.sample(1).numpy()[0]
-    demo_heuristic_lander(gym.make(ENV_NAME), sample_w, print_reward=True)
+    demo_heuristic_lander(env, sample_w, print_reward=True)
 
 # %% [markdown]
 # As you can see, most of the random sets of parameters result in a negative reward. So picking a value from this search space at random can result in a various unwanted behaviors. Here we show some examples of the landing not going according to plan. Each of these examples was created with a sample of the parameter values from the search space.
@@ -167,7 +175,7 @@ def lander_objective(x):
     all_rewards = []
     for w in x.numpy():
         rewards = [
-            demo_heuristic_lander(gym.make(ENV_NAME), w)
+            demo_heuristic_lander(env, w)
             for _ in range(N_RUNS)
         ]
         all_rewards.append(rewards)
@@ -182,7 +190,7 @@ observer = trieste.objectives.utils.mk_observer(lander_objective)
 # %% [markdown]
 # ### Solving the optimization problem with Trieste
 #
-# Here we do normal steps required to solve an optimization problem with Trieste: generate some initial data, create a surrogate model, define an acquisition funciton and rule, and run the optimization.
+# Here we do normal steps required to solve an optimization problem with Trieste: generate some initial data, create a surrogate model, define an acquisition funciton and rule, and run the optimization. Optimization step may take a few minutes to complete.
 
 # %%
 num_initial_points = search_space.dimension
@@ -194,7 +202,7 @@ initial_data = observer(initial_query_points)
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.RBF(variance=variance)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(data.astuple(), kernel)
     gpflow.set_trainable(gpr.likelihood, False)
     return trieste.models.gpflow.GaussianProcessRegression(gpr)
 
@@ -212,7 +220,7 @@ result = bo.optimize(N_OPTIMIZATION_STEPS, initial_data, model, rule).final_resu
 # %% [markdown]
 # ### Analyzing the results
 #
-# First, let's just plot a regular regret plot of our optimization, to ensure Trieste indeed found a better configuration of the controller. Remember that we flipped the sign of our reward.
+# First, let's just plot a regular regret plot of our optimization, to ensure Trieste indeed found a better configuration of the controller. Remember that we flipped the sign of the reward.
 
 # %%
 from util import plotting
@@ -232,7 +240,7 @@ plotting.plot_regret(
 w_best = result.dataset.query_points[np.argmin(result.dataset.observations), :]
 
 for _ in range(10):
-    demo_heuristic_lander(gym.make(ENV_NAME), w_best.numpy(), print_reward=True)
+    demo_heuristic_lander(env, w_best.numpy(), print_reward=True)
 
 # %% [markdown]
 # Finally, let's have a look at what the good controller configuration looks like in action.
@@ -241,3 +249,5 @@ for _ in range(10):
 
 # %%
 load_video("success.mp4")
+
+# %%
