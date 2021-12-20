@@ -40,7 +40,7 @@ from .interface import (
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
 )
-from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
+from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify_joint
 from .sampler import ExactThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
@@ -160,7 +160,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
 
         if isinstance(builder, AcquisitionFunctionBuilder) and num_query_points > 1:
             # Joint batch acquisitions require batch optimizers
-            optimizer = batchify(optimizer, num_query_points)
+            optimizer = batchify_joint(optimizer, num_query_points)
 
         self._builder: Union[
             AcquisitionFunctionBuilder[ProbabilisticModel],
@@ -382,9 +382,9 @@ class AsynchronousOptimization(
             builder = builder.using(OBJECTIVE)
 
         # even though we are only using batch acquisition functions
-        # there is no need to batchify the optimizer if our batch size is 1
+        # there is no need to batchify_joint the optimizer if our batch size is 1
         if num_query_points > 1:
-            optimizer = batchify(optimizer, num_query_points)
+            optimizer = batchify_joint(optimizer, num_query_points)
 
         self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._optimizer = optimizer

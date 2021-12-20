@@ -29,7 +29,7 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from .interface import AcquisitionFunction
+from .interface import AcquisitionFunction, VectorizedAcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
@@ -72,7 +72,7 @@ shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` retur
 
 
 def automatic_optimizer_selector(
-    space: SearchSpace, target_func: AcquisitionFunction
+    space: SearchSpace, target_func: AcquisitionFunction, vectorized_batch_size:int=1,
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -82,11 +82,12 @@ def automatic_optimizer_selector(
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
             [..., 1].
+    :param vectorized_batch_size: TODO
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
     if isinstance(space, DiscreteSearchSpace):
-        return optimize_discrete(space, target_func)
+        return optimize_discrete(space, target_func, vectorized_batch_size=vectorized_batch_size)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
         num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
@@ -94,7 +95,8 @@ def automatic_optimizer_selector(
         return generate_continuous_optimizer(
             num_initial_samples=num_samples,
             num_optimization_runs=num_runs,
-        )(space, target_func)
+
+        )(space, target_func,vectorized_batch_size = vectorized_batch_size)
 
     else:
         raise NotImplementedError(
@@ -104,7 +106,7 @@ def automatic_optimizer_selector(
         )
 
 
-def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+def optimize_discrete(space: DiscreteSearchSpace, target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction], vectorized_batch_size: int=1) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
     batches of size of 1.
@@ -112,18 +114,33 @@ def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFuncti
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
             [..., 1].
+    :param vectorized_batch_size: TODO
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
-    target_func_values = target_func(space.points[:, None, :])
+
+    V = vectorized_batch_size
+
+    if V <= 0:
+        raise ValueError(f"vectorized_batch_size must be positive, got {V}")
+
+
+    points = space.points[:,None,:] 
+    tiled_points= tf.tile(points, [1, V, 1])  
+    target_func_values = target_func(tiled_points)
     tf.debugging.assert_shapes(
-        [(target_func_values, ("_", 1))],
+        [(target_func_values, ("_", V))],
         message=(
-            f"The result of function target_func has an invalid shape:"
-            f" {tf.shape(target_func_values)}."
+            f"""
+            The result of function target_func has shape
+            {tf.shape(target_func_values)}, however, expected a trailing 
+            dimension of size {V}.
+            """
         ),
     )
-    max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-    return space.points[max_value_idx : max_value_idx + 1]
+
+    best_indices = tf.math.argmax(target_func_values, axis=0) # [V]
+    return tf.gather(tf.transpose(tiled_points, [1,0,2]),best_indices, batch_dims=1) # [V, D]
+
 
 
 def generate_continuous_optimizer(
@@ -162,8 +179,8 @@ def generate_continuous_optimizer(
     if num_initial_samples <= 0:
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
-    if num_optimization_runs <= 0:
-        raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
+    if num_optimization_runs < 0:
+        raise ValueError(f"num_optimization_runs must be zero or greater, got {num_optimization_runs}")
 
     if num_initial_samples < num_optimization_runs:
         raise ValueError(
@@ -177,7 +194,7 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
     def optimize_continuous(
-        space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction
+        space: Box | TaggedProductSearchSpace, target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction], vectorized_batch_size: int=1,
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
@@ -186,46 +203,70 @@ def generate_continuous_optimizer(
         For :class:'TaggedProductSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
-        TODO
+        TODO say what V is
 
         :param space: The space over which to search.
-        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-                [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+                [..., V].
+        :param vectorized_batch_size: TODO
+        :return: The `V` points in ``space`` that maximises ``target_func``, with shape [V, D]. TODO
         """
+        V = vectorized_batch_size
 
-        batch_size = 1#target_func.batch_size
+        if V <= 0:
+            raise ValueError(f"vectorized_batch_size must be positive, got {V}")
+         
 
-        trial_search_space = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
-        trial_search_space =  tf.tile(trial_search_space, [1,batch_size,1]) # [num_initial_samples, batch_size, D]
-        target_func_values = target_func(trial_search_space)  # [num_samples, batch_size]
+        candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
+        tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
+
+        target_func_values = target_func(tiled_candidates)  # [num_samples, V]
+        tf.debugging.assert_shapes(
+            [(target_func_values, ("_", V))],
+            message=(
+                f"""
+                The result of function target_func has shape
+                {tf.shape(target_func_values)}, however, expected a trailing 
+                dimension of size {V}.
+                """
+            ),
+        )
+
+
+        if num_optimization_runs==0: # TODO
+            best_indices = tf.math.argmax(target_func_values, axis=0) # [V]
+            return tf.gather(tf.transpose(tiled_candidates, [1,0,2]),best_indices, batch_dims=1) # [V, D]
+
         _, top_k_indices = tf.math.top_k(
             tf.transpose(target_func_values), k=num_optimization_runs
-        )  # [batch_size, num_optimization_runs]
+        )  # [1, num_optimization_runs] or [V, num_optimization_runs]
 
-        initial_points = tf.gather(tf.transpose(trial_search_space,perm=[1,0,2]), top_k_indices, batch_dims=1)  # [batch_size, num_optimization_runs, D]
-        vectorized_initial_points = tf.squeeze(tf.reshape(1,-1,tf.shape(trial_search_space[-1]), axis=0)) # [batch_size*num_optimization_runs, D]
+        tiled_candidates = tf.transpose(tiled_candidates, [1,0,2]) # [V, num_initial_samples, D]
+        top_k_points = tf.gather(tiled_candidates, top_k_indices, batch_dims=1)  # [V, num_optimization_runs, D]
+        initial_points = tf.transpose(top_k_points, [1,0,2]) # [num_optimization_runs,V,D]
 
-        vectorized_results = _perform_parallel_continuous_optimization(
+        successes, fun_values, chosen_x = _perform_parallel_continuous_optimization( # [num_optimization_runs, V]
             target_func,
             space,
             initial_points,
             optimizer_args,
-        ) 
+        )   
 
-        vectorized_successes = tf.constant([result.success for result in vectorized_results]) # [batch_size*num_optimization_runs]
-        successes = tf.reshape(revectorized_successes, [batch_size, num_optimization_runs]) # [batch_size, num_optimization_runs]  TODO CHECK THIS OP!!!!
-
-        successful_optimization = np.all(np.any(successes, axis=-1))  # Check that at least one optimization was successful for each function
-
+        successful_optimization = tf.reduce_all(tf.reduce_any(successes, axis=0))  # Check that at least one optimization was successful for each function
 
         if not successful_optimization:  # if all optimizations failed for a function then try again from random starts
-            random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            vectorized_fall_back_results = _perform_parallel_continuous_optimization(
+            random_points = space.sample(num_recovery_runs)[:, None, :]  # [num_recovery_runs, 1, D]
+            tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]
+
+            recovery_successes, recovery_fun_values, recovery_chosen_x = _perform_parallel_continuous_optimization(
                 target_func, space, random_points, optimizer_args
             )
-            successes = tf.reshape(revectorized_successes, [batch_size, num_optimization_runs]) # [batch_size, num_optimization_runs]  TODO CHECK THIS OP!!!!
-            successful_optimization = np.all(np.any(successes, axis=-1))  # Check that at least one optimization was successful for each function
+
+            successes = tf.concat([successes, retry_successes], axis = 0)  # [num_optimization_runs + num_recovery_runs, V]
+            fun_values = tf.concat([fun_values, retry_fun_values], axis = 0)  # [num_optimization_runs + num_recovery_runs, V]
+            chosen_x = tf.concat([chosen_x, retry_chosen_x], axis = 0)  # [num_optimization_runs + num_recovery_runs, V, D]
+
+            successful_optimization = tf.reduce_all(tf.reduce_any(successes, axis=0))  # Check that at least one optimization was successful for each function
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -235,51 +276,21 @@ def generate_continuous_optimizer(
                     """
             )
 
-        best_run_id = np.argmax([-result.fun for result in results])  # identify best solution
-        np_chosen_point = results[best_run_id].x.reshape(1, -1)  # [1, D]
-        chosen_point = tf.constant(np_chosen_point, dtype=initial_points.dtype)  # convert to TF
+        best_run_ids = tf.math.argmax(fun_values, axis= 0) # [V]
+        chosen_points = tf.gather(tf.transpose(chosen_x, [1,0,2]), best_run_ids, batch_dims=1) # [V, D]
 
-        return chosen_point
+        return chosen_points
 
 
 
     return optimize_continuous
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def _perform_parallel_continuous_optimization(
-    target_func: AcquisitionFunction,
+    target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> List[spo.OptimizeResult]:
+) -> List[List[spo.OptimizeResult]]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -302,22 +313,37 @@ def _perform_parallel_continuous_optimization(
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
 
-    :param target_func: The function to maximise, with input shape [..., 1, D] and
-        output shape [..., 1].
+    TODO TALK ABOUT V
+
+    :param target_func: The function(s) to maximise, with input shape [..., V, D] and
+        output shape [..., V].
     :param space: The original search space.
-    :param starting_points: The points at which to begin our optimizations. The
-        leading dimension of `starting_points` controls the number of individual
-        optimization runs.
+    :param starting_points: The points at which to begin our optimizations of shape
+        [num_optimization_runs, V, D]. The leading dimension of
+        `starting_points` controls the number of individual optimization runs
+        for each of the V target functions.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A list containing a Scipy OptimizeResult object for each optimization.
+    :return: A list of V lists, with each list containing the Scipy OptimizeResult
+        objects from the num_optimization_runs optimizations. TODO
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
 
-    num_optimization_runs = tf.shape(starting_points)[0].numpy()
+    num_optimization_runs_per_function = tf.shape(starting_points)[0].numpy() 
 
-    def _objective_value(x: TensorType) -> TensorType:
-        return -target_func(tf.expand_dims(x, 1))  # [len(x),1]
+    V =  tf.shape(starting_points)[1].numpy()  # vectorized batch size
+    D = tf.shape(starting_points)[-1].numpy() # search space dimension
+    num_optimization_runs = num_optimization_runs_per_function*V
+
+    vectorized_starting_points = tf.reshape(starting_points, [-1, D]) # [num_optimization_runs*V, D] TODO CHECK OP
+
+
+    def _objective_value(vectorized_x: TensorType) -> TensorType: # [N, D] -> [N, 1]
+        vectorized_x = vectorized_x[:,None,:] # [N, 1, D] 
+        x = tf.reshape(vectorized_x, [-1, V, D]) # [N/V, V, D] TODO CHECK OP
+        evals = -target_func(x)  # [N/V, V]
+        vectorized_evals = tf.reshape(evals, [-1,1]) #[N, 1] TODO CHECK OP
+        return vectorized_evals
 
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
@@ -326,29 +352,29 @@ def _perform_parallel_continuous_optimization(
         space, TaggedProductSearchSpace
     ):  # build continuous relaxation of discrete subspaces
         bounds = [
-            get_bounds_of_box_relaxation_around_point(space, starting_points[i : i + 1])
+            get_bounds_of_box_relaxation_around_point(space, vectorized_starting_points[i : i + 1])
             for i in tf.range(num_optimization_runs)
         ]
     else:
         bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
 
     # Initialize the numpy arrays to be passed to the greenlets
-    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64)
+    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64)
     np_batch_y = np.zeros((num_optimization_runs,), dtype=np.float64)
     np_batch_dy_dx = np.zeros(
-        (num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64
+        (num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64
     )
 
     # Set up child greenlets
     child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
-    child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
-        gr.switch(starting_points[i].numpy(), bounds[i], optimizer_args)
+    vectorized_child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+        gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
     ]
 
     while True:
         all_done = True
-        for i, result in enumerate(child_results):  # Process results from children.
+        for i, result in enumerate(vectorized_child_results):  # Process results from children.
             if isinstance(result, spo.OptimizeResult):
                 continue  # children return a `spo.OptimizeResult` if they are finished
             all_done = False
@@ -367,9 +393,18 @@ def _perform_parallel_continuous_optimization(
         for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
             if greenlet.dead:  # Allow for crashed greenlets
                 continue
-            child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
+            vectorized_child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
-    return child_results
+
+    vectorized_successes = tf.constant([result.success for result in vectorized_child_results]) # [num_optimization_runs]
+    vectorized_fun_values = tf.constant([-result.fun for result in vectorized_child_results]) # [num_optimization_runs]
+    vectorized_chosen_x = tf.constant([result.x for result in vectorized_child_results]) # [num_optimization_runs, D]
+
+    successes = tf.reshape(vectorized_successes , [-1, V]) # [num_optimization_runs, V] TODO CHECK OP
+    fun_values = tf.reshape( vectorized_fun_values, [-1, V]) # [num_optimization_runs, V] TODO CHECK OP
+    chosen_x = tf.reshape( vectorized_chosen_x, [-1, V, D]) # [num_optimization_runs, V, D] TODO CHECK OP
+
+    return (successes, fun_values, chosen_x)
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):
@@ -438,7 +473,7 @@ def get_bounds_of_box_relaxation_around_point(
     return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
 
 
-def batchify(
+def batchify_joint(
     batch_size_one_optimizer: AcquisitionOptimizer[SP],
     batch_size: int,
 ) -> AcquisitionOptimizer[SP]:
@@ -446,9 +481,12 @@ def batchify(
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
+    TODO TALK ABOUT JOINT
+
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
             single point with shape [1, D].
     :param batch_size: The number of points in the batch.
+    :param vectorize: TODO
     :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
     """
     if batch_size <= 0:
@@ -470,6 +508,41 @@ def batchify(
     return optimizer
 
 
+
+def batchify_vectorize(
+    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size: int,
+) -> AcquisitionOptimizer[SP]:
+    """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+    :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
+    TODO
+
+    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+            single point with shape [1, D].
+    :param batch_size: The number of points in the batch.
+    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
+    """
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
+
+    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+        return  batch_size_one_optimizer(search_space, f, vectorized_batch_size=batch_size)
+
+    return optimizer
+
+
+
+
+
+
+
+
+
+
+
+
 def generate_random_search_optimizer(
     num_samples: int = NUM_SAMPLES_MIN,
 ) -> AcquisitionOptimizer[SP]:
@@ -486,7 +559,7 @@ def generate_random_search_optimizer(
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 
-    def optimize_random(space: SP, target_func: AcquisitionFunction) -> TensorType:
+    def optimize_random(space: SP, target_func: AcquisitionFunction, vectorized_batch_size: int=1) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for
         any :class:'SearchSpace' with a :meth:`sample` and for batches of size of 1.
@@ -496,11 +569,10 @@ def generate_random_search_optimizer(
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
                 [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        :param vectorized_batch_size: TODO
+        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D]. TODO
         """
-        samples = space.sample(num_samples)
-        target_func_values = target_func(samples[:, None, :])
-        max_value_idx = tf.argmax(target_func_values, axis=0)
-        return tf.gather(samples, max_value_idx)
+
+        return generate_continuous_optimizer(num_initial_samples = num_samples, num_optimization_runs = 0)(space, target_func, vectorized_batch_size=vectorized_batch_size)
 
     return optimize_random

@@ -41,6 +41,8 @@ VectorizedAcquisitionFunction = Callable[[TensorType], TensorType]
 """
 Type alias for acquisition functions.
 
+TODO add batch_size
+
 An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
 value that describes how useful it would be evaluate all these points together (to our goal of
 optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
@@ -49,7 +51,6 @@ takes input shape `[..., B, D]` and returns shape `[..., B]`.
 Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
 with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
-
 
 
 
@@ -64,6 +65,7 @@ class AcquisitionFunctionClass(ABC):
     @abstractmethod
     def __call__(self, x: TensorType) -> TensorType:
         """Call acquisition function."""
+
 
 
 T = TypeVar("T", bound=ProbabilisticModel)
