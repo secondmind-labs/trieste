@@ -22,3 +22,4 @@ the Trieste toolbox.
 """
 
 from .interface import NeuralNetworkPredictor
+from .utils import get_tensor_spec_from_data, sample_with_replacement

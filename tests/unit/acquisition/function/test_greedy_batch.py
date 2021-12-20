@@ -188,13 +188,25 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_me
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> None:
     data = {
-        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 1], dtype=tf.float64))
     }
     models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
+        builder.prepare_acquisition_function(models, data, pending_points)
+
+
+def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_shape() -> None:
+    data = {
+        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
+    }
+    models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
+    pending_points = tf.zeros([3, 2], dtype=tf.float64)
+    builder = Fantasizer()
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(models, data, pending_points)
 
 
@@ -256,11 +268,25 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
 
     builder = Fantasizer(PredictiveVariance(), fantasize_method=fantasize_method)
     acq0 = builder.prepare_acquisition_function(models, data)
-    acq1 = builder.prepare_acquisition_function(models, data, pending_points)
+    acq1 = builder.update_acquisition_function(acq0, models, data, pending_points[:1])
+    assert acq0._get_tracing_count() == 0  # type: ignore
+    assert acq1._get_tracing_count() == 0  # type: ignore
 
     acq_val0 = acq0(x_test)
     acq_val1 = acq1(x_test)
     tf.assert_less(acq_val1, acq_val0)
+
+    # check we avoid retracing, both for the fantasized functions...
+    acq1_up = builder.update_acquisition_function(acq1, models, data, pending_points)
+    assert acq1_up == acq1  # in-place updates
+    acq1_up(x_test)
+    assert acq1_up._get_tracing_count() == 1  # type: ignore
+
+    # ...and the base functions
+    acq0_up = builder.update_acquisition_function(acq1, models, data)
+    assert acq0_up == acq0  # in-place updates
+    acq0_up(x_test)
+    assert acq0_up._get_tracing_count() == 1  # type: ignore
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])

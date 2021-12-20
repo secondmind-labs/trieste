@@ -14,15 +14,25 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.base import (
+    DType,
+    Prior,
+    PriorOn,
+    TensorData,
+    Transform,
+    _cast_to_dtype,
+    _validate_unconstrained_value,
+)
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
+from tensorflow_probability.python.util import TransformedVariable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -476,9 +486,70 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class SVGPWrapper(SVGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
+class Parameter(gpflow.Parameter):
+    """A modified version of gpflow.Parameter that supports variable shapes."""
+
+    def __init__(
+        self,
+        value: TensorData,
+        *,
+        transform: Optional[Transform] = None,
+        prior: Optional[Prior] = None,
+        prior_on: Union[str, PriorOn] = PriorOn.CONSTRAINED,
+        trainable: bool = True,
+        dtype: Optional[DType] = None,
+        name: Optional[str] = None,
+        transformed_shape: Any = None,
+        pretransformed_shape: Any = None,
+    ):
+        """
+        A copy of gpflow.Parameter's init but with additional shape arguments that are passed
+        to a modified TransformedVariable.
+        """
+        if transform is None:
+            transform = tfp.bijectors.Identity()
+
+        value = _cast_to_dtype(value, dtype)
+        _validate_unconstrained_value(value, transform, dtype)
+
+        # An inlined, modified version of TransformedVariable's __init__ that also passes any shape
+        # parameter specified in kwargs to the DeferredTensor parent's __init__.
+        # (use same parameter names as TransformedVariable)
+        bijector = transform
+        initial_value = value
+
+        for attr in {
+            "forward",
+            "forward_event_shape",
+            "inverse",
+            "inverse_event_shape",
+            "name",
+            "dtype",
+        }:
+            if not hasattr(bijector, attr):
+                raise TypeError(
+                    "Argument `bijector` missing required `Bijector` "
+                    'attribute "{}".'.format(attr)
+                )
+
+        if callable(initial_value):
+            initial_value = initial_value()
+        initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
+        super(TransformedVariable, self).__init__(
+            pretransformed_input=tf.Variable(
+                initial_value=bijector.inverse(initial_value),
+                name=name,
+                dtype=dtype,
+                shape=pretransformed_shape,
+            ),
+            transform_fn=bijector,
+            shape=transformed_shape or initial_value.shape,
+            name=bijector.name,
+        )
+        self._bijector = bijector
+
+        self.prior = prior
+        self.prior_on = prior_on
 
 
 class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
@@ -505,7 +576,12 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, SVGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class SVGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
+                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
 
@@ -535,11 +611,6 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
-
-
-class VGPWrapper(VGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
 
 
 class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
@@ -616,26 +687,66 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
+        self._ensure_variable_model_data()
+
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
+        # Thus here we ensure data is stored in dynamic shape Variables
+
+        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+
+            self._model.data = (
+                tf.Variable(
+                    self._model.data[0],
+                    trainable=False,
+                    shape=[None, *self._model.data[0].shape[1:]],
+                ),
+                tf.Variable(
+                    self._model.data[1],
+                    trainable=False,
+                    shape=[None, *self._model.data[1].shape[1:]],
+                ),
+            )
+
+            self._model.q_mu = Parameter(
+                self._model.q_mu,
+                transform=self._model.q_mu.bijector,
+                prior=self._model.q_mu.prior,
+                prior_on=self._model.q_mu.prior_on,
+                dtype=self._model.q_mu.dtype,
+                name=self._model.q_mu.unconstrained_variable.name,
+                trainable=self._model.q_mu.trainable,
+                transformed_shape=[None, *self._model.q_mu.shape[1:]],
+                pretransformed_shape=[None, *self._model.q_mu.unconstrained_variable.shape[1:]],
+            )
+            self._model.q_sqrt = Parameter(
+                self._model.q_sqrt,
+                transform=self._model.q_sqrt.bijector,
+                prior=self._model.q_sqrt.prior,
+                prior_on=self._model.q_sqrt.prior_on,
+                dtype=self._model.q_sqrt.dtype,
+                name=self._model.q_sqrt.unconstrained_variable.name,
+                trainable=self._model.q_sqrt.trainable,
+                transformed_shape=[*self._model.q_sqrt.shape[:-2], None, None],
+                pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
+            )
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, VGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class VGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
+                """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(
-                model.num_data or 0, trainable=False, dtype=tf.float64
+                self._model.num_data or 0, trainable=False, dtype=tf.float64
             )
             self._model.__class__ = VGPWrapper
-
-        # GPflow stores the data in Tensors. However, since we want to be able to update the data
-        # without having to retrace the acquisition functions, put it in Variables instead.
-        self._model.data = (
-            tf.Variable(
-                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
-            ),
-            tf.Variable(
-                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
-            ),
-        )
 
     def __repr__(self) -> str:
         """"""
@@ -653,6 +764,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         :param jitter: The size of the jitter to use when stabilizing the Cholesky decomposition of
             the covariance matrix.
         """
+        self._ensure_variable_model_data()
+
         model = self.model
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -675,8 +788,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.data[0].assign(dataset.query_points)
         model.data[1].assign(dataset.observations)
         model.num_data = len(dataset)
-        model.q_mu = gpflow.Parameter(new_q_mu)
-        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu.assign(Parameter(new_q_mu))
+        model.q_sqrt.assign(Parameter(new_q_sqrt, transform=gpflow.utilities.triangular()))
 
     def optimize(self, dataset: Dataset) -> None:
         """
