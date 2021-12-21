@@ -892,4 +892,4 @@ def test_product_search_space_deepcopy() -> None:
     copied_space = copy.deepcopy(product_space)
     npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
     npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
-    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points) # type: ignore
+    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore

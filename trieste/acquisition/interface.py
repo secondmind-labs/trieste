@@ -317,7 +317,10 @@ class SingleModelGreedyAcquisitionBuilder(Generic[T], ABC):
 
 
 class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
-    """An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized acquisition function."""
+    """
+    An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized
+    acquisition function.
+    """
 
     @abstractmethod
     def prepare_acquisition_function(
@@ -341,10 +344,10 @@ class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> VectorizedAcquisitionFunction:
         """
-        Update a vectorized acquisition function. By default this generates a new acquisition function
-        each time. However, if the function is decorated with `@tf.function`, then you can override
-        this method to update its variables instead and avoid retracing the acquisition function on
-        every optimization loop.
+        Update a vectorized acquisition function. By default this generates a new acquisition
+        function each time. However, if the function is decorated with `@tf.function`, then you
+        can override this method to update its variables instead and avoid retracing the acquisition
+        function on every optimization loop.
 
         :param function: The vectorized acquisition function to update.
         :param models: The models for each tag.
@@ -356,13 +359,14 @@ class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
 
 class SingleModelVectorizedAcquisitionBuilder(Generic[T], ABC):
     """
-    Convenience acquisition function builder for a vectorized acquisition function (or component of a
-    composite vectorized acquisition function) that requires only one model, dataset pair.
+    Convenience acquisition function builder for a vectorized acquisition function (or component
+    of a composite vectorized acquisition function) that requires only one model, dataset pair.
     """
 
     def using(self, tag: str) -> VectorizedAcquisitionFunctionBuilder[T]:
         """
-        :param tag: The tag for the model, dataset pair used to build this vectorized acquisition function.
+        :param tag: The tag for the model, dataset pair used to build this vectorized
+            acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
             ``tag``, as defined in :meth:`prepare_acquisition_function`.
         """

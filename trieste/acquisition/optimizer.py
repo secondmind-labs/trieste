@@ -184,9 +184,7 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_optimization_runs < 0:
-        raise ValueError(
-            f"num_initial_samples must be positive, got {num_initial_samples}"
-        )
+        raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_initial_samples < num_optimization_runs:
         raise ValueError(
@@ -335,7 +333,7 @@ def _perform_parallel_continuous_optimization(
     optimize over a continuous :class:'Box' relaxation of the discrete subspaces
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
-    
+
     This function also support the maximization of vectorized target functions (with
     vectorization V).
 
@@ -361,13 +359,13 @@ def _perform_parallel_continuous_optimization(
 
     vectorized_starting_points = tf.reshape(
         starting_points, [-1, D]
-    )  # [num_optimization_runs*V, D] 
+    )  # [num_optimization_runs*V, D]
 
     def _objective_value(vectorized_x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
         vectorized_x = vectorized_x[:, None, :]  # [N, 1, D]
         x = tf.reshape(vectorized_x, [-1, V, D])  # [N/V, V, D]
         evals = -target_func(x)  # [N/V, V]
-        vectorized_evals = tf.reshape(evals, [-1, 1])  # [N, 1] 
+        vectorized_evals = tf.reshape(evals, [-1, 1])  # [N, 1]
         return vectorized_evals
 
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
@@ -430,15 +428,9 @@ def _perform_parallel_continuous_optimization(
         [result.x for result in vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs, D]
 
-    successes = tf.reshape(
-        vectorized_successes, [-1, V]
-    )  # [num_optimization_runs, V] 
-    fun_values = tf.reshape(
-        vectorized_fun_values, [-1, V]
-    )  # [num_optimization_runs, V] 
-    chosen_x = tf.reshape(
-        vectorized_chosen_x, [-1, V, D]
-    )  # [num_optimization_runs, V, D] 
+    successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
+    fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
+    chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
 
     return (successes, fun_values, chosen_x)
 
@@ -552,7 +544,7 @@ def batchify_vectorize(
 
     Unlike :meth:`batchify_joint`, :meth:`batchify_vectorize` is suitiable
     for :class:`VectorizedAcquisitionFunction`s who's individual batch element can be
-    optimized independetely (i.e. they can be vectorized). 
+    optimized independetely (i.e. they can be vectorized).
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
             single point with shape [1, D].

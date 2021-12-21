@@ -711,7 +711,7 @@ class MultipleOptimismNegativeLowerConfidenceBound(
     A simple parallelization of the lower confidence bound acquisition function that produces
     a vectorized acquisition function which can efficiently optimized even for large batches.
 
-    See :cite:`torossian2020bayesian` for details. 
+    See :cite:`torossian2020bayesian` for details.
     """
 
     def __init__(self, search_space: SearchSpace):
@@ -756,11 +756,11 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
     The multiple optimism lower confidence bound (MOLCB) acquisition function for single-objective
     global optimization.
 
-    Each batch dimension of this acquisiton function correponds to a lower confidence bound acquisition
-    function with different beta values, i.e. each point in a batch chosen by this acquisition function
-    lies on a gradient of exploration/exploitation trade-offs.
+    Each batch dimension of this acquisiton function correponds to a lower confidence bound
+    acquisition function with different beta values, i.e. each point in a batch chosen by this
+    acquisition function lies on a gradient of exploration/exploitation trade-offs.
 
-    We choose the different beta values following the cdf method of :cite:`torossian2020bayesian`. 
+    We choose the different beta values following the cdf method of :cite:`torossian2020bayesian`.
     See their paper for more details.
     """
 
@@ -806,4 +806,4 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
 
         mean, variance = self._model.predict(x)  # [..., B, 1]
         mean, variance = tf.squeeze(mean, -1), tf.squeeze(variance, -1)
-        return -mean + tf.sqrt(variance) * self._betas  # [..., B] 
+        return -mean + tf.sqrt(variance) * self._betas  # [..., B]
