@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
-from ..optimizer import BatchOptimizer
+from ..optimizer import BatchOptimizer, KerasOptimizer
 
 
 class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
@@ -31,12 +31,13 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
     toolbox.
     """
 
-    def __init__(self, optimizer: Optional[BatchOptimizer] = None):
+    def __init__(self, optimizer: Optional[Union[BatchOptimizer, KerasOptimizer]] = None):
         """
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
             be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
             :class:`~tf.optimizers.Adam` optimizer with default parameters.
+        :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
         """
         super().__init__()
 
@@ -44,11 +45,10 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
             optimizer = BatchOptimizer(tf.optimizers.Adam())
         self._optimizer = optimizer
 
-        if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `NeuralNetworkPredictor` models must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
+                f"`tf.optimizers.Optimizer`, received {type(optimizer.optimizer)} instead."
             )
 
     @property
@@ -58,7 +58,7 @@ class NeuralNetworkPredictor(ProbabilisticModel, tf.Module, ABC):
         raise NotImplementedError
 
     @property
-    def optimizer(self) -> BatchOptimizer:
+    def optimizer(self) -> Union[BatchOptimizer, KerasOptimizer]:
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
