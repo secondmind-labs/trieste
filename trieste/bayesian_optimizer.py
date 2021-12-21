@@ -43,8 +43,8 @@ S = TypeVar("S")
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
-udzM = TypeVar("M", bound=TrainableProbabilisticModel)
-""" Type variable bound to :class:`SearchSpace`. """
+M_contra = TypeVar("M_contra", bound=TrainableProbabilisticModel, contravariant=True)
+""" Type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
 @dataclass(frozen=True)
@@ -152,7 +152,7 @@ class OptimizationResult(Generic[S]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
 
-class BayesianOptimizer(Generic[SP]):
+class BayesianOptimizer(Generic[SP, M_contra]):
     """
     This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
@@ -194,7 +194,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -210,7 +210,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -236,7 +236,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -249,7 +249,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -262,7 +262,7 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP, M_contra]
         | None = None,
         acquisition_state: S | None = None,
         *,
@@ -354,9 +354,9 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
+            acquisition_rule = cast(AcquisitionRule[TensorType, SP, M_contra], EfficientGlobalOptimization())
 
-        models = map_values(create_model, model_specs)
+        models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
         history: list[Record[S]] = []
 
         for step in range(num_steps):
