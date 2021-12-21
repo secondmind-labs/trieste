@@ -538,11 +538,6 @@ def batchify_vectorize(
 
 
 
-
-
-
-
-
 def generate_random_search_optimizer(
     num_samples: int = NUM_SAMPLES_MIN,
 ) -> AcquisitionOptimizer[SP]:

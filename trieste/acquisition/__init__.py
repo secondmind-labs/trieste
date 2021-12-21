@@ -49,6 +49,7 @@ from .function import (
     LocalPenalization,
     MinValueEntropySearch,
     NegativeLowerConfidenceBound,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativePredictiveMean,
     PredictiveVariance,
     ProbabilityOfFeasibility,
@@ -61,6 +62,7 @@ from .function import (
     hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
+    multiple_optimism_lower_confidence_bound,
     predictive_variance,
     probability_of_feasibility,
     soft_local_penalizer,
@@ -70,9 +72,11 @@ from .interface import (
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
     GreedyAcquisitionFunctionBuilder,
+    VectorizedAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
 from .sampler import (

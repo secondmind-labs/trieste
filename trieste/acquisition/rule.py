@@ -39,8 +39,10 @@ from .interface import (
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    VectorizedAcquisitionFunctionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
 )
-from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify_joint
+from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify_joint, batchify_vectorize
 from .sampler import ExactThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
@@ -120,8 +122,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
         builder: Optional[
             AcquisitionFunctionBuilder[ProbabilisticModel]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
+            | VectorizedAcquisitionFunctionBuilder[ProbabilisticModel]
             | SingleModelAcquisitionBuilder[ProbabilisticModel]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
+            | SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -154,13 +158,20 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             optimizer = automatic_optimizer_selector
 
         if isinstance(
-            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
+            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder)
         ):
             builder = builder.using(OBJECTIVE)
 
-        if isinstance(builder, AcquisitionFunctionBuilder) and num_query_points > 1:
-            # Joint batch acquisitions require batch optimizers
-            optimizer = batchify_joint(optimizer, num_query_points)
+        if num_query_points > 1: # need to build batches of points
+            if isinstance(builder, AcquisitionFunctionBuilder):
+                # optimize batch elements jointly
+                optimizer = batchify_joint(optimizer, num_query_points) 
+            elif isinstance(builder, VectorizedAcquisitionFunctionBuilder):
+                # optimize batch elements independently
+                optimizer = batchify_vectorize(optimizer, num_query_points) 
+            elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
+                # optimize batch elements sequentially using the logic in acquire.
+                pass 
 
         self._builder: Union[
             AcquisitionFunctionBuilder[ProbabilisticModel],

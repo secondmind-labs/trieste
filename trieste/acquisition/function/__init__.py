@@ -32,6 +32,7 @@ from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
@@ -39,6 +40,7 @@ from .function import (
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
+    multiple_optimism_lower_confidence_bound,
 )
 from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (
