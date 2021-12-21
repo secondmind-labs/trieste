@@ -28,4 +28,4 @@ def test_create_loss_function_raises_on_none() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     data = Dataset(x, fnc_3x_plus_10(x))
     with pytest.raises(NotImplementedError):
-        create_loss_function(None, data)
+        create_loss_function(None, data)  # type: ignore
