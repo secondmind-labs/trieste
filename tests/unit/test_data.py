@@ -43,8 +43,7 @@ def test_dataset_raises_for_zero_dimensional_data(
     [
         ((1,), (2,)),
         ((2,), (1,)),
-        ((5, 6), (5, 4)),
-        ((5, 6), (4, 6)),
+        ((5, 6), (4,)),
         ((5, 6), (4, 4)),
     ],
 )
@@ -64,28 +63,11 @@ def test_dataset_raises_for_different_leading_shapes(
 @pytest.mark.parametrize(
     "query_points_shape, observations_shape",
     [
-        ((1, 2), (1,)),
-        ((1, 2), (1, 2, 3)),
-    ],
-)
-def test_dataset_raises_for_different_ranks(
-    query_points_shape: ShapeLike, observations_shape: ShapeLike
-) -> None:
-    query_points = tf.zeros(query_points_shape)
-    observations = tf.ones(observations_shape)
-
-    with pytest.raises(ValueError):
-        Dataset(query_points, observations)
-
-
-@pytest.mark.parametrize(
-    "query_points_shape, observations_shape",
-    [
         ((), ()),
         ((), (10,)),
         ((10,), (10,)),
         ((1, 2), (1,)),
-        ((1, 2), (1, 2, 3)),
+        ((1,), (1, 2)),
     ],
 )
 def test_dataset_raises_for_invalid_ranks(

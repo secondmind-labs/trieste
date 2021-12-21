@@ -1,4 +1,4 @@
-# Copyright 2020 The Trieste Contributors
+# Copyright 2021 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """ This module contains utilities for :class:`~trieste.observer.Observer` data. """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -37,7 +39,7 @@ class Dataset:
     def __post_init__(self) -> None:
         """
         :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have \
-            rank less than two, or they have unequal shape in any but their last dimension.
+            rank less than two, or they have unequal shape in their first dimension.
         """
         tf.debugging.assert_rank_at_least(self.query_points, 2)
         tf.debugging.assert_rank_at_least(self.observations, 2)
@@ -49,7 +51,7 @@ class Dataset:
             )
 
         if (
-            self.query_points.shape[:-1] != self.observations.shape[:-1]
+            self.query_points.shape[0] != self.observations.shape[0]
             # can't check dynamic shapes, so trust that they're ok (if not, they'll fail later)
             and None not in self.query_points.shape[:-1]
         ):
