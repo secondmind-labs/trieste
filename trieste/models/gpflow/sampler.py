@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+from gpflux.layers.basis_functions import RandomFourierFeatures
 
 from ...data import Dataset
 from ...types import TensorType
@@ -251,7 +251,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
                 """
             )
 
-        self._feature_functions = RandomFourierFeaturesCosine(
+        self._feature_functions = RandomFourierFeatures(
             self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
         )  # prep feature functions at data
 
