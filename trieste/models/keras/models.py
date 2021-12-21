@@ -21,12 +21,10 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble
 from .interface import NeuralNetworkPredictor
-
-# from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
 
 
@@ -57,6 +55,8 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
     formulation in <cite data-cite="lakshminarayanan2017simple"/>, but any user-specified network
     can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
     :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.
+
+    Note that setting up the model with dictionary configs is not currently possible.
 
     When using the model we recommend to set `tf.keras.backend.set_floatx(tf.float64)` for
     alignment with the Trieste toolbox.

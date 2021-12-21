@@ -21,5 +21,13 @@ to `False`. We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for al
 the Trieste toolbox.
 """
 
+from . import config
+from .architectures import (
+    GaussianNetwork,
+    KerasEnsemble,
+    KerasEnsembleNetwork,
+    build_vanilla_keras_ensemble,
+)
 from .interface import NeuralNetworkPredictor
-from .utils import get_tensor_spec_from_data, sample_with_replacement
+from .models import DeepEnsemble
+from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement
