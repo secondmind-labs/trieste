@@ -33,22 +33,22 @@ from trieste.acquisition.optimizer import (
     optimize_discrete,
 )
 from trieste.objectives import (
-    BRANIN_MINIMUM,
-    BRANIN_SEARCH_SPACE,
-    branin,
-    scaled_branin,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMUM,
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_SEARCH_SPACE,
+    BRANIN_MINIMUM,
+    BRANIN_SEARCH_SPACE,
     HARTMANN_3_MINIMIZER,
     HARTMANN_3_SEARCH_SPACE,
     HARTMANN_6_MINIMIZER,
     HARTMANN_6_SEARCH_SPACE,
+    SCALED_BRANIN_MINIMUM,
+    SIMPLE_QUADRATIC_MINIMUM,
     ackley_5,
+    branin,
     hartmann_3,
-    simple_quadratic,
     hartmann_6,
+    scaled_branin,
+    simple_quadratic,
 )
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
@@ -124,10 +124,6 @@ def test_discrete_and_random_optimizer_on_quadratic(
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
         else:
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
-
-
-
-
 
 
 @random_seed
@@ -389,14 +385,6 @@ def test_continuous_optimizer_on_toy_problems(
     npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-1)
 
 
-
-
-
-
-
-
-
-
 @pytest.mark.parametrize(
     "search_space, point",
     [
@@ -502,10 +490,6 @@ def test_batchify_joint(
         npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
 
 
-
-
-
-
 def test_batchify_vectorized_raises_with_invalid_batch_size() -> None:
     batch_size_one_optimizer = generate_continuous_optimizer()
     with pytest.raises(ValueError):
@@ -513,44 +497,59 @@ def test_batchify_vectorized_raises_with_invalid_batch_size() -> None:
 
 
 @random_seed
-@pytest.mark.parametrize("optimizer", [generate_random_search_optimizer(10_000), generate_continuous_optimizer()])
-def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_quadratic(optimizer: AcquisitionOptimizer) -> None:
+@pytest.mark.parametrize(
+    "optimizer", [generate_random_search_optimizer(10_000), generate_continuous_optimizer()]
+)
+def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_quadratic(
+    optimizer: AcquisitionOptimizer[Box],
+) -> None:
     search_space = Box([-1, -2], [1.5, 2.5])
-    shifts = [[0.3, -0.4],[1.0, 4]]
+    shifts = [[0.3, -0.4], [1.0, 4]]
     expected_maximizers = [[0.3, -0.4], [1.0, 2.5]]
-    vectorized_batch_size=2
+    vectorized_batch_size = 2
 
-    def vectorized_target(x: TensorType) -> TensorType: # [N, V, D] -> [N,V]
-        individual_func =  [_quadratic_sum(shifts[i])(x[:,i:i+1,:]) for i in range(vectorized_batch_size)]  
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorized_batch_size)
+        ]
         return tf.concat(individual_func, axis=-1)
-        
-    batched_optimizer =batchify_vectorize(optimizer, batch_size=vectorized_batch_size)
+
+    batched_optimizer = batchify_vectorize(optimizer, batch_size=vectorized_batch_size)
     maximizers = batched_optimizer(search_space, vectorized_target)
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
-    
-    maximizers = optimizer(search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size)
+
+    maximizers = optimizer(
+        search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size
+    )
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
+
 
 def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() -> None:
-    search_space = DiscreteSearchSpace(tf.constant([[0.3, -0.4], [1.0, 2.5], [0.2,0.5], [0.5,2.0],[2.0,0.1]]))
-    shifts = [[0.3, -0.4],[1.0, 4]]
+    search_space = DiscreteSearchSpace(
+        tf.constant([[0.3, -0.4], [1.0, 2.5], [0.2, 0.5], [0.5, 2.0], [2.0, 0.1]])
+    )
+    shifts = [[0.3, -0.4], [1.0, 4]]
     expected_maximizers = [[0.3, -0.4], [1.0, 2.5]]
-    vectorized_batch_size=2
+    vectorized_batch_size = 2
 
-    def vectorized_target(x: TensorType) -> TensorType: # [N, V, D] -> [N,V]
-        individual_func =  [_quadratic_sum(shifts[i])(x[:,i:i+1,:]) for i in range(vectorized_batch_size)]  
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorized_batch_size)
+        ]
         return tf.concat(individual_func, axis=-1)
-        
-    batched_optimizer =batchify_vectorize(optimize_discrete, batch_size=vectorized_batch_size)
+
+    batched_optimizer = batchify_vectorize(optimize_discrete, batch_size=vectorized_batch_size)
     maximizers = batched_optimizer(search_space, vectorized_target)
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
-    
-    maximizers = optimize_discrete(search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size)
+
+    maximizers = optimize_discrete(
+        search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size
+    )
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
 
 
 @random_seed
-@pytest.mark.parametrize("vectorization", [1,5])
+@pytest.mark.parametrize("vectorization", [1, 5])
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
@@ -565,13 +564,16 @@ def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems
     expected_maximizer: TensorType,
     search_space: Box,
 ) -> None:
-    def target_function(x: TensorType) -> TensorType: # [N,V,D] -> [N, V]
-        individual_func =  [-1 * neg_function(x[:,i,:]) for i in range(vectorization)]  
-        return tf.concat(individual_func, axis=-1) # vectorize by repeating same function
+    def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
+        individual_func = [-1 * neg_function(x[:, i, :]) for i in range(vectorization)]
+        return tf.concat(individual_func, axis=-1)  # vectorize by repeating same function
 
-    optimizer = batchify_vectorize(generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10), batch_size=vectorization)
+    optimizer = batchify_vectorize(
+        generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10),
+        batch_size=vectorization,
+    )
     maximizer = optimizer(search_space, target_function)
-    npt.assert_allclose(maximizer, tf.tile(expected_maximizer,[vectorization,1]), rtol=1e-1)
+    npt.assert_allclose(maximizer, tf.tile(expected_maximizer, [vectorization, 1]), rtol=1e-1)
 
 
 @random_seed
@@ -579,18 +581,20 @@ def test_batchify_vectorized_for_continuous_optimizer_on_vectorized_toy_problems
     search_space = BRANIN_SEARCH_SPACE
     functions = [branin, scaled_branin, simple_quadratic]
     expected_maximimums = [-BRANIN_MINIMUM, -SCALED_BRANIN_MINIMUM, -SIMPLE_QUADRATIC_MINIMUM]
-    vectorized_batch_size=3
+    vectorized_batch_size = 3
 
-    def target_function(x: TensorType) -> TensorType: # [N,V,D] -> [N, V]
-        individual_func =  [-1 * functions[i](x[:,i,:]) for i in range(vectorized_batch_size)]  
-        return tf.concat(individual_func, axis=-1) # vectorize by concatenating three functions
+    def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
+        individual_func = [-1 * functions[i](x[:, i, :]) for i in range(vectorized_batch_size)]
+        return tf.concat(individual_func, axis=-1)  # vectorize by concatenating three functions
 
-    optimizer = batchify_vectorize(generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10), batch_size=vectorized_batch_size)
+    optimizer = batchify_vectorize(
+        generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10),
+        batch_size=vectorized_batch_size,
+    )
     maximizer = optimizer(search_space, target_function)
-    npt.assert_allclose(target_function(maximizer[None,:,:]), tf.transpose(expected_maximimums), rtol=1e-5)
-
-
-
+    npt.assert_allclose(
+        target_function(maximizer[None, :, :]), tf.transpose(expected_maximimums), rtol=1e-5
+    )
 
 
 @random_seed
@@ -624,12 +628,3 @@ def test_automatic_optimizer_selector(
     optimizer = automatic_optimizer_selector
     point = optimizer(search_space, acquisition)
     npt.assert_allclose(point, maximizer, rtol=2e-4)
-
-
-
-
-
-
-
-
-

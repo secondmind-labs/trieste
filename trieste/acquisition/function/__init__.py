@@ -39,8 +39,8 @@ from .function import (
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
-    probability_of_feasibility,
     multiple_optimism_lower_confidence_bound,
+    probability_of_feasibility,
 )
 from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (

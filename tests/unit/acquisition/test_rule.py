@@ -33,7 +33,7 @@ from trieste.acquisition import (
     NegativeLowerConfidenceBound,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
-    VectorizedAcquisitionFunctionBuilder
+    VectorizedAcquisitionFunctionBuilder,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
@@ -314,7 +314,6 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(
         )
 
 
-
 @random_seed
 @pytest.mark.parametrize(
     "rule_fn",
@@ -363,20 +362,15 @@ def test_greedy_batch_acquisition_rule_acquire(
     assert acq._update_count == 2 * num_query_points - 1
 
 
-
-
-
-
-
-
-
-class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(VectorizedAcquisitionFunctionBuilder[ProbabilisticModel]):
+class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(
+    VectorizedAcquisitionFunctionBuilder[ProbabilisticModel]
+):
     def prepare_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
-        return lambda at: tf.squeeze(-models[OBJECTIVE].predict(at)[0],-1)
+        return lambda at: tf.squeeze(-models[OBJECTIVE].predict(at)[0], -1)
 
 
 @random_seed
@@ -384,7 +378,9 @@ def test_vectorized_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _VectorizedBatchModelMinusMeanMaximumSingleBuilder()
-    acq_rule =  EfficientGlobalOptimization(acq, num_query_points=num_query_points)
+    acq_rule: AcquisitionRule[TensorType, Box] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
         search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
@@ -394,7 +390,6 @@ def test_vectorized_batch_acquisition_rule_acquire() -> None:
     else:
         query_point = points_or_stateful
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
-
 
 
 def test_async_greedy_raises_for_non_greedy_function() -> None:

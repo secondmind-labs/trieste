@@ -21,18 +21,19 @@ from typing import Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from ...space import SearchSpace
+
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
-    VectorizedAcquisitionFunction,
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
     SingleModelAcquisitionBuilder,
-    SingleModelVectorizedAcquisitionBuilder
+    SingleModelVectorizedAcquisitionBuilder,
+    VectorizedAcquisitionFunction,
 )
 
 
@@ -703,19 +704,18 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
 
-
-
-class MultipleOptimismNegativeLowerConfidenceBound(SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]):
+class MultipleOptimismNegativeLowerConfidenceBound(
+    SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]
+):
     """
     Builder for the negative of the lower confidence bound. TODO
     """
 
-    def __init__(self, search_space = SearchSpace):
+    def __init__(self, search_space: SearchSpace):
         """
         :param search_space: The global search space over which the optimisation is defined.
         """
         self._search_space = search_space
-
 
     def __repr__(self) -> str:
         """"""
@@ -731,7 +731,7 @@ class MultipleOptimismNegativeLowerConfidenceBound(SingleModelVectorizedAcquisit
         :param dataset: Unused.
         :return: The multiple optimism negative lower confidence bound function.
         """
-        return multiple_optimism_lower_confidence_bound(model,self._search_space.dimension)
+        return multiple_optimism_lower_confidence_bound(model, self._search_space.dimension)
 
     def update_acquisition_function(
         self,
@@ -744,8 +744,8 @@ class MultipleOptimismNegativeLowerConfidenceBound(SingleModelVectorizedAcquisit
         :param model: The model.
         :param dataset: Unused.
         """
-        tf.debugging.Assert(isinstance(function,  multiple_optimism_lower_confidence_bound), [])
-        return function # nothing to update
+        tf.debugging.Assert(isinstance(function, multiple_optimism_lower_confidence_bound), [])
+        return function  # nothing to update
 
 
 class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
@@ -755,7 +755,7 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
     .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
 
     See :cite:`Srinivas:2010` for details. TODO
-    """    
+    """
 
     def __init__(self, model: ProbabilisticModel, search_space_dim: int):
         """
@@ -771,14 +771,13 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
         self._initialized = tf.Variable(False)  # Keep track of when we need to resample
         self._betas = tf.Variable(tf.ones([0], dtype=tf.float64), shape=[None])  # [0] lazy init
 
-    
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
 
         batch_size = tf.shape(x)[-2]
         tf.debugging.assert_positive(batch_size)
 
-        if self._initialized: # check batch size hasnt changed during BO
+        if self._initialized:  # check batch size hasnt changed during BO
             tf.debugging.assert_equal(
                 batch_size,
                 tf.shape(self._betas)[0],
@@ -787,14 +786,17 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
             )
 
         if not self._initialized:
-            normal = tfp.distributions.Normal(tf.cast(0.0, dtype=x.dtype),tf.cast(1.0, dtype=x.dtype))
-            spread = 0.5 + 0.5*tf.range(1,batch_size+1, dtype=x.dtype)/(tf.cast(batch_size, dtype=x.dtype)+1.0) # [B]
-            betas = normal.quantile(spread) # [B]
-            scaled_betas = 5.0* tf.cast(self._search_space_dim, dtype=x.dtype) * betas # [B]
-            self._betas.assign(scaled_betas) # [B]
+            normal = tfp.distributions.Normal(
+                tf.cast(0.0, dtype=x.dtype), tf.cast(1.0, dtype=x.dtype)
+            )
+            spread = 0.5 + 0.5 * tf.range(1, batch_size + 1, dtype=x.dtype) / (
+                tf.cast(batch_size, dtype=x.dtype) + 1.0
+            )  # [B]
+            betas = normal.quantile(spread)  # [B]
+            scaled_betas = 5.0 * tf.cast(self._search_space_dim, dtype=x.dtype) * betas  # [B]
+            self._betas.assign(scaled_betas)  # [B]
             self._initialized.assign(True)
 
-        mean, variance = self._model.predict(x) # [..., B, 1]
-        mean, variance = tf.squeeze(mean,-1), tf.squeeze(variance, -1)
-        return - mean +  tf.sqrt(variance) * self._betas # [..., B] TODO
-
+        mean, variance = self._model.predict(x)  # [..., B, 1]
+        mean, variance = tf.squeeze(mean, -1), tf.squeeze(variance, -1)
+        return -mean + tf.sqrt(variance) * self._betas  # [..., B] TODO

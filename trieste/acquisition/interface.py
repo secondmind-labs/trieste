@@ -53,9 +53,6 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
-
-
-
 class AcquisitionFunctionClass(ABC):
     """An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
     rather than as a standalone function. Using a class to represent an acquisition function
@@ -65,9 +62,6 @@ class AcquisitionFunctionClass(ABC):
     @abstractmethod
     def __call__(self, x: TensorType) -> TensorType:
         """Call acquisition function."""
-
-
-
 
 
 T = TypeVar("T", bound=ProbabilisticModel)
@@ -325,7 +319,6 @@ class SingleModelGreedyAcquisitionBuilder(Generic[T], ABC):
         )
 
 
-
 class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
     """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function. TODO"""
 
@@ -431,9 +424,6 @@ class SingleModelVectorizedAcquisitionBuilder(Generic[T], ABC):
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(model, dataset=dataset)
-
-
-
 
 
 PenalizationFunction = Callable[[TensorType], TensorType]

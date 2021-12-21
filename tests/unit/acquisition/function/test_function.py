@@ -44,20 +44,21 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    NegativeLowerConfidenceBound,
     MultipleOptimismNegativeLowerConfidenceBound,
-    multiple_optimism_lower_confidence_bound,
+    NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
+    multiple_optimism_lower_confidence_bound,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
-from trieste.types import TensorType
 from trieste.space import Box
+from trieste.types import TensorType
+
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
     dataset = Dataset(
@@ -653,26 +654,18 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
 
 
-
-
-
-
-
-
-
-
-
-
-def test_multiple_optimism_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
+def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> None:
     model = QuadraticMeanAndRBFKernel()
     search_space = Box([0, 0], [1, 1])
-    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(search_space).prepare_acquisition_function(model)
-    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
+    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
+        search_space
+    ).prepare_acquisition_function(model)
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
     expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-# def test_multiple_optimism_negative_lower_confidence_bound_builder_updates_without_retracing() -> None:
+# def test_multiple_optimism_builder_updates_without_retracing() -> None:
 #     model = QuadraticMeanAndRBFKernel()
 #     beta = 1.96
 #     search_space = Box([0, 0], [1, 1])
@@ -690,19 +683,19 @@ def test_multiple_optimism_negative_lower_confidence_bound_builder_builds_negati
 #     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
 
-
-def test_multiple_optimism_negative_lower_confidence_bound_builder_raises_when_update_with_wrong_function() -> None:
+def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:
     model = QuadraticMeanAndRBFKernel()
     search_space = Box([0, 0], [1, 1])
     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
-    acq_fn = builder.prepare_acquisition_function(model)
+    builder.prepare_acquisition_function(model)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(lower_confidence_bound(model, 0.1),model)
+        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
 
 
-
-@pytest.mark.parametrize("d", [0,-5])
-def test_multiple_optimism_negative_confidence_bound_raises_for_negative_search_space_dim(d: float) -> None:
+@pytest.mark.parametrize("d", [0, -5])
+def test_multiple_optimism_negative_confidence_bound_raises_for_negative_search_space_dim(
+    d: int,
+) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         multiple_optimism_lower_confidence_bound(QuadraticMeanAndRBFKernel(), d)
 
@@ -710,16 +703,14 @@ def test_multiple_optimism_negative_confidence_bound_raises_for_negative_search_
 def test_multiple_optimism_negative_confidence_bound_raises_for_changing_batch_size() -> None:
     model = QuadraticMeanAndRBFKernel()
     search_space = Box([0, 0], [1, 1])
-    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(search_space).prepare_acquisition_function(model)
-    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
+    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
+        search_space
+    ).prepare_acquisition_function(model)
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
     acq_fn(query_at)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5,10,2])
+        query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5, 10, 2])
         acq_fn(query_at)
 
 
-
-
-
-
-#check builder update with different acq
+# check builder update with different acq
