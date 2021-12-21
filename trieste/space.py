@@ -34,6 +34,9 @@ class SearchSpace(ABC):
     A :class:`SearchSpace` represents the domain over which an objective function is optimized.
     """
 
+    def __init__(self) -> None:
+        self._vectorized_batch_size = 1  # TODO
+
     @abstractmethod
     def sample(self, num_samples: int) -> TensorType:
         """
@@ -87,6 +90,15 @@ class SearchSpace(ABC):
         tf.debugging.assert_positive(other, message="Exponent must be strictly positive")
         return reduce(operator.mul, [self] * other)
 
+    @property
+    def vectorized_batch_size(self) -> int:
+        return self._vectorized_batch_size
+
+    def set_vectorized_batch_size(self, batch_size: int) -> None:
+        if batch_size <= 0:
+            raise ValueError(f"vectorized_batch_size must be positive, got {batch_size}")
+        self._vectorized_batch_size = batch_size
+
 
 class DiscreteSearchSpace(SearchSpace):
     r"""
@@ -107,6 +119,8 @@ class DiscreteSearchSpace(SearchSpace):
         :param points: The points that define the discrete space, with shape ('N', 'D').
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.
         """
+
+        super().__init__()
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
         self._dimension = tf.shape(self._points)[-1]
@@ -219,6 +233,7 @@ class Box(SearchSpace):
             - ``upper`` is not greater than ``lower`` across all dimensions.
         """
 
+        super().__init__()
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
@@ -397,6 +412,7 @@ class TaggedProductSearchSpace(SearchSpace):
             length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
         """
 
+        super().__init__()
         number_of_subspaces = len(spaces)
         if tags is None:
             tags = [str(index) for index in range(number_of_subspaces)]

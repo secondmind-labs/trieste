@@ -65,6 +65,8 @@ class FailedOptimizationError(Exception):
 AcquisitionOptimizer = Callable[
     [SP, Union[AcquisitionFunction, VectorizedAcquisitionFunction]], TensorType
 ]
+
+
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
 a search space. For a search space with points of shape [D], and acquisition function with input
@@ -89,7 +91,7 @@ def automatic_optimizer_selector(
     """
 
     if isinstance(space, DiscreteSearchSpace):
-        return optimize_discrete(space, target_func, 1)
+        return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
         num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
@@ -97,7 +99,7 @@ def automatic_optimizer_selector(
         return generate_continuous_optimizer(
             num_initial_samples=num_samples,
             num_optimization_runs=num_runs,
-        )(space, target_func, 1)
+        )(space, target_func)
 
     else:
         raise NotImplementedError(
@@ -110,7 +112,6 @@ def automatic_optimizer_selector(
 def optimize_discrete(
     space: DiscreteSearchSpace,
     target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
-    vectorized_batch_size: int = 1,
 ) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
@@ -119,14 +120,10 @@ def optimize_discrete(
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
             [..., 1].
-    :param vectorized_batch_size: TODO
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    V = vectorized_batch_size
-
-    if V <= 0:
-        raise ValueError(f"vectorized_batch_size must be positive, got {V}")
+    V = space.vectorized_batch_size
 
     points = space.points[:, None, :]
     tiled_points = tf.tile(points, [1, V, 1])
@@ -201,7 +198,6 @@ def generate_continuous_optimizer(
     def optimize_continuous(
         space: Box | TaggedProductSearchSpace,
         target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
-        vectorized_batch_size: int = 1,
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
@@ -218,10 +214,7 @@ def generate_continuous_optimizer(
         :param vectorized_batch_size: TODO
         :return: The `V` points in ``space`` that maximises ``target_func``, with shape [V, D]. TODO
         """
-        V = vectorized_batch_size
-
-        if V <= 0:
-            raise ValueError(f"vectorized_batch_size must be positive, got {V}")
+        V = space.vectorized_batch_size
 
         candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
         tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
@@ -569,7 +562,8 @@ def batchify_vectorize(
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
-        return batch_size_one_optimizer(search_space, f, vectorized_batch_size=batch_size)
+        search_space.set_vectorized_batch_size(batch_size)
+        return batch_size_one_optimizer(vectorized_search_space, f)
 
     return optimizer
 
@@ -593,7 +587,6 @@ def generate_random_search_optimizer(
     def optimize_random(
         space: SP,
         target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
-        vectorized_batch_size: int = 1,
     ) -> TensorType:
         """
         TODO
@@ -605,14 +598,10 @@ def generate_random_search_optimizer(
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
                 [..., 1].
-        :param vectorized_batch_size: TODO
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
 
-        V = vectorized_batch_size
-
-        if V <= 0:
-            raise ValueError(f"vectorized_batch_size must be positive, got {V}")
+        V = space.vectorized_batch_size
 
         points = space.sample(num_samples)[:, None, :]
         tiled_points = tf.tile(points, [1, V, 1])

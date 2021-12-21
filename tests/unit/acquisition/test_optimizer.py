@@ -518,11 +518,6 @@ def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_
     maximizers = batched_optimizer(search_space, vectorized_target)
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
 
-    maximizers = optimizer(
-        search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size
-    )
-    npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
-
 
 def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() -> None:
     search_space = DiscreteSearchSpace(
@@ -540,11 +535,6 @@ def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() ->
 
     batched_optimizer = batchify_vectorize(optimize_discrete, batch_size=vectorized_batch_size)
     maximizers = batched_optimizer(search_space, vectorized_target)
-    npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
-
-    maximizers = optimize_discrete(
-        search_space, vectorized_target, vectorized_batch_size=vectorized_batch_size
-    )
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
 
 
