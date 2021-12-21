@@ -19,7 +19,6 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-import copy
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 import greenlet as gr
@@ -30,7 +29,7 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from .interface import AcquisitionFunction, VectorizedAcquisitionFunction
+from .interface import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
@@ -55,7 +54,7 @@ NUM_RUNS_DIM: int = 10
 """
 The default minimum number of optimization runs per dimension of the search space for
 :func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
-determining the number of acquisition function optimizations to be perfomed in parallel.
+determining the number of acquisition function optimizations to be performed in parallel.
 """
 
 
@@ -63,22 +62,20 @@ class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
 
 
-AcquisitionOptimizer = Callable[
-    [SP, Union[AcquisitionFunction, VectorizedAcquisitionFunction]], TensorType
-]
 
-
+AcquisitionOptimizer = Callable[[SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
 a search space. For a search space with points of shape [D], and acquisition function with input
 shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape should be
 [B, D].
+
+TODO
 """
 
 
 def automatic_optimizer_selector(
-    space: SearchSpace,
-    target_func: AcquisitionFunction,
+    space: SearchSpace, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -104,7 +101,7 @@ def automatic_optimizer_selector(
 
     else:
         raise NotImplementedError(
-            f""" No optimizer currentely supports acquisition function
+            f""" No optimizer currently supports acquisition function
                     maximisation over search spaces of type {space}.
                     Try specifying the optimize_random optimizer"""
         )
@@ -112,7 +109,7 @@ def automatic_optimizer_selector(
 
 def optimize_discrete(
     space: DiscreteSearchSpace,
-    target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
+    target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
 ) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
@@ -127,7 +124,11 @@ def optimize_discrete(
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    V = space.vectorized_batch_size
+    if isinstance(target_func, tuple):  # TODO
+        V = target_func[1]
+        target_func = target_func[0]
+    else:
+        V = 1
 
     points = space.points[:, None, :]
     tiled_points = tf.tile(points, [1, V, 1])
@@ -199,7 +200,7 @@ def generate_continuous_optimizer(
 
     def optimize_continuous(
         space: Box | TaggedProductSearchSpace,
-        target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
+        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
@@ -218,7 +219,12 @@ def generate_continuous_optimizer(
                 [..., V].
         :return: The `V` points in ``space`` that maximises``target_func``, with shape [V, D].
         """
-        V = space.vectorized_batch_size
+
+        if isinstance(target_func, tuple):  # TODO
+            V = target_func[1]
+            target_func = target_func[0]
+        else:
+            V = 1
 
         candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
         tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
@@ -307,7 +313,7 @@ def generate_continuous_optimizer(
 
 
 def _perform_parallel_continuous_optimization(
-    target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
+    target_func: AcquisitionFunction,
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
@@ -520,6 +526,7 @@ def batchify_joint(
 
     def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
+        # TODO check that not vectorized
 
         def target_func_with_vectorized_inputs(
             x: TensorType,
@@ -542,9 +549,9 @@ def batchify_vectorize(
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
-    Unlike :meth:`batchify_joint`, :meth:`batchify_vectorize` is suitiable
+    Unlike :meth:`batchify_joint`, :meth:`batchify_vectorize` is suitable
     for :class:`VectorizedAcquisitionFunction`s who's individual batch element can be
-    optimized independetely (i.e. they can be vectorized).
+    optimized independently (i.e. they can be vectorized).
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
             single point with shape [1, D].
@@ -554,10 +561,9 @@ def batchify_vectorize(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
-    def optimizer(search_space: SP, f: VectorizedAcquisitionFunction) -> TensorType:
-        vectorized_search_space = copy.deepcopy(search_space)
-        vectorized_search_space.set_vectorized_batch_size(batch_size)
-        return batch_size_one_optimizer(vectorized_search_space, f)
+    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+        # TODO check that not vectorized
+        return batch_size_one_optimizer(search_space, (f, batch_size))
 
     return optimizer
 
@@ -580,7 +586,7 @@ def generate_random_search_optimizer(
 
     def optimize_random(
         space: SP,
-        target_func: Union[AcquisitionFunction, VectorizedAcquisitionFunction],
+        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for
@@ -597,8 +603,11 @@ def generate_random_search_optimizer(
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
-
-        V = space.vectorized_batch_size
+        if isinstance(target_func, tuple):  # TODO
+            V = target_func[1]
+            target_func = target_func[0]
+        else:
+            V = 1
 
         points = space.sample(num_samples)[:, None, :]
         tiled_points = tf.tile(points, [1, V, 1])

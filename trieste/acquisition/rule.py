@@ -173,12 +173,12 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             builder = builder.using(OBJECTIVE)
 
         if num_query_points > 1:  # need to build batches of points
-            if isinstance(builder, AcquisitionFunctionBuilder):
-                # optimize batch elements jointly
-                optimizer = batchify_joint(optimizer, num_query_points)
-            elif isinstance(builder, VectorizedAcquisitionFunctionBuilder):
+            if isinstance(builder, VectorizedAcquisitionFunctionBuilder):
                 # optimize batch elements independently
                 optimizer = batchify_vectorize(optimizer, num_query_points)
+            elif isinstance(builder, AcquisitionFunctionBuilder):
+                # optimize batch elements jointly
+                optimizer = batchify_joint(optimizer, num_query_points)
             elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
                 # optimize batch elements sequentially using the logic in acquire.
                 pass

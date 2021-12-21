@@ -33,7 +33,6 @@ from ..interface import (
     AcquisitionFunctionClass,
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
-    VectorizedAcquisitionFunction,
 )
 
 
@@ -728,7 +727,7 @@ class MultipleOptimismNegativeLowerConfidenceBound(
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-    ) -> VectorizedAcquisitionFunction:
+    ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
@@ -738,10 +737,10 @@ class MultipleOptimismNegativeLowerConfidenceBound(
 
     def update_acquisition_function(
         self,
-        function: VectorizedAcquisitionFunction,
+        function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-    ) -> VectorizedAcquisitionFunction:
+    ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
