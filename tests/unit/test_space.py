@@ -81,27 +81,23 @@ def test_discrete_search_space_points() -> None:
     npt.assert_array_equal(space.points, _points_in_2D_search_space())
 
 
-
 def test_discrete_search_space_initial_vectorized_batch_size() -> None:
     space = DiscreteSearchSpace(_points_in_2D_search_space())
     assert space.vectorized_batch_size == 1
 
 
-
-@pytest.mark.parametrize("batch_size", [-5,0])
+@pytest.mark.parametrize("batch_size", [-5, 0])
 def test_discrete_search_space_raises_with_negative_batch_size(batch_size: int) -> None:
     space = DiscreteSearchSpace(_points_in_2D_search_space())
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        space.set_vectorized_batch_size(batch_size)   
+        space.set_vectorized_batch_size(batch_size)
 
 
-@pytest.mark.parametrize("batch_size", [5,100])
+@pytest.mark.parametrize("batch_size", [5, 100])
 def test_discrete_search_space_set_vectorized_batch_size(batch_size: int) -> None:
     space = DiscreteSearchSpace(_points_in_2D_search_space())
     space.set_vectorized_batch_size(batch_size)
-    assert space.vectorized_batch_size==batch_size
-
-
+    assert space.vectorized_batch_size == batch_size
 
 
 @pytest.mark.parametrize("point", list(_points_in_2D_search_space()))
@@ -338,31 +334,26 @@ def test_box_bounds_attributes() -> None:
     npt.assert_array_equal(box.upper, upper)
 
 
-
-
 def test_box_initial_vectorized_batch_size() -> None:
     lower, upper = tf.zeros([2]), tf.ones([2])
     space = Box(lower, upper)
     assert space.vectorized_batch_size == 1
 
 
-
-@pytest.mark.parametrize("batch_size", [-5,0])
+@pytest.mark.parametrize("batch_size", [-5, 0])
 def test_box_raises_with_negative_batch_size(batch_size: int) -> None:
     lower, upper = tf.zeros([2]), tf.ones([2])
     space = Box(lower, upper)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        space.set_vectorized_batch_size(batch_size)   
+        space.set_vectorized_batch_size(batch_size)
 
 
-@pytest.mark.parametrize("batch_size", [5,100])
+@pytest.mark.parametrize("batch_size", [5, 100])
 def test_box_set_vectorized_batch_size(batch_size: int) -> None:
     lower, upper = tf.zeros([2]), tf.ones([2])
     space = Box(lower, upper)
     space.set_vectorized_batch_size(batch_size)
-    assert space.vectorized_batch_size==batch_size
-
-
+    assert space.vectorized_batch_size == batch_size
 
 
 @pytest.mark.parametrize(
@@ -569,7 +560,6 @@ def test_product_space_subspace_tags_default_behaviour() -> None:
     npt.assert_array_equal(product_space.subspace_tags, ["0", "1"])
 
 
-
 def test_product_space_initial_vectorized_batch_size() -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
@@ -577,28 +567,22 @@ def test_product_space_initial_vectorized_batch_size() -> None:
     assert space.vectorized_batch_size == 1
 
 
-
-@pytest.mark.parametrize("batch_size", [-5,0])
+@pytest.mark.parametrize("batch_size", [-5, 0])
 def test_product_space_raises_with_negative_batch_size(batch_size: int) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
     space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        space.set_vectorized_batch_size(batch_size)   
+        space.set_vectorized_batch_size(batch_size)
 
 
-@pytest.mark.parametrize("batch_size", [5,100])
+@pytest.mark.parametrize("batch_size", [5, 100])
 def test_product_space_set_vectorized_batch_size(batch_size: int) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
     space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
     space.set_vectorized_batch_size(batch_size)
-    assert space.vectorized_batch_size==batch_size
-
-
-
-
-
+    assert space.vectorized_batch_size == batch_size
 
 
 @pytest.mark.parametrize(
@@ -898,3 +882,14 @@ def test_product_space___mul___() -> None:
     subspace_1_D = subspace_1.get_subspace("D")  # type: ignore
     assert isinstance(subspace_1_D, DiscreteSearchSpace)
     npt.assert_array_equal(subspace_1_D.points, tf.ones([5, 3], dtype=tf.float64))
+
+
+def test_product_search_space_deepcopy() -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
+
+    copied_space = copy.deepcopy(product_space)
+    npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
+    npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
+    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points) # type: ignore

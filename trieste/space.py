@@ -582,3 +582,6 @@ class TaggedProductSearchSpace(SearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
+        return self

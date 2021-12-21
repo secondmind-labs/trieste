@@ -39,17 +39,14 @@ with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 
 VectorizedAcquisitionFunction = Callable[[TensorType], TensorType]
 """
-Type alias for acquisition functions.
+Type alias for vectorized acquisition functions.
 
-TODO add batch_size
+An :const:`VectorizedAcquisitionFunction` differs from an :const:`AcquisitionFunction` only by its
+output shape. An :const:`VectorizedAcquisitionFunction` maps a set of maps a set of `B` query points
+(each of dimension `D`) to a `B` values that describes how useful it would be evaluate each of these
+points (to our goal of optimizing the objective function). Thus, with leading dimensions, a
+:const:`VectorizedAcquisitionFunction` takes input shape `[..., B, D]` and returns shape `[..., B]`.
 
-An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
-value that describes how useful it would be evaluate all these points together (to our goal of
-optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
-takes input shape `[..., B, D]` and returns shape `[..., B]`.
-
-Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
-with a batch dimension, i.e. an input of shape `[..., 1, D]`.
 """
 
 
@@ -320,7 +317,7 @@ class SingleModelGreedyAcquisitionBuilder(Generic[T], ABC):
 
 
 class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
-    """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function. TODO"""
+    """An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized acquisition function."""
 
     @abstractmethod
     def prepare_acquisition_function(
@@ -329,13 +326,12 @@ class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> VectorizedAcquisitionFunction:
         """
-        TODO
-        Prepare an acquisition function. We assume that this requires at least models, but
+        Prepare a vectorized acquisition function. We assume that this requires at least models, but
         it may sometimes also need data.
 
         :param models: The models for each tag.
         :param datasets: The data from the observer (optional).
-        :return: An acquisition function.
+        :return: An vectorized acquisition function.
         """
 
     def update_acquisition_function(
@@ -345,30 +341,28 @@ class VectorizedAcquisitionFunctionBuilder(Generic[T], ABC):
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> VectorizedAcquisitionFunction:
         """
-        TODO
-        Update an acquisition function. By default this generates a new acquisition function each
-        time. However, if the function is decorated with `@tf.function`, then you can override
+        Update a vectorized acquisition function. By default this generates a new acquisition function
+        each time. However, if the function is decorated with `@tf.function`, then you can override
         this method to update its variables instead and avoid retracing the acquisition function on
         every optimization loop.
 
-        :param function: The acquisition function to update.
+        :param function: The vectorized acquisition function to update.
         :param models: The models for each tag.
         :param datasets: The data from the observer (optional).
-        :return: The updated acquisition function.
+        :return: The updated vectorized acquisition function.
         """
         return self.prepare_acquisition_function(models, datasets=datasets)
 
 
 class SingleModelVectorizedAcquisitionBuilder(Generic[T], ABC):
     """
-    TODO
-    Convenience acquisition function builder for an acquisition function (or component of a
-    composite acquisition function) that requires only one model, dataset pair.
+    Convenience acquisition function builder for a vectorized acquisition function (or component of a
+    composite vectorized acquisition function) that requires only one model, dataset pair.
     """
 
     def using(self, tag: str) -> VectorizedAcquisitionFunctionBuilder[T]:
         """
-        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :param tag: The tag for the model, dataset pair used to build this vectorized acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
             ``tag``, as defined in :meth:`prepare_acquisition_function`.
         """
@@ -407,7 +401,7 @@ class SingleModelVectorizedAcquisitionBuilder(Generic[T], ABC):
     ) -> VectorizedAcquisitionFunction:
         """
         :param model: The model.
-        :param dataset: The data to use to build the acquisition function (optional).
+        :param dataset: The data to use to build the vectorized acquisition function (optional).
         :return: An acquisition function.
         """
 
@@ -418,10 +412,10 @@ class SingleModelVectorizedAcquisitionBuilder(Generic[T], ABC):
         dataset: Optional[Dataset] = None,
     ) -> VectorizedAcquisitionFunction:
         """
-        :param function: The acquisition function to update.
+        :param function: The vectorized acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer (optional).
-        :return: The updated acquisition function.
+        :return: The updated vectorized acquisition function.
         """
         return self.prepare_acquisition_function(model, dataset=dataset)
 

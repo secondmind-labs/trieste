@@ -708,7 +708,10 @@ class MultipleOptimismNegativeLowerConfidenceBound(
     SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]
 ):
     """
-    Builder for the negative of the lower confidence bound. TODO
+    A simple parallelization of the lower confidence bound acquisition function that produces
+    a vectorized acquisition function which can efficiently optimized even for large batches.
+
+    See :cite:`torossian2020bayesian` for details. 
     """
 
     def __init__(self, search_space: SearchSpace):
@@ -750,18 +753,22 @@ class MultipleOptimismNegativeLowerConfidenceBound(
 
 class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
     r"""
-    The lower confidence bound (LCB) acquisition function for single-objective global optimization.
+    The multiple optimism lower confidence bound (MOLCB) acquisition function for single-objective
+    global optimization.
 
-    .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
+    Each batch dimension of this acquisiton function correponds to a lower confidence bound acquisition
+    function with different beta values, i.e. each point in a batch chosen by this acquisition function
+    lies on a gradient of exploration/exploitation trade-offs.
 
-    See :cite:`Srinivas:2010` for details. TODO
+    We choose the different beta values following the cdf method of :cite:`torossian2020bayesian`. 
+    See their paper for more details.
     """
 
     def __init__(self, model: ProbabilisticModel, search_space_dim: int):
         """
         :param model: The model of the objective function.
-        :param search_space_dim: TODO
-        :raise tf.errors.InvalidArgumentError: If ``beta`` is negative.  TODO
+        :param search_space_dim: The dimensions of the optimisation problem's search space.
+        :raise tf.errors.InvalidArgumentError: If ``search_space_dim`` is not postive.
         """
 
         tf.debugging.assert_positive(search_space_dim)
@@ -799,4 +806,4 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
 
         mean, variance = self._model.predict(x)  # [..., B, 1]
         mean, variance = tf.squeeze(mean, -1), tf.squeeze(variance, -1)
-        return -mean + tf.sqrt(variance) * self._betas  # [..., B] TODO
+        return -mean + tf.sqrt(variance) * self._betas  # [..., B] 
