@@ -133,7 +133,7 @@ tensorboard-plugin-wit==1.8.0
 tensorflow==2.4.4
 tensorflow-estimator==2.4.0
 tensorflow-io-gcs-filesystem==0.23.1
-tensorflow-probability==0.13.0
+tensorflow-probability==0.12.2
 termcolor==1.1.0
 terminado==0.12.1
 testpath==0.5.0

@@ -10,8 +10,10 @@ bleach==4.1.0
 cachetools==4.2.4
 certifi==2021.10.8
 charset-normalizer==2.0.9
+cloudpickle==2.0.0
 decorator==5.1.0
 defusedxml==0.7.1
+dm-tree==0.1.6
 docutils==0.16
 entrypoints==0.3
 flatbuffers==1.12
@@ -88,6 +90,7 @@ tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.0
 tensorflow==2.4.4
 tensorflow-estimator==2.4.0
+tensorflow-probability==0.12.2
 termcolor==1.1.0
 testpath==0.5.0
 tornado==6.1
