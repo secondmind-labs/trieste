@@ -70,8 +70,6 @@ Type alias for a function that returns the single point that maximizes an acquis
 a search space. For a search space with points of shape [D], and acquisition function with input
 shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape should be
 [B, D].
-
-TODO
 """
 
 
@@ -125,7 +123,7 @@ def optimize_discrete(
     :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    if isinstance(target_func, tuple):  # TODO
+    if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
         V = target_func[1]
         target_func = target_func[0]
     else:
@@ -224,7 +222,7 @@ def generate_continuous_optimizer(
         :return: The `V` points in ``space`` that maximises``target_func``, with shape [V, D].
         """
 
-        if isinstance(target_func, tuple):  # TODO
+        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
             V = target_func[1]
             target_func = target_func[0]
         else:
@@ -536,7 +534,7 @@ def batchify_joint(
     ) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
-        if isinstance(f, tuple):  # TODO check
+        if isinstance(f, tuple):
             raise ValueError(
                 "batchify_joint cannot be applied to a vectorized acquisition function"
             )
@@ -577,7 +575,7 @@ def batchify_vectorize(
     def optimizer(
         search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
     ) -> TensorType:
-        if isinstance(f, tuple):  # TODO check
+        if isinstance(f, tuple):
             raise ValueError(
                 "batchify_vectorize cannot be applied to an already vectorized acquisition function"
             )
@@ -622,7 +620,7 @@ def generate_random_search_optimizer(
                 [..., 1].
         :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
         """
-        if isinstance(target_func, tuple):  # TODO
+        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
             V = target_func[1]
             target_func = target_func[0]
         else:
