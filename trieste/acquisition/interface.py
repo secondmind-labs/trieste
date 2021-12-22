@@ -315,8 +315,8 @@ class VectorizedAcquisitionFunctionBuilder(AcquisitionFunctionBuilder[T]):
 
 class SingleModelVectorizedAcquisitionBuilder(SingleModelAcquisitionBuilder[T]):
     """
-    Convenience acquisition function builder for a vectorized acquisition function (or component
-    of a composite vectorized acquisition function) that requires only one model, dataset pair. TODO
+    Convenience acquisition function builder for vectorized acquisition functions (or component
+    of a composite vectorized acquisition function) that requires only one model, dataset pair.
     """
 
     def using(self, tag: str) -> AcquisitionFunctionBuilder[T]:

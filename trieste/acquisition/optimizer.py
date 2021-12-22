@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union, cast
 
 import greenlet as gr
 import numpy as np
@@ -62,9 +62,8 @@ class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
 
 
-AcquisitionOptimizer = Callable[
-    [SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
-]
+
+AcquisitionOptimizer = Callable[[SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
 a search space. For a search space with points of shape [D], and acquisition function with input
@@ -525,9 +524,11 @@ def batchify_joint(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
-    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+    def optimizer(search_space: SP, f: Union[AcquisitionFunction,Tuple[AcquisitionFunction, int]]) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
-        # TODO check that not vectorized
+        
+        if isinstance(f, tuple):  # TODO check
+                raise ValueError("batchify_joint cannot be applied to a vectorized acquisition function")
 
         def target_func_with_vectorized_inputs(
             x: TensorType,
@@ -562,8 +563,10 @@ def batchify_vectorize(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
-    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
-        # TODO check that not vectorized
+    def optimizer(search_space: SP, f: Union[AcquisitionFunction,Tuple[AcquisitionFunction, int]]) -> TensorType:
+        if isinstance(f, tuple):  # TODO check
+                raise ValueError("batchify_vectorize cannot be applied to an already vectorized acquisition function")
+
         return batch_size_one_optimizer(search_space, (f, batch_size))
 
     return optimizer
