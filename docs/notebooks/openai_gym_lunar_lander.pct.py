@@ -15,7 +15,7 @@
 # %% [markdown]
 # # Trieste meets OpenAI Gym
 #
-# This notebook demonstrates how to use Trieste to apply Bayesian optimization to a problem that is slightly more practical than classical optimization benchmarks shown used in other tutorials. We will use OpenAI Gym, which is a popular toolkit for reinforcement learning algorithms.
+# This notebook demonstrates how to use Trieste to apply Bayesian optimization to a problem that is slightly more practical than classical optimization benchmarks shown used in other tutorials. We will use OpenAI Gym, which is a popular toolkit for reinforcement learning (RL) algorithms.
 #
 # Concretely, we are going to take the [Lunar Lander](https://gym.openai.com/envs/LunarLander-v2/) environment, define a search space and describe it as an optimization problem, and use Trieste to find an optimal solution for the problem. And hopefully avoid too many landers crashing on the Moon surface along the way.
 
@@ -27,14 +27,14 @@ import gpflow
 
 
 import gym
-ENV_NAME = "LunarLander-v2"
-env = gym.make(ENV_NAME)
+env_name = "LunarLander-v2"
+env = gym.make(env_name)
 
-SEED = 1793
+seed = 1793
 
-np.random.seed(SEED)
-tf.random.set_seed(SEED)
-env.seed(SEED)
+np.random.seed(seed)
+tf.random.set_seed(seed)
+env.seed(seed)
 
 
 # %% [markdown]
@@ -51,7 +51,7 @@ env.seed(SEED)
 # The original code for the heuristic controller can be found in [OpenAI Gym GitHub repo](https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
 
 # %%
-# copied verbatim from https://github.com/uber-research/TuRBO
+# controller code is copied verbatim from https://github.com/uber-research/TuRBO
 def heuristic_Controller(s, w):
     angle_targ = s[0] * w[0] + s[2] * w[1]
     if angle_targ > w[2]:
@@ -78,8 +78,8 @@ def heuristic_Controller(s, w):
 
 
 
-STEPS_LIMIT = 1000
-TIMEOUT_REWARD = -100
+steps_limit = 1000
+timeout_reward = -100
 
 
 def demo_heuristic_lander(env, w, print_reward=False):
@@ -88,8 +88,8 @@ def demo_heuristic_lander(env, w, print_reward=False):
     s = env.reset()
 
     while True:
-        if steps > STEPS_LIMIT:
-            total_reward -= TIMEOUT_REWARD
+        if steps > steps_limit:
+            total_reward -= timeout_reward
             break
 
         a = heuristic_Controller(s, w)
@@ -123,7 +123,7 @@ for _ in range(10):
 # %% [markdown]
 # As you can see, most of the random sets of parameters result in a negative reward. So picking a value from this search space at random can result in a various unwanted behaviors. Here we show some examples of the landing not going according to plan. Each of these examples was created with a sample of the parameter values from the search space.
 #
-# **Warning:** all the videos in this notebook were pre-generated. Creating renders of OpenAI Gym environments requires various dependencies depending on software setups and operating systems, so we have chosen not to do it here in the interest of transferability of this notebook. For those interested in reproducing these videos, we have saved the input parameters and the code we used to generate them in the Trieste repository, in the folder next to this notebook. However because of the stochastic nature of the environment and the optimization described here, you results might differ slightly from those shown here.
+# **Warning:** all the videos in this notebook were pre-generated. Creating renders of OpenAI Gym environments requires various dependencies depending on software setups and operating systems, so we have chosen not to do it here in the interest of transferability of this notebook. For those interested in reproducing these videos, we have saved the input parameters and the code we used to generate them in the Trieste repository, in the folder next to this notebook. However because of the stochastic nature of the environment and the optimization described here, your results might differ slightly from those shown here.
 
 # %%
 import io
@@ -166,7 +166,7 @@ load_video("out_of_bounds.mp4")
 load_video("slam.mp4")
 
 # %% [markdown]
-# Finally, we need a way to deal with stochasticity of the simulation. To keep our modelling simple, let's aim at finding a controller that is good on average over a certain number of runs. This gives us a simple way of implementing the Trieste observer. Also note that we reverse the reward sign: this is because we seek the maximum reward, and Trieste approaches optimization as minimization problem.
+# Finally, we need a way to deal with stochasticity of the simulation. To keep our modelling simple, let's aim at finding a controller that achieves highest average reward over a fixed number of runs. This gives us a simple way of implementing the Trieste observer that isn't too sensitive to the randomness of a single simulation. Also note that we reverse the reward sign: this is because we seek the maximum reward, and Trieste approaches optimization as minimization problem.
 
 # %%
 N_RUNS = 10
@@ -193,7 +193,7 @@ observer = trieste.objectives.utils.mk_observer(lander_objective)
 # Here we do normal steps required to solve an optimization problem with Trieste: generate some initial data, create a surrogate model, define an acquisition funciton and rule, and run the optimization. Optimization step may take a few minutes to complete.
 
 # %%
-num_initial_points = search_space.dimension
+num_initial_points = 2 * search_space.dimension
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -204,6 +204,11 @@ def build_model(data):
     kernel = gpflow.kernels.RBF(variance=variance)
     gpr = gpflow.models.GPR(data.astuple(), kernel)
     gpflow.set_trainable(gpr.likelihood, False)
+    # Since we are running multiple simulations per observation,
+    # it is possible to estimate likelihood variance from this data for each observation.
+    # This is possible to model with VGP, as described here:
+    # https://gpflow.readthedocs.io/en/master/notebooks/advanced/varying_noise.html\
+    # In the interest of brevity we have chosen not to do it in this notebook.
     return trieste.models.gpflow.GaussianProcessRegression(gpr)
 
 model = build_model(initial_data)
@@ -234,7 +239,7 @@ plotting.plot_regret(
 )
 
 # %% [markdown]
-# We can also retrieve the best configuration found, and test it. We expect to see large positive rewards here.
+# We can also retrieve the best configuration found, and test it. We expect to see mostly large positive rewards here.
 
 # %%
 w_best = result.dataset.query_points[np.argmin(result.dataset.observations), :]
