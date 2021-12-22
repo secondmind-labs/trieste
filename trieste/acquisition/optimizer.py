@@ -131,6 +131,9 @@ def optimize_discrete(
     else:
         V = 1
 
+    if V < 0:
+        raise ValueError(f"vectorization must be positive, got {V}")
+
     points = space.points[:, None, :]
     tiled_points = tf.tile(points, [1, V, 1])
     target_func_values = target_func(tiled_points)
@@ -226,6 +229,9 @@ def generate_continuous_optimizer(
             target_func = target_func[0]
         else:
             V = 1
+
+        if V < 0:
+            raise ValueError(f"vectorization must be positive, got {V}")
 
         candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
         tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
@@ -621,6 +627,9 @@ def generate_random_search_optimizer(
             target_func = target_func[0]
         else:
             V = 1
+
+        if V < 0:
+            raise ValueError(f"vectorization must be positive, got {V}")
 
         points = space.sample(num_samples)[:, None, :]
         tiled_points = tf.tile(points, [1, V, 1])

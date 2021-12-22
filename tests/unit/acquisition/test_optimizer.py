@@ -67,6 +67,22 @@ def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> N
         generate_random_search_optimizer(num_samples=-5)
 
 
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_optimize_discrete_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]]))
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        optimize_discrete(search_space, (acq_fn, batch_size))
+
+
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_random_optimizer_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = Box([-1], [2])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        generate_random_search_optimizer()(search_space, (acq_fn, batch_size))
+
+
 SP = TypeVar("SP", bound=SearchSpace)
 
 
@@ -177,6 +193,14 @@ def test_optimize_continuous_raises_for_impossible_optimization(
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
     )
+
+
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = Box([-1], [2])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        generate_continuous_optimizer()(search_space, (acq_fn, batch_size))
 
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])
@@ -470,6 +494,16 @@ def test_batchify_joint_raises_with_invalid_batch_size() -> None:
         batchify_joint(batch_size_one_optimizer, -5)
 
 
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
+def test_batchify_joint_raises_with_vectorized_acquisition_function(batch_size: int) -> None:
+    batch_size_one_optimizer = generate_continuous_optimizer()
+    optimizer = batchify_joint(batch_size_one_optimizer, 5)
+    search_space = Box([-1], [1])
+    acq_fn = _quadratic_sum([0.5])
+    with pytest.raises(ValueError):
+        optimizer(search_space, (acq_fn, batch_size))
+
+
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
 @pytest.mark.parametrize(
@@ -494,6 +528,16 @@ def test_batchify_vectorized_raises_with_invalid_batch_size() -> None:
     batch_size_one_optimizer = generate_continuous_optimizer()
     with pytest.raises(ValueError):
         batchify_vectorize(batch_size_one_optimizer, -5)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
+def test_batchify_vectorize_raises_with_vectorized_acquisition_function(batch_size: int) -> None:
+    batch_size_one_optimizer = generate_continuous_optimizer()
+    optimizer = batchify_vectorize(batch_size_one_optimizer, 5)
+    search_space = Box([-1], [1])
+    acq_fn = _quadratic_sum([0.5])
+    with pytest.raises(ValueError):
+        optimizer(search_space, (acq_fn, batch_size))
 
 
 @random_seed
