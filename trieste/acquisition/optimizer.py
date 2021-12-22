@@ -62,8 +62,9 @@ class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
 
 
-
-AcquisitionOptimizer = Callable[[SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType]
+AcquisitionOptimizer = Callable[
+    [SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
+]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
 a search space. For a search space with points of shape [D], and acquisition function with input
