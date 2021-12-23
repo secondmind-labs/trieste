@@ -464,5 +464,22 @@ def test_bayesian_active_learning_raises_for_invalid_batch_size(at: TensorType) 
 
 
 def test_bayesian_active_learning_by_disagreement_builder_updates_without_retracing() -> None:
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+    builder = BayesianActiveLearningByDisagreement()
+    acq_fn = builder.prepare_acquisition_function(model)
 
-    pass
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
