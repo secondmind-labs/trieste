@@ -264,16 +264,6 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
 
         return samples  # [num_samples, len(query_points), 1]
 
-    # def trajectory_sampler(self) -> TrajectorySampler:
-    #     """
-    #     Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
-    #     sampler that randomly picks a network from the ensemble and uses it for generating a
-    #     trajectory.
-
-    #     :return: The trajectory sampler.
-    #     """
-    #     return EnsembleTrajectorySampler(self.model, self.ensemble_size)
-
     def update(self, dataset: Dataset) -> None:
         """
         Neural networks are parametric models and do not need to update data.

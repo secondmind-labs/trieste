@@ -46,10 +46,10 @@ def build_vanilla_keras_ensemble(
     :param units: The number of nodes in each hidden layer.
     :param activation: The activation function in each hidden layer.
     :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
-            is used as the output layer. This models outputs as independent, only the diagonal
-            elements of the covariance matrix are parametrized. If left as the default `False`,
-            then :class:`~tfp.layers.IndependentNormal` layer is used where correlations between
-            outputs are learned as well.
+        is used as the output layer. This models outputs as independent, only the diagonal
+        elements of the covariance matrix are parametrized. If left as the default `False`,
+        then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+        between outputs are learned as well.
     :return: Keras ensemble model.
     """
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(dataset)
@@ -224,8 +224,8 @@ class GaussianNetwork(KerasEnsembleNetwork):
         :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
             is used as the output layer. This models outputs as independent, only the diagonal
             elements of the covariance matrix are parametrized. If left as the default `False`,
-            then :class:`~tfp.layers.IndependentNormal` layer is used where correlations between
-            outputs are learned as well.
+            then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+            between outputs are learned as well.
         :raise ValueError: If objects in ``hidden_layer_args`` are not dictionaries.
         """
         if hidden_layer_args is None:
