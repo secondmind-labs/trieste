@@ -192,7 +192,7 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_optimization_runs < 0:
-        raise ValueError(f"num_optimization_runs must be positive, got {num_initial_samples}")
+        raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
 
     if num_initial_samples < num_optimization_runs:
         raise ValueError(
@@ -566,8 +566,8 @@ def batchify_vectorize(
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
-    Unlike :meth:`batchify_joint`, :meth:`batchify_vectorize` is suitable
-    for a :class:`AcquisitionFunction whose individual batch element can be
+    Unlike :func:`batchify_joint`, :func:`batchify_vectorize` is suitable
+    for a :class:`AcquisitionFunction` whose individual batch element can be
     optimized independently (i.e. they can be vectorized).
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
