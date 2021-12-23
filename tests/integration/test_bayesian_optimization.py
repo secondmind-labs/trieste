@@ -32,6 +32,7 @@ from trieste.acquisition import (
     Fantasizer,
     LocalPenalization,
     MinValueEntropySearch,
+    MultipleOptimismNegativeLowerConfidenceBound,
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -140,6 +141,15 @@ def OPTIMIZER_PARAMS() -> Tuple[
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    MultipleOptimismNegativeLowerConfidenceBound(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
                 ),
             ),
             (15, TrustRegion()),
