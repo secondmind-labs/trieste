@@ -67,9 +67,15 @@ AcquisitionOptimizer = Callable[
 ]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
-a search space. For a search space with points of shape [D], and acquisition function with input
-shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape should be
-[B, D].
+a search space or the V points that maximize a vectorized acquisition function (as represented by an
+acquisition-int tuple).
+
+If this function receives a search space with points of shape [D] and an acquisition function
+with input shape [..., 1, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape
+should be [1, D].
+
+If instead it receives a search space and a tuple containing the acquisition function and its
+vectorization V then the :const:`AcquisitionOptimizer` return shape should be [V, D].
 """
 
 
@@ -111,21 +117,20 @@ def optimize_discrete(
     target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
 ) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
-    batches of size of 1.
+    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
 
-    This function also support the maximization of vectorized target functions by evaluating
-    the points in the search space for each of the individual V functions making up target_func.
+    When this functions receives an acquisition-integer tuple as its `target_func`,it evaluates
+    all the points in the search space for each of the individual V functions making
+    up `target_func`.
 
     :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-            [..., 1].
-    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+            [..., V].
+    :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
     """
 
     if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-        V = target_func[1]
-        target_func = target_func[0]
+        target_func, V = target_func
     else:
         V = 1
 
@@ -180,14 +185,14 @@ def generate_continuous_optimizer(
     :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
     :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
         Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
-        can be passed.
+        can be passed. Note that method, jac and bounds cannot/should not be changed.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
     if num_optimization_runs < 0:
-        raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
+        raise ValueError(f"num_optimization_runs must be positive, got {num_initial_samples}")
 
     if num_initial_samples < num_optimization_runs:
         raise ValueError(
@@ -206,25 +211,25 @@ def generate_continuous_optimizer(
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
-        and :class:`TaggedProductSearchSpace' spaces and batches of size of 1.
+        and :class:`TaggedProductSearchSpace' spaces.
 
         For :class:'TaggedProductSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
-        This function also support the maximization of vectorized target functions, running
-        `num_initial_samples` samples, `num_optimization_runs` runs, and (if necessary)
-        `num_recovery_runs` recovery run for each of the individual V functions making up
-        target_func.
+        When this functions receives an acquisition-integer tuple as its `target_func`,it
+        optimizes each of the individual V functions making up `target_func`, i.e.
+        evaluating `num_initial_samples` samples, running `num_optimization_runs` runs, and
+        (if necessary) running `num_recovery_runs` recovery run for each of the individual
+        V functions.
 
         :param space: The space over which to search.
         :param target_func: The function to maximise, with input shape [..., V, D] and output shape
                 [..., V].
-        :return: The `V` points in ``space`` that maximises``target_func``, with shape [V, D].
+        :return: The V points in ``space`` that maximises``target_func``, with shape [V, D].
         """
 
         if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-            V = target_func[1]
-            target_func = target_func[0]
+            target_func, V = target_func
         else:
             V = 1
 
@@ -364,7 +369,7 @@ def _perform_parallel_continuous_optimization(
 
     num_optimization_runs_per_function = tf.shape(starting_points)[0].numpy()
 
-    V = tf.shape(starting_points)[1].numpy()  # vectorized batch size
+    V = tf.shape(starting_points)[-2].numpy()  # vectorized batch size
     D = tf.shape(starting_points)[-1].numpy()  # search space dimension
     num_optimization_runs = num_optimization_runs_per_function * V
 
@@ -538,11 +543,12 @@ def batchify_joint(
             raise ValueError(
                 "batchify_joint cannot be applied to a vectorized acquisition function"
             )
+        af: AcquisitionFunction = f  # type checking can get confused by closure of f
 
         def target_func_with_vectorized_inputs(
             x: TensorType,
         ) -> TensorType:  # [..., 1, B * D] -> [..., 1]
-            return f(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
+            return af(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
         vectorized_points = batch_size_one_optimizer(  # [1, B * D]
             expanded_search_space, target_func_with_vectorized_inputs
@@ -561,13 +567,13 @@ def batchify_vectorize(
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
     Unlike :meth:`batchify_joint`, :meth:`batchify_vectorize` is suitable
-    for :class:`VectorizedAcquisitionFunction`s who's individual batch element can be
+    for a :class:`AcquisitionFunction whose individual batch element can be
     optimized independently (i.e. they can be vectorized).
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
             single point with shape [1, D].
     :param batch_size: The number of points in the batch.
-    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
+    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [V, D].
     """
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
@@ -587,7 +593,7 @@ def batchify_vectorize(
 
 def generate_random_search_optimizer(
     num_samples: int = NUM_SAMPLES_MIN,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpace]:
     """
     Generate an acquisition optimizer that samples `num_samples` random points across the space.
     The default is to sample at `NUM_SAMPLES_MIN` locations.
@@ -602,27 +608,26 @@ def generate_random_search_optimizer(
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 
     def optimize_random(
-        space: SP,
+        space: SearchSpace,
         target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for
-        any :class:'SearchSpace' with a :meth:`sample` and for batches of size of 1.
-        If we have a :class:'DiscreteSearchSpace' with fewer than `num_samples` points,
-        then we query all the points in the space.
+        any :class:'SearchSpace' with a :meth:`sample`. If we have a :class:'DiscreteSearchSpace'
+        with fewer than `num_samples` points, then we query all the points in the space.
 
-        This function also support the maximization of vectorized target functions, collecting
-        `num_samples` samples for each of the individual V functions making up target_func.
-
+        When this functions receives an acquisition-integer tuple as its `target_func`,it
+        optimizes each of the individual V functions making up `target_func`, i.e.
+        evaluating `num_samples` samples for each of the individual V functions making up
+        target_func.
 
         :param space: The space over which to search.
-        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-                [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+                [..., V].
+        :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
         """
         if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-            V = target_func[1]
-            target_func = target_func[0]
+            target_func, V = target_func
         else:
             V = 1
 

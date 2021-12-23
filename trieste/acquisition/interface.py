@@ -160,8 +160,8 @@ class GreedyAcquisitionFunctionBuilder(Generic[T], ABC):
     """
     A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function
     suitable for greedily building batches for batch Bayesian
-    Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
-    from :class:`AcquisitionFunctionBuilder` by requiring that a set
+    Optimization. A :class:`GreedyAcquisitionFunctionBuilder` differs
+    from an :class:`AcquisitionFunctionBuilder` by requiring that a set
     of pending points is passed to the builder. Note that this acquisition function
     is typically called `B` times each Bayesian optimization step, when building batches
     of size `B`.
@@ -308,7 +308,7 @@ class VectorizedAcquisitionFunctionBuilder(AcquisitionFunctionBuilder[T]):
     """
     An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized
     acquisition function These differ from normal acquisition functions only by their output shape:
-    rather than returng a single value, they return one value per potential query point.
+    rather than returning a single value, they return one value per potential query point.
     Thus, with leading dimensions, they take input shape `[..., B, D]` and returns shape `[..., B]`.
     """
 
