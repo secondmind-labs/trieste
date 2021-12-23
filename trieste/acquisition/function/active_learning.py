@@ -504,7 +504,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         self._model = model
         self._jitter = jitter
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
 
         tf.debugging.assert_shapes(
