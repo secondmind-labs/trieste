@@ -238,7 +238,8 @@ plotting.plot_regret(
 # We can also retrieve the best configuration found by our model, and test it. We expect to see mostly large positive rewards here.
 
 # %%
-w_best = result.dataset.query_points[np.argmin(result.model.predict(result.dataset.query_points)), :]
+mean, _ = result.model.predict(result.dataset.query_points)
+w_best = result.dataset.query_points[np.argmin(mean), :]
 
 for _ in range(10):
     demo_heuristic_lander(env, w_best.numpy(), print_reward=True)
