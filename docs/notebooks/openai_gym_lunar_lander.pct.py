@@ -28,16 +28,19 @@ env.seed(seed)
 #
 # Let's start by discussing the problem itself. In the Lunar Lander environment we are controlling a space module that needs to land on a Moon surface. The surface is piecewise linear and is generated randomly, but always has a flat landing pad in the middle (marked with flags on the renders). The module starts at the top with some random initial speed and direction. We are controlling three engines on the module: one on each side, and one at the bottom. At each step of the simulation we can choose to either fire one of the engines, or do nothing. The ultimate goal of the simulation is to land safely on the marked landing pad.
 #
-# As usual in RL settings, the environment calculates reward points. Landing in the designated area gives the biggest reward, landing safely elsewhere is also rewarded but with less points. Crashing or flying off the screen results in big negative reward. Few points are also deducted along the way for firing up engines, thus motivating smaller usage of fuel. Additionally, to make the running time manageable, we are going to penalize simulations that take too long, but stopping them after a certain amount of steps and penalizing the reward.
+# As usual in RL settings, the environment calculates reward points. Landing in the designated area gives the biggest reward, landing safely elsewhere is also rewarded but with less points. Crashing or flying off the screen results in big negative reward. Few points are also deducted along the way for firing up engines, thus motivating smaller usage of fuel. Additionally, to make the running time manageable, we are going to penalize simulations that take too long, by stopping them after a certain amount of steps and penalizing the reward.
 #
 # ### Optimization problem
 #
-# Now let's see how this task can be formulated as an optimization problem. We will be following an approach used by Turbo <cite data-cite="eriksson2019scalable"/> and BOSH <cite data-cite="Moss2020BOSHBO"/> papers. The environment comes with a heuristic controller that makes decisions based on the current position and velocity of the module. This controller can be parametrized by turning all numerical values in it into parameters. These parameters form our optimization search space. The objective is the same as in the original RL setup: maximize the reward. Therefore we will be using Trieste to learn how to land the module safely on the designated pad, without taking too much time and wasting too much fuel.
+# Now let's see how this task can be formulated as an optimization problem. We will be following an approach used by Turbo <cite data-cite="eriksson2019scalable"/> and BOSH <cite data-cite="Moss2020BOSHBO"/> papers. The environment comes with a heuristic controller that makes decisions based on the current position and velocity of the module. This controller can be tuned by modifying 12 of its internal numerical parameters. These parameters form our optimization search space. The objective is the same as in the original RL setup: maximize the reward. Therefore we will be using Trieste to learn how to land the module safely on the designated pad, without taking too much time and wasting too much fuel.
 #
 # The original code for the heuristic controller can be found in [OpenAI Gym GitHub repo](https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
 
 # %%
 # controller code is copied verbatim from https://github.com/uber-research/TuRBO
+# s is the state of the environment, an array of shape (1, 8)
+# for details on its content see https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py
+# w is the array of controller parameters, of shape (1, 12)
 def heuristic_Controller(s, w):
     angle_targ = s[0] * w[0] + s[2] * w[1]
     if angle_targ > w[2]:
@@ -68,6 +71,10 @@ steps_limit = 1000
 timeout_reward = -100
 
 
+# this wrapper runs a single simulation of the landing
+# for a given controller parameters values
+# and computes the reward
+# to keep running time reasonable simulation is stopped after `steps_limit` steps
 def demo_heuristic_lander(env, w, print_reward=False):
     total_reward = 0
     steps = 0
@@ -93,7 +100,7 @@ def demo_heuristic_lander(env, w, print_reward=False):
 
 
 # %% [markdown]
-# Original values for the various parameters take values between 0.05 and 1.0. We will set the search range for each parameter to be the same, from 0.0 to 1.2.
+# In the original OpenAI Gym Lunar Lander code controller parameters have fixed values. The smallest parameter is set to 0.05, and the biggest parameter value is 1.0. Thus we will set the search range for each parameter to be the same from 0.0 to 1.2.
 
 # %%
 search_space = trieste.space.Box([0.0] * 12, [1.2] * 12)
@@ -152,7 +159,7 @@ load_video("out_of_bounds.mp4")
 load_video("slam.mp4")
 
 # %% [markdown]
-# Finally, we need a way to deal with stochasticity of the simulation. To keep our modelling simple, let's aim at finding a controller that achieves highest average reward over a fixed number of runs. This gives us a simple way of implementing the Trieste observer that isn't too sensitive to the randomness of a single simulation. Also note that we reverse the reward sign: this is because we seek the maximum reward, and Trieste approaches optimization as minimization problem.
+# Since the reward is stochastic, our goal is to maximize its expectation (or rather here minimize its negated expectation since Trieste only deals with minimization problems). To decrease the observation noise, our observer returns the average of the reward over 10 runs.
 
 # %%
 N_RUNS = 10
@@ -177,6 +184,8 @@ observer = trieste.objectives.utils.mk_observer(lander_objective)
 # ### Solving the optimization problem with Trieste
 #
 # Here we do normal steps required to solve an optimization problem with Trieste: generate some initial data, create a surrogate model, define an acquisition funciton and rule, and run the optimization. Optimization step may take a few minutes to complete.
+#
+# We are using standard Gaussian Process with an RBF kernel, and Augmented Expected Improvement <cite data-cite="Huang:2006"/> as an acquisition function that can handle higher noise.
 
 # %%
 num_initial_points = 2 * search_space.dimension
@@ -191,7 +200,8 @@ def build_model(data):
     gpr = gpflow.models.GPR(data.astuple(), kernel)
     gpflow.set_trainable(gpr.likelihood, False)
     # Since we are running multiple simulations per observation,
-    # it is possible to estimate likelihood variance from this data for each observation.
+    # it is possible to account for variations in observation noise
+    # by using a different likelihood variance for each observation.
     # This is possible to model with VGP, as described here:
     # https://gpflow.readthedocs.io/en/master/notebooks/advanced/varying_noise.html\
     # In the interest of brevity we have chosen not to do it in this notebook.
@@ -200,7 +210,7 @@ def build_model(data):
 model = build_model(initial_data)
 
 # %%
-acq_fn = trieste.acquisition.function.ExpectedImprovement()
+acq_fn = trieste.acquisition.function.AugmentedExpectedImprovement()
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)  # type: ignore
 
 # %%
@@ -211,7 +221,7 @@ result = bo.optimize(N_OPTIMIZATION_STEPS, initial_data, model, rule).final_resu
 # %% [markdown]
 # ### Analyzing the results
 #
-# First, let's just plot a regular regret plot of our optimization, to ensure Trieste indeed found a better configuration of the controller. Remember that we flipped the sign of the reward.
+# First, let's just plot observations of the expected reward, to ensure Trieste indeed found a better configuration of the controller. Remember that we flipped the sign of the reward.
 
 # %%
 from util import plotting
@@ -225,10 +235,10 @@ plotting.plot_regret(
 )
 
 # %% [markdown]
-# We can also retrieve the best configuration found, and test it. We expect to see mostly large positive rewards here.
+# We can also retrieve the best configuration found by our model, and test it. We expect to see mostly large positive rewards here.
 
 # %%
-w_best = result.dataset.query_points[np.argmin(result.dataset.observations), :]
+w_best = result.dataset.query_points[np.argmin(result.model.predict(result.dataset.query_points)), :]
 
 for _ in range(10):
     demo_heuristic_lander(env, w_best.numpy(), print_reward=True)
