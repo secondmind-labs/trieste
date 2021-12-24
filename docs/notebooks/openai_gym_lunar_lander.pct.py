@@ -235,7 +235,7 @@ plotting.plot_regret(
 )
 
 # %% [markdown]
-# We can also retrieve the best configuration found by our model, and test it. We expect to see mostly large positive rewards here.
+# Here we choose the query point that gives the best predictive expected reward according to our model. When running the simulation with at this point, we expect to see mostly large positive rewards.
 
 # %%
 mean, _ = result.model.predict(result.dataset.query_points)
