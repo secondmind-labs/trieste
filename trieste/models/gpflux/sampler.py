@@ -20,7 +20,14 @@ from gpflux.models import DeepGP
 from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
-from ..sampler import ModelSampler
+from ...utils import DEFAULTS
+from ..interfaces import (
+    ProbabilisticModel,
+    ReparametrizationSampler,
+    TrajectoryFunction,
+    TrajectorySampler,
+)
+from .interface import GPfluxPredictor
 
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
@@ -39,7 +46,7 @@ def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
     return SampleLV()
 
 
-def sample_dgp(model: DeepGP) -> Sample:
+def sample_dgp(model: DeepGP) -> TrajectoryFunction:
     function_draws = []
     for layer in model.f_layers:
         if isinstance(layer, GPLayer):
@@ -55,30 +62,63 @@ def sample_dgp(model: DeepGP) -> Sample:
                 X = f(X)
             return X
 
-    return ChainedSample()
+    return ChainedSample().__call__
 
 
-class DeepGaussianProcessSampler(ModelSampler):
+class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
     r"""
-    This sampler employs the *reparameterization trick* to approximate samples from a
-    :class:`DeepGaussianProcess`\ 's predictive distribution. This sampler is essentially an
-    extension of :class:`trieste.acquisition.sampler.IndependentReparametrizationSampler` for use
-    with DGP models.
+    This sampler provides trajectory samples from a :class:`DeepGaussianProcess`\ 's predictive
+    distribution.
     """
 
-    def __init__(self, sample_size: int, model: DeepGP):
+    def __init__(self, model: ProbabilisticModel):
+        """
+        :param model: The model to sample from. Must be a :class:`GPfluxPredictor`
+        :raise ValueError: If model is not a :class:`GPfluxPredictor`
+        """
+        if not isinstance(model, GPfluxPredictor):
+            raise ValueError(
+                f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
+            )
+
+        super().__init__(model)
+
+        self.model = model.model_gpflux
+
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        Generate an approximate function draw (trajectory) by using the GPflux sampling
+        functionality. These trajectories are differentiable with respect to the input, so can be
+        used to e.g. find the minima of Thompson samples.
+
+        :return: A trajectory function representing an approximate trajectory from the deep Gaussian
+            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        """
+
+        return sample_dgp(self._model)
+
+
+class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
+    r"""
+    This sampler employs the *reparameterization trick* to approximate samples from a
+    :class:`DeepGaussianProcess`\ 's predictive distribution.
+    """
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
-        :param model: The model to sample from. Must be a :class:`DeepGaussianProcess`
+        :param model: The model to sample from. Must be a :class:`GPfluxPredictor`
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or if
-            model is not a :class:`DeepGaussianProcess`.
+            model is not a :class:`GPfluxPredictor`.
         """
-        if not isinstance(model, DeepGP):
-            raise ValueError(f"Model must be a gpflux.models.DeepGP, received {type(model)}")
+        if not isinstance(model, GPfluxPredictor):
+            raise ValueError(
+                f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
+            )
 
-        super().__init__(sample_size)
+        super().__init__(sample_size, model)
 
-        self.model = model
+        self.model = model.model_gpflux
 
         # Each element of _eps_list is essentially a lazy constant. It is declared and assigned an
         # empty tensor here, and populated on the first call to sample
@@ -87,14 +127,16 @@ class DeepGaussianProcessSampler(ModelSampler):
             for _ in range(len(model.f_layers))
         ]
 
-    def sample(self, at: TensorType) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
-        :meth:`sample`, for any given :class:`DeepGaussianProcessSampler` and ``at``, will produce
-        the exact same samples. Calls to :meth:`sample` on *different*
-        :class:`DeepGaussianProcessSampler` instances will produce different samples.
+        :meth:`sample`, for any given :class:`DeepGaussianProcessReparamSampler` and ``at``, will
+        produce the exact same samples. Calls to :meth:`sample` on *different*
+        :class:`DeepGaussianProcessReparamSampler` instances will produce different samples.
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
+        :param jitter: The size of the jitter to use when stabilizing the Cholesky
+            decomposition of the covariance matrix.
         :return: The samples, of shape `[S, N, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         """

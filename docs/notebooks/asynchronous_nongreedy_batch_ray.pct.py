@@ -1,16 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.12.0
-#   kernelspec:
-#     display_name: 'Python 3.7.5 64-bit (''.venv'': venv)'
-#     name: python3
-# ---
-
 # %% [markdown]
 # # Asynchronous batch Bayesian optimization
 #
@@ -24,13 +11,15 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
-tf.get_logger().setLevel("ERROR")
 
+tf.get_logger().setLevel("ERROR")
 import ray
 import numpy as np
 import time
+
 
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
@@ -38,9 +27,12 @@ import time
 # %%
 from trieste.objectives import scaled_branin
 
+
 def objective(points, sleep=True):
     if points.shape[1] != 2:
-        raise ValueError(f"Incorrect input shape, expected (*, 2), got {points.shape}")
+        raise ValueError(
+            f"Incorrect input shape, expected (*, 2), got {points.shape}"
+        )
 
     observations = []
     for point in points:
@@ -83,7 +75,9 @@ initial_query_points = search_space.sample(num_initial_points)
 initial_observations = objective(initial_query_points, sleep=False)
 initial_data = Dataset(
     query_points=initial_query_points,
-    observations=tf.constant([x[1] for x in initial_observations], dtype=tf.float64),
+    observations=tf.constant(
+        [x[1] for x in initial_observations], dtype=tf.float64
+    ),
 )
 
 import gpflow
@@ -121,7 +115,10 @@ from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 model = build_model(initial_data)
-acquisition_function = BatchMonteCarloExpectedImprovement(sample_size=10000)
+monte_carlo_sample_size = 10000
+acquisition_function = BatchMonteCarloExpectedImprovement(
+    sample_size=monte_carlo_sample_size
+)
 async_rule = AsynchronousOptimization(acquisition_function, num_query_points=batch_size)  # type: ignore
 async_bo = AskTellOptimizer(search_space, initial_data, model, async_rule)
 
@@ -143,6 +140,7 @@ def launch_worker(x):
     worker = ray_objective.remote(np.atleast_2d(x), enable_sleep_delays)
     workers.append(worker)
 
+
 # get first couple of batches of points and init all workers
 for _ in range(int(num_workers / batch_size)):
     points = async_bo.ask().numpy()
@@ -159,14 +157,22 @@ while points_observed < num_observations:
 
     # we saw enough results to ask for a new batch
 
-    new_observations = [observation for worker in finished_workers for observation in ray.get(worker)]
+    new_observations = [
+        observation
+        for worker in finished_workers
+        for observation in ray.get(worker)
+    ]
 
     # new_observations is a list of tuples (point, observation value)
     # here we turn it into a Dataset and tell it to Trieste
     points_observed += len(new_observations)
     new_data = Dataset(
-        query_points=tf.constant([x[0] for x in new_observations], dtype=tf.float64),
-        observations=tf.constant([x[1] for x in new_observations], dtype=tf.float64),
+        query_points=tf.constant(
+            [x[0] for x in new_observations], dtype=tf.float64
+        ),
+        observations=tf.constant(
+            [x[1] for x in new_observations], dtype=tf.float64
+        ),
     )
     async_bo.tell(new_data)
 
@@ -187,12 +193,21 @@ arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 _, ax = plot_function_2d(
-    scaled_branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    scaled_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+    contour=True,
 )
 
-plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="tab:red")
+plot_bo_points(
+    query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="tab:red"
+)
 
 # %%
 ray.shutdown()  # "Undo ray.init()". Terminate all the processes started in this notebook.
 
-# %%
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

@@ -1,16 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.12.0
-#   kernelspec:
-#     display_name: 'Python 3.7.5 64-bit (''.venv'': venv)'
-#     name: python3
-# ---
-
 # %% [markdown]
 # # Asynchronous Bayesian optimization with Trieste
 #
@@ -28,7 +15,6 @@ import tensorflow as tf
 
 tf.get_logger().setLevel("ERROR")
 import numpy as np
-
 import time
 import timeit
 
@@ -38,9 +24,12 @@ import timeit
 # %%
 from trieste.objectives import scaled_branin
 
+
 def objective(points, sleep=True):
     if points.shape[1] != 2:
-        raise ValueError(f"Incorrect input shape, expected (*, 2), got {points.shape}")
+        raise ValueError(
+            f"Incorrect input shape, expected (*, 2), got {points.shape}"
+        )
 
     observations = []
     for point in points:
@@ -59,6 +48,7 @@ def objective(points, sleep=True):
         observations.append(observation)
 
     return np.array(observations)
+
 
 # test the defined objective function
 objective(np.array([[0.1, 0.5]]), sleep=False)
@@ -91,9 +81,13 @@ def build_model(data):
     gpflow.set_trainable(gpr.likelihood, False)
     return GaussianProcessRegression(gpr)
 
+
 # these imports will be used later for optimization
-from trieste.acquisition import LocalPenalizationAcquisitionFunction
-from trieste.acquisition.rule import AsynchronousGreedy, EfficientGlobalOptimization
+from trieste.acquisition import LocalPenalization
+from trieste.acquisition.rule import (
+    AsynchronousGreedy,
+    EfficientGlobalOptimization,
+)
 from trieste.ask_tell_optimization import AskTellOptimizer
 
 
@@ -103,7 +97,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 # To keep this notebook as reproducible as possible, we will only be using Python's multiprocessing package here. In this section we will explain our setup and define some common code to be used later.
 #
 # In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into the observations queue. The main process then picks up the observation from the queue, at which moment it either waits for the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchronous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.
-# 
+#
 # The overall setup is illustrated in this diagram:
 # ![multiprocessing setup](figures/async_bo.png)
 
@@ -116,6 +110,7 @@ from multiprocessing import Manager, Process
 
 # %%
 
+
 def observer_proc(points_queue, observations_queue):
     pid = os.getpid()
 
@@ -124,7 +119,10 @@ def observer_proc(points_queue, observations_queue):
         if point_to_observe is None:
             return
 
-        print(f"Process {pid}: Observer : observing data at point {point_to_observe}", flush=True)
+        print(
+            f"Process {pid}: Observer : observing data at point {point_to_observe}",
+            flush=True,
+        )
         new_observation = objective(point_to_observe, sleep=enable_sleep_delays)
         new_data = (point_to_observe, new_observation)
 
@@ -132,15 +130,19 @@ def observer_proc(points_queue, observations_queue):
 
         observations_queue.put(new_data)
 
+
 # %% [markdown]
 # Next we define two helper functions, one is to create a certain number of worker processes, and another is to terminate them once we are done.
 
 # %%
 
+
 def create_worker_processes(n_workers, points_queue, obseverations_queue):
     observer_processes = []
     for i in range(n_workers):
-        worker_proc = Process(target=observer_proc, args=(points_queue, obseverations_queue))
+        worker_proc = Process(
+            target=observer_proc, args=(points_queue, obseverations_queue)
+        )
         worker_proc.daemon = True
         worker_proc.start()
 
@@ -148,11 +150,13 @@ def create_worker_processes(n_workers, points_queue, obseverations_queue):
 
     return observer_processes
 
+
 def terminate_processes(processes):
     for prc in processes:
         prc.terminate()
         prc.join()
         prc.close()
+
 
 # %% [markdown]
 # Finally we set some common parameters. See comments below for explanation of what each one means.
@@ -178,10 +182,12 @@ enable_sleep_delays = True
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
+local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
 
-async_bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
+async_bo = AskTellOptimizer(
+    search_space, initial_data, model, local_penalization_rule
+)
 
 # retrieve process id for nice logging
 pid = os.getpid()
@@ -207,7 +213,10 @@ try:
         # keep asking queue for new observations until one arrives
         try:
             new_data = oq.get_nowait()
-            print(f"Process {pid}: Main     : received data {new_data}", flush=True)
+            print(
+                f"Process {pid}: Main     : received data {new_data}",
+                flush=True,
+            )
         except:
             continue
 
@@ -230,7 +239,10 @@ finally:
 stop = timeit.default_timer()
 
 # Collect the observations, compute the running time
-async_lp_observations = async_bo.to_result().try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+async_lp_observations = (
+    async_bo.to_result().try_get_final_dataset().observations
+    - SCALED_BRANIN_MINIMUM
+)
 async_lp_time = stop - start
 print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 
@@ -243,12 +255,14 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 # setup Ask Tell BO
 model = build_model(initial_data)
 
-local_penalization_acq = LocalPenalizationAcquisitionFunction(search_space, num_samples=2000)
+local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=num_workers, builder=local_penalization_acq
 )
 
-sync_bo = AskTellOptimizer(search_space, initial_data, model, local_penalization_rule)
+sync_bo = AskTellOptimizer(
+    search_space, initial_data, model, local_penalization_rule
+)
 
 
 # retrieve process id for nice logging
@@ -285,7 +299,10 @@ try:
         while len(all_new_data) < num_workers:
             # this line blocks the process until new data is available in the queue
             new_data = oq.get()
-            print(f"Process {pid}: Main     : received data {new_data}", flush=True)
+            print(
+                f"Process {pid}: Main     : received data {new_data}",
+                flush=True,
+            )
 
             new_data = Dataset(
                 query_points=tf.constant(new_data[0], dtype=tf.float64),
@@ -303,7 +320,8 @@ stop = timeit.default_timer()
 
 # Collect the observations, compute the running time
 sync_lp_observations = (
-    sync_bo.to_result().try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+    sync_bo.to_result().try_get_final_dataset().observations
+    - SCALED_BRANIN_MINIMUM
 )
 sync_lp_time = stop - start
 print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
@@ -323,21 +341,31 @@ sync_lp_min_idx = tf.squeeze(tf.argmin(sync_lp_observations, axis=0))
 async_lp_min_idx = tf.squeeze(tf.argmin(async_lp_observations, axis=0))
 
 plot_regret(
-    sync_lp_observations.numpy(), ax[0], num_init=len(initial_data), idx_best=sync_lp_min_idx
+    sync_lp_observations.numpy(),
+    ax[0],
+    num_init=len(initial_data),
+    idx_best=sync_lp_min_idx,
 )
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
 ax[0].set_ylim(0.0000001, 100)
 ax[0].set_xlabel("# evaluations")
-ax[0].set_title(f"Sync LP, {len(sync_lp_observations)} points, time {sync_lp_time:.2f}")
+ax[0].set_title(
+    f"Sync LP, {len(sync_lp_observations)} points, time {sync_lp_time:.2f}"
+)
 
 plot_regret(
-    async_lp_observations.numpy(), ax[1], num_init=len(initial_data), idx_best=async_lp_min_idx
+    async_lp_observations.numpy(),
+    ax[1],
+    num_init=len(initial_data),
+    idx_best=async_lp_min_idx,
 )
 ax[1].set_yscale("log")
 ax[1].set_ylabel("Regret")
 ax[1].set_ylim(0.0000001, 100)
 ax[1].set_xlabel("# evaluations")
-ax[1].set_title(f"Async LP, {len(async_lp_observations)} points, time {async_lp_time:.2f}s")
+ax[1].set_title(
+    f"Async LP, {len(async_lp_observations)} points, time {async_lp_time:.2f}s"
+)
 
 fig.tight_layout()

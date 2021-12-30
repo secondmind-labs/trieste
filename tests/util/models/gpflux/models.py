@@ -28,6 +28,7 @@ from gpflux.models import DeepGP
 
 from trieste.data import TensorType
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.optimizer import BatchOptimizer
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
@@ -98,9 +99,8 @@ def trieste_deep_gaussian_process(
 ) -> Tuple[DeepGaussianProcess, Dict[str, Any]]:
     dgp = build_vanilla_deep_gp(query_points, num_layers=depth, num_inducing=num_inducing)
     if fix_noise:
-        dgp.likelihood_layer.likelihood.variance.assign(1e-4)
+        dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
-    optimizer = tf.optimizers.Adam(learning_rate)
 
     def scheduler(epoch: int, lr: float) -> float:
         if epoch == epochs // 2:
@@ -114,7 +114,8 @@ def trieste_deep_gaussian_process(
         "verbose": 0,
         "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
     }
+    optimizer = BatchOptimizer(tf.optimizers.Adam(learning_rate), fit_args)
 
-    model = DeepGaussianProcess(dgp, optimizer, fit_args)
+    model = DeepGaussianProcess(dgp, optimizer)
 
     return model, fit_args

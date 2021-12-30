@@ -2,13 +2,12 @@
 # # Active Learning
 
 # %% [markdown]
-# Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates how to perform Bayesian active learning using `trieste`.
+# Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates how to perform Bayesian active learning using Trieste.
 
 # %%
 # %matplotlib inline
 import numpy as np
 import tensorflow as tf
-import pandas as pd
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -20,18 +19,20 @@ tf.random.set_seed(1793)
 
 
 # %%
-from trieste.objectives import scaled_branin
+from trieste.objectives import BRANIN_SEARCH_SPACE, scaled_branin
 from util.plotting_plotly import plot_function_plotly
 from trieste.space import Box
 
-search_space = Box([0, 0], [1, 1])
+search_space = BRANIN_SEARCH_SPACE
 
-fig = plot_function_plotly(scaled_branin, search_space.lower, search_space.upper, grid_density=20)
+fig = plot_function_plotly(
+    scaled_branin, search_space.lower, search_space.upper, grid_density=20
+)
 fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
-# We begin our Bayesian active learning from a two-point initial design built from a space-filling Halton sequence.
+# We begin our Bayesian active learning from a small initial design built from a space-filling Halton sequence.
 
 # %%
 import trieste
@@ -46,16 +47,24 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model to the initial data.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper. As a good practice, we use priors for the kernel hyperparameters.
 
 # %%
 import gpflow
 from trieste.models.gpflow.models import GaussianProcessRegression
+import tensorflow_probability as tfp
 
 
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance, lengthscales=[2, 2])
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
     gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
     gpflow.set_trainable(gpr.likelihood, False)
 
@@ -69,22 +78,20 @@ model = build_model(initial_data)
 #
 # For our first active learning example, we will use a simple acquisition function known as `PredictiveVariance` which chooses points for which we are highly uncertain (i.e. the predictive posterior covariance matrix at these points has large determinant), as discussed in <cite data-cite="MacKay1992"/>. Note that this also implies that our model needs to have `predict_joint` method to be able to return the full covariance, and it's likely to be expensive to compute.
 #
-# We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize trieste's `BayesianOptimizer` to do the active learning steps.
+# We will now demonstrate how to choose individual query points using `PredictiveVariance` before moving onto batch active learning. For both cases, we can utilize Trieste's `BayesianOptimizer` to do the active learning steps.
 #
 
 # %%
+from trieste.acquisition.function import PredictiveVariance
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition.function import PredictiveVariance
 
 acq = PredictiveVariance()
-rule = EfficientGlobalOptimization(
-    builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
-)
+rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
-# To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make trieste record our model at each iteration.
+# To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make Trieste record our model at each iteration.
 
 # %%
 bo_iter = 5
@@ -105,7 +112,9 @@ observations = dataset.observations.numpy()
 from util.plotting import plot_bo_points, plot_function_2d
 
 
-def plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query=1):
+def plot_active_learning_query(
+    result, bo_iter, num_initial_points, query_points, num_query=1
+):
 
     for i in range(bo_iter):
 
@@ -121,13 +130,17 @@ def plot_active_learning_query(result, bo_iter, num_initial_points, query_points
             contour=True,
             colorbar=True,
             figsize=(10, 6),
-            title=["Variance contour with queried points at iter:" + str(i + 1)],
+            title=[
+                "Variance contour with queried points at iter:" + str(i + 1)
+            ],
             xlabel="$X_1$",
             ylabel="$X_2$",
         )
 
         plot_bo_points(
-            query_points[: num_initial_points + (i * num_query)], ax[0, 0], num_initial_points
+            query_points[: num_initial_points + (i * num_query)],
+            ax[0, 0],
+            num_initial_points,
         )
 
 
@@ -137,15 +150,19 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 # %% [markdown]
 # ## Batch active learning using predictive variance
 #
-# For some cases, query several points at a time can be convenient by doing batch active learning. For this case, we must pass a num_query_points input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is, it tends to query in high variance area less accurately, compared to the sequentially drawing one point at a time.
+# In cases when we can evaluate the black-box function in parallel, it would be useful to produce a batch of points rather than a single point. `PredictiveVariance` acquisition function can also perform batch active learning. We must pass a `num_query_points` input to our `EfficientGlobalOptimization` rule. The drawback of the batch predictive variance is that it tends to query in high variance area less accurately, compared to sequentially drawing one point at a time.
 
 # %%
 bo_iter = 5
 num_query = 3
+
 model = build_model(initial_data)
+
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(
-    num_query_points=num_query, builder=acq, optimizer=generate_continuous_optimizer(sigmoid=False)
+    num_query_points=num_query,
+    builder=acq,
+    optimizer=generate_continuous_optimizer(num_optimization_runs=1),
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -167,4 +184,11 @@ observations = dataset.observations.numpy()
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
 
-plot_active_learning_query(result, bo_iter, num_initial_points, query_points, num_query)
+plot_active_learning_query(
+    result, bo_iter, num_initial_points, query_points, num_query
+)
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

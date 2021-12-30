@@ -30,7 +30,7 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMUM,
     MICHALEWICZ_5_MINIMUM,
     MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_SEARCH_SPACE
+    MICHALEWICZ_5_SEARCH_SPACE,
 )
 from trieste.objectives.utils import mk_observer
 from util.plotting_plotly import plot_function_plotly
@@ -41,10 +41,7 @@ F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 
 fig = plot_function_plotly(
-    function,
-    search_space.lower,
-    search_space.upper,
-    grid_density=100
+    function, search_space.lower, search_space.upper, grid_density=100
 )
 fig.update_layout(height=800, width=800)
 fig.show()
@@ -60,7 +57,7 @@ import trieste
 observer = mk_observer(function)
 
 num_initial_points = 20
-num_acquisitions = 20
+num_steps = 20
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -69,36 +66,37 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
 #
-# We note that the DGP model requires us to specify the number of inducing points, as we don't have the true posterior. We also have to use a stochastic optimizer, such as Adam. Fortunately, GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier!
+# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` function which returns a GPflux model of `DeepGP` class. As with other models (e.g. GPflow), we cannot use it directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepGaussianProcess` wrapper in this case.
 #
-# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` method.
+# Few other useful notes regarding building a DGP model. The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model. For this problem we need to modify the default optimizer settings slightly, so we initialize a new optimizer wrapper instance (`Optimizer`) with custom minimization arguments `minimize_args` which are passed to Keras' `fit` method (check [Keras API documentation](https://keras.io/api/models/model_training_apis/#fit-method) for a list of possible arguments).
 
 # %%
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from gpflow.utilities import set_trainable
+
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.optimizer import Optimizer
 
 
 def build_dgp_model(data):
     variance = tf.math.reduce_variance(data.observations)
 
-    dgp = build_vanilla_deep_gp(data.query_points, num_layers=2, num_inducing=100)
+    dgp = build_vanilla_deep_gp(
+        data.query_points, num_layers=2, num_inducing=100
+    )
     dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
     dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
     dgp.likelihood_layer.likelihood.variance.assign(1e-5)
     set_trainable(dgp.likelihood_layer.likelihood.variance, False)
 
-    epochs = 200
-    batch_size = 100
-
-    optimizer = tf.optimizers.Adam(0.01)
     # These are just arguments for the Keras `fit` method.
-    fit_args = {
-        "batch_size": batch_size,
-        "epochs": epochs,
+    minimize_args = {
+        "batch_size": 100,
+        "epochs": 200,
         "verbose": 0,
     }
+    optimizer = Optimizer(tf.optimizers.Adam(0.01), minimize_args)
 
-    return DeepGaussianProcess(model=dgp, optimizer=optimizer, fit_args=fit_args)
+    return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 
 
 dgp_model = build_dgp_model(initial_data)
@@ -115,12 +113,18 @@ dgp_model = build_dgp_model(initial_data)
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
+grid_size = 1000
+acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
 # Note that the GPflux interface does not currently support using `track_state=True`. This will be
 # addressed in a future update.
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
+dgp_result = bo.optimize(
+    num_steps,
+    initial_data,
+    dgp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
 # %% [markdown]
@@ -143,7 +147,9 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(function, search_space.lower, search_space.upper, grid_density=100)
+fig = plot_function_plotly(
+    function, search_space.lower, search_space.upper, grid_density=100
+)
 fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
@@ -190,32 +196,45 @@ fig.show()
 # %%
 import gpflow
 import tensorflow_probability as tfp
+
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 
 
 def build_gp_model(data):
     variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*data.query_points.shape[-1])
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(tf.cast(-2.0, dtype=tf.float64), prior_scale)
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(tf.math.log(kernel.lengthscales), prior_scale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, mean_function=gpflow.mean_functions.Constant(), noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-
-    return GaussianProcessRegression(
-        model=gpr,
-        optimizer=Optimizer(gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}),
-        num_kernel_samples=100
+    kernel = gpflow.kernels.Matern52(
+        variance=variance, lengthscales=[0.2] * data.query_points.shape[-1]
     )
+    prior_scale = tf.cast(1.0, dtype=tf.float64)
+    kernel.variance.prior = tfp.distributions.LogNormal(
+        tf.cast(-2.0, dtype=tf.float64), prior_scale
+    )
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        tf.math.log(kernel.lengthscales), prior_scale
+    )
+    gpr = gpflow.models.GPR(
+        data.astuple(),
+        kernel,
+        mean_function=gpflow.mean_functions.Constant(),
+        noise_variance=1e-5,
+    )
+    gpflow.set_trainable(gpr.likelihood, False)
+    num_kernel_samples = 100
+
+    return GaussianProcessRegression(gpr)
 
 
 gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
+result = bo.optimize(
+    num_steps,
+    initial_data,
+    gp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 gp_dataset = result.try_get_final_dataset()
 
 gp_query_points = gp_dataset.query_points.numpy()
@@ -259,8 +278,18 @@ gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
 dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 _, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
+plot_regret(
+    dgp_suboptimality,
+    ax[0],
+    num_init=num_initial_points,
+    idx_best=dgp_arg_min_idx,
+)
+plot_regret(
+    gp_suboptimality,
+    ax[1],
+    num_init=num_initial_points,
+    idx_best=gp_arg_min_idx,
+)
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -288,7 +317,7 @@ search_space = MICHALEWICZ_5_SEARCH_SPACE
 observer = mk_observer(function)
 
 num_initial_points = 50
-num_acquisitions = 50
+num_steps = 50
 initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -300,10 +329,15 @@ initial_data = observer(initial_query_points)
 dgp_model = build_dgp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-acquisition_rule = DiscreteThompsonSampling(1000, 1)
+acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
-dgp_result = bo.optimize(num_acquisitions, initial_data, dgp_model,
-                         acquisition_rule=acquisition_rule, track_state=False)
+dgp_result = bo.optimize(
+    num_steps,
+    initial_data,
+    dgp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 dgp_dataset = dgp_result.try_get_final_dataset()
 
 dgp_query_points = dgp_dataset.query_points.numpy()
@@ -325,8 +359,13 @@ gp_model = build_gp_model(initial_data)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result = bo.optimize(num_acquisitions, initial_data, gp_model, acquisition_rule=acquisition_rule,
-                     track_state=False)
+result = bo.optimize(
+    num_steps,
+    initial_data,
+    gp_model,
+    acquisition_rule=acquisition_rule,
+    track_state=False,
+)
 gp_dataset = result.try_get_final_dataset()
 
 gp_query_points = gp_dataset.query_points.numpy()
@@ -345,8 +384,18 @@ gp_suboptimality = gp_observations - F_MINIMIZER.numpy()
 # %%
 
 _, ax = plt.subplots(1, 2)
-plot_regret(dgp_suboptimality, ax[0], num_init=num_initial_points, idx_best=dgp_arg_min_idx)
-plot_regret(gp_suboptimality, ax[1], num_init=num_initial_points, idx_best=gp_arg_min_idx)
+plot_regret(
+    dgp_suboptimality,
+    ax[0],
+    num_init=num_initial_points,
+    idx_best=dgp_arg_min_idx,
+)
+plot_regret(
+    gp_suboptimality,
+    ax[1],
+    num_init=num_initial_points,
+    idx_best=gp_arg_min_idx,
+)
 
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")
@@ -362,8 +411,8 @@ ax[1].set_xlabel("# evaluations")
 # %% [markdown]
 # While still far from the optimum, it is considerably better than the GP.
 
-#
 
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

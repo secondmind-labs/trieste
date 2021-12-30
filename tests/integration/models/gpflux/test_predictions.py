@@ -31,10 +31,10 @@ def test_dgp_model_close_to_actuals(
     Ensure that DGP model fits well and predictions are close to actual output values.
     """
 
-    dataset_size = 100
-    num_inducing = 100
-    batch_size = 100
-    epochs = 2000
+    dataset_size = 50
+    num_inducing = 50
+    batch_size = 50
+    epochs = 500
 
     example_data = hartmann_6_dataset_function(dataset_size)
 
@@ -51,16 +51,16 @@ def test_dgp_model_close_to_actuals(
     model.optimize(example_data)
     predicted_means, _ = model.predict(example_data.query_points)
 
-    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.1, rtol=0.2)
+    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
 
 
 @random_seed
 def test_dgp_model_close_to_simple_implementation(
     hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
 ) -> None:
-    dataset_size = 200
-    num_inducing = 100
-    batch_size = 100
+    dataset_size = 50
+    num_inducing = 50
+    batch_size = 50
     epochs = 500
     learning_rate = 0.01
 

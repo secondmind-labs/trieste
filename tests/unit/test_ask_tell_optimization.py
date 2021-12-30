@@ -248,7 +248,7 @@ def test_ask_tell_optimizer_does_not_accept_empty_datasets_or_models(
         AskTellOptimizer(search_space, {}, model, acquisition_rule)  # type: ignore
 
     with pytest.raises(ValueError):
-        AskTellOptimizer(search_space, init_dataset, {}, acquisition_rule)  # type: ignore
+        AskTellOptimizer(search_space, init_dataset, {}, acquisition_rule)
 
 
 def test_ask_tell_optimizer_validates_keys(

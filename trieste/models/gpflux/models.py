@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -23,10 +23,14 @@ from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import TrainableProbabilisticModel
-from ..sampler import ModelSampler
+from ..interfaces import ReparametrizationSampler, TrainableProbabilisticModel, TrajectorySampler
+from ..optimizer import BatchOptimizer
 from .interface import GPfluxPredictor
-from .samplers import DeepGaussianProcessSampler, sample_dgp
+from .sampler import (
+    DeepGaussianProcessReparamSampler,
+    DeepGaussianProcessTrajectorySampler,
+    sample_dgp,
+)
 
 
 class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
@@ -38,39 +42,19 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(
-        self,
-        model: DeepGP,
-        optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[str, Any] | None = None,
-    ):
+    def __init__(self, model: DeepGP, optimizer: BatchOptimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~tf.optimizers.Optimizer` with :class:`~tf.optimizers.Adam`. Only
-            the optimizer itself is used; other args relevant for fitting should be passed as part
-            of `fit_args`.
-        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Defaults to
+        :param optimizer: The optimizer configuration for training the model. Defaults to
+            :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
+            :class:`~tf.optimizers.Adam`.
+            This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
+            used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
+            a dictionary of arguments to be used in the Keras `fit` method. Defaults to
             using 100 epochs, batch size 100, and verbose 0. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         """
-
-        super().__init__(optimizer)
-
-        self.original_lr = self._optimizer.lr.numpy()
-
-        if fit_args is None:
-            self.fit_args = dict(
-                {
-                    "verbose": 0,
-                    "epochs": 100,
-                    "batch_size": 100,
-                }
-            )
-        else:
-            self.fit_args = fit_args
-
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
                 raise ValueError(
@@ -78,14 +62,34 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                     f"`LatentVariableLayer`, received {type(layer)} instead."
                 )
 
+        super().__init__(optimizer)
+
+        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(self.optimizer.optimizer)} instead."
+            )
+
+        self.original_lr = self.optimizer.optimizer.lr.numpy()
+
+        if not self.optimizer.minimize_args:
+            self._fit_args: Optional[Dict[str, Any]] = {
+                "verbose": 0,
+                "epochs": 100,
+                "batch_size": 100,
+            }
+        else:
+            self._fit_args = self.optimizer.minimize_args
+
         self._model_gpflux = model
 
         self._model_keras = model.as_training_model()
-        self._model_keras.compile(self._optimizer)
+        self._model_keras.compile(self.optimizer.optimizer)
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
+        return f"DeepGaussianProcess({self.model_gpflux!r}, {self.optimizer.optimizer!r})"
 
     @property
     def model_gpflux(self) -> DeepGP:
@@ -95,18 +99,17 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     def model_keras(self) -> tf.keras.Model:
         return self._model_keras
 
-    @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
-        return self._optimizer
-
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
         for _ in range(num_samples):
             samples.append(sample_dgp(self.model_gpflux)(query_points))
         return tf.stack(samples)
 
-    def reparam_sampler(self, num_samples: int) -> ModelSampler:
-        return DeepGaussianProcessSampler(num_samples, self.model_gpflux)
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+        return DeepGaussianProcessReparamSampler(num_samples, self)
+
+    def trajectory_sampler(self) -> TrajectorySampler:
+        return DeepGaussianProcessTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -151,10 +154,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
+            {"inputs": dataset.query_points, "targets": dataset.observations}, **self._fit_args
         )
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
-        self.optimizer.lr.assign(self.original_lr)
+        self.optimizer.optimizer.lr.assign(self.original_lr)

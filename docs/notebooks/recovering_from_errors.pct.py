@@ -52,10 +52,10 @@ search_space = trieste.space.Box(
 initial_data = observer(search_space.sample(5))
 
 variance = tf.math.reduce_variance(initial_data.observations)
-kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(1e-12)
-gpr = gpflow.models.GPR(
-    initial_data.astuple(), kernel, noise_variance=1e-5
+kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(
+    1e-12
 )
+gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
 gpflow.set_trainable(gpr.likelihood, False)
 model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 
@@ -74,7 +74,10 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-result, history = bo.optimize(15, initial_data, model, acquisition_rule).astuple()
+num_steps = 15
+result, history = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule
+).astuple()
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.
@@ -107,7 +110,7 @@ if result.is_err:
         history[-1].dataset,
         history[-1].model,
         acquisition_rule,
-        history[-1].acquisition_state
+        history[-1].acquisition_state,
     ).astuple()
 
     history.extend(new_history)

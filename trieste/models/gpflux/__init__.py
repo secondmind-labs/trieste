@@ -20,7 +20,7 @@ Note as well that `tf.keras.backend.set_floatx()` should be used to set the desi
 consistent with the GPflow float type being used.
 """
 
+from . import config
 from .architectures import build_vanilla_deep_gp
-from .config import GPfluxModelConfig
 from .interface import GPfluxPredictor
 from .models import DeepGaussianProcess, DeepGaussianProcessSampler

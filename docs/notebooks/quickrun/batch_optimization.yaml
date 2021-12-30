@@ -1,0 +1,5 @@
+replace:
+  - { from: "monte_carlo_sample_size = \\d+", to: "monte_carlo_sample_size = 10" }
+  - { from: "batch_size = \\d+", to: "batch_size = 2" }
+  - { from: "sample_size = \\d+", to: "sample_size = 10" }
+  - { from: "num_steps = \\d+", to: "num_steps = 1" }
