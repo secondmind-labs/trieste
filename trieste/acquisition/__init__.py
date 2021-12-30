@@ -48,6 +48,7 @@ from .function import (
     Fantasizer,
     LocalPenalization,
     MinValueEntropySearch,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     PredictiveVariance,
@@ -61,6 +62,7 @@ from .function import (
     hard_local_penalizer,
     lower_confidence_bound,
     min_value_entropy_search,
+    multiple_optimism_lower_confidence_bound,
     predictive_variance,
     probability_of_feasibility,
     soft_local_penalizer,
@@ -73,7 +75,9 @@ from .interface import (
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
     UpdatablePenalizationFunction,
+    VectorizedAcquisitionFunctionBuilder,
 )
 from .sampler import (
     ExactThompsonSampler,

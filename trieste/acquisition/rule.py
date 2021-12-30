@@ -39,8 +39,15 @@ from .interface import (
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
+    VectorizedAcquisitionFunctionBuilder,
 )
-from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
+from .optimizer import (
+    AcquisitionOptimizer,
+    automatic_optimizer_selector,
+    batchify_joint,
+    batchify_vectorize,
+)
 from .sampler import ExactThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
@@ -146,8 +153,10 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra, M_contr
         builder: Optional[
             AcquisitionFunctionBuilder[M_contra]
             | GreedyAcquisitionFunctionBuilder[M_contra]
+            | VectorizedAcquisitionFunctionBuilder[M_contra]
             | SingleModelAcquisitionBuilder[M_contra]
             | SingleModelGreedyAcquisitionBuilder[M_contra]
+            | SingleModelVectorizedAcquisitionBuilder[M_contra]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -180,17 +189,30 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra, M_contr
             optimizer = automatic_optimizer_selector
 
         if isinstance(
-            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
+            builder,
+            (
+                SingleModelAcquisitionBuilder,
+                SingleModelGreedyAcquisitionBuilder,
+                SingleModelVectorizedAcquisitionBuilder,
+            ),
         ):
             builder = builder.using(OBJECTIVE)
 
-        if isinstance(builder, AcquisitionFunctionBuilder) and num_query_points > 1:
-            # Joint batch acquisitions require batch optimizers
-            optimizer = batchify(optimizer, num_query_points)
+        if num_query_points > 1:  # need to build batches of points
+            if isinstance(builder, VectorizedAcquisitionFunctionBuilder):
+                # optimize batch elements independently
+                optimizer = batchify_vectorize(optimizer, num_query_points)
+            elif isinstance(builder, AcquisitionFunctionBuilder):
+                # optimize batch elements jointly
+                optimizer = batchify_joint(optimizer, num_query_points)
+            elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
+                # optimize batch elements sequentially using the logic in acquire.
+                pass
 
         self._builder: Union[
             AcquisitionFunctionBuilder[M_contra],
             GreedyAcquisitionFunctionBuilder[M_contra],
+            VectorizedAcquisitionFunctionBuilder[M_contra],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -425,9 +447,9 @@ class AsynchronousOptimization(
             builder = builder.using(OBJECTIVE)
 
         # even though we are only using batch acquisition functions
-        # there is no need to batchify the optimizer if our batch size is 1
+        # there is no need to batchify_joint the optimizer if our batch size is 1
         if num_query_points > 1:
-            optimizer = batchify(optimizer, num_query_points)
+            optimizer = batchify_joint(optimizer, num_query_points)
 
         self._builder: AcquisitionFunctionBuilder[M_contra] = builder
         self._optimizer = optimizer
