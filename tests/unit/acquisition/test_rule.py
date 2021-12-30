@@ -378,7 +378,7 @@ def test_vectorized_batch_acquisition_rule_acquire() -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _VectorizedBatchModelMinusMeanMaximumSingleBuilder()
-    acq_rule: AcquisitionRule[TensorType, Box] = EfficientGlobalOptimization(
+    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] = EfficientGlobalOptimization(
         acq, num_query_points=num_query_points
     )
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))

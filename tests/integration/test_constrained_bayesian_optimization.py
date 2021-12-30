@@ -25,6 +25,7 @@ from trieste.acquisition import ExpectedConstrainedImprovement, ProbabilityOfFea
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -84,7 +85,7 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
 
     pof = ProbabilityOfFeasibility(threshold=0.5)
     acq = acquisition_function_builder(OBJECTIVE, pof.using(CONSTRAINT))
-    rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(acq)
+    rule: EfficientGlobalOptimization[Box, ProbabilisticModel] = EfficientGlobalOptimization(acq)
 
     dataset = (
         BayesianOptimizer(observer, search_space)

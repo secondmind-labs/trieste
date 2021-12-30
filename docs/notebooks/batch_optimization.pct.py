@@ -205,7 +205,9 @@ cbar.set_label("EI", rotation=270)
 # First we run ten steps of `BatchMonteCarloExpectedImprovement` ...
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer, search_space, GaussianProcessRegression
+)
 
 batch_ei_rule = EfficientGlobalOptimization(  # type: ignore
     num_query_points=3, builder=batch_ei_acq
