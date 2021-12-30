@@ -23,7 +23,7 @@ from gpflow.models import GPModel
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel, ReparametrizationSampler, SupportsPredictJoint
+from ..interfaces import ReparametrizationSampler, SupportsPredictJoint
 from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 

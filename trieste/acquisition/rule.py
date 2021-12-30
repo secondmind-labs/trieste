@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast
+from typing import Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
 
@@ -117,6 +117,29 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra, M_contra]):
 
 class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra, M_contra]):
     """Implements the Efficient Global Optimization, or EGO, algorithm."""
+
+    @overload
+    def __init__(
+        self: "EfficientGlobalOptimization[SP_contra, ProbabilisticModel]",
+        builder: None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "EfficientGlobalOptimization[SP_contra, M_contra]",
+        builder: (
+            AcquisitionFunctionBuilder[M_contra]
+            | GreedyAcquisitionFunctionBuilder[M_contra]
+            | SingleModelAcquisitionBuilder[M_contra]
+            | SingleModelGreedyAcquisitionBuilder[M_contra]
+        ),
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
 
     def __init__(
         self,
@@ -352,11 +375,28 @@ class AsynchronousOptimization(
     and thus we optimize and return the last B points only.
     """
 
+    @overload
+    def __init__(
+        self: "AsynchronousOptimization[SP_contra, ProbabilisticModel]",
+        builder: None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "AsynchronousOptimization[SP_contra, M_contra]",
+        builder: (AcquisitionFunctionBuilder[M_contra] | SingleModelAcquisitionBuilder[M_contra]),
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder[M_contra]
-            | SingleModelAcquisitionBuilder[M_contra]
+            AcquisitionFunctionBuilder[M_contra] | SingleModelAcquisitionBuilder[M_contra]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -636,7 +676,7 @@ class AsynchronousGreedy(
         return state_func
 
 
-class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, M_contra]):
+class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     r"""
     Implements Thompson sampling for choosing optimal points.
 
@@ -694,7 +734,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, M_contra
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, M_contra],
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
@@ -727,7 +767,9 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, M_contra
         return thompson_samples
 
 
-class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box, M_contra]):
+class TrustRegion(
+    AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box, M_contra]
+):
     """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
@@ -754,6 +796,24 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
         def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
             box_copy = copy.deepcopy(self.acquisition_space, memo)
             return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
+
+    @overload
+    def __init__(
+        self: "TrustRegion[ProbabilisticModel]",
+        rule: None = None,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "TrustRegion[M_contra]",
+        rule: AcquisitionRule[TensorType, Box, M_contra],
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+    ):
+        ...
 
     def __init__(
         self,

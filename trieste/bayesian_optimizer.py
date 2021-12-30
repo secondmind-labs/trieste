@@ -22,7 +22,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, TypeVar, cast, overload
+from typing import Any, Dict, Generic, Type, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
@@ -159,10 +159,25 @@ class BayesianOptimizer(Generic[SP, M_contra]):
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
+    @overload
     def __init__(
-        self,
+        self: "BayesianOptimizer[SP, TrainableProbabilisticModel]",
         observer: Observer,
         search_space: SP,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "BayesianOptimizer[SP, M_contra]",
+        observer: Observer,
+        search_space: SP,
+        model_type: Type[M_contra],
+    ):
+        ...
+
+    def __init__(
+        self, observer: Observer, search_space: SP, model_type: Any = TrainableProbabilisticModel
     ):
         """
         :param observer: The observer of the objective function.
@@ -171,6 +186,7 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         """
         self._observer = observer
         self._search_space = search_space
+        self._model_type = model_type
 
     def __repr__(self) -> str:
         """"""
@@ -354,9 +370,16 @@ class BayesianOptimizer(Generic[SP, M_contra]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[TensorType, SP, M_contra], EfficientGlobalOptimization())
+            acquisition_rule = EfficientGlobalOptimization[SP, M_contra]()
 
         models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
+        for model in models.values():
+            if not isinstance(model, self._model_type):
+                raise ValueError(
+                    f"EfficientGlobalOptimization instance expects models of type "
+                    f"{self._model_type}, got {model}"
+                )
+
         history: list[Record[S]] = []
 
         for step in range(num_steps):

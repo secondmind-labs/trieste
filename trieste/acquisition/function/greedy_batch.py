@@ -24,7 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
-from ...models.interfaces import SupportsPredictJoint, PredictJointModelStack
+from ...models.interfaces import PredictJointModelStack, SupportsPredictJoint
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType

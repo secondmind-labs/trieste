@@ -28,9 +28,9 @@ from ...utils import DEFAULTS
 from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
+    SupportsPredictJoint,
     TrajectoryFunction,
     TrajectorySampler,
-    SupportsPredictJoint,
 )
 
 
