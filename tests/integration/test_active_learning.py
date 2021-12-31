@@ -34,6 +34,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.interfaces import SupportsPredictJoint
 from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.observer import Observer
@@ -45,7 +46,7 @@ from trieste.types import TensorType
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (50, EfficientGlobalOptimization(PredictiveVariance())),
+        (50, EfficientGlobalOptimization[SearchSpace, SupportsPredictJoint](PredictiveVariance())),
         (
             70,
             EfficientGlobalOptimization(
@@ -56,7 +57,7 @@ from trieste.types import TensorType
 )
 def test_optimizer_learns_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, SupportsPredictJoint],
 ) -> None:
     """
     Ensure that the objective function is effectively learned, such that the final model
@@ -103,7 +104,7 @@ def test_optimizer_learns_scaled_branin_function(
     # after active learning the model should be much more accurate
     model = build_model(initial_data)
     final_model = (
-        BayesianOptimizer(observer, search_space)
+        BayesianOptimizer(observer, search_space, GaussianProcessRegression)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_model()
     )

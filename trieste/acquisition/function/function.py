@@ -34,6 +34,7 @@ from ..interface import (
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
+from ..rule import M_contra
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -423,7 +424,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModel]):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -434,7 +435,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
+        constraint_builder: AcquisitionFunctionBuilder[M_contra],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -471,7 +472,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -520,7 +521,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -568,7 +569,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         return self._constrained_improvement_fn
 
     def _update_expected_improvement_fn(
-        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+        self, objective_model: M_contra, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.

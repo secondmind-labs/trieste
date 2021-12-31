@@ -40,7 +40,8 @@ from trieste.utils import map_values
     ],
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(
-    num_steps: int, acquisition_function_builder: type[ExpectedConstrainedImprovement]
+    num_steps: int,
+    acquisition_function_builder: type[ExpectedConstrainedImprovement[ProbabilisticModel]],
 ) -> None:
     """
     Test that tests the covergence of constrained BO algorithms on the
