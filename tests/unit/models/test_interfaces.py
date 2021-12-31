@@ -38,7 +38,9 @@ from trieste.models.interfaces import TrainablePredictJointModelStack, Trainable
 from trieste.types import TensorType
 
 
-class _QuadraticModel(GaussianProcessWithSamplers, PseudoTrainableProbModel):
+class _QuadraticModel(
+    GaussianProcessWithSamplers, PseudoTrainableProbModel, TrainableSupportsPredictJoint
+):
     def __init__(
         self,
         mean_shifts: list[float],

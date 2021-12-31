@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Optional, cast
+from typing import Optional, TypeVar, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,8 +32,9 @@ from ..multi_objective.pareto import (
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
-from ..rule import M_contra
 from .function import ExpectedConstrainedImprovement
+
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
