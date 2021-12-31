@@ -31,7 +31,7 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.interfaces import TrainableModelStack
+from trieste.models.interfaces import TrainableModelStack, TrainableProbabilisticModel
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -82,7 +82,9 @@ from trieste.types import TensorType
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, Box], convergence_threshold: float
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    convergence_threshold: float,
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 

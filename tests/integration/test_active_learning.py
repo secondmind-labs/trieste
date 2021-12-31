@@ -55,7 +55,8 @@ from trieste.types import TensorType
     ],
 )
 def test_optimizer_learns_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel],
 ) -> None:
     """
     Ensure that the objective function is effectively learned, such that the final model
@@ -140,7 +141,9 @@ def test_optimizer_learns_scaled_branin_function(
     ],
 )
 def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], threshold: int
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel],
+    threshold: int,
 ) -> None:
     """
     Ensure that the feasible set is sufficiently well learned, such that the final model
