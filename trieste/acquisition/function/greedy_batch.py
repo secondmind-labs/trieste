@@ -362,7 +362,14 @@ class FastSupportsPredictJoint(FastUpdateModel, SupportsPredictJoint):
     pass
 
 
-class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
+class FastPredictJointModelStack(PredictJointModelStack, ModelStack[FastSupportsPredictJoint]):
+    pass
+
+
+FastPredictsJointOrStack = Union[FastSupportsPredictJoint, FastPredictJointModelStack]
+
+
+class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
     Fantasizer allows us to perform batch Bayesian optimization with any
@@ -416,7 +423,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FastSupportsPredictJoint],
+        models: Mapping[str, FastPredictsJointOrStack],
         datasets: Optional[Mapping[str, Dataset]],
     ) -> AcquisitionFunction:
 
@@ -432,7 +439,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FastSupportsPredictJoint],
+        models: Mapping[str, FastPredictsJointOrStack],
         datasets: Optional[Mapping[str, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
@@ -484,7 +491,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FastSupportsPredictJoint],
+        models: Mapping[str, FastPredictsJointOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -504,7 +511,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FastSupportsPredictJoint],
+        models: Mapping[str, FastPredictsJointOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -527,7 +534,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastSupportsPredictJoint]):
 
 
 def _generate_fantasized_data(
-    fantasize_method: str, model: FastSupportsPredictJoint, pending_points: TensorType
+    fantasize_method: str, model: FastPredictsJointOrStack, pending_points: TensorType
 ) -> Dataset:
     """
     Generates "fantasized" data at pending_points depending on the chosen heuristic:
@@ -553,7 +560,7 @@ def _generate_fantasized_data(
 
 
 def _generate_fantasized_model(
-    model: FastSupportsPredictJoint, fantasized_data: Dataset
+    model: FastPredictsJointOrStack, fantasized_data: Dataset
 ) -> _fantasized_model | PredictJointModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)

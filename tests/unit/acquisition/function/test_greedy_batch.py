@@ -39,9 +39,9 @@ from trieste.acquisition.function.greedy_batch import (
     _generate_fantasized_model,
     hard_local_penalizer,
     soft_local_penalizer,
+    FastPredictJointModelStack,
 )
 from trieste.data import Dataset
-from trieste.models import TrainableModelStack
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -237,7 +237,9 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
 
     data = {"OBJECTIVE": Dataset(x, y)}
     if model_type == "stack":
-        models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+        models = {
+            "OBJECTIVE": FastPredictJointModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
+        }
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
@@ -262,7 +264,9 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
 
     data = {"OBJECTIVE": Dataset(x, y)}
     if model_type == "stack":
-        models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+        models = {
+            "OBJECTIVE": FastPredictJointModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
+        }
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
@@ -302,7 +306,9 @@ def test_fantasize_allows_query_points_with_leading_dimensions(model_type: str) 
     query_points = tf.reshape(query_points, [4, 5, 1])
 
     if model_type == "stack":
-        fanta_model5 = _generate_fantasized_model(TrainableModelStack((model5, 1)), additional_data)
+        fanta_model5 = _generate_fantasized_model(
+            FastPredictJointModelStack((model5, 1)), additional_data
+        )
     else:
         fanta_model5 = _generate_fantasized_model(model5, additional_data)
 
@@ -360,7 +366,7 @@ def test_fantasized_stack_is_the_same_as_individually_fantasized() -> None:
     y2 = fnc_3x_plus_10(x)
     model1 = GaussianProcessRegression(gpr_model(x[:5, :], y1[:5, :]))
     model2 = GaussianProcessRegression(gpr_model(x[:5, :], y2[:5, :]))
-    stacked_models = TrainableModelStack((model1, 1), (model2, 1))
+    stacked_models = FastPredictJointModelStack((model1, 1), (model2, 1))
 
     additional_data1 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y1[5:, :], [3, 6, -1]))
     additional_data2 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y2[5:, :], [3, 6, -1]))
