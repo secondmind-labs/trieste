@@ -70,6 +70,8 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra, M_contra]):
     (see e.g. :class:`TrustRegion`). Indeed, to use an :class:`AcquisitionRule` in the main
     :class:`~trieste.bayesian_optimizer.BayesianOptimizer` Bayesian optimization loop, the rule
     must return either a `TensorType` or `State`-ful `TensorType`.
+
+    An :class:`AcquisitionRule` can only be passed models of type :class:`M_contra`.
     """
 
     @abstractmethod

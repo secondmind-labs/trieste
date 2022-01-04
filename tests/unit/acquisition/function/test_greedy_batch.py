@@ -35,11 +35,11 @@ from trieste.acquisition import (
 from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
 from trieste.acquisition.function.greedy_batch import (
     Fantasizer,
+    FastPredictJointModelStack,
     LocalPenalization,
     _generate_fantasized_model,
     hard_local_penalizer,
     soft_local_penalizer,
-    FastPredictJointModelStack,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression

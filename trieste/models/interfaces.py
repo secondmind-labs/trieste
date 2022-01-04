@@ -370,6 +370,12 @@ class TrainableModelStack(TrainableProbabilisticModel, ModelStack[TrainableProba
 
 
 class PredictJointModelStack(SupportsPredictJoint, ModelStack[SupportsPredictJoint]):
+    r"""
+    A :class:`PredictJointModelStack` is a wrapper around a number of
+    :class:`SupportsPredictJoint`\ s.
+    It delegates :meth:`predict_joint]` to each model.
+    """
+
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., B, D].
@@ -384,12 +390,31 @@ class PredictJointModelStack(SupportsPredictJoint, ModelStack[SupportsPredictJoi
 
 
 class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel):
+    """A model that is both trainable and supports predict_joint."""
+
     pass
 
 
 class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
 ):
+    """A stack of models that are both trainable and support predict_joint."""
+
+    pass
+
+
+class FastSupportsPredictJoint(FastUpdateModel, SupportsPredictJoint):
+    """A model that can both predict on supplementary data and supports predict_joint."""
+
+    pass
+
+
+class FastPredictJointModelStack(PredictJointModelStack, ModelStack[FastSupportsPredictJoint]):
+    """
+    A stack of models :class:`FastSupportsPredictJoint` models.
+    Note that this does not (currently) delegate the conditional predict methods.
+    """
+
     pass
 
 

@@ -183,6 +183,9 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
             :class:`~trieste.space.SearchSpace`.
+        :param model_type: The model type required by the acquisition rules that will be used.
+            Specifying this allows trieste to check that models of the right type are being used,
+            both statically and at run time. Defaults to :class:`TrainableProbabilisticModel`.
         """
         self._observer = observer
         self._search_space = search_space

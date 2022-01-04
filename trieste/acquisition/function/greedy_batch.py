@@ -24,7 +24,12 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
-from ...models.interfaces import PredictJointModelStack, SupportsPredictJoint
+from ...models.interfaces import (
+    FastPredictJointModelStack,
+    FastSupportsPredictJoint,
+    PredictJointModelStack,
+    SupportsPredictJoint,
+)
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
@@ -356,14 +361,6 @@ class hard_local_penalizer(local_penalizer):
         p = -5  # following experiments of :cite:`Alvi:2019`.
         penalization = ((pairwise_distances / (self._radius + self._scale)) ** p + 1) ** (1 / p)
         return tf.reduce_prod(penalization, axis=-1)
-
-
-class FastSupportsPredictJoint(FastUpdateModel, SupportsPredictJoint):
-    pass
-
-
-class FastPredictJointModelStack(PredictJointModelStack, ModelStack[FastSupportsPredictJoint]):
-    pass
 
 
 FastPredictsJointOrStack = Union[FastSupportsPredictJoint, FastPredictJointModelStack]
