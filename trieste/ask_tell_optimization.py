@@ -152,7 +152,7 @@ class AskTellOptimizer(Generic[SP, M_contra]):
     ):
         ...
 
-    @overload  # XXXX
+    @overload
     def __init__(
         self: "AskTellOptimizer[SP, TrainableProbabilisticModel]",
         search_space: SP,
@@ -216,7 +216,7 @@ class AskTellOptimizer(Generic[SP, M_contra]):
         """
         self._search_space = search_space
         self._acquisition_state = acquisition_state
-        self._model_type = model_type
+        self._model_type = model_type or TrainableProbabilisticModel
 
         if not datasets or not model_specs:
             raise ValueError("dicts of datasets and model_specs must be populated.")
