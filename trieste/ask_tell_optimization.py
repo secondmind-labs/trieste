@@ -237,6 +237,12 @@ class AskTellOptimizer(Generic[SP, M_contra]):
 
         self._datasets = datasets
         self._models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
+        for model in self._models.values():
+            if not isinstance(model, self._model_type):
+                raise ValueError(
+                    f"AskTellOptimizer instance expects models of type "
+                    f"{self._model_type}, got {model}"
+                )
 
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:

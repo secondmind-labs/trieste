@@ -379,7 +379,7 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         for model in models.values():
             if not isinstance(model, self._model_type):
                 raise ValueError(
-                    f"EfficientGlobalOptimization instance expects models of type "
+                    f"BayesianOptimizer instance expects models of type "
                     f"{self._model_type}, got {model}"
                 )
 
