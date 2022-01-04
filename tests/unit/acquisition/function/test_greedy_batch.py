@@ -195,7 +195,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> N
     builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
-        builder.prepare_acquisition_function(models, data, pending_points)
+        builder.prepare_acquisition_function(models, data, pending_points)  # type: ignore
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_shape() -> None:
@@ -207,7 +207,7 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_
     builder = Fantasizer()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(models, data, pending_points)
+        builder.prepare_acquisition_function(models, data, pending_points)  # type: ignore
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
