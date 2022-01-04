@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Callable, Sequence
+from typing import cast
 
 import gpflow
 import tensorflow as tf
@@ -109,8 +110,11 @@ class GaussianProcess(GaussianMarginal, SupportsPredictJoint):
 class GaussianProcessWithSamplers(GaussianProcess):
     """A (static) Gaussian process over a vector random variable with a reparam sampler"""
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
-        return BatchReparametrizationSampler(num_samples, self)
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
+        return cast(
+            ReparametrizationSampler[ProbabilisticModel],
+            BatchReparametrizationSampler(num_samples, self),
+        )
 
 
 class QuadraticMeanAndRBFKernel(GaussianProcess):
@@ -162,8 +166,11 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
     def trajectory_sampler(self) -> TrajectorySampler:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
-        return BatchReparametrizationSampler(num_samples, self)
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
+        return cast(
+            ReparametrizationSampler[ProbabilisticModel],
+            BatchReparametrizationSampler(num_samples, self),
+        )
 
 
 class ModelFactoryType(Protocol):

@@ -88,7 +88,10 @@ class ProbabilisticModel(ABC):
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
-        Note that this is not supported by all models.
+        Note that this is not supported by all models. Also, this currently doesn't play nicely
+        with type checking: we claim to return a sampler that supports any ProbabilisticModel
+        but in practice only want to return one that supports ourself. Until this is fixed,
+        it may be necessary to cast the response so it passes the type check.
 
         :param num_samples: The desired number of samples.
         :return: The reparametrization sampler.
@@ -226,13 +229,13 @@ class FastUpdateModel(ProbabilisticModel):
         )
 
 
-T = TypeVar("T", bound=ProbabilisticModel, covariant=True)
+T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
 
 
 class ModelStack(Generic[T], ProbabilisticModel):
     r"""
-    A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s.
-    It combines the outputs of each model for predictions and sampling.
+    A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
+    :class:`T`. It combines the outputs of each model for predictions and sampling.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one

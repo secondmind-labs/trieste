@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import cast
 
 import gpflow
 import tensorflow as tf
@@ -23,7 +24,7 @@ from gpflow.models import GPModel
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
-from ..interfaces import ReparametrizationSampler, SupportsPredictJoint
+from ..interfaces import ProbabilisticModel, ReparametrizationSampler, SupportsPredictJoint
 from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
@@ -110,10 +111,13 @@ class GPflowPredictor(SupportsPredictJoint, tf.Module, ABC):
                     for i, lengthscale in enumerate(lengthscales):
                         tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[SupportsPredictJoint]:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
         :return: The reparametrization sampler.
         """
-        return BatchReparametrizationSampler(num_samples, self)
+        return cast(
+            ReparametrizationSampler[ProbabilisticModel],
+            BatchReparametrizationSampler(num_samples, self),
+        )
