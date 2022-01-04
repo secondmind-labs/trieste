@@ -42,7 +42,7 @@ from trieste.acquisition.sampler import (
     ThompsonSamplerFromTrajectory,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models.gpflow.models import SupportsCovarianceBetweenPoints
 from trieste.objectives import branin
 from trieste.space import Box
 from trieste.types import TensorType
@@ -424,7 +424,7 @@ def test_gibbon_builder_raises_for_invalid_pending_points_shape(
 
 
 def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
-    class dummy_model_without_likelihood(ProbabilisticModel):
+    class dummy_model_without_likelihood(SupportsCovarianceBetweenPoints):
         def predict(self, query_points: TensorType) -> tuple[None, None]:
             return None, None
 
@@ -441,25 +441,6 @@ def test_gibbon_raises_for_model_without_homoscedastic_likelihood() -> None:
 
     with pytest.raises(ValueError):
         model_without_likelihood = dummy_model_without_likelihood()
-        gibbon_quality_term(model_without_likelihood, tf.constant([[1.0]]))
-
-
-def test_gibbon_raises_for_model_without_covariance_between_points_method() -> None:
-    class dummy_model_without_covariance_between_points(ProbabilisticModel):
-        def predict(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def sample(self, query_points: TensorType, num_samples: int) -> None:
-            return None
-
-        def get_observation_noise(self) -> None:
-            return None
-
-    with pytest.raises(AttributeError):
-        model_without_likelihood = dummy_model_without_covariance_between_points()
         gibbon_quality_term(model_without_likelihood, tf.constant([[1.0]]))
 
 

@@ -37,7 +37,7 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
 )
-from trieste.models.interfaces import SupportsPredictJoint
+from trieste.models.gpflow.models import SupportsCovarianceBetweenPoints
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -69,7 +69,7 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
-class GaussianProcess(GaussianMarginal, SupportsPredictJoint):
+class GaussianProcess(GaussianMarginal, SupportsCovarianceBetweenPoints):
     """A (static) Gaussian process over a vector random variable."""
 
     def __init__(

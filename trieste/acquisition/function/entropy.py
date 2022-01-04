@@ -23,7 +23,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import SupportsPredictJoint
+from ...models.gpflow.models import SupportsCovarianceBetweenPoints
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -187,7 +187,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -251,7 +251,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
 
     def prepare_acquisition_function(
         self,
-        model: SupportsPredictJoint,
+        model: SupportsCovarianceBetweenPoints,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -275,7 +275,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: SupportsPredictJoint,
+        model: SupportsCovarianceBetweenPoints,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -309,7 +309,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
         self,
         function: Optional[AcquisitionFunction],
         dataset: Dataset,
-        model: SupportsPredictJoint,
+        model: SupportsCovarianceBetweenPoints,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
@@ -336,7 +336,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
             return gibbon_acquisition
 
     def _update_quality_term(
-        self, dataset: Dataset, model: SupportsPredictJoint
+        self, dataset: Dataset, model: SupportsCovarianceBetweenPoints
     ) -> AcquisitionFunction:
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -355,7 +355,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsPredictJoint]):
 
 
 class gibbon_quality_term(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+    def __init__(self, model: SupportsCovarianceBetweenPoints, samples: TensorType):
         """
         GIBBON's quality term measures the amount of information that each individual
         batch element provides about the objective function's minimal value :math:`y^*` (ensuring
@@ -381,13 +381,6 @@ class gibbon_quality_term(AcquisitionFunctionClass):
                 """
                 GIBBON only currently supports homoscedastic gpflow models
                 with a likelihood.variance attribute.
-                """
-            )
-
-        if not hasattr(model, "covariance_between_points"):
-            raise AttributeError(
-                """
-                GIBBON only supports models with a covariance_between_points method.
                 """
             )
 
@@ -428,7 +421,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
 class gibbon_repulsion_term(UpdatablePenalizationFunction):
     def __init__(
         self,
-        model: SupportsPredictJoint,
+        model: SupportsCovarianceBetweenPoints,
         pending_points: TensorType,
         rescaled_repulsion: bool = True,
     ):
@@ -523,9 +516,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
         A = tf.squeeze(
             tf.expand_dims(
-                self._model.covariance_between_points(  # type: ignore
-                    tf.squeeze(x, -2), self._pending_points
-                ),
+                self._model.covariance_between_points(tf.squeeze(x, -2), self._pending_points),
                 axis=-1,
             ),
             axis=0,

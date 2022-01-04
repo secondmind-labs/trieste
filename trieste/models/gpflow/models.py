@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import Any, Optional, Union
 
 import gpflow
@@ -37,7 +38,12 @@ from tensorflow_probability.python.util import TransformedVariable
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    FastUpdateModel,
+    SupportsPredictJoint,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 from .sampler import RandomFourierFeatureTrajectorySampler
@@ -49,7 +55,32 @@ from .utils import (
 )
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
+class SupportsCovarianceBetweenPoints(SupportsPredictJoint):
+    """A probabilistic model that supports covariance_between_points."""
+
+    @abstractmethod
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+        raise NotImplementedError
+
+
+class GaussianProcessRegression(
+    GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel, SupportsCovarianceBetweenPoints
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
