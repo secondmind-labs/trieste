@@ -19,3 +19,5 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
+gym
+box2d
