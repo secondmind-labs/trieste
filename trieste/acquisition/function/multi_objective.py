@@ -206,12 +206,12 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[ProbabilisticModel]
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
-    follows :cite:`daulton2020differentiable`
+    follows :cite:`daulton2020differentiable`, optimized in a sequential greedy way
     """
 
     def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
@@ -301,9 +301,9 @@ def batch_ehvi(
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
-        if pending_points is not None:
+        if pending_points is not None:  # jointly sample pending points and new candidate
             aug_at = tf.concat(
-                [at, tf.repeat(pending_points[tf.newaxis], tf.shape(at)[:-2], 0)], -2
+                [at, tf.repeat(pending_points[tf.newaxis], tf.shape(at)[:-2], axis=0)], axis=-2
             )
             samples = sampler.sample(aug_at, jitter=sampler_jitter)  # [..., S, B, num_obj]
         else:
