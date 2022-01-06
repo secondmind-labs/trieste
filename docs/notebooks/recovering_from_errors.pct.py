@@ -76,7 +76,11 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 15
 result, history = bo.optimize(
-    num_steps, initial_data, model, acquisition_rule
+    num_steps,
+    initial_data,
+    model,
+    acquisition_rule,
+    None,
 ).astuple()
 
 # %% [markdown]
@@ -109,7 +113,7 @@ if result.is_err:
         15 - len(history),
         history[-1].dataset,
         history[-1].model,
-        acquisition_rule,  # type: ignore
+        acquisition_rule,
         history[-1].acquisition_state,
     ).astuple()
 
