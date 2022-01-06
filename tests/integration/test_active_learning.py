@@ -66,7 +66,7 @@ def test_optimizer_learns_scaled_branin_function(
 
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> TrainableProbabilisticModel:
+    def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
         prior_scale = tf.cast(1.0, dtype=tf.float64)
@@ -96,7 +96,7 @@ def test_optimizer_learns_scaled_branin_function(
     # we expect a model with initial data to fail the criterion
     initial_model = build_model(initial_data)
     initial_model.optimize(initial_data)
-    initial_predicted_means, _ = initial_model.model.predict_f(test_query_points)  # type: ignore
+    initial_predicted_means, _ = initial_model.model.predict_f(test_query_points)
     initial_accuracy = tf.reduce_max(tf.abs(initial_predicted_means - test_data.observations))
 
     assert not initial_accuracy < criterion
@@ -104,7 +104,7 @@ def test_optimizer_learns_scaled_branin_function(
     # after active learning the model should be much more accurate
     model = build_model(initial_data)
     final_model = (
-        BayesianOptimizer(observer, search_space, GaussianProcessRegression)
+        BayesianOptimizer(observer, search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_model()
     )

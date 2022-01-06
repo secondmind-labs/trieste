@@ -7,6 +7,8 @@ from __future__ import annotations
 import numpy as np
 import tensorflow as tf
 
+from trieste.models import TrainableProbabilisticModel
+
 np.random.seed(1234)
 tf.random.set_seed(1234)
 
@@ -131,7 +133,7 @@ from trieste.models.gpflow.models import (
 )
 from trieste.models.optimizer import BatchOptimizer
 
-models: dict[str, trieste.models.ModelSpec] = {
+models: dict[str, TrainableProbabilisticModel] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(
         classification_model,

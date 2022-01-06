@@ -292,7 +292,7 @@ def _test_optimizer_finds_minimum(
         with tensorboard_writer(summary_writer):
 
             dataset = (
-                BayesianOptimizer(observer, search_space, type(model))
+                BayesianOptimizer(observer, search_space)
                 .optimize(num_steps or 2, initial_data, model, acquisition_rule)
                 .try_get_final_dataset()
             )
@@ -369,7 +369,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
     initial_data = observer(initial_query_points)
     model = build_model(initial_data[OBJECTIVE])
     dataset = (
-        BayesianOptimizer(observer, search_space, type(model))
+        BayesianOptimizer(observer, search_space)
         .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule, track_state=False)
         .try_get_final_dataset()
     )

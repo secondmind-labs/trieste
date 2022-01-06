@@ -22,7 +22,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Type, TypeVar, cast, overload
+from typing import Dict, Generic, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
@@ -32,6 +32,7 @@ from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
+from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
@@ -152,33 +153,14 @@ class OptimizationResult(Generic[S]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
 
-class BayesianOptimizer(Generic[SP, M_contra]):
+class BayesianOptimizer(Generic[SP]):
     """
     This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    @overload
-    def __init__(
-        self: "BayesianOptimizer[SP, TrainableProbabilisticModel]",
-        observer: Observer,
-        search_space: SP,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: "BayesianOptimizer[SP, M_contra]",
-        observer: Observer,
-        search_space: SP,
-        model_type: Type[M_contra],
-    ):
-        ...
-
-    def __init__(
-        self, observer: Observer, search_space: SP, model_type: Any = TrainableProbabilisticModel
-    ):
+    def __init__(self, observer: Observer, search_space: SP):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -189,7 +171,6 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         """
         self._observer = observer
         self._search_space = search_space
-        self._model_type = model_type
 
     def __repr__(self) -> str:
         """"""
@@ -212,7 +193,7 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        model_specs: Mapping[str, M_contra],
         acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
@@ -228,7 +209,39 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+        # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
+        # checker can't differentiate between TensorType and State[S | None, TensorType], and
+        # the return types clash. object is close enough to None that object will do.
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, M_contra],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
         acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
@@ -254,7 +267,7 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
+        model_specs: M_contra,
         acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
@@ -267,7 +280,34 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: M_contra,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelConfigType,
         acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
@@ -280,7 +320,7 @@ class BayesianOptimizer(Generic[SP, M_contra]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        model_specs: Mapping[str, M_contra] | Mapping[str, ModelSpec] | M_contra | ModelConfigType,
         acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP, M_contra]
         | None = None,
         acquisition_state: S | None = None,
@@ -375,14 +415,9 @@ class BayesianOptimizer(Generic[SP, M_contra]):
 
             acquisition_rule = EfficientGlobalOptimization[SP, M_contra]()
 
+        # note that this cast is justified for explicit models but not for models created
+        # from config, which can't be statically type checked; those will fail at runtime instead
         models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
-        for model in models.values():
-            if not isinstance(model, self._model_type):
-                raise ValueError(
-                    f"BayesianOptimizer instance expects models of type "
-                    f"{self._model_type}, got {model}"
-                )
-
         history: list[Record[S]] = []
 
         for step in range(num_steps):

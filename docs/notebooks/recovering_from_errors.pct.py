@@ -109,7 +109,7 @@ if result.is_err:
         15 - len(history),
         history[-1].dataset,
         history[-1].model,
-        acquisition_rule,
+        acquisition_rule,  # type: ignore
         history[-1].acquisition_state,
     ).astuple()
 

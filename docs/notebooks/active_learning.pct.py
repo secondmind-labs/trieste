@@ -88,9 +88,7 @@ from trieste.acquisition.rule import EfficientGlobalOptimization
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(builder=acq)  # type: ignore
-bo = trieste.bayesian_optimizer.BayesianOptimizer(
-    observer, search_space, GaussianProcessRegression
-)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 # %% [markdown]
 # To plot the contour of variance of our model at each step, we can set the `track_state` parameter to `True` in `bo.optimize()`, this will make Trieste record our model at each iteration.
