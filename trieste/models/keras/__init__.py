@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
+"""
+This package contains the primary interface for deep neural network models. It also contains a
+number of :class:`TrainableProbabilisticModel` wrappers for neural network models. Note that
+currently copying/saving models is not supported, so when
+:class:`~trieste.bayesian_optimizer.BayesianOptimizer` is used ``track_state`` should be set
+to `False`. We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with
+the Trieste toolbox.
+"""
 
-import gpflow
-
-from trieste.models.optimizer import BatchOptimizer, Optimizer, create_optimizer
-
-
-def test_create_optimizer_scipy_produces_correct_optimizer() -> None:
-    optim = create_optimizer(gpflow.optimizers.Scipy(), {})
-    assert isinstance(optim, Optimizer) and not isinstance(optim, BatchOptimizer)
+from .interface import NeuralNetworkPredictor
+from .utils import get_tensor_spec_from_data, sample_with_replacement

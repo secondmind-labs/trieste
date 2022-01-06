@@ -107,6 +107,7 @@ class DiscreteSearchSpace(SearchSpace):
         :param points: The points that define the discrete space, with shape ('N', 'D').
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.
         """
+
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
         self._dimension = tf.shape(self._points)[-1]
@@ -457,7 +458,7 @@ class TaggedProductSearchSpace(SearchSpace):
     @property
     def dimension(self) -> int:
         """The number of inputs in this product search space."""
-        return self._dimension
+        return int(self._dimension)
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """
@@ -566,3 +567,6 @@ class TaggedProductSearchSpace(SearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
+        return self

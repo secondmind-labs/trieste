@@ -31,7 +31,7 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.interfaces import ModelStack
+from trieste.models.interfaces import TrainableModelStack
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -86,7 +86,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
-    def build_stacked_independent_objectives_model(data: Dataset) -> ModelStack:
+    def build_stacked_independent_objectives_model(data: Dataset) -> TrainableModelStack:
         gprs = []
         for idx in range(2):
             single_obj_data = Dataset(
@@ -98,7 +98,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
             gpflow.utilities.set_trainable(gpr.likelihood, False)
             gprs.append((GaussianProcessRegression(gpr), 1))
 
-        return ModelStack(*gprs)
+        return TrainableModelStack(*gprs)
 
     observer = mk_observer(VLMOP2().objective(), OBJECTIVE)
 

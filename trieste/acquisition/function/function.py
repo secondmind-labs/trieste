@@ -24,6 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import (
@@ -31,11 +32,11 @@ from ..interface import (
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
     SingleModelAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
 )
-from ..sampler import BatchReparametrizationSampler
 
 
-class ExpectedImprovement(SingleModelAcquisitionBuilder):
+class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
@@ -122,7 +123,7 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder):
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -231,7 +232,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         return expected_improvement * augmentation
 
 
-class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
+class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the negative of the lower confidence bound. The lower confidence bound is typically
     minimised, so the negative is suitable for maximisation.
@@ -324,7 +325,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     return acquisition
 
 
-class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
+class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the :func:`probability_of_feasibility` acquisition function, defined in
     :cite:`gardner14` as
@@ -422,7 +423,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModel]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -433,7 +434,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder,
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -584,11 +585,10 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
-
     Improvement is measured with respect to the minimum predictive mean at observed query points.
     This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
     at new points are independent from those at known query points. This is faster, but is an
@@ -664,8 +664,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
         """
-
-        :param sampler:  BatchReparametrizationSampler.
+        :param sample_size: The number of Monte-Carlo samples.
+        :param model: The model of the objective function.
+        :param sampler:  ReparametrizationSampler.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
@@ -674,14 +675,25 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
             greater than one.
         """
         self._sample_size = sample_size
-        self._sampler = BatchReparametrizationSampler(sample_size, model)
+
+        try:
+            sampler = model.reparam_sampler(self._sample_size)
+        except (NotImplementedError):
+            raise ValueError(
+                """
+                The batch Monte-Carlo expected improvement acquisition function
+                only supports models that implement a reparam_sampler method.
+                """
+            )
+
+        self._sampler = sampler
         self._eta = tf.Variable(eta)
         self._jitter = jitter
 
     def update(self, eta: TensorType) -> None:
-        """Update the acquisition function with a new eta value."""
+        """Update the acquisition function with a new eta value and reset the reparam sampler."""
         self._eta.assign(eta)
-        self._sampler._initialized.assign(False)
+        self._sampler.reset_sampler()
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -691,22 +703,25 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
 
-class PredictiveVariance(SingleModelAcquisitionBuilder):
+class MultipleOptimismNegativeLowerConfidenceBound(
+    SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]
+):
     """
-    Builder for the determinant of the predictive covariance matrix over the batch points.
-    For a batch of size 1 it is the same as maximizing the predictive variance.
+    A simple parallelization of the lower confidence bound acquisition function that produces
+    a vectorized acquisition function which can efficiently optimized even for large batches.
+
+    See :cite:`torossian2020bayesian` for details.
     """
 
-    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+    def __init__(self, search_space: SearchSpace):
         """
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+        :param search_space: The global search space over which the optimisation is defined.
         """
-        self._jitter = jitter
+        self._search_space = search_space
 
     def __repr__(self) -> str:
         """"""
-        return f"PredictiveVariance(jitter={self._jitter!r})"
+        return f"MultipleOptimismNegativeLowerConfidenceBound({self._search_space!r})"
 
     def prepare_acquisition_function(
         self,
@@ -716,11 +731,9 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         """
         :param model: The model.
         :param dataset: Unused.
-
-        :return: The determinant of the predictive function.
+        :return: The multiple optimism negative lower confidence bound function.
         """
-
-        return predictive_variance(model, self._jitter)
+        return multiple_optimism_lower_confidence_bound(model, self._search_space.dimension)
 
     def update_acquisition_function(
         self,
@@ -733,32 +746,63 @@ class PredictiveVariance(SingleModelAcquisitionBuilder):
         :param model: The model.
         :param dataset: Unused.
         """
-        return function  # no need to update anything
+        tf.debugging.Assert(isinstance(function, multiple_optimism_lower_confidence_bound), [])
+        return function  # nothing to update
 
 
-def predictive_variance(model: ProbabilisticModel, jitter: float) -> TensorType:
+class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
+    r"""
+    The multiple optimism lower confidence bound (MOLCB) acquisition function for single-objective
+    global optimization.
+
+    Each batch dimension of this acquisiton function correponds to a lower confidence bound
+    acquisition function with different beta values, i.e. each point in a batch chosen by this
+    acquisition function lies on a gradient of exploration/exploitation trade-offs.
+
+    We choose the different beta values following the cdf method of :cite:`torossian2020bayesian`.
+    See their paper for more details.
     """
-    The predictive variance acquisition function for active learning, based on
-    the determinant of the covariance (see :cite:`MacKay1992` for details).
-    Note that the model needs to supply covariance of the joint marginal distribution,
-    which can be expensive to compute.
 
-    :param model: The model of the objective function.
-    :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-    """
+    def __init__(self, model: ProbabilisticModel, search_space_dim: int):
+        """
+        :param model: The model of the objective function.
+        :param search_space_dim: The dimensions of the optimisation problem's search space.
+        :raise tf.errors.InvalidArgumentError: If ``search_space_dim`` is not postive.
+        """
+
+        tf.debugging.assert_positive(search_space_dim)
+        self._search_space_dim = search_space_dim
+
+        self._model = model
+        self._initialized = tf.Variable(False)  # Keep track of when we need to resample
+        self._betas = tf.Variable(tf.ones([0], dtype=tf.float64), shape=[None])  # [0] lazy init
 
     @tf.function
-    def acquisition(x: TensorType) -> TensorType:
+    def __call__(self, x: TensorType) -> TensorType:
 
-        try:
-            _, covariance = model.predict_joint(x)
-        except NotImplementedError:
-            raise ValueError(
-                """
-                PredictiveVariance only supports models with a predict_joint method.
-                """
+        batch_size = tf.shape(x)[-2]
+        tf.debugging.assert_positive(batch_size)
+
+        if self._initialized:  # check batch size hasnt changed during BO
+            tf.debugging.assert_equal(
+                batch_size,
+                tf.shape(self._betas)[0],
+                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
+                f" but previous batch size was {tf.shape(self._betas)[0]}.",
             )
-        return tf.exp(tf.linalg.logdet(covariance + jitter))
 
-    return acquisition
+        if not self._initialized:
+            normal = tfp.distributions.Normal(
+                tf.cast(0.0, dtype=x.dtype), tf.cast(1.0, dtype=x.dtype)
+            )
+            spread = 0.5 + 0.5 * tf.range(1, batch_size + 1, dtype=x.dtype) / (
+                tf.cast(batch_size, dtype=x.dtype) + 1.0
+            )  # [B]
+            betas = normal.quantile(spread)  # [B]
+            scaled_betas = 5.0 * tf.cast(self._search_space_dim, dtype=x.dtype) * betas  # [B]
+            self._betas.assign(scaled_betas)  # [B]
+            self._initialized.assign(True)
+
+        mean, variance = self._model.predict(x)  # [..., B, 1]
+        mean, variance = tf.squeeze(mean, -1), tf.squeeze(variance, -1)
+        return -mean + tf.sqrt(variance) * self._betas  # [..., B]

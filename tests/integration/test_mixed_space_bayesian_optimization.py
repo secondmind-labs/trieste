@@ -25,7 +25,7 @@ from tests.util.misc import random_seed
 from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
 )
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -65,7 +65,7 @@ from trieste.types import TensorType
             (
                 5,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -79,7 +79,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     acquisition_rule: AcquisitionRule[TensorType, TaggedProductSearchSpace],
 ) -> None:
     search_space = TaggedProductSearchSpace(
-        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 20)[:, None])],
+        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
         tags=["continuous", "discrete"],
     )
 
@@ -120,7 +120,8 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
 
     # check that acquisition functions defined as classes aren't being retraced unnecessarily
+    # They should be retraced once for the optimzier's starting grid and once for L-BFGS.
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
         if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() == 3  # type: ignore
+            assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore

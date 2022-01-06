@@ -23,7 +23,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
+from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import (
@@ -37,11 +37,10 @@ from ..multi_objective.pareto import (
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
-from ..sampler import BatchReparametrizationSampler
 from .function import ExpectedConstrainedImprovement
 
 
-class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
@@ -206,7 +205,9 @@ class expected_hv_improvement(AcquisitionFunctionClass):
         )
 
 
-class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisitionBuilder):
+class BatchMonteCarloExpectedHypervolumeImprovement(
+    SingleModelAcquisitionBuilder[ProbabilisticModel]
+):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
@@ -260,13 +261,21 @@ class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelGreedyAcquisition
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
-        sampler = BatchReparametrizationSampler(self._sample_size, model)
+        try:
+            sampler = model.reparam_sampler(self._sample_size)
+        except (NotImplementedError):
+            raise ValueError(
+                """
+                The batch Monte-Carlo expected hyper-volume improvment acquisition function
+                only supports models that implement a reparam_sampler method.
+                """
+            )
 
         return batch_ehvi(sampler, self._jitter, _partition_bounds, pending_points=pending_points)
 
 
 def batch_ehvi(
-    sampler: BatchReparametrizationSampler,
+    sampler: ReparametrizationSampler,
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
     pending_points: Optional[TensorType] = None,

@@ -17,9 +17,9 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.objectives import branin, BRANIN_MINIMUM
+from trieste.objectives import branin, BRANIN_MINIMUM, BRANIN_SEARCH_SPACE
 
-search_space = trieste.space.Box([0, 0], [1, 1])
+search_space = BRANIN_SEARCH_SPACE
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
@@ -27,26 +27,20 @@ observer = trieste.objectives.utils.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
-# We'll use Gaussian process regression to model the function.
+# We'll use Gaussian process regression to model the function, as implemented in GPflow. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models.gpflow import GPflowModelConfig
+from trieste.models.gpflow.models import GaussianProcessRegression
 
 observations = initial_data.observations
-kernel = gpflow.kernels.Matern52(tf.math.reduce_variance(observations), [0.2, 0.2])
-gpr = gpflow.models.GPR(
-    initial_data.astuple(), kernel, noise_variance=1e-5
+kernel = gpflow.kernels.Matern52(
+    tf.math.reduce_variance(observations), [0.2, 0.2]
 )
+gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
 gpflow.set_trainable(gpr.likelihood, False)
 
-model_config = GPflowModelConfig(**{
-    "model": gpr,
-    "optimizer": gpflow.optimizers.Scipy(),
-    "optimizer_args": {
-        "minimize_args": {"options": dict(maxiter=100)},
-    },
-})
+model = GaussianProcessRegression(gpr)
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule
@@ -57,7 +51,8 @@ model_config = GPflowModelConfig(**{
 num_search_space_samples = 1000
 num_query_points = 10
 acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
-    num_search_space_samples=num_search_space_samples, num_query_points=num_query_points
+    num_search_space_samples=num_search_space_samples,
+    num_query_points=num_query_points,
 )
 
 # %% [markdown]
@@ -69,7 +64,9 @@ acq_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
-result = bo.optimize(num_steps, initial_data, model_config, acq_rule, track_state=False)
+result = bo.optimize(
+    num_steps, initial_data, model, acq_rule, track_state=False
+)
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
@@ -84,7 +81,11 @@ arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 _, ax = plot_function_2d(
-    branin, search_space.lower, search_space.upper, grid_density=30, contour=True
+    branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+    contour=True,
 )
 
 plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
@@ -96,10 +97,10 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
 
 fig = plot_gp_plotly(
-    result.try_get_final_model().model, # type: ignore
+    result.try_get_final_model().model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=30
+    grid_density=30,
 )
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
