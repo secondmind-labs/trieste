@@ -38,10 +38,7 @@ def test_build_gpr_returns_correct_model(trainable_likelihood: bool, kernel_prio
 
     assert isinstance(model, GPR)
     assert model.data == (qp, obs)
-    if trainable_likelihood:
-        assert len(model.likelihood.trainable_variables) > 0
-    else:
-        assert len(model.likelihood.trainable_variables) == 0
+    assert model.likelihood.variance.trainable == trainable_likelihood
     assert isinstance(model.kernel, gpflow.kernels.Matern52)
     if kernel_priors:
         assert model.kernel.variance.prior is not None

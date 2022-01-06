@@ -62,9 +62,7 @@ def build_gpr(data: Dataset, trainable_likelihood: bool = False, kernel_priors: 
 
     model = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
 
-    if trainable_likelihood:
-        gpflow.set_trainable(model.likelihood, True)
-    else:
+    if not trainable_likelihood:
         gpflow.set_trainable(model.likelihood, False)
 
     return model
@@ -85,13 +83,11 @@ def build_sgpr(
     if search_space:
         inducing_points = search_space.sample_sobol(num_data)
     else:
-        inducing_points = data.query_points[:2]
+        inducing_points = data.query_points[:num_data, :]
 
     model = gpflow.models.SGPR(data.astuple(), kernel, inducing_points, noise_variance=1e-5)
 
-    if trainable_likelihood:
-        gpflow.set_trainable(model.likelihood, True)
-    else:
+    if not trainable_likelihood:
         gpflow.set_trainable(model.likelihood, False)
 
     if not trainable_inducing_points:
@@ -109,9 +105,7 @@ def build_vgp(data: Dataset, trainable_likelihood: bool = False) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian(variance=1e-5)
     model = gpflow.models.VGP(data.astuple(), kernel, likelihood)
 
-    if trainable_likelihood:
-        gpflow.set_trainable(model.likelihood, True)
-    else:
+    if not trainable_likelihood:
         gpflow.set_trainable(model.likelihood, False)
 
     return model
@@ -126,9 +120,7 @@ def build_vgp_classification(data: Dataset, trainable_likelihood: bool = False) 
     likelihood = gpflow.likelihoods.Bernoulli()
     model = gpflow.models.VGP(data.astuple(), kernel, likelihood)
 
-    if trainable_likelihood:
-        gpflow.set_trainable(model.likelihood, True)
-    else:
+    if not trainable_likelihood:
         gpflow.set_trainable(model.likelihood, False)
 
     return model
@@ -149,7 +141,7 @@ def build_svgp(
     if search_space:
         inducing_points = search_space.sample_sobol(num_data)
     else:
-        inducing_points = data.query_points[:2]
+        inducing_points = data.query_points[:num_data, :]
 
     model = SVGP(
         kernel,
@@ -158,9 +150,7 @@ def build_svgp(
         num_data=num_data,
     )
 
-    if trainable_likelihood:
-        gpflow.set_trainable(model.likelihood, True)
-    else:
+    if not trainable_likelihood:
         gpflow.set_trainable(model.likelihood, False)
 
     if not trainable_inducing_points:
