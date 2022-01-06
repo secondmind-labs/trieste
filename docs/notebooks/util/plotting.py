@@ -41,7 +41,7 @@ def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     return Xplot, xx, yy
 
 
-def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
+def plot_surface(xx, yy, f, ax, contour=False, fill=False, alpha=1.0):
     """
     Adds either a contour or a surface to a given ax
     :param xx: input 1, from meshgrid
@@ -54,7 +54,10 @@ def plot_surface(xx, yy, f, ax, contour=False, alpha=1.0):
     """
 
     if contour:
-        return ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        if fill:
+            return ax.contourf(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
+        else:
+            return ax.contour(xx, yy, f.reshape(*xx.shape), 80, alpha=alpha)
     else:
         return ax.plot_surface(
             xx,
@@ -79,6 +82,8 @@ def plot_function_2d(
     ylabel=None,
     figsize=None,
     colorbar=False,
+    alpha=1.0,
+    fill=False,
 ):
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
@@ -93,6 +98,7 @@ def plot_function_2d(
     :param ylabel:
     :param figsize:
     :param colorbar
+    :param alpha: transparency
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -126,7 +132,7 @@ def plot_function_2d(
         else:
             ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")
 
-        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=1.0)
+        plt_obj = plot_surface(xx, yy, f, axx, contour=contour, alpha=alpha, fill=fill)
         if title is not None:
             axx.set_title(title[k])
         if colorbar:
@@ -150,6 +156,8 @@ def plot_acq_function_2d(
     xlabel=None,
     ylabel=None,
     figsize=None,
+    colorbar=None,
+    fill=False,
 ):
     """
     Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
@@ -169,7 +177,18 @@ def plot_acq_function_2d(
         return acq_func(tf.expand_dims(x, axis=-2))
 
     return plot_function_2d(
-        batched_func, mins, maxs, grid_density, contour, log, title, xlabel, ylabel, figsize
+        batched_func,
+        mins,
+        maxs,
+        grid_density,
+        contour,
+        log,
+        title,
+        xlabel,
+        ylabel,
+        figsize,
+        colorbar,
+        fill=fill,
     )
 
 

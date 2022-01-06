@@ -33,17 +33,12 @@ from ..interface import (
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
-from ..sampler import (
-    ExactThompsonSampler,
-    GumbelSampler,
-    RandomFourierFeatureThompsonSampler,
-    ThompsonSampler,
-)
+from ..sampler import ExactThompsonSampler, ThompsonSampler
 
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -61,8 +56,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = True,
-        num_fourier_features: Optional[int] = None,
+        min_value_sampler: Optional[ThompsonSampler] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -70,29 +64,29 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             objective function.
         :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
-        :param use_thompson: If True then use Thompson sampling to sample the objective's
-            minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of Fourier features used for approximate Thompson
-            sampling. If None, then do exact Thompson sampling.
+        :param min_value_sampler: Sampler which samples minimum values.
         :raise tf.errors.InvalidArgumentError: If
 
-            - ``num_samples`` or ``grid_size`` are negative, or if
-            - ``num_fourier_features`` is negative or zero
-            - ``num_fourier_features`` is specified an ``use_thompson`` is `False`
+            - ``num_samples`` or ``grid_size`` are negative.
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if num_fourier_features is not None:
-            tf.debugging.Assert(use_thompson, [])
-            tf.debugging.assert_positive(num_fourier_features)
+        if min_value_sampler is not None:
+            if not min_value_sampler.sample_min_value:
+                raise ValueError(
+                    """
+                    Minvalue Entropy Search requires a min_value_sampler that samples minimum
+                    values, however the passed sampler has sample_min_value=False.
+                    """
+                )
+        else:
+            min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
+        self._min_value_sampler = min_value_sampler
         self._search_space = search_space
         self._num_samples = num_samples
         self._grid_size = grid_size
-
-        self._use_thompson = use_thompson
-        self._num_fourier_features = num_fourier_features
 
     def prepare_acquisition_function(
         self,
@@ -114,14 +108,8 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = _get_min_value_samples(
-            model,
-            dataset,
-            sampled_points=query_points,
-            num_samples=self._num_samples,
-            use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
-        )
+        min_value_samples = self._min_value_sampler.sample(model, self._num_samples, query_points)
+
         return min_value_entropy_search(model, min_value_samples)
 
     def update_acquisition_function(
@@ -143,14 +131,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        min_value_samples = _get_min_value_samples(
-            model,
-            dataset,
-            sampled_points=query_points,
-            num_samples=self._num_samples,
-            use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
-        )
+        min_value_samples = self._min_value_sampler.sample(model, self._num_samples, query_points)
         function.update(min_value_samples)  # type: ignore
         return function
 
@@ -205,7 +186,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -225,8 +206,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        use_thompson: bool = True,
-        num_fourier_features: Optional[int] = None,
+        min_value_sampler: Optional[ThompsonSampler] = None,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -235,32 +215,32 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
             the objective function.
         :param grid_size: Size of the grid from which to sample the min-values. We recommend
             scaling this with search space dimension.
-        :param use_thompson: If True then use Thompson sampling to sample the objective's
-            minimum, else use Gumbel sampling.
-        :param num_fourier_features: Number of Fourier features used for approximate Thompson
-            sampling. If None, then do exact Thompson sampling.
+        :param min_value_sampler: Sampler which samples minimum values.
         :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
             batch optimization performance.
         :raise tf.errors.InvalidArgumentError: If
 
             - ``num_samples`` is not positive, or
-            - ``grid_size`` is not positive, or
-            - ``num_fourier_features`` is negative or zero, or
-            - ``num_fourier_features`` is specified and ``use_thompson`` is `False`
+            - ``grid_size`` is not positive.
         """
         tf.debugging.assert_positive(num_samples)
         tf.debugging.assert_positive(grid_size)
 
-        if num_fourier_features is not None:
-            tf.debugging.Assert(use_thompson, [])
-            tf.debugging.assert_positive(num_fourier_features)
+        if min_value_sampler is not None:
+            if not min_value_sampler.sample_min_value:
+                raise ValueError(
+                    """
+                    GIBBON requires a min_value_sampler that samples minimum values,
+                    however the passed sampler has sample_min_value=False.
+                    """
+                )
+        else:
+            min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
+        self._min_value_sampler = min_value_sampler
         self._search_space = search_space
         self._num_samples = num_samples
         self._grid_size = grid_size
-
-        self._use_thompson = use_thompson
-        self._num_fourier_features = num_fourier_features
         self._rescaled_repulsion = rescaled_repulsion
 
         self._min_value_samples: Optional[TensorType] = None
@@ -362,13 +342,8 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        self._min_value_samples = _get_min_value_samples(
-            model,
-            dataset,
-            sampled_points=query_points,
-            num_samples=self._num_samples,
-            use_thompson=self._use_thompson,
-            num_fourier_features=self._num_fourier_features,
+        self._min_value_samples = self._min_value_sampler.sample(
+            model, self._num_samples, query_points
         )
 
         if self._quality_term is not None:  # if possible, just update the quality term
@@ -537,14 +512,22 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         yvar = fvar + noise_variance  # need predictive variance of observations
 
         _, B = self._model.predict_joint(self._pending_points)  # [1, m, m]
-        L = tf.linalg.cholesky(
-            B + noise_variance * tf.eye(len(self._pending_points), dtype=B.dtype)
+
+        B_shape = tf.shape(B)
+        noise = noise_variance * tf.eye(
+            B_shape[-2], batch_shape=B_shape[:-2], dtype=B.dtype
         )  # need predictive variance of observations
-        A = tf.expand_dims(
-            self._model.covariance_between_points(  # type: ignore
-                tf.squeeze(x, -2), self._pending_points
+
+        L = tf.linalg.cholesky(B + noise)
+
+        A = tf.squeeze(
+            tf.expand_dims(
+                self._model.covariance_between_points(  # type: ignore
+                    tf.squeeze(x, -2), self._pending_points
+                ),
+                axis=-1,
             ),
-            -1,
+            axis=0,
         )  # [N, m, 1]
         L_inv_A = tf.linalg.triangular_solve(L, A)
         V_det = yvar - tf.squeeze(
@@ -559,28 +542,3 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
             repulsion_weight = 1.0
 
         return repulsion_weight * repulsion
-
-
-def _get_min_value_samples(
-    model: ProbabilisticModel,
-    dataset: Dataset,
-    sampled_points: TensorType,
-    num_samples: int,
-    use_thompson: bool,
-    num_fourier_features: Optional[int] = None,
-) -> TensorType:
-
-    if not use_thompson:  # use Gumbel sampler
-        sampler: ThompsonSampler = GumbelSampler(num_samples, model)
-    elif num_fourier_features is not None:  # use approximate Thompson sampler
-        sampler = RandomFourierFeatureThompsonSampler(
-            num_samples,
-            model,
-            dataset,
-            sample_min_value=True,
-            num_features=num_fourier_features,
-        )
-    else:  # use exact Thompson sampler
-        sampler = ExactThompsonSampler(num_samples, model, sample_min_value=True)
-
-    return sampler.sample(sampled_points)

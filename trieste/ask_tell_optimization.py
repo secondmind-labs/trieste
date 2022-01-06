@@ -155,8 +155,7 @@ class AskTellOptimizer(Generic[SP]):
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            # ignore below is due to MyPy not being able to handle overloads properly
-            model_specs = {OBJECTIVE: model_specs}  # type: ignore
+            model_specs = {OBJECTIVE: model_specs}
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)

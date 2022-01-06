@@ -18,7 +18,7 @@ the utility of evaluating sets of candidate points.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Optional
+from typing import Callable, Generic, Mapping, Optional, TypeVar
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -49,13 +49,16 @@ class AcquisitionFunctionClass(ABC):
         """Call acquisition function."""
 
 
-class AcquisitionFunctionBuilder(ABC):
+T = TypeVar("T", bound=ProbabilisticModel)
+
+
+class AcquisitionFunctionBuilder(Generic[T], ABC):
     """An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function."""
 
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, T],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -70,7 +73,7 @@ class AcquisitionFunctionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, T],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -87,13 +90,13 @@ class AcquisitionFunctionBuilder(ABC):
         return self.prepare_acquisition_function(models, datasets=datasets)
 
 
-class SingleModelAcquisitionBuilder(ABC):
+class SingleModelAcquisitionBuilder(Generic[T], ABC):
     """
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> AcquisitionFunctionBuilder:
+    def using(self, tag: str) -> AcquisitionFunctionBuilder[T]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -101,10 +104,10 @@ class SingleModelAcquisitionBuilder(ABC):
         """
         single_builder = self
 
-        class _Anon(AcquisitionFunctionBuilder):
+        class _Anon(AcquisitionFunctionBuilder[T]):
             def prepare_acquisition_function(
                 self,
-                models: Mapping[str, ProbabilisticModel],
+                models: Mapping[str, T],
                 datasets: Optional[Mapping[str, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(
@@ -114,7 +117,7 @@ class SingleModelAcquisitionBuilder(ABC):
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                models: Mapping[str, ProbabilisticModel],
+                models: Mapping[str, T],
                 datasets: Optional[Mapping[str, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return single_builder.update_acquisition_function(
@@ -129,7 +132,7 @@ class SingleModelAcquisitionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -141,7 +144,7 @@ class SingleModelAcquisitionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -153,12 +156,12 @@ class SingleModelAcquisitionBuilder(ABC):
         return self.prepare_acquisition_function(model, dataset=dataset)
 
 
-class GreedyAcquisitionFunctionBuilder(ABC):
+class GreedyAcquisitionFunctionBuilder(Generic[T], ABC):
     """
     A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function
     suitable for greedily building batches for batch Bayesian
-    Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
-    from :class:`AcquisitionFunctionBuilder` by requiring that a set
+    Optimization. A :class:`GreedyAcquisitionFunctionBuilder` differs
+    from an :class:`AcquisitionFunctionBuilder` by requiring that a set
     of pending points is passed to the builder. Note that this acquisition function
     is typically called `B` times each Bayesian optimization step, when building batches
     of size `B`.
@@ -167,13 +170,13 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, T],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
         Generate a new acquisition function. The first time this is called, ``pending_points``
-        will be `None`. Subsequent calls will be via ``update_acquisition_funcion`` below,
+        will be `None`. Subsequent calls will be via ``update_acquisition_function`` below,
         unless that has been overridden.
 
         :param models: The models over each tag.
@@ -186,7 +189,7 @@ class GreedyAcquisitionFunctionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, T],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -212,13 +215,13 @@ class GreedyAcquisitionFunctionBuilder(ABC):
         )
 
 
-class SingleModelGreedyAcquisitionBuilder(ABC):
+class SingleModelGreedyAcquisitionBuilder(Generic[T], ABC):
     """
     Convenience acquisition function builder for a greedy acquisition function (or component of a
     composite greedy acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder:
+    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder[T]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -226,10 +229,10 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
         """
         single_builder = self
 
-        class _Anon(GreedyAcquisitionFunctionBuilder):
+        class _Anon(GreedyAcquisitionFunctionBuilder[T]):
             def prepare_acquisition_function(
                 self,
-                models: Mapping[str, ProbabilisticModel],
+                models: Mapping[str, T],
                 datasets: Optional[Mapping[str, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
             ) -> AcquisitionFunction:
@@ -242,7 +245,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                models: Mapping[str, ProbabilisticModel],
+                models: Mapping[str, T],
                 datasets: Optional[Mapping[str, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
                 new_optimization_step: bool = True,
@@ -263,7 +266,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -278,7 +281,7 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -299,6 +302,55 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
             dataset=dataset,
             pending_points=pending_points,
         )
+
+
+class VectorizedAcquisitionFunctionBuilder(AcquisitionFunctionBuilder[T]):
+    """
+    An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized
+    acquisition function These differ from normal acquisition functions only by their output shape:
+    rather than returning a single value, they return one value per potential query point.
+    Thus, with leading dimensions, they take input shape `[..., B, D]` and returns shape `[..., B]`.
+    """
+
+
+class SingleModelVectorizedAcquisitionBuilder(SingleModelAcquisitionBuilder[T]):
+    """
+    Convenience acquisition function builder for vectorized acquisition functions (or component
+    of a composite vectorized acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: str) -> AcquisitionFunctionBuilder[T]:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+        single_builder = self
+
+        class _Anon(VectorizedAcquisitionFunctionBuilder[T]):
+            def prepare_acquisition_function(
+                self,
+                models: Mapping[str, T],
+                datasets: Optional[Mapping[str, Dataset]] = None,
+            ) -> AcquisitionFunction:
+                return single_builder.prepare_acquisition_function(
+                    models[tag], dataset=None if datasets is None else datasets[tag]
+                )
+
+            def update_acquisition_function(
+                self,
+                function: AcquisitionFunction,
+                models: Mapping[str, T],
+                datasets: Optional[Mapping[str, Dataset]] = None,
+            ) -> AcquisitionFunction:
+                return single_builder.update_acquisition_function(
+                    function, models[tag], dataset=None if datasets is None else datasets[tag]
+                )
+
+            def __repr__(self) -> str:
+                return f"{single_builder!r} using tag {tag!r}"
+
+        return _Anon()
 
 
 PenalizationFunction = Callable[[TensorType], TensorType]

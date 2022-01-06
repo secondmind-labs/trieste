@@ -13,26 +13,14 @@
 # limitations under the License.
 
 r"""
-This module contains GPflow model optimizers, registers the optimizers and GPflow specific
-loss functions.
+This module registers the GPflow specific loss functions.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
-import gpflow
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
-from ..optimizer import LossClosure, Optimizer, TrainingData, create_loss_function, create_optimizer
-
-
-@create_optimizer.register
-def _create_scipy_optimizer(
-    optimizer: gpflow.optimizers.Scipy,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_args)
+from ..optimizer import LossClosure, TrainingData, create_loss_function
 
 
 @create_loss_function.register
