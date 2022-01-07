@@ -133,6 +133,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
         :meth:`sample`, for any given :class:`DeepGaussianProcessReparamSampler` and ``at``, will
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`DeepGaussianProcessReparamSampler` instances will produce different samples.
+
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilizing the Cholesky
