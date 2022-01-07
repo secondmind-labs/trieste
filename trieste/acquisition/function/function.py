@@ -24,6 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.interfaces import SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -125,7 +126,7 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise]):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -137,7 +138,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -158,7 +159,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -177,7 +178,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
 
 
 class augmented_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+    def __init__(self, model: SupportsGetObservationNoise, eta: TensorType):
         r"""
         Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
         global optimization under homoscedastic observation noise.
@@ -200,16 +201,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         """
         self._model = model
         self._eta = tf.Variable(eta)
-
-        try:
-            self._noise_variance = tf.Variable(model.get_observation_noise())
-        except NotImplementedError:
-            raise ValueError(
-                """
-                Augmented expected improvement only currently supports homoscedastic gpflow models
-                with a likelihood.variance attribute.
-                """
-            )
+        self._noise_variance = tf.Variable(model.get_observation_noise())
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and noise variance."""

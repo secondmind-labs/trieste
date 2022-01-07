@@ -20,11 +20,11 @@ import tensorflow as tf
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import SupportsGetObservationNoise
 from ..optimizer import BatchOptimizer
 
 
-class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, tf.Module, ABC):
     """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to

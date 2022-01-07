@@ -36,8 +36,8 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
 )
-from trieste.models.gpflow.models import SupportsCovarianceBetweenPoints
-from trieste.models.interfaces import SupportsGetKernel
+from trieste.models.gpflow.models import SupportsCovarianceObservationNoise
+from trieste.models.gpflow.sampler import SupportsGetKernelObservationNoise
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -69,7 +69,7 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
-class GaussianProcess(GaussianMarginal, SupportsCovarianceBetweenPoints):
+class GaussianProcess(GaussianMarginal, SupportsCovarianceObservationNoise):
     """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
@@ -116,7 +116,7 @@ class GaussianProcessWithSamplers(GaussianProcess):
         return BatchReparametrizationSampler(num_samples, self)
 
 
-class QuadraticMeanAndRBFKernel(SupportsGetKernel, GaussianProcess):
+class QuadraticMeanAndRBFKernel(SupportsGetKernelObservationNoise, GaussianProcess):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(

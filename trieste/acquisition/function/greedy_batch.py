@@ -25,10 +25,9 @@ import tensorflow_probability as tfp
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
 from ...models.interfaces import (
-    FastPredictJointKernelModelStack,
-    FastSupportsPredictJointKernel,
     PredictJointModelStack,
     SupportsGetKernel,
+    SupportsGetObservationNoise,
     SupportsPredictJoint,
 )
 from ...observer import OBJECTIVE
@@ -364,12 +363,27 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-FastPredictsJointKernelOrStack = Union[
-    FastSupportsPredictJointKernel, FastPredictJointKernelModelStack
-]
+class FantasizerModelType(
+    FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise
+):
+    """The model requirements for the Fantasizer acquisition function."""
+
+    pass
 
 
-class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack]):
+class FantasizerModelStack(PredictJointModelStack, ModelStack[FantasizerModelType]):
+    """
+    A stack of models :class:`FantasizerModelType` models. Note that this delegates predict_joint
+    but none of the other methods.
+    """
+
+    pass
+
+
+FantasizerModelOrStack = Union[FantasizerModelType, FantasizerModelStack]
+
+
+class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
     Fantasizer allows us to perform batch Bayesian optimization with any
@@ -423,7 +437,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointKernelOrStack],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
     ) -> AcquisitionFunction:
 
@@ -439,7 +453,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointKernelOrStack],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
@@ -491,7 +505,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointKernelOrStack],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -511,7 +525,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FastPredictsJointKernelOrStack],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -534,7 +548,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack
 
 
 def _generate_fantasized_data(
-    fantasize_method: str, model: FastPredictsJointKernelOrStack, pending_points: TensorType
+    fantasize_method: str, model: FantasizerModelOrStack, pending_points: TensorType
 ) -> Dataset:
     """
     Generates "fantasized" data at pending_points depending on the chosen heuristic:
@@ -560,7 +574,7 @@ def _generate_fantasized_data(
 
 
 def _generate_fantasized_model(
-    model: FastPredictsJointKernelOrStack, fantasized_data: Dataset
+    model: FantasizerModelOrStack, fantasized_data: Dataset
 ) -> _fantasized_model | PredictJointModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
@@ -577,13 +591,13 @@ def _generate_fantasized_model(
         return _fantasized_model(model, fantasized_data)
 
 
-class _fantasized_model(SupportsPredictJoint, SupportsGetKernel):
+class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise):
     """
     Creates a new model from an existing one and additional data.
     This new model posterior is conditioned on both current model data and the additional one.
     """
 
-    def __init__(self, model: FastSupportsPredictJointKernel, fantasized_data: Dataset):
+    def __init__(self, model: FantasizerModelType, fantasized_data: Dataset):
         """
         :param model: a model, must be of class `FastUpdateModel`
         :param fantasized_data: additional dataset to condition on

@@ -40,6 +40,7 @@ from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import (
     FastUpdateModel,
+    SupportsGetObservationNoise,
     SupportsPredictJoint,
     TrainableProbabilisticModel,
     TrajectorySampler,
@@ -76,6 +77,14 @@ class SupportsCovarianceBetweenPoints(SupportsPredictJoint):
             (L being the number of latent GPs = number of output dimensions)
         """
         raise NotImplementedError
+
+
+class SupportsCovarianceObservationNoise(
+    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise
+):
+    """A model that supports both covariance_between_points and get_observation_noise."""
+
+    pass
 
 
 class GaussianProcessRegression(

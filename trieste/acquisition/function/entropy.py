@@ -23,7 +23,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow.models import SupportsCovarianceBetweenPoints
+from ...models.gpflow.models import SupportsCovarianceObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -187,7 +187,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints]):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceObservationNoise]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -251,7 +251,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints
 
     def prepare_acquisition_function(
         self,
-        model: SupportsCovarianceBetweenPoints,
+        model: SupportsCovarianceObservationNoise,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -275,7 +275,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: SupportsCovarianceBetweenPoints,
+        model: SupportsCovarianceObservationNoise,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -309,7 +309,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints
         self,
         function: Optional[AcquisitionFunction],
         dataset: Dataset,
-        model: SupportsCovarianceBetweenPoints,
+        model: SupportsCovarianceObservationNoise,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
@@ -336,7 +336,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints
             return gibbon_acquisition
 
     def _update_quality_term(
-        self, dataset: Dataset, model: SupportsCovarianceBetweenPoints
+        self, dataset: Dataset, model: SupportsCovarianceObservationNoise
     ) -> AcquisitionFunction:
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -355,7 +355,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceBetweenPoints
 
 
 class gibbon_quality_term(AcquisitionFunctionClass):
-    def __init__(self, model: SupportsCovarianceBetweenPoints, samples: TensorType):
+    def __init__(self, model: SupportsCovarianceObservationNoise, samples: TensorType):
         """
         GIBBON's quality term measures the amount of information that each individual
         batch element provides about the objective function's minimal value :math:`y^*` (ensuring
@@ -421,7 +421,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
 class gibbon_repulsion_term(UpdatablePenalizationFunction):
     def __init__(
         self,
-        model: SupportsCovarianceBetweenPoints,
+        model: SupportsCovarianceObservationNoise,
         pending_points: TensorType,
         rescaled_repulsion: bool = True,
     ):

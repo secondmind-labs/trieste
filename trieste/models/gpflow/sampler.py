@@ -29,6 +29,7 @@ from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
     SupportsGetKernel,
+    SupportsGetObservationNoise,
     SupportsPredictJoint,
     TrajectoryFunction,
     TrajectorySampler,
@@ -176,7 +177,13 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernel]):
+class SupportsGetKernelObservationNoise(SupportsGetKernel, SupportsGetObservationNoise):
+    """A probabilistic model that supprots both get_kernel and get_observation noise."""
+
+    pass
+
+
+class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernelObservationNoise]):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
@@ -214,7 +221,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernel]
 
     def __init__(
         self,
-        model: SupportsGetKernel,
+        model: SupportsGetKernelObservationNoise,
         dataset: Dataset,
         num_features: int = 1000,
     ):
@@ -243,16 +250,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernel]
         self._num_data = len(self._dataset.query_points)  # n
 
         self._kernel = model.get_kernel()
-
-        try:
-            self._noise_variance = model.get_observation_noise()
-        except (NotImplementedError, AttributeError):
-            raise ValueError(
-                """
-                Thompson sampling with random Fourier features only currently supports models
-                with a Gaussian likelihood and an accessible kernel attribute.
-                """
-            )
+        self._noise_variance = model.get_observation_noise()
 
         self._feature_functions = RandomFourierFeaturesCosine(
             self._kernel, self._num_features, dtype=self._dataset.query_points.dtype

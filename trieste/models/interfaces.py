@@ -76,16 +76,6 @@ class ProbabilisticModel(ABC):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def get_observation_noise(self) -> TensorType:
-        """
-        Return the variance of observation noise.
-
-        Note that this is not supported by all models.
-
-        :return: The observation noise.
-        """
-        raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
-
     def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
@@ -159,6 +149,21 @@ class SupportsGetKernel(ProbabilisticModel):
         """
         Return the kernel of the model.
         :return: The kernel.
+        """
+        raise NotImplementedError
+
+
+class SupportsGetObservationNoise(ProbabilisticModel):
+    """A probabilistic model that supports get_observation_noise."""
+
+    @abstractmethod
+    def get_observation_noise(self) -> TensorType:
+        """
+        Return the variance of observation noise.
+
+        Note that this is not supported by all models.
+
+        :return: The observation noise.
         """
         raise NotImplementedError
 
@@ -403,23 +408,6 @@ class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
 ):
     """A stack of models that are both trainable and support predict_joint."""
-
-    pass
-
-
-class FastSupportsPredictJointKernel(FastUpdateModel, SupportsPredictJoint, SupportsGetKernel):
-    """A model that can predict on supplementary data and supports predict_joint and get_kernel."""
-
-    pass
-
-
-class FastPredictJointKernelModelStack(
-    PredictJointModelStack, ModelStack[FastSupportsPredictJointKernel]
-):
-    """
-    A stack of models :class:`FastSupportsPredictJointKernel` models.
-    Note that this delegates predict_joint but not the conditional predict or get_kernel methods.
-    """
 
     pass
 
