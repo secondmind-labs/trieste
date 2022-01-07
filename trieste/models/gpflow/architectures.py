@@ -25,15 +25,15 @@ import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from ...data import Dataset
-from ...space import Box
+from ...space import SearchSpace
 from ...types import TensorType
 
 
 def build_gpr(
     data: Dataset,
-    search_space: Box,
+    search_space: SearchSpace,
     kernel_priors: bool = True,
-    noise_free: bool = False,
+    trainable_likelihood: bool = False,
     likelihood_variance: Optional[float] = None,
 ) -> GPR:
     """
@@ -49,7 +49,7 @@ def build_gpr(
     parameters during model fitting.
 
     :param data: Dataset from the initial design, used for estimating the variance of observations.
-    :param noise_free: If set to `True` Gaussian likelihood paramater is set to
+    :param trainable_likelihood: If set to `True` Gaussian likelihood paramater is set to
         non-trainable. By default set to `False`.
     :param priors: If set to `True` (default) priors are set for kernel parameters.
     :return: A :class:`~gpflow.models.GPR` model.
@@ -66,16 +66,16 @@ def build_gpr(
 
     model = gpflow.models.GPR(data.astuple(), kernel, mean, noise_variance)
 
-    gpflow.set_trainable(model.likelihood, (not noise_free))
+    gpflow.set_trainable(model.likelihood, trainable_likelihood)
 
     return model
 
 
 def build_sgpr(
     data: Dataset,
-    search_space: Box,
+    search_space: SearchSpace,
     kernel_priors: bool = True,
-    noise_free: bool = False,
+    trainable_likelihood: bool = False,
     likelihood_variance: Optional[float] = None,
     num_inducing_points: Optional[int] = None,
     trainable_inducing_points: bool = False,
@@ -96,7 +96,7 @@ def build_sgpr(
         data.astuple(), kernel, inducing_points, mean_function=mean, noise_variance=noise_variance
     )
 
-    gpflow.set_trainable(model.likelihood, (not noise_free))
+    gpflow.set_trainable(model.likelihood, trainable_likelihood)
     gpflow.set_trainable(model.inducing_variable, trainable_inducing_points)
 
     return model
@@ -104,7 +104,7 @@ def build_sgpr(
 
 def build_vgp(
     data: Dataset,
-    search_space: Box,
+    search_space: SearchSpace,
     classification: bool = False,
     kernel_priors: bool = True,
     noise_free: bool = False,
@@ -117,6 +117,7 @@ def build_vgp(
             empirical_variance = 100.0
         else:
             empirical_variance = 1.0
+        empirical_mean = 0.0
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
         if likelihood_variance is None:
@@ -141,10 +142,10 @@ def build_vgp(
 
 def build_svgp(
     data: Dataset,
-    search_space: Box,
+    search_space: SearchSpace,
     classification: bool = False,
     kernel_priors: bool = True,
-    noise_free: bool = False,
+    trainable_likelihood: bool = False,
     likelihood_variance: Optional[float] = None,
     num_inducing_points: Optional[int] = None,
     trainable_inducing_points: bool = False,
@@ -152,10 +153,8 @@ def build_svgp(
     empirical_mean, empirical_variance, num_data_points = _get_data_stats(data)
 
     if classification:
-        if noise_free:
-            empirical_variance = 100.0
-        else:
-            empirical_variance = 1.0
+        empirical_variance = 1.0
+        empirical_mean = 0.0
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
         if likelihood_variance is None:
@@ -165,7 +164,7 @@ def build_svgp(
         model_likelihood = gpflow.likelihoods.Gaussian(noise_variance)
 
     kernel = _get_kernel(
-        empirical_variance, search_space, kernel_priors, classification, noise_free
+        empirical_variance, search_space, kernel_priors, classification, False
     )
     mean = gpflow.mean_functions.Constant(empirical_mean)
 
@@ -179,10 +178,8 @@ def build_svgp(
         num_data=num_data_points,
     )
 
-    gpflow.set_trainable(model.likelihood, (not noise_free))
+    gpflow.set_trainable(model.likelihood, trainable_likelihood)
     gpflow.set_trainable(model.inducing_variable, trainable_inducing_points)
-    if classification:
-        gpflow.set_trainable(model.kernel.variance, False)
 
     return model
 
@@ -197,15 +194,13 @@ def _get_data_stats(data: Dataset) -> tuple[TensorType, TensorType, int]:
 
 def _get_kernel(
     variance: TensorType,
-    search_space: Box,
+    search_space: SearchSpace,
     priors: bool,
     classification: bool = False,
     noise_free: bool = False,
 ) -> gpflow.kernels.Kernel:
-    dim = search_space.upper.shape[-1]
-    ub, lb = search_space.upper[-1], search_space.lower[-1]
-
-    lengthscales = [0.2 * (ub - lb) * math.sqrt(dim)] * dim
+    
+    lengthscales = 0.2 * (search_space.upper - search_space.lower) * math.sqrt(search_space.dimension)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
 
     if priors:
@@ -219,7 +214,7 @@ def _get_kernel(
     return kernel
 
 
-def _get_inducing_points(search_space: Box, num_inducing_points: Optional[int]) -> TensorType:
+def _get_inducing_points(search_space: SearchSpace, num_inducing_points: Optional[int]) -> TensorType:
     if num_inducing_points is None:
         num_inducing_points = min(500, 25 * search_space.upper.shape[-1])
 
