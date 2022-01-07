@@ -25,9 +25,10 @@ import tensorflow_probability as tfp
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
 from ...models.interfaces import (
-    FastPredictJointModelStack,
-    FastSupportsPredictJoint,
+    FastPredictJointKernelModelStack,
+    FastSupportsPredictJointKernel,
     PredictJointModelStack,
+    SupportsGetKernel,
     SupportsPredictJoint,
 )
 from ...observer import OBJECTIVE
@@ -363,10 +364,12 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-FastPredictsJointOrStack = Union[FastSupportsPredictJoint, FastPredictJointModelStack]
+FastPredictsJointKernelOrStack = Union[
+    FastSupportsPredictJointKernel, FastPredictJointKernelModelStack
+]
 
 
-class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
+class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointKernelOrStack]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
     Fantasizer allows us to perform batch Bayesian optimization with any
@@ -420,7 +423,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointOrStack],
+        models: Mapping[str, FastPredictsJointKernelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
     ) -> AcquisitionFunction:
 
@@ -436,7 +439,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointOrStack],
+        models: Mapping[str, FastPredictsJointKernelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
@@ -488,7 +491,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FastPredictsJointOrStack],
+        models: Mapping[str, FastPredictsJointKernelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -508,7 +511,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FastPredictsJointOrStack],
+        models: Mapping[str, FastPredictsJointKernelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -531,7 +534,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FastPredictsJointOrStack]):
 
 
 def _generate_fantasized_data(
-    fantasize_method: str, model: FastPredictsJointOrStack, pending_points: TensorType
+    fantasize_method: str, model: FastPredictsJointKernelOrStack, pending_points: TensorType
 ) -> Dataset:
     """
     Generates "fantasized" data at pending_points depending on the chosen heuristic:
@@ -557,7 +560,7 @@ def _generate_fantasized_data(
 
 
 def _generate_fantasized_model(
-    model: FastPredictsJointOrStack, fantasized_data: Dataset
+    model: FastPredictsJointKernelOrStack, fantasized_data: Dataset
 ) -> _fantasized_model | PredictJointModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
@@ -574,13 +577,13 @@ def _generate_fantasized_model(
         return _fantasized_model(model, fantasized_data)
 
 
-class _fantasized_model(SupportsPredictJoint):
+class _fantasized_model(SupportsPredictJoint, SupportsGetKernel):
     """
     Creates a new model from an existing one and additional data.
     This new model posterior is conditioned on both current model data and the additional one.
     """
 
-    def __init__(self, model: FastSupportsPredictJoint, fantasized_data: Dataset):
+    def __init__(self, model: FastSupportsPredictJointKernel, fantasized_data: Dataset):
         """
         :param model: a model, must be of class `FastUpdateModel`
         :param fantasized_data: additional dataset to condition on

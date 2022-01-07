@@ -97,7 +97,7 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
         """
         Return a trajectory sampler.
 
@@ -106,13 +106,6 @@ class ProbabilisticModel(ABC):
         :return: The trajectory sampler.
         """
         raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
-
-    def get_kernel(self) -> gpflow.kernels.Kernel:
-        """
-        Return the kernel of the model.
-        :return: The kernel.
-        """
-        raise NotImplementedError(f"Model {self!r} does not provide a kernel")
 
     def log(self) -> None:
         """
@@ -154,6 +147,18 @@ class SupportsPredictJoint(ProbabilisticModel):
         :return: The mean and covariance of the joint marginal distribution at each batch of points
             in ``query_points``. For a predictive distribution with event shape E, the mean will
             have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
+        """
+        raise NotImplementedError
+
+
+class SupportsGetKernel(ProbabilisticModel):
+    """A probabilistic model that supports get_kernel."""
+
+    @abstractmethod
+    def get_kernel(self) -> gpflow.kernels.Kernel:
+        """
+        Return the kernel of the model.
+        :return: The kernel.
         """
         raise NotImplementedError
 
@@ -402,16 +407,18 @@ class TrainablePredictJointModelStack(
     pass
 
 
-class FastSupportsPredictJoint(FastUpdateModel, SupportsPredictJoint):
-    """A model that can both predict on supplementary data and supports predict_joint."""
+class FastSupportsPredictJointKernel(FastUpdateModel, SupportsPredictJoint, SupportsGetKernel):
+    """A model that can predict on supplementary data and supports predict_joint and get_kernel."""
 
     pass
 
 
-class FastPredictJointModelStack(PredictJointModelStack, ModelStack[FastSupportsPredictJoint]):
+class FastPredictJointKernelModelStack(
+    PredictJointModelStack, ModelStack[FastSupportsPredictJointKernel]
+):
     """
-    A stack of models :class:`FastSupportsPredictJoint` models.
-    Note that this does not (currently) delegate the conditional predict methods.
+    A stack of models :class:`FastSupportsPredictJointKernel` models.
+    Note that this delegates predict_joint but not the conditional predict or get_kernel methods.
     """
 
     pass
@@ -475,7 +482,7 @@ for all queries. This property is known as consistency.
 """
 
 
-class TrajectorySampler(ABC):
+class TrajectorySampler(ABC, Generic[T]):
     r"""
     This class builds functions that approximate a trajectory sampled from an
     underlying :class:`ProbabilisticModel`.
@@ -485,7 +492,7 @@ class TrajectorySampler(ABC):
     of a particular trajectory function).
     """
 
-    def __init__(self, model: ProbabilisticModel):
+    def __init__(self, model: T):
         """
         :param model: The model to sample from.
         """

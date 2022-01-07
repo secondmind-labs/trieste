@@ -28,6 +28,7 @@ from ...utils import DEFAULTS
 from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
+    SupportsGetKernel,
     SupportsPredictJoint,
     TrajectoryFunction,
     TrajectorySampler,
@@ -175,7 +176,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
+class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernel]):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
@@ -213,7 +214,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
 
     def __init__(
         self,
-        model: ProbabilisticModel,
+        model: SupportsGetKernel,
         dataset: Dataset,
         num_features: int = 1000,
     ):
@@ -241,9 +242,10 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
         self._num_features = num_features  # m
         self._num_data = len(self._dataset.query_points)  # n
 
+        self._kernel = model.get_kernel()
+
         try:
             self._noise_variance = model.get_observation_noise()
-            self._kernel = model.get_kernel()
         except (NotImplementedError, AttributeError):
             raise ValueError(
                 """

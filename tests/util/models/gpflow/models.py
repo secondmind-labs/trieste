@@ -37,6 +37,7 @@ from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.gpflow.models import SupportsCovarianceBetweenPoints
+from trieste.models.interfaces import SupportsGetKernel
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -115,7 +116,7 @@ class GaussianProcessWithSamplers(GaussianProcess):
         return BatchReparametrizationSampler(num_samples, self)
 
 
-class QuadraticMeanAndRBFKernel(GaussianProcess):
+class QuadraticMeanAndRBFKernel(SupportsGetKernel, GaussianProcess):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
@@ -161,7 +162,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
         )
         self._dataset = dataset
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
 
     def reparam_sampler(

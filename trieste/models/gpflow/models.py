@@ -299,7 +299,7 @@ class GaussianProcessRegression(
 
         multiple_assign(self.model, current_best_parameters)
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[GaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.
