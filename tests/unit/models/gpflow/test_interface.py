@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import gpflow
 import numpy.testing as npt
@@ -25,7 +25,6 @@ from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models import ReparametrizationSampler
 from trieste.models.gpflow import BatchReparametrizationSampler, GPflowPredictor
-from trieste.models.interfaces import ProbabilisticModel
 
 
 class _QuadraticPredictor(GPflowPredictor):
@@ -36,11 +35,8 @@ class _QuadraticPredictor(GPflowPredictor):
     def update(self, dataset: Dataset) -> None:
         pass
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
-        return cast(
-            ReparametrizationSampler[ProbabilisticModel],
-            BatchReparametrizationSampler(num_samples, self),
-        )
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[_QuadraticPredictor]:
+        return BatchReparametrizationSampler(num_samples, self)
 
 
 class _QuadraticGPModel(GPModel):
@@ -97,7 +93,7 @@ def test_gpflow_predictor_sample_0_samples() -> None:
 def test_gpflow_reparam_sampler_returns_a_param_sampler() -> None:
     sampler = _QuadraticPredictor().reparam_sampler(10)
     assert isinstance(sampler, BatchReparametrizationSampler)
-    assert cast(BatchReparametrizationSampler, sampler)._sample_size == 10
+    assert sampler._sample_size == 10
 
 
 def test_gpflow_reparam_sampler_returns_reparam_sampler_with_correct_samples() -> None:

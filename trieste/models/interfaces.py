@@ -24,6 +24,8 @@ from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
 
+T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
+
 
 class ProbabilisticModel(ABC):
     """A probabilistic model."""
@@ -84,14 +86,11 @@ class ProbabilisticModel(ABC):
         """
         raise NotImplementedError(f"Model {self!r} does not provide scalar observation noise")
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
+    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
-        Note that this is not supported by all models. Also, this currently doesn't play nicely
-        with type checking: we claim to return a sampler that supports any ProbabilisticModel
-        but in practice only want to return one that supports ourself. Until this is fixed,
-        it may be necessary to cast the response so it passes the type check.
+        Note that this is not supported by all models.
 
         :param num_samples: The desired number of samples.
         :return: The reparametrization sampler.
@@ -227,9 +226,6 @@ class FastUpdateModel(ProbabilisticModel):
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
-
-
-T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
 
 
 class ModelStack(Generic[T], ProbabilisticModel):
