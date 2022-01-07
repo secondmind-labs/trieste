@@ -33,6 +33,7 @@ from tests.util.misc import (
 )
 from tests.util.models.gpflow.models import (
     GaussianProcess,
+    GaussianProcessWithReparamSampler,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
@@ -44,6 +45,8 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
@@ -253,6 +256,189 @@ def test_augmented_expected_improvement_builder_updates_acquisition_function(
 
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     npt.assert_allclose(updated_acq_fn(xs), full_data_acq_fn(xs))
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_mc_expected_improvement_raises_for_invalid_sample_size(sample_size: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        MonteCarloExpectedImprovement(sample_size)
+
+
+@random_seed
+def test_mc_expected_improvement_builds_expected_improvement_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = MonteCarloExpectedImprovement(int(1e6)).prepare_acquisition_function(model, dataset)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = expected_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected, rtol=1e-4, atol=2e-3)
+
+
+def test_mc_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
+    noise_variance = 1.0
+
+    with pytest.raises(ValueError):
+        (
+            MonteCarloExpectedImprovement(100).prepare_acquisition_function(
+                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
+            )
+        )
+
+
+def test_mc_expected_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        (
+            MonteCarloExpectedImprovement(100).prepare_acquisition_function(
+                QuadraticMeanAndRBFKernel(), data
+            )
+        )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "variance_scale, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 25_000, 0.01, 1e-3),
+        (1.0, 50_000, 0.01, 1e-3),
+        (10.0, 100_000, 0.01, 1e-2),
+        (100.0, 150_000, 0.01, 1e-1),
+    ],
+)
+def test_mc_expected_improvement(
+    variance_scale: float,
+    num_samples_per_point: int,
+    rtol: float,
+    atol: float,
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+
+    dataset = Dataset(
+        tf.constant(
+            [[-2.0, 0.0], [-1.0, 0.0], [0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=tf.float64
+        ),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]], dtype=tf.float64),
+    )
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
+    model = GaussianProcessWithReparamSampler([branin], [kernel])
+
+    eif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
+        model, dataset
+    )
+    ei_approx = eif(xs[..., None, :])
+
+    best = tf.reduce_min(branin(dataset.query_points))
+    eif = expected_improvement(model, best)
+    ei = eif(xs[..., None, :])  # type: ignore
+
+    npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+def test_mc_augmented_expected_improvement_raises_for_invalid_sample_size(sample_size: int) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        MonteCarloAugmentedExpectedImprovement(sample_size)
+
+
+@random_seed
+def test_mc_augmented_expected_improvement_builds_aei_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = MonteCarloAugmentedExpectedImprovement(int(1e6)).prepare_acquisition_function(
+        model, dataset
+    )
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = augmented_expected_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected, rtol=1e-4, atol=2e-3)
+
+
+def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
+    noise_variance = 1.0
+
+    with pytest.raises(ValueError):
+        (
+            MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
+                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
+            )
+        )
+
+
+def test_mc_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        (
+            MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
+                QuadraticMeanAndRBFKernel(), data
+            )
+        )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "variance_scale, noise_variance, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 1e-4, 100_000, 0.1, 1e-1),
+        (1.0, 1e-4, 100_000, 0.01, 1e-2),
+        (10.0, 1e-4, 100_000, 0.01, 1e-2),
+        (100.0, 1e-4, 150_000, 0.01, 1e-1),
+        (0.1, 1e-3, 150_000, 0.3, 1e-1),
+        (1.0, 1e-3, 150_000, 0.1, 1e-1),
+        (10.0, 1e-3, 150_000, 0.01, 1e-2),
+        (100.0, 1e-3, 150_000, 0.01, 1e-1),
+    ],
+)
+def test_mc_augmented_expected_improvement(
+    variance_scale: float,
+    noise_variance: float,
+    num_samples_per_point: int,
+    rtol: float,
+    atol: float,
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+
+    dataset = Dataset(
+        tf.constant(
+            [[-2.0, 0.0], [-1.0, 0.0], [0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=tf.float64
+        ),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]], dtype=tf.float64),
+    )
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
+    model = GaussianProcessWithReparamSampler(
+        [branin], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
+    )
+
+    aeif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
+        model, dataset
+    )
+    aei_approx = aeif(xs[..., None, :])
+
+    best = tf.reduce_min(branin(dataset.query_points))
+    aeif = augmented_expected_improvement(model, best)
+    aei = aeif(xs[..., None, :])  # type: ignore
+
+    npt.assert_allclose(aei, aei_approx, rtol=rtol, atol=atol)
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
