@@ -34,9 +34,10 @@ from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from tests.util.models.gpflux.models import two_layer_dgp_model
+from tests.util.models.gpflux.models import two_layer_trieste_dgp
 from trieste.data import Dataset
-from trieste.models.gpflux import DeepGaussianProcess, DeepGaussianProcessSampler
+from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.gpflux.sampler import DeepGaussianProcessReparamSampler
 from trieste.types import TensorType
 
 
@@ -45,15 +46,15 @@ def test_deep_gaussian_process_sampler_raises_for_invalid_sample_size(
     sample_size: int, keras_float: None
 ) -> None:
     x = tf.constant([[0.0]], dtype=gpflow.default_float())
-    dgp = two_layer_dgp_model(x)
+    dgp, _ = two_layer_trieste_dgp(x)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        DeepGaussianProcessSampler(sample_size, dgp)
+        DeepGaussianProcessReparamSampler(sample_size, dgp)
 
 
 def test_deep_gaussian_process_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
-        DeepGaussianProcessSampler(10, QuadraticMeanAndRBFKernel())
+        DeepGaussianProcessReparamSampler(10, QuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3, 4]])
@@ -62,8 +63,8 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
     keras_float: None,
 ) -> None:
     x = tf.constant([[0.0]], dtype=gpflow.default_float())
-    dgp = two_layer_dgp_model(x)
-    sampler = DeepGaussianProcessSampler(1, dgp)
+    dgp = two_layer_trieste_dgp(x)
+    sampler = DeepGaussianProcessReparamSampler(1, dgp)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.zeros(shape))
@@ -83,7 +84,7 @@ def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution
     model = DeepGaussianProcess(dgp)
     model.optimize(dataset)
 
-    samples = DeepGaussianProcessSampler(sample_size, model.model_gpflux).sample(x)  # [S, N, L]
+    samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(x)  # [S, N, L]
 
     assert samples.shape == [sample_size, len(x), 1]
 
@@ -118,7 +119,7 @@ def test_deep_gaussian_process_sampler_sample_is_continuous(
     model = DeepGaussianProcess(dgp)
     model.optimize(dataset)
 
-    sampler = DeepGaussianProcessSampler(100, model.model_gpflux)
+    sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
@@ -135,7 +136,7 @@ def test_deep_gaussian_process_sampler_sample_is_repeatable(
     model = DeepGaussianProcess(dgp)
     model.optimize(dataset)
 
-    sampler = DeepGaussianProcessSampler(100, model.model_gpflux)
+    sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
@@ -153,8 +154,8 @@ def test_deep_gaussian_process_sampler_samples_are_distinct_for_new_instances(
     model = DeepGaussianProcess(dgp)
     model.optimize(dataset)
 
-    sampler1 = DeepGaussianProcessSampler(100, model.model_gpflux)
-    sampler2 = DeepGaussianProcessSampler(100, model.model_gpflux)
+    sampler1 = DeepGaussianProcessReparamSampler(100, model)
+    sampler2 = DeepGaussianProcessReparamSampler(100, model)
 
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))

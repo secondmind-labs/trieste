@@ -119,3 +119,7 @@ def trieste_deep_gaussian_process(
     model = DeepGaussianProcess(dgp, optimizer)
 
     return model, fit_args
+
+
+def two_layer_trieste_dgp(query_points: TensorType) -> DeepGaussianProcess:
+    return trieste_deep_gaussian_process(query_points, 2, 10, 0.01, 5, 10)[0]

@@ -37,8 +37,8 @@ from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.optimizer import Optimizer
-from trieste.models.sampler import ModelSampler
 from trieste.types import TensorType
+from trieste.utils import DEFAULTS
 
 
 def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
@@ -125,7 +125,7 @@ class GaussianProcessWithReparamSampler(GaussianProcess):
     ):
         super().__init__(mean_functions, kernels, noise_variance)
 
-    def reparam_sampler(self, num_samples: int) -> ModelSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         return GaussianProcessSampler(num_samples, self)
 
 
@@ -148,19 +148,20 @@ class QuadraticMeanAndRBFKernel(GaussianProcess):
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
 
-    def reparam_sampler(self, num_samples: int) -> ModelSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
         return GaussianProcessSampler(num_samples, self)
 
 
-class GaussianProcessSampler(ModelSampler):
-    r"""A :class:`trieste.acquisition.sampler.Sampler` for a :class:`GaussianProcess` model."""
+class GaussianProcessSampler(ReparametrizationSampler):
+    r"""A :class:`trieste.models.interfaces.ReparametrizationSampler` for a
+    :class:`GaussianProcess` model."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
-        super().__init__(sample_size)
+        super().__init__(sample_size, model)
 
         self._model = model
 
-    def sample(self, at: TensorType) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         mean, var = self._model.predict(at)
 
         return mean + tf.sqrt(var) * tf.random.normal(
