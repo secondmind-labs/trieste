@@ -19,7 +19,7 @@ facilitate building neural network models.
 
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any, Sequence, Union
 
 import numpy as np
@@ -30,7 +30,7 @@ from ...data import Dataset
 from .utils import get_tensor_spec_from_data
 
 
-class KerasEnsemble(tf.Module):
+class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
     be instance of :class:`~trieste.models.keras_networks.KerasEnsembleNetwork`. This class
@@ -85,19 +85,12 @@ class KerasEnsemble(tf.Module):
 
         :return: The Keras model.
         """
-        # inputs = []
-        # outputs = []
-        # for index, network in enumerate(self._networks):
-        #     network.network_name = f"model_{index}_"
-        #     input_tensor, output_tensor = network.connect_layers()
-        #     inputs.append(input_tensor)
-        #     outputs.append(output_tensor)
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
 
         return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-class KerasEnsembleNetwork(tf.Module):
+class KerasEnsembleNetwork(ABC):
     """
     This class is an interface that defines necessary attributes and methods for neural networks
     that are meant to be used for building ensembles by
