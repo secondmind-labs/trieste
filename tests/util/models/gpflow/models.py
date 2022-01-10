@@ -169,7 +169,6 @@ class ModelFactoryType(Protocol):
     def __call__(
         self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
-        # TODO: want return type to be both GPflowPredictor and TrainableProbabilisticModel!
         pass
 
 

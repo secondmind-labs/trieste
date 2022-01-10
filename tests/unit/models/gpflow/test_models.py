@@ -26,7 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
-from typing import Any
+from typing import Any, cast
 
 import gpflow
 import numpy as np
@@ -49,7 +49,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import TrajectorySampler
+from trieste.models import TrainableProbabilisticModel, TrajectorySampler
 from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -89,7 +89,9 @@ def test_gpflow_wrappers_update(gpflow_interface_factory: ModelFactoryType) -> N
 
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, fnc_3x_plus_10(x_new))
-    model.update(new_data)
+    # Would be nice if ModelFactoryType could return an intersection type of
+    # GPflowPredictor and TrainableProbabilisticModel but this isn't possible
+    cast(TrainableProbabilisticModel, model).update(new_data)
 
     reference_model = _reference_model(x_new, fnc_3x_plus_10(x_new))
     internal_model = model.model

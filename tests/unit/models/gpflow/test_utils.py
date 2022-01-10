@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import operator
+from typing import cast
 
 import gpflow
 import numpy as np
@@ -28,6 +29,7 @@ from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import ModelFactoryType
 from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     check_optimizer,
     randomize_hyperparameters,
@@ -51,7 +53,7 @@ def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryTy
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, fnc_2sin_x_over_3(x_new))
-    model.update(new_data)
+    cast(TrainableProbabilisticModel, model).update(new_data)
     model.optimize(new_data)
 
     mean_f_updated, variance_f_updated = model.predict(x_predict)
