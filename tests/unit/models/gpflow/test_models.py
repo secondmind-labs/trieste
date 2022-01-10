@@ -763,14 +763,14 @@ def test_variational_gaussian_process_optimize_natgrads_only_updates_variational
         vgp_matern_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
     )
 
-    old_num_trainable_params = len(model.trainable_variables)
+    old_num_trainable_params = len(model.model.trainable_variables)
     old_kernel_params = model.get_kernel().parameters[0].numpy()
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
 
     model.optimize(dataset)
 
-    new_num_trainable_params = len(model.trainable_variables)
+    new_num_trainable_params = len(model.model.trainable_variables)
     new_kernel_params = model.get_kernel().parameters[0].numpy()
     new_q_mu = model.model.q_mu.numpy()
     new_q_sqrt = model.model.q_sqrt.numpy()
