@@ -19,7 +19,7 @@ facilitate building neural network models.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, Sequence, Union
 
 import numpy as np
@@ -90,7 +90,7 @@ class KerasEnsemble:
         return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-class KerasEnsembleNetwork(ABC):
+class KerasEnsembleNetwork:
     """
     This class is an interface that defines necessary attributes and methods for neural networks
     that are meant to be used for building ensembles by
