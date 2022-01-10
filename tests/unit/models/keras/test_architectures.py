@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 
 import gpflow
 import numpy as np
@@ -185,35 +185,30 @@ def test_build_vanilla_keras_ensemble(
             assert layer.activation == activation or layer.activation.__name__ == activation
 
 
+class _DummyKerasEnsembleNetwork(KerasEnsembleNetwork):
+    def connect_layers(self) -> Tuple[tf.Tensor, tf.Tensor]:
+        pass
+
+
 def test_keras_ensemble_network_raises_on_incorrect_tensor_spec() -> None:
 
     with pytest.raises(ValueError):
-        KerasEnsembleNetwork(
+        _DummyKerasEnsembleNetwork(
             [1],
             tf.TensorSpec(shape=(1,), dtype=tf.float32),
             tf.keras.losses.MeanSquaredError(),
         )
 
     with pytest.raises(ValueError):
-        KerasEnsembleNetwork(
+        _DummyKerasEnsembleNetwork(
             tf.TensorSpec(shape=(1,), dtype=tf.float32),
             [1],
             tf.keras.losses.MeanSquaredError(),
         )
 
 
-def test_keras_ensemble_network_raises_on_connect_layers_call() -> None:
-    model = KerasEnsembleNetwork(
-        tf.TensorSpec(shape=(1,), dtype=tf.float32),
-        tf.TensorSpec(shape=(1,), dtype=tf.float32),
-    )
-
-    with pytest.raises(NotImplementedError):
-        model.connect_layers()
-
-
 def test_keras_ensemble_network_network_and_layer_name() -> None:
-    model = KerasEnsembleNetwork(
+    model = _DummyKerasEnsembleNetwork(
         tf.TensorSpec(shape=(1,), dtype=tf.float32),
         tf.TensorSpec(shape=(1,), dtype=tf.float32),
     )
@@ -237,7 +232,7 @@ def test_keras_ensemble_network_flattened_output_shape(n_dims: int) -> None:
     tensor = np.random.randint(0, 1, shape)
     tensor_spec = tf.TensorSpec(shape)
 
-    model = KerasEnsembleNetwork(
+    model = _DummyKerasEnsembleNetwork(
         tensor_spec,
         tensor_spec,
     )

@@ -83,13 +83,6 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
             learners (networks).
         """
-
-        if not isinstance(model, KerasEnsemble):
-            raise ValueError(
-                f"In DeepEnsemble model must be an instance of a KerasEnsemble, "
-                f"received {type(model)} instead."
-            )
-
         if model.ensemble_size < 2:
             raise ValueError(f"Ensemble size must be greater than 1 but got {model.ensemble_size}.")
 

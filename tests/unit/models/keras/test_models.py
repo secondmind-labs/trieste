@@ -27,9 +27,7 @@ from trieste.data import Dataset
 from trieste.models import create_model
 from trieste.models.keras import (
     DeepEnsemble,
-    GaussianNetwork,
     KerasEnsemble,
-    get_tensor_spec_from_data,
     negative_log_likelihood,
     sample_with_replacement,
 )
@@ -136,17 +134,6 @@ def test_deep_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
     model, _, _ = _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     assert model.ensemble_size == ensemble_size
-
-
-def test_deep_ensemble_raises_for_incorrect_model() -> None:
-
-    example_data = empty_dataset([1], [1])
-    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
-
-    model = GaussianNetwork(input_tensor_spec, output_tensor_spec)
-
-    with pytest.raises(ValueError):
-        DeepEnsemble(model)
 
 
 def test_deep_ensemble_raises_for_non_keras_optimizer() -> None:
