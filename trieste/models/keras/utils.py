@@ -89,4 +89,12 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
 def negative_log_likelihood(
     y_true: TensorType, y_pred: tfp.distributions.Distribution
 ) -> TensorType:
+    """
+    Maximum likelihood objective function for training neural networks.
+
+    :param y_true: The output variable values.
+    :param y_pred: The output layer of the model. It has to be a probabilistic neural network
+        with a distribution as a final layer.
+    :return: Negative log likelihood values.
+    """
     return -y_pred.log_prob(y_true)

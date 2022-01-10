@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This file contains implementations of neural network architectures with Keras and functions that
+facilitate building neural network models.
+"""
+
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Callable
-from typing import Any, List, Optional, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
@@ -24,52 +28,6 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from .utils import get_tensor_spec_from_data
-
-
-def build_vanilla_keras_ensemble(
-    dataset: Dataset,
-    ensemble_size: int = 5,
-    num_hidden_layers: int = 2,
-    units: int = 50,
-    activation: Union[str, Callable] = "relu",
-    independent_normal: bool = False,
-) -> KerasEnsemble:
-
-    """
-    Builds a simple ensemble of neural networks in Keras where each network has the same
-    architecture: number of hidden layers, nodes in hidden layers and activation function.
-
-    :param dataset: Data for training, used for extracting input and output tensor specifications.
-    :param ensemble_size: The size of the ensemble, that is, the number of base learners or
-        individual neural networks in the ensemble.
-    :param num_hidden_layers: The number of hidden layers in each network.
-    :param units: The number of nodes in each hidden layer.
-    :param activation: The activation function in each hidden layer.
-    :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
-        is used as the output layer. This models outputs as independent, only the diagonal
-        elements of the covariance matrix are parametrized. If left as the default `False`,
-        then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
-        between outputs are learned as well.
-    :return: Keras ensemble model.
-    """
-    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(dataset)
-
-    hidden_layer_args = []
-    for i in range(num_hidden_layers):
-        hidden_layer_args.append({"units": units, "activation": activation})
-
-    networks = [
-        GaussianNetwork(
-            input_tensor_spec,
-            output_tensor_spec,
-            hidden_layer_args,
-            independent_normal,
-        )
-        for _ in range(ensemble_size)
-    ]
-    keras_ensemble = KerasEnsemble(networks)
-
-    return keras_ensemble
 
 
 class KerasEnsemble(tf.Module):
@@ -82,7 +40,7 @@ class KerasEnsemble(tf.Module):
 
     def __init__(
         self,
-        networks: List[KerasEnsembleNetwork],
+        networks: Sequence[KerasEnsembleNetwork],
     ) -> None:
         """
         :param networks: A list of neural network specifications, one for each member of the
@@ -91,15 +49,16 @@ class KerasEnsemble(tf.Module):
 
         super().__init__()
 
-        for network in networks:
+        for index, network in enumerate(networks):
             if not isinstance(network, KerasEnsembleNetwork):
                 raise ValueError(
                     f"Individual networks must be an instance of KerasEnsembleNetwork, "
                     f"received {type(network)} instead."
                 )
-
+            networks[index].network_name = f"model_{index}_"
         self._networks = networks
-        self._model = self.build_ensemble()
+
+        self._model = self._build_ensemble()
 
     def __repr__(self) -> str:
         """"""
@@ -107,7 +66,7 @@ class KerasEnsemble(tf.Module):
 
     @property
     def model(self) -> tf.keras.Model:
-        """ " Returns built but uncompiled Keras ensemble model."""
+        """Returns built but uncompiled Keras ensemble model."""
         return self._model
 
     @property
@@ -118,7 +77,7 @@ class KerasEnsemble(tf.Module):
         """
         return len(self._networks)
 
-    def build_ensemble(self) -> tf.keras.Model:
+    def _build_ensemble(self) -> tf.keras.Model:
         """
         Builds the ensemble model by combining all the individual networks in a single Keras model.
         This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects
@@ -126,13 +85,14 @@ class KerasEnsemble(tf.Module):
 
         :return: The Keras model.
         """
-        inputs = []
-        outputs = []
-        for index, network in enumerate(self._networks):
-            network.network_name = "model_" + str(index) + "_"
-            input_tensor, output_tensor = network.connect_layers()
-            inputs.append(input_tensor)
-            outputs.append(output_tensor)
+        # inputs = []
+        # outputs = []
+        # for index, network in enumerate(self._networks):
+        #     network.network_name = f"model_{index}_"
+        #     input_tensor, output_tensor = network.connect_layers()
+        #     inputs.append(input_tensor)
+        #     outputs.append(output_tensor)
+        inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
 
         return tf.keras.Model(inputs=inputs, outputs=outputs)
 
@@ -198,29 +158,32 @@ class KerasEnsembleNetwork(tf.Module):
 
 class GaussianNetwork(KerasEnsembleNetwork):
     """
-    This class defines layers of a probabilistic neural network using Keras, with Gaussian
-    distribution as an output. The network architecture is a multilayer fully-connected
-    feed-forward network. The network has to be built and compiled as an ensemble model,
-    it should also be trained with maximum likelihood loss function.
+    This class defines layers of a probabilistic neural network using Keras. The network
+    architecture is a multilayer fully-connected feed-forward network, with Gaussian
+    distribution as an output. The layers are meant to be built as an ensemble model by
+    :class:`KerasEnsemble`. Note that this is not a Bayesian neural network.
     """
 
     def __init__(
         self,
         input_tensor_spec: tf.TensorSpec,
         output_tensor_spec: tf.TensorSpec,
-        hidden_layer_args: Optional[List[dict[str, Any]]] = None,
+        hidden_layer_args: Sequence[dict[str, Any]] = (
+            {"units": 50, "activation": "relu"},
+            {"units": 50, "activation": "relu"},
+        ),
         independent: bool = False,
     ):
         """
         :param input_tensor_spec: Tensor specification for the input to the network.
         :param output_tensor_spec: Tensor specification for the output of the network.
         :param hidden_layer_args: Specification for building dense hidden layers. Each element in
-            the list should be a dictionary containing arguments (keys) and their values for a
+            the sequence should be a dictionary containing arguments (keys) and their values for a
             :class:`~tf.keras.layers.Dense` hidden layer. Please check Keras Dense layer API for
-            available arguments. Objects in the list will sequentially be used to add
-            :class:`~tf.keras.layers.Dense` layers. Length of this list determines the number of
+            available arguments. Objects in the sequence will sequentially be used to add
+            :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of
             hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
-            ReLu activation functions. Empty list needs to be passed to have no hidden layers.
+            ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.
         :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
             is used as the output layer. This models outputs as independent, only the diagonal
             elements of the covariance matrix are parametrized. If left as the default `False`,
@@ -228,29 +191,8 @@ class GaussianNetwork(KerasEnsembleNetwork):
             between outputs are learned as well.
         :raise ValueError: If objects in ``hidden_layer_args`` are not dictionaries.
         """
-        if hidden_layer_args is None:
-            hidden_layer_args = [
-                {"units": 50, "activation": "relu"},
-                {"units": 50, "activation": "relu"},
-            ]
-        if not isinstance(hidden_layer_args, list):
-            raise ValueError(
-                f"hidden_layer_args must be a list of dictionaries."
-                f"Received {type(hidden_layer_args)} instead."
-            )
-        else:
-            if len(hidden_layer_args) > 0:
-                for layer in hidden_layer_args:
-                    if not isinstance(layer, dict):
-                        raise ValueError(
-                            f"Objects in hidden_layer_args must be dictionaries. They should "
-                            f"contain arguments for hidden dense layers, "
-                            f"received {type(layer)} instead."
-                        )
-
         super().__init__(input_tensor_spec, output_tensor_spec)
 
-        self._num_hidden_layers = len(hidden_layer_args)
         self._hidden_layer_args = hidden_layer_args
         self._independent = independent
 
@@ -265,37 +207,29 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        if self._num_hidden_layers > 0:
-            for index, hidden_layer_args in enumerate(self._hidden_layer_args):
-                layer_name = self.network_name + "dense_" + str(index)
-                layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
-                input_tensor = layer(input_tensor)
+        for index, hidden_layer_args in enumerate(self._hidden_layer_args):
+            layer_name = f"{self.network_name}dense_{index}"
+            layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
+            input_tensor = layer(input_tensor)
 
         return input_tensor
 
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        if self._independent:
-            n_params = tfp.layers.IndependentNormal.params_size(self.flattened_output_shape)
-        else:
-            n_params = tfp.layers.MultivariateNormalTriL.params_size(self.flattened_output_shape)
+        dist_layer = (
+            tfp.layers.IndependentNormal if self._independent else tfp.layers.MultivariateNormalTriL
+        )
+        n_params = dist_layer.params_size(self.flattened_output_shape)
 
         parameter_layer = tf.keras.layers.Dense(
             n_params, name=self.network_name + "dense_parameters"
         )(input_tensor)
 
-        if self._independent:
-            distribution = tfp.layers.IndependentNormal(
-                event_shape=self.flattened_output_shape,
-                convert_to_tensor_fn=lambda s: s.mean(),
-                name=self.output_layer_name,
-            )(parameter_layer)
-        else:
-            distribution = tfp.layers.MultivariateNormalTriL(
-                event_size=self.flattened_output_shape,
-                convert_to_tensor_fn=lambda s: s.mean(),
-                name=self.output_layer_name,
-            )(parameter_layer)
+        distribution = dist_layer(
+            self.flattened_output_shape,
+            lambda s: s.mean(),
+            name=self.output_layer_name,
+        )(parameter_layer)
 
         return distribution
 
@@ -313,3 +247,55 @@ class GaussianNetwork(KerasEnsembleNetwork):
         output_tensor = self._gen_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor
+
+
+def build_vanilla_keras_ensemble(
+    dataset: Dataset,
+    ensemble_size: int = 5,
+    num_hidden_layers: int = 2,
+    units: int = 50,
+    activation: Union[str, tf.keras.layers.Activation] = "relu",
+    independent_normal: bool = False,
+) -> KerasEnsemble:
+
+    """
+    Builds a simple ensemble of neural networks in Keras where each network has the same
+    architecture: number of hidden layers, nodes in hidden layers and activation function.
+
+    Default ensemble size and activation function seem to work well in practice, in regression type
+    of problems at least. Number of hidden layers and units per layer should be modified according
+    to the dataset size and complexity of the function. Using the independent normal is relevant
+    only if one is modelling multiple output variables, as it simplifies the distribution by
+    ignoring correlations between outputs.
+
+    :param dataset: Data for training, used for extracting input and output tensor specifications.
+    :param ensemble_size: The size of the ensemble, that is, the number of base learners or
+        individual neural networks in the ensemble.
+    :param num_hidden_layers: The number of hidden layers in each network.
+    :param units: The number of nodes in each hidden layer.
+    :param activation: The activation function in each hidden layer.
+    :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+        is used as the output layer. This models outputs as independent, only the diagonal
+        elements of the covariance matrix are parametrized. If left as the default `False`,
+        then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+        between outputs are learned as well.
+    :return: Keras ensemble model.
+    """
+    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(dataset)
+
+    hidden_layer_args = []
+    for i in range(num_hidden_layers):
+        hidden_layer_args.append({"units": units, "activation": activation})
+
+    networks = [
+        GaussianNetwork(
+            input_tensor_spec,
+            output_tensor_spec,
+            hidden_layer_args,
+            independent_normal,
+        )
+        for _ in range(ensemble_size)
+    ]
+    keras_ensemble = KerasEnsemble(networks)
+
+    return keras_ensemble

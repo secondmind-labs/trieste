@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -24,11 +24,11 @@ from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble
-from .interface import NeuralNetworkPredictor
+from .interface import KerasPredictor
 from .utils import negative_log_likelihood, sample_with_replacement
 
 
-class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
+class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
     Keras.
@@ -90,21 +90,13 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
                 f"received {type(model)} instead."
             )
 
-        if optimizer is None:
-            optimizer = KerasOptimizer(tf.keras.optimizers.Adam())
-        self._optimizer = optimizer
-
-        if not isinstance(optimizer.optimizer, tf.keras.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepEnsemble` model must be an instance of a "
-                f"`tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
-            )
+        if model.ensemble_size < 2:
+            raise ValueError(f"Ensemble size must be greater than 1 but got {model.ensemble_size}.")
 
         super().__init__(optimizer)
 
         if not self.optimizer.fit_args:
-            self.optimizer.fit_args: Optional[Dict[str, Any]] = {
+            self.optimizer.fit_args = {
                 "verbose": 0,
                 "epochs": 100,
                 "batch_size": 100,
@@ -121,9 +113,6 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
 
         self._model = model
         self._bootstrap = bootstrap
-
-        if self.ensemble_size < 2:
-            raise ValueError(f"Ensemble size must be greater than 1 but got {self.ensemble_size}.")
 
     def __repr__(self) -> str:
         """"""
@@ -142,46 +131,46 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
         """
         return self._model.ensemble_size
 
-    def prepare_data(
-        self,
-        dataset: Union[Dataset, TensorType],
-    ) -> Union[tuple[Dict[str, TensorType]], Dict[str, TensorType]]:
+    def prepare_dataset(
+        self, dataset: Dataset
+    ) -> tuple[Dict[str, TensorType], Dict[str, TensorType]]:
         """
-        Transform data into inputs and outputs with correct names that can be used for training
-        the :class:`KerasEnsemble` model or for predicting with the model.
+        Transform ``dataset`` into inputs and outputs with correct names that can be used for
+        training the :class:`KerasEnsemble` model.
 
-        If `bootstrap` is set to `True`, data will be additionally sampled with replacement,
-        separately for the data of each network in the ensemble. In case ``dataset`` is a tensor
-        with `query_points` alone this argument is ignored.
+        If ``bootstrap`` argument in the :class:`~trieste.models.keras.DeepEnsemble` is set to
+        `True`, data will be additionally sampled with replacement, independently for
+        each network in the ensemble.
 
-        :param dataset: A dataset with `query_points` and `observations` tensors, or a
-            tensor with `query_points` alone.
-        :return: A dictionary with input data and a dictionary with output data if ``dataset``
-            is :class:`Dataset` or a dictionary with input data only if ``dataset`` is a tensor
-            with query_points tensor alone.
+        :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
+        :return: A dictionary with input data and a dictionary with output data.
         """
         inputs = {}
+        outputs = {}
+        for index in range(self.ensemble_size):
+            if self._bootstrap:
+                resampled_data = sample_with_replacement(dataset)
+            else:
+                resampled_data = dataset
+            input_name = self.model.input_names[index]
+            output_name = self.model.output_names[index]
+            inputs[input_name], outputs[output_name] = resampled_data.astuple()
 
-        if isinstance(dataset, Dataset):
+        return inputs, outputs
 
-            outputs = {}
-            for index in range(self.ensemble_size):
-                if self._bootstrap:
-                    resampled_data = sample_with_replacement(dataset)
-                else:
-                    resampled_data = dataset
-                input_name = self.model.input_names[index]
-                output_name = self.model.output_names[index]
-                inputs[input_name], outputs[output_name] = resampled_data.astuple()
+    def prepare_query_points(self, query_points: TensorType) -> Dict[str, TensorType]:
+        """
+        Transform ``query_points`` into inputs with correct names that can be used for
+        predicting with the model.
 
-            return inputs, outputs
+        :param query_points: A tensor with ``query_points``.
+        :return: A dictionary with query_points prepared for predictions.
+        """
+        inputs = {}
+        for index in range(self.ensemble_size):
+            inputs[self.model.input_names[index]] = query_points
 
-        elif isinstance(dataset, tf.Tensor):
-
-            for index in range(self.ensemble_size):
-                inputs[self.model.input_names[index]] = dataset
-
-            return inputs
+        return inputs
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
@@ -204,13 +193,13 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
         This method assumes that the final layer in each member of the ensemble is
         probabilistic, an instance of :class:`¬tfp.distributions.Distribution`. In particular, given
         the nature of the approximations stated above the final layer should be a Gaussian
-        distribution with `mean` and `variance` methods
+        distribution with `mean` and `variance` methods.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        query_points_transformed = self.prepare_data(query_points)
+        query_points_transformed = self.prepare_query_points(query_points)
 
         ensemble_distributions = self.model(query_points_transformed)
         predicted_means = tf.math.reduce_mean(
@@ -237,7 +226,7 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        query_points_transformed = self.prepare_data(query_points)
+        query_points_transformed = self.prepare_query_points(query_points)
 
         ensemble_distributions = self.model(query_points_transformed)
         predicted_means_vars = [(dist.mean(), dist.variance()) for dist in ensemble_distributions]
@@ -289,5 +278,5 @@ class DeepEnsemble(NeuralNetworkPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the model.
         """
 
-        x, y = self.prepare_data(dataset)
+        x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)

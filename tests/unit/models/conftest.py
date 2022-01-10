@@ -30,7 +30,6 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
-from tests.util.trieste.utils.objectives import branin_dataset, hartmann_6_dataset
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -103,44 +102,3 @@ def _keras_float() -> None:
     tf.keras.backend.set_floatx("float64")
     yield
     tf.keras.backend.set_floatx(current_float)
-
-
-@pytest.fixture(name="ensemble_size", params=[2, 5])
-def _ensemble_size_fixture(request):
-    return request.param
-
-
-@pytest.fixture(name="num_hidden_layers", params=[0, 1, 3])
-def _num_hidden_layers_fixture(request):
-    return request.param
-
-
-@pytest.fixture(name="independent_normal", params=[False, True])
-def _independent_normal_fixture(request):
-    return request.param
-
-
-@pytest.fixture(name="bootstrap_data", params=[False, True])
-def _bootstrap_data_fixture(request):
-    return request.param
-
-
-@pytest.fixture(name="branin_dataset_function", scope="session")
-def _branin_dataset_function_fixture() -> Callable:
-    return branin_dataset
-
-
-@pytest.fixture(name="hartmann_6_dataset_function", scope="session")
-def _hartmann_6_dataset_function_fixture() -> Callable:
-    return hartmann_6_dataset
-
-
-_EXAMPLE_DATASET = [
-    branin_dataset(200),
-    hartmann_6_dataset(200),
-]
-
-
-@pytest.fixture(name="example_data", params=_EXAMPLE_DATASET, scope="session")
-def _example_dataset_fixture(request):
-    return request.param

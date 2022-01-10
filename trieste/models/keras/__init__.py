@@ -28,6 +28,6 @@ from .architectures import (
     KerasEnsembleNetwork,
     build_vanilla_keras_ensemble,
 )
-from .interface import NeuralNetworkPredictor
+from .interface import KerasPredictor
 from .models import DeepEnsemble
 from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement

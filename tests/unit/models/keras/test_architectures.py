@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Union
+from typing import Any, List, Union
 
 import gpflow
 import numpy as np
@@ -20,7 +20,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import ShapeLike, empty_dataset
+from tests.util.misc import empty_dataset
 from tests.util.models.gpflow.models import gpr_model
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from tests.util.models.models import fnc_3x_plus_10
@@ -36,10 +36,25 @@ from trieste.models.keras import (
 _ENSEMBLE_SIZE = 3
 
 
+@pytest.fixture(name="ensemble_size", params=[2, 5])
+def _ensemble_size_fixture(request: Any) -> int:
+    return request.param
+
+
+@pytest.fixture(name="independent_normal", params=[False, True])
+def _independent_normal_fixture(request: Any) -> bool:
+    return request.param
+
+
+@pytest.fixture(name="num_hidden_layers", params=[0, 1, 3])
+def _num_hidden_layers_fixture(request: Any) -> int:
+    return request.param
+
+
 def test_keras_ensemble_repr(
     ensemble_size: int,
     independent_normal: bool,
-):
+) -> None:
     example_data = empty_dataset([1], [1])
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
@@ -79,14 +94,14 @@ def test_keras_ensemble_raises_for_incorrect_networks() -> None:
     [
         ([1], [1]),
         ([5], [1]),
-        ([5], [2]),  # ([3, 2], [3, 1])
+        ([5], [2]),
     ],
 )
 def test_keras_ensemble_build_ensemble_seems_correct(
     ensemble_size: int,
     independent_normal: bool,
-    query_point_shape: ShapeLike,
-    observation_shape: ShapeLike,
+    query_point_shape: List[int],
+    observation_shape: List[int],
 ) -> None:
     n_obs = 10
     example_data = empty_dataset(query_point_shape, observation_shape)
@@ -140,14 +155,12 @@ def test_keras_ensemble_can_be_compiled() -> None:
     assert keras_ensemble.model.optimizer is not None
 
 
-# @pytest.mark.parametrize("units", [10, 50])
-# @pytest.mark.parametrize("activation", ["relu", tf.keras.activations.tanh])
 @pytest.mark.parametrize("units, activation", [(10, "relu"), (50, tf.keras.activations.tanh)])
 def test_build_vanilla_keras_ensemble(
     ensemble_size: int,
     num_hidden_layers: int,
     units: int,
-    activation: Union[str, Callable],
+    activation: Union[str, tf.keras.layers.Activation],
     independent_normal: bool,
 ) -> None:
     example_data = empty_dataset([1], [1])
@@ -233,17 +246,6 @@ def test_keras_ensemble_network_flattened_output_shape(n_dims: int) -> None:
     assert flattened_shape == np.size(tensor)
 
 
-def test_gaussian_network_raises_on_incorrect_hidden_layer_args() -> None:
-    example_data = empty_dataset([1], [1])
-    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
-
-    with pytest.raises(ValueError):
-        GaussianNetwork(input_tensor_spec, output_tensor_spec, ())
-
-    with pytest.raises(ValueError):
-        GaussianNetwork(input_tensor_spec, output_tensor_spec, [()])
-
-
 def test_gaussian_network_check_default_hidden_layer_args() -> None:
     example_data = empty_dataset([1], [1])
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
@@ -252,7 +254,7 @@ def test_gaussian_network_check_default_hidden_layer_args() -> None:
         input_tensor_spec,
         output_tensor_spec,
     )
-    default_args = [{"units": 50, "activation": "relu"}, {"units": 50, "activation": "relu"}]
+    default_args = ({"units": 50, "activation": "relu"}, {"units": 50, "activation": "relu"})
 
     assert network._hidden_layer_args == default_args
 
@@ -263,11 +265,10 @@ def test_gaussian_network_check_default_hidden_layer_args() -> None:
         ([1], [1]),
         ([5], [1]),
         ([5], [2]),
-        # ([3, 2], [3]),
     ],
 )
 def test_gaussian_network_is_correctly_constructed(
-    query_point_shape: ShapeLike, observation_shape: ShapeLike, num_hidden_layers: int
+    query_point_shape: List[int], observation_shape: List[int], num_hidden_layers: int
 ) -> None:
     n_obs = 10
     example_data = empty_dataset(query_point_shape, observation_shape)

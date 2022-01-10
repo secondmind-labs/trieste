@@ -26,6 +26,7 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
 import scipy
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..types import TensorType
@@ -158,7 +159,9 @@ class KerasOptimizer:
     optimizer: tf.keras.optimizers.Optimizer
     """ The underlying optimizer to use for training the model. """
 
-    loss: Union[tf.keras.losses.Loss, Callable] = None
+    loss: Union[
+        tf.keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
+    ] = None
     """ Defines the loss function for training the network. """
 
     fit_args: dict[str, Any] = field(default_factory=lambda: {})

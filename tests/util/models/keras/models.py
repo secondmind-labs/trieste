@@ -18,37 +18,8 @@ Utilities for creating (Keras) neural network models to be used in the tests.
 
 from __future__ import annotations
 
-from typing import Union
-
-import tensorflow as tf
-
 from trieste.data import Dataset
-from trieste.models.keras import (
-    DeepEnsemble,
-    GaussianNetwork,
-    KerasEnsemble,
-    get_tensor_spec_from_data,
-    negative_log_likelihood,
-    sample_with_replacement,
-)
-from trieste.models.optimizer import KerasOptimizer, TrainingData
-
-
-def ensemblise_data(
-    model: KerasEnsemble, data: Dataset, ensemble_size: int, bootstrap: bool = False
-) -> TrainingData:
-    inputs = {}
-    outputs = {}
-    for index in range(ensemble_size):
-        if bootstrap:
-            resampled_data = sample_with_replacement(data)
-        else:
-            resampled_data = data
-        input_name = model.model.input_names[index]
-        output_name = model.model.output_names[index]
-        inputs[input_name], outputs[output_name] = resampled_data.astuple()
-
-    return inputs, outputs
+from trieste.models.keras import GaussianNetwork, KerasEnsemble, get_tensor_spec_from_data
 
 
 def trieste_keras_ensemble_model(
@@ -74,34 +45,3 @@ def trieste_keras_ensemble_model(
     keras_ensemble = KerasEnsemble(networks)
 
     return keras_ensemble
-
-
-def trieste_deep_ensemble_model(
-    example_data: Dataset,
-    ensemble_size: int,
-    bootstrap_data: bool = False,
-    independent_normal: bool = False,
-    return_all: bool = False,
-    optimizer_default: bool = False,
-) -> Union[DeepEnsemble, tuple[DeepEnsemble, KerasEnsemble, KerasOptimizer]]:
-
-    keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
-
-    optimizer = tf.keras.optimizers.Adam()
-    loss = negative_log_likelihood
-    fit_args = {
-        "batch_size": 32,
-        "epochs": 10,
-        "callbacks": [],
-        "verbose": 0,
-    }
-    optimizer_wrapper = KerasOptimizer(optimizer, fit_args, loss)
-    if optimizer_default:
-        optimizer_wrapper = None
-
-    model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
-
-    if return_all:
-        return model, keras_ensemble, optimizer_wrapper
-    else:
-        return model
