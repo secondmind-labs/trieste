@@ -1,0 +1,3 @@
+replace:
+  - { from: "N_RUNS = \\d+", to: "N_RUNS = 2" }
+  - { from: "N_OPTIMIZATION_STEPS = \\d+", to: "N_OPTIMIZATION_STEPS = 10" }
