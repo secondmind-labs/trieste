@@ -220,7 +220,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         distribution = dist_layer(
             self.flattened_output_shape,
-            lambda s: s.mean(),
+            lambda s: s.sample(),
             name=self.output_layer_name,
         )(parameter_layer)
 

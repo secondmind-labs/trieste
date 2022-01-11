@@ -27,6 +27,8 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.objectives import BRANIN_SEARCH_SPACE, HARTMANN_6_SEARCH_SPACE, branin, hartmann_6
+from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
 from trieste.types import TensorType
 from trieste.utils import shapes_equal
@@ -187,3 +189,33 @@ def assert_datasets_allclose(this: Dataset, that: Dataset) -> None:
 
     npt.assert_allclose(this.query_points, that.query_points)
     npt.assert_allclose(this.observations, that.observations)
+
+
+def hartmann_6_dataset(num_query_points: int) -> Dataset:
+    """
+    Generate example dataset based on Hartmann 6 objective function.
+    :param num_query_points: A number of samples from the objective function.
+    :return: A dataset.
+    """
+    search_space = HARTMANN_6_SEARCH_SPACE
+    query_points = search_space.sample(num_query_points)
+
+    observer = mk_observer(hartmann_6)
+    data = observer(query_points)
+
+    return data
+
+
+def branin_dataset(num_query_points: int) -> Dataset:
+    """
+    Generate example dataset based on Hartmann 6 objective function.
+    :param num_query_points: A number of samples from the objective function.
+    :return: A dataset.
+    """
+    search_space = BRANIN_SEARCH_SPACE
+    query_points = search_space.sample(num_query_points)
+
+    observer = mk_observer(branin)
+    data = observer(query_points)
+
+    return data
