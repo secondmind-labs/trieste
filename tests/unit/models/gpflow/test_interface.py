@@ -39,7 +39,7 @@ class _QuadraticPredictor(GPflowPredictor):
         return BatchReparametrizationSampler(num_samples, self)
 
 
-class _QuadraticGPModel(GPModel):
+class _QuadraticGPModel(GPModel):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used

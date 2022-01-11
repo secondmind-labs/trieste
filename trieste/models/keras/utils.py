@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from ...data import Dataset
+from ...types import TensorType
 
 
 def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.TensorSpec]:
@@ -82,3 +84,17 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
     query_points = tf.gather(dataset.query_points, index_tensor, axis=0)
 
     return Dataset(query_points=query_points, observations=observations)
+
+
+def negative_log_likelihood(
+    y_true: TensorType, y_pred: tfp.distributions.Distribution
+) -> TensorType:
+    """
+    Maximum likelihood objective function for training neural networks.
+
+    :param y_true: The output variable values.
+    :param y_pred: The output layer of the model. It has to be a probabilistic neural network
+        with a distribution as a final layer.
+    :return: Negative log likelihood values.
+    """
+    return -y_pred.log_prob(y_true)

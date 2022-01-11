@@ -71,7 +71,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         pass
 
 
-class _QuadraticGPModel(DeepGP):
+class _QuadraticGPModel(DeepGP):  # type: ignore[misc]
     def __init__(
         self, likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01)
     ) -> None:
