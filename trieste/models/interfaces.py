@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Sequence
 
 import gpflow
 import tensorflow as tf
@@ -475,3 +475,49 @@ class FastUpdateModel(ABC):
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
+
+
+class EnsembleModel(ProbabilisticModel):
+    """An ensemble model."""
+
+    @abstractmethod
+    def ensemble_size(self) -> int:
+        """
+        Returns the size of the ensemble, that is, the number of base learners or individual
+        models in the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_index(self, size: int) -> TensorType:
+        """
+        Returns indices of individual models in the ensemble sampled randomly with replacement.
+
+        :param size: The number of samples to take.
+        :return: A tensor with indices
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_ensemble(self, query_points: TensorType) -> Sequence[tuple[TensorType, TensorType]]:
+        """
+        Returns mean and variance at ``query_points`` for each member of the ensemble.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points`` for each member of the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples at ``query_points`` where each sample is taken from a
+        distribution given by a randomly chosen model in the ensemble.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        raise NotImplementedError
