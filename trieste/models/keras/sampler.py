@@ -19,7 +19,7 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
-import tensorflow as tf
+from typing import cast
 
 from ...types import TensorType
 from ..interfaces import EnsembleModel, TrajectoryFunction, TrajectorySampler
@@ -52,9 +52,9 @@ class EnsembleTrajectorySampler(TrajectorySampler):
         :return: A trajectory function representing an approximate trajectory from the ensemble
             model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
-        network_index = tf.cast(self._model, EnsembleModel).sample_index(1)[0]
+        network_index = cast(EnsembleModel, self._model).sample_index(1)[0]
 
         def trajectory(x: TensorType) -> TensorType:
-            return tf.cast(self._model, EnsembleModel).predict_ensemble(x)[network_index][0]
+            return cast(EnsembleModel, self._model).predict_ensemble(x)[network_index][0]
 
         return trajectory
