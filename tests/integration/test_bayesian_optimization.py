@@ -246,7 +246,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 
 
 @random_seed
-# @pytest.mark.slow
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
@@ -409,7 +409,6 @@ def _test_optimizer_finds_minimum(
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
                 # these accuracies are the current best for the given number of optimization
                 # steps, which makes this is a regression test
-                breakpoint()
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
