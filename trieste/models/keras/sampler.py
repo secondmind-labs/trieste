@@ -28,7 +28,7 @@ from ..interfaces import EnsembleModel, TrajectoryFunction, TrajectorySampler
 class EnsembleTrajectorySampler(TrajectorySampler):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
-    the ensemble and using its predicted means for generating a trajectory.
+    the ensemble and using its predicted means as a trajectory.
     """
 
     def __init__(self, model: EnsembleModel):
@@ -46,8 +46,8 @@ class EnsembleTrajectorySampler(TrajectorySampler):
 
     def get_trajectory(self) -> TrajectoryFunction:
         """
-        Generate an approximate function draw (trajectory) by sampling weights
-        and evaluating the feature functions.
+        Generate an approximate function draw (trajectory) by randomly choosing a network from
+        the ensemble and using its predicted means as a trajectory.
 
         :return: A trajectory function representing an approximate trajectory from the ensemble
             model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
