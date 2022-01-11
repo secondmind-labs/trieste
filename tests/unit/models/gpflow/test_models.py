@@ -618,7 +618,7 @@ def test_sparse_variational_model_attribute() -> None:
 
 
 def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
-    class SVGPSubclass(SVGP):
+    class SVGPSubclass(SVGP):  # type: ignore[misc]
         @property
         def mol(self) -> int:
             return 42
