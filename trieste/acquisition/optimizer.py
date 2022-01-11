@@ -451,7 +451,7 @@ def _perform_parallel_continuous_optimization(
     return (successes, fun_values, chosen_x)
 
 
-class ScipyLbfgsBGreenlet(gr.greenlet):
+class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
     """
     Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
     update steps required for an individual optimization. However, the evaluation

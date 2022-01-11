@@ -281,7 +281,7 @@ def _test_optimizer_finds_minimum(
         with tensorboard_writer(summary_writer):
 
             dataset = (
-                BayesianOptimizer(observer, search_space)
+                BayesianOptimizer(observer, search_space)  # type: ignore
                 .optimize(num_steps or 2, initial_data, model, acquisition_rule)
                 .try_get_final_dataset()
             )

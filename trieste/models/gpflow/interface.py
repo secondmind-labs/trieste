@@ -28,7 +28,7 @@ from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(ProbabilisticModel, tf.Module, ABC):
+class GPflowPredictor(ProbabilisticModel, ABC):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
