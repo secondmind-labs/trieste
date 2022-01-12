@@ -221,6 +221,13 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgra
 
 
 @random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
+    _test_optimizer_finds_minimum(70, acquisition_rule, optimize_branin=True, model_type="SVGP")
+
+
+@random_seed
 def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
@@ -251,7 +258,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     "num_steps, acquisition_rule",
     [
         (80, EfficientGlobalOptimization()),
-        (20, DiscreteThompsonSampling(500, 3)),
+        (30, DiscreteThompsonSampling(500, 3)),
         # (10, DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory())),
     ],
 )
@@ -260,7 +267,11 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace],
 ) -> None:
     _test_optimizer_finds_minimum(
-        num_steps, acquisition_rule, optimize_branin=True, model_type="DE"
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
+        model_type="DE",
+        model_args={"bootstrap": False},
     )
 
 
@@ -276,8 +287,6 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
 ) -> None:
-    # for speed reasons we sometimes test with a simple quadratic defined on the same search space
-    # branin; currently assume that every rule should be able to solve this in 5 steps
     _test_optimizer_finds_minimum(num_steps, acquisition_rule, model_type="DE")
 
 
@@ -291,6 +300,9 @@ def _test_optimizer_finds_minimum(
 ) -> None:
 
     model_args = model_args or {}
+    num_initial_query_points = 5
+    track_state = True
+
     if optimize_branin:
         search_space = BRANIN_SEARCH_SPACE
         minimizers = BRANIN_MINIMIZERS
@@ -301,50 +313,49 @@ def _test_optimizer_finds_minimum(
         minimizers = SIMPLE_QUADRATIC_MINIMIZER
         minima = SIMPLE_QUADRATIC_MINIMUM
         rtol_level = 0.05
-        num_steps = 5
-    num_initial_query_points = 5
-    track_state = True
 
-    if model_type in ["DGP", "DE"]:
+    if model_type in ["GPR", "VGP", "SVGP"]:
+
+        def build_model(data: Dataset) -> GPflowPredictor:  # type: ignore
+            assert model_args is not None
+
+            variance = tf.math.reduce_variance(data.observations)
+            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
+            scale = tf.constant(1.0, dtype=tf.float64)
+            kernel.variance.prior = tfp.distributions.LogNormal(
+                tf.constant(-2.0, dtype=tf.float64), scale
+            )
+            kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(kernel.lengthscales), scale
+            )
+
+            if model_type == "GPR":
+                gpr = gpflow.models.GPR(
+                    (data.query_points, data.observations), kernel, noise_variance=1e-5
+                )
+                gpflow.utilities.set_trainable(gpr.likelihood, False)
+                return GaussianProcessRegression(gpr, **model_args)
+            elif model_type == "VGP":
+                likelihood = gpflow.likelihoods.Gaussian(1e-3)
+                vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+                gpflow.utilities.set_trainable(vgp.likelihood, False)
+                return VariationalGaussianProcess(vgp, **model_args)
+            elif model_type == "SVGP":
+                Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
+                svgp = gpflow.models.SVGP(
+                    kernel,
+                    gpflow.likelihoods.Gaussian(variance=1e-5),
+                    Z,
+                    num_data=len(data.observations),
+                )
+                gpflow.utilities.set_trainable(svgp.likelihood, False)
+                return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
+
+    elif model_type == "DGP":
         num_initial_query_points = 20
         track_state = False
-        rtol_level = 0.005
 
-    def build_model(data: Dataset) -> Union[GPflowPredictor, GPfluxPredictor, KerasPredictor]:
-        assert model_args is not None
-
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-        scale = tf.constant(1.0, dtype=tf.float64)
-        kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.constant(-2.0, dtype=tf.float64), scale
-        )
-        kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), scale
-        )
-
-        if model_type == "GPR":
-            gpr = gpflow.models.GPR(
-                (data.query_points, data.observations), kernel, noise_variance=1e-5
-            )
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            return GaussianProcessRegression(gpr, **model_args)
-        elif model_type == "VGP":
-            likelihood = gpflow.likelihoods.Gaussian(1e-3)
-            vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
-            gpflow.utilities.set_trainable(vgp.likelihood, False)
-            return VariationalGaussianProcess(vgp, **model_args)
-        elif model_type == "SVGP":
-            Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
-            svgp = gpflow.models.SVGP(
-                kernel,
-                gpflow.likelihoods.Gaussian(variance=1e-5),
-                Z,
-                num_data=len(data.observations),
-            )
-            gpflow.utilities.set_trainable(svgp.likelihood, False)
-            return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
-        elif model_type == "DGP":
+        def build_model(data: Dataset) -> GPfluxPredictor:  # type: ignore
             epochs = 400
             batch_size = 100
             dgp = two_layer_dgp_model(data.query_points)
@@ -362,24 +373,28 @@ def _test_optimizer_finds_minimum(
                 "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
             }
             optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
-            return DeepGaussianProcess(model=dgp, optimizer=optimizer)
-        elif model_type == "DE":
+            return DeepGaussianProcess(dgp, optimizer)
+
+    elif model_type == "DE":
+        num_initial_query_points = 20
+        track_state = False
+
+        def build_model(data: Dataset) -> KerasPredictor:  # type: ignore
+            assert model_args is not None
             keras_ensemble = build_vanilla_keras_ensemble(data, 5, 3, 25)
-            optimizer = tf.keras.optimizers.Adam(0.001)
             fit_args = {
                 "batch_size": 20,
                 "epochs": 1000,
                 "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50)],
                 "verbose": 0,
             }
-            model = DeepEnsemble(
-                keras_ensemble,
-                KerasOptimizer(optimizer, negative_log_likelihood, fit_args),
-                False,
+            optimizer = KerasOptimizer(
+                tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
             )
-            return model
-        else:
-            raise ValueError(f"Unsupported model_type '{model_type}'")
+            return DeepEnsemble(keras_ensemble, optimizer, **model_args)
+
+    else:
+        raise ValueError(f"Unsupported model_type '{model_type}'")
 
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
