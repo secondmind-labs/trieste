@@ -145,11 +145,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         fit_args = self._fit_args
-        if 'epochs' in fit_args:
-            fit_args['epochs'] = self._fit_args['epochs'] + self.absolute_epochs
+        if "epochs" in fit_args:
+            fit_args["epochs"] = self._fit_args["epochs"] + self.absolute_epochs
 
         hist = self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **fit_args,
+            {"inputs": dataset.query_points, "targets": dataset.observations},
+            **fit_args,
             initial_epoch=self.absolute_epochs,
         )
 
