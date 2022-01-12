@@ -82,6 +82,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self._model_keras = model.as_training_model()
         self._model_keras.compile(self.optimizer.optimizer)
+        self.absolute_epochs = 0
 
     def __repr__(self) -> str:
         """"""
@@ -143,10 +144,14 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
-        self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **self._fit_args
+        fit_args = self._fit_args
+        fit_args['epochs'] = self._fit_args['epochs'] + self.absolute_epochs
+        hist = self.model_keras.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations}, **fit_args,
+            initial_epoch=self.absolute_epochs,
         )
 
+        self.absolute_epochs = self.absolute_epochs + len(hist.history["loss"])
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
