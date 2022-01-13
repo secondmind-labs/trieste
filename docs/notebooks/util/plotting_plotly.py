@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.models.keras import KerasPredictor
+from trieste.models.interfaces import TrainableProbabilisticModel
 
 from gpflow.models import GPModel
 from gpflux.models import DeepGP
@@ -162,7 +162,7 @@ def plot_gp_plotly(
 
 
 def plot_de_plotly(
-    model: KerasPredictor, mins: TensorType, maxs: TensorType, grid_density=20
+    model: TrainableProbabilisticModel, mins: TensorType, maxs: TensorType, grid_density=20
 ) -> go.Figure:
     """
     Plots 2-dimensional plot of a GP model's predictions with mean and 2 standard deviations.

@@ -86,7 +86,7 @@ from trieste.models.keras import (
 from trieste.models.optimizer import KerasOptimizer
 
 
-def build_model(data: Dataset) -> DeepEnsemble:
+def build_cubic_model(data: Dataset) -> DeepEnsemble:
     ensemble_size = 5
     num_hidden_layers = 1
     num_nodes = 100
@@ -108,7 +108,7 @@ def build_model(data: Dataset) -> DeepEnsemble:
 
 
 # building and optimizing the model
-model = build_model(data)
+model = build_cubic_model(data)
 model.optimize(data)
 
 
@@ -329,7 +329,7 @@ fig.show()
 # Finally, let's plot the regret over time, i.e. difference between the minimum of the objective function and lowest observations found by the Bayesian optimization over time. Below you can see two plots. The left hand plot shows the regret over time: the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is a two-dimensional search space that shows where in the search space initial points were located (crosses again) and where Bayesian optimization allocated samples (dots). The best point is shown in each (purple dot) and on the left plot you can see that we come very close to 0 which is the minimum of the objective function.
 
 # %%
-from util.plotting import plot_regret
+from util.plotting import plot_regret, plot_bo_points
 
 suboptimality = observations - MINIMUM.numpy()
 
