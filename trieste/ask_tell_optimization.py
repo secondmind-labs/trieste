@@ -23,9 +23,13 @@ from __future__ import annotations
 import copy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
+import numpy as np
+import tensorflow as tf
+
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import OptimizationResult, Record
 from .data import Dataset
+from .logging import get_step_number, get_tensorboard_writer
 from .models import ModelSpec, create_model
 from .observer import OBJECTIVE
 from .space import SearchSpace
@@ -291,3 +295,16 @@ class AskTellOptimizer(Generic[SP]):
             dataset = self._datasets[tag]
             model.update(dataset)
             model.optimize(dataset)
+
+        summary_writer = get_tensorboard_writer()
+        step_number = get_step_number()
+        if summary_writer:
+            with summary_writer.as_default():
+                for tag in self._datasets:
+                    with tf.name_scope(f"{tag}.model"):
+                        self._models[tag].log()
+                    tf.summary.scalar(
+                        f"{tag}.observation.best_overall",
+                        np.min(self._datasets[tag].observations),
+                        step=step_number,
+                    )
