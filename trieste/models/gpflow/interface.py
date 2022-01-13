@@ -33,9 +33,7 @@ from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(
-    SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC
-):
+class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):

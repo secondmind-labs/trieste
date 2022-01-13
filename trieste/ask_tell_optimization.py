@@ -29,9 +29,9 @@ import tensorflow as tf
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import OptimizationResult, Record
 from .data import Dataset
+from .logging import get_step_number, get_tensorboard_writer
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .models.config import ModelConfigType
-from .logging import get_step_number, get_tensorboard_writer
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
