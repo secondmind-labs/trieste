@@ -308,3 +308,8 @@ class AskTellOptimizer(Generic[SP]):
                         np.min(self._datasets[tag].observations),
                         step=step_number,
                     )
+                    tf.summary.scalar(
+                        f"{tag}.observation.best_new",
+                        np.min(new_data[tag].observations),
+                        step=step_number,
+                    )
