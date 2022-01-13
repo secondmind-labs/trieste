@@ -472,7 +472,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         :param objective_model: The objective model.
         :param feasible_mean: The mean of the feasible query points.
         """
-        _pf = Pareto(feasible_mean)
+        _pf = Pareto(self._objective_dataset.observations)
         if callable(self._ref_point_spec):
             self._ref_point = tf.cast(
                 self._ref_point_spec(feasible_mean, self, self._constraint_builder),
