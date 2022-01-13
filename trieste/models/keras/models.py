@@ -56,10 +56,9 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
     can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
     :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.
 
-    Note that setting up the model with dictionary configs is not currently possible.
-
-    When using the model we recommend to set `tf.keras.backend.set_floatx(tf.float64)` for
-    alignment with the Trieste toolbox.
+    Note that currently we do not support setting up the model with dictionary configs and saving
+    the model during Bayesian optimization loop (``track_state`` argument in
+    :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to `False`).
     """
 
     def __init__(

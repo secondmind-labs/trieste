@@ -27,8 +27,6 @@ from ..optimizer import KerasOptimizer
 class KerasPredictor(ProbabilisticModel, ABC):
     """
     This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
-    We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with the Trieste
-    toolbox.
     """
 
     def __init__(self, optimizer: Optional[KerasOptimizer] = None):

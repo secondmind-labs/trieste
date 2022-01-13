@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from trieste.types import TensorType
 from trieste.utils import to_numpy
+from trieste.models.keras import KerasPredictor
 
 from gpflow.models import GPModel
 from gpflux.models import DeepGP
@@ -139,6 +140,47 @@ def plot_gp_plotly(
 
     # Evaluate objective function
     Fmean, Fvar = model.predict_f(Xplot)
+
+    n_output = Fmean.shape[1]
+
+    fig = make_subplots(
+        rows=1, cols=n_output, specs=[np.repeat({"type": "surface"}, n_output).tolist()]
+    )
+
+    for k in range(n_output):
+        fmean = Fmean[:, k].numpy()
+        fvar = Fvar[:, k].numpy()
+
+        lcb = fmean - 2 * np.sqrt(fvar)
+        ucb = fmean + 2 * np.sqrt(fvar)
+
+        fig = add_surface_plotly(xx, yy, fmean, fig, alpha=1.0, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, lcb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+        fig = add_surface_plotly(xx, yy, ucb, fig, alpha=0.5, figrow=1, figcol=k + 1)
+
+    return fig
+
+
+def plot_de_plotly(
+    model: KerasPredictor, mins: TensorType, maxs: TensorType, grid_density=20
+) -> go.Figure:
+    """
+    Plots 2-dimensional plot of a GP model's predictions with mean and 2 standard deviations.
+
+    :param model: a keras model
+    :param mins: list of 2 lower bounds
+    :param maxs: list of 2 upper bounds
+    :param grid_density: integer (grid size)
+    :return: a plotly figure
+    """
+    mins = to_numpy(mins)
+    maxs = to_numpy(maxs)
+
+    # Create a regular grid on the parameter space
+    Xplot, xx, yy = create_grid(mins=mins, maxs=maxs, grid_density=grid_density)
+
+    # Evaluate objective function
+    Fmean, Fvar = model.predict(Xplot)
 
     n_output = Fmean.shape[1]
 
