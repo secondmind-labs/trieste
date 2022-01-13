@@ -486,7 +486,7 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class Parameter(gpflow.Parameter):
+class Parameter(gpflow.Parameter):  # type: ignore[misc]
     """A modified version of gpflow.Parameter that supports variable shapes."""
 
     def __init__(

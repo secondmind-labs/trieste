@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Callable, Union
+from typing import Callable, Mapping, Union
 
 import numpy as np
 import numpy.testing as npt
@@ -41,7 +41,7 @@ from trieste.acquisition.function.greedy_batch import (
     soft_local_penalizer,
 )
 from trieste.data import Dataset
-from trieste.models import TrainableModelStack
+from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -236,6 +236,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
+    models: Mapping[str, TrainableProbabilisticModel]
     if model_type == "stack":
         models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
     else:
@@ -261,6 +262,7 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
+    models: Mapping[str, TrainableProbabilisticModel]
     if model_type == "stack":
         models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
     else:

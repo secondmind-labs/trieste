@@ -27,7 +27,6 @@ from .sampler import (
     RandomFourierFeatureTrajectorySampler,
 )
 from .utils import (
-    M,
     assert_data_is_compatible,
     check_optimizer,
     randomize_hyperparameters,
