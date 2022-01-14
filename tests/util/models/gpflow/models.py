@@ -115,7 +115,7 @@ class GaussianProcessWithSamplers(GaussianProcess):
         return BatchReparametrizationSampler(num_samples, self)
 
 
-class QuadraticMeanAndRBFKernel(SupportsGetKernelObservationNoise, GaussianProcess):
+class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernelObservationNoise):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
