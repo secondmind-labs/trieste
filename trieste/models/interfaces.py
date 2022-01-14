@@ -345,7 +345,7 @@ class ModelStack(Generic[T], ProbabilisticModel):
             )
 
 
-class TrainableModelStack(TrainableProbabilisticModel, ModelStack[TrainableProbabilisticModel]):
+class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProbabilisticModel):
     r"""
     A :class:`TrainableModelStack` is a wrapper around a number of
     :class:`TrainableProbabilisticModel`\ s.
@@ -383,7 +383,7 @@ class TrainableModelStack(TrainableProbabilisticModel, ModelStack[TrainableProba
             model.optimize(Dataset(dataset.query_points, obs))
 
 
-class PredictJointModelStack(SupportsPredictJoint, ModelStack[SupportsPredictJoint]):
+class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJoint):
     r"""
     A :class:`PredictJointModelStack` is a wrapper around a number of
     :class:`SupportsPredictJoint`\ s.
