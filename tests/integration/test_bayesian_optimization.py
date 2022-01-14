@@ -53,7 +53,7 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
 from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -333,7 +333,7 @@ def _test_optimizer_finds_minimum(
 )
 def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPfluxPredictor],
     keras_float: None,
 ) -> None:
 
