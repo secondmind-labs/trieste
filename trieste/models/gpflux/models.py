@@ -70,7 +70,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         if not self.optimizer.minimize_args:
-            self._fit_args: Optional[Dict[str, Any]] = {
+            self._fit_args: Dict[str, Any] = {
                 "verbose": 0,
                 "epochs": 100,
                 "batch_size": 100,
@@ -144,8 +144,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
-        fit_args = self._fit_args
-        if fit_args is not None and "epochs" in fit_args:
+        fit_args = dict(self._fit_args)
+        if "epochs" in fit_args:
             fit_args["epochs"] = fit_args["epochs"] + self.absolute_epochs
 
         hist = self.model_keras.fit(
