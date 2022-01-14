@@ -166,8 +166,6 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
         """
         Return the variance of observation noise.
 
-        Note that this is not supported by all models.
-
         :return: The observation noise.
         """
         raise NotImplementedError
