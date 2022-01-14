@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import Protocol
 
 import gpflow
 import tensorflow as tf
@@ -33,7 +34,7 @@ from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC):
+class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
@@ -122,3 +123,34 @@ class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObserv
         :return: The reparametrization sampler.
         """
         return BatchReparametrizationSampler(num_samples, self)
+
+
+class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
+    """A probabilistic model that supports covariance_between_points."""
+
+    @abstractmethod
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+        raise NotImplementedError
+
+
+class SupportsCovarianceObservationNoise(
+    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, Protocol
+):
+    """A model that supports both covariance_between_points and get_observation_noise."""
+
+    pass

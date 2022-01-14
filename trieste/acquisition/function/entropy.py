@@ -23,7 +23,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow.models import SupportsCovarianceObservationNoise
+from ...models.gpflow.interface import SupportsCovarianceObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
 import tensorflow as tf
@@ -24,7 +24,7 @@ from ..interfaces import ProbabilisticModel
 from ..optimizer import KerasOptimizer
 
 
-class KerasPredictor(ProbabilisticModel, ABC):
+class KerasPredictor(ProbabilisticModel):
     """
     This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
     We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with the Trieste

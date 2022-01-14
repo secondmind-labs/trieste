@@ -220,9 +220,6 @@ class AskTellOptimizer(Generic[SP]):
             arguments. Note that if the default is used, this implies the tags must be
             `OBJECTIVE` and the search space can be any :class:`~trieste.space.SearchSpace`.
         :param acquisition_state: The optional acquisition state for stateful acquisitions.
-        :param model_type: The model type required by the acquisition rules.
-            Specifying this allows trieste to check that models of the right type are being used,
-            both statically and at run time. Defaults to :class:`TrainableProbabilisticModel`.
         :param fit_model: If `True` (default), models passed in will be optimized on the given data.
             If `False`, the models are assumed to be optimized already.
         :raise ValueError: If any of the following are true:

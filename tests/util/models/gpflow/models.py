@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from abc import ABC
 from collections.abc import Callable, Sequence
 
 import gpflow
@@ -36,7 +35,7 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
 )
-from trieste.models.gpflow.models import SupportsCovarianceObservationNoise
+from trieste.models.gpflow.interface import SupportsCovarianceObservationNoise
 from trieste.models.gpflow.sampler import SupportsGetKernelObservationNoise
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
@@ -49,7 +48,7 @@ def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
     return tfp.math.psd_kernels.ExponentiatedQuadratic()
 
 
-class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
+class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
@@ -59,7 +58,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
         pass
 
 
-class GaussianMarginal(ProbabilisticModel, ABC):
+class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
