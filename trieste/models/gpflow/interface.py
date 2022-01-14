@@ -146,11 +146,3 @@ class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
             (L being the number of latent GPs = number of output dimensions)
         """
         raise NotImplementedError
-
-
-class SupportsCovarianceObservationNoise(
-    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, Protocol
-):
-    """A model that supports both covariance_between_points and get_observation_noise."""
-
-    pass

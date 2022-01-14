@@ -20,10 +20,12 @@ from typing import Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import Protocol
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow.interface import SupportsCovarianceObservationNoise
+from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
+from ...models.interfaces import SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -185,6 +187,14 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         f_acqu_x = -gamma * ratio / 2 - log_minus_cdf
 
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
+
+
+class SupportsCovarianceObservationNoise(
+    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, Protocol
+):
+    """A model that supports both covariance_between_points and get_observation_noise."""
+
+    pass
 
 
 class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceObservationNoise]):
