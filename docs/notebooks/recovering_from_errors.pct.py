@@ -44,20 +44,15 @@ observer = FaultyBranin()
 # We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`. `TrustRegion` is stateful, and we'll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.
 
 # %%
-import gpflow
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 
 search_space = trieste.space.Box(
     tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64)
 )
 initial_data = observer(search_space.sample(5))
 
-variance = tf.math.reduce_variance(initial_data.observations)
-kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(
-    1e-12
-)
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
-gpflow.set_trainable(gpr.likelihood, False)
-model = trieste.models.gpflow.GaussianProcessRegression(gpr)
+gpr = build_gpr(initial_data, search_space)
+model = GaussianProcessRegression(gpr)
 
 acquisition_rule = trieste.acquisition.rule.TrustRegion()
 

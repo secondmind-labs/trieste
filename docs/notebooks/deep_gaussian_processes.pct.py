@@ -197,34 +197,15 @@ fig.show()
 import gpflow
 import tensorflow_probability as tfp
 
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_gp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(
-        variance=variance, lengthscales=[0.2] * data.query_points.shape[-1]
-    )
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.cast(-2.0, dtype=tf.float64), prior_scale
-    )
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        tf.math.log(kernel.lengthscales), prior_scale
-    )
-    gpr = gpflow.models.GPR(
-        data.astuple(),
-        kernel,
-        mean_function=gpflow.mean_functions.Constant(),
-        noise_variance=1e-5,
-    )
-    gpflow.set_trainable(gpr.likelihood, False)
-    num_kernel_samples = 100
-
-    return GaussianProcessRegression(gpr)
+def build_gp_model(data, search_space):
+    model = build_gpr(data, search_space)
+    return GaussianProcessRegression(model)
 
 
-gp_model = build_gp_model(initial_data)
+gp_model = build_gp_model(initial_data, search_space)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -355,7 +336,7 @@ dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 # %%
 
-gp_model = build_gp_model(initial_data)
+gp_model = build_gp_model(initial_data, search_space)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 

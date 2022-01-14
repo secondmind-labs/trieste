@@ -27,19 +27,13 @@ observer = trieste.objectives.utils.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
-# We'll use Gaussian process regression to model the function, as implemented in GPflow. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
+# We'll use Gaussian process regression to model the function, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
-import gpflow
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-observations = initial_data.observations
-kernel = gpflow.kernels.Matern52(
-    tf.math.reduce_variance(observations), [0.2, 0.2]
-)
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
-gpflow.set_trainable(gpr.likelihood, False)
 
+gpr = build_gpr(initial_data, search_space)
 model = GaussianProcessRegression(gpr)
 
 # %% [markdown]

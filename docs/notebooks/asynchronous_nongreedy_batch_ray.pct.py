@@ -81,15 +81,12 @@ initial_data = Dataset(
 )
 
 import gpflow
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-    return GaussianProcessRegression(gpr)
+def build_model(data, search_space):
+    model = build_gpr(data, search_space)
+    return GaussianProcessRegression(model)
 
 
 # %% [markdown]
@@ -114,7 +111,7 @@ from trieste.acquisition.rule import AsynchronousOptimization
 from trieste.acquisition.function import BatchMonteCarloExpectedImprovement
 from trieste.ask_tell_optimization import AskTellOptimizer
 
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 monte_carlo_sample_size = 10000
 acquisition_function = BatchMonteCarloExpectedImprovement(
     sample_size=monte_carlo_sample_size

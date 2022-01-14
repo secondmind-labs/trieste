@@ -86,32 +86,13 @@ initial_data = observer(search_space.sample(num_init_points))
 # %% [markdown]
 # ## Build GPflow models
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood. The `GPR` and `VGP` models are build using Trieste's convenient model build functions `build_gpr` and `build_vgp`.
 
 # %%
-import gpflow
+from trieste.models.gpflow import build_gpr, build_vgp
 
-
-def create_regression_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-    return gpr
-
-
-def create_classification_model(data):
-    kernel = gpflow.kernels.SquaredExponential(
-        variance=100.0, lengthscales=[0.2, 0.2]
-    )
-    likelihood = gpflow.likelihoods.Bernoulli()
-    vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
-    gpflow.set_trainable(vgp.kernel.variance, False)
-    return vgp
-
-
-regression_model = create_regression_model(initial_data[OBJECTIVE])
-classification_model = create_classification_model(initial_data[FAILURE])
+regression_model = build_gpr(initial_data[OBJECTIVE], search_space)
+classification_model = build_vgp(initial_data[FAILURE], search_space, noise_free=False)
 
 
 # %% [markdown]

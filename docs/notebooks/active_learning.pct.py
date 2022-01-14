@@ -47,31 +47,18 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Surrogate model
 #
-# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper. As a good practice, we use priors for the kernel hyperparameters.
+# Just like in sequential optimization, we fit a surrogate Gaussian process model as implemented in GPflow to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
-import gpflow
-from trieste.models.gpflow.models import GaussianProcessRegression
-import tensorflow_probability as tfp
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.cast(-2.0, dtype=tf.float64), prior_scale
-    )
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        tf.math.log(kernel.lengthscales), prior_scale
-    )
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-
-    return GaussianProcessRegression(gpr)
+def build_model(data, search_space):
+    model = build_gpr(data, search_space)
+    return GaussianProcessRegression(model)
 
 
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 
 # %% [markdown]
 # ## Active learning using predictive variance
@@ -156,7 +143,7 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 bo_iter = 5
 num_query = 3
 
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(

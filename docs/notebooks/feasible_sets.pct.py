@@ -75,31 +75,19 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Probabilistic model of the objective function
 #
-# Just like in sequential optimization, we use a probabilistic model of the objective function. Acquisition functions will exploit the predictive posterior of the model to identify the failure region. We use a `GPR` model from the GPflow library to formulate a Gaussian process model, wrapping it in Trieste's `GaussianProcessRegression` model wrapper. As a good practice, we use priors for the kernel hyperparameters.
+# Just like in sequential optimization, we use a probabilistic model of the objective function. Acquisition functions will exploit the predictive posterior of the model to identify the failure region. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper.
 
 # %%
 import gpflow
-from trieste.models.gpflow.models import GaussianProcessRegression
-import tensorflow_probability as tfp
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.math.log(variance), prior_scale
-    )
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        tf.math.log(kernel.lengthscales), prior_scale
-    )
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-
-    return GaussianProcessRegression(gpr)
+def build_model(data, search_space):
+    model = build_gpr(data, search_space)
+    return GaussianProcessRegression(model)
 
 
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 
 
 # %% [markdown]
@@ -201,7 +189,7 @@ query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 
 # fitting the model only to the initial data
-initial_model = build_model(initial_data)
+initial_model = build_model(initial_data, search_space)
 initial_model.optimize(initial_data)
 
 plot_excursion_probability(
@@ -262,7 +250,7 @@ rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=2)  # t
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
 final_model_ivr = result_ivr.try_get_final_model()
@@ -283,7 +271,7 @@ acq_range = IntegratedVarianceReduction(
 )
 rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=2)  # type: ignore
 
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 result_range = bo.optimize(num_steps, initial_data, model, rule_range)
 
 # %% [markdown]

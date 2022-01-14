@@ -54,20 +54,10 @@ initial_data = observer(initial_query_points)
 # Typical process of setting up a valid model would go as follow.  We first set up a GPR model, using some initial data to set some parameters.
 
 # %%
-from gpflow.models import GPR
-
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 
-
-def build_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    return gpr
-
-
-gpflow_model = build_model(initial_data)
+gpflow_model = build_gpr(initial_data, search_space)
 
 # %% [markdown]
 # Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building.
@@ -137,24 +127,7 @@ result = bo.optimize(2, initial_data, model_config)
 # %%
 from copy import deepcopy
 
-from gpflow.models import SVGP
-
-
-def build_gpr_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    model = GPR(data.astuple(), kernel, noise_variance=1e-5)
-    return model
-
-
-def build_svgp_model(data):
-    inputs = data.query_points
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-    model = SVGP(
-        kernel, gpflow.likelihoods.Gaussian(), inputs[:2], num_data=len(inputs)
-    )
-    return model
+from trieste.models.gpflow import build_svgp
 
 
 def run_experiment(model_config):
@@ -164,12 +137,12 @@ def run_experiment(model_config):
 
 
 # configuration shared by all experiments, this is modified by each experiment condition
-basic_config = {"model": build_gpr_model(initial_data)}
+basic_config = {"model": build_gpr_model(initial_data, search_space)}
 
 # here we specify our experiments
 experiment_conditions = [
     {"model_args": {"num_kernel_samples": 50}},
-    {"model": build_svgp_model(initial_data)},
+    {"model": build_svgp_model(initial_data, search_space)},
 ]
 
 results = []

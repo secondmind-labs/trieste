@@ -71,15 +71,12 @@ initial_data = Dataset(
 )
 
 import gpflow
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.RBF(variance=variance)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-    return GaussianProcessRegression(gpr)
+def build_model(data, search_space):
+    model = build_gpr(data, search_space)
+    return GaussianProcessRegression(model)
 
 
 # these imports will be used later for optimization
@@ -180,7 +177,7 @@ enable_sleep_delays = True
 # %%
 
 # setup Ask Tell BO
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 
 local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
@@ -253,7 +250,7 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 
 # %%
 # setup Ask Tell BO
-model = build_model(initial_data)
+model = build_model(initial_data, search_space)
 
 local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore
