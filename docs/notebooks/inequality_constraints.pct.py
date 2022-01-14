@@ -93,12 +93,12 @@ plt.show()
 from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 
 
-def create_bo_model(data, search_space):
+def create_bo_model(data):
     gpr = build_gpr(data, search_space)
     return GaussianProcessRegression(gpr)
 
 
-initial_models = trieste.utils.map_values(create_bo_model, initial_data, search_space)
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
 # ## Define the acquisition process
@@ -206,7 +206,7 @@ batch_rule = EfficientGlobalOptimization(  # type: ignore
 # We can now run the BO loop as before; note that here we also query twenty points, but in five batches of four points.
 
 # %%
-initial_models = trieste.utils.map_values(create_bo_model, initial_data, search_space)
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 num_steps = 5
 batch_data = bo.optimize(
@@ -285,7 +285,7 @@ def observer_two_constraints(query_points):
 
 num_initial_points = 10
 initial_data = observer_two_constraints(search_space.sample(num_initial_points))
-initial_models = trieste.utils.map_values(create_bo_model, initial_data, search_space)
+initial_models = trieste.utils.map_values(create_bo_model, initial_data)
 
 # %% [markdown]
 # Now, the probability that the two constraints are feasible is the product of the two feasibilities. Hence, we combine the two `ProbabilityOfFeasibility` functions into one quantity by using a `Product` `Reducer`:
