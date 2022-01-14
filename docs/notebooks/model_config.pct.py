@@ -137,12 +137,12 @@ def run_experiment(model_config):
 
 
 # configuration shared by all experiments, this is modified by each experiment condition
-basic_config = {"model": build_gpr_model(initial_data, search_space)}
+basic_config = {"model": build_gpr(initial_data, search_space)}
 
 # here we specify our experiments
 experiment_conditions = [
     {"model_args": {"num_kernel_samples": 50}},
-    {"model": build_svgp_model(initial_data, search_space)},
+    {"model": build_svgp(initial_data, search_space)},
 ]
 
 results = []

@@ -136,13 +136,13 @@ def test_build_vgp_returns_correct_model(
     assert model.data == (qp, obs)
 
     # check the likelihood
-    _check_likelihood(model, True, None, None, None)
+    _check_likelihood(model, True, None, None, False)
 
     # check the mean function
     _check_mean_function(model, True, None)
 
     # check the kernel
-    _check_kernel(model, True, kernel_variance, None, kernel_priors, noise_free)
+    _check_kernel(model, True, kernel_variance, 0.0, kernel_priors, noise_free)
 
 
 @pytest.mark.parametrize("classification", [True, False])
@@ -228,7 +228,7 @@ def _check_kernel(
     model: GPModel,
     classification: bool,
     kernel_variance: Optional[float],
-    empirical_variance: Optional[float],
+    empirical_variance: float,
     kernel_priors: bool,
     noise_free: bool,
 ) -> None:
@@ -258,7 +258,7 @@ def _check_kernel(
 def _check_inducing_points(
     model: GPModel,
     search_space: SearchSpace,
-    num_inducing_points: int,
+    num_inducing_points: Optional[int],
     trainable_inducing_points: bool,
 ) -> None:
     if num_inducing_points is None:

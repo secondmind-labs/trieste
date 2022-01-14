@@ -95,12 +95,12 @@ model = build_model(initial_data)
 from trieste.models.gpflow import build_gpr
 
 
-def build_model(data, search_space):
+def build_model_with_convenient_gpr_builder(data, search_space):
     gpr = build_gpr(data, search_space)
     return GaussianProcessRegression(gpr, num_kernel_samples=100)
 
 
-model = build_model(initial_data, search_space)
+model = build_model_with_convenient_gpr_builder(initial_data, search_space)
 
 # %% [markdown]
 # ## Run the optimization loop
