@@ -18,6 +18,8 @@ GPflow wrappers.
 
 from __future__ import annotations
 
+from typing import Protocol
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
@@ -177,8 +179,8 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class SupportsGetKernelObservationNoise(SupportsGetKernel, SupportsGetObservationNoise):
-    """A probabilistic model that supprots both get_kernel and get_observation noise."""
+class SupportsGetKernelObservationNoise(SupportsGetKernel, SupportsGetObservationNoise, Protocol):
+    """A probabilistic model that supports both get_kernel and get_observation noise."""
 
     pass
 

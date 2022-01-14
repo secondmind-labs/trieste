@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
 
 import gpflow
 import tensorflow as tf
@@ -27,7 +27,8 @@ from ..utils import DEFAULTS
 T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
 
 
-class ProbabilisticModel(ABC):
+@runtime_checkable
+class ProbabilisticModel(Protocol):
     """A probabilistic model."""
 
     @abstractmethod
@@ -104,7 +105,8 @@ class ProbabilisticModel(ABC):
         pass
 
 
-class TrainableProbabilisticModel(ProbabilisticModel):
+@runtime_checkable
+class TrainableProbabilisticModel(ProbabilisticModel, Protocol):
     """A trainable probabilistic model."""
 
     @abstractmethod
@@ -127,7 +129,8 @@ class TrainableProbabilisticModel(ProbabilisticModel):
         raise NotImplementedError
 
 
-class SupportsPredictJoint(ProbabilisticModel):
+@runtime_checkable
+class SupportsPredictJoint(ProbabilisticModel, Protocol):
     """A probabilistic model that supports predict_joint."""
 
     @abstractmethod
@@ -141,7 +144,8 @@ class SupportsPredictJoint(ProbabilisticModel):
         raise NotImplementedError
 
 
-class SupportsGetKernel(ProbabilisticModel):
+@runtime_checkable
+class SupportsGetKernel(ProbabilisticModel, Protocol):
     """A probabilistic model that supports get_kernel."""
 
     @abstractmethod
@@ -153,7 +157,8 @@ class SupportsGetKernel(ProbabilisticModel):
         raise NotImplementedError
 
 
-class SupportsGetObservationNoise(ProbabilisticModel):
+@runtime_checkable
+class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
     """A probabilistic model that supports get_observation_noise."""
 
     @abstractmethod
@@ -168,7 +173,8 @@ class SupportsGetObservationNoise(ProbabilisticModel):
         raise NotImplementedError
 
 
-class FastUpdateModel(ProbabilisticModel):
+@runtime_checkable
+class FastUpdateModel(ProbabilisticModel, Protocol):
     """A model with the ability to predict based on (possibly fantasized) supplementary data."""
 
     @abstractmethod
@@ -398,7 +404,7 @@ class PredictJointModelStack(SupportsPredictJoint, ModelStack[SupportsPredictJoi
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
 
-class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel):
+class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel, Protocol):
     """A model that is both trainable and supports predict_joint."""
 
     pass

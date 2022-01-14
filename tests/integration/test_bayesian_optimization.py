@@ -138,7 +138,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(
+                    GIBBON(  # type: ignore[arg-type]  # (only supported by GPR models)
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
@@ -172,7 +172,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 15,
                 EfficientGlobalOptimization(
-                    Fantasizer(),
+                    Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
                     num_query_points=3,
                 ),
             ),

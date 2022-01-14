@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Optional, Protocol, Union
 
 import gpflow
 import tensorflow as tf
@@ -56,7 +56,7 @@ from .utils import (
 )
 
 
-class SupportsCovarianceBetweenPoints(SupportsPredictJoint):
+class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
     """A probabilistic model that supports covariance_between_points."""
 
     @abstractmethod

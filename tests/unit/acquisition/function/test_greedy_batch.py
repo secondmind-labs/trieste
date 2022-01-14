@@ -35,6 +35,7 @@ from trieste.acquisition import (
 from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
 from trieste.acquisition.function.greedy_batch import (
     Fantasizer,
+    FantasizerModelOrStack,
     FantasizerModelStack,
     LocalPenalization,
     _generate_fantasized_model,
@@ -42,7 +43,6 @@ from trieste.acquisition.function.greedy_batch import (
     soft_local_penalizer,
 )
 from trieste.data import Dataset
-from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -237,7 +237,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models: Mapping[str, TrainableProbabilisticModel]
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
         models = {
             "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
@@ -265,7 +265,7 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models: Mapping[str, TrainableProbabilisticModel]
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
         models = {
             "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))

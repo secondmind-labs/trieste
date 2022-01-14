@@ -16,7 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional, Union, cast
+from typing import Callable, Dict, Mapping, Optional, Protocol, Union, cast
 
 import gpflow
 import tensorflow as tf
@@ -364,7 +364,7 @@ class hard_local_penalizer(local_penalizer):
 
 
 class FantasizerModelType(
-    FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise
+    FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, Protocol
 ):
     """The model requirements for the Fantasizer acquisition function."""
 
