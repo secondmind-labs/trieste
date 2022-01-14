@@ -25,46 +25,46 @@ import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from ...data import Dataset
-from ...space import SearchSpace
+from ...space import Box, SearchSpace
 from ...types import TensorType
 
-KERNEL_LENGTHSCALE = 0.2
+KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
 Default value of the kernel lengthscale parameter.
 """
 
 
-KERNEL_PRIOR_SCALE = 1.0
+KERNEL_PRIOR_SCALE = tf.cast(1.0, dtype=gpflow.default_float())
 """
 Default value of the scaling factor for the kernel lengthscale and variance parameters.
 """
 
 
-CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE = 100.0
+CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE = tf.cast(100.0, dtype=gpflow.default_float())
 """
 Default value of the kernel variance parameter for classification models in the noise free case.
 """
 
 
-CLASSIFICATION_KERNEL_VARIANCE = 1.0
+CLASSIFICATION_KERNEL_VARIANCE = tf.cast(1.0, dtype=gpflow.default_float())
 """
 Default value of the kernel variance parameter for classification models.
 """
 
 
-MAX_NUM_INDUCING_POINTS = 500
+MAX_NUM_INDUCING_POINTS = tf.cast(500, dtype=tf.int32)
 """
 Default maximum number of inducing points.
 """
 
 
-NUM_INDUCING_POINTS_PER_DIM = 25
+NUM_INDUCING_POINTS_PER_DIM = tf.cast(25, dtype=tf.int32)
 """
 Default number of inducing points per dimension of the search space.
 """
 
 
-SNR_LIKELIHOOD = 10
+SNR_LIKELIHOOD = tf.cast(10, dtype=gpflow.default_float())
 """
 Default value used for initializing (noise) variance parameter of the likelihood function.
 If user does not specify it, the noise variance is set to maintain the signal to noise ratio
@@ -115,7 +115,7 @@ def build_gpr(
     if likelihood_variance is None:
         noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
     else:
-        noise_variance = likelihood_variance
+        noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
 
     model = gpflow.models.GPR(data.astuple(), kernel, mean, noise_variance)
 
@@ -147,7 +147,8 @@ def build_sgpr(
 
     For performance reasons number of inducing points should not be changed during Bayesian
     optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
-    number. By default inducing points are set to Sobol samples from the search space. This carries
+    number. By default inducing points are set to Sobol samples for the continuous search space,
+    and simple random samples for discrete or mixed search spaces. This carries
     the risk that optimization gets stuck if they are not trainable, which calls for adaptive
     inducing point selection during the optimization. This functionality will be added to Trieste
     in future.
@@ -184,7 +185,7 @@ def build_sgpr(
     if likelihood_variance is None:
         noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
     else:
-        noise_variance = likelihood_variance
+        noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
 
     model = SGPR(
         data.astuple(), kernel, inducing_points, mean_function=mean, noise_variance=noise_variance
@@ -236,7 +237,7 @@ def build_vgp(
     :return: A :class:`~gpflow.models.VGP` model.
     """
     if kernel_variance is not None:
-        variance = kernel_variance
+        variance = tf.cast(kernel_variance, dtype=gpflow.default_float())
     else:
         if noise_free:
             variance = CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE
@@ -248,7 +249,7 @@ def build_vgp(
     else:
         add_prior_to_variance = kernel_priors
 
-    mean_constant = 0.0
+    mean_constant = tf.cast(0.0, dtype=gpflow.default_float())
     model_likelihood = gpflow.likelihoods.Bernoulli()
     kernel = _get_kernel(variance, search_space, kernel_priors, add_prior_to_variance)
     mean = gpflow.mean_functions.Constant(mean_constant)
@@ -285,7 +286,8 @@ def build_svgp(
 
     For performance reasons number of inducing points should not be changed during Bayesian
     optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
-    number. By default inducing points are set to Sobol samples from the search space. This carries
+    number. By default inducing points are set to Sobol samples for the continuous search space,
+    and simple random samples for discrete or mixed search spaces. This carries
     the risk that optimization gets stuck if they are not trainable, which calls for adaptive
     inducing point selection during the optimization. This functionality will be added to Trieste
     in future.
@@ -321,13 +323,13 @@ def build_svgp(
 
     if classification:
         empirical_variance = CLASSIFICATION_KERNEL_VARIANCE
-        empirical_mean = 0.0
+        empirical_mean = tf.cast(0.0, dtype=gpflow.default_float())
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
         if likelihood_variance is None:
             noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
         else:
-            noise_variance = likelihood_variance
+            noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
         model_likelihood = gpflow.likelihoods.Gaussian(noise_variance)
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
@@ -372,13 +374,14 @@ def _get_kernel(
     )
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
 
-    prior_scale = tf.cast(KERNEL_PRIOR_SCALE, dtype=gpflow.default_float())
     if add_prior_to_lengthscale:
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), prior_scale
+            tf.math.log(kernel.lengthscales), KERNEL_PRIOR_SCALE
         )
     if add_prior_to_variance:
-        kernel.variance.prior = tfp.distributions.LogNormal(tf.math.log(variance), prior_scale)
+        kernel.variance.prior = tfp.distributions.LogNormal(
+            tf.math.log(variance), KERNEL_PRIOR_SCALE
+        )
 
     return kernel
 
@@ -390,7 +393,9 @@ def _get_inducing_points(
         num_inducing_points = min(
             MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * search_space.dimension
         )
-
-    inducing_points = search_space.sample_sobol(num_inducing_points)
+    if isinstance(search_space, Box):
+        inducing_points = search_space.sample_sobol(num_inducing_points)
+    else:
+        inducing_points = search_space.sample(num_inducing_points)
 
     return inducing_points
