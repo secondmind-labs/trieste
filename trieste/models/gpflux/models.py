@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -145,6 +145,11 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param dataset: The data with which to optimize the `model`.
         """
         fit_args = dict(self._fit_args)
+
+        # Tell optimizer how many epochs have been used before: the optimizer will "continue"
+        # optimization across multiple BO iterations rather than start fresh at each iteration.
+        # This allows us to monitor training across iterations.
+
         if "epochs" in fit_args:
             fit_args["epochs"] = fit_args["epochs"] + self.absolute_epochs
 
@@ -155,6 +160,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         )
 
         self.absolute_epochs = self.absolute_epochs + len(hist.history["loss"])
+
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
