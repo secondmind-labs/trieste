@@ -16,11 +16,12 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional, Protocol, Union, cast
+from typing import Callable, Dict, Mapping, Optional, Union, cast
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import Protocol
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel

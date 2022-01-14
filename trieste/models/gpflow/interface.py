@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Protocol
 
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
+from typing_extensions import Protocol
 
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer

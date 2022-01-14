@@ -18,11 +18,10 @@ GPflow wrappers.
 
 from __future__ import annotations
 
-from typing import Protocol
-
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+from typing_extensions import Protocol
 
 from ...data import Dataset
 from ...types import TensorType

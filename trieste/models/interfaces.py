@@ -15,10 +15,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
+from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
 from ..types import TensorType
