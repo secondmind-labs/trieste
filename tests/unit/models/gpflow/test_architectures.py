@@ -42,8 +42,6 @@ from trieste.models.gpflow.architectures import (
 )
 from trieste.space import Box, SearchSpace
 
-# test discrete search space!
-
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
 @pytest.mark.parametrize("likelihood_variance", [None, 0.1, 10.0])

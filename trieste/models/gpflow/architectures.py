@@ -376,7 +376,7 @@ def _get_kernel(
 
     if add_prior_to_lengthscale:
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), KERNEL_PRIOR_SCALE
+            tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
         )
     if add_prior_to_variance:
         kernel.variance.prior = tfp.distributions.LogNormal(
