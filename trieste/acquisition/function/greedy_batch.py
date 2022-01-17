@@ -21,7 +21,7 @@ from typing import Callable, Dict, Mapping, Optional, Union, cast
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing_extensions import Protocol
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
@@ -364,6 +364,7 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
+@runtime_checkable
 class FantasizerModelType(
     FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, Protocol
 ):
@@ -518,6 +519,15 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+        for model in models.values():
+            if not (
+                isinstance(model, FantasizerModelType) or isinstance(model, FantasizerModelStack)
+            ):
+                raise NotImplementedError(
+                    f"Fantasizer only works with FastUpdateModel models that also support "
+                    f"predict_joint, get_kernel and get_observation_noise, or with"
+                    f"ModelStack stacks of such models; received {model.__repr__()}"
+                )
         if pending_points is None:
             return self._update_base_acquisition_function(models, datasets)
         else:
@@ -604,13 +614,6 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         :param fantasized_data: additional dataset to condition on
         :raise NotImplementedError: If model is not of class `FastUpdateModel`.
         """
-
-        if not isinstance(model, FastUpdateModel):
-            raise NotImplementedError(
-                f"FantasizedAcquisitionFunction only works with FastUpdateModel, "
-                f"received "
-                f"{model.__repr__()}"
-            )
 
         self._model = model
         self._fantasized_query_points = tf.Variable(

@@ -149,6 +149,11 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
             greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
+        if not isinstance(model, SupportsGetObservationNoise):
+            raise NotImplementedError(
+                f"AugmentedExpectedImprovement only works with models that support "
+                f"get_observation_noise; received {model.__repr__()}"
+            )
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")

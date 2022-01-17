@@ -62,6 +62,11 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
 
         :return: The determinant of the predictive function.
         """
+        if not isinstance(model, SupportsPredictJoint):
+            raise NotImplementedError(
+                f"PredictiveVariance only works with models that support "
+                f"predict_joint; received {model.__repr__()}"
+            )
 
         return predictive_variance(model, self._jitter)
 

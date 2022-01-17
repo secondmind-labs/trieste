@@ -20,7 +20,7 @@ from typing import Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing_extensions import Protocol
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
@@ -189,6 +189,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
+@runtime_checkable
 class SupportsCovarianceObservationNoise(
     SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, Protocol
 ):
@@ -272,6 +273,12 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[SupportsCovarianceObservationNo
         :return: The GIBBON acquisition function modified for objective minimisation.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
+        if not isinstance(model, SupportsCovarianceObservationNoise):
+            raise NotImplementedError(
+                f"GIBBON only works with models that support "
+                f"covariance_between_points and get_observation_noise; received {model.__repr__()}"
+            )
+
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
