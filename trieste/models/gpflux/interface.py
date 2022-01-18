@@ -63,9 +63,6 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
 
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("Joint prediction not implemented for deep GPs")
-
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError

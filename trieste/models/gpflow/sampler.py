@@ -21,7 +21,7 @@ from __future__ import annotations
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
-from typing_extensions import Protocol
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -178,6 +178,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
+@runtime_checkable
 class SupportsGetKernelObservationNoise(SupportsGetKernel, SupportsGetObservationNoise, Protocol):
     """A probabilistic model that supports both get_kernel and get_observation noise."""
 
@@ -242,6 +243,11 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernelO
 
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
+        if not isinstance(model, SupportsGetKernelObservationNoise):
+            raise NotImplementedError(
+                f"RandomFourierFeatureTrajectorySampler only works with models that support "
+                f"get_kernel and get_observation_noise; received {model.__repr__()}"
+            )
 
         self._dataset = dataset
         self._model = model
