@@ -30,7 +30,14 @@ T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
 
 @runtime_checkable
 class ProbabilisticModel(Protocol):
-    """A probabilistic model."""
+    """A probabilistic model.
+
+    NOTE: This and its subclasses are defined as Protocols rather than ABCs in order to allow
+    acquisition functions to depend on the intersection of different model types. As a result, it
+    is also possible to pass models to acquisition functions that don't explicitly inherit from
+    this class, as long as they implement all the necessary methods. This may change in future if
+    https://github.com/python/typing/issues/213 is implemented.
+    """
 
     @abstractmethod
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
