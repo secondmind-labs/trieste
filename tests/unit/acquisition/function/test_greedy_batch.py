@@ -200,15 +200,17 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> N
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_shape() -> None:
-    data = {
-        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    }
-    models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
+    x = tf.zeros([3, 2], dtype=tf.float64)
+    y1 = tf.ones([3, 1], dtype=tf.float64)
+    y2 = tf.ones([3, 2], dtype=tf.float64)
+
+    data = {"OBJECTIVE": Dataset(x, y1)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y2))}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(models, data, pending_points)  # type: ignore
+        builder.prepare_acquisition_function(models, data, pending_points)
 
 
 @pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])

@@ -521,11 +521,13 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         """
         for model in models.values():
             if not (
-                isinstance(model, FantasizerModelType) or isinstance(model, FantasizerModelStack)
+                isinstance(model, FantasizerModelType)
+                or isinstance(model, ModelStack)
+                and all(isinstance(m, FantasizerModelType) for m in model._models)
             ):
                 raise NotImplementedError(
                     f"Fantasizer only works with FastUpdateModel models that also support "
-                    f"predict_joint, get_kernel and get_observation_noise, or with"
+                    f"predict_joint, get_kernel and get_observation_noise, or with "
                     f"ModelStack stacks of such models; received {model.__repr__()}"
                 )
         if pending_points is None:
