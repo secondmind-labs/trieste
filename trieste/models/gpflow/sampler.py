@@ -112,6 +112,11 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
+        if not isinstance(model, SupportsPredictJoint):
+            raise NotImplementedError(
+                f"RandomFourierFeatureTrajectorySampler only works with models that support "
+                f"predict_joint; received {model.__repr__()}"
+            )
 
         # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
         # populated on the first call to sample
