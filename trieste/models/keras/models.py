@@ -108,11 +108,6 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
         self._model = model
         self._bootstrap = bootstrap
 
-        self._indices = tf.Variable(
-            0, name="sampling_indices", dtype=tf.int32, shape=tf.TensorShape(None)
-        )
-        # self._resample_indices(5)
-
     def __repr__(self) -> str:
         """"""
         return f"DeepEnsemble({self.model!r}, {self.optimizer!r}, {self._bootstrap!r})"
@@ -284,7 +279,7 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
         samples = tf.stack(stacked_samples, axis=0)
         return samples  # [num_samples, len(query_points), 1]
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[DeepEnsemble]:
         """
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means

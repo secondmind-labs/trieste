@@ -25,7 +25,7 @@ from ...types import TensorType
 from ..interfaces import EnsembleModel, TrajectoryFunction, TrajectorySampler
 
 
-class EnsembleTrajectorySampler(TrajectorySampler):
+class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
     the ensemble and using its predicted means as a trajectory.
@@ -35,6 +35,12 @@ class EnsembleTrajectorySampler(TrajectorySampler):
         """
         :param model: The ensemble model to sample from.
         """
+        if not isinstance(model, EnsembleModel):
+            raise NotImplementedError(
+                f"EnsembleTrajectorySampler only works with EnsembleModel models, that support "
+                f"ensemble_size, sample_index, predict_ensemble and sample_ensemble methods; "
+                f"received {model.__repr__()}"
+            )
 
         super().__init__(model)
 
@@ -52,9 +58,9 @@ class EnsembleTrajectorySampler(TrajectorySampler):
         :return: A trajectory function representing an approximate trajectory from the ensemble
             model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
-        network_index = cast(EnsembleModel, self._model).sample_index(1)[0]
+        network_index = self._model.sample_index(1)[0]
 
         def trajectory(x: TensorType) -> TensorType:
-            return cast(EnsembleModel, self._model).predict_ensemble(x)[network_index][0]
+            return self._model.predict_ensemble(x)[network_index][0]
 
         return trajectory

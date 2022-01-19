@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
 import tensorflow as tf
@@ -24,7 +24,7 @@ from ..interfaces import ProbabilisticModel
 from ..optimizer import KerasOptimizer
 
 
-class KerasPredictor(ProbabilisticModel, ABC):
+class KerasPredictor(ProbabilisticModel):
     """
     This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
     We recommend to set `tf.keras.backend.set_floatx(tf.float64)` for alignment with the Trieste
@@ -64,16 +64,6 @@ class KerasPredictor(ProbabilisticModel, ABC):
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError(
-            """
-            KerasPredictor class does not implement joint predictions. Acquisition
-            functions relying on it cannot be used with this class by default. Certain
-            types of neural networks might be able to generate joint predictions and
-            such subclasses should overwrite this method.
-            """
-        )
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError(

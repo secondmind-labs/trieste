@@ -19,6 +19,7 @@ from typing import Callable, Sequence
 
 import gpflow
 import tensorflow as tf
+from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
 from ..types import TensorType
@@ -477,7 +478,8 @@ class FastUpdateModel(ABC):
         )
 
 
-class EnsembleModel(ProbabilisticModel):
+@runtime_checkable
+class EnsembleModel(ProbabilisticModel, Protocol):
     """An ensemble model."""
 
     @abstractmethod
