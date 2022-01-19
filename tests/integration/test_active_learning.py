@@ -34,7 +34,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.interfaces import SupportsPredictJoint
+from trieste.models.interfaces import FastUpdateModel, SupportsPredictJoint
 from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.observer import Observer
@@ -125,7 +125,7 @@ def test_optimizer_learns_scaled_branin_function(
         (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
         (
             25,
-            EfficientGlobalOptimization(
+            EfficientGlobalOptimization[SearchSpace, FastUpdateModel](
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
                 num_query_points=3,
             ),
@@ -143,7 +143,7 @@ def test_optimizer_learns_scaled_branin_function(
 )
 def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, FastUpdateModel],
     threshold: int,
 ) -> None:
     """
@@ -154,7 +154,7 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
 
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> TrainableProbabilisticModel:
+    def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
         prior_scale = tf.cast(1.0, dtype=tf.float64)

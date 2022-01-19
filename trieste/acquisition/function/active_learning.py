@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import SupportsPredictJoint
+from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
@@ -253,7 +253,7 @@ def bichon_ranjan_criterion(
     return acquisition
 
 
-class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]):
     """
     Builder for the reduction of the integral of the predicted variance over the search
     space given a batch of query points.
@@ -277,7 +277,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticMod
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: FastUpdateModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -286,13 +286,18 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[ProbabilisticMod
 
         :return: The integral of the predictive variance.
         """
+        if not isinstance(model, FastUpdateModel):
+            raise NotImplementedError(
+                f"PredictiveVariance only works with FastUpdateModel models; "
+                f"received {model.__repr__()}"
+            )
 
         return integrated_variance_reduction(model, self._integration_points, self._threshold)
 
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: FastUpdateModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -336,7 +341,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
     def __init__(
         self,
-        model: ProbabilisticModel,
+        model: FastUpdateModel,
         integration_points: TensorType,
         threshold: Optional[Union[float, Sequence[float], TensorType]] = None,
     ):
@@ -347,14 +352,6 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
             See class docs for details.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` has more than 2 values.
         """
-        if not hasattr(model, "conditional_predict_f"):
-            raise AttributeError(
-                """
-                Integrated variance reduction only supports models with a
-                conditional_predict_f method.
-                """
-            )
-
         self._model = model
 
         tf.debugging.assert_equal(
@@ -419,7 +416,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
         additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
-        _, variance = self._model.conditional_predict_f(  # type: ignore
+        _, variance = self._model.conditional_predict_f(
             query_points=self._integration_points, additional_data=additional_data
         )
 
