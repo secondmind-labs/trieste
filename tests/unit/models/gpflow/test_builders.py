@@ -28,7 +28,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset
 from tests.util.models.gpflow.models import mock_data
-from trieste.models.gpflow.architectures import (
+from trieste.models.gpflow.builders import (
     CLASSIFICATION_KERNEL_VARIANCE,
     CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE,
     MAX_NUM_INDUCING_POINTS,
