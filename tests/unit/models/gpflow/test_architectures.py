@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-In this module, we test that we are wrapping GPflux architectures correctly, leading to the same
+In this module, we test that we are wrapping GPflow architectures correctly, leading to the same
 model.
 """
 
@@ -26,19 +26,19 @@ import numpy.testing as npt
 import pytest
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from tests.util.misc import mk_dataset
+from tests.util.misc import mk_dataset, TF_DEBUGGING_ERROR_TYPES
 from tests.util.models.gpflow.models import mock_data
 from trieste.models.gpflow.architectures import (
     CLASSIFICATION_KERNEL_VARIANCE,
     CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE,
     MAX_NUM_INDUCING_POINTS,
     NUM_INDUCING_POINTS_PER_DIM,
-    SNR_LIKELIHOOD,
+    SIGNAL_NOISE_RATIO_LIKELIHOOD,
     _get_data_stats,
     build_gpr,
     build_sgpr,
     build_svgp,
-    build_vgp,
+    build_vgp_classifier,
 )
 from trieste.space import Box, SearchSpace
 
@@ -69,6 +69,16 @@ def test_build_gpr_returns_correct_model(
 
     # check the kernel
     _check_kernel(model, False, None, empirical_variance, kernel_priors, False)
+
+
+@pytest.mark.parametrize("likelihood_variance", [-1, 0.0])
+def test_build_gpr_raises_for_invalid_likelihood_variance(likelihood_variance: float) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_gpr(data, search_space, likelihood_variance=likelihood_variance)
 
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
@@ -116,17 +126,37 @@ def test_build_sgpr_returns_correct_model(
     _check_inducing_points(model, search_space, num_inducing_points, trainable_inducing_points)
 
 
+@pytest.mark.parametrize("likelihood_variance", [-1, 0.0])
+def test_build_sgpr_raises_for_invalid_likelihood_variance(likelihood_variance: float) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_sgpr(data, search_space, likelihood_variance=likelihood_variance)
+
+
+@pytest.mark.parametrize("num_inducing_points", [-1, 0])
+def test_build_sgpr_raises_for_invalid_num_inducing_points(num_inducing_points: int) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_sgpr(data, search_space, num_inducing_points=num_inducing_points)
+
+
 @pytest.mark.parametrize("kernel_priors", [True, False])
 @pytest.mark.parametrize("noise_free", [True, False])
 @pytest.mark.parametrize("kernel_variance", [None, 0.1, 10.0])
-def test_build_vgp_returns_correct_model(
+def test_build_vgp_classifier_returns_correct_model(
     kernel_priors: bool, noise_free: bool, kernel_variance: Optional[float]
 ) -> None:
     qp, obs = mock_data()
     data = mk_dataset(qp, obs)
     search_space = Box([0.0], [1.0]) ** qp.shape[-1]
 
-    model = build_vgp(data, search_space, kernel_priors, noise_free, kernel_variance)
+    model = build_vgp_classifier(data, search_space, kernel_priors, noise_free, kernel_variance)
 
     # breakpoint()
     # basics
@@ -141,6 +171,16 @@ def test_build_vgp_returns_correct_model(
 
     # check the kernel
     _check_kernel(model, True, kernel_variance, 0.0, kernel_priors, noise_free)
+
+
+@pytest.mark.parametrize("kernel_variance", [-1, 0.0])
+def test_build_vgp_classifier_raises_for_invalid_kernel_variance(kernel_variance: float) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_vgp_classifier(data, search_space, kernel_variance=kernel_variance)
 
 
 @pytest.mark.parametrize("classification", [True, False])
@@ -192,6 +232,26 @@ def test_build_svgp_returns_correct_model(
     _check_inducing_points(model, search_space, num_inducing_points, trainable_inducing_points)
 
 
+@pytest.mark.parametrize("likelihood_variance", [-1, 0.0])
+def test_build_svgp_raises_for_invalid_likelihood_variance(likelihood_variance: float) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_svgp(data, search_space, likelihood_variance=likelihood_variance)
+
+
+@pytest.mark.parametrize("num_inducing_points", [-1, 0])
+def test_build_svgp_raises_for_invalid_num_inducing_points(num_inducing_points: int) -> None:
+    qp, obs = mock_data()
+    data = mk_dataset(qp, obs)
+    search_space = Box([0.0], [1.0]) ** qp.shape[-1]
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        build_svgp(data, search_space, num_inducing_points=num_inducing_points)
+
+
 def _check_likelihood(
     model: GPModel,
     classification: bool,
@@ -207,7 +267,9 @@ def _check_likelihood(
             npt.assert_allclose(model.likelihood.variance, likelihood_variance, rtol=1e-6)
         else:
             npt.assert_allclose(
-                model.likelihood.variance, empirical_variance / SNR_LIKELIHOOD ** 2, rtol=1e-6
+                model.likelihood.variance,
+                empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2,
+                rtol=1e-6,
             )
         assert model.likelihood.variance.trainable == trainable_likelihood
 

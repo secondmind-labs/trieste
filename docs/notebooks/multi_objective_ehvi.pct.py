@@ -92,7 +92,7 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model.
 #
-# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model.
+# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 
 # %%
@@ -104,7 +104,7 @@ def build_stacked_independent_objectives_model(
         single_obj_data = Dataset(
             data.query_points, tf.gather(data.observations, [idx], axis=1)
         )
-        gpr = build_gpr(single_obj_data, search_space)
+        gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-7)
         gprs.append((GaussianProcessRegression(gpr), 1))
 
     return TrainableModelStack(*gprs)
@@ -337,11 +337,11 @@ objective_model = build_stacked_independent_objectives_model(
 )
 
 # %% [markdown]
-# We also create a single model of the constraint:
+# We also create a single model of the constraint. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
 def create_constraint_model(data, search_space):
-    gpr = build_gpr(data, search_space)
+    gpr = build_gpr(data, search_space, likelihood_variance=1e-7)
     return GaussianProcessRegression(gpr)
 
 

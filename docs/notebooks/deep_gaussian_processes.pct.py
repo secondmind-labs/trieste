@@ -201,7 +201,7 @@ from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
 def build_gp_model(data, search_space):
-    model = build_gpr(data, search_space)
+    model = build_gpr(data, search_space, likelihood_variance=1e-7)
     return GaussianProcessRegression(model)
 
 

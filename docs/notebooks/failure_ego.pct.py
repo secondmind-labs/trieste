@@ -86,13 +86,13 @@ initial_data = observer(search_space.sample(num_init_points))
 # %% [markdown]
 # ## Build GPflow models
 #
-# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood. The `GPR` and `VGP` models are build using Trieste's convenient model build functions `build_gpr` and `build_vgp`.
+# We'll model the data on the objective with a regression model, and the data on which points failed with a classification model. The regression model will be a `GaussianProcessRegression` wrapping a GPflow `GPR` model, and the classification model a `VariationalGaussianProcess` wrapping a GPflow `VGP` model with Bernoulli likelihood. The `GPR` and `VGP` models are build using Trieste's convenient model build functions `build_gpr` and `build_vgp_classifier`. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-from trieste.models.gpflow import build_gpr, build_vgp
+from trieste.models.gpflow import build_gpr, build_vgp_classifier
 
-regression_model = build_gpr(initial_data[OBJECTIVE], search_space)
-classification_model = build_vgp(initial_data[FAILURE], search_space, noise_free=False)
+regression_model = build_gpr(initial_data[OBJECTIVE], search_space, likelihood_variance=1e-7)
+classification_model = build_vgp_classifier(initial_data[FAILURE], search_space, noise_free=True)
 
 
 # %% [markdown]

@@ -73,9 +73,10 @@ initial_data = Dataset(
 import gpflow
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-
+# We set the likelihood variance to a small number because
+# we are dealing with a noise-free problem.
 def build_model(data, search_space):
-    model = build_gpr(data, search_space)
+    model = build_gpr(data, search_space, likelihood_variance=1e-7)
     return GaussianProcessRegression(model)
 
 

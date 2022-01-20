@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" This file contains builders for GPflow models supported in Trieste. """
+"""
+This file contains builders for GPflow models supported in Trieste. We found the default
+configurations used here to work well in most situation, but they should not be taken as
+universally good solutions.
+"""
 
 from __future__ import annotations
 
@@ -64,7 +68,7 @@ Default number of inducing points per dimension of the search space.
 """
 
 
-SNR_LIKELIHOOD = tf.cast(10, dtype=gpflow.default_float())
+SIGNAL_NOISE_RATIO_LIKELIHOOD = tf.cast(10, dtype=gpflow.default_float())
 """
 Default value used for initializing (noise) variance parameter of the likelihood function.
 If user does not specify it, the noise variance is set to maintain the signal to noise ratio
@@ -82,8 +86,9 @@ def build_gpr(
     """
     Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and
     priors. We use :class:`~gpflow.kernels.Matern52` kernel and
-    :class:`~gpflow.mean_functions.Constant` mean function in the model as we found this combination
-    to be effective in most settings.
+    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+    configuration used here to work well in most situation, but it should not be taken as a
+    universally good solution.
 
     We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
     found the priors below to be highly effective for objective functions defined over the unit
@@ -101,8 +106,8 @@ def build_gpr(
         and lengthscale).
     :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
         certain value. If left unspecified (default), the noise variance is set to maintain the
-        signal to noise ratio of value given by ``SNR_LIKELIHOOD``, where signal variance in the
-        kernel is set to the empirical variance.
+        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+        variance in the kernel is set to the empirical variance.
     :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
         non-trainable. By default set to `False`.
     :return: A :class:`~gpflow.models.GPR` model.
@@ -110,12 +115,9 @@ def build_gpr(
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
-    mean = gpflow.mean_functions.Constant(empirical_mean)
+    mean = _get_mean_function(empirical_mean)
 
-    if likelihood_variance is None:
-        noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
-    else:
-        noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
+    noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
 
     model = gpflow.models.GPR(data.astuple(), kernel, mean, noise_variance)
 
@@ -136,8 +138,9 @@ def build_sgpr(
     """
     Build a :class:`~gpflow.models.SGPR` model with sensible initial parameters and
     priors. We use :class:`~gpflow.kernels.Matern52` kernel and
-    :class:`~gpflow.mean_functions.Constant` mean function in the model as we found this combination
-    to be effective in most settings.
+    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+    configuration used here to work well in most situation, but it should not be taken as a
+    universally good solution.
 
     We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
     found the priors below to be highly effective for objective functions defined over the unit
@@ -163,8 +166,8 @@ def build_sgpr(
         and lengthscale).
     :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
         certain value. If left unspecified (default), the noise variance is set to maintain the
-        signal to noise ratio of value given by ``SNR_LIKELIHOOD``, where signal variance in the
-        kernel is set to the empirical variance.
+        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+        variance in the kernel is set to the empirical variance.
     :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
         be trainable. By default set to `False`.
     :param num_inducing_points: The number of inducing points can be optionally set to a
@@ -178,14 +181,11 @@ def build_sgpr(
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
-    mean = gpflow.mean_functions.Constant(empirical_mean)
+    mean = _get_mean_function(empirical_mean)
 
     inducing_points = _get_inducing_points(search_space, num_inducing_points)
 
-    if likelihood_variance is None:
-        noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
-    else:
-        noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
+    noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
 
     model = SGPR(
         data.astuple(), kernel, inducing_points, mean_function=mean, noise_variance=noise_variance
@@ -197,7 +197,7 @@ def build_sgpr(
     return model
 
 
-def build_vgp(
+def build_vgp_classifier(
     data: Dataset,
     search_space: SearchSpace,
     kernel_priors: bool = True,
@@ -207,8 +207,9 @@ def build_vgp(
     """
     Build a :class:`~gpflow.models.VGP` binary classification model with sensible initial
     parameters and priors. We use :class:`~gpflow.kernels.Matern52` kernel and
-    :class:`~gpflow.mean_functions.Constant` mean function in the model as we found this combination
-    to be effective in most settings.
+    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+    configuration used here to work well in most situation, but it should not be taken as a
+    universally good solution.
 
     We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
     found the priors below to be highly effective for objective functions defined over the unit
@@ -237,6 +238,7 @@ def build_vgp(
     :return: A :class:`~gpflow.models.VGP` model.
     """
     if kernel_variance is not None:
+        tf.debugging.assert_positive(kernel_variance)
         variance = tf.cast(kernel_variance, dtype=gpflow.default_float())
     else:
         if noise_free:
@@ -249,10 +251,9 @@ def build_vgp(
     else:
         add_prior_to_variance = kernel_priors
 
-    mean_constant = tf.cast(0.0, dtype=gpflow.default_float())
     model_likelihood = gpflow.likelihoods.Bernoulli()
     kernel = _get_kernel(variance, search_space, kernel_priors, add_prior_to_variance)
-    mean = gpflow.mean_functions.Constant(mean_constant)
+    mean = _get_mean_function(tf.cast(0.0, dtype=gpflow.default_float()))
 
     model = VGP(data.astuple(), kernel, model_likelihood, mean_function=mean)
 
@@ -273,10 +274,11 @@ def build_svgp(
 ) -> SVGP:
     """
     Build a :class:`~gpflow.models.SVGP` model with sensible initial parameters and
-    priors. We use :class:`~gpflow.kernels.Matern52` kernel and
-    :class:`~gpflow.mean_functions.Constant` mean function in the model as we found this combination
-    to be effective in most settings. Both regression and binary classification models are
-    available.
+    priors. Both regression and binary classification models are
+    available. We use :class:`~gpflow.kernels.Matern52` kernel and
+    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+    configuration used here to work well in most situation, but it should not be taken as a
+    universally good solution.
 
     We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
     found the priors below to be highly effective for objective functions defined over the unit
@@ -305,9 +307,9 @@ def build_svgp(
         and lengthscale).
     :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
         certain value. If left unspecified (default), the noise variance is set to maintain the
-        signal to noise ratio of value given by ``SNR_LIKELIHOOD``, where signal variance in the
-        kernel is set to the empirical variance. This argument is ignored in the classification
-        case.
+        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+        variance in the kernel is set to the empirical variance. This argument is ignored in the
+        classification case.
     :param trainable_likelihood: If set to `True` likelihood parameter is set to
         be trainable. By default set to `False`. This argument is ignored in the classification
         case.
@@ -326,14 +328,11 @@ def build_svgp(
         empirical_mean = tf.cast(0.0, dtype=gpflow.default_float())
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
-        if likelihood_variance is None:
-            noise_variance = empirical_variance / SNR_LIKELIHOOD ** 2
-        else:
-            noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
+        noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
         model_likelihood = gpflow.likelihoods.Gaussian(noise_variance)
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
-    mean = gpflow.mean_functions.Constant(empirical_mean)
+    mean = _get_mean_function(empirical_mean)
 
     inducing_points = _get_inducing_points(search_space, num_inducing_points)
 
@@ -386,10 +385,34 @@ def _get_kernel(
     return kernel
 
 
+def _get_mean_function(mean: TensorType) -> gpflow.mean_functions.MeanFunction:
+    mean_function = gpflow.mean_functions.Constant(mean)
+
+    return mean_function
+
+
+def _get_likelihood_variance(
+    variance: TensorType, likelihood_variance: Optional[float]
+) -> TensorType:
+    if likelihood_variance is None:
+        noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2
+    else:
+        tf.debugging.assert_positive(likelihood_variance)
+        noise_variance = gpflow.base.Parameter(
+            tf.cast(likelihood_variance, dtype=gpflow.default_float()),
+            transform=gpflow.utilities.positive(lower=1e-12)
+        )
+        # noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
+
+    return noise_variance
+
+
 def _get_inducing_points(
     search_space: SearchSpace, num_inducing_points: Optional[int]
 ) -> TensorType:
-    if num_inducing_points is None:
+    if num_inducing_points is not None:
+        tf.debugging.assert_positive(num_inducing_points)
+    else:
         num_inducing_points = min(
             MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * search_space.dimension
         )
