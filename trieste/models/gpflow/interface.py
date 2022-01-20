@@ -19,16 +19,22 @@ from abc import ABC, abstractmethod
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
+from typing_extensions import Protocol
 
 from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel, ReparametrizationSampler
+from ..interfaces import (
+    ReparametrizationSampler,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    SupportsPredictJoint,
+)
 from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(ProbabilisticModel, ABC):
+class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
@@ -110,10 +116,33 @@ class GPflowPredictor(ProbabilisticModel, ABC):
                     for i, lengthscale in enumerate(lengthscales):
                         tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
         :return: The reparametrization sampler.
         """
         return BatchReparametrizationSampler(num_samples, self)
+
+
+class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
+    """A probabilistic model that supports covariance_between_points."""
+
+    @abstractmethod
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+        raise NotImplementedError

@@ -20,11 +20,11 @@ import tensorflow as tf
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import SupportsGetObservationNoise
 from ..optimizer import BatchOptimizer
 
 
-class GPfluxPredictor(ProbabilisticModel, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
@@ -62,9 +62,6 @@ class GPfluxPredictor(ProbabilisticModel, ABC):
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("Joint prediction not implemented for deep GPs")
 
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:

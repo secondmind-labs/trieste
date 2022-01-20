@@ -39,7 +39,7 @@ from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import BatchOptimizer, Optimizer
-from .interface import GPflowPredictor
+from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import RandomFourierFeatureTrajectorySampler
 from .utils import (
     assert_data_is_compatible,
@@ -49,7 +49,9 @@ from .utils import (
 )
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
+class GaussianProcessRegression(
+    GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel, SupportsCovarianceBetweenPoints
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
@@ -268,7 +270,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         multiple_assign(self.model, current_best_parameters)
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[GaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.

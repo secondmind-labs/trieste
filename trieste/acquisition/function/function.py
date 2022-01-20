@@ -17,13 +17,14 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from typing import Mapping, Optional, TypeVar, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.interfaces import SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -34,6 +35,8 @@ from ..interface import (
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
+
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -123,7 +126,7 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise]):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -135,7 +138,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -146,6 +149,11 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
             greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
+        if not isinstance(model, SupportsGetObservationNoise):
+            raise NotImplementedError(
+                f"AugmentedExpectedImprovement only works with models that support "
+                f"get_observation_noise; received {model.__repr__()}"
+            )
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -156,7 +164,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -175,7 +183,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticMo
 
 
 class augmented_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+    def __init__(self, model: SupportsGetObservationNoise, eta: TensorType):
         r"""
         Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
         global optimization under homoscedastic observation noise.
@@ -198,16 +206,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         """
         self._model = model
         self._eta = tf.Variable(eta)
-
-        try:
-            self._noise_variance = tf.Variable(model.get_observation_noise())
-        except NotImplementedError:
-            raise ValueError(
-                """
-                Augmented expected improvement only currently supports homoscedastic gpflow models
-                with a likelihood.variance attribute.
-                """
-            )
+        self._noise_variance = tf.Variable(model.get_observation_noise())
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and noise variance."""
@@ -423,7 +422,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModel]):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -434,7 +433,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
+        constraint_builder: AcquisitionFunctionBuilder[M_contra],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -471,7 +470,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -520,7 +519,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -568,7 +567,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         return self._constrained_improvement_fn
 
     def _update_expected_improvement_fn(
-        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+        self, objective_model: M_contra, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.

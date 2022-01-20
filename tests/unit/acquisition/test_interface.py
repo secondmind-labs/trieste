@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional, Tuple, cast
 
 import pytest
 
@@ -38,6 +38,7 @@ from trieste.acquisition.interface import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.models.interfaces import SupportsPredictJoint
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -107,22 +108,25 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
 
 @pytest.mark.parametrize(
     "function, function_repr",
-    [
-        (ExpectedImprovement(), "ExpectedImprovement()"),
-        (AugmentedExpectedImprovement(), "AugmentedExpectedImprovement()"),
-        (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
-        (NegativePredictiveMean(), "NegativePredictiveMean()"),
-        (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
-        (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement()"),
-        (
-            BatchMonteCarloExpectedImprovement(10_000),
-            f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
-        ),
-        (PredictiveVariance(), f"PredictiveVariance(jitter={DEFAULTS.JITTER})"),
-    ],
+    cast(
+        List[Tuple[SingleModelAcquisitionBuilder[SupportsPredictJoint]]],
+        [
+            (ExpectedImprovement(), "ExpectedImprovement()"),
+            (AugmentedExpectedImprovement(), "AugmentedExpectedImprovement()"),
+            (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
+            (NegativePredictiveMean(), "NegativePredictiveMean()"),
+            (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
+            (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement()"),
+            (
+                BatchMonteCarloExpectedImprovement(10_000),
+                f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",
+            ),
+            (PredictiveVariance(), f"PredictiveVariance(jitter={DEFAULTS.JITTER})"),
+        ],
+    ),
 )
 def test_single_model_acquisition_function_builder_reprs(
-    function: SingleModelAcquisitionBuilder[ProbabilisticModel], function_repr: str
+    function: SingleModelAcquisitionBuilder[SupportsPredictJoint], function_repr: str
 ) -> None:
     assert repr(function) == function_repr
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"

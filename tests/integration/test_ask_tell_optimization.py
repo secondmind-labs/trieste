@@ -37,6 +37,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.logging import set_step_number, tensorboard_writer
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -63,7 +64,7 @@ OPTIMIZER_PARAMS = (
                 int,
                 bool,
                 Union[
-                    Callable[[], AcquisitionRule[TensorType, Box]],
+                    Callable[[], AcquisitionRule[TensorType, Box, TrainableProbabilisticModel]],
                     Callable[
                         [],
                         AcquisitionRule[
@@ -72,6 +73,7 @@ OPTIMIZER_PARAMS = (
                                 Union[AsynchronousRuleState, TrustRegion.State],
                             ],
                             Box,
+                            GaussianProcessRegression,
                         ],
                     ],
                 ],
@@ -112,10 +114,16 @@ OPTIMIZER_PARAMS = (
 def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    acquisition_rule_fn: Callable[
+        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
+    ]
     | Callable[
         [],
-        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+        AcquisitionRule[
+            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            Box,
+            TrainableProbabilisticModel,
+        ],
     ],
 ) -> None:
     _test_ask_tell_optimization_finds_minima(True, num_steps, reload_state, acquisition_rule_fn)
@@ -126,10 +134,16 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
 def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    acquisition_rule_fn: Callable[
+        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
+    ]
     | Callable[
         [],
-        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+        AcquisitionRule[
+            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            Box,
+            TrainableProbabilisticModel,
+        ],
     ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
@@ -143,10 +157,16 @@ def _test_ask_tell_optimization_finds_minima(
     optimize_branin: bool,
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[[], AcquisitionRule[TensorType, SearchSpace]]
+    acquisition_rule_fn: Callable[
+        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
+    ]
     | Callable[
         [],
-        AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+        AcquisitionRule[
+            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            Box,
+            TrainableProbabilisticModel,
+        ],
     ],
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
