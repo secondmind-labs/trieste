@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import gpflow
 import tensorflow as tf
@@ -34,7 +34,7 @@ from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise):
+class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):
