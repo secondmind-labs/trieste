@@ -182,22 +182,6 @@ def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: Tensor
         aei(at)
 
 
-def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
-    class dummy_model_without_likelihood(ProbabilisticModel):
-        def predict(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def sample(self, query_points: TensorType, num_samples: int) -> None:
-            return None
-
-    with pytest.raises(ValueError):
-        model_without_likelihood = dummy_model_without_likelihood()
-        augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
-
-
 @pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
 def test_augmented_expected_improvement_builder_builds_expected_improvement_times_augmentation(
     observation_noise: float,

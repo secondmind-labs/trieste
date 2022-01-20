@@ -119,7 +119,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
+class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):

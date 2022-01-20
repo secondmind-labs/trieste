@@ -49,7 +49,7 @@ class AcquisitionFunctionClass(ABC):
         """Call acquisition function."""
 
 
-T = TypeVar("T", bound=ProbabilisticModel)
+T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
 
 
 class AcquisitionFunctionBuilder(Generic[T], ABC):
