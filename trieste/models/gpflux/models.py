@@ -56,8 +56,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param continuous_optimisation: if True (default), the optimizer will keep track of the
-        number of epochs across BO iterations and use this number as initial_epoch. This is
-        essential to allow monitoring of model training across BO iterations.
+            number of epochs across BO iterations and use this number as initial_epoch. This is
+            essential to allow monitoring of model training across BO iterations.
         """
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
