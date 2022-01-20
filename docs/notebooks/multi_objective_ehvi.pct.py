@@ -21,7 +21,7 @@ import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import create_model, TrainableModelStack
+from trieste.models import TrainableModelStack
 from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 from trieste.space import Box, SearchSpace
 from trieste.objectives.multi_objectives import VLMOP2

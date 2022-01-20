@@ -16,14 +16,21 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, Union, cast
+from typing import Callable, Dict, Mapping, Optional, Union, cast
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
+from ...models.interfaces import (
+    PredictJointModelStack,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    SupportsPredictJoint,
+)
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
 from ...types import TensorType
@@ -357,7 +364,28 @@ class hard_local_penalizer(local_penalizer):
         return tf.reduce_prod(penalization, axis=-1)
 
 
-class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
+@runtime_checkable
+class FantasizerModelType(
+    FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, Protocol
+):
+    """The model requirements for the Fantasizer acquisition function."""
+
+    pass
+
+
+class FantasizerModelStack(PredictJointModelStack, ModelStack[FantasizerModelType]):
+    """
+    A stack of models :class:`FantasizerModelType` models. Note that this delegates predict_joint
+    but none of the other methods.
+    """
+
+    pass
+
+
+FantasizerModelOrStack = Union[FantasizerModelType, FantasizerModelStack]
+
+
+class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
     Fantasizer allows us to perform batch Bayesian optimization with any
@@ -379,8 +407,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     def __init__(
         self,
         base_acquisition_function_builder: Optional[
-            AcquisitionFunctionBuilder[ProbabilisticModel]
-            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+            AcquisitionFunctionBuilder[SupportsPredictJoint]
+            | SingleModelAcquisitionBuilder[SupportsPredictJoint]
         ] = None,
         fantasize_method: str = "KB",
     ):
@@ -405,11 +433,13 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._fantasized_acquisition: Optional[AcquisitionFunction] = None
-        self._fantasized_models: Mapping[str, _fantasized_model | ModelStack] = {}
+        self._fantasized_models: Mapping[
+            str, _fantasized_model | ModelStack[SupportsPredictJoint]
+        ] = {}
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
     ) -> AcquisitionFunction:
 
@@ -425,7 +455,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
@@ -452,7 +482,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 for tag, model in models.items()
             }
             self._fantasized_acquisition = self._builder.prepare_acquisition_function(
-                self._fantasized_models, datasets
+                cast(Dict[str, SupportsPredictJoint], self._fantasized_models), datasets
             )
         else:
             for tag, model in self._fantasized_models.items():
@@ -468,14 +498,16 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
                 else:
                     model.update_fantasized_data(fantasized_data[tag])
             self._builder.update_acquisition_function(
-                self._fantasized_acquisition, self._fantasized_models, datasets
+                self._fantasized_acquisition,
+                cast(Dict[str, SupportsPredictJoint], self._fantasized_models),
+                datasets,
             )
 
         return self._fantasized_acquisition
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -487,6 +519,17 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+        for model in models.values():
+            if not (
+                isinstance(model, FantasizerModelType)
+                or isinstance(model, ModelStack)
+                and all(isinstance(m, FantasizerModelType) for m in model._models)
+            ):
+                raise NotImplementedError(
+                    f"Fantasizer only works with FastUpdateModel models that also support "
+                    f"predict_joint, get_kernel and get_observation_noise, or with "
+                    f"ModelStack stacks of such models; received {model.__repr__()}"
+                )
         if pending_points is None:
             return self._update_base_acquisition_function(models, datasets)
         else:
@@ -495,7 +538,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -518,7 +561,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
 
 
 def _generate_fantasized_data(
-    fantasize_method: str, model: ProbabilisticModel, pending_points: TensorType
+    fantasize_method: str, model: FantasizerModelOrStack, pending_points: TensorType
 ) -> Dataset:
     """
     Generates "fantasized" data at pending_points depending on the chosen heuristic:
@@ -544,8 +587,8 @@ def _generate_fantasized_data(
 
 
 def _generate_fantasized_model(
-    model: ProbabilisticModel, fantasized_data: Dataset
-) -> _fantasized_model | ModelStack:
+    model: FantasizerModelOrStack, fantasized_data: Dataset
+) -> _fantasized_model | PredictJointModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
         fmods = []
@@ -556,30 +599,23 @@ def _generate_fantasized_model(
                     event_size,
                 )
             )
-        return ModelStack(*fmods)
+        return PredictJointModelStack(*fmods)
     else:
         return _fantasized_model(model, fantasized_data)
 
 
-class _fantasized_model(ProbabilisticModel):
+class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise):
     """
     Creates a new model from an existing one and additional data.
     This new model posterior is conditioned on both current model data and the additional one.
     """
 
-    def __init__(self, model: ProbabilisticModel, fantasized_data: Dataset):
+    def __init__(self, model: FantasizerModelType, fantasized_data: Dataset):
         """
         :param model: a model, must be of class `FastUpdateModel`
         :param fantasized_data: additional dataset to condition on
         :raise NotImplementedError: If model is not of class `FastUpdateModel`.
         """
-
-        if not isinstance(model, FastUpdateModel):
-            raise NotImplementedError(
-                f"FantasizedAcquisitionFunction only works with FastUpdateModel, "
-                f"received "
-                f"{model.__repr__()}"
-            )
 
         self._model = model
         self._fantasized_query_points = tf.Variable(
