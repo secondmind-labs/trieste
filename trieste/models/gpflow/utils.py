@@ -14,16 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-
-M = TypeVar("M", bound=tf.Module)
-""" A type variable bound to :class:`tf.Module`. """
+from ..optimizer import BatchOptimizer, Optimizer
 
 
 def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
@@ -100,3 +98,37 @@ def squeeze_hyperparameters(
                 low = param.bijector.bijectors[0].shift
                 squeezed_param = tf.math.maximum(param, low + epsilon * tf.ones_like(param))
                 param.assign(squeezed_param)
+
+
+def check_optimizer(optimizer: Union[BatchOptimizer, Optimizer]) -> None:
+    """
+    Check that the optimizer for the GPflow models is using a correct optimizer wrapper.
+
+    Stochastic gradient descent based methods implemented in TensorFlow would not
+    work properly without mini-batches and hence :class:`~trieste.models.optimizers.BatchOptimizer`
+    that prepares mini-batches and calls the optimizer iteratively needs to be used. GPflow's
+    :class:`~gpflow.optimizers.Scipy` optimizer on the other hand should use the non-batch wrapper
+    :class:`~trieste.models.optimizers.Optimizer`.
+
+    :param optimizer: An instance of the optimizer wrapper with the underlying optimizer.
+    :raise ValueError: If :class:`~tf.optimizers.Optimizer` is not using
+        :class:`~trieste.models.optimizers.BatchOptimizer` or :class:`~gpflow.optimizers.Scipy` is
+        using :class:`~trieste.models.optimizers.BatchOptimizer`.
+    """
+    if isinstance(optimizer.optimizer, gpflow.optimizers.Scipy):
+        if isinstance(optimizer, BatchOptimizer):
+            raise ValueError(
+                f"""
+                The gpflow.optimizers.Scipy can only be used with an Optimizer wrapper,
+                however received {optimizer}.
+                """
+            )
+
+    if isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(optimizer, BatchOptimizer):
+            raise ValueError(
+                f"""
+                The tf.optimizers.Optimizer can only be used with a BatchOptimizer wrapper,
+                however received {optimizer}.
+                """
+            )

@@ -14,9 +14,12 @@
 from __future__ import annotations
 
 import functools
+import os
+import random
 from collections.abc import Container, Mapping
 from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast
 
+import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
 from typing_extensions import Final
@@ -41,12 +44,15 @@ C = TypeVar("C", bound=Callable[..., object])
 def random_seed(f: C) -> C:
     """
     :param f: A function.
-    :return: The function ``f``, but with the TensorFlow randomness seed fixed to a hardcoded value.
+    :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed to 0.
     """
 
     @functools.wraps(f)
     def decorated(*args: Any, **kwargs: Any) -> Any:
+        os.environ["PYTHONHASHSEED"] = str(0)
         tf.random.set_seed(0)
+        np.random.seed(0)
+        random.seed(0)
         return f(*args, **kwargs)
 
     return cast(C, decorated)
@@ -113,7 +119,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
+class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):

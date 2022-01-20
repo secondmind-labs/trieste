@@ -21,7 +21,7 @@ import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import create_model, ModelStack
+from trieste.models import TrainableModelStack
 from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.space import Box
 from trieste.objectives.multi_objectives import VLMOP2
@@ -92,13 +92,13 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model.
 #
-# We use a model wrapper: `ModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model.
+# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model.
 
 
 # %%
 def build_stacked_independent_objectives_model(
     data: Dataset, num_output
-) -> ModelStack:
+) -> TrainableModelStack:
     gprs = []
     for idx in range(num_output):
         single_obj_data = Dataset(
@@ -114,7 +114,7 @@ def build_stacked_independent_objectives_model(
         gpflow.utilities.set_trainable(gpr.likelihood, False)
         gprs.append((GaussianProcessRegression(gpr), 1))
 
-    return ModelStack(*gprs)
+    return TrainableModelStack(*gprs)
 
 
 # %%
@@ -213,6 +213,69 @@ fig, ax = plot_mobo_history(
 ax.set_xlabel("Iterations")
 ax.set_ylabel("log HV difference")
 plt.show()
+
+
+# %% [markdown]
+# ## Batch multi-objective optimization
+#
+# EHVI can be extended to the case of batches (i.e. query several points at a time) using the `Fantasizer`. `Fantasizer` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `Fantasizer` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
+
+# %%
+model = build_stacked_independent_objectives_model(initial_data, num_objective)
+
+from trieste.acquisition.function import Fantasizer
+
+batch_ehvi = Fantasizer(ExpectedHypervolumeImprovement())
+batch_rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
+    builder=batch_ehvi, num_query_points=3
+)
+num_steps = 10
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+batch_result = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule=batch_rule
+)
+
+# %% [markdown]
+# We can have a look at the results, as in the previous case. For this relatively simple problem, the greedy heuristic works quite well, and the performance is similar to the non-batch run.
+
+# %%
+
+dataset = batch_result.try_get_final_dataset()
+batch_data_query_points = dataset.query_points
+batch_data_observations = dataset.observations
+
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 0], num_init=num_initial_points
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 1], num_init=num_initial_points
+)
+plt.show()
+
+plot_mobo_points_in_obj_space(
+    batch_data_observations, num_init=num_initial_points
+)
+plt.show()
+
+fig, ax = plot_mobo_history(
+    batch_data_observations, log_hv, num_init=num_initial_points
+)
+ax.set_xlabel("Iterations")
+ax.set_ylabel("log HV difference")
+plt.show()
+
 
 # %% [markdown]
 # ## Multi-objective optimization with constraints

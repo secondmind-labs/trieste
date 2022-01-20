@@ -25,11 +25,12 @@ from tests.util.misc import random_seed
 from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    LocalPenalization,
 )
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -50,7 +51,7 @@ from trieste.types import TensorType
         List[
             Tuple[
                 int,
-                AcquisitionRule[TensorType, TaggedProductSearchSpace],
+                AcquisitionRule[TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel],
             ]
         ],
         [
@@ -65,7 +66,7 @@ from trieste.types import TensorType
             (
                 5,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -76,7 +77,9 @@ from trieste.types import TensorType
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, TaggedProductSearchSpace],
+    acquisition_rule: AcquisitionRule[
+        TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
+    ],
 ) -> None:
     search_space = TaggedProductSearchSpace(
         spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
@@ -124,4 +127,4 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
         if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() == 2  # type: ignore
+            assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore

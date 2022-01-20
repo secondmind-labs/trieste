@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -24,7 +24,7 @@ from gpflux.models import DeepGP
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import TrainableProbabilisticModel
-from ..optimizer import Optimizer
+from ..optimizer import BatchOptimizer
 from .interface import GPfluxPredictor
 from .utils import sample_dgp
 
@@ -38,40 +38,45 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(self, model: DeepGP, optimizer: Optimizer | None = None):
+    def __init__(self, model: DeepGP, optimizer: BatchOptimizer | None = None):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
-            This optimizer itself is not used, instead only its `optimizer` and `minimize_args` are
+            :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
+            :class:`~tf.optimizers.Adam`.
+            This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
             used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
             a dictionary of arguments to be used in the Keras `fit` method. Defaults to
             using 100 epochs, batch size 100, and verbose 0. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         """
-
-        super().__init__(optimizer)
-
-        self.original_lr = self.optimizer.optimizer.lr.numpy()
-
-        if self.optimizer.minimize_args is None:
-            self._fit_args: Dict[str, Any] | None = dict(
-                {
-                    "verbose": 0,
-                    "epochs": 100,
-                    "batch_size": 100,
-                }
-            )
-        else:
-            self._fit_args = self.optimizer.minimize_args
-
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
                 raise ValueError(
                     f"`DeepGaussianProcess` can only be built out of `GPLayer` or"
                     f"`LatentVariableLayer`, received {type(layer)} instead."
                 )
+
+        super().__init__(optimizer)
+
+        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(self.optimizer.optimizer)} instead."
+            )
+
+        self.original_lr = self.optimizer.optimizer.lr.numpy()
+
+        if not self.optimizer.minimize_args:
+            self._fit_args: Optional[Dict[str, Any]] = {
+                "verbose": 0,
+                "epochs": 100,
+                "batch_size": 100,
+            }
+        else:
+            self._fit_args = self.optimizer.minimize_args
 
         self._model_gpflux = model
 
@@ -80,7 +85,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer.optimizer!r})"
+        return f"DeepGaussianProcess({self.model_gpflux!r}, {self.optimizer.optimizer!r})"
 
     @property
     def model_gpflux(self) -> DeepGP:

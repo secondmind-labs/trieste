@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Mapping, Optional
+from typing import Mapping, Optional, cast
 
 import numpy.testing as npt
 import pytest
@@ -30,7 +30,11 @@ from tests.util.misc import (
     raise_exc,
     random_seed,
 )
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    GaussianProcessWithSamplers,
+    QuadraticMeanAndRBFKernel,
+)
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -49,15 +53,20 @@ from trieste.acquisition.multi_objective.partition import (
     prepare_default_non_dominated_partition_bounds,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import ProbabilisticModel, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
 
-def _mo_test_model(num_obj: int, *kernel_amplitudes: float | TensorType | None) -> GaussianProcess:
+def _mo_test_model(
+    num_obj: int, *kernel_amplitudes: float | TensorType | None, with_reparam_sampler: bool = True
+) -> GaussianProcess:
     means = [quadratic, lambda x: tf.reduce_sum(x, axis=-1, keepdims=True), quadratic]
     kernels = [tfp.math.psd_kernels.ExponentiatedQuadratic(k_amp) for k_amp in kernel_amplitudes]
-    return GaussianProcess(means[:num_obj], kernels[:num_obj])
+    if with_reparam_sampler:
+        return GaussianProcessWithSamplers(means[:num_obj], kernels[:num_obj])
+    else:
+        return GaussianProcess(means[:num_obj], kernels[:num_obj])
 
 
 def test_ehvi_builder_raises_for_empty_data() -> None:
@@ -259,6 +268,22 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
         )
 
 
+def test_batch_monte_carlo_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
+    num_obj = 3
+    dataset = empty_dataset([2], [num_obj])
+    model = QuadraticMeanAndRBFKernel()
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
+            model,
+            dataset=dataset,
+        )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
+            model,
+        )
+
+
 @pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_sample_size(
     sample_size: int,
@@ -270,6 +295,20 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_s
 def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_jitter() -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(100, jitter=-1.0)
+
+
+def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> None:
+
+    model = _mo_test_model(2, *[1.0] * 2, with_reparam_sampler=False)
+
+    training_input = tf.constant([[0.3], [0.22], [0.1], [0.35]])
+    mean, _ = model.predict(training_input)  # gen prepare Pareto
+    _model_based_tr_dataset = Dataset(training_input, mean)
+
+    qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=10)
+
+    with pytest.raises(ValueError):
+        qehvi_builder.prepare_acquisition_function(model, dataset=_model_based_tr_dataset)
 
 
 @random_seed
@@ -448,7 +487,10 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
 ) -> None:
     npt.assert_allclose(
         batch_ehvi(
-            PseudoBatchReparametrizationSampler(obj_samples),
+            cast(
+                ReparametrizationSampler[ProbabilisticModel],
+                PseudoBatchReparametrizationSampler(obj_samples),
+            ),
             sampler_jitter=DEFAULTS.JITTER,
             partition_bounds=prepare_default_non_dominated_partition_bounds(
                 reference_point, Pareto(pareto_front_obs).front

@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from abc import ABC
 from collections.abc import Callable, Sequence
 
 import gpflow
@@ -25,8 +24,19 @@ from typing_extensions import Protocol
 
 from tests.util.misc import SequenceN, quadratic
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
-from trieste.models.gpflow import GPflowPredictor
+from trieste.models import (
+    ProbabilisticModel,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
+from trieste.models.gpflow import (
+    BatchReparametrizationSampler,
+    GPflowPredictor,
+    RandomFourierFeatureTrajectorySampler,
+)
+from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
+from trieste.models.interfaces import SupportsGetKernel, SupportsGetObservationNoise
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -38,7 +48,7 @@ def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
     return tfp.math.psd_kernels.ExponentiatedQuadratic()
 
 
-class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
+class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
@@ -48,7 +58,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
         pass
 
 
-class GaussianMarginal(ProbabilisticModel, ABC):
+class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -58,7 +68,9 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
-class GaussianProcess(GaussianMarginal, ProbabilisticModel):
+class GaussianProcess(
+    GaussianMarginal, SupportsCovarianceBetweenPoints, SupportsGetObservationNoise
+):
     """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
@@ -96,7 +108,16 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
         return tf.concat(covs, axis=-3)
 
 
-class QuadraticMeanAndRBFKernel(GaussianProcess):
+class GaussianProcessWithSamplers(GaussianProcess):
+    """A (static) Gaussian process over a vector random variable with a reparam sampler"""
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[GaussianProcessWithSamplers]:
+        return BatchReparametrizationSampler(num_samples, self)
+
+
+class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetObservationNoise):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
@@ -121,6 +142,34 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
         tf.constant([[1.2], [3.4], [5.6], [7.8]], gpflow.default_float()),
     )
+
+
+class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    a trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+        self._dataset = dataset
+
+    def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
+        return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
+        return BatchReparametrizationSampler(num_samples, self)
 
 
 class ModelFactoryType(Protocol):

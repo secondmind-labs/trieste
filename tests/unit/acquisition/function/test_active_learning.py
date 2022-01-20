@@ -25,7 +25,6 @@ from gpflow.utilities import to_default_float
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, various_shapes
 from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, gpr_model
-from tests.util.models.gpflux.models import trieste_deep_gaussian_process
 from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.acquisition.function.active_learning import (
     ExpectedFeasibility,
@@ -117,14 +116,6 @@ def test_predictive_variance_builder_updates_without_retracing() -> None:
     assert up_acq_fn == acq_fn
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
-
-
-def test_predictive_variance_raises_for_void_predict_joint() -> None:
-    model, _ = trieste_deep_gaussian_process(tf.zeros([0, 1]), 2, 20, 0.01, 100, 100)
-    acq_fn = predictive_variance(model, DEFAULTS.JITTER)
-
-    with pytest.raises(ValueError):
-        acq_fn(tf.zeros([0, 1]))
 
 
 @pytest.mark.parametrize("delta", [1, 2])

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import List, Tuple, Union
+from typing import Any, List, Mapping, Optional, Tuple, Union
 
 import gpflow
 import numpy.testing as npt
@@ -29,8 +29,10 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
-    LocalPenalizationAcquisitionFunction,
+    Fantasizer,
+    LocalPenalization,
     MinValueEntropySearch,
+    MultipleOptimismNegativeLowerConfidenceBound,
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -41,12 +43,18 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     TrustRegion,
 )
+from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
-from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    GPflowPredictor,
+    SparseVariational,
+    VariationalGaussianProcess,
+)
+from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
+from trieste.models.optimizer import BatchOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -74,13 +82,14 @@ def OPTIMIZER_PARAMS() -> Tuple[
         Tuple[
             int,
             Union[
-                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[TensorType, Box, GPflowPredictor],
                 AcquisitionRule[
                     State[
                         TensorType,
                         Union[AsynchronousRuleState, TrustRegion.State],
                     ],
                     Box,
+                    GPflowPredictor,
                 ],
             ],
         ]
@@ -94,9 +103,10 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                        OBJECTIVE
-                    )
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
                 ),
             ),
             (
@@ -110,7 +120,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -119,7 +129,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 AsynchronousGreedy(
-                    LocalPenalizationAcquisitionFunction(
+                    LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=3,
@@ -128,10 +138,19 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(
+                    GIBBON(  # type: ignore[arg-type]  # (only supported by GPR models)
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    MultipleOptimismNegativeLowerConfidenceBound(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
                 ),
             ),
             (15, TrustRegion()),
@@ -139,14 +158,24 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
-                        MinValueEntropySearch(BRANIN_SEARCH_SPACE, num_fourier_features=1000).using(
-                            OBJECTIVE
-                        )
+                        MinValueEntropySearch(
+                            BRANIN_SEARCH_SPACE,
+                        ).using(OBJECTIVE)
                     )
                 ),
             ),
             (10, DiscreteThompsonSampling(500, 3)),
-            (10, DiscreteThompsonSampling(500, 3, num_fourier_features=1000)),
+            (
+                15,
+                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            ),
+            (
+                15,
+                EfficientGlobalOptimization(
+                    Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
+                    num_query_points=3,
+                ),
+            ),
         ],
     )
 
@@ -156,34 +185,69 @@ def OPTIMIZER_PARAMS() -> Tuple[
 @pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
 ) -> None:
-    _test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
+    _test_optimizer_finds_minimum(num_steps, acquisition_rule, optimize_branin=True)
 
 
 @random_seed
 @pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
+    _test_optimizer_finds_minimum(min(num_steps, 5), acquisition_rule)
+
+
+@random_seed
+@pytest.mark.parametrize("use_natgrads", [False, True])
+def test_optimizer_with_vgp_model(use_natgrads: bool) -> None:
+    # regression test for [#406]; use natgrads doesn't work well as a model for the objective
+    # so don't bother checking the results, just that it doesn't crash
+    acquisition_rule: AcquisitionRule[
+        TensorType, SearchSpace, GPflowPredictor
+    ] = EfficientGlobalOptimization()
+    _test_optimizer_finds_minimum(
+        None if use_natgrads else 5,
+        acquisition_rule,
+        model_type="VGP",
+        model_args={"use_natgrads": use_natgrads},
+    )
+
+
+@random_seed
+def test_optimizer_with_svgp_model() -> None:
+    acquisition_rule: AcquisitionRule[
+        TensorType, SearchSpace, GPflowPredictor
+    ] = EfficientGlobalOptimization()
+    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
 
 
 def _test_optimizer_finds_minimum(
-    optimize_branin: bool,
-    num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    num_steps: Optional[int],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
+    optimize_branin: bool = False,
+    model_type: str = "GPR",  # in Python 3.8+ this could be Literal["GPR", "VGP", "SVGP"]
+    model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
 
+    model_args = model_args or {}
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
+    def build_model(data: Dataset) -> GPflowPredictor:
+        assert model_args is not None
+
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
         scale = tf.constant(1.0, dtype=tf.float64)
@@ -193,9 +257,30 @@ def _test_optimizer_finds_minimum(
         kernel.lengthscales.prior = tfp.distributions.LogNormal(
             tf.math.log(kernel.lengthscales), scale
         )
-        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
+
+        if model_type == "GPR":
+            gpr = gpflow.models.GPR(
+                (data.query_points, data.observations), kernel, noise_variance=1e-5
+            )
+            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            return GaussianProcessRegression(gpr, **model_args)
+        elif model_type == "VGP":
+            likelihood = gpflow.likelihoods.Gaussian(1e-3)
+            vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+            gpflow.utilities.set_trainable(vgp.likelihood, False)
+            return VariationalGaussianProcess(vgp, **model_args)
+        elif model_type == "SVGP":
+            Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
+            svgp = gpflow.models.SVGP(
+                kernel,
+                gpflow.likelihoods.Gaussian(variance=1e-5),
+                Z,
+                num_data=len(data.observations),
+            )
+            gpflow.utilities.set_trainable(svgp.likelihood, False)
+            return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
+        else:
+            raise ValueError(f"Unsupported model_type '{model_type}'")
 
     initial_query_points = search_space.sample(5)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
@@ -207,8 +292,8 @@ def _test_optimizer_finds_minimum(
         with tensorboard_writer(summary_writer):
 
             dataset = (
-                BayesianOptimizer(observer, search_space)
-                .optimize(num_steps, initial_data, model, acquisition_rule)
+                BayesianOptimizer(observer, search_space)  # type: ignore
+                .optimize(num_steps or 2, initial_data, model, acquisition_rule)
                 .try_get_final_dataset()
             )
 
@@ -217,7 +302,10 @@ def _test_optimizer_finds_minimum(
             best_y = dataset.observations[arg_min_idx]
             best_x = dataset.query_points[arg_min_idx]
 
-            if optimize_branin:
+            if num_steps is None:
+                # this test is just being run to check for crashes, not performance
+                pass
+            elif optimize_branin:
                 relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
                 # these accuracies are the current best for the given number of optimization
                 # steps, which makes this is a regression test
@@ -244,7 +332,9 @@ def _test_optimizer_finds_minimum(
     ],
 )
 def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPfluxPredictor],
+    keras_float: None,
 ) -> None:
 
     # this unit test fails sometimes for
@@ -270,7 +360,7 @@ def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = Optimizer(tf.optimizers.Adam(0.01), fit_args)
+        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
 
         return DeepGaussianProcess(model=dgp, optimizer=optimizer)
 

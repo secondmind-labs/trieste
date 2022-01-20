@@ -20,35 +20,28 @@ import tensorflow as tf
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
-from ..optimizer import Optimizer
+from ..interfaces import SupportsGetObservationNoise
+from ..optimizer import BatchOptimizer
 
 
-class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
     dtype errors."""
 
-    def __init__(self, optimizer: Optimizer | None = None):
+    def __init__(self, optimizer: BatchOptimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~tf.optimizers.Adam`.
+            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam`.
         """
         super().__init__()
 
         if optimizer is None:
-            optimizer = Optimizer(tf.optimizers.Adam())
+            optimizer = BatchOptimizer(tf.optimizers.Adam())
 
         self._optimizer = optimizer
-
-        if not isinstance(self._optimizer.optimizer, tf.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer.optimizer)} instead."
-            )
 
     @property
     @abstractmethod
@@ -61,7 +54,7 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    def optimizer(self) -> Optimizer:
+    def optimizer(self) -> BatchOptimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
 
@@ -69,9 +62,6 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("Joint prediction not implemented for deep GPs")
 
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:

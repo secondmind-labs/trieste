@@ -23,13 +23,17 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
-from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
+from tests.util.models.gpflow.models import (
+    QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
+)
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    VectorizedAcquisitionFunctionBuilder,
 )
 from trieste.acquisition.optimizer import AcquisitionOptimizer
 from trieste.acquisition.rule import (
@@ -40,6 +44,12 @@ from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
+)
+from trieste.acquisition.sampler import (
+    ExactThompsonSampler,
+    GumbelSampler,
+    ThompsonSampler,
+    ThompsonSamplerFromTrajectory,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -60,21 +70,19 @@ def _line_search_maximize(
 
 
 @pytest.mark.parametrize(
-    "num_search_space_samples, num_query_points, num_fourier_features",
+    "num_search_space_samples, num_query_points",
     [
-        (0, 50, 100),
-        (-2, 50, 100),
-        (10, 0, 100),
-        (10, -2, 100),
-        (10, 50, 0),
-        (10, 50, -2),
+        (0, 50),
+        (-2, 50),
+        (10, 0),
+        (10, -2),
     ],
 )
 def test_discrete_thompson_sampling_raises_for_invalid_init_params(
-    num_search_space_samples: int, num_query_points: int, num_fourier_features: int
+    num_search_space_samples: int, num_query_points: int
 ) -> None:
     with pytest.raises(ValueError):
-        DiscreteThompsonSampling(num_search_space_samples, num_query_points, num_fourier_features)
+        DiscreteThompsonSampling(num_search_space_samples, num_query_points)
 
 
 @pytest.mark.parametrize(
@@ -113,15 +121,67 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
         rule.acquire(search_space, models, datasets=datasets)
 
 
-@pytest.mark.parametrize("num_fourier_features", [None, 100])
-@pytest.mark.parametrize("num_query_points", [1, 10])
-def test_discrete_thompson_sampling_acquire_returns_correct_shape(
-    num_fourier_features: bool, num_query_points: int
+@pytest.mark.parametrize(
+    "sampler",
+    [
+        ExactThompsonSampler(sample_min_value=True),
+        ThompsonSamplerFromTrajectory(sample_min_value=True),
+    ],
+)
+def test_discrete_thompson_sampling_raises_if_passed_sampler_with_sample_min_value_True(
+    sampler: ThompsonSampler,
 ) -> None:
-    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
-    ts = DiscreteThompsonSampling(100, num_query_points, num_fourier_features=num_fourier_features)
+    with pytest.raises(ValueError):
+        DiscreteThompsonSampling(100, 10, thompson_sampler=sampler)
+
+
+@pytest.mark.parametrize(
+    "thompson_sampler",
+    [
+        ExactThompsonSampler(sample_min_value=False),
+        ThompsonSamplerFromTrajectory(sample_min_value=False),
+    ],
+)
+def test_discrete_thompson_sampling_initialized_with_correct_sampler(
+    thompson_sampler: ThompsonSampler,
+) -> None:
+    ts = DiscreteThompsonSampling(100, 10, thompson_sampler=thompson_sampler)
+    assert ts._thompson_sampler == thompson_sampler
+
+
+def test_discrete_thompson_sampling_raises_if_use_fourier_features_with_incorrect_model() -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    ts = DiscreteThompsonSampling(
+        100, 10, thompson_sampler=ThompsonSamplerFromTrajectory(sample_min_value=False)
+    )
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
+    with pytest.raises(ValueError):
+        ts.acquire_single(search_space, model, dataset=dataset)
+
+
+def test_discrete_thompson_sampling_raises_for_gumbel_sampler() -> None:
+    with pytest.raises(ValueError):
+        DiscreteThompsonSampling(100, 10, thompson_sampler=GumbelSampler(sample_min_value=False))
+
+
+@pytest.mark.parametrize(
+    "thompson_sampler",
+    [
+        ExactThompsonSampler(sample_min_value=False),
+        ThompsonSamplerFromTrajectory(sample_min_value=False),
+    ],
+)
+@pytest.mark.parametrize("num_query_points", [1, 10])
+def test_discrete_thompson_sampling_acquire_returns_correct_shape(
+    thompson_sampler: ThompsonSampler, num_query_points: int
+) -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    ts = DiscreteThompsonSampling(100, num_query_points, thompson_sampler=thompson_sampler)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -198,15 +258,15 @@ def test_joint_batch_acquisition_rule_acquire(
         # callable input type(s)
         [_JointBatchModelMinusMeanMaximumSingleBuilder, int],
         # callable output type
-        AcquisitionRule[TensorType, Box]
-        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel],
     ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
-    acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box
+    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
     ] = rule_fn(acq, num_query_points)
 
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
@@ -217,8 +277,6 @@ def test_joint_batch_acquisition_rule_acquire(
         _, query_point = points_or_stateful(None)
     else:
         query_point = points_or_stateful
-
-    print(query_point)
     npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
@@ -271,16 +329,16 @@ def test_greedy_batch_acquisition_rule_acquire(
         # callable input type(s)
         [_GreedyBatchModelMinusMeanMaximumSingleBuilder, int],
         # callable output type
-        AcquisitionRule[TensorType, Box]
-        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box],
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel],
     ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
-    acq_rule: AcquisitionRule[TensorType, Box] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box
+    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
     ] = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
@@ -302,6 +360,36 @@ def test_greedy_batch_acquisition_rule_acquire(
         query_points = points_or_stateful
     npt.assert_allclose(query_points, [[0.0, 0.0]] * num_query_points, atol=1e-3)
     assert acq._update_count == 2 * num_query_points - 1
+
+
+class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(
+    VectorizedAcquisitionFunctionBuilder[ProbabilisticModel]
+):
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        return lambda at: tf.squeeze(-models[OBJECTIVE].predict(at)[0], -1)
+
+
+@random_seed
+def test_vectorized_batch_acquisition_rule_acquire() -> None:
+    search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
+    num_query_points = 4
+    acq = _VectorizedBatchModelMinusMeanMaximumSingleBuilder()
+    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] = EfficientGlobalOptimization(
+        acq, num_query_points=num_query_points
+    )
+    dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    points_or_stateful = acq_rule.acquire_single(
+        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
+    )
+    if callable(points_or_stateful):
+        _, query_point = points_or_stateful(None)
+    else:
+        query_point = points_or_stateful
+    npt.assert_allclose(query_point, [[0.0, 0.0]] * num_query_points, atol=1e-3)
 
 
 def test_async_greedy_raises_for_non_greedy_function() -> None:
@@ -341,7 +429,7 @@ def test_async_greedy_raises_for_incorrect_query_points() -> None:
     ],
 )
 def test_async_keeps_track_of_pending_points(
-    async_rule: AcquisitionRule[State[TensorType, AsynchronousRuleState], Box]
+    async_rule: AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
@@ -386,7 +474,7 @@ def test_trust_region_raises_for_missing_datasets_key(
         rule.acquire(search_space, models, datasets=datasets)
 
 
-class _Midpoint(AcquisitionRule[TensorType, Box]):
+class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
     def acquire(
         self,
         search_space: Box,
@@ -404,7 +492,7 @@ class _Midpoint(AcquisitionRule[TensorType, Box]):
     ],
 )
 def test_trust_region_for_default_state(
-    rule: AcquisitionRule[TensorType, Box], expected_query_point: TensorType
+    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel], expected_query_point: TensorType
 ) -> None:
     tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
@@ -432,7 +520,7 @@ def test_trust_region_for_default_state(
     ],
 )
 def test_trust_region_successful_global_to_global_trust_region_unchanged(
-    rule: AcquisitionRule[TensorType, Box], expected_query_point: TensorType
+    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel], expected_query_point: TensorType
 ) -> None:
     tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
@@ -467,7 +555,7 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged(
     ],
 )
 def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
-    rule: AcquisitionRule[TensorType, Box]
+    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
 ) -> None:
     tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
@@ -503,7 +591,7 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
     ],
 )
 def test_trust_region_for_successful_local_to_global_trust_region_increased(
-    rule: AcquisitionRule[TensorType, Box]
+    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
 ) -> None:
     tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
@@ -538,7 +626,7 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased(
     ],
 )
 def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
-    rule: AcquisitionRule[TensorType, Box]
+    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
 ) -> None:
     tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))

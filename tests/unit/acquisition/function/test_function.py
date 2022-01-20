@@ -31,7 +31,12 @@ from tests.util.misc import (
     random_seed,
     various_shapes,
 )
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
+    rbf,
+)
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -39,16 +44,19 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
+    multiple_optimism_lower_confidence_bound,
     probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
+from trieste.space import Box
 from trieste.types import TensorType
 
 
@@ -172,22 +180,6 @@ def test_augmented_expected_improvement_raises_for_invalid_batch_size(at: Tensor
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         aei(at)
-
-
-def test_augmented_expected_improvement_raises_for_invalid_model() -> None:
-    class dummy_model_without_likelihood(ProbabilisticModel):
-        def predict(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def predict_joint(self, query_points: TensorType) -> tuple[None, None]:
-            return None, None
-
-        def sample(self, query_points: TensorType, num_samples: int) -> None:
-            return None
-
-    with pytest.raises(ValueError):
-        model_without_likelihood = dummy_model_without_likelihood()
-        augmented_expected_improvement(model_without_likelihood, tf.constant([1.0]))
 
 
 @pytest.mark.parametrize("observation_noise", [1e-8, 1.0, 10.0])
@@ -578,10 +570,19 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
 
 
 @random_seed
-def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
     known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernel()
+    with pytest.raises(ValueError):
+        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(model, dataset=data)
+
+
+@random_seed
+def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
+    known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     batch_ei = BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
         model, dataset=data
     )
@@ -595,8 +596,8 @@ def test_batch_monte_carlo_expected_improvement_can_reproduce_ei() -> None:
 @random_seed
 def test_batch_monte_carlo_expected_improvement() -> None:
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    model = QuadraticMeanAndRBFKernel()
-
+    data = Dataset(xs, quadratic(xs))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     mean, cov = model.predict_joint(xs)
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10_000)
@@ -619,7 +620,7 @@ def test_batch_monte_carlo_expected_improvement() -> None:
 def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
     data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     builder = BatchMonteCarloExpectedImprovement(10_000)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
@@ -635,3 +636,65 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+
+
+def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    search_space = Box([0, 0], [1, 1])
+    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
+        search_space
+    ).prepare_acquisition_function(model)
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
+    expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+
+# def test_multiple_optimism_builder_updates_without_retracing() -> None:
+#     model = QuadraticMeanAndRBFKernel()
+#     beta = 1.96
+#     search_space = Box([0, 0], [1, 1])
+#     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
+#     acq_fn = builder.prepare_acquisition_function(model)
+#     assert acq_fn._get_tracing_count() == 0  # type: ignore
+#     query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
+#     expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
+#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
+#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+#     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+#     assert up_acq_fn == acq_fn
+#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
+#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
+def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    search_space = Box([0, 0], [1, 1])
+    builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
+    builder.prepare_acquisition_function(model)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
+
+
+@pytest.mark.parametrize("d", [0, -5])
+def test_multiple_optimism_negative_confidence_bound_raises_for_negative_search_space_dim(
+    d: int,
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        multiple_optimism_lower_confidence_bound(QuadraticMeanAndRBFKernel(), d)
+
+
+def test_multiple_optimism_negative_confidence_bound_raises_for_changing_batch_size() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    search_space = Box([0, 0], [1, 1])
+    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
+        search_space
+    ).prepare_acquisition_function(model)
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
+    acq_fn(query_at)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5, 10, 2])
+        acq_fn(query_at)
+
+
+# check builder update with different acq

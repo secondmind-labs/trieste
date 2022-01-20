@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import operator
+from typing import cast
 
 import gpflow
 import numpy as np
@@ -23,57 +24,18 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from packaging.version import parse
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import ModelFactoryType
 from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
-from trieste.models.gpflow import randomize_hyperparameters, squeeze_hyperparameters
-
-
-class _ModuleWithBijector(tf.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.const = tf.constant(1.2)
-        self.var = tf.Variable(3.4)
-        self.bijector = tfp.bijectors.Exp()
-
-
-class _NestedModuleWithBijector(tf.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.inst = _ModuleWithBijector()
-        self.bijector = tfp.bijectors.Sigmoid(0.0, 1.0)
-
-
-def test_module_deepcopy_is_copyable() -> None:
-
-    module = _NestedModuleWithBijector()
-
-    _ = module.bijector.forward(0.5)
-    _ = module.bijector.inverse(0.5)
-    _ = module.inst.bijector.forward(0.5)
-    _ = module.inst.bijector.inverse(0.5)
-
-    module_copy = copy.deepcopy(module)
-
-    module.inst.var.assign(5.6)
-
-    assert module_copy.inst.const == 1.2
-    assert module_copy.inst.var == 3.4
-    assert module_copy.inst.bijector.forward(7.8) == tf.exp(7.8)
-
-
-if parse(tfp.__version__) < parse("0.12"):
-
-    def test_cant_copy_tf_module_with_used_bijector() -> None:
-        module = _NestedModuleWithBijector()
-
-        _ = module.bijector.forward(0.5)
-
-        with pytest.raises(TypeError, match="HashableWeakRef"):
-            copy.deepcopy(module)
+from trieste.models import TrainableProbabilisticModel
+from trieste.models.gpflow import (
+    check_optimizer,
+    randomize_hyperparameters,
+    squeeze_hyperparameters,
+)
+from trieste.models.optimizer import BatchOptimizer, Optimizer
 
 
 def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryType) -> None:
@@ -91,7 +53,7 @@ def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryTy
     # check that updating the original doesn't break or change the deepcopy
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, fnc_2sin_x_over_3(x_new))
-    model.update(new_data)
+    cast(TrainableProbabilisticModel, model).update(new_data)
     model.optimize(new_data)
 
     mean_f_updated, variance_f_updated = model.predict(x_predict)
@@ -221,3 +183,14 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
     )
     with pytest.raises(ValueError):
         squeeze_hyperparameters(kernel, alpha)
+
+
+def test_check_optimizer_raises_for_invalid_optimizer_wrapper_combination() -> None:
+
+    with pytest.raises(ValueError):
+        optimizer1 = BatchOptimizer(gpflow.optimizers.Scipy())
+        check_optimizer(optimizer1)
+
+    with pytest.raises(ValueError):
+        optimizer2 = Optimizer(tf.optimizers.Adam())
+        check_optimizer(optimizer2)
