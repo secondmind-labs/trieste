@@ -26,7 +26,7 @@ from typing import Optional
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from ...data import Dataset
 from ...space import Box, SearchSpace
@@ -117,10 +117,9 @@ def build_gpr(
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
-    noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
+    model = gpflow.models.GPR(data.astuple(), kernel, mean)
 
-    model = gpflow.models.GPR(data.astuple(), kernel, mean, noise_variance)
-
+    _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
     gpflow.set_trainable(model.likelihood, trainable_likelihood)
 
     return model
@@ -185,13 +184,11 @@ def build_sgpr(
 
     inducing_points = _get_inducing_points(search_space, num_inducing_points)
 
-    noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
+    model = SGPR(data.astuple(), kernel, inducing_points, mean_function=mean)
 
-    model = SGPR(
-        data.astuple(), kernel, inducing_points, mean_function=mean, noise_variance=noise_variance
-    )
-
+    _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
     gpflow.set_trainable(model.likelihood, trainable_likelihood)
+
     gpflow.set_trainable(model.inducing_variable, trainable_inducing_points)
 
     return model
@@ -328,8 +325,7 @@ def build_svgp(
         empirical_mean = tf.cast(0.0, dtype=gpflow.default_float())
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
-        noise_variance = _get_likelihood_variance(empirical_variance, likelihood_variance)
-        model_likelihood = gpflow.likelihoods.Gaussian(noise_variance)
+        model_likelihood = gpflow.likelihoods.Gaussian()
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
@@ -345,6 +341,7 @@ def build_svgp(
     )
 
     if not classification:
+        _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
         gpflow.set_trainable(model.likelihood, trainable_likelihood)
     gpflow.set_trainable(model.inducing_variable, trainable_inducing_points)
 
@@ -391,20 +388,18 @@ def _get_mean_function(mean: TensorType) -> gpflow.mean_functions.MeanFunction:
     return mean_function
 
 
-def _get_likelihood_variance(
-    variance: TensorType, likelihood_variance: Optional[float]
-) -> TensorType:
+def _set_gaussian_likelihood_variance(
+    model: GPModel, variance: TensorType, likelihood_variance: Optional[float]
+) -> None:
     if likelihood_variance is None:
         noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2
     else:
         tf.debugging.assert_positive(likelihood_variance)
-        noise_variance = gpflow.base.Parameter(
-            tf.cast(likelihood_variance, dtype=gpflow.default_float()),
-            transform=gpflow.utilities.positive(lower=1e-12),
-        )
-        # noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
+        noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
 
-    return noise_variance
+    model.likelihood.variance = gpflow.base.Parameter(
+        noise_variance, transform=gpflow.utilities.positive(lower=1e-12)
+    )
 
 
 def _get_inducing_points(

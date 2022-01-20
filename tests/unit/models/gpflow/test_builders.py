@@ -44,7 +44,7 @@ from trieste.space import Box, SearchSpace
 
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
-@pytest.mark.parametrize("likelihood_variance", [None, 0.1, 10.0])
+@pytest.mark.parametrize("likelihood_variance", [None, 1e-10, 10.0])
 @pytest.mark.parametrize("trainable_likelihood", [True, False])
 def test_build_gpr_returns_correct_model(
     kernel_priors: bool, likelihood_variance: Optional[float], trainable_likelihood: bool
@@ -82,7 +82,7 @@ def test_build_gpr_raises_for_invalid_likelihood_variance(likelihood_variance: f
 
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
-@pytest.mark.parametrize("likelihood_variance", [None, 0.1, 10.0])
+@pytest.mark.parametrize("likelihood_variance", [None, 1e-10, 10.0])
 @pytest.mark.parametrize("trainable_likelihood", [True, False])
 @pytest.mark.parametrize("num_inducing_points", [None, 3, 100])
 @pytest.mark.parametrize("trainable_inducing_points", [True, False])
@@ -185,7 +185,7 @@ def test_build_vgp_classifier_raises_for_invalid_kernel_variance(kernel_variance
 
 @pytest.mark.parametrize("classification", [True, False])
 @pytest.mark.parametrize("kernel_priors", [True, False])
-@pytest.mark.parametrize("likelihood_variance", [None, 0.1, 10.0])
+@pytest.mark.parametrize("likelihood_variance", [None, 1e-10, 10.0])
 @pytest.mark.parametrize("trainable_likelihood", [True, False])
 @pytest.mark.parametrize("num_inducing_points", [None, 3, 100])
 @pytest.mark.parametrize("trainable_inducing_points", [True, False])
