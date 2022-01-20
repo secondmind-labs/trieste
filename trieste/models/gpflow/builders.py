@@ -362,12 +362,16 @@ def _get_kernel(
     add_prior_to_lengthscale: bool,
     add_prior_to_variance: bool,
 ) -> gpflow.kernels.Kernel:
-
     lengthscales = (
         KERNEL_LENGTHSCALE
         * (search_space.upper - search_space.lower)
         * math.sqrt(search_space.dimension)
     )
+    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
+    lengthscales = tf.where(
+        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
+    )
+
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
 
     if add_prior_to_lengthscale:

@@ -19,18 +19,21 @@ model.
 
 from __future__ import annotations
 
-from typing import Optional
+import math
+from typing import Any, List, Optional
 
 import gpflow
 import numpy.testing as npt
 import pytest
+import tensorflow as tf
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
 from tests.util.models.gpflow.models import mock_data
 from trieste.models.gpflow.builders import (
     CLASSIFICATION_KERNEL_VARIANCE,
     CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE,
+    KERNEL_LENGTHSCALE,
     MAX_NUM_INDUCING_POINTS,
     NUM_INDUCING_POINTS_PER_DIM,
     SIGNAL_NOISE_RATIO_LIKELIHOOD,
@@ -40,7 +43,7 @@ from trieste.models.gpflow.builders import (
     build_svgp,
     build_vgp_classifier,
 )
-from trieste.space import Box, SearchSpace
+from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
@@ -250,6 +253,62 @@ def test_build_svgp_raises_for_invalid_num_inducing_points(num_inducing_points: 
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         build_svgp(data, search_space, num_inducing_points=num_inducing_points)
+
+
+@pytest.mark.parametrize(
+    "lower, upper",
+    [([0.0, 0.0], [1.0, 10.0]), ([0.0, -1.0], [4.0, 2.0]), ([-10.0, -2.0], [-1.0, -1.0])],
+)
+@pytest.mark.parametrize("builder", [build_gpr, build_sgpr, build_svgp, build_vgp_classifier])
+def test_builder_returns_correct_lengthscales_for_unequal_box_bounds(
+    lower: List[float], upper: List[float], builder: Any
+) -> None:
+    search_space = Box(lower, upper)
+    qp = search_space.sample(10)
+    data = mk_dataset(qp, quadratic(qp))
+
+    model = builder(data, search_space)
+
+    expected_lengthscales = (
+        KERNEL_LENGTHSCALE
+        * (search_space.upper - search_space.lower)
+        * math.sqrt(search_space.dimension)
+    )
+
+    npt.assert_allclose(model.kernel.lengthscales, expected_lengthscales, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "points",
+    [
+        ([[0.0, 0.0], [1.0, 10.0]]),
+        ([[0.0, -1.0], [4.0, 2.0]]),
+        ([[-10.0, -2.0], [-1.0, -1.0]]),
+        ([[0.0, 1.0], [2.0, 1.0]]),
+        ([[0.0, 1.0], [0.0, 10.0]]),
+    ],
+)
+@pytest.mark.parametrize("builder", [build_gpr, build_sgpr, build_svgp, build_vgp_classifier])
+def test_builder_returns_correct_lengthscales_for_unequal_discrete_bounds(
+    points: List[List[float]], builder: Any
+) -> None:
+    search_space = DiscreteSearchSpace(tf.constant(points, dtype=tf.float64))
+    qp = search_space.sample(10)
+    data = mk_dataset(qp, quadratic(qp))
+    # breakpoint()
+    model = builder(data, search_space)
+
+    expected_lengthscales = (
+        KERNEL_LENGTHSCALE
+        * (search_space.upper - search_space.lower)
+        * math.sqrt(search_space.dimension)
+    )
+    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
+    expected_lengthscales = tf.where(
+        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), expected_lengthscales
+    )
+
+    npt.assert_allclose(model.kernel.lengthscales, expected_lengthscales, rtol=1e-6)
 
 
 def _check_likelihood(
