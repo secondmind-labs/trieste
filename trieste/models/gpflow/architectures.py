@@ -400,7 +400,7 @@ def _get_likelihood_variance(
         tf.debugging.assert_positive(likelihood_variance)
         noise_variance = gpflow.base.Parameter(
             tf.cast(likelihood_variance, dtype=gpflow.default_float()),
-            transform=gpflow.utilities.positive(lower=1e-12)
+            transform=gpflow.utilities.positive(lower=1e-12),
         )
         # noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
 

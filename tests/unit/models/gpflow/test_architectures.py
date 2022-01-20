@@ -26,7 +26,7 @@ import numpy.testing as npt
 import pytest
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from tests.util.misc import mk_dataset, TF_DEBUGGING_ERROR_TYPES
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset
 from tests.util.models.gpflow.models import mock_data
 from trieste.models.gpflow.architectures import (
     CLASSIFICATION_KERNEL_VARIANCE,
