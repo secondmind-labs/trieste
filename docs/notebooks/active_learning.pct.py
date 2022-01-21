@@ -52,13 +52,9 @@ initial_data = observer(initial_query_points)
 # %%
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
-def build_model(data, search_space):
-    model = build_gpr(data, search_space, likelihood_variance=1e-7)
-    return GaussianProcessRegression(model)
-
-
-model = build_model(initial_data, search_space)
 
 # %% [markdown]
 # ## Active learning using predictive variance
@@ -143,7 +139,8 @@ plot_active_learning_query(result, bo_iter, num_initial_points, query_points)
 bo_iter = 5
 num_query = 3
 
-model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
 acq = PredictiveVariance()
 rule = EfficientGlobalOptimization(

@@ -199,13 +199,8 @@ import tensorflow_probability as tfp
 
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-
-def build_gp_model(data, search_space):
-    model = build_gpr(data, search_space, likelihood_variance=1e-7)
-    return GaussianProcessRegression(model)
-
-
-gp_model = build_gp_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+gp_model = GaussianProcessRegression(gpflow_model)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -336,7 +331,8 @@ dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 # %%
 
-gp_model = build_gp_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+gp_model = GaussianProcessRegression(gpflow_model)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 

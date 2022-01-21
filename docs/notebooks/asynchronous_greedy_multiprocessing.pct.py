@@ -75,9 +75,8 @@ from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 # We set the likelihood variance to a small number because
 # we are dealing with a noise-free problem.
-def build_model(data, search_space):
-    model = build_gpr(data, search_space, likelihood_variance=1e-7)
-    return GaussianProcessRegression(model)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
 
 # these imports will be used later for optimization
@@ -178,8 +177,6 @@ enable_sleep_delays = True
 # %%
 
 # setup Ask Tell BO
-model = build_model(initial_data, search_space)
-
 local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = AsynchronousGreedy(builder=local_penalization_acq)  # type: ignore
 
@@ -251,7 +248,8 @@ print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
 
 # %%
 # setup Ask Tell BO
-model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
 local_penalization_acq = LocalPenalization(search_space, num_samples=2000)
 local_penalization_rule = EfficientGlobalOptimization(  # type: ignore

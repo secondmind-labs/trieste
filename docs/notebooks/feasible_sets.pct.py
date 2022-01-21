@@ -82,12 +82,8 @@ import gpflow
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 
-def build_model(data, search_space):
-    model = build_gpr(data, search_space, likelihood_variance=1e-7)
-    return GaussianProcessRegression(model)
-
-
-model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
 
 # %% [markdown]
@@ -189,7 +185,8 @@ query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 
 # fitting the model only to the initial data
-initial_model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+initial_model = GaussianProcessRegression(gpflow_model)
 initial_model.optimize(initial_data)
 
 plot_excursion_probability(
@@ -250,7 +247,8 @@ rule_ivr = EfficientGlobalOptimization(builder=acq_ivr, num_query_points=2)  # t
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 10
-model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 result_ivr = bo.optimize(num_steps, initial_data, model, rule_ivr)
 
 final_model_ivr = result_ivr.try_get_final_model()
@@ -271,7 +269,8 @@ acq_range = IntegratedVarianceReduction(
 )
 rule_range = EfficientGlobalOptimization(builder=acq_range, num_query_points=2)  # type: ignore
 
-model = build_model(initial_data, search_space)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 result_range = bo.optimize(num_steps, initial_data, model, rule_range)
 
 # %% [markdown]
