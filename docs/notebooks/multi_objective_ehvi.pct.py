@@ -340,7 +340,7 @@ objective_model = build_stacked_independent_objectives_model(
 # We also create a single model of the constraint. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-gpflow_model = build_gpr(nitial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7)
+gpflow_model = build_gpr(initial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7)
 constraint_model = GaussianProcessRegression(gpflow_model)
 
 
