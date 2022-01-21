@@ -605,6 +605,7 @@ def test_gaussian_process_cached_predictions_correct(
 
     x_predict = np.expand_dims(np.linspace(0, 5, 2).reshape((-1, 1)), 1)
 
+
     # get cached predictions
     cached_fmean, cached_fvar = model.predict(x_predict)
     cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
@@ -637,10 +638,10 @@ def test_gaussian_process_cached_predictions_faster(
 
     x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
     t_0 = time()
-    [model.predict(x_predict) for _ in range(10)]  # make sequential predictions
+    [model.predict(x_predict) for _ in range(100)]  # make sequential predictions
     time_with_cache = time() - t_0
     t_0 = time()
-    [model.model.predict_f(x_predict) for _ in range(10)]
+    [model.model.predict_f(x_predict) for _ in range(100)]
     time_without_cache = time() - t_0
 
     npt.assert_array_less(time_with_cache, time_without_cache)
