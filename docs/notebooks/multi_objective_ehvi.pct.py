@@ -22,8 +22,8 @@ from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
 from trieste.models import TrainableModelStack
-from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.space import Box
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
+from trieste.space import Box, SearchSpace
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.acquisition.multi_objective.pareto import (
     Pareto,
@@ -92,33 +92,26 @@ plt.show()
 #
 # In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model.
 #
-# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model.
+# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 
 # %%
 def build_stacked_independent_objectives_model(
-    data: Dataset, num_output
+    data: Dataset, num_output: int, search_space: SearchSpace
 ) -> TrainableModelStack:
     gprs = []
     for idx in range(num_output):
         single_obj_data = Dataset(
             data.query_points, tf.gather(data.observations, [idx], axis=1)
         )
-        variance = tf.math.reduce_variance(single_obj_data.observations)
-        kernel = gpflow.kernels.Matern52(variance)
-        gpr = gpflow.models.GPR(
-            (single_obj_data.query_points, single_obj_data.observations),
-            kernel,
-            noise_variance=1e-5,
-        )
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
+        gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-7)
         gprs.append((GaussianProcessRegression(gpr), 1))
 
     return TrainableModelStack(*gprs)
 
 
 # %%
-model = build_stacked_independent_objectives_model(initial_data, num_objective)
+model = build_stacked_independent_objectives_model(initial_data, num_objective, search_space)
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -221,7 +214,7 @@ plt.show()
 # EHVI can be extended to the case of batches (i.e. query several points at a time) using the `Fantasizer`. `Fantasizer` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `Fantasizer` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
 
 # %%
-model = build_stacked_independent_objectives_model(initial_data, num_objective)
+model = build_stacked_independent_objectives_model(initial_data, num_objective, search_space)
 
 from trieste.acquisition.function import Fantasizer
 
@@ -340,28 +333,16 @@ plt.show()
 
 # %%
 objective_model = build_stacked_independent_objectives_model(
-    initial_data_with_cst[OBJECTIVE], num_objective
+    initial_data_with_cst[OBJECTIVE], num_objective, search_space
 )
 
 # %% [markdown]
-# We also create a single model of the constraint:
+# We also create a single model of the constraint. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-def create_constraint_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
-    kernel = gpflow.kernels.Matern52(
-        variance=variance, lengthscales=lengthscale
-    )
-    jitter = gpflow.kernels.White(1e-12)
-    gpr = gpflow.models.GPR(
-        data.astuple(), kernel + jitter, noise_variance=1e-5
-    )
-    gpflow.set_trainable(gpr.likelihood, False)
-    return GaussianProcessRegression(gpr)
+gpflow_model = build_gpr(initial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7)
+constraint_model = GaussianProcessRegression(gpflow_model)
 
-
-constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
 # %% [markdown]
 # We store both sets of models in a dictionary:
