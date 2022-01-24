@@ -26,7 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
-from typing import Any
+from typing import Any, cast
 
 import gpflow
 import numpy as np
@@ -49,7 +49,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import TrajectorySampler
+from trieste.models import TrainableProbabilisticModel, TrajectorySampler
 from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -89,7 +89,9 @@ def test_gpflow_wrappers_update(gpflow_interface_factory: ModelFactoryType) -> N
 
     x_new = tf.concat([x, tf.constant([[10.0], [11.0]], dtype=gpflow.default_float())], 0)
     new_data = Dataset(x_new, fnc_3x_plus_10(x_new))
-    model.update(new_data)
+    # Would be nice if ModelFactoryType could return an intersection type of
+    # GPflowPredictor and TrainableProbabilisticModel but this isn't possible
+    cast(TrainableProbabilisticModel, model).update(new_data)
 
     reference_model = _reference_model(x_new, fnc_3x_plus_10(x_new))
     internal_model = model.model
@@ -616,7 +618,7 @@ def test_sparse_variational_model_attribute() -> None:
 
 
 def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
-    class SVGPSubclass(SVGP):
+    class SVGPSubclass(SVGP):  # type: ignore[misc]
         @property
         def mol(self) -> int:
             return 42
@@ -763,14 +765,14 @@ def test_variational_gaussian_process_optimize_natgrads_only_updates_variational
         vgp_matern_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
     )
 
-    old_num_trainable_params = len(model.trainable_variables)
+    old_num_trainable_params = len(model.model.trainable_variables)
     old_kernel_params = model.get_kernel().parameters[0].numpy()
     old_q_mu = model.model.q_mu.numpy()
     old_q_sqrt = model.model.q_sqrt.numpy()
 
     model.optimize(dataset)
 
-    new_num_trainable_params = len(model.trainable_variables)
+    new_num_trainable_params = len(model.model.trainable_variables)
     new_kernel_params = model.get_kernel().parameters[0].numpy()
     new_q_mu = model.model.q_mu.numpy()
     new_q_sqrt = model.model.q_sqrt.numpy()

@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from abc import ABC
 from collections.abc import Callable, Sequence
 
 import gpflow
@@ -36,6 +35,8 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
 )
+from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
+from trieste.models.interfaces import SupportsGetKernel, SupportsGetObservationNoise
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -47,7 +48,7 @@ def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
     return tfp.math.psd_kernels.ExponentiatedQuadratic()
 
 
-class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
+class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
@@ -57,7 +58,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, ABC):
         pass
 
 
-class GaussianMarginal(ProbabilisticModel, ABC):
+class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -67,7 +68,9 @@ class GaussianMarginal(ProbabilisticModel, ABC):
         return tf.transpose(samples, tf.concat([dim_order[1:-2], [0], dim_order[-2:]], -1))
 
 
-class GaussianProcess(GaussianMarginal, ProbabilisticModel):
+class GaussianProcess(
+    GaussianMarginal, SupportsCovarianceBetweenPoints, SupportsGetObservationNoise
+):
     """A (static) Gaussian process over a vector random variable."""
 
     def __init__(
@@ -108,11 +111,13 @@ class GaussianProcess(GaussianMarginal, ProbabilisticModel):
 class GaussianProcessWithSamplers(GaussianProcess):
     """A (static) Gaussian process over a vector random variable with a reparam sampler"""
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[GaussianProcessWithSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
 
-class QuadraticMeanAndRBFKernel(GaussianProcess):
+class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetObservationNoise):
     r"""A Gaussian process with scalar quadratic mean and RBF kernel."""
 
     def __init__(
@@ -158,10 +163,12 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
         )
         self._dataset = dataset
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
 

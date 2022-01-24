@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
@@ -38,7 +38,12 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     (consistent with GPflow) so that dtype errors do not occur.
     """
 
-    def __init__(self, model: DeepGP, optimizer: BatchOptimizer | None = None):
+    def __init__(
+        self,
+        model: DeepGP,
+        optimizer: BatchOptimizer | None = None,
+        continuous_optimisation: bool = True,
+    ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
@@ -50,6 +55,9 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             using 100 epochs, batch size 100, and verbose 0. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
+        :param continuous_optimisation: if True (default), the optimizer will keep track of the
+            number of epochs across BO iterations and use this number as initial_epoch. This is
+            essential to allow monitoring of model training across BO iterations.
         """
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
@@ -70,7 +78,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         if not self.optimizer.minimize_args:
-            self._fit_args: Optional[Dict[str, Any]] = {
+            self._fit_args: Dict[str, Any] = {
                 "verbose": 0,
                 "epochs": 100,
                 "batch_size": 100,
@@ -82,6 +90,8 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self._model_keras = model.as_training_model()
         self._model_keras.compile(self.optimizer.optimizer)
+        self._absolute_epochs = 0
+        self._continuous_optimisation = continuous_optimisation
 
     def __repr__(self) -> str:
         """"""
@@ -143,9 +153,23 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
-        self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **self._fit_args
+        fit_args = dict(self._fit_args)
+
+        # Tell optimizer how many epochs have been used before: the optimizer will "continue"
+        # optimization across multiple BO iterations rather than start fresh at each iteration.
+        # This allows us to monitor training across iterations.
+
+        if "epochs" in fit_args:
+            fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
+
+        hist = self.model_keras.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations},
+            **fit_args,
+            initial_epoch=self._absolute_epochs,
         )
+
+        if self._continuous_optimisation:
+            self._absolute_epochs = self._absolute_epochs + len(hist.history["loss"])
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.

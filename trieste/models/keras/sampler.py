@@ -19,8 +19,6 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
-from typing import cast
-
 from ...types import TensorType
 from ..interfaces import EnsembleModel, TrajectoryFunction, TrajectorySampler
 
