@@ -27,20 +27,15 @@ observer = trieste.objectives.utils.mk_observer(branin)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
-# We'll use Gaussian process regression to model the function, as implemented in GPflow. Below we construct a `GPR` model from GPflow and pass it to the appropriate `GaussianProcessRegression` wrapper.
+# We'll use Gaussian process regression to model the function, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-import gpflow
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-observations = initial_data.observations
-kernel = gpflow.kernels.Matern52(
-    tf.math.reduce_variance(observations), [0.2, 0.2]
-)
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
-gpflow.set_trainable(gpr.likelihood, False)
 
-model = GaussianProcessRegression(gpr)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
+
 
 # %% [markdown]
 # ## Create the Thompson sampling acquisition rule

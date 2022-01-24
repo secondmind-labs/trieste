@@ -18,7 +18,6 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-import gpflow
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 observer = trieste.objectives.utils.mk_observer(
@@ -27,10 +26,7 @@ observer = trieste.objectives.utils.mk_observer(
 initial_query_points = search_space.sample_sobol(5)
 initial_data = observer(initial_query_points)
 
-variance = tf.math.reduce_variance(initial_data.observations)
-kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
-gpflow.set_trainable(gpr.likelihood, False)
+gpr = trieste.models.gpflow.build_gpr(initial_data, search_space)
 model = trieste.models.gpflow.GaussianProcessRegression(gpr)
 
 # %% [markdown]

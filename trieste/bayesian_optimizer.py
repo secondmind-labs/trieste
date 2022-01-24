@@ -32,6 +32,7 @@ from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
+from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
@@ -42,6 +43,9 @@ S = TypeVar("S")
 
 SP = TypeVar("SP", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
+
+M_contra = TypeVar("M_contra", bound=TrainableProbabilisticModel, contravariant=True)
+""" Type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
 @dataclass(frozen=True)
@@ -156,11 +160,7 @@ class BayesianOptimizer(Generic[SP]):
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(
-        self,
-        observer: Observer,
-        search_space: SP,
-    ):
+    def __init__(self, observer: Observer, search_space: SP):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -190,8 +190,8 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        model_specs: Mapping[str, M_contra],
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -206,8 +206,40 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+        # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
+        # checker can't differentiate between TensorType and State[S | None, TensorType], and
+        # the return types clash. object is close enough to None that object will do.
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, M_contra],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -232,8 +264,8 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        model_specs: M_contra,
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -245,8 +277,35 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: M_contra,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
+        acquisition_state: S | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[S]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
         acquisition_state: S | None = None,
         *,
         track_state: bool = True,
@@ -258,8 +317,8 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        model_specs: Mapping[str, M_contra] | Mapping[str, ModelSpec] | M_contra | ModelConfigType,
+        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP, M_contra]
         | None = None,
         acquisition_state: S | None = None,
         *,
@@ -351,9 +410,11 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
+            acquisition_rule = EfficientGlobalOptimization[SP, M_contra]()
 
-        models = map_values(create_model, model_specs)
+        # note that this cast is justified for explicit models but not for models created
+        # from config, which can't be statically type checked; those will fail at runtime instead
+        models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
         history: list[Record[S]] = []
 
         for step in range(num_steps):

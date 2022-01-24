@@ -66,7 +66,7 @@ initial_data = observer(initial_query_points)
 import gpflow
 import tensorflow_probability as tfp
 
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression
 
 
 def build_model(data):
@@ -86,6 +86,17 @@ def build_model(data):
 
 
 model = build_model(initial_data)
+
+
+# %% [markdown]
+# Constructing a GPflow model can be somewhat involved and take a dozen lines of non-trivial code. Hence, Trieste has build functions for the supported GPflow models. For example, for the GPR model we would use a `build_gpr` model building function, that sets sensible initial parameters and    priors, almost exactly the same as seen above. We have found these settings to be effective in most cases.
+
+# %%
+from trieste.models.gpflow import build_gpr
+
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model, num_kernel_samples=100)
+
 
 # %% [markdown]
 # ## Run the optimization loop

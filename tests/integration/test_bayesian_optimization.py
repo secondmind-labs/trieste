@@ -86,13 +86,14 @@ def OPTIMIZER_PARAMS() -> Tuple[
         Tuple[
             int,
             Union[
-                AcquisitionRule[TensorType, Box],
+                AcquisitionRule[TensorType, Box, GPflowPredictor],
                 AcquisitionRule[
                     State[
                         TensorType,
                         Union[AsynchronousRuleState, TrustRegion.State],
                     ],
                     Box,
+                    GPflowPredictor,
                 ],
             ],
         ]
@@ -141,7 +142,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(
+                    GIBBON(  # type: ignore[arg-type]  # (only supported by GPR models)
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
@@ -175,7 +176,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 15,
                 EfficientGlobalOptimization(
-                    Fantasizer(),
+                    Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
                     num_query_points=3,
                 ),
             ),
@@ -188,8 +189,10 @@ def OPTIMIZER_PARAMS() -> Tuple[
 @pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
 ) -> None:
     _test_optimizer_finds_minimum(num_steps, acquisition_rule, optimize_branin=True)
 
@@ -198,8 +201,10 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
 @pytest.mark.parametrize(*OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
@@ -211,7 +216,9 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgrads: bool) -> None:
     # regression test for [#406]; use natgrads doesn't work well as a model for the objective
     # so don't bother checking the results, just that it doesn't crash
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
+    acquisition_rule: AcquisitionRule[
+        TensorType, SearchSpace, GPflowPredictor
+    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
         None if use_natgrads else 5,
         acquisition_rule,
@@ -223,13 +230,17 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgra
 @random_seed
 @pytest.mark.slow
 def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
+    acquisition_rule: AcquisitionRule[
+        TensorType, SearchSpace, GPflowPredictor
+    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(70, acquisition_rule, optimize_branin=True, model_type="SVGP")
 
 
 @random_seed
 def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace] = EfficientGlobalOptimization()
+    acquisition_rule: AcquisitionRule[
+        TensorType, SearchSpace, GPflowPredictor
+    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
 
 
@@ -237,7 +248,9 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 @pytest.mark.slow
 @pytest.mark.parametrize("num_steps, acquisition_rule", [(15, DiscreteThompsonSampling(1000, 3))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    keras_float: None,
 ) -> None:
     _test_optimizer_finds_minimum(
         num_steps, acquisition_rule, optimize_branin=True, model_type="DGP"
@@ -247,7 +260,9 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 @random_seed
 @pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    keras_float: None,
 ) -> None:
     _test_optimizer_finds_minimum(num_steps, acquisition_rule, model_type="DGP")
 
@@ -264,7 +279,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
 ) -> None:
     _test_optimizer_finds_minimum(
         num_steps,
@@ -285,15 +300,17 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
 ) -> None:
     _test_optimizer_finds_minimum(num_steps, acquisition_rule, model_type="DE")
 
 
 def _test_optimizer_finds_minimum(
     num_steps: Optional[int],
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+    ],
     optimize_branin: bool = False,
     model_type: str = "GPR",  # in Python 3.8+ this could be Literal["GPR", "VGP", "SVGP"]
     model_args: Optional[Mapping[str, Any]] = None,
@@ -406,7 +423,7 @@ def _test_optimizer_finds_minimum(
         with tensorboard_writer(summary_writer):
 
             dataset = (
-                BayesianOptimizer(observer, search_space)
+                BayesianOptimizer(observer, search_space)  # type: ignore
                 .optimize(
                     num_steps or 2, initial_data, model, acquisition_rule, track_state=track_state
                 )

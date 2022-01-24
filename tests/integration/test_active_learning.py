@@ -34,6 +34,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.interfaces import FastUpdateModel, SupportsPredictJoint
 from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
 from trieste.objectives.utils import mk_observer
 from trieste.observer import Observer
@@ -45,9 +46,9 @@ from trieste.types import TensorType
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (50, EfficientGlobalOptimization(PredictiveVariance())),
+        (50, EfficientGlobalOptimization[SearchSpace, SupportsPredictJoint](PredictiveVariance())),
         (
-            75,
+            70,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000))
             ),
@@ -55,7 +56,8 @@ from trieste.types import TensorType
     ],
 )
 def test_optimizer_learns_scaled_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, SupportsPredictJoint],
 ) -> None:
     """
     Ensure that the objective function is effectively learned, such that the final model
@@ -64,7 +66,7 @@ def test_optimizer_learns_scaled_branin_function(
 
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> TrainableProbabilisticModel:
+    def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
         prior_scale = tf.cast(1.0, dtype=tf.float64)
@@ -94,7 +96,7 @@ def test_optimizer_learns_scaled_branin_function(
     # we expect a model with initial data to fail the criterion
     initial_model = build_model(initial_data)
     initial_model.optimize(initial_data)
-    initial_predicted_means, _ = initial_model.model.predict_f(test_query_points)  # type: ignore
+    initial_predicted_means, _ = initial_model.model.predict_f(test_query_points)
     initial_accuracy = tf.reduce_max(tf.abs(initial_predicted_means - test_data.observations))
 
     assert not initial_accuracy < criterion
@@ -123,7 +125,7 @@ def test_optimizer_learns_scaled_branin_function(
         (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
         (
             25,
-            EfficientGlobalOptimization(
+            EfficientGlobalOptimization[SearchSpace, FastUpdateModel](
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
                 num_query_points=3,
             ),
@@ -140,7 +142,9 @@ def test_optimizer_learns_scaled_branin_function(
     ],
 )
 def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], threshold: int
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, FastUpdateModel],
+    threshold: int,
 ) -> None:
     """
     Ensure that the feasible set is sufficiently well learned, such that the final model
@@ -150,7 +154,7 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
 
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> TrainableProbabilisticModel:
+    def build_model(data: Dataset) -> GaussianProcessRegression:
         variance = tf.math.reduce_variance(data.observations)
         kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
         prior_scale = tf.cast(1.0, dtype=tf.float64)

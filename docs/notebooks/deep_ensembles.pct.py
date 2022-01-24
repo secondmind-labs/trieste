@@ -5,7 +5,7 @@
 #
 # Check out our tutorial on [Deep Gaussian Processes for Bayesian optimization](deep_gaussian_processes.ipynb) as another alternative model type supported by Trieste that can model non-stationary functions (but also deal well with small datasets).
 #
-# Let's start by importing some essential packages and modules. 
+# Let's start by importing some essential packages and modules.
 
 # %%
 import os
@@ -45,7 +45,7 @@ tf.keras.backend.set_floatx("float64")
 #
 # We will use a simple one-dimensional toy problem introduced by <cite data-cite="hernandez2015probabilistic"/>, which was used in <cite data-cite="lakshminarayanan2016simple"/> to provide some illustrative evidence that deep ensembles do a good job of estimating uncertainty. We will replicate this exercise here.
 #
-# The toy problem is a simple cubic function with some Normally distributed noise around it. We will randomly sample 20 input points from [-4,4] interval that we will use as a training data later on. 
+# The toy problem is a simple cubic function with some Normally distributed noise around it. We will randomly sample 20 input points from [-4,4] interval that we will use as a training data later on.
 
 
 # %%
@@ -53,9 +53,10 @@ from trieste.space import Box
 from trieste.data import Dataset
 
 
-def objective(x, error = True):
+def objective(x, error=True):
     y = tf.pow(x, 3)
-    if error: y += tf.random.normal(x.shape, 0, 3, dtype=x.dtype)
+    if error:
+        y += tf.random.normal(x.shape, 0, 3, dtype=x.dtype)
     return y
 
 
@@ -69,11 +70,11 @@ data = Dataset(inputs, outputs)
 
 
 # %% [markdown]
-# Next we define a deep ensemble model and train it. Trieste supports neural network models defined as TensorFlow's Keras models. Since creating ensemble models in Keras can be somewhat involved, Trieste provides some basic architectures. Here we use the `build_vanilla_keras_ensemble` function which builds a simple ensemble of neural networks in Keras where each network has the same architecture: number of hidden layers, nodes in hidden layers and activation function. It uses sensible defaults for many parameters and finally returns a model of `KerasEnsemble` class. 
+# Next we define a deep ensemble model and train it. Trieste supports neural network models defined as TensorFlow's Keras models. Since creating ensemble models in Keras can be somewhat involved, Trieste provides some basic architectures. Here we use the `build_vanilla_keras_ensemble` function which builds a simple ensemble of neural networks in Keras where each network has the same architecture: number of hidden layers, nodes in hidden layers and activation function. It uses sensible defaults for many parameters and finally returns a model of `KerasEnsemble` class.
 #
 # As with other supported types of models (e.g. Gaussian process models from GPflow), we cannot use `KerasEnsemble` directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepEnsemble` wrapper in this case. One difference with respect to other model types is that we need to use a Keras specific optimizer wrapper `KerasOptimizer` where we need to specify a stochastic optimizer (Adam is used by default, but we can use other stochastic optimizers from TensorFlow), objective function (here negative log likelihood) and we can provide custom arguments for the Keras `fit` method (here we modify the default arguments; check [Keras API documentation](https://keras.io/api/models/model_training_apis/#fit-method) for a list of possible arguments).
 #
-# For the cubic function toy problem we use the same architecture as in <cite data-cite="lakshminarayanan2016simple"/>: ensemble size of 5 networks, where each network has one hidden layer with 100 nodes. All other implementation details were missing and we used sensible choices, as well as details about training the network. 
+# For the cubic function toy problem we use the same architecture as in <cite data-cite="lakshminarayanan2016simple"/>: ensemble size of 5 networks, where each network has one hidden layer with 100 nodes. All other implementation details were missing and we used sensible choices, as well as details about training the network.
 
 
 # %%
@@ -96,9 +97,9 @@ def build_cubic_model(data: Dataset) -> DeepEnsemble:
     )
 
     fit_args = {
-        'batch_size': 10,
-        'epochs': 1000,
-        'verbose': 1,
+        "batch_size": 10,
+        "epochs": 1000,
+        "verbose": 1,
     }
     optimizer = KerasOptimizer(
         tf.keras.optimizers.Adam(0.01), negative_log_likelihood, fit_args
@@ -125,14 +126,23 @@ import matplotlib.pyplot as plt
 test_points = tf.linspace(-6, 6, 1000)
 
 # generating a plot with ground truth function, mean prediction and 3 standard
-# deviations around it 
-plt.scatter(inputs, outputs, marker='.', alpha=0.6, color = 'red', label='data')
-plt.plot(test_points, objective(test_points, False), color='blue', label='function')
+# deviations around it
+plt.scatter(inputs, outputs, marker=".", alpha=0.6, color="red", label="data")
+plt.plot(
+    test_points, objective(test_points, False), color="blue", label="function"
+)
 y_hat, y_var = model.predict(test_points)
 y_hat_minus_3sd = y_hat - 3 * tf.math.sqrt(y_var)
 y_hat_plus_3sd = y_hat + 3 * tf.math.sqrt(y_var)
-plt.plot(test_points, y_hat, color='gray', label='model $\mu$')
-plt.fill_between(test_points, tf.squeeze(y_hat_minus_3sd), tf.squeeze(y_hat_plus_3sd), color='gray', alpha=0.5, label='$\mu -/+ 3SD$')
+plt.plot(test_points, y_hat, color="gray", label="model $\mu$")
+plt.fill_between(
+    test_points,
+    tf.squeeze(y_hat_minus_3sd),
+    tf.squeeze(y_hat_plus_3sd),
+    color="gray",
+    alpha=0.5,
+    label="$\mu -/+ 3SD$",
+)
 plt.ylim([-100, 100])
 plt.show()
 
@@ -140,14 +150,16 @@ plt.show()
 # %% [markdown]
 # ## Non-stationary toy problem
 #
-# Now we turn to a somewhat more serious synthetic optimization problem. We want to find the minimum of the two-dimensional version of the [Michalewicz function](https://www.sfu.ca/~ssurjano/michal.html). Even though we stated that deep ensembles should be used with larger budget sizes, here we will show them on a small dataset to provide a problem that is feasible for the scope of the tutorial. 
+# Now we turn to a somewhat more serious synthetic optimization problem. We want to find the minimum of the two-dimensional version of the [Michalewicz function](https://www.sfu.ca/~ssurjano/michal.html). Even though we stated that deep ensembles should be used with larger budget sizes, here we will show them on a small dataset to provide a problem that is feasible for the scope of the tutorial.
 
 # The Michalewicz function is defined on the search space of $[0, \pi]^2$. Below we plot the function over this space. The Michalewicz function is interesting case for deep ensembles as it features sharp ridges that are difficult to capture with Gaussian processes. This occurs because lengthscale parameters in typical kernels cannot easily capture both ridges (requiring smaller lengthscales) and fairly flat areas everywhere else (requiring larger lengthscales).
 
 
 # %%
 from trieste.objectives import (
-    michalewicz_2, MICHALEWICZ_2_MINIMUM, MICHALEWICZ_2_SEARCH_SPACE
+    michalewicz_2,
+    MICHALEWICZ_2_MINIMUM,
+    MICHALEWICZ_2_SEARCH_SPACE,
 )
 from util.plotting_plotly import plot_function_plotly
 
@@ -203,10 +215,12 @@ def build_model(data: Dataset) -> DeepEnsemble:
     )
 
     fit_args = {
-        'batch_size': 10,
-        'epochs': 1000,
-        'callbacks': [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100)],
-        'verbose': 0,
+        "batch_size": 10,
+        "epochs": 1000,
+        "callbacks": [
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100)
+        ],
+        "verbose": 0,
     }
     optimizer = KerasOptimizer(
         tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
@@ -281,7 +295,11 @@ print(f"True minimum: {MINIMUM}")
 from util.plotting_plotly import add_bo_points_plotly
 
 fig = plot_function_plotly(
-    function, search_space.lower, search_space.upper, grid_density=100, alpha=0.7
+    function,
+    search_space.lower,
+    search_space.upper,
+    grid_density=100,
+    alpha=0.7,
 )
 fig.update_layout(height=800, width=800)
 

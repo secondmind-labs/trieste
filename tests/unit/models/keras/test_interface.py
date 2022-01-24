@@ -21,6 +21,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import empty_dataset, raise_exc
+from trieste.models.interfaces import SupportsPredictJoint
 from trieste.models.keras import KerasPredictor
 from trieste.models.optimizer import KerasOptimizer
 
@@ -55,9 +56,9 @@ def test_keras_predictor_check_optimizer_property() -> None:
 
 def test_keras_predictor_raises_on_predict_joint_call() -> None:
     model = _DummyKerasPredictor()
-
-    with pytest.raises(NotImplementedError):
-        model.predict_joint(empty_dataset([1], [1]).query_points)
+    assert not isinstance(model, SupportsPredictJoint)
+    with pytest.raises(AttributeError):
+        model.predict_joint(empty_dataset([1], [1]).query_points)  # type: ignore
 
 
 def test_keras_predictor_raises_on_sample_call() -> None:

@@ -21,6 +21,7 @@ from __future__ import annotations
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -28,12 +29,15 @@ from ...utils import DEFAULTS
 from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    SupportsPredictJoint,
     TrajectoryFunction,
     TrajectorySampler,
 )
 
 
-class IndependentReparametrizationSampler(ReparametrizationSampler):
+class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution as
@@ -89,7 +93,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler):
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
 
-class BatchReparametrizationSampler(ReparametrizationSampler):
+class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoint]):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -101,13 +105,18 @@ class BatchReparametrizationSampler(ReparametrizationSampler):
     form a continuous curve.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: SupportsPredictJoint):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
+        if not isinstance(model, SupportsPredictJoint):
+            raise NotImplementedError(
+                f"RandomFourierFeatureTrajectorySampler only works with models that support "
+                f"predict_joint; received {model.__repr__()}"
+            )
 
         # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
         # populated on the first call to sample
@@ -174,7 +183,14 @@ class BatchReparametrizationSampler(ReparametrizationSampler):
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
+@runtime_checkable
+class SupportsGetKernelObservationNoise(SupportsGetKernel, SupportsGetObservationNoise, Protocol):
+    """A probabilistic model that supports both get_kernel and get_observation noise."""
+
+    pass
+
+
+class RandomFourierFeatureTrajectorySampler(TrajectorySampler[SupportsGetKernelObservationNoise]):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
@@ -212,7 +228,7 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
 
     def __init__(
         self,
-        model: ProbabilisticModel,
+        model: SupportsGetKernelObservationNoise,
         dataset: Dataset,
         num_features: int = 1000,
     ):
@@ -232,6 +248,11 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
 
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
+        if not isinstance(model, SupportsGetKernelObservationNoise):
+            raise NotImplementedError(
+                f"RandomFourierFeatureTrajectorySampler only works with models that support "
+                f"get_kernel and get_observation_noise; received {model.__repr__()}"
+            )
 
         self._dataset = dataset
         self._model = model
@@ -240,16 +261,8 @@ class RandomFourierFeatureTrajectorySampler(TrajectorySampler):
         self._num_features = num_features  # m
         self._num_data = len(self._dataset.query_points)  # n
 
-        try:
-            self._noise_variance = model.get_observation_noise()
-            self._kernel = model.get_kernel()
-        except (NotImplementedError, AttributeError):
-            raise ValueError(
-                """
-                Thompson sampling with random Fourier features only currently supports models
-                with a Gaussian likelihood and an accessible kernel attribute.
-                """
-            )
+        self._kernel = model.get_kernel()
+        self._noise_variance = model.get_observation_noise()
 
         self._feature_functions = RandomFourierFeaturesCosine(
             self._kernel, self._num_features, dtype=self._dataset.query_points.dtype
