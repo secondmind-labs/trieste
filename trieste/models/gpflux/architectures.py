@@ -29,6 +29,7 @@ from gpflux.models import DeepGP
 
 from ...space import Box
 from ...types import TensorType
+from ...utils import to_numpy
 
 
 def build_vanilla_deep_gp(
@@ -66,7 +67,9 @@ def build_vanilla_deep_gp(
                     f"Currently only `Box` instances are supported for `search_space`,"
                     f" received {type(search_space)}."
                 )
-            additional_points = search_space.sample_sobol(num_inducing - len(query_points)).numpy()
+            additional_points = to_numpy(
+                search_space.sample_sobol(num_inducing - len(query_points))
+            )
         else:
             additional_points = np.random.randn(
                 num_inducing - len(query_points), *query_points.shape[1:]

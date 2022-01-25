@@ -125,8 +125,10 @@ dataset = result.try_get_final_dataset()
 # We can now get the best point found by the optimizer. Note this isn't necessarily the point that was last evaluated.
 
 # %%
-query_points = dataset.query_points.numpy()
-observations = dataset.observations.numpy()
+from trieste.utils import to_numpy
+
+query_points = to_numpy(dataset.query_points)
+observations = to_numpy(dataset.observations)
 
 arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 

@@ -29,6 +29,7 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
+from ..utils import to_numpy
 from .interface import AcquisitionFunction
 
 SP = TypeVar("SP", bound=SearchSpace)
@@ -426,8 +427,8 @@ def _perform_parallel_continuous_optimization(
         # Batch evaluate query `x`s from all children.
         batch_x = tf.constant(np_batch_x, dtype=tf_dtype)  # [num_optimization_runs, d]
         batch_y, batch_dy_dx = _objective_value_and_gradient(batch_x)
-        np_batch_y = batch_y.numpy().astype("float64")
-        np_batch_dy_dx = batch_dy_dx.numpy().astype("float64")
+        np_batch_y = to_numpy(batch_y).astype("float64")
+        np_batch_dy_dx = to_numpy(batch_dy_dx).astype("float64")
 
         for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
             if greenlet.dead:  # Allow for crashed greenlets
