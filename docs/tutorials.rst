@@ -30,6 +30,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/failure_ego
    notebooks/multi_objective_ehvi
    notebooks/deep_gaussian_processes
+   notebooks/deep_ensembles
    notebooks/active_learning
    notebooks/feasible_sets
    notebooks/openai_gym_lunar_lander
