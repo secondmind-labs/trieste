@@ -16,13 +16,12 @@ This module contains local penalization-based acquisition function builders. TOD
 """
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Optional
 
 import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import TrajectoryFunction, TrajectorySampler
 from ...types import TensorType
 from ..interface import AcquisitionFunction, SingleModelGreedyAcquisitionBuilder
 
@@ -31,12 +30,6 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
     r"""
     SAY IGNORE PENDING:)
     """
-
-    def __init__(self):
-        """
-        TODO
-        """
-        self._trajectory_sampler: Optional[TrajectorySampler] = None
 
     def prepare_acquisition_function(
         self,
@@ -62,7 +55,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
             """
             )
 
-        return cast(AcquisitionFunction, trajectory)
+        return trajectory
 
     def update_acquisition_function(
         self,
@@ -84,10 +77,10 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         """
         tf.debugging.Assert(self._trajectory_sampler is not None, [])
 
-        trajectory = cast(TrajectoryFunction, function)
+        trajectory = function
         if new_optimization_step:
             trajectory = self._trajectory_sampler.update_trajectory(trajectory)
         else:
             trajectory = self._trajectory_sampler.resample_trajectory(trajectory)
 
-        return cast(AcquisitionFunction, trajectory)
+        return trajectory

@@ -539,10 +539,10 @@ class TrajectorySampler(ABC, Generic[T]):
         """
         TODO
         """
-        return self.get_trajectory()
+        return self.get_negative_trajectory()
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
         TODO
         """
-        return self.get_trajectory()
+        return self.get_negative_trajectory()
