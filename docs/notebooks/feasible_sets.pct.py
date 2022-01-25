@@ -130,6 +130,7 @@ result = bo.optimize(num_steps, initial_data, model, rule)
 from util.plotting import plot_bo_points, plot_function_2d
 import tensorflow_probability as tfp
 
+
 def excursion_probability(x, model, threshold=80):
     mean, variance = model.model.predict_f(x)
     normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))

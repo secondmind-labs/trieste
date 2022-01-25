@@ -58,6 +58,7 @@ from gpflow.models import GPR
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 
+
 def build_model(data):
     variance = tf.math.reduce_variance(data.observations)
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
