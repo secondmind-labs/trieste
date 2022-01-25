@@ -286,7 +286,7 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
 
         :return: The trajectory sampler.
         """
-        return EnsembleTrajectorySampler(self.model)
+        return EnsembleTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         """
