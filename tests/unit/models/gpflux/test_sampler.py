@@ -46,7 +46,7 @@ def test_deep_gaussian_process_sampler_raises_for_invalid_sample_size(
     sample_size: int, keras_float: None
 ) -> None:
     x = tf.constant([[0.0]], dtype=gpflow.default_float())
-    dgp, _ = two_layer_trieste_dgp(x)
+    dgp = two_layer_trieste_dgp(x)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DeepGaussianProcessReparamSampler(sample_size, dgp)

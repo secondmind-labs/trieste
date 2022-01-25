@@ -85,6 +85,11 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
 
         self.model = model.model_gpflux
 
+        if not isinstance(self.model, DeepGP):
+            raise ValueError(
+                f"GPflux model must be a gpflux.models.DeepGP, received {type:self.model}"
+            )
+
     def get_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by using the GPflux sampling
@@ -95,7 +100,7 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
-        return sample_dgp(self._model)
+        return sample_dgp(self.model)  # type: ignore
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
@@ -124,7 +129,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
         # empty tensor here, and populated on the first call to sample
         self._eps_list = [
             tf.Variable(tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None])
-            for _ in range(len(model.f_layers))
+            for _ in range(len(self.model.f_layers))
         ]
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
