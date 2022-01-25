@@ -25,6 +25,7 @@ from typing import Any, Sequence, Union
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.distributions import distribution as tfd
 
 from ...data import Dataset
 from .utils import get_tensor_spec_from_data
@@ -220,7 +221,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         distribution = dist_layer(
             self.flattened_output_shape,
-            lambda s: s.mean(),
+            tfd.Distribution.mean,
             name=self.output_layer_name,
         )(parameter_layer)
 

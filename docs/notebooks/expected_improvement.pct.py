@@ -95,7 +95,7 @@ model = build_model(initial_data)
 from trieste.models.gpflow import build_gpr
 
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
-model =  GaussianProcessRegression(gpflow_model, num_kernel_samples=100)
+model = GaussianProcessRegression(gpflow_model, num_kernel_samples=100)
 
 
 # %% [markdown]

@@ -91,8 +91,12 @@ initial_data = observer(search_space.sample(num_init_points))
 # %%
 from trieste.models.gpflow import build_gpr, build_vgp_classifier
 
-regression_model = build_gpr(initial_data[OBJECTIVE], search_space, likelihood_variance=1e-7)
-classification_model = build_vgp_classifier(initial_data[FAILURE], search_space, noise_free=True)
+regression_model = build_gpr(
+    initial_data[OBJECTIVE], search_space, likelihood_variance=1e-7
+)
+classification_model = build_vgp_classifier(
+    initial_data[FAILURE], search_space, noise_free=True
+)
 
 
 # %% [markdown]
