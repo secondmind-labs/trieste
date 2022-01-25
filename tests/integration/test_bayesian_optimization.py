@@ -268,7 +268,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 
 
 @random_seed
-# @pytest.mark.slow
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
