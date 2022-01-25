@@ -535,7 +535,7 @@ class TrajectorySampler(ABC, Generic[T]):
         """
         raise NotImplementedError
 
-    def resample_trajectory(self, trajectory:TrajectoryFunction) -> TrajectoryFunction:
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
         TODO
         """

@@ -23,7 +23,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, rbf, QuadraticMeanAndRBFKernelWithSamplers
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
+    rbf,
+)
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     BatchReparametrizationSampler,
@@ -33,10 +38,6 @@ from trieste.models.gpflow import (
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives.single_objectives import branin
-
-from trieste.models.gpflow import GaussianProcessRegression
-
-from tests.util.models.gpflow.models import gpr_model
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
@@ -243,7 +244,6 @@ def test_batch_reparametrization_sampler_reset_sampler() -> None:
     assert sampler._initialized
 
 
-
 @pytest.mark.parametrize("num_features", [0, -2])
 def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
     num_features: int,
@@ -251,7 +251,9 @@ def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -260,13 +262,11 @@ def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
 
 
 def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
-    
+
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     with pytest.raises(AssertionError):
         RandomFourierFeatureTrajectorySampler(model, num_features=100)
-
-
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -278,7 +278,9 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -291,8 +293,10 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     tf.debugging.assert_shapes([(trajectory(xs_with_dummy_batch_dim), [num_evals, 1])])
     tf.debugging.assert_shapes([(trajectory._feature_functions(xs), [num_evals, num_features])])
     tf.debugging.assert_shapes([(trajectory._weight_distribution.mean(), [num_features])])
-    tf.debugging.assert_shapes([(trajectory._weight_distribution.covariance(), [num_features,num_features])])
-    
+    tf.debugging.assert_shapes(
+        [(trajectory._weight_distribution.covariance(), [num_features, num_features])]
+    )
+
     assert isinstance(trajectory, fourier_feature_trajectory)
 
 
@@ -302,7 +306,9 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset = dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -310,7 +316,7 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
 
-    xs = tf.expand_dims(xs,-2) # [N, 1, d]
+    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     trajectory_eval_1 = trajectory(xs)
     trajectory_eval_2 = trajectory(xs)
 
@@ -323,7 +329,9 @@ def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_met
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -345,7 +353,9 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -356,7 +366,7 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
     sampler2 = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory2 = sampler2.get_trajectory()
 
-    xs = tf.expand_dims(xs,-2) # [N, 1, d]
+    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     npt.assert_array_less(1e-3, tf.abs(trajectory1(xs) - trajectory2(xs)))
 
 
@@ -367,27 +377,28 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-    xs = tf.expand_dims(xs,-2) # [N, 1, d]
+    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
-    evals_1 = trajectory(xs) 
+    evals_1 = trajectory(xs)
 
     trajectory = sampler.resample_trajectory(trajectory)
-    evals_2 = trajectory(xs) 
+    evals_2 = trajectory(xs)
 
     trajectory = sampler.resample_trajectory(trajectory)
-    evals_3 = trajectory(xs) 
+    evals_3 = trajectory(xs)
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-    npt.assert_array_less(1e-3, tf.abs(evals_1 - evals_2)) # check all samples are different
+    npt.assert_array_less(1e-3, tf.abs(evals_1 - evals_2))  # check all samples are different
     npt.assert_array_less(1e-3, tf.abs(evals_2 - evals_3))
     npt.assert_array_less(1e-3, tf.abs(evals_1 - evals_3))
-
 
 
 @random_seed
@@ -397,34 +408,41 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     dataset = Dataset(xs, quadratic(xs))
 
-    model = QuadraticMeanAndRBFKernelWithSamplers(noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
-   
+
     x_range = tf.linspace(1.4, 2.8, 3)
     x_range = tf.cast(x_range, dtype=tf.float64)
-    xs_predict =  tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    xs_predict = tf.reshape(
+        tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
+    )
 
     trajectory_sampler = RandomFourierFeatureTrajectorySampler(model)
     trajectory = trajectory_sampler.get_trajectory()
-    eval_before = trajectory(tf.expand_dims(xs_predict,-2))
+    eval_before = trajectory(tf.expand_dims(xs_predict, -2))
 
-    new_dataset = Dataset(xs_predict, quadratic(xs_predict)) # give predict data as new training
+    new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
     new_lengthscales = 0.5 * tf.ones_like(model.kernel.lengthscales, dtype=tf.float64)
     model.update(new_dataset)
-    model.kernel.lengthscales.assign(new_lengthscales) # change params to mimic optimization
+    model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
     trajectory = trajectory_sampler.update_trajectory(trajectory)
-    eval_after = trajectory(tf.expand_dims(xs_predict,-2))
+    eval_after = trajectory(tf.expand_dims(xs_predict, -2))
 
-    assert trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales # check kernel updated in sampler
-    assert trajectory._feature_functions.kernel.lengthscales == new_lengthscales # check kernel updated in trajectory
-    
+    assert (
+        trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
+    )  # check kernel updated in sampler
+    assert (
+        trajectory._feature_functions.kernel.lengthscales == new_lengthscales
+    )  # check kernel updated in trajectory
+
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-    
-    npt.assert_array_less(1e-5, tf.abs( eval_before- eval_after)) # two samples should be different
-    npt.assert_array_less(tf.abs(eval_after - quadratic(xs_predict)), 1e-3) # new sample should be agree with data
 
-
-
+    npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
+    npt.assert_array_less(
+        tf.abs(eval_after - quadratic(xs_predict)), 1e-3
+    )  # new sample should be agree with data

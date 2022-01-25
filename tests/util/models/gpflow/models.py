@@ -137,10 +137,6 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
         return self.kernel
 
 
-
-
-
-
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     return (
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
@@ -178,8 +174,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
     def get_internal_data(self) -> Dataset:
         return self._dataset
 
-
-    def update(self, dataset:Dataset) -> None:
+    def update(self, dataset: Dataset) -> None:
         self._dataset = dataset
 
 
