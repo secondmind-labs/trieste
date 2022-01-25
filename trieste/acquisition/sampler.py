@@ -223,7 +223,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
 
         for _ in tf.range(sample_size):
             sampled_trajectory = trajectory_sampler.get_trajectory()
-            evaluated_trajectory = sampled_trajectory(at)  # [N, 1]
+            evaluated_trajectory = sampled_trajectory(tf.expand_dims(at, -2))  # [N, 1, D] -> [N, 1]
             if self._sample_min_value:
                 sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:

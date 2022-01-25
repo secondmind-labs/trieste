@@ -649,22 +649,22 @@ def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> N
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-# def test_multiple_optimism_builder_updates_without_retracing() -> None:
-#     model = QuadraticMeanAndRBFKernel()
-#     beta = 1.96
-#     search_space = Box([0, 0], [1, 1])
-#     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
-#     acq_fn = builder.prepare_acquisition_function(model)
-#     assert acq_fn._get_tracing_count() == 0  # type: ignore
-#     query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
-#     expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
-#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+def test_multiple_optimism_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    beta = 1.96
+    search_space = Box([0, 0], [1, 1])
+    builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
+    acq_fn = builder.prepare_acquisition_function(model)
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
+    expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
 
-#     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-#     assert up_acq_fn == acq_fn
-#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
 
 
 def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:

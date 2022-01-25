@@ -180,6 +180,20 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
+class SupportsInternalData(ProbabilisticModel, Protocol):
+    """A probabilistic model that stores its own training data. TODO say some dont"""
+
+    @abstractmethod
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data. TODO say itnernal
+
+        :return: The model's training data.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
 class FastUpdateModel(ProbabilisticModel, Protocol):
     """A model with the ability to predict based on (possibly fantasized) supplementary data."""
 
@@ -482,6 +496,17 @@ for all queries. This property is known as consistency.
 """
 
 
+class TrajectoryFunctionClass(ABC):
+    """An :class:`TrajectoryFunctionClass` is an acquisition function represented using a class
+    rather than as a standalone function. Using a class to represent an acquisition function
+    makes it easier to update it, to avoid having to retrace the function on every call. TODO
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call acquisition function."""
+
+
 class TrajectorySampler(ABC, Generic[T]):
     r"""
     This class builds functions that approximate a trajectory sampled from an
@@ -506,6 +531,12 @@ class TrajectorySampler(ABC, Generic[T]):
     def get_trajectory(self) -> TrajectoryFunction:
         """
         :return: A trajectory function representing an approximate trajectory from the
-            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+            model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`
         """
         raise NotImplementedError
+
+    def resample_trajectory(self, trajectory:TrajectoryFunction) -> TrajectoryFunction:
+        """
+        TODO
+        """
+        return self.get_trajectory()

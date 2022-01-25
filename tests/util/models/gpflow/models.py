@@ -137,6 +137,10 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
         return self.kernel
 
 
+
+
+
+
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     return (
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
@@ -164,12 +168,19 @@ class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
         self._dataset = dataset
 
     def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
-        return RandomFourierFeatureTrajectorySampler(self, self._dataset, 100)
+        return RandomFourierFeatureTrajectorySampler(self, 100)
 
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
+
+    def get_internal_data(self) -> Dataset:
+        return self._dataset
+
+
+    def update(self, dataset:Dataset) -> None:
+        self._dataset = dataset
 
 
 class ModelFactoryType(Protocol):
