@@ -202,17 +202,19 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
-from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+from util.plotting_plotly import (
+    plot_model_predictions_plotly,
+    add_bo_points_plotly,
+)
 
 arg_min_idx = tf.squeeze(
     tf.argmin(result.datasets[OBJECTIVE].observations, axis=0)
 )
 
-fig = plot_gp_plotly(
-    result.models[OBJECTIVE].model,  # type: ignore
+fig = plot_model_predictions_plotly(
+    result.models[OBJECTIVE],
     search_space.lower,
     search_space.upper,
-    grid_density=50,
 )
 fig = add_bo_points_plotly(
     x=result.datasets[OBJECTIVE].query_points[:, 0].numpy(),
