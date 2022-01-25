@@ -66,7 +66,7 @@ class KerasPredictor(ProbabilisticModel, ABC):
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError(
             """
-            KerasPredictor class does not implement sampling. Acquisition
+            KerasPredictor does not implement sampling. Acquisition
             functions relying on it cannot be used with this class by default. Certain
             types of neural networks might be able to generate samples and
             such subclasses should overwrite this method.
@@ -74,4 +74,12 @@ class KerasPredictor(ProbabilisticModel, ABC):
         )
 
     def __deepcopy__(self, memo: dict[int, object]) -> KerasPredictor:
-        raise NotImplementedError("`deepcopy` not yet supported for `KerasPredictor`")
+        raise NotImplementedError(
+            """
+            KerasPredictor does not support deepcopy at the moment. For this reason,
+            ``track_state`` argument in when calling
+            :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to
+            `False`. This means that the model cannot be saved during Bayesian optimization, only
+            the final model will be available.
+            """
+        )

@@ -89,13 +89,12 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # We can also visualise the observations on a three-dimensional plot of the Branin. We'll add the contours of the mean and variance of the model's predictive distribution as translucent surfaces.
 
 # %%
-from util.plotting_plotly import plot_gp_plotly, add_bo_points_plotly
+from util.plotting_plotly import plot_model_predictions_plotly, add_bo_points_plotly
 
-fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+fig = plot_model_predictions_plotly(
+    result.try_get_final_model(),
     search_space.lower,
     search_space.upper,
-    grid_density=30,
 )
 fig = add_bo_points_plotly(
     x=query_points[:, 0],

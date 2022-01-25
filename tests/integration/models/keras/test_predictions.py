@@ -46,6 +46,7 @@ def test_neural_network_ensemble_predictions_close_to_actuals(keras_float: None)
     model.optimize(example_data)
 
     predicted_means, _ = model.predict(example_data.query_points)
-    mad = tf.reduce_mean(tf.abs(predicted_means - example_data.observations))
+    mean_abs_deviation = tf.reduce_mean(tf.abs(predicted_means - example_data.observations))
 
-    assert mad < 2
+    # somewhat arbitrary accuracy level, seems good for the range of branin values
+    assert mean_abs_deviation < 2
