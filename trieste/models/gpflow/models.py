@@ -866,18 +866,10 @@ class VariationalGaussianProcess(
         else:
             self.optimizer.optimize(model, dataset)
 
-    def trajectory_sampler(self) -> TrajectorySampler[VariationalGaussianProcess]:
-        """
-        Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
-        trajectories using a random Fourier feature approximation.
-
-        :return: The trajectory sampler.
-        """
-        return RandomFourierFeatureTrajectorySampler(self, self._num_rff_features)
 
     def get_internal_data(self) -> Dataset:
         """
-        Return the model's training data. TODO say itnernal
+        Return the model's training data. TODO say itnernal TODO add test
 
         :return: The model's training data.
         """
