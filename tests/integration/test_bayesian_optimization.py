@@ -245,8 +245,8 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 
 
 @random_seed
-# @pytest.mark.slow
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(15, DiscreteThompsonSampling(1000, 3))])
+@pytest.mark.slow
+@pytest.mark.parametrize("num_steps, acquisition_rule", [(25, DiscreteThompsonSampling(1000, 8))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
@@ -268,12 +268,12 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 
 
 @random_seed
-@pytest.mark.slow
+# @pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (80, EfficientGlobalOptimization()),
-        (30, DiscreteThompsonSampling(500, 3)),
+        (90, EfficientGlobalOptimization()),
+        (30, DiscreteThompsonSampling(1000, 3)),
         # (10, DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory())),
     ],
 )
@@ -286,7 +286,7 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         acquisition_rule,
         optimize_branin=True,
         model_type="DE",
-        model_args={"bootstrap": False},
+        model_args={"bootstrap": True},
     )
 
 
@@ -402,7 +402,11 @@ def _test_optimizer_finds_minimum(
             fit_args = {
                 "batch_size": 20,
                 "epochs": 1000,
-                "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50)],
+                "callbacks": [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="loss", patience=25, restore_best_weights=True
+                    )
+                ],
                 "verbose": 0,
             }
             optimizer = KerasOptimizer(

@@ -77,7 +77,7 @@ class KerasPredictor(ProbabilisticModel, ABC):
         raise NotImplementedError(
             """
             KerasPredictor does not support deepcopy at the moment. For this reason,
-            ``track_state`` argument in when calling
+            ``track_state`` argument when calling
             :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to
             `False`. This means that the model cannot be saved during Bayesian optimization, only
             the final model will be available.

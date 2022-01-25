@@ -146,7 +146,9 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 # %%
 from util.plotting_plotly import add_bo_points_plotly
 
-fig = plot_function_plotly(function, search_space.lower, search_space.upper, alpha=0.5)
+fig = plot_function_plotly(
+    function, search_space.lower, search_space.upper, alpha=0.5
+)
 fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
