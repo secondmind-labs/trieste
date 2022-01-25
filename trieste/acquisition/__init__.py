@@ -46,6 +46,7 @@ from .function import (
     ExpectedHypervolumeImprovement,
     ExpectedImprovement,
     Fantasizer,
+    GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,

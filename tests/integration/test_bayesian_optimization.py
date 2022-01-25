@@ -30,6 +30,7 @@ from trieste.acquisition import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
+    GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
@@ -173,6 +174,13 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 15,
                 EfficientGlobalOptimization(
                     Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
+                    num_query_points=3,
+                ),
+            ),
+            (
+                15,
+                EfficientGlobalOptimization(
+                    GreedyContinuousThompsonSampling(),
                     num_query_points=3,
                 ),
             ),

@@ -21,7 +21,6 @@ from __future__ import annotations
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
-from tfp.distributions import MultivariateNormalTriL
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
@@ -202,6 +201,8 @@ class RandomFourierFeatureTrajectorySampler(
     TrajectorySampler[SupportsGetKernelObservationNoiseInternalData]
 ):
     r"""
+    TODO say neg
+
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
@@ -258,17 +259,11 @@ class RandomFourierFeatureTrajectorySampler(
                 f"get_kernel, get_observation_noise and get_internal_data; "
                 f"but received {model.__repr__()}."
             )
+
         self._model = model
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features  # m
-
-        data_dtype = self._model.get_internal_data().query_points.dtype
-        self._feature_functions = RandomFourierFeaturesCosine(
-            model.get_kernel(), self._num_features, dtype=data_dtype
-        )  # prep feature functions at data
-
-        self._theta_posterior = self._build_theta_posterior()  # prep feature weight distribution
 
     def __repr__(self) -> str:
         """"""
@@ -288,7 +283,9 @@ class RandomFourierFeatureTrajectorySampler(
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             return self._prepare_theta_posterior_in_gram_space(dataset)
 
-    def _prepare_theta_posterior_in_design_space(self, dataset: Dataset) -> MultivariateNormalTriL:
+    def _prepare_theta_posterior_in_design_space(
+        self, dataset: Dataset
+    ) -> tfp.distributions.MultivariateNormalTriL:
         r"""
         Calculate the posterior of theta (the feature weights) in the design space. This
         distribution is a Gaussian
@@ -316,9 +313,13 @@ class RandomFourierFeatureTrajectorySampler(
             D_inv * self._model.get_observation_noise()
         )  # [m, m]
 
-        return MultivariateNormalTriL(theta_posterior_mean, theta_posterior_chol_covariance)
+        return tfp.distributions.MultivariateNormalTriL(
+            theta_posterior_mean, theta_posterior_chol_covariance
+        )
 
-    def _prepare_theta_posterior_in_gram_space(self, dataset: Dataset) -> MultivariateNormalTriL:
+    def _prepare_theta_posterior_in_gram_space(
+        self, dataset: Dataset
+    ) -> tfp.distributions.MultivariateNormalTriL:
         r"""
         Calculate the posterior of theta (the feature weights) in the gram space.
 
@@ -346,9 +347,11 @@ class RandomFourierFeatureTrajectorySampler(
         )  # [m, m]
         theta_posterior_chol_covariance = tf.linalg.cholesky(theta_posterior_covariance)  # [m, m]
 
-        return MultivariateNormalTriL(theta_posterior_mean, theta_posterior_chol_covariance)
+        return tfp.distributions.MultivariateNormalTriL(
+            theta_posterior_mean, theta_posterior_chol_covariance
+        )
 
-    def get_trajectory(self) -> TrajectoryFunction:
+    def get_negative_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
@@ -356,6 +359,14 @@ class RandomFourierFeatureTrajectorySampler(
         :return: A trajectory function representing an approximate trajectory from the Gaussian
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
+
+        data_dtype = self._model.get_internal_data().query_points.dtype
+
+        self._feature_functions = RandomFourierFeaturesCosine(
+            self._model.get_kernel(), self._num_features, dtype=data_dtype
+        )  # prep feature functions at data
+
+        self._theta_posterior = self._build_theta_posterior()  # prep feature weight distribution
 
         self._feature_functions.b = tf.Variable(
             self._feature_functions.b
@@ -407,7 +418,7 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
     def __init__(
         self,
         feature_functions: RandomFourierFeaturesCosine,
-        weight_distribution: MultivariateNormalTriL,
+        weight_distribution: tfp.distributions.MultivariateNormalTriL,
     ):
         """
         TODO
@@ -424,12 +435,14 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         )
         x = tf.squeeze(x, -2)  # [N, d]
         feature_evaluations = self._feature_functions(x)  # [N, m]
-        return tf.matmul(feature_evaluations, self._theta_sample, transpose_b=True)  # [N,1]
+        return -1.0 * tf.matmul(
+            feature_evaluations, self._theta_sample, transpose_b=True
+        )  # [N,1] TODO SAY NEG
 
     def resample(self) -> None:
         """TODO"""
         self._theta_sample.assign(self._weight_distribution.sample(1))  # resample weights
 
-    def update(self, weight_distribution: MultivariateNormalTriL) -> None:
+    def update(self, weight_distribution: tfp.distributions.MultivariateNormalTriL) -> None:
         """TODO"""
         self._weight_distribution = weight_distribution
