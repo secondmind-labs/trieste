@@ -385,8 +385,8 @@ class RandomFourierFeatureTrajectorySampler(
 
         self._theta_posterior = self._build_theta_posterior()  # recalculate weight distribution
 
-        trajectory.update(weight_distribution=self._theta_posterior)
-        trajectory.resample()  # resample weights from new distribution
+        trajectory.update(weight_distribution=self._theta_posterior)  # type: ignore
+        trajectory.resample()  # type: ignore
 
         return trajectory  # return trajecotry with updated features and weight distribution
 
@@ -395,7 +395,7 @@ class RandomFourierFeatureTrajectorySampler(
         TODO
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
-        trajectory.resample()
+        trajectory.resample()  # type: ignore
         return trajectory  # return trajecotry with resampled weights
 
 

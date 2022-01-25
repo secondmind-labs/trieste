@@ -291,10 +291,19 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)
 
     tf.debugging.assert_shapes([(trajectory(xs_with_dummy_batch_dim), [num_evals, 1])])
-    tf.debugging.assert_shapes([(trajectory._feature_functions(xs), [num_evals, num_features])])
-    tf.debugging.assert_shapes([(trajectory._weight_distribution.mean(), [num_features])])
     tf.debugging.assert_shapes(
-        [(trajectory._weight_distribution.covariance(), [num_features, num_features])]
+        [(trajectory._feature_functions(xs), [num_evals, num_features])]  # type: ignore
+    )
+    tf.debugging.assert_shapes(
+        [(trajectory._weight_distribution.mean(), [num_features])]  # type: ignore
+    )
+    tf.debugging.assert_shapes(
+        [
+            (
+                trajectory._weight_distribution.covariance(),  # type: ignore
+                [num_features, num_features],
+            ),
+        ]
     )
 
     assert isinstance(trajectory, fourier_feature_trajectory)
@@ -437,7 +446,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
         trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
     )  # check kernel updated in sampler
     assert (
-        trajectory._feature_functions.kernel.lengthscales == new_lengthscales
+        trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
     )  # check kernel updated in trajectory
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
