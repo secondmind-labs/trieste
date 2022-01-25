@@ -866,7 +866,6 @@ class VariationalGaussianProcess(
         else:
             self.optimizer.optimize(model, dataset)
 
-
     def get_internal_data(self) -> Dataset:
         """
         Return the model's training data. TODO say itnernal TODO add test

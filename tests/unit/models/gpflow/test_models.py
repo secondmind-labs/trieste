@@ -487,7 +487,6 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
 
 
-
 def test_variational_gaussian_process_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -719,7 +718,6 @@ def test_sparse_variational_raises_for_invalid_init() -> None:
     with pytest.raises(ValueError):
         optimizer2 = Optimizer(tf.optimizers.Adam())
         SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer2)
-
 
 
 @pytest.mark.parametrize("use_natgrads", [True, False])
