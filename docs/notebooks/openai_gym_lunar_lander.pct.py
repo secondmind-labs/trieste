@@ -13,6 +13,7 @@ import gpflow
 
 
 import gym
+
 env_name = "LunarLander-v2"
 env = gym.make(env_name)
 
@@ -64,7 +65,6 @@ def heuristic_Controller(s, w):
     elif angle_todo > +w[11]:
         a = 1
     return a
-
 
 
 steps_limit = 1000
@@ -123,13 +123,17 @@ import io
 import base64
 from IPython.display import HTML
 
+
 def load_video(filename):
-    video = io.open('./lunar_lander_videos/' + filename, 'r+b').read()
+    video = io.open("./lunar_lander_videos/" + filename, "r+b").read()
     encoded = base64.b64encode(video)
-    return HTML(data='''
+    return HTML(
+        data="""
             <video width="360" height="auto" alt="test" controls>
                 <source src="data:video/mp4;base64,{0}" type="video/mp4" />
-            </video>'''.format(encoded.decode('ascii'))
+            </video>""".format(
+            encoded.decode("ascii")
+        )
     )
 
 
@@ -163,20 +167,20 @@ load_video("slam.mp4")
 
 # %%
 N_RUNS = 10
+
+
 def lander_objective(x):
     # for each point compute average reward over n_runs runs
     all_rewards = []
     for w in x.numpy():
-        rewards = [
-            demo_heuristic_lander(env, w)
-            for _ in range(N_RUNS)
-        ]
+        rewards = [demo_heuristic_lander(env, w) for _ in range(N_RUNS)]
         all_rewards.append(rewards)
 
     rewards_tensor = tf.convert_to_tensor(all_rewards, dtype=tf.float64)
-    
+
     # triste minimizes, and we want to maximize
     return -1 * tf.reshape(tf.math.reduce_mean(rewards_tensor, axis=1), (-1, 1))
+
 
 observer = trieste.objectives.utils.mk_observer(lander_objective)
 
@@ -207,6 +211,7 @@ def build_model(data):
     # In the interest of brevity we have chosen not to do it in this notebook.
     return trieste.models.gpflow.GaussianProcessRegression(gpr)
 
+
 model = build_model(initial_data)
 
 # %%
@@ -216,7 +221,9 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq_fn)  # type: ign
 # %%
 N_OPTIMIZATION_STEPS = 200
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-result = bo.optimize(N_OPTIMIZATION_STEPS, initial_data, model, rule).final_result.unwrap()
+result = bo.optimize(
+    N_OPTIMIZATION_STEPS, initial_data, model, rule
+).final_result.unwrap()
 
 # %% [markdown]
 # ### Analyzing the results
@@ -229,9 +236,7 @@ import matplotlib.pyplot as plt
 
 ax = plt.gca()
 plotting.plot_regret(
-    result.dataset.observations.numpy(),
-    ax,
-    num_init=len(initial_data)
+    result.dataset.observations.numpy(), ax, num_init=len(initial_data)
 )
 
 # %% [markdown]

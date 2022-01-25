@@ -230,7 +230,10 @@ class ModelConfig:
 ModelDictConfig = Dict[str, Any]
 """ Type alias for a config type specification of a model. """
 
-ModelSpec = Union[ModelDictConfig, ModelConfig, TrainableProbabilisticModel]
+ModelConfigType = Union[ModelDictConfig, ModelConfig]
+""" Type alias for any config type that can be used to fully specify a model. """
+
+ModelSpec = Union[ModelConfigType, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 

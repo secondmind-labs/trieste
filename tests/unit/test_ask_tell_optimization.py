@@ -54,7 +54,7 @@ def init_dataset() -> Dataset:
 
 
 @pytest.fixture
-def acquisition_rule() -> AcquisitionRule[TensorType, Box]:
+def acquisition_rule() -> AcquisitionRule[TensorType, Box, ProbabilisticModel]:
     return FixedAcquisitionRule([[0.0]])
 
 
@@ -67,7 +67,7 @@ def test_ask_tell_optimizer_suggests_new_point(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
@@ -92,7 +92,7 @@ def test_ask_tell_optimizer_returns_complete_state(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
@@ -107,7 +107,7 @@ def test_ask_tell_optimizer_loads_from_state(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     old_state: Record[None] = Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None)
 
@@ -122,7 +122,7 @@ def test_ask_tell_optimizer_returns_optimization_result(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
@@ -136,7 +136,7 @@ def test_ask_tell_optimizer_updates_state_with_new_data(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     new_data = mk_dataset([[1.0]], [[1.0]])
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
@@ -151,7 +151,7 @@ def test_ask_tell_optimizer_trains_model(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     new_data = mk_dataset([[1.0]], [[1.0]])
     ask_tell = AskTellOptimizer(
@@ -169,7 +169,7 @@ def test_ask_tell_optimizer_optimizes_initial_model(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
     fit_initial_model: bool,
 ) -> None:
     ask_tell = AskTellOptimizer(
@@ -187,7 +187,7 @@ def test_ask_tell_optimizer_from_state_does_not_train_model(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     old_state: Record[None] = Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None)
 
@@ -208,7 +208,7 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
     starting_state: int | None,
     expected_state: int,
 ) -> None:
-    class Rule(AcquisitionRule[State[Optional[int], TensorType], Box]):
+    class Rule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def __init__(self) -> None:
             self.states_received: list[int | None] = []
 
@@ -230,7 +230,9 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
 
     rule = Rule()
 
-    ask_tell = AskTellOptimizer(search_space, init_dataset, model, rule, starting_state)
+    ask_tell = AskTellOptimizer(
+        search_space, init_dataset, model, rule, acquisition_state=starting_state
+    )
     _ = ask_tell.ask()
     state_record: Record[State[int, TensorType]] = ask_tell.to_record()
 
@@ -242,20 +244,20 @@ def test_ask_tell_optimizer_does_not_accept_empty_datasets_or_models(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     with pytest.raises(ValueError):
         AskTellOptimizer(search_space, {}, model, acquisition_rule)  # type: ignore
 
     with pytest.raises(ValueError):
-        AskTellOptimizer(search_space, init_dataset, {}, acquisition_rule)
+        AskTellOptimizer(search_space, init_dataset, {}, acquisition_rule)  # type: ignore
 
 
 def test_ask_tell_optimizer_validates_keys(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     dataset_with_key_1 = {"1": init_dataset}
     model_with_key_2 = {"2": model}
@@ -268,7 +270,7 @@ def test_ask_tell_optimizer_tell_validates_keys(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
-    acquisition_rule: AcquisitionRule[TensorType, Box],
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
     dataset_with_key_1 = {"1": init_dataset}
     model_with_key_1 = {"1": model}

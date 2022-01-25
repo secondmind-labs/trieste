@@ -55,7 +55,6 @@ initial_data = observer(initial_query_points)
 
 # %%
 from gpflow.models import GPR
-
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.optimizer import Optimizer
 
@@ -68,6 +67,7 @@ def build_model(data):
 
 
 gpflow_model = build_model(initial_data)
+
 
 # %% [markdown]
 # Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an `optimizer` argument as a rule and potentially some additional model arguments (for example, `num_kernel_samples` in `GaussianProcessRegression`). These arguments are set to sensible defaults and hence typically we can simplify the model building.

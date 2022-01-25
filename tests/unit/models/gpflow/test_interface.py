@@ -23,7 +23,6 @@ from gpflow.models import GPModel
 
 from tests.util.misc import random_seed
 from trieste.data import Dataset
-from trieste.models import ReparametrizationSampler
 from trieste.models.gpflow import BatchReparametrizationSampler, GPflowPredictor
 
 
@@ -35,11 +34,8 @@ class _QuadraticPredictor(GPflowPredictor):
     def update(self, dataset: Dataset) -> None:
         pass
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
-        return BatchReparametrizationSampler(num_samples, self)
 
-
-class _QuadraticGPModel(GPModel):
+class _QuadraticGPModel(GPModel):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used

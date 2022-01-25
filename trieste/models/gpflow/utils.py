@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar, Union
+from typing import Union
 
 import gpflow
 import tensorflow as tf
@@ -22,9 +22,6 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ..optimizer import BatchOptimizer, Optimizer
-
-M = TypeVar("M", bound=tf.Module)
-""" A type variable bound to :class:`tf.Module`. """
 
 
 def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
