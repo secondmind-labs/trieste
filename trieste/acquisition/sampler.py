@@ -32,7 +32,6 @@ class ThompsonSampler(ABC):
     r"""
     A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
     modeled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
-
     """
 
     def __init__(self, sample_min_value: bool = False):
@@ -66,11 +65,9 @@ class ExactThompsonSampler(ThompsonSampler):
     r"""
     This sampler provides exact Thompson samples of the objective function's
     minimiser :math:`x^*` over a discrete set of input locations.
-
     Although exact Thompson sampling is costly (incuring with an :math:`O(N^3)` complexity to
     sample over a set of `N` locations), this method can be used for any probabilistic model
     with a sampling method.
-
     """
 
     def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
@@ -106,14 +103,11 @@ class GumbelSampler(ThompsonSampler):
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
     is approximated by a Gumbel distribution
-
     .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
-
     where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
     Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
     :math:`[0, 1]` and applying the inverse probability integral transform
     :math:`y = \mathcal G^{-1}(r; a, b)`.
-
     Note that the :class:`GumbelSampler` can only sample a function's minimal value and not
     its minimiser.
     """
@@ -223,7 +217,8 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
 
         for _ in tf.range(sample_size):
             sampled_trajectory = trajectory_sampler.get_trajectory()
-            evaluated_trajectory = sampled_trajectory(at)  # [N, 1]
+            expanded_at = tf.expand_dims(at, -2)  # [N, 1, D]
+            evaluated_trajectory = sampled_trajectory(expanded_at)  # [N, 1]
             if self._sample_min_value:
                 sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:
