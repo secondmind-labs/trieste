@@ -182,10 +182,10 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 ),
             ),
             (
-                15,
+                10,
                 EfficientGlobalOptimization(
                     GreedyContinuousThompsonSampling(),
-                    num_query_points=3,
+                    num_query_points=5,
                 ),
             ),
         ],

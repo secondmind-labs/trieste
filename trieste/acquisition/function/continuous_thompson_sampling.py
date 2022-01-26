@@ -58,7 +58,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
         try:
             self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_trajectory()
+            function = self._trajectory_sampler.get_trajectory(negate=True)
         except (NotImplementedError):
             raise ValueError(
                 """

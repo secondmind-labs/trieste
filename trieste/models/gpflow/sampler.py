@@ -342,11 +342,12 @@ class RandomFourierFeatureTrajectorySampler(
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def get_trajectory(self) -> TrajectoryFunction:
+    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
+        :param negate: Return the negative trajectory.
         :return: A trajectory function representing an approximate trajectory from the Gaussian
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
@@ -367,7 +368,9 @@ class RandomFourierFeatureTrajectorySampler(
         )  # store weights as a variable to allow in place updating
 
         return fourier_feature_trajectory(
-            feature_functions=self._feature_functions, weight_distribution=self._theta_posterior
+            feature_functions=self._feature_functions,
+            weight_distribution=self._theta_posterior,
+            negate=negate,
         )
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -431,14 +434,20 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         self,
         feature_functions: RandomFourierFeaturesCosine,
         weight_distribution: tfp.distributions.MultivariateNormalTriL,
+        negate: bool = False,
     ):
         """
         :param feature_functions: Set of feature function.
         :param weight_distribution: Distribution from which feature weights are to be sampled.
+        :param negate: Return the negative of the trajectory.
         """
-        self._feature_functions = feature_functions
+        if negate:
+            self._feature_functions = lambda x: -1.0 * feature_functions(x)
+        else:
+            self._feature_functions = feature_functions
         self._weight_distribution = weight_distribution
         self._theta_sample = tf.Variable(self._weight_distribution.sample(1))  # sample weights
+        self._negate = (negate,)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, 1, d] -> [N, 1]
@@ -449,9 +458,7 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         )
         x = tf.squeeze(x, -2)  # [N, d]
         feature_evaluations = self._feature_functions(x)  # [N, m]
-        return tf.matmul(
-            feature_evaluations, self._theta_sample, transpose_b=True
-        )  # return sampled trajectory
+        return tf.matmul(feature_evaluations, self._theta_sample, transpose_b=True)
 
     def resample(self) -> None:
         """

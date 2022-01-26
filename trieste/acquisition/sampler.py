@@ -74,6 +74,7 @@ class ExactThompsonSampler(ThompsonSampler):
         """
         Return exact samples from either the objective function's minimser or its minimal value
         over the candidate set `at`.
+
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
@@ -130,6 +131,7 @@ class GumbelSampler(ThompsonSampler):
     def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
         """
         Return approximate samples from of the objective function's minimum value.
+
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
         :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
@@ -186,6 +188,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
         """
         Return approximate samples from either the objective function's minimser or its minimal
         value over the candidate set `at`.
+
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
