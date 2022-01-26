@@ -25,6 +25,7 @@ from .sampler import (
     BatchReparametrizationSampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
+    fourier_feature_trajectory,
 )
 from .utils import (
     assert_data_is_compatible,
