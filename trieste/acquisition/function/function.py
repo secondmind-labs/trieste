@@ -23,7 +23,6 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
-
 from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import SupportsGetObservationNoise
 from ...space import SearchSpace
