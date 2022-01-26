@@ -87,8 +87,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
     def __init__(self, model: EnsembleModel, negate: bool = False):
         """
-        :param feature_functions: Set of feature function.
-        :param weight_distribution: Distribution from which feature weights are to be sampled.
+        :param model: The model of the objective function.
         :param negate: Return the negative of the trajectory.
         """
         self._model = model
