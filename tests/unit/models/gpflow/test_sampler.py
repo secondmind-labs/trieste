@@ -349,8 +349,8 @@ def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_met
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     sampler.get_negative_trajectory()
 
-    posterior_1 = sampler._prepare_theta_posterior_in_design_space(dataset)
-    posterior_2 = sampler._prepare_theta_posterior_in_gram_space(dataset)
+    posterior_1 = sampler._prepare_theta_posterior_in_design_space()
+    posterior_2 = sampler._prepare_theta_posterior_in_gram_space()
 
     npt.assert_allclose(posterior_1.loc, posterior_2.loc, rtol=0.02)
     npt.assert_allclose(posterior_1.scale_tril, posterior_2.scale_tril, rtol=0.02)

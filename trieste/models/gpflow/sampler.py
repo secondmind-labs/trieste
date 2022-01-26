@@ -23,7 +23,6 @@ import tensorflow_probability as tfp
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from typing_extensions import Protocol, runtime_checkable
 
-from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interfaces import (
@@ -116,7 +115,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         super().__init__(sample_size, model)
         if not isinstance(model, SupportsPredictJoint):
             raise NotImplementedError(
-                f"RandomFourierFeatureTrajectorySampler only works with models that support "
+                f"BatchReparametrizationSampler only works with models that support "
                 f"predict_joint; received {model.__repr__()}"
             )
 
@@ -201,12 +200,12 @@ class RandomFourierFeatureTrajectorySampler(
     TrajectorySampler[SupportsGetKernelObservationNoiseInternalData]
 ):
     r"""
-    TODO say neg
-
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
-    the model's kernel. See :cite:`hernandez2014predictive` for details.
+    the model's kernel. See :cite:`hernandez2014predictive` for details. Note that we return
+    the negative of the trajectory, so that our acquisition optimizers (which are
+    all maximizers) can be used to extract the minimisers of trajectories.
 
     Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
     trajectory function) for exact sample draws from a GP is prohibitively costly because it scales
@@ -279,13 +278,11 @@ class RandomFourierFeatureTrajectorySampler(
         if (
             self._num_features < num_data
         ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
-            return self._prepare_theta_posterior_in_design_space(dataset)
+            return self._prepare_theta_posterior_in_design_space()
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
-            return self._prepare_theta_posterior_in_gram_space(dataset)
+            return self._prepare_theta_posterior_in_gram_space()
 
-    def _prepare_theta_posterior_in_design_space(
-        self, dataset: Dataset
-    ) -> tfp.distributions.MultivariateNormalTriL:
+    def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.MultivariateNormalTriL:
         r"""
         Calculate the posterior of theta (the feature weights) in the design space. This
         distribution is a Gaussian
@@ -295,9 +292,8 @@ class RandomFourierFeatureTrajectorySampler(
         where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
         the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
         and observation noise variance :math:`\sigma^2`.
-
-        :param dataset: TODO
         """
+        dataset = self._model.get_internal_data()
         phi = self._feature_functions(dataset.query_points)  # [n, m]
         D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
         s = self._model.get_observation_noise() * tf.eye(self._num_features, dtype=phi.dtype)
@@ -317,9 +313,7 @@ class RandomFourierFeatureTrajectorySampler(
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def _prepare_theta_posterior_in_gram_space(
-        self, dataset: Dataset
-    ) -> tfp.distributions.MultivariateNormalTriL:
+    def _prepare_theta_posterior_in_gram_space(self) -> tfp.distributions.MultivariateNormalTriL:
         r"""
         Calculate the posterior of theta (the feature weights) in the gram space.
 
@@ -328,9 +322,8 @@ class RandomFourierFeatureTrajectorySampler(
         where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
         matrix of feature evaluations across the training data :math:`\Phi` and
         observation noise variance :math:`\sigma^2`.
-
-        :param dataset: TODO
         """
+        dataset = self._model.get_internal_data()
         num_data = tf.shape(dataset.query_points)[0]  # n
         phi = self._feature_functions(dataset.query_points)  # [n, m]
         G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
@@ -370,8 +363,10 @@ class RandomFourierFeatureTrajectorySampler(
 
         self._feature_functions.b = tf.Variable(
             self._feature_functions.b
-        )  # store as variables for efficient updating
-        self._feature_functions.W = tf.Variable(self._feature_functions.W)
+        )  # store bias as a variable to allow in place updating
+        self._feature_functions.W = tf.Variable(
+            self._feature_functions.W
+        )  # store weights as a variable to allow in place updating
 
         return fourier_feature_trajectory(
             feature_functions=self._feature_functions, weight_distribution=self._theta_posterior
@@ -379,40 +374,59 @@ class RandomFourierFeatureTrajectorySampler(
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
-        TODO
+        Efficiently update a :const:`TrajectoryFunction` to reflect an update in its
+        underlying :class:`ProbabilisticModel` and resample accordingly.
+
+        For a :class:`RandomFourierFeatureTrajectorySampler`, updating the sampler
+        corresponds to resampling the feature functions (taking into account any
+        changed kernel parameters) and recalculating the weight distribution.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
 
-        bias_shape = tf.shape(self._feature_functions.b)  # TODO describe
+        bias_shape = tf.shape(self._feature_functions.b)
         bias_dtype = self._feature_functions.b.dtype
         weight_shape = tf.shape(self._feature_functions.W)
         weight_dtype = self._feature_functions.W.dtype
-        self._feature_functions.b.assign(
+        self._feature_functions.b.assign(  # resample feature function's bias
             self._feature_functions._bias_init(bias_shape, dtype=bias_dtype)
         )
-        self._feature_functions.W.assign(
+        self._feature_functions.W.assign(  # resample feature function's weights
             self._feature_functions._weights_init(weight_shape, dtype=weight_dtype)
         )
 
         self._theta_posterior = self._build_theta_posterior()  # recalculate weight distribution
 
         trajectory.update(weight_distribution=self._theta_posterior)  # type: ignore
-        trajectory.resample()  # type: ignore
 
-        return trajectory  # return trajecotry with updated features and weight distribution
+        return trajectory  # return trajectory with updated features and weight distribution
 
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
-        TODO
+        Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+        with every new sample.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
         trajectory.resample()  # type: ignore
-        return trajectory  # return trajecotry with resampled weights
+        return trajectory  # return trajectory with resampled weights
 
 
 class fourier_feature_trajectory(TrajectoryFunctionClass):
-    """
-    TODO
+    r"""
+    An approximate sample from a Gaussian processes' posterior samples represented as a
+    finite weighted sum of features.
+
+    A trajectory is given by
+
+    .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+    where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
+    feature weights sampled from a posterior distribution.
     """
 
     def __init__(
@@ -421,7 +435,8 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         weight_distribution: tfp.distributions.MultivariateNormalTriL,
     ):
         """
-        TODO
+        :param feature_functions: Set of feature function.
+        :param weight_distribution: Distribution from which feature weights are to be sampled.
         """
         self._feature_functions = feature_functions
         self._weight_distribution = weight_distribution
@@ -429,6 +444,7 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, 1, d] -> [N, 1]
+        """Call trajectory function."""
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This trajectory only supports batch sizes of one.",
@@ -437,12 +453,19 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         feature_evaluations = self._feature_functions(x)  # [N, m]
         return -1.0 * tf.matmul(
             feature_evaluations, self._theta_sample, transpose_b=True
-        )  # [N,1] TODO SAY NEG
+        )  # return the negative of the sampled trajectory
 
     def resample(self) -> None:
-        """TODO"""
+        """
+        Efficiently resample in-place without retracing.
+        """
         self._theta_sample.assign(self._weight_distribution.sample(1))  # resample weights
 
     def update(self, weight_distribution: tfp.distributions.MultivariateNormalTriL) -> None:
-        """TODO"""
-        self._weight_distribution = weight_distribution
+        """
+        Efficiently update the trajectory with a new weight distribution and resample its weights.
+
+        :param weight_distribution: new distribution from which feature weights are to be sampled.
+        """
+        self._weight_distribution = weight_distribution  # update weight distribution.
+        self._theta_sample.assign(self._weight_distribution.sample(1))  # resample weights

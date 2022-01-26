@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains local penalization-based acquisition function builders. TODO
+This module contains acquisition function builders for continuous Thompson sampling.
 """
 from __future__ import annotations
 
@@ -22,13 +22,22 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.interface import TrajectoryFunction
 from ...types import TensorType
-from ..interface import AcquisitionFunction, SingleModelGreedyAcquisitionBuilder
+from ..interface import SingleModelGreedyAcquisitionBuilder
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     r"""
-    SAY IGNORE PENDING:)
+
+    Acquisition function builder for performing greedy continuous Thompson sampling. This builder
+    return acquisition functions that are the negatives of approximate samples from the
+    given :class:`ProbabilisticModel`, as provided by the model's :meth:`get_negative_trajectory`
+    method. A set of such samples are to be maximized in a sequential greedy manner to provide
+    the next recommended query points.
+
+    For more details about trajectory-based Thompson sampling see :cite:`hernandez2017parallel` and
+    :cite:`wilson2020efficiently`.
     """
 
     def prepare_acquisition_function(
@@ -36,17 +45,17 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
-    ) -> AcquisitionFunction:
+    ) -> TrajectoryFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
-        :return: The (log) expected improvement penalized with respect to the pending points. TODO
+        :return: A trajectory sampled from the model.
         """
 
         try:
             self._trajectory_sampler = model.trajectory_sampler()
-            trajectory = self._trajectory_sampler.get_negative_trajectory()
+            function = self._trajectory_sampler.get_negative_trajectory()
         except (NotImplementedError):
             raise ValueError(
                 """
@@ -55,32 +64,31 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
             """
             )
 
-        return trajectory
+        return function
 
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: TrajectoryFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
-    ) -> AcquisitionFunction:
+    ) -> TrajectoryFunction:
         """
-        :param function: The acquisition function to update.
+        :param function: The trajectory function to update.
         :param model: The model.
-        :param dataset: The data from the observer. Must not be populated.
+        :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
-        :return: The updated acquisition function.
+        :return: A new trajectory sampled from the model.
         """
         tf.debugging.Assert(self._trajectory_sampler is not None, [])
 
-        trajectory = function
-        if new_optimization_step:
-            trajectory = self._trajectory_sampler.update_trajectory(trajectory)
-        else:
-            trajectory = self._trajectory_sampler.resample_trajectory(trajectory)
+        if new_optimization_step:  # update sampler and resample trajectory
+            function = self._trajectory_sampler.update_trajectory(function)
+        else:  # just resample trajectory but without updating sampler
+            function = self._trajectory_sampler.resample_trajectory(function)
 
-        return trajectory
+        return function

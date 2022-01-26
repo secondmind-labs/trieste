@@ -291,7 +291,7 @@ class GaussianProcessRegression(
 
     def get_internal_data(self) -> Dataset:
         """
-        Return the model's training data. TODO say itnernal
+        Return the model's training data.
 
         :return: The model's training data.
         """
@@ -657,7 +657,6 @@ class VariationalGaussianProcess(
         optimizer: Optimizer | None = None,
         use_natgrads: bool = False,
         natgrad_gamma: Optional[float] = None,
-        num_rff_features: int = 1000,
     ):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
@@ -668,10 +667,6 @@ class VariationalGaussianProcess(
             a :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
             :class:`~tf.optimizers.Optimizer` optimizer.
         :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
-        :param num_rff_features: The number of random Foruier features used to approximate the
-            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
-            typically perfoms well for a wide range of kernels. Note that very smooth
-            kernels (e.g. RBF) can be well-approximated with fewer features.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
             optimizer.
@@ -711,15 +706,9 @@ class VariationalGaussianProcess(
                     """
                 )
 
-        if num_rff_features <= 0:
-            raise ValueError(
-                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
-            )
-
         self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
-        self._num_rff_features = num_rff_features
         self._ensure_variable_model_data()
 
     def _ensure_variable_model_data(self) -> None:
@@ -868,7 +857,7 @@ class VariationalGaussianProcess(
 
     def get_internal_data(self) -> Dataset:
         """
-        Return the model's training data. TODO say itnernal TODO add test
+        Return the model's training data.
 
         :return: The model's training data.
         """
