@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Optional, cast
+from typing import Optional, TypeVar, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -33,6 +33,8 @@ from ..multi_objective.pareto import (
     prepare_default_non_dominated_partition_bounds,
 )
 from .function import ExpectedConstrainedImprovement
+
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -268,7 +270,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler,
+    sampler: ReparametrizationSampler[ProbabilisticModel],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -333,7 +335,7 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
+class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M_contra]):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -349,7 +351,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         )
 
     def _update_expected_improvement_fn(
-        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+        self, objective_model: M_contra, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.
@@ -366,6 +368,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             _pf.front,
         )
 
+        self._expected_improvement_fn: Optional[AcquisitionFunction]
         if self._expected_improvement_fn is None:
             self._expected_improvement_fn = expected_hv_improvement(
                 objective_model, _partition_bounds

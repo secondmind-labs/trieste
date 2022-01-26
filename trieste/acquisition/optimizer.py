@@ -54,7 +54,7 @@ NUM_RUNS_DIM: int = 10
 """
 The default minimum number of optimization runs per dimension of the search space for
 :func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
-determining the number of acquisition function optimizations to be perfomed in parallel.
+determining the number of acquisition function optimizations to be performed in parallel.
 """
 
 
@@ -62,17 +62,25 @@ class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
 
 
-AcquisitionOptimizer = Callable[[SP, AcquisitionFunction], TensorType]
+AcquisitionOptimizer = Callable[
+    [SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
+]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
-a search space. For a search space with points of shape [D], and acquisition function with input
-shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape should be
-[B, D].
+a search space or the V points that maximize a vectorized acquisition function (as represented by an
+acquisition-int tuple).
+
+If this function receives a search space with points of shape [D] and an acquisition function
+with input shape [..., 1, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape
+should be [1, D].
+
+If instead it receives a search space and a tuple containing the acquisition function and its
+vectorization V then the :const:`AcquisitionOptimizer` return shape should be [V, D].
 """
 
 
 def automatic_optimizer_selector(
-    space: SearchSpace, target_func: AcquisitionFunction
+    space: SearchSpace, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -98,32 +106,53 @@ def automatic_optimizer_selector(
 
     else:
         raise NotImplementedError(
-            f""" No optimizer currentely supports acquisition function
+            f""" No optimizer currently supports acquisition function
                     maximisation over search spaces of type {space}.
                     Try specifying the optimize_random optimizer"""
         )
 
 
-def optimize_discrete(space: DiscreteSearchSpace, target_func: AcquisitionFunction) -> TensorType:
+def optimize_discrete(
+    space: DiscreteSearchSpace,
+    target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
-    batches of size of 1.
+    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
+
+    When this functions receives an acquisition-integer tuple as its `target_func`,it evaluates
+    all the points in the search space for each of the individual V functions making
+    up `target_func`.
 
     :param space: The space of points over which to search, for points with shape [D].
-    :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-            [..., 1].
-    :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+    :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+            [..., V].
+    :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
     """
-    target_func_values = target_func(space.points[:, None, :])
+
+    if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
+        target_func, V = target_func
+    else:
+        V = 1
+
+    if V < 0:
+        raise ValueError(f"vectorization must be positive, got {V}")
+
+    points = space.points[:, None, :]
+    tiled_points = tf.tile(points, [1, V, 1])
+    target_func_values = target_func(tiled_points)
     tf.debugging.assert_shapes(
-        [(target_func_values, ("_", 1))],
+        [(target_func_values, ("_", V))],
         message=(
-            f"The result of function target_func has an invalid shape:"
-            f" {tf.shape(target_func_values)}."
+            f"""
+            The result of function target_func has shape
+            {tf.shape(target_func_values)}, however, expected a trailing
+            dimension of size {V}.
+            """
         ),
     )
-    max_value_idx = tf.argmax(target_func_values, axis=0)[0]
-    return space.points[max_value_idx : max_value_idx + 1]
+
+    best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
+    return tf.gather(tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1)  # [V, D]
 
 
 def generate_continuous_optimizer(
@@ -156,13 +185,13 @@ def generate_continuous_optimizer(
     :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
     :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
         Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
-        can be passed.
+        can be passed. Note that method, jac and bounds cannot/should not be changed.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
 
-    if num_optimization_runs <= 0:
+    if num_optimization_runs < 0:
         raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
 
     if num_initial_samples < num_optimization_runs:
@@ -177,44 +206,103 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
     def optimize_continuous(
-        space: Box | TaggedProductSearchSpace, target_func: AcquisitionFunction
+        space: Box | TaggedProductSearchSpace,
+        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
-        and :class:`TaggedProductSearchSpace' spaces and batches of size of 1.
+        and :class:`TaggedProductSearchSpace' spaces.
 
         For :class:'TaggedProductSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
+        When this functions receives an acquisition-integer tuple as its `target_func`,it
+        optimizes each of the individual V functions making up `target_func`, i.e.
+        evaluating `num_initial_samples` samples, running `num_optimization_runs` runs, and
+        (if necessary) running `num_recovery_runs` recovery run for each of the individual
+        V functions.
+
         :param space: The space over which to search.
-        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-                [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+                [..., V].
+        :return: The V points in ``space`` that maximises``target_func``, with shape [V, D].
         """
 
-        trial_search_space = space.sample(num_initial_samples)  # [num_initial_samples, D]
-        target_func_values = target_func(trial_search_space[:, None, :])  # [num_samples, 1]
-        _, top_k_indices = tf.math.top_k(
-            target_func_values[:, 0], k=num_optimization_runs
-        )  # [num_optimization_runs]
-        initial_points = tf.gather(trial_search_space, top_k_indices)  # [num_optimization_runs, D]
+        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
+            target_func, V = target_func
+        else:
+            V = 1
 
-        results = _perform_parallel_continuous_optimization(
+        if V < 0:
+            raise ValueError(f"vectorization must be positive, got {V}")
+
+        candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
+        tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
+
+        target_func_values = target_func(tiled_candidates)  # [num_samples, V]
+        tf.debugging.assert_shapes(
+            [(target_func_values, ("_", V))],
+            message=(
+                f"""
+                The result of function target_func has shape
+                {tf.shape(target_func_values)}, however, expected a trailing
+                dimension of size {V}.
+                """
+            ),
+        )
+
+        _, top_k_indices = tf.math.top_k(
+            tf.transpose(target_func_values), k=num_optimization_runs
+        )  # [1, num_optimization_runs] or [V, num_optimization_runs]
+
+        tiled_candidates = tf.transpose(tiled_candidates, [1, 0, 2])  # [V, num_initial_samples, D]
+        top_k_points = tf.gather(
+            tiled_candidates, top_k_indices, batch_dims=1
+        )  # [V, num_optimization_runs, D]
+        initial_points = tf.transpose(top_k_points, [1, 0, 2])  # [num_optimization_runs,V,D]
+
+        (
+            successes,
+            fun_values,
+            chosen_x,
+        ) = _perform_parallel_continuous_optimization(  # [num_optimization_runs, V]
             target_func,
             space,
             initial_points,
             optimizer_args,
         )
-        successful_optimization = np.any(
-            [result.success for result in results]
-        )  # Check that at least one optimization was successful
 
-        if not successful_optimization:  # if all optimizations failed then try from random starts
-            random_points = space.sample(num_recovery_runs)  # [num_recovery_runs, D]
-            results = _perform_parallel_continuous_optimization(
-                target_func, space, random_points, optimizer_args
+        successful_optimization = tf.reduce_all(
+            tf.reduce_any(successes, axis=0)
+        )  # Check that at least one optimization was successful for each function
+
+        if (
+            not successful_optimization
+        ):  # if all optimizations failed for a function then try again from random starts
+            random_points = space.sample(num_recovery_runs)[:, None, :]  # [num_recovery_runs, 1, D]
+            tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]
+
+            (
+                recovery_successes,
+                recovery_fun_values,
+                recovery_chosen_x,
+            ) = _perform_parallel_continuous_optimization(
+                target_func, space, tiled_random_points, optimizer_args
             )
-            successful_optimization = np.any([result.success for result in results])
+
+            successes = tf.concat(
+                [successes, recovery_successes], axis=0
+            )  # [num_optimization_runs + num_recovery_runs, V]
+            fun_values = tf.concat(
+                [fun_values, recovery_fun_values], axis=0
+            )  # [num_optimization_runs + num_recovery_runs, V]
+            chosen_x = tf.concat(
+                [chosen_x, recovery_chosen_x], axis=0
+            )  # [num_optimization_runs + num_recovery_runs, V, D]
+
+            successful_optimization = tf.reduce_all(
+                tf.reduce_any(successes, axis=0)
+            )  # Check that at least one optimization was successful for each function
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -224,11 +312,12 @@ def generate_continuous_optimizer(
                     """
             )
 
-        best_run_id = np.argmax([-result.fun for result in results])  # identify best solution
-        np_chosen_point = results[best_run_id].x.reshape(1, -1)  # [1, D]
-        chosen_point = tf.constant(np_chosen_point, dtype=initial_points.dtype)  # convert to TF
+        best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
+        chosen_points = tf.gather(
+            tf.transpose(chosen_x, [1, 0, 2]), best_run_ids, batch_dims=1
+        )  # [V, D]
 
-        return chosen_point
+        return chosen_points
 
     return optimize_continuous
 
@@ -238,7 +327,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> List[spo.OptimizeResult]:
+) -> Tuple[TensorType, TensorType, TensorType]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -261,22 +350,39 @@ def _perform_parallel_continuous_optimization(
     which has equal upper and lower bounds, i.e. we specify an equality constraint
     for this dimension in the scipy optimizer.
 
-    :param target_func: The function to maximise, with input shape [..., 1, D] and
-        output shape [..., 1].
+    This function also support the maximization of vectorized target functions (with
+    vectorization V).
+
+    :param target_func: The function(s) to maximise, with input shape [..., V, D] and
+        output shape [..., V].
     :param space: The original search space.
-    :param starting_points: The points at which to begin our optimizations. The
-        leading dimension of `starting_points` controls the number of individual
-        optimization runs.
+    :param starting_points: The points at which to begin our optimizations of shape
+        [num_optimization_runs, V, D]. The leading dimension of
+        `starting_points` controls the number of individual optimization runs
+        for each of the V target functions.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A list containing a Scipy OptimizeResult object for each optimization.
+    :return: A tuple containing the failure status, the maximum value
+        and the maximiser found my each of our optimziations.
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
 
-    num_optimization_runs = tf.shape(starting_points)[0].numpy()
+    num_optimization_runs_per_function = tf.shape(starting_points)[0].numpy()
 
-    def _objective_value(x: TensorType) -> TensorType:
-        return -target_func(tf.expand_dims(x, 1))  # [len(x),1]
+    V = tf.shape(starting_points)[-2].numpy()  # vectorized batch size
+    D = tf.shape(starting_points)[-1].numpy()  # search space dimension
+    num_optimization_runs = num_optimization_runs_per_function * V
+
+    vectorized_starting_points = tf.reshape(
+        starting_points, [-1, D]
+    )  # [num_optimization_runs*V, D]
+
+    def _objective_value(vectorized_x: TensorType) -> TensorType:  # [N, D] -> [N, 1]
+        vectorized_x = vectorized_x[:, None, :]  # [N, 1, D]
+        x = tf.reshape(vectorized_x, [-1, V, D])  # [N/V, V, D]
+        evals = -target_func(x)  # [N/V, V]
+        vectorized_evals = tf.reshape(evals, [-1, 1])  # [N, 1]
+        return vectorized_evals
 
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
@@ -285,29 +391,29 @@ def _perform_parallel_continuous_optimization(
         space, TaggedProductSearchSpace
     ):  # build continuous relaxation of discrete subspaces
         bounds = [
-            get_bounds_of_box_relaxation_around_point(space, starting_points[i : i + 1])
+            get_bounds_of_box_relaxation_around_point(space, vectorized_starting_points[i : i + 1])
             for i in tf.range(num_optimization_runs)
         ]
     else:
         bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
 
     # Initialize the numpy arrays to be passed to the greenlets
-    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64)
+    np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64)
     np_batch_y = np.zeros((num_optimization_runs,), dtype=np.float64)
     np_batch_dy_dx = np.zeros(
-        (num_optimization_runs, tf.shape(starting_points)[1]), dtype=np.float64
+        (num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64
     )
 
     # Set up child greenlets
     child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
-    child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
-        gr.switch(starting_points[i].numpy(), bounds[i], optimizer_args)
+    vectorized_child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+        gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
     ]
 
     while True:
         all_done = True
-        for i, result in enumerate(child_results):  # Process results from children.
+        for i, result in enumerate(vectorized_child_results):  # Process results from children.
             if isinstance(result, spo.OptimizeResult):
                 continue  # children return a `spo.OptimizeResult` if they are finished
             all_done = False
@@ -326,12 +432,26 @@ def _perform_parallel_continuous_optimization(
         for i, greenlet in enumerate(child_greenlets):  # Feed `y` and `dy_dx` back to children.
             if greenlet.dead:  # Allow for crashed greenlets
                 continue
-            child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
+            vectorized_child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
-    return child_results
+    vectorized_successes = tf.constant(
+        [result.success for result in vectorized_child_results]
+    )  # [num_optimization_runs]
+    vectorized_fun_values = tf.constant(
+        [-result.fun for result in vectorized_child_results], dtype=tf_dtype
+    )  # [num_optimization_runs]
+    vectorized_chosen_x = tf.constant(
+        [result.x for result in vectorized_child_results], dtype=tf_dtype
+    )  # [num_optimization_runs, D]
+
+    successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
+    fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
+    chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
+
+    return (successes, fun_values, chosen_x)
 
 
-class ScipyLbfgsBGreenlet(gr.greenlet):
+class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
     """
     Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
     update steps required for an individual optimization. However, the evaluation
@@ -397,13 +517,14 @@ def get_bounds_of_box_relaxation_around_point(
     return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
 
 
-def batchify(
+def batchify_joint(
     batch_size_one_optimizer: AcquisitionOptimizer[SP],
     batch_size: int,
 ) -> AcquisitionOptimizer[SP]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
-    :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+    :const:`AcquisitionOptimizer` to allow it to jointly optimize the batch elements considered
+    by a batch acquisition function.
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
             single point with shape [1, D].
@@ -413,13 +534,21 @@ def batchify(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
-    def optimizer(search_space: SP, f: AcquisitionFunction) -> TensorType:
+    def optimizer(
+        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+    ) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
+
+        if isinstance(f, tuple):
+            raise ValueError(
+                "batchify_joint cannot be applied to a vectorized acquisition function"
+            )
+        af: AcquisitionFunction = f  # type checking can get confused by closure of f
 
         def target_func_with_vectorized_inputs(
             x: TensorType,
         ) -> TensorType:  # [..., 1, B * D] -> [..., 1]
-            return f(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
+            return af(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
         vectorized_points = batch_size_one_optimizer(  # [1, B * D]
             expanded_search_space, target_func_with_vectorized_inputs
@@ -429,9 +558,42 @@ def batchify(
     return optimizer
 
 
+def batchify_vectorize(
+    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size: int,
+) -> AcquisitionOptimizer[SP]:
+    """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+    :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
+    Unlike :func:`batchify_joint`, :func:`batchify_vectorize` is suitable
+    for a :class:`AcquisitionFunction` whose individual batch element can be
+    optimized independently (i.e. they can be vectorized).
+
+    :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+            single point with shape [1, D].
+    :param batch_size: The number of points in the batch.
+    :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [V, D].
+    """
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
+
+    def optimizer(
+        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+    ) -> TensorType:
+        if isinstance(f, tuple):
+            raise ValueError(
+                "batchify_vectorize cannot be applied to an already vectorized acquisition function"
+            )
+
+        return batch_size_one_optimizer(search_space, (f, batch_size))
+
+    return optimizer
+
+
 def generate_random_search_optimizer(
     num_samples: int = NUM_SAMPLES_MIN,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpace]:
     """
     Generate an acquisition optimizer that samples `num_samples` random points across the space.
     The default is to sample at `NUM_SAMPLES_MIN` locations.
@@ -445,21 +607,50 @@ def generate_random_search_optimizer(
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
 
-    def optimize_random(space: SP, target_func: AcquisitionFunction) -> TensorType:
+    def optimize_random(
+        space: SearchSpace,
+        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+    ) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for
-        any :class:'SearchSpace' with a :meth:`sample` and for batches of size of 1.
-        If we have a :class:'DiscreteSearchSpace' with fewer than `num_samples` points,
-        then we query all the points in the space.
+        any :class:'SearchSpace' with a :meth:`sample`. If we have a :class:'DiscreteSearchSpace'
+        with fewer than `num_samples` points, then we query all the points in the space.
+
+        When this functions receives an acquisition-integer tuple as its `target_func`,it
+        optimizes each of the individual V functions making up `target_func`, i.e.
+        evaluating `num_samples` samples for each of the individual V functions making up
+        target_func.
 
         :param space: The space over which to search.
-        :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
-                [..., 1].
-        :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+        :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+                [..., V].
+        :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
         """
-        samples = space.sample(num_samples)
-        target_func_values = target_func(samples[:, None, :])
-        max_value_idx = tf.argmax(target_func_values, axis=0)
-        return tf.gather(samples, max_value_idx)
+        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
+            target_func, V = target_func
+        else:
+            V = 1
+
+        if V < 0:
+            raise ValueError(f"vectorization must be positive, got {V}")
+
+        points = space.sample(num_samples)[:, None, :]
+        tiled_points = tf.tile(points, [1, V, 1])
+        target_func_values = target_func(tiled_points)
+        tf.debugging.assert_shapes(
+            [(target_func_values, ("_", V))],
+            message=(
+                f"""
+                The result of function target_func has shape
+                {tf.shape(target_func_values)}, however, expected a trailing
+                dimension of size {V}.
+                """
+            ),
+        )
+
+        best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
+        return tf.gather(
+            tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1
+        )  # [V, D]
 
     return optimize_random

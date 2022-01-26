@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast
+from typing import Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
 
@@ -39,8 +39,15 @@ from .interface import (
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
+    VectorizedAcquisitionFunctionBuilder,
 )
-from .optimizer import AcquisitionOptimizer, automatic_optimizer_selector, batchify
+from .optimizer import (
+    AcquisitionOptimizer,
+    automatic_optimizer_selector,
+    batchify_joint,
+    batchify_vectorize,
+)
 from .sampler import ExactThompsonSampler, ThompsonSampler
 
 T_co = TypeVar("T_co", covariant=True)
@@ -49,8 +56,11 @@ T_co = TypeVar("T_co", covariant=True)
 SP_contra = TypeVar("SP_contra", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
 
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
-class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
+
+class AcquisitionRule(ABC, Generic[T_co, SP_contra, M_contra]):
     """
     The central component of the acquisition API.
 
@@ -60,13 +70,17 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
     (see e.g. :class:`TrustRegion`). Indeed, to use an :class:`AcquisitionRule` in the main
     :class:`~trieste.bayesian_optimizer.BayesianOptimizer` Bayesian optimization loop, the rule
     must return either a `TensorType` or `State`-ful `TensorType`.
+
+    Note that an :class:`AcquisitionRule` might only support models with specific features (for
+    example, if it uses an acquisition function that relies on those features). The type of
+    models supported by a rule is indicated by the generic type variable class:`M_contra`.
     """
 
     @abstractmethod
     def acquire(
         self,
         search_space: SP_contra,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> T_co:
         """
@@ -88,7 +102,7 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
     def acquire_single(
         self,
         search_space: SP_contra,
-        model: ProbabilisticModel,
+        model: M_contra,
         dataset: Optional[Dataset] = None,
     ) -> T_co:
         """
@@ -112,16 +126,41 @@ class AcquisitionRule(ABC, Generic[T_co, SP_contra]):
         )
 
 
-class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
+class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra, M_contra]):
     """Implements the Efficient Global Optimization, or EGO, algorithm."""
+
+    @overload
+    def __init__(
+        self: "EfficientGlobalOptimization[SP_contra, ProbabilisticModel]",
+        builder: None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "EfficientGlobalOptimization[SP_contra, M_contra]",
+        builder: (
+            AcquisitionFunctionBuilder[M_contra]
+            | GreedyAcquisitionFunctionBuilder[M_contra]
+            | SingleModelAcquisitionBuilder[M_contra]
+            | SingleModelGreedyAcquisitionBuilder[M_contra]
+        ),
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
 
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder[ProbabilisticModel]
-            | GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
-            | SingleModelAcquisitionBuilder[ProbabilisticModel]
-            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
+            AcquisitionFunctionBuilder[M_contra]
+            | GreedyAcquisitionFunctionBuilder[M_contra]
+            | VectorizedAcquisitionFunctionBuilder[M_contra]
+            | SingleModelAcquisitionBuilder[M_contra]
+            | SingleModelGreedyAcquisitionBuilder[M_contra]
+            | SingleModelVectorizedAcquisitionBuilder[M_contra]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -154,17 +193,30 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
             optimizer = automatic_optimizer_selector
 
         if isinstance(
-            builder, (SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder)
+            builder,
+            (
+                SingleModelAcquisitionBuilder,
+                SingleModelGreedyAcquisitionBuilder,
+                SingleModelVectorizedAcquisitionBuilder,
+            ),
         ):
             builder = builder.using(OBJECTIVE)
 
-        if isinstance(builder, AcquisitionFunctionBuilder) and num_query_points > 1:
-            # Joint batch acquisitions require batch optimizers
-            optimizer = batchify(optimizer, num_query_points)
+        if num_query_points > 1:  # need to build batches of points
+            if isinstance(builder, VectorizedAcquisitionFunctionBuilder):
+                # optimize batch elements independently
+                optimizer = batchify_vectorize(optimizer, num_query_points)
+            elif isinstance(builder, AcquisitionFunctionBuilder):
+                # optimize batch elements jointly
+                optimizer = batchify_joint(optimizer, num_query_points)
+            elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
+                # optimize batch elements sequentially using the logic in acquire.
+                pass
 
         self._builder: Union[
-            AcquisitionFunctionBuilder[ProbabilisticModel],
-            GreedyAcquisitionFunctionBuilder[ProbabilisticModel],
+            AcquisitionFunctionBuilder[M_contra],
+            GreedyAcquisitionFunctionBuilder[M_contra],
+            VectorizedAcquisitionFunctionBuilder[M_contra],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -180,7 +232,7 @@ class EfficientGlobalOptimization(AcquisitionRule[TensorType, SP_contra]):
     def acquire(
         self,
         search_space: SP_contra,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
@@ -325,7 +377,7 @@ class AsynchronousRuleState:
 
 
 class AsynchronousOptimization(
-    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra]
+    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra, M_contra]
 ):
     """AsynchronousOptimization rule is designed for asynchronous BO scenarios.
     By asynchronous BO we understand a use case when multiple objective function
@@ -349,11 +401,28 @@ class AsynchronousOptimization(
     and thus we optimize and return the last B points only.
     """
 
+    @overload
+    def __init__(
+        self: "AsynchronousOptimization[SP_contra, ProbabilisticModel]",
+        builder: None = None,
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "AsynchronousOptimization[SP_contra, M_contra]",
+        builder: (AcquisitionFunctionBuilder[M_contra] | SingleModelAcquisitionBuilder[M_contra]),
+        optimizer: AcquisitionOptimizer[SP_contra] | None = None,
+        num_query_points: int = 1,
+    ):
+        ...
+
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder[ProbabilisticModel]
-            | SingleModelAcquisitionBuilder[ProbabilisticModel]
+            AcquisitionFunctionBuilder[M_contra] | SingleModelAcquisitionBuilder[M_contra]
         ] = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -382,11 +451,11 @@ class AsynchronousOptimization(
             builder = builder.using(OBJECTIVE)
 
         # even though we are only using batch acquisition functions
-        # there is no need to batchify the optimizer if our batch size is 1
+        # there is no need to batchify_joint the optimizer if our batch size is 1
         if num_query_points > 1:
-            optimizer = batchify(optimizer, num_query_points)
+            optimizer = batchify_joint(optimizer, num_query_points)
 
-        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
+        self._builder: AcquisitionFunctionBuilder[M_contra] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
@@ -399,7 +468,7 @@ class AsynchronousOptimization(
     def acquire(
         self,
         search_space: SP_contra,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
@@ -486,7 +555,7 @@ class AsynchronousOptimization(
 
 
 class AsynchronousGreedy(
-    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra]
+    AcquisitionRule[State[Optional["AsynchronousRuleState"], TensorType], SP_contra, M_contra]
 ):
     """AsynchronousGreedy rule, as name suggests,
     is designed for asynchronous BO scenarios. To see what we understand by
@@ -499,8 +568,8 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel]
-        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModel],
+        builder: GreedyAcquisitionFunctionBuilder[M_contra]
+        | SingleModelGreedyAcquisitionBuilder[M_contra],
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
     ):
@@ -535,7 +604,7 @@ class AsynchronousGreedy(
         if isinstance(builder, SingleModelGreedyAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
 
-        self._builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModel] = builder
+        self._builder: GreedyAcquisitionFunctionBuilder[M_contra] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
         self._num_query_points = num_query_points
@@ -550,7 +619,7 @@ class AsynchronousGreedy(
     def acquire(
         self,
         search_space: SP_contra,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
@@ -633,7 +702,7 @@ class AsynchronousGreedy(
         return state_func
 
 
-class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
+class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     r"""
     Implements Thompson sampling for choosing optimal points.
 
@@ -724,7 +793,9 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace]):
         return thompson_samples
 
 
-class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box]):
+class TrustRegion(
+    AcquisitionRule[types.State[Optional["TrustRegion.State"], TensorType], Box, M_contra]
+):
     """Implements the *trust region* acquisition algorithm."""
 
     @dataclass(frozen=True)
@@ -752,9 +823,27 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
             box_copy = copy.deepcopy(self.acquisition_space, memo)
             return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
+    @overload
+    def __init__(
+        self: "TrustRegion[ProbabilisticModel]",
+        rule: None = None,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "TrustRegion[M_contra]",
+        rule: AcquisitionRule[TensorType, Box, M_contra],
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+    ):
+        ...
+
     def __init__(
         self,
-        rule: AcquisitionRule[TensorType, Box] | None = None,
+        rule: AcquisitionRule[TensorType, Box, M_contra] | None = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
     ):
@@ -780,7 +869,7 @@ class TrustRegion(AcquisitionRule[types.State[Optional["TrustRegion.State"], Ten
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, M_contra],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """

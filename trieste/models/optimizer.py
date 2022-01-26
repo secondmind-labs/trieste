@@ -26,6 +26,7 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
 import scipy
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..types import TensorType
@@ -149,6 +150,29 @@ class BatchOptimizer(Optimizer):
 
         for _ in range(self.max_iter):
             train_fn()
+
+
+@dataclass
+class KerasOptimizer:
+    """Optimizer wrapper for training neural network models implemented with Keras."""
+
+    optimizer: tf.keras.optimizers.Optimizer
+    """ The underlying optimizer to use for training the model. """
+
+    loss: Union[
+        tf.keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
+    ] = None
+    """ Defines the loss function for training the network. """
+
+    fit_args: dict[str, Any] = field(default_factory=lambda: {})
+    """
+    The keyword arguments to pass to the `fit` method of a :class:`~tf.keras.Model` instance.
+    See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+    arguments in the dictionary.
+    """
+
+    metrics: Optional[list[tf.keras.metrics.Metric]] = None
+    """ Optional metrics for monitoring the performance of the network. """
 
 
 @singledispatch
