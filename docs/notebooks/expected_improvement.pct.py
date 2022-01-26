@@ -95,7 +95,7 @@ model = build_model(initial_data)
 from trieste.models.gpflow import build_gpr
 
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
-model =  GaussianProcessRegression(gpflow_model, num_kernel_samples=100)
+model = GaussianProcessRegression(gpflow_model, num_kernel_samples=100)
 
 
 # %% [markdown]
@@ -198,13 +198,12 @@ ax[0].set_xlabel("# evaluations")
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
 
 # %%
-from util.plotting_plotly import plot_gp_plotly
+from util.plotting_plotly import plot_model_predictions_plotly
 
-fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+fig = plot_model_predictions_plotly(
+    result.try_get_final_model(),
     search_space.lower,
     search_space.upper,
-    grid_density=30,
 )
 
 fig = add_bo_points_plotly(

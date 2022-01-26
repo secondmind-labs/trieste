@@ -88,4 +88,12 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         return noise_variance
 
     def __deepcopy__(self, memo: dict[int, object]) -> GPfluxPredictor:
-        raise NotImplementedError("`deepcopy` not yet supported for `GPfluxPredictor`")
+        raise NotImplementedError(
+            """
+            GPfluxPredictor does not support deepcopy at the moment. For this reason,
+            ``track_state`` argument when calling
+            :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to
+            `False`. This means that the model cannot be saved during Bayesian optimization, only
+            the final model will be available.
+            """
+        )

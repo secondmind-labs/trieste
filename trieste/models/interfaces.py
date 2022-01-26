@@ -264,7 +264,7 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         )
 
 
-class ModelStack(Generic[T], ProbabilisticModel):
+class ModelStack(ProbabilisticModel, Generic[T]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
     :class:`T`. It combines the outputs of each model for predictions and sampling.

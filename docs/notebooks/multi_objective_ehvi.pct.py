@@ -111,7 +111,9 @@ def build_stacked_independent_objectives_model(
 
 
 # %%
-model = build_stacked_independent_objectives_model(initial_data, num_objective, search_space)
+model = build_stacked_independent_objectives_model(
+    initial_data, num_objective, search_space
+)
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -214,7 +216,9 @@ plt.show()
 # EHVI can be extended to the case of batches (i.e. query several points at a time) using the `Fantasizer`. `Fantasizer` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `Fantasizer` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
 
 # %%
-model = build_stacked_independent_objectives_model(initial_data, num_objective, search_space)
+model = build_stacked_independent_objectives_model(
+    initial_data, num_objective, search_space
+)
 
 from trieste.acquisition.function import Fantasizer
 
@@ -340,7 +344,9 @@ objective_model = build_stacked_independent_objectives_model(
 # We also create a single model of the constraint. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-gpflow_model = build_gpr(initial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7)
+gpflow_model = build_gpr(
+    initial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7
+)
 constraint_model = GaussianProcessRegression(gpflow_model)
 
 
