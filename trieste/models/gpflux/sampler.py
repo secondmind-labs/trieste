@@ -31,7 +31,7 @@ from .interface import GPfluxPredictor
 
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
-    class SampleLV(Sample):
+    class SampleLV(Sample):  # type: ignore[misc]
         def __call__(self, X: TensorType) -> tf.Tensor:
             sample = layer.prior.sample()
             batch_shape = tf.shape(X)[:-1]
@@ -56,7 +56,7 @@ def sample_dgp(model: DeepGP) -> TrajectoryFunction:
         else:
             raise NotImplementedError(f"Sampling not implemented for {type(layer)}")
 
-    class ChainedSample(Sample):
+    class ChainedSample(Sample):  # type: ignore[misc]
         def __call__(self, X: TensorType) -> tf.Tensor:
             for f in function_draws:
                 X = f(X)
@@ -100,7 +100,7 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
-        return sample_dgp(self.model)  # type: ignore
+        return sample_dgp(self.model)
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
