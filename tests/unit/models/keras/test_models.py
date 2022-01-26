@@ -163,10 +163,8 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
         "verbose": 0,
         "epochs": 1000,
         "batch_size": 16,
-        "callbacks": [
-            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50, restore_best_weights=True)
-        ],
     }
+    del model.optimizer.fit_args['callbacks']
 
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
@@ -184,7 +182,7 @@ def test_deep_ensemble_optimizer_changed_correctly() -> None:
     }
     custom_optimizer = tf.optimizers.RMSprop()
     custom_loss = tf.keras.losses.MeanSquaredError()
-    optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_loss, custom_fit_args)
+    optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
@@ -309,7 +307,7 @@ def test_deep_ensemble_optimize(
         "batch_size": 10,
     }
     custom_loss = tf.keras.losses.MeanSquaredError()
-    optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_loss, custom_fit_args)
+    optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
 
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
 
