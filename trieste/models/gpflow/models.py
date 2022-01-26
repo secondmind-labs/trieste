@@ -58,7 +58,7 @@ class GaussianProcessRegression(
 
     As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
     acquisition functions), rather than calling the model directly at prediction time we instead
-    call the posterior objects built by these models. These posterior objects stores the
+    call the posterior objects built by these models. These posterior objects store the
     pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
     note that these posterior objects need to be updated whenever the underlying model is changed
     (i.e. after calling :meth:`update` or :meth:`optimize`).
@@ -157,7 +157,8 @@ class GaussianProcessRegression(
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
-        self.model.posterior().update_cache()  # update cached posterior
+        #self.model.posterior.update_cache()  # update cached posterior
+        self._posterior = self.model.posterior()  # cache posterior for fast sequential predictions
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -259,7 +260,8 @@ class GaussianProcessRegression(
             )
 
         self.optimizer.optimize(self.model, dataset)
-        self.model.posterior().update_cache()  # update cached posterior
+        #self.model.posterior().update_cache()  # update cached posterior
+        self._posterior = self.model.posterior()  # cache posterior for fast sequential predictions
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -580,7 +582,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
     Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SVGP` wrapper
     directly calls the posterior objects built by these models at prediction
-    time. These posterior stores the pre-computed Gram matrices, which can be reused to allow faster
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow faster
     subsequent predictions. However, note that these posterior objects need to be updated whenever
     the underlying model is changed (i.e. after calling :meth:`update` or :meth:`optimize`).
     """
