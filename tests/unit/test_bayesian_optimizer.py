@@ -198,7 +198,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
     expected_states_received: list[int | None],
     final_acquisition_state: int | None,
 ) -> None:
-    class Rule(AcquisitionRule[State[Optional[int], TensorType], Box]):
+    class Rule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def __init__(self) -> None:
             self.states_received: list[int | None] = []
 
@@ -273,7 +273,7 @@ class _BrokenModel(_PseudoTrainableQuadratic):
         raise _Whoops
 
 
-class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
+class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace, ProbabilisticModel]):
     def acquire(
         self,
         search_space: SearchSpace,
@@ -292,7 +292,9 @@ class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace]):
     ],
 )
 def test_bayesian_optimizer_optimize_for_failed_step(
-    observer: Observer, model: TrainableProbabilisticModel, rule: AcquisitionRule[None, Box]
+    observer: Observer,
+    model: TrainableProbabilisticModel,
+    rule: AcquisitionRule[None, Box, ProbabilisticModel],
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
@@ -330,7 +332,7 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         def optimize(self, dataset: Dataset) -> NoReturn:
             assert False
 
-    class _UnusableRule(AcquisitionRule[NoReturn, Box]):
+    class _UnusableRule(AcquisitionRule[NoReturn, Box, ProbabilisticModel]):
         def acquire(
             self,
             search_space: Box,
@@ -366,7 +368,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
 
-    class AdditionRule(AcquisitionRule[State[Optional[int], TensorType], Box]):
+    class AdditionRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
             self,
             search_space: Box,
@@ -432,7 +434,7 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
 
 
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
-    class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box]):
+    class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
             self,
             search_space: Box,

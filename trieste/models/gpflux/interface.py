@@ -20,11 +20,11 @@ import tensorflow as tf
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import SupportsGetObservationNoise
 from ..optimizer import BatchOptimizer
 
 
-class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, ABC):
     """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
@@ -63,9 +63,6 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
 
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("Joint prediction not implemented for deep GPs")
-
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError
@@ -91,4 +88,12 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         return noise_variance
 
     def __deepcopy__(self, memo: dict[int, object]) -> GPfluxPredictor:
-        raise NotImplementedError("`deepcopy` not yet supported for `GPfluxPredictor`")
+        raise NotImplementedError(
+            """
+            GPfluxPredictor does not support deepcopy at the moment. For this reason,
+            ``track_state`` argument when calling
+            :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to
+            `False`. This means that the model cannot be saved during Bayesian optimization, only
+            the final model will be available.
+            """
+        )

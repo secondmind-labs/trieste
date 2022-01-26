@@ -40,9 +40,7 @@ F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 
-fig = plot_function_plotly(
-    function, search_space.lower, search_space.upper, grid_density=100
-)
+fig = plot_function_plotly(function, search_space.lower, search_space.upper)
 fig.update_layout(height=800, width=800)
 fig.show()
 
@@ -109,6 +107,7 @@ dgp_model = build_dgp_model(initial_data)
 # The optimizer uses an acquisition rule to choose where in the search space to try on each optimization step. We'll start by using Thompson sampling.
 #
 # We'll run the optimizer for twenty steps. Note: this may take a while!
+
 # %%
 from trieste.acquisition.rule import DiscreteThompsonSampling
 
@@ -148,7 +147,7 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 from util.plotting_plotly import add_bo_points_plotly
 
 fig = plot_function_plotly(
-    function, search_space.lower, search_space.upper, grid_density=100
+    function, search_space.lower, search_space.upper, alpha=0.5
 )
 fig.update_layout(height=800, width=800)
 
@@ -168,13 +167,13 @@ fig.show()
 # %%
 import matplotlib.pyplot as plt
 from util.plotting import plot_regret
-from util.plotting_plotly import plot_dgp_plotly
+from util.plotting_plotly import plot_model_predictions_plotly
 
-fig = plot_dgp_plotly(
-    dgp_result.try_get_final_model().model_gpflux,  # type: ignore
+fig = plot_model_predictions_plotly(
+    dgp_result.try_get_final_model(),
     search_space.lower,
     search_space.upper,
-    grid_density=100,
+    num_samples=100,
 )
 
 fig = add_bo_points_plotly(
@@ -197,34 +196,10 @@ fig.show()
 import gpflow
 import tensorflow_probability as tfp
 
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-
-def build_gp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    kernel = gpflow.kernels.Matern52(
-        variance=variance, lengthscales=[0.2] * data.query_points.shape[-1]
-    )
-    prior_scale = tf.cast(1.0, dtype=tf.float64)
-    kernel.variance.prior = tfp.distributions.LogNormal(
-        tf.cast(-2.0, dtype=tf.float64), prior_scale
-    )
-    kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        tf.math.log(kernel.lengthscales), prior_scale
-    )
-    gpr = gpflow.models.GPR(
-        data.astuple(),
-        kernel,
-        mean_function=gpflow.mean_functions.Constant(),
-        noise_variance=1e-5,
-    )
-    gpflow.set_trainable(gpr.likelihood, False)
-    num_kernel_samples = 100
-
-    return GaussianProcessRegression(gpr)
-
-
-gp_model = build_gp_model(initial_data)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+gp_model = GaussianProcessRegression(gpflow_model)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
@@ -245,13 +220,10 @@ gp_arg_min_idx = tf.squeeze(tf.argmin(gp_observations, axis=0))
 print(f"query point: {gp_query_points[gp_arg_min_idx, :]}")
 print(f"observation: {gp_observations[gp_arg_min_idx, :]}")
 
-from util.plotting_plotly import plot_gp_plotly
-
-fig = plot_gp_plotly(
-    result.try_get_final_model().model,  # type: ignore
+fig = plot_model_predictions_plotly(
+    result.try_get_final_model(),
     search_space.lower,
     search_space.upper,
-    grid_density=100,
 )
 
 fig = add_bo_points_plotly(
@@ -355,7 +327,8 @@ dgp_suboptimality = dgp_observations - F_MINIMIZER.numpy()
 
 # %%
 
-gp_model = build_gp_model(initial_data)
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+gp_model = GaussianProcessRegression(gpflow_model)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 

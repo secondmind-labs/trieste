@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Mapping, Optional
+from typing import Mapping, Optional, cast
 
 import numpy.testing as npt
 import pytest
@@ -53,7 +53,7 @@ from trieste.acquisition.multi_objective.partition import (
     prepare_default_non_dominated_partition_bounds,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import ProbabilisticModel, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -487,7 +487,10 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
 ) -> None:
     npt.assert_allclose(
         batch_ehvi(
-            PseudoBatchReparametrizationSampler(obj_samples),
+            cast(
+                ReparametrizationSampler[ProbabilisticModel],
+                PseudoBatchReparametrizationSampler(obj_samples),
+            ),
             sampler_jitter=DEFAULTS.JITTER,
             partition_bounds=prepare_default_non_dominated_partition_bounds(
                 reference_point, Pareto(pareto_front_obs).front

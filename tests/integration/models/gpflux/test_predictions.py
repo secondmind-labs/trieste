@@ -12,31 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
+from typing import Any
 
 import numpy as np
+import pytest
 import tensorflow as tf
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 
-from tests.util.misc import random_seed
+from tests.util.misc import hartmann_6_dataset, random_seed
 from tests.util.models.gpflux.models import trieste_deep_gaussian_process
-from trieste.data import Dataset
 
 
+@pytest.fixture(name="depth", params=[2, 3])
+def _depth_fixture(request: Any) -> int:
+    return request.param
+
+
+@pytest.mark.slow
 @random_seed
-def test_dgp_model_close_to_actuals(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
-) -> None:
-    """
-    Ensure that DGP model fits well and predictions are close to actual output values.
-    """
-
+def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
     dataset_size = 50
     num_inducing = 50
     batch_size = 50
     epochs = 500
 
-    example_data = hartmann_6_dataset_function(dataset_size)
+    example_data = hartmann_6_dataset(dataset_size)
 
     model, _ = trieste_deep_gaussian_process(
         query_points=example_data.query_points,
@@ -54,17 +54,16 @@ def test_dgp_model_close_to_actuals(
     np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
 
 
+@pytest.mark.slow
 @random_seed
-def test_dgp_model_close_to_simple_implementation(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
-) -> None:
+def test_dgp_model_close_to_simple_implementation(depth: int, keras_float: None) -> None:
     dataset_size = 50
     num_inducing = 50
     batch_size = 50
     epochs = 500
     learning_rate = 0.01
 
-    example_data = hartmann_6_dataset_function(dataset_size)
+    example_data = hartmann_6_dataset(dataset_size)
 
     # Trieste implementation
     trieste_model, fit_args = trieste_deep_gaussian_process(

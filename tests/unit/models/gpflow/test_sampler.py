@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import math
+from typing import List, Type
 
 import gpflow
 import numpy.testing as npt
@@ -29,15 +30,18 @@ from trieste.models.gpflow import (
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
 )
+from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives.single_objectives import branin
+
+REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
+    BatchReparametrizationSampler,
+    IndependentReparametrizationSampler,
+]
 
 
 @pytest.mark.parametrize(
     "sampler",
-    [
-        BatchReparametrizationSampler,
-        IndependentReparametrizationSampler,
-    ],
+    REPARAMETRIZATION_SAMPLERS,
 )
 def test_reparametrization_sampler_reprs(
     sampler: type[BatchReparametrizationSampler | IndependentReparametrizationSampler],
