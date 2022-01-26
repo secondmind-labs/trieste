@@ -229,6 +229,14 @@ def test_gaussian_process_regression_raises_for_conditionals_with_sgpr() -> None
         )
 
 
+def test_gaussian_process_regression_correctly_returns_internal_data() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(gpr_model(*data))
+    returned_data = model.get_internal_data()
+    npt.assert_array_equal(returned_data.query_points, data[0])
+    npt.assert_array_equal(returned_data.observations, data[1])
+
+
 @random_seed
 @unittest.mock.patch(
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
@@ -485,6 +493,14 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
     with pytest.raises(ValueError):
         optimizer = Optimizer(tf.optimizers.Adam())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
+
+
+def test_variational_gaussian_process_correctly_returns_internal_data() -> None:
+    data = mock_data()
+    model = VariationalGaussianProcess(vgp_model(*data))
+    returned_data = model.get_internal_data()
+    npt.assert_array_equal(returned_data.query_points, data[0])
+    npt.assert_array_equal(returned_data.observations, data[1])
 
 
 def test_variational_gaussian_process_update_updates_num_data() -> None:

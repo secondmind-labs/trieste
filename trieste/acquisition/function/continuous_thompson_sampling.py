@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interface import TrajectoryFunction
+from ...models.interfaces import TrajectoryFunction
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
