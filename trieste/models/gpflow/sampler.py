@@ -242,10 +242,6 @@ class RandomFourierFeatureTrajectorySampler(
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
-<<<<<<< HEAD
-        :param dataset: The data from the observer. Must be populated.
-=======
->>>>>>> develop
         :param num_features: The number of features used to approximate the kernel. We use a default
             of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
