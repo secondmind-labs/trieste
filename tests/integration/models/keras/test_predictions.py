@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import branin_dataset, random_seed
-from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble, negative_log_likelihood
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer
 
 
@@ -40,7 +40,7 @@ def test_neural_network_ensemble_predictions_close_to_actuals(keras_float: None)
     }
     model = DeepEnsemble(
         keras_ensemble,
-        KerasOptimizer(optimizer, negative_log_likelihood, fit_args),
+        KerasOptimizer(optimizer, fit_args),
         False,
     )
     model.optimize(example_data)

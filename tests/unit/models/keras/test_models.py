@@ -84,14 +84,13 @@ def _trieste_deep_ensemble_model(
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
 
     optimizer = tf.keras.optimizers.Adam()
-    loss = negative_log_likelihood
     fit_args = {
         "batch_size": 32,
         "epochs": 10,
         "callbacks": [],
         "verbose": 0,
     }
-    optimizer_wrapper = KerasOptimizer(optimizer, loss, fit_args)
+    optimizer_wrapper = KerasOptimizer(optimizer, fit_args)
 
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
 
@@ -162,8 +161,11 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
     default_loss = negative_log_likelihood
     default_fit_args = {
         "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
+        "epochs": 1000,
+        "batch_size": 16,
+        "callbacks": [
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=50, restore_best_weights=True)
+        ],
     }
 
     assert isinstance(model.optimizer, KerasOptimizer)
@@ -332,7 +334,7 @@ def test_deep_ensemble_loss(
 
     model = DeepEnsemble(
         trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, independent_normal),
-        KerasOptimizer(optimizer, loss),
+        KerasOptimizer(optimizer, loss=loss),
         bootstrap_data,
     )
 
@@ -360,7 +362,7 @@ def test_deep_ensemble_predict_ensemble(
 
     model = DeepEnsemble(
         trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, independent_normal),
-        KerasOptimizer(optimizer, loss),
+        KerasOptimizer(optimizer, loss=loss),
     )
 
     reference_model = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, independent_normal)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This file contains builders for GPflow models supported in Trieste. We found the default
+This module contains builders for GPflow models supported in Trieste. We found the default
 configurations used here to work well in most situation, but they should not be taken as
 universally good solutions.
 """

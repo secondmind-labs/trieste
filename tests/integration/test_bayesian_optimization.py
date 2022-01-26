@@ -23,7 +23,6 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflux.models import two_layer_dgp_model
 from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
@@ -53,13 +52,8 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
-from trieste.models.keras import (
-    DeepEnsemble,
-    KerasPredictor,
-    build_vanilla_keras_ensemble,
-    negative_log_likelihood,
-)
+from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor, build_vanilla_deep_gp
+from trieste.models.keras import DeepEnsemble, KerasPredictor, build_vanilla_keras_ensemble
 from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -375,7 +369,7 @@ def _test_optimizer_finds_minimum(
         def build_model(data: Dataset) -> GPfluxPredictor:  # type: ignore
             epochs = 400
             batch_size = 100
-            dgp = two_layer_dgp_model(data.query_points)
+            dgp = build_vanilla_deep_gp(data, 2)
 
             def scheduler(epoch: int, lr: float) -> float:
                 if epoch == epochs // 2:
@@ -389,7 +383,7 @@ def _test_optimizer_finds_minimum(
                 "verbose": 0,
                 "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
             }
-            optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
+            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01), fit_args)
             return DeepGaussianProcess(dgp, optimizer)
 
     elif model_type == "DE":
@@ -409,9 +403,7 @@ def _test_optimizer_finds_minimum(
                 ],
                 "verbose": 0,
             }
-            optimizer = KerasOptimizer(
-                tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
-            )
+            optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
             return DeepEnsemble(keras_ensemble, optimizer, **model_args)
 
     else:
