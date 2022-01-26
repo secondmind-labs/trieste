@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -216,9 +216,11 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
 
         return predicted_means, predicted_vars
 
-    def predict_ensemble(self, query_points: TensorType) -> Sequence[tuple[TensorType, TensorType]]:
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
-        Returns mean and variance at ``query_points`` for each member of the ensemble.
+        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+        the ``ensemble_size``.
 
         This method assumes that the final layer in each member of the ensemble is
         probabilistic, an instance of :class:`¬tfp.distributions.Distribution`, in particular
@@ -231,9 +233,10 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
         query_points_transformed = self.prepare_query_points(query_points)
 
         ensemble_distributions = self.model(query_points_transformed)
-        predicted_means_vars = [(dist.mean(), dist.variance()) for dist in ensemble_distributions]
+        predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
+        predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
-        return predicted_means_vars
+        return predicted_means, predicted_vars
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """

@@ -19,8 +19,15 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
+import tensorflow as tf
+
 from ...types import TensorType
-from ..interfaces import EnsembleModel, TrajectoryFunction, TrajectorySampler
+from ..interfaces import (
+    EnsembleModel,
+    TrajectoryFunction,
+    TrajectoryFunctionClass,
+    TrajectorySampler,
+)
 
 
 class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
@@ -48,17 +55,63 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         """"""
         return f"{self.__class__.__name__}({self._model!r}"
 
-    def get_trajectory(self) -> TrajectoryFunction:
+    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by randomly choosing a network from
         the ensemble and using its predicted means as a trajectory.
 
-        :return: A trajectory function representing an approximate trajectory from the ensemble
-            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        :param negate: Return the negative of the trajectory.
+        :return: A trajectory function representing an approximate trajectory
+            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
-        network_index = self._model.sample_index(1)[0]
+        return ensemble_trajectory(self._model, negate)
 
-        def trajectory(x: TensorType) -> TensorType:
-            return self._model.predict_ensemble(x)[network_index][0]
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+        with every new sample.
 
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
+        """
+        tf.debugging.Assert(isinstance(trajectory, ensemble_trajectory), [])
+        trajectory.resample()  # type: ignore
         return trajectory
+
+
+class ensemble_trajectory(TrajectoryFunctionClass):
+    """
+    Generate an approximate function draw (trajectory) by randomly choosing a network from
+    the ensemble and using its predicted means as a trajectory.
+    """
+
+    def __init__(self, model: EnsembleModel, negate: bool = False):
+        """
+        :param feature_functions: Set of feature function.
+        :param weight_distribution: Distribution from which feature weights are to be sampled.
+        :param negate: Return the negative of the trajectory.
+        """
+        self._model = model
+
+        if negate:
+            self._multiplier = -1.0
+        else:
+            self._multiplier = 1.0
+
+        self._network_index = tf.Variable(self._model.sample_index(1)[0])
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:  # [N, 1, d] -> [N, 1]
+        """Call trajectory function."""
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This trajectory only supports batch sizes of one.",
+        )
+        x = tf.squeeze(x, -2)  # [N, D]
+        return self._multiplier * self._model.predict_ensemble(x)[0][self._network_index]
+
+    def resample(self) -> None:
+        """
+        Efficiently resample in-place without retracing.
+        """
+        self._network_index.assign(self._model.sample_index(1)[0])

@@ -26,11 +26,12 @@ _ENSEMBLE_SIZE = 3
 
 
 @pytest.mark.parametrize("num_evals", [10, 20])
-def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correct_shaped_output(
+def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
 ) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], num_evals)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
@@ -43,6 +44,7 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correct_sh
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory() -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
@@ -59,8 +61,9 @@ def test_ensemble_trajectory_sampler_returns_deterministic_trajectory() -> None:
 def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 2)
 
     sampler1 = EnsembleTrajectorySampler(model)
     trajectory1 = sampler1.get_trajectory()
@@ -68,4 +71,51 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() ->
     sampler2 = EnsembleTrajectorySampler(model)
     trajectory2 = sampler2.get_trajectory()
 
-    npt.assert_allclose(trajectory1(test_data), trajectory2(test_data))
+    assert tf.reduce_any(trajectory1(test_data) != trajectory2(test_data))
+
+
+@random_seed
+@pytest.mark.parametrize("negate", [True, False])
+def test_ensemble_trajectory_sampler_can_return_negative_trajectory(negate: bool) -> None:
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-100.0], [-10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    sampler = EnsembleTrajectorySampler(model)
+    trajectory = sampler.get_trajectory(negate=negate)
+    trajectory_evals = trajectory(test_data)
+
+    if negate:
+        npt.assert_array_less(trajectory_evals, 0.0)
+    else:
+        npt.assert_array_less(0.0, trajectory_evals)
+
+
+@random_seed
+def test_ensemble_trajectory_sampler_resample_trajectory_provides_new_samples_without_retracing() -> None:
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 2)
+
+    sampler = EnsembleTrajectorySampler(model)
+
+    trajectory = sampler.get_trajectory()
+    evals_1 = trajectory(test_data)
+
+    trajectory = sampler.resample_trajectory(trajectory)
+    evals_2 = trajectory(test_data)
+
+    trajectory = sampler.resample_trajectory(trajectory)
+    evals_3 = trajectory(test_data)
+
+    # no retracing
+    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
+    # check all samples are different
+    npt.assert_array_less(1e-4, tf.abs(evals_1 - evals_2))
+    npt.assert_array_less(1e-4, tf.abs(evals_2 - evals_3))
+    npt.assert_array_less(1e-4, tf.abs(evals_1 - evals_3))

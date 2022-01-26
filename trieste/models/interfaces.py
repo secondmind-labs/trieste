@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Sequence, TypeVar
+from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -291,9 +291,11 @@ class EnsembleModel(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_ensemble(self, query_points: TensorType) -> Sequence[tuple[TensorType, TensorType]]:
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
-        Returns mean and variance at ``query_points`` for each member of the ensemble.
+        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+        the ``ensemble_size``.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified

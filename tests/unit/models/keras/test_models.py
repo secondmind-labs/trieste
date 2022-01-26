@@ -228,17 +228,14 @@ def test_deep_ensemble_predict_ensemble_call_shape(ensemble_size: int, dataset_s
     example_data = _get_example_data([dataset_size, 1])
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
-    predictions = model.predict_ensemble(example_data.query_points)
+    predicted_means, predicted_vars = model.predict_ensemble(example_data.query_points)
 
-    assert isinstance(predictions, list)
-    assert len(predictions) == ensemble_size
-    for pred in predictions:
-        assert isinstance(pred, tuple)
-        predicted_means, predicted_vars = pred
-        assert tf.is_tensor(predicted_vars)
-        assert predicted_vars.shape == example_data.observations.shape
-        assert tf.is_tensor(predicted_means)
-        assert predicted_means.shape == example_data.observations.shape
+    assert predicted_means.shape[-3] == ensemble_size
+    assert predicted_vars.shape[-3] == ensemble_size
+    assert tf.is_tensor(predicted_means)
+    assert tf.is_tensor(predicted_vars)
+    assert predicted_means.shape[-2:] == example_data.observations.shape
+    assert predicted_vars.shape[-2:] == example_data.observations.shape
 
 
 @pytest.mark.parametrize("num_samples", [6, 12])
@@ -341,9 +338,7 @@ def test_deep_ensemble_loss(
 
 
 @random_seed
-def test_deep_ensemble_predict_ensemble(
-    independent_normal: bool,
-) -> None:
+def test_deep_ensemble_predict_ensemble(independent_normal: bool) -> None:
     example_data = _get_example_data([100, 1])
 
     loss = negative_log_likelihood
@@ -358,17 +353,16 @@ def test_deep_ensemble_predict_ensemble(
     reference_model.model.compile(optimizer=optimizer, loss=loss)
     reference_model.model.set_weights(model.model.get_weights())
 
-    means_vars = model.predict_ensemble(example_data.query_points)
+    predicted_means, predicted_vars = model.predict_ensemble(example_data.query_points)
     tranformed_x, tranformed_y = _ensemblise_data(
         reference_model, example_data, _ENSEMBLE_SIZE, False
     )
     ensemble_distributions = reference_model.model(tranformed_x)
-    reference_means_vars = [(dist.mean(), dist.variance()) for dist in ensemble_distributions]
+    reference_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
+    reference_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
-    assert len(means_vars) == len(reference_means_vars)
-    for i in range(len(means_vars)):
-        npt.assert_allclose(means_vars[i][0], reference_means_vars[i][0])  # means
-        npt.assert_allclose(means_vars[i][1], reference_means_vars[i][1])  # vars
+    npt.assert_allclose(predicted_means, reference_means)
+    npt.assert_allclose(predicted_vars, reference_vars)
 
 
 @random_seed
