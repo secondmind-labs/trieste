@@ -213,15 +213,13 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
             thompson_samples = tf.zeros([0, tf.shape(at)[1]], dtype=at.dtype)  # [0,D]
 
         for _ in tf.range(sample_size):
-            sampled_trajectory = trajectory_sampler.get_negative_trajectory()
+            sampled_trajectory = trajectory_sampler.get_trajectory()
             expanded_at = tf.expand_dims(at, -2)  # [N, 1, D]
             evaluated_trajectory = sampled_trajectory(expanded_at)  # [N, 1]
             if self._sample_min_value:
-                sample = -1.0 * tf.reduce_max(
-                    evaluated_trajectory, keepdims=True
-                )  # [1, 1] TODO say neg
+                sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:
-                sample = tf.gather(at, tf.math.argmax(evaluated_trajectory))  # [1, D]
+                sample = tf.gather(at, tf.math.argmin(evaluated_trajectory))  # [1, D]
 
             thompson_samples = tf.concat([thompson_samples, sample], axis=0)
 

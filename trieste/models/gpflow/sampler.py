@@ -203,9 +203,7 @@ class RandomFourierFeatureTrajectorySampler(
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
-    the model's kernel. See :cite:`hernandez2014predictive` for details. Note that we return
-    the negative of the trajectory, so that our acquisition optimizers (which are
-    all maximizers) can be used to extract the minimisers of trajectories.
+    the model's kernel. See :cite:`hernandez2014predictive` for details.
 
     Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
     trajectory function) for exact sample draws from a GP is prohibitively costly because it scales
@@ -344,7 +342,7 @@ class RandomFourierFeatureTrajectorySampler(
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def get_negative_trajectory(self) -> TrajectoryFunction:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
@@ -451,9 +449,9 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         )
         x = tf.squeeze(x, -2)  # [N, d]
         feature_evaluations = self._feature_functions(x)  # [N, m]
-        return -1.0 * tf.matmul(
+        return tf.matmul(
             feature_evaluations, self._theta_sample, transpose_b=True
-        )  # return the negative of the sampled trajectory
+        )  # return sampled trajectory
 
     def resample(self) -> None:
         """

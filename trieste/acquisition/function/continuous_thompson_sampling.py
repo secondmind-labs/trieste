@@ -32,9 +32,12 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder
     return acquisition functions that are the negatives of approximate samples from the
-    given :class:`ProbabilisticModel`, as provided by the model's :meth:`get_negative_trajectory`
+    given :class:`ProbabilisticModel`, as provided by the model's :meth:`get_trajectory`
     method. A set of such samples are to be maximized in a sequential greedy manner to provide
-    the next recommended query points.
+    the next recommended query points. Note that we actually return
+    the negative of the trajectory, so that our acquisition optimizers (which are
+    all maximizers) can be used to extract the minimisers of trajectories.
+
 
     For more details about trajectory-based Thompson sampling see :cite:`hernandez2017parallel` and
     :cite:`wilson2020efficiently`.
@@ -55,7 +58,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
         try:
             self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_negative_trajectory()
+            function = self._trajectory_sampler.get_trajectory()
         except (NotImplementedError):
             raise ValueError(
                 """

@@ -425,11 +425,11 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples() ->
     samples = []
     num_samples = 10
     trajectory_sampler = model.trajectory_sampler()
-    trajectory = trajectory_sampler.get_negative_trajectory()
+    trajectory = trajectory_sampler.get_trajectory()
     samples.append(-1.0 * trajectory(tf.expand_dims(x_predict, -2)))
     for _ in range(num_samples - 1):
         trajectory.resample()  # type: ignore
-        samples.append(-1.0 * trajectory(tf.expand_dims(x_predict, -2)))
+        samples.append(trajectory(tf.expand_dims(x_predict, -2)))
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)

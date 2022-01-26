@@ -267,7 +267,7 @@ def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     with pytest.raises(AssertionError):
-        sampler.get_negative_trajectory()
+        sampler.get_trajectory()
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -287,7 +287,7 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     )  # need a gpflow kernel object for random feature decompositions
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
-    trajectory = sampler.get_negative_trajectory()
+    trajectory = sampler.get_trajectory()
     xs = tf.linspace([-10.0], [10.0], num_evals)
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)
 
@@ -324,7 +324,7 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     )  # need a gpflow kernel object for random feature decompositions
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory = sampler.get_negative_trajectory()
+    trajectory = sampler.get_trajectory()
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     trajectory_eval_1 = trajectory(xs)
@@ -347,7 +347,7 @@ def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_met
     )  # need a gpflow kernel object for random feature decompositions
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    sampler.get_negative_trajectory()
+    sampler.get_trajectory()
 
     posterior_1 = sampler._prepare_theta_posterior_in_design_space()
     posterior_2 = sampler._prepare_theta_posterior_in_gram_space()
@@ -371,10 +371,10 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
     )  # need a gpflow kernel object for random feature decompositions
 
     sampler1 = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory1 = sampler1.get_negative_trajectory()
+    trajectory1 = sampler1.get_trajectory()
 
     sampler2 = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory2 = sampler2.get_negative_trajectory()
+    trajectory2 = sampler2.get_trajectory()
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     npt.assert_array_less(1e-3, tf.abs(trajectory1(xs) - trajectory2(xs)))
@@ -396,7 +396,7 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory = sampler.get_negative_trajectory()
+    trajectory = sampler.get_trajectory()
     evals_1 = trajectory(xs)
 
     trajectory = sampler.resample_trajectory(trajectory)
@@ -432,7 +432,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     )
 
     trajectory_sampler = RandomFourierFeatureTrajectorySampler(model)
-    trajectory = trajectory_sampler.get_negative_trajectory()
+    trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(tf.expand_dims(xs_predict, -2))
 
     new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training

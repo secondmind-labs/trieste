@@ -295,8 +295,7 @@ class GaussianProcessRegression(
 
         :return: The model's training data.
         """
-        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
-        return models_data
+        return Dataset(self.model.data[0].value(), self.model.data[1].value())
 
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset
@@ -861,5 +860,4 @@ class VariationalGaussianProcess(
 
         :return: The model's training data.
         """
-        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
-        return models_data
+        return Dataset(self.model.data[0].value(), self.model.data[1].value())

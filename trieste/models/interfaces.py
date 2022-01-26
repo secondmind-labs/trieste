@@ -530,9 +530,9 @@ class TrajectorySampler(ABC, Generic[T]):
         return f"{self.__class__.__name__}({self._model!r})"
 
     @abstractmethod
-    def get_negative_trajectory(self) -> TrajectoryFunction:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
-        :return: A trajectory function representing the negative of an approximate trajectory
+        :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
         raise NotImplementedError
@@ -551,7 +551,7 @@ class TrajectorySampler(ABC, Generic[T]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        return self.get_negative_trajectory()
+        return self.get_trajectory()
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -564,4 +564,4 @@ class TrajectorySampler(ABC, Generic[T]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new trajectory function updated for a new model
         """
-        return self.get_negative_trajectory()
+        return self.get_trajectory()
