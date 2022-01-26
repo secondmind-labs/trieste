@@ -180,6 +180,20 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
+class SupportsInternalData(ProbabilisticModel, Protocol):
+    """A probabilistic model that stores and has access to its own training data."""
+
+    @abstractmethod
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
 class FastUpdateModel(ProbabilisticModel, Protocol):
     """A model with the ability to predict based on (possibly fantasized) supplementary data."""
 
@@ -522,15 +536,28 @@ class ReparametrizationSampler(ABC, Generic[T]):
 
 TrajectoryFunction = Callable[[TensorType], TensorType]
 """
-Type alias for trajectory functions.
+Type alias for trajectory functions. These have essentially the same behavior as an
+:const:`AcquisitionFunction` but have additional sampling properties.
 
 An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
-points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+points (each of dimension `D`) i.e. takes input of shape `[N, 1, D]` and returns
 shape `[N, 1]`.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
 """
+
+
+class TrajectoryFunctionClass(ABC):
+    """
+    An :class:`TrajectoryFunctionClass` is a trajectory function represented using a class
+    rather than as a standalone function. Using a class to represent a trajectory function
+    makes it easier to update and resample without having to retrace the function.
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call trajectory function."""
 
 
 class TrajectorySampler(ABC, Generic[T]):
@@ -554,9 +581,39 @@ class TrajectorySampler(ABC, Generic[T]):
         return f"{self.__class__.__name__}({self._model!r})"
 
     @abstractmethod
-    def get_trajectory(self) -> TrajectoryFunction:
+    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
         """
-        :return: A trajectory function representing an approximate trajectory from the
-            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        :param negate: Return the negative of the trajectory.
+        :return: A trajectory function representing an approximate trajectory
+            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
         raise NotImplementedError
+
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        A :const:`TrajectoryFunction` can often be efficiently updated in-place to provide
+        a new sample without retracing. Note that if the underlying :class:`ProbabilisticModel`
+        has been updated, then we must call :meth:`update_trajectory` to get a new sample from
+        the new model.
+
+        Efficient implementations of a :class:`TrajectorySampler` will have a custom method here
+        to allow in-place resampling. However, the default behavior is just to make a new
+        trajectory from scratch.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
+        """
+        return self.get_trajectory()
+
+    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Update a :const:`TrajectoryFunction` to reflect an update in its
+        underlying :class:`ProbabilisticModel` and resample accordingly.
+
+        Efficient implementations will have a custom method here to allow in-place resampling
+        and updating. However, the default behavior is just to make a new trajectory from scratch.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new trajectory function updated for a new model
+        """
+        return self.get_trajectory()
