@@ -199,7 +199,7 @@ def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sample
     model2 = QuadraticMeanAndRBFKernel()
     model_stack = TrainableModelStack((model01, 2), (model2, 1))  # type: ignore
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AttributeError):
         model_stack.reparam_sampler(1)  # type: ignore
 
 
