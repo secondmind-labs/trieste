@@ -242,7 +242,13 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(90, acquisition_rule, optimize_branin=True, model_type="SVGP")
+    _test_optimizer_finds_minimum(
+        90,
+        acquisition_rule,
+        optimize_branin=True,
+        model_type="SVGP",
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+    )
 
 
 @random_seed
@@ -250,7 +256,12 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
+    _test_optimizer_finds_minimum(
+        5,
+        acquisition_rule,
+        model_type="SVGP",
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))}
+    )
 
 
 @random_seed
@@ -375,7 +386,7 @@ def _test_optimizer_finds_minimum(
                     num_data=len(data.observations),
                 )
                 gpflow.utilities.set_trainable(svgp.likelihood, False)
-                return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
+                return SparseVariational(svgp, **model_args)
 
     elif model_type == "DGP":
         num_initial_query_points = 20
