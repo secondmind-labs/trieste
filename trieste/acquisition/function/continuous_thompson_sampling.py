@@ -74,7 +74,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
             class NegatedTrajectory(type(function)):  # type: ignore[misc]
                 def __call__(self, x: TensorType) -> TensorType:
-                    return -1.0 * super().__call__(self, x)
+                    return -1.0 * super().__call__(x)
 
             function.__class__ = NegatedTrajectory
         else:
