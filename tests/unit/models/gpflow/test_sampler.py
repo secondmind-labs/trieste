@@ -333,8 +333,7 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
 
 
-@pytest.mark.parametrize("negate", [True, False])
-def test_rff_trajectory_sampler_can_return_negative_trajectory(negate: bool) -> None:
+def test_rff_trajectory_sampler_can_return_negative_trajectory() -> None:
     x_range = tf.linspace(2.0, 3.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -348,15 +347,12 @@ def test_rff_trajectory_sampler_can_return_negative_trajectory(negate: bool) -> 
     )  # need a gpflow kernel object for random feature decompositions
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory = sampler.get_trajectory(negate=negate)
+    trajectory = sampler.get_trajectory()
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     trajectory_evals = trajectory(xs)
 
-    if negate:
-        npt.assert_array_less(trajectory_evals, 0.0)
-    else:
-        npt.assert_array_less(0.0, trajectory_evals)
+    npt.assert_array_less(0.0, trajectory_evals)
 
 
 def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_method() -> None:
@@ -438,8 +434,7 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
 
 
 @random_seed
-@pytest.mark.parametrize("negate", [True, False])
-def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: bool) -> None:
+def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -459,7 +454,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: boo
     )
 
     trajectory_sampler = RandomFourierFeatureTrajectorySampler(model)
-    trajectory = trajectory_sampler.get_trajectory(negate=negate)
+    trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(tf.expand_dims(xs_predict, -2))
 
     new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
@@ -470,22 +465,16 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: boo
     trajectory = trajectory_sampler.update_trajectory(trajectory)
     eval_after = trajectory(tf.expand_dims(xs_predict, -2))
 
-    if not negate:
-        assert (
-            trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
-        )  # check kernel updated in sampler
-        assert (
-            trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
-        )  # check kernel updated in trajectory
+    assert (
+        trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
+    )  # check kernel updated in sampler
+    assert (
+        trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
+    )  # check kernel updated in trajectory
 
-        assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
 
     npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
-    if negate:
-        npt.assert_array_less(
-            tf.abs(-1.0 * eval_after - quadratic(xs_predict)), 1e-3
-        )  # negative of new sample should agree with data
-    else:
-        npt.assert_array_less(
-            tf.abs(eval_after - quadratic(xs_predict)), 1e-3
-        )  # new sample should agree with data
+    npt.assert_array_less(
+        tf.abs(eval_after - quadratic(xs_predict)), 1e-3
+    )  # new sample should agree with data

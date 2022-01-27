@@ -53,12 +53,12 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         :param model: The model.
         :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
-        :return: A trajectory sampled from the model.
+        :return: A negated trajectory sampled from the model.
         """
 
         try:
             self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_trajectory(negate=True)
+            function = self._trajectory_sampler.get_trajectory()
         except (NotImplementedError):
             raise ValueError(
                 """
@@ -67,7 +67,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
             """
             )
 
-        return function
+        return lambda x: -1.0 * function(x)
 
     def update_acquisition_function(
         self,
