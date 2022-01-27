@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import TrajectoryFunction
+from ...models.interfaces import TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
@@ -59,6 +59,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         try:
             self._trajectory_sampler = model.trajectory_sampler()
             function = self._trajectory_sampler.get_trajectory()
+
         except (NotImplementedError):
             raise ValueError(
                 """
@@ -67,7 +68,23 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
             """
             )
 
-        return lambda x: -1.0 * function(x)
+        if isinstance(function, TrajectoryFunctionClass):
+            # we want to negate the trajectory function but otherwise leave it alone,
+            # as it may have e.g. update and resample methods
+
+            class NegatedTrajectory(type(function)):  # type: ignore[misc]
+                def __call__(self, x: TensorType) -> TensorType:
+                    return -1.0 * super().__call__(self, x)
+
+            function.__class__ = NegatedTrajectory
+        else:
+
+            def negated_trajectory(x: TensorType) -> TensorType:
+                return -1.0 * function(x)
+
+            function = negated_trajectory
+
+        return function
 
     def update_acquisition_function(
         self,
