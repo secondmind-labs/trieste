@@ -383,6 +383,13 @@ class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProb
 
 
 class HasReparamSamplerModelStack(ModelStack[HasReparamSampler], HasReparamSampler):
+    r"""
+    A :class:`PredictJointModelStack` is a wrapper around a number of
+    :class:`HasReparamSampler`\ s.
+    It provides a  :meth:`reparam_sampler` method only if all the submodel samplers
+    are the same.
+    """
+
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[HasReparamSampler]:
         """
         Return a reparameterization sampler providing `num_samples` samples across
@@ -416,7 +423,7 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
     r"""
     A :class:`PredictJointModelStack` is a wrapper around a number of
     :class:`SupportsPredictJoint`\ s.
-    It delegates :meth:`predict_joint]` to each model.
+    It delegates :meth:`predict_joint` to each model.
     """
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -448,7 +455,7 @@ class TrainablePredictJointModelStack(
 
 
 class TrainableSupportsPredictJointHasReparamSampler(
-    TrainableProbabilisticModel, SupportsPredictJoint, HasReparamSampler, Protocol
+    TrainableSupportsPredictJoint, HasReparamSampler, Protocol
 ):
     """A model that is trainable, supports predict_joint and has a reparameterization sampler."""
 
@@ -456,9 +463,8 @@ class TrainableSupportsPredictJointHasReparamSampler(
 
 
 class TrainablePredictJointReparamModelStack(
-    TrainableModelStack,
-    PredictJointModelStack,
-    HasReparamSampler,
+    TrainablePredictJointModelStack,
+    HasReparamSamplerModelStack,
     ModelStack[TrainableSupportsPredictJointHasReparamSampler],
 ):
     """A stack of models that are both trainable and support predict_joint."""
