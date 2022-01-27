@@ -333,28 +333,6 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
 
 
-def test_rff_trajectory_sampler_can_return_negative_trajectory() -> None:
-    x_range = tf.linspace(2.0, 3.0, 5)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    ys = quadratic(xs)
-    dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1e-5, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
-
-    sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory = sampler.get_trajectory()
-
-    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
-    trajectory_evals = trajectory(xs)
-
-    npt.assert_array_less(0.0, trajectory_evals)
-
-
 def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_method() -> None:
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
