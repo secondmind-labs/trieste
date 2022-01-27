@@ -268,13 +268,14 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        predicted_means_vars = self.predict_ensemble(query_points)
+        predicted_means, predicted_vars = self.predict_ensemble(query_points)
 
         stacked_samples = []
         for _ in range(num_samples):
             network_index = self.sample_index(1)[0]
-            predicted_means, predicted_vars = predicted_means_vars[network_index]
-            normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
+            normal = tfp.distributions.Normal(
+                predicted_means[network_index], tf.sqrt(predicted_vars[network_index])
+            )
             samples = normal.sample()
             stacked_samples.append(samples)
 

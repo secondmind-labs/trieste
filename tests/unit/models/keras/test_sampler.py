@@ -94,7 +94,7 @@ def test_ensemble_trajectory_sampler_can_return_negative_trajectory(negate: bool
 
 
 @random_seed
-def test_ensemble_trajectory_sampler_resample_trajectory_provides_new_samples_without_retracing() -> None:
+def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retracing() -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
