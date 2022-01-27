@@ -536,9 +536,8 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
         return f"{self.__class__.__name__}({self._model!r})"
 
     @abstractmethod
-    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
-        :param negate: Return the negative of the trajectory.
         :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
