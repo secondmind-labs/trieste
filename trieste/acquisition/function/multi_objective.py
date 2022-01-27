@@ -258,7 +258,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
         if not isinstance(model, HasReparamSampler):
-            raise NotImplementedError(
+            raise ValueError(
                 f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
                 f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )

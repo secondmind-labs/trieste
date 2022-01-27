@@ -676,7 +676,7 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         self._sample_size = sample_size
 
         if not isinstance(model, HasReparamSampler):
-            raise NotImplementedError(
+            raise ValueError(
                 f"The batch Monte-Carlo expected improvement acquisition function only supports "
                 f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )

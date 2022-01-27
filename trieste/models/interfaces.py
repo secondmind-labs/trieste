@@ -433,7 +433,7 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
 
 
 # It's useful, though a bit ugly, to define the stack constructors for some model type combinations
-class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel, Protocol):
+class TrainableSupportsPredictJoint(TrainableProbabilisticModel, SupportsPredictJoint, Protocol):
     """A model that is both trainable and supports predict_joint."""
 
     pass
@@ -448,7 +448,7 @@ class TrainablePredictJointModelStack(
 
 
 class TrainableSupportsPredictJointHasReparamSampler(
-    TrainableSupportsPredictJoint, HasReparamSampler, Protocol
+    TrainableProbabilisticModel, SupportsPredictJoint, HasReparamSampler, Protocol
 ):
     """A model that is trainable, supports predict_joint and has a reparameterization sampler."""
 
@@ -456,7 +456,8 @@ class TrainableSupportsPredictJointHasReparamSampler(
 
 
 class TrainablePredictJointReparamModelStack(
-    TrainablePredictJointModelStack,
+    TrainableModelStack,
+    PredictJointModelStack,
     HasReparamSampler,
     ModelStack[TrainableSupportsPredictJointHasReparamSampler],
 ):
