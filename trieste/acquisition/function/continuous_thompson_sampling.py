@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction
+from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
@@ -53,7 +53,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         :param model: The model.
         :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
-        :return: A trajectory sampled from the model.
+        :return: A negated trajectory sampled from the model.
         """
         if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
@@ -62,7 +62,23 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             )
 
         self._trajectory_sampler = model.trajectory_sampler()
-        function = self._trajectory_sampler.get_trajectory(negate=True)
+        function = self._trajectory_sampler.get_trajectory()
+
+        if isinstance(function, TrajectoryFunctionClass):
+            # we want to negate the trajectory function but otherwise leave it alone,
+            # as it may have e.g. update and resample methods
+
+            class NegatedTrajectory(type(function)):  # type: ignore[misc]
+                def __call__(self, x: TensorType) -> TensorType:
+                    return -1.0 * super().__call__(x)
+
+            function.__class__ = NegatedTrajectory
+        else:
+
+            def negated_trajectory(x: TensorType) -> TensorType:
+                return -1.0 * function(x)
+
+            function = negated_trajectory
 
         return function
 
