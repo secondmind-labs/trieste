@@ -85,35 +85,11 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
-        """
-        Return a reparametrization sampler providing `num_samples` samples.
-
-        Note that this is not supported by all models.
-
-        :param num_samples: The desired number of samples.
-        :return: The reparametrization sampler.
-        """
-        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
-
     def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
         """
         pass
-
-
-@runtime_checkable
-class HasTrajectorySampler(ProbabilisticModel, Protocol):
-    """A probabilistic model that has an associated trajectory sampler."""
-
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
-        """
-        Return a trajectory sampler that supports this model.
-
-        :return: The trajectory sampler.
-        """
-        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
 
 
 @runtime_checkable
@@ -267,6 +243,33 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         )
 
 
+@runtime_checkable
+class HasTrajectorySampler(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated trajectory sampler."""
+
+    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+        """
+        Return a trajectory sampler that supports this model.
+
+        :return: The trajectory sampler.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class HasReparamSampler(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated reparametrization sampler."""
+
+    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        """
+        raise NotImplementedError
+
+
 class ModelStack(ProbabilisticModel, Generic[T]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
@@ -340,34 +343,6 @@ class ModelStack(ProbabilisticModel, Generic[T]):
             with tf.name_scope(f"{i}"):
                 model.log()
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
-        """
-        Return a reparameterization sampler providing `num_samples` samples across
-        all the models in the model stack. This is currently only implemented for
-        stacks made from models that have a :class:`BatchReparametrizationSampler`
-        as their reparameterization sampler.
-
-        :param num_samples: The desired number of samples.
-        :return: The reparametrization sampler.
-        :raise NotImplementedError: If the models in the stack do not share the
-            same :meth:`reparam_sampler`.
-        """
-
-        samplers = [model.reparam_sampler(num_samples) for model in self._models]
-        unique_sampler_types = set(type(sampler) for sampler in samplers)
-        if len(unique_sampler_types) == 1:
-            # currently assume that all sampler constructors look the same
-            shared_sampler_type = type(samplers[0])
-            return shared_sampler_type(num_samples, self)
-        else:
-            raise NotImplementedError(
-                f"""
-                Reparameterization sampling is only currently supported for model
-                stacks built from models that use the same reparameterization sampler,
-                however, received samplers of types {unique_sampler_types}.
-                """
-            )
-
 
 class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProbabilisticModel):
     r"""
@@ -407,6 +382,36 @@ class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProb
             model.optimize(Dataset(dataset.query_points, obs))
 
 
+class HasReparamSamplerModelStack(ModelStack[HasReparamSampler], HasReparamSampler):
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[HasReparamSampler]:
+        """
+        Return a reparameterization sampler providing `num_samples` samples across
+        all the models in the model stack. This is currently only implemented for
+        stacks made from models that have a :class:`BatchReparametrizationSampler`
+        as their reparameterization sampler.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        :raise NotImplementedError: If the models in the stack do not share the
+            same :meth:`reparam_sampler`.
+        """
+
+        samplers = [model.reparam_sampler(num_samples) for model in self._models]
+        unique_sampler_types = set(type(sampler) for sampler in samplers)
+        if len(unique_sampler_types) == 1:
+            # currently assume that all sampler constructors look the same
+            shared_sampler_type = type(samplers[0])
+            return shared_sampler_type(num_samples, self)
+        else:
+            raise NotImplementedError(
+                f"""
+                Reparameterization sampling is only currently supported for model
+                stacks built from models that use the same reparameterization sampler,
+                however, received samplers of types {unique_sampler_types}.
+                """
+            )
+
+
 class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJoint):
     r"""
     A :class:`PredictJointModelStack` is a wrapper around a number of
@@ -427,6 +432,7 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
 
+# It's useful, though a bit ugly, to define the stack constructors for some model type combinations
 class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel, Protocol):
     """A model that is both trainable and supports predict_joint."""
 
@@ -435,6 +441,24 @@ class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilistic
 
 class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
+):
+    """A stack of models that are both trainable and support predict_joint."""
+
+    pass
+
+
+class TrainableSupportsPredictJointHasReparamSampler(
+    TrainableSupportsPredictJoint, HasReparamSampler, Protocol
+):
+    """A model that is trainable, supports predict_joint and has a reparameterization sampler."""
+
+    pass
+
+
+class TrainablePredictJointReparamModelStack(
+    TrainablePredictJointModelStack,
+    HasReparamSampler,
+    ModelStack[TrainableSupportsPredictJointHasReparamSampler],
 ):
     """A stack of models that are both trainable and support predict_joint."""
 

@@ -37,6 +37,7 @@ from trieste.models.gpflow import (
 )
 from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
 from trieste.models.interfaces import (
+    HasReparamSampler,
     HasTrajectorySampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
@@ -112,7 +113,7 @@ class GaussianProcess(
         return tf.concat(covs, axis=-3)
 
 
-class GaussianProcessWithSamplers(GaussianProcess):
+class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with a reparam sampler"""
 
     def reparam_sampler(
@@ -148,7 +149,9 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     )
 
 
-class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel, HasTrajectorySampler):
+class QuadraticMeanAndRBFKernelWithSamplers(
+    QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
+):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
     a trajectory_sampler and reparam_sampler methods.

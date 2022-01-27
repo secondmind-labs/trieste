@@ -29,6 +29,7 @@ from .. import types
 from ..data import Dataset
 from ..logging import get_step_number, get_tensorboard_writer
 from ..models import ProbabilisticModel
+from ..models.interfaces import HasReparamSampler
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
@@ -403,7 +404,7 @@ class AsynchronousOptimization(
 
     @overload
     def __init__(
-        self: "AsynchronousOptimization[SP_contra, ProbabilisticModel]",
+        self: "AsynchronousOptimization[SP_contra, HasReparamSampler]",
         builder: None = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -442,7 +443,9 @@ class AsynchronousOptimization(
             )
 
         if builder is None:
-            builder = BatchMonteCarloExpectedImprovement(10_000)
+            builder = cast(
+                SingleModelAcquisitionBuilder[M_contra], BatchMonteCarloExpectedImprovement(10_000)
+            )
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
