@@ -14,7 +14,7 @@
 """ This package contains library utilities. """
 from typing import Callable, Mapping, TypeVar
 
-from .misc import DEFAULTS, Err, Ok, Result, T_co, jit, shapes_equal, to_numpy
+from .misc import DEFAULTS, Err, Ok, Result, ResultType, jit, shapes_equal, to_numpy
 
 K = TypeVar("K")
 """ An unbound type variable. """

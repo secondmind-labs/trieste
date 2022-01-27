@@ -34,7 +34,9 @@ from ..multi_objective.pareto import (
 )
 from .function import ExpectedConstrainedImprovement
 
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
+)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -335,7 +337,9 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M_contra]):
+class ExpectedConstrainedHypervolumeImprovement(
+    ExpectedConstrainedImprovement[ProbabilisticModelType]
+):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -351,7 +355,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
         )
 
     def _update_expected_improvement_fn(
-        self, objective_model: M_contra, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.

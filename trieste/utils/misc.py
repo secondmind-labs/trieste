@@ -61,11 +61,11 @@ def to_numpy(t: TensorType) -> np.ndarray:
     return t
 
 
-T_co = TypeVar("T_co", covariant=True)
+ResultType = TypeVar("ResultType", covariant=True)
 """ An unbounded covariant type variable. """
 
 
-class Result(Generic[T_co], ABC):
+class Result(Generic[ResultType], ABC):
     """
     Represents the result of an operation that can fail with an exception. It contains either the
     operation return value (in an :class:`Ok`), or the exception raised (in an :class:`Err`).
@@ -113,7 +113,7 @@ class Result(Generic[T_co], ABC):
         return not self.is_ok
 
     @abstractmethod
-    def unwrap(self) -> T_co:
+    def unwrap(self) -> ResultType:
         """
         :return: The contained value, if it exists.
         :raise Exception: If there is no contained value.
@@ -121,10 +121,10 @@ class Result(Generic[T_co], ABC):
 
 
 @final
-class Ok(Result[T_co]):
+class Ok(Result[ResultType]):
     """Wraps the result of a successful evaluation."""
 
-    def __init__(self, value: T_co):
+    def __init__(self, value: ResultType):
         """
         :param value: The result of a successful evaluation.
         """
@@ -139,7 +139,7 @@ class Ok(Result[T_co]):
         """`True` always."""
         return True
 
-    def unwrap(self) -> T_co:
+    def unwrap(self) -> ResultType:
         """
         :return: The wrapped value.
         """

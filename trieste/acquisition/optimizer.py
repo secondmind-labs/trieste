@@ -31,7 +31,7 @@ from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSp
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
-SP = TypeVar("SP", bound=SearchSpace)
+SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`~trieste.space.SearchSpace`. """
 
 
@@ -63,7 +63,7 @@ class FailedOptimizationError(Exception):
 
 
 AcquisitionOptimizer = Callable[
-    [SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
+    [SearchSpaceType, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
 ]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
@@ -518,9 +518,9 @@ def get_bounds_of_box_relaxation_around_point(
 
 
 def batchify_joint(
-    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
     batch_size: int,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to jointly optimize the batch elements considered
@@ -535,7 +535,8 @@ def batchify_joint(
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(
-        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+        search_space: SearchSpaceType,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
@@ -559,9 +560,9 @@ def batchify_joint(
 
 
 def batchify_vectorize(
-    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
     batch_size: int,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
@@ -579,7 +580,8 @@ def batchify_vectorize(
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(
-        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+        search_space: SearchSpaceType,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         if isinstance(f, tuple):
             raise ValueError(

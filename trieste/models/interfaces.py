@@ -25,7 +25,9 @@ from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
 
-T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
+)
 
 
 @runtime_checkable
@@ -85,7 +87,9 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
+    def reparam_sampler(
+        self: ProbabilisticModelType, num_samples: int
+    ) -> ReparametrizationSampler[ProbabilisticModelType]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
@@ -96,7 +100,9 @@ class ProbabilisticModel(Protocol):
         """
         raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
 
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+    def trajectory_sampler(
+        self: ProbabilisticModelType,
+    ) -> TrajectorySampler[ProbabilisticModelType]:
         """
         Return a trajectory sampler.
 
@@ -264,7 +270,7 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         )
 
 
-class ModelStack(ProbabilisticModel, Generic[T]):
+class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
     :class:`T`. It combines the outputs of each model for predictions and sampling.
@@ -280,8 +286,8 @@ class ModelStack(ProbabilisticModel, Generic[T]):
 
     def __init__(
         self,
-        model_with_event_size: tuple[T, int],
-        *models_with_event_sizes: tuple[T, int],
+        model_with_event_size: tuple[ProbabilisticModelType, int],
+        *models_with_event_sizes: tuple[ProbabilisticModelType, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -438,14 +444,14 @@ class TrainablePredictJointModelStack(
     pass
 
 
-class ReparametrizationSampler(ABC, Generic[T]):
+class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     These samplers employ the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
     points. See :cite:`wilson2018maximizing` for details.
     """
 
-    def __init__(self, sample_size: int, model: T):
+    def __init__(self, sample_size: int, model: ProbabilisticModelType):
         r"""
         Note that our :class:`TrainableModelStack` currently assumes that
         all :class:`ReparametrizationSampler` constructors have **only** these inputs
@@ -509,7 +515,7 @@ class TrajectoryFunctionClass(ABC):
         """Call trajectory function."""
 
 
-class TrajectorySampler(ABC, Generic[T]):
+class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     This class builds functions that approximate a trajectory sampled from an
     underlying :class:`ProbabilisticModel`.
@@ -519,7 +525,7 @@ class TrajectorySampler(ABC, Generic[T]):
     of a particular trajectory function).
     """
 
-    def __init__(self, model: T):
+    def __init__(self, model: ProbabilisticModelType):
         """
         :param model: The model to sample from.
         """
