@@ -53,6 +53,7 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
+    build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
 from trieste.models.keras import (
@@ -241,7 +242,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(70, acquisition_rule, optimize_branin=True, model_type="SVGP")
+    _test_optimizer_finds_minimum(50, acquisition_rule, optimize_branin=True, model_type="SVGP")
 
 
 @random_seed
@@ -366,7 +367,7 @@ def _test_optimizer_finds_minimum(
                 gpflow.utilities.set_trainable(vgp.likelihood, False)
                 return VariationalGaussianProcess(vgp, **model_args)
             elif model_type == "SVGP":
-                Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
+                Z = search_space.sample_sobol(50)  # Initialize diverse inducing locations
                 svgp = gpflow.models.SVGP(
                     kernel,
                     gpflow.likelihoods.Gaussian(variance=1e-5),
