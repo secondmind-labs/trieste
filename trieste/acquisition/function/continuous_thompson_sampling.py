@@ -21,7 +21,6 @@ from typing import Optional
 import tensorflow as tf
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
@@ -45,7 +44,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> TrajectoryFunction:
@@ -85,7 +84,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
     def update_acquisition_function(
         self,
         function: TrajectoryFunction,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
