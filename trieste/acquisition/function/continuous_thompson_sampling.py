@@ -22,12 +22,12 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import TrajectoryFunction
+from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
 
-class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
     r"""
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder
@@ -55,17 +55,14 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         :param pending_points: The points already in the current batch (not used).
         :return: A trajectory sampled from the model.
         """
-
-        try:
-            self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_trajectory(negate=True)
-        except (NotImplementedError):
+        if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
-                """
-            Thompson sampling from trajectory only supports models with a
-            trajectory_sampler method.
-            """
+                f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
+                f"method; received {model.__repr__()}"
             )
+
+        self._trajectory_sampler = model.trajectory_sampler()
+        function = self._trajectory_sampler.get_trajectory(negate=True)
 
         return function
 

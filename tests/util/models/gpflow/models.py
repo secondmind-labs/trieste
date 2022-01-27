@@ -36,7 +36,11 @@ from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
-from trieste.models.interfaces import SupportsGetKernel, SupportsGetObservationNoise
+from trieste.models.interfaces import (
+    HasTrajectorySampler,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+)
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
@@ -144,7 +148,7 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     )
 
 
-class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel):
+class QuadraticMeanAndRBFKernelWithSamplers(QuadraticMeanAndRBFKernel, HasTrajectorySampler):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
     a trajectory_sampler and reparam_sampler methods.

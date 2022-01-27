@@ -96,21 +96,24 @@ class ProbabilisticModel(Protocol):
         """
         raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
 
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
-        """
-        Return a trajectory sampler.
-
-        Note that this is not supported by all models.
-
-        :return: The trajectory sampler.
-        """
-        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
-
     def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
         """
         pass
+
+
+@runtime_checkable
+class HasTrajectorySampler(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated trajectory sampler."""
+
+    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+        """
+        Return a trajectory sampler that supports this model.
+
+        :return: The trajectory sampler.
+        """
+        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
 
 
 @runtime_checkable
