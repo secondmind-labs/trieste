@@ -242,7 +242,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(50, acquisition_rule, optimize_branin=True, model_type="SVGP")
+    _test_optimizer_finds_minimum(90, acquisition_rule, optimize_branin=True, model_type="SVGP")
 
 
 @random_seed
