@@ -53,7 +53,6 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
-    build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
 from trieste.models.keras import (
@@ -260,7 +259,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         5,
         acquisition_rule,
         model_type="SVGP",
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))}
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
     )
 
 
