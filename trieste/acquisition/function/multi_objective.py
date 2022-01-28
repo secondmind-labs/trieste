@@ -24,6 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
+from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
@@ -203,7 +204,7 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[ProbabilisticModel]
+    SingleModelAcquisitionBuilder[HasReparamSampler]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
@@ -237,7 +238,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -256,21 +257,18 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
-        try:
-            sampler = model.reparam_sampler(self._sample_size)
-        except (NotImplementedError):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                """
-                The batch Monte-Carlo expected hyper-volume improvment acquisition function
-                only supports models that implement a reparam_sampler method.
-                """
+                f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
+                f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )
 
+        sampler = model.reparam_sampler(self._sample_size)
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler[ProbabilisticModel],
+    sampler: ReparametrizationSampler[HasReparamSampler],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
