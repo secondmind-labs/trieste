@@ -87,25 +87,14 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model and pass it to the `GaussianProcessRegression` wrapper.
+# We'll model the objective and constraint data with their own Gaussian process regression model, as implemented in GPflow. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-import gpflow
-
-from trieste.models.gpflow.models import GaussianProcessRegression
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 
 
 def create_bo_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
-    kernel = gpflow.kernels.Matern52(
-        variance=variance, lengthscales=lengthscale
-    )
-    jitter = gpflow.kernels.White(1e-12)
-    gpr = gpflow.models.GPR(
-        data.astuple(), kernel + jitter, noise_variance=1e-5
-    )
-    gpflow.set_trainable(gpr.likelihood, False)
+    gpr = build_gpr(data, search_space, likelihood_variance=1e-7)
     return GaussianProcessRegression(gpr)
 
 

@@ -17,13 +17,14 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Callable, Optional, Sequence, cast
+from typing import Callable, Optional, TypeVar, Sequence, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
+from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
 from ..interface import (
@@ -38,6 +39,8 @@ from ..multi_objective.pareto import (
     prepare_default_non_dominated_partition_bounds,
 )
 from .function import ExpectedConstrainedImprovement
+
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -62,9 +65,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
             used by default to set a reference point according to the datasets.
         """
         if callable(reference_point_spec):
-            self._ref_point_spec: tf.Tensor | Callable[
-                ..., TensorType
-            ] = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
@@ -244,7 +245,7 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[ProbabilisticModel]
+    SingleModelAcquisitionBuilder[HasReparamSampler]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
@@ -283,9 +284,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         self._sample_size = sample_size
         self._jitter = jitter
         if callable(reference_point_spec):
-            self._ref_point_spec: tf.Tensor | Callable[
-                ..., TensorType
-            ] = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
@@ -307,7 +306,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -332,21 +331,18 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
             self._ref_point, screened_front
         )
 
-        try:
-            sampler = model.reparam_sampler(self._sample_size)
-        except (NotImplementedError):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                """
-                The batch Monte-Carlo expected hyper-volume improvment acquisition function
-                only supports models that implement a reparam_sampler method.
-                """
+                f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
+                f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )
 
+        sampler = model.reparam_sampler(self._sample_size)
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler,
+    sampler: ReparametrizationSampler[HasReparamSampler],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -411,7 +407,7 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
+class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M_contra]):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -426,7 +422,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         reference_point_spec: Sequence[float]
         | TensorType
         | Callable[..., TensorType] = get_reference_point,
-        conservative_ref_point_spec: bool = False
+        conservative_ref_point_spec: bool = False,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -447,9 +443,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         if callable(reference_point_spec):
-            self._ref_point_spec: tf.Tensor | Callable[
-                ..., TensorType
-            ] = reference_point_spec
+            self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
@@ -472,7 +466,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             )
 
     def _update_expected_improvement_fn(
-        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+        self, objective_model: M_contra, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.
@@ -499,6 +493,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             screened_front,
         )
 
+        self._expected_improvement_fn: Optional[AcquisitionFunction]
         if self._expected_improvement_fn is None:
             self._expected_improvement_fn = expected_hv_improvement(
                 objective_model, _partition_bounds

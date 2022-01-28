@@ -230,11 +230,16 @@ class ModelConfig:
 ModelDictConfig = Dict[str, Any]
 """ Type alias for a config type specification of a model. """
 
-ModelSpec = Union[ModelDictConfig, ModelConfig, TrainableProbabilisticModel]
+ModelConfigType = Union[ModelDictConfig, ModelConfig]
+""" Type alias for any config type that can be used to fully specify a model. """
+
+ModelSpec = Union[ModelConfigType, TrainableProbabilisticModel]
 """ Type alias for any type that can be used to fully specify a model. """
 
 
-def create_model(config: ModelSpec) -> TrainableProbabilisticModel:
+def create_model(
+    config: ModelSpec,
+) -> TrainableProbabilisticModel:
     """
     Build a model in a flexible way by providing a dictionary of model and optimizer arguments, a
     :class:`ModelConfig`, or a :class:`~trieste.models.TrainableProbabilisticModel`. This function

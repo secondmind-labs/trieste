@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
-
 import tensorflow as tf
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
@@ -23,12 +21,9 @@ from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
 
-M = TypeVar("M", bound=tf.Module)
-""" A type variable bound to :class:`tf.Module`. """
-
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
-    class SampleLV(Sample):
+    class SampleLV(Sample):  # type: ignore[misc]
         def __call__(self, X: TensorType) -> tf.Tensor:
             sample = layer.prior.sample()
             batch_shape = tf.shape(X)[:-1]
@@ -53,7 +48,7 @@ def sample_dgp(model: DeepGP) -> Sample:
         else:
             raise NotImplementedError(f"Sampling not implemented for {type(layer)}")
 
-    class ChainedSample(Sample):
+    class ChainedSample(Sample):  # type: ignore[misc]
         def __call__(self, X: TensorType) -> tf.Tensor:
             for f in function_draws:
                 X = f(X)

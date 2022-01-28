@@ -16,13 +16,16 @@ This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Optional, TypeVar, cast, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
+from ...models.interfaces import HasTrajectorySampler, SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -38,7 +41,10 @@ from ..sampler import ExactThompsonSampler, ThompsonSampler
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
+
+
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -51,12 +57,32 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     exact Thompson sampler.
     """
 
+    @overload
+    def __init__(
+        self: "MinValueEntropySearch[ProbabilisticModel]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "MinValueEntropySearch[T]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[T]] = None,
+    ):
+        ...
+
     def __init__(
         self,
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler] = None,
+        min_value_sampler: Optional[ThompsonSampler[T]] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -90,7 +116,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -115,7 +141,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: T,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -186,7 +212,26 @@ class min_value_entropy_search(AcquisitionFunctionClass):
         return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+@runtime_checkable
+class SupportsCovarianceObservationNoise(
+    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, Protocol
+):
+    """A model that supports both covariance_between_points and get_observation_noise."""
+
+    pass
+
+
+class SupportsCovarianceObservationNoiseTrajectory(
+    HasTrajectorySampler, SupportsCovarianceObservationNoise, Protocol
+):
+    """A model that supports covariance_between_points and get_observation_noise, and also
+    has an associated trajectory sampler."""
+
+
+GIBBONT = TypeVar("GIBBONT", bound=SupportsCovarianceObservationNoise, contravariant=True)
+
+
+class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -201,12 +246,34 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     exact Thompson sampler.
     """
 
+    @overload
+    def __init__(
+        self: "GIBBON[SupportsCovarianceObservationNoise]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: None = None,
+        rescaled_repulsion: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "GIBBON[GIBBONT]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[GIBBONT]] = None,
+        rescaled_repulsion: bool = True,
+    ):
+        ...
+
     def __init__(
         self,
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler] = None,
+        min_value_sampler: Optional[ThompsonSampler[GIBBONT]] = None,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -250,7 +317,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: GIBBONT,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -261,6 +328,12 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
         :return: The GIBBON acquisition function modified for objective minimisation.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
+        if not isinstance(model, SupportsCovarianceObservationNoise):
+            raise NotImplementedError(
+                f"GIBBON only works with models that support "
+                f"covariance_between_points and get_observation_noise; received {model.__repr__()}"
+            )
+
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -274,7 +347,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: GIBBONT,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -308,7 +381,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
         self,
         function: Optional[AcquisitionFunction],
         dataset: Dataset,
-        model: ProbabilisticModel,
+        model: GIBBONT,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
@@ -334,9 +407,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
             self._gibbon_acquisition = gibbon_acquisition
             return gibbon_acquisition
 
-    def _update_quality_term(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
+    def _update_quality_term(self, dataset: Dataset, model: GIBBONT) -> AcquisitionFunction:
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
@@ -354,7 +425,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
 
 
 class gibbon_quality_term(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, samples: TensorType):
+    def __init__(self, model: SupportsCovarianceObservationNoise, samples: TensorType):
         """
         GIBBON's quality term measures the amount of information that each individual
         batch element provides about the objective function's minimal value :math:`y^*` (ensuring
@@ -380,13 +451,6 @@ class gibbon_quality_term(AcquisitionFunctionClass):
                 """
                 GIBBON only currently supports homoscedastic gpflow models
                 with a likelihood.variance attribute.
-                """
-            )
-
-        if not hasattr(model, "covariance_between_points"):
-            raise AttributeError(
-                """
-                GIBBON only supports models with a covariance_between_points method.
                 """
             )
 
@@ -427,7 +491,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
 class gibbon_repulsion_term(UpdatablePenalizationFunction):
     def __init__(
         self,
-        model: ProbabilisticModel,
+        model: SupportsCovarianceObservationNoise,
         pending_points: TensorType,
         rescaled_repulsion: bool = True,
     ):
@@ -522,9 +586,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
         A = tf.squeeze(
             tf.expand_dims(
-                self._model.covariance_between_points(  # type: ignore
-                    tf.squeeze(x, -2), self._pending_points
-                ),
+                self._model.covariance_between_points(tf.squeeze(x, -2), self._pending_points),
                 axis=-1,
             ),
             axis=0,

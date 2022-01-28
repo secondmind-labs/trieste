@@ -15,8 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Callable, Mapping, Optional, Sequence
-
+from typing import Callable, Mapping, Optional, Sequence, cast
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -56,7 +55,7 @@ from trieste.acquisition.multi_objective.partition import (
     prepare_default_non_dominated_partition_bounds,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel
+from trieste.models import ProbabilisticModel, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -330,7 +329,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
 def test_qehvi_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = empty_dataset([2], [num_obj])
-    model = QuadraticMeanAndRBFKernel()
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(2, *[1.0] * 2))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
@@ -346,7 +345,7 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
 def test_batch_monte_carlo_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = empty_dataset([2], [num_obj])
-    model = QuadraticMeanAndRBFKernel()
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(2, *[1.0] * 2))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
@@ -451,7 +450,9 @@ def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> No
     qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=10)
 
     with pytest.raises(ValueError):
-        qehvi_builder.prepare_acquisition_function(model, dataset=_model_based_tr_dataset)
+        qehvi_builder.prepare_acquisition_function(
+            model, dataset=_model_based_tr_dataset  # type: ignore
+        )
 
 
 @random_seed
@@ -501,7 +502,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
 ) -> None:
     data_num_seg_per_dim = 10  # test data number per input dim
 
-    model = _mo_test_model(obj_num, *[variance_scale] * obj_num)
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(obj_num, *[variance_scale] * obj_num))
 
     mean, _ = model.predict(training_input)  # gen prepare Pareto
     _model_based_tr_dataset = Dataset(training_input, mean)
@@ -630,7 +631,10 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
 ) -> None:
     npt.assert_allclose(
         batch_ehvi(
-            PseudoBatchReparametrizationSampler(obj_samples),
+            cast(
+                ReparametrizationSampler[ProbabilisticModel],
+                PseudoBatchReparametrizationSampler(obj_samples),
+            ),
             sampler_jitter=DEFAULTS.JITTER,
             partition_bounds=prepare_default_non_dominated_partition_bounds(
                 reference_point, Pareto(pareto_front_obs).front
@@ -724,7 +728,8 @@ def custom_get_ref_point_echvi(
     ],
 )
 def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_points(
-        specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]) -> None:
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
+) -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
 
