@@ -30,6 +30,7 @@ from trieste.acquisition import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
+    GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
@@ -80,6 +81,7 @@ from trieste.types import State, TensorType
 # Optimizer parameters for testing against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
+# The various   # type: ignore[arg-type]  are for rules that are only supported by GPR models.
 def OPTIMIZER_PARAMS() -> Tuple[
     str,
     List[
@@ -107,7 +109,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(
+                    MinValueEntropySearch(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
@@ -142,7 +144,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(  # type: ignore[arg-type]  # (only supported by GPR models)
+                    GIBBON(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
@@ -171,13 +173,24 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (10, DiscreteThompsonSampling(500, 3)),
             (
                 15,
-                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+                DiscreteThompsonSampling(
+                    500,
+                    3,
+                    thompson_sampler=ThompsonSamplerFromTrajectory(),  # type: ignore[arg-type]
+                ),
             ),
             (
                 15,
                 EfficientGlobalOptimization(
-                    Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
+                    Fantasizer(),  # type: ignore[arg-type]
                     num_query_points=3,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    GreedyContinuousThompsonSampling(),  # type: ignore[arg-type]
+                    num_query_points=5,
                 ),
             ),
         ],

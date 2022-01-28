@@ -23,7 +23,12 @@ from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import ReparametrizationSampler, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    HasReparamSampler,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import BatchOptimizer
 from .interface import GPfluxPredictor
 from .sampler import (

@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (
+    GaussianProcess,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
 )
@@ -129,7 +130,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
     ],
 )
 def test_discrete_thompson_sampling_raises_if_passed_sampler_with_sample_min_value_True(
-    sampler: ThompsonSampler,
+    sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     with pytest.raises(ValueError):
         DiscreteThompsonSampling(100, 10, thompson_sampler=sampler)
@@ -143,7 +144,7 @@ def test_discrete_thompson_sampling_raises_if_passed_sampler_with_sample_min_val
     ],
 )
 def test_discrete_thompson_sampling_initialized_with_correct_sampler(
-    thompson_sampler: ThompsonSampler,
+    thompson_sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     ts = DiscreteThompsonSampling(100, 10, thompson_sampler=thompson_sampler)
     assert ts._thompson_sampler == thompson_sampler
@@ -157,7 +158,7 @@ def test_discrete_thompson_sampling_raises_if_use_fourier_features_with_incorrec
     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1.0, dtype=tf.float64))
     with pytest.raises(ValueError):
-        ts.acquire_single(search_space, model, dataset=dataset)
+        ts.acquire_single(search_space, model, dataset=dataset)  # type: ignore
 
 
 def test_discrete_thompson_sampling_raises_for_gumbel_sampler() -> None:
@@ -174,7 +175,7 @@ def test_discrete_thompson_sampling_raises_for_gumbel_sampler() -> None:
 )
 @pytest.mark.parametrize("num_query_points", [1, 10])
 def test_discrete_thompson_sampling_acquire_returns_correct_shape(
-    thompson_sampler: ThompsonSampler, num_query_points: int
+    thompson_sampler: ThompsonSampler[GaussianProcess], num_query_points: int
 ) -> None:
     search_space = Box([-2.2, -1.0], [1.3, 3.3])
     ts = DiscreteThompsonSampling(100, num_query_points, thompson_sampler=thompson_sampler)
