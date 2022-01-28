@@ -769,9 +769,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
-        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
-            model, dataset=data  # type: ignore
-        )
+        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(model, dataset=data)
 
 
 @random_seed
