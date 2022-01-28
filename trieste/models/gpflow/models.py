@@ -39,6 +39,7 @@ from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import (
     FastUpdateModel,
+    HasTrajectorySampler,
     SupportsInternalData,
     TrainableProbabilisticModel,
     TrajectorySampler,
@@ -60,6 +61,7 @@ class GaussianProcessRegression(
     FastUpdateModel,
     SupportsCovarianceBetweenPoints,
     SupportsInternalData,
+    HasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`

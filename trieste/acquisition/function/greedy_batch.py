@@ -78,7 +78,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             Union[PenalizationFunction, UpdatablePenalizationFunction],
         ] = None,
         base_acquisition_function_builder: ExpectedImprovement
-        | MinValueEntropySearch
+        | MinValueEntropySearch[ProbabilisticModel]
         | None = None,
     ):
         """
