@@ -24,7 +24,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import SupportsGetObservationNoise
+from ...models.interfaces import HasReparamSampler, SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -39,6 +39,7 @@ from ..interface import (
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
 )
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -586,7 +587,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
@@ -618,7 +619,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -644,7 +645,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -663,7 +664,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 
 
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
+    def __init__(self, sample_size: int, model: HasReparamSampler, eta: TensorType, jitter: float):
         """
         :param sample_size: The number of Monte-Carlo samples.
         :param model: The model of the objective function.
@@ -677,15 +678,13 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         """
         self._sample_size = sample_size
 
-        try:
-            sampler = model.reparam_sampler(self._sample_size)
-        except (NotImplementedError):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                """
-                The batch Monte-Carlo expected improvement acquisition function
-                only supports models that implement a reparam_sampler method.
-                """
+                f"The batch Monte-Carlo expected improvement acquisition function only supports "
+                f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )
+
+        sampler = model.reparam_sampler(self._sample_size)
 
         self._sampler = sampler
         self._eta = tf.Variable(eta)

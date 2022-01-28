@@ -46,7 +46,7 @@ SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 TrainableProbabilisticModelType = TypeVar(
     "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
 )
-""" Type variable bound to :class:`TrainableProbabilisticModel`. """
+""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
 class AskTellOptimizer(Generic[SearchSpaceType]):

@@ -52,6 +52,7 @@ class AcquisitionFunctionClass(ABC):
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
 )
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):

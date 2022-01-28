@@ -43,6 +43,7 @@ from trieste.acquisition.function.greedy_batch import (
     soft_local_penalizer,
 )
 from trieste.data import Dataset
+from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -88,7 +89,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
     ],
 )
 def test_locally_penalized_acquisitions_match_base_acquisition(
-    base_builder: ExpectedImprovement | MinValueEntropySearch,
+    base_builder: ExpectedImprovement | MinValueEntropySearch[ProbabilisticModel],
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -119,7 +120,7 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalizer: Callable[..., Union[PenalizationFunction, UpdatablePenalizationFunction]],
-    base_builder: ExpectedImprovement | MinValueEntropySearch,
+    base_builder: ExpectedImprovement | MinValueEntropySearch[ProbabilisticModel],
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
