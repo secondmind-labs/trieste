@@ -16,6 +16,7 @@ from __future__ import annotations
 import itertools
 import math
 from typing import Callable, Mapping, Optional, Sequence, cast
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf

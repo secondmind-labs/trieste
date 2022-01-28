@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Callable, Optional, TypeVar, Sequence, cast
+from typing import Callable, Optional, Sequence, TypeVar, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
