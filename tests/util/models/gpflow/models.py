@@ -158,9 +158,6 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
-        return GaussianProcessSampler(num_samples, self)
-
 
 class GaussianProcessSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""A :class:`trieste.models.interfaces.ReparametrizationSampler` for a
@@ -210,7 +207,9 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, 100)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[HasReparamSampler]:
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
