@@ -210,9 +210,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, 100)
 
-    def reparam_sampler(
-        self, num_samples: int
-    ) -> ReparametrizationSampler[ProbabilisticModel]:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[HasReparamSampler]:
         return BatchReparametrizationSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
