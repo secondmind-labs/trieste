@@ -55,16 +55,15 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         """"""
         return f"{self.__class__.__name__}({self._model!r}"
 
-    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by randomly choosing a network from
         the ensemble and using its predicted means as a trajectory.
 
-        :param negate: Return the negative of the trajectory.
         :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
-        return ensemble_trajectory(self._model, negate)
+        return ensemble_trajectory(self._model)
 
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -85,18 +84,11 @@ class ensemble_trajectory(TrajectoryFunctionClass):
     the ensemble and using its predicted means as a trajectory.
     """
 
-    def __init__(self, model: EnsembleModel, negate: bool = False):
+    def __init__(self, model: EnsembleModel):
         """
         :param model: The model of the objective function.
-        :param negate: Return the negative of the trajectory.
         """
         self._model = model
-
-        if negate:
-            self._multiplier = -1.0
-        else:
-            self._multiplier = 1.0
-
         self._network_index = tf.Variable(self._model.sample_index(1)[0])
 
     @tf.function
@@ -107,7 +99,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             message="This trajectory only supports batch sizes of one.",
         )
         x = tf.squeeze(x, -2)  # [N, D]
-        return self._multiplier * self._model.predict_ensemble(x)[0][self._network_index]
+        return self._model.predict_ensemble(x)[0][self._network_index]
 
     def resample(self) -> None:
         """

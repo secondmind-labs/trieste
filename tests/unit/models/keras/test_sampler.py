@@ -75,25 +75,6 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() ->
 
 
 @random_seed
-@pytest.mark.parametrize("negate", [True, False])
-def test_ensemble_trajectory_sampler_can_return_negative_trajectory(negate: bool) -> None:
-    example_data = empty_dataset([1], [1])
-    test_data = tf.linspace([-100.0], [-10.0], 100)
-    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
-
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
-
-    sampler = EnsembleTrajectorySampler(model)
-    trajectory = sampler.get_trajectory(negate=negate)
-    trajectory_evals = trajectory(test_data)
-
-    if negate:
-        npt.assert_array_less(trajectory_evals, 0.0)
-    else:
-        npt.assert_array_less(0.0, trajectory_evals)
-
-
-@random_seed
 def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retracing() -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
