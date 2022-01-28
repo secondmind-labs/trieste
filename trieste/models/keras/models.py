@@ -21,7 +21,12 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import EnsembleModel, HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    EnsembleModel,
+    HasTrajectorySampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble
 from .interface import KerasPredictor
