@@ -296,6 +296,7 @@ class EnsembleModel(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
 
+@runtime_checkable
 class HasTrajectorySampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated trajectory sampler."""
 
