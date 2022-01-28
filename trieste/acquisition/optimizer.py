@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import greenlet as gr
 import numpy as np
@@ -27,13 +27,9 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
 from .interface import AcquisitionFunction
-
-SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
-""" Type variable bound to :class:`~trieste.space.SearchSpace`. """
-
 
 NUM_SAMPLES_MIN: int = 5000
 """

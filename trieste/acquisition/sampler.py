@@ -19,20 +19,15 @@ acquisition functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
 
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasTrajectorySampler
+from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
 from ..types import TensorType
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):

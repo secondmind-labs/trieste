@@ -32,6 +32,7 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionClass,
     PenalizationFunction,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
@@ -39,12 +40,6 @@ from ..interface import (
 from ..sampler import ExactThompsonSampler, ThompsonSampler
 
 CLAMP_LB = 1e-8
-
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType]):

@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Optional, TypeVar, cast
+from typing import Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -27,18 +27,18 @@ from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
+from ..interface import (
+    AcquisitionFunction,
+    AcquisitionFunctionClass,
+    ProbabilisticModelType,
+    SingleModelAcquisitionBuilder,
+)
 from ..multi_objective.pareto import (
     Pareto,
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
 from .function import ExpectedConstrainedImprovement
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):

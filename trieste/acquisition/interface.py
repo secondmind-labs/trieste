@@ -18,10 +18,10 @@ the utility of evaluating sets of candidate points.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Mapping, Optional, TypeVar
+from typing import Callable, Generic, Mapping, Optional
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models.interfaces import ProbabilisticModelType
 from ..types import TensorType
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
@@ -47,12 +47,6 @@ class AcquisitionFunctionClass(ABC):
     @abstractmethod
     def __call__(self, x: TensorType) -> TensorType:
         """Call acquisition function."""
-
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):

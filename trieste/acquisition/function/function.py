@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, TypeVar, cast
+from typing import Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,14 +32,10 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):

@@ -28,6 +28,7 @@ from ..utils import DEFAULTS
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
 )
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 @runtime_checkable

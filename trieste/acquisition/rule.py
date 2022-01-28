@@ -29,7 +29,7 @@ from .. import types
 from ..data import Dataset
 from ..logging import get_step_number, get_tensorboard_writer
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler
+from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
@@ -56,11 +56,6 @@ ResultType = TypeVar("ResultType", covariant=True)
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
-
-ProbabilisticModelType = TypeVar(
-    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
-)
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
 
 
 class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticModelType]):
