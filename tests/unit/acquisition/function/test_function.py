@@ -771,9 +771,9 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam
     with pytest.raises(ValueError):
         (
             BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
-                model, dataset=data
+                model, dataset=data  # type: ignore
             )
-        )  # type: ignore
+        )
 
 
 @random_seed
