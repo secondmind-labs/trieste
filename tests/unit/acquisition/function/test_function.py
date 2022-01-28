@@ -768,8 +768,12 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam
     known_query_points = tf.random.uniform([5, 2], dtype=tf.float64)
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernel()
-    with pytest.raises(TypeError):
-        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(model, dataset=data)
+    with pytest.raises(ValueError):
+        (
+            BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
+                model, dataset=data
+            )
+        )  # type: ignore
 
 
 @random_seed
