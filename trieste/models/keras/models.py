@@ -21,7 +21,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import EnsembleModel, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import EnsembleModel, HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble
 from .interface import KerasPredictor
@@ -29,7 +29,9 @@ from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
 
 
-class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel, EnsembleModel):
+class DeepEnsemble(
+    KerasPredictor, TrainableProbabilisticModel, EnsembleModel, HasTrajectorySampler
+):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
     Keras.
