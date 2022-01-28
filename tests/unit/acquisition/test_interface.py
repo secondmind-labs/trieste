@@ -131,6 +131,7 @@ def test_single_model_acquisition_function_builder_reprs(
         == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
     )
     assert (
-        repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
-        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+        repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0,
+                                                       conservative_ref_point_spec=False))
+        == f"ExpectedConstrainedHypervolumeImprovement('TAG', {function_repr} using tag 'TAG', 0.0, False)"
     )

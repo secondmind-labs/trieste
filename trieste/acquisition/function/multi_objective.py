@@ -93,7 +93,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
 
         _pf = Pareto(mean)
         if callable(self._ref_point_spec):
-            self._ref_point = tf.cast(self._ref_point_spec(_pf.front, self), dtype=mean.dtype)
+            self._ref_point = tf.cast(self._ref_point_spec(_pf.front), dtype=mean.dtype)
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
@@ -322,7 +322,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
         _pf = Pareto(mean)
         if callable(self._ref_point_spec):
-            self._ref_point = tf.cast(self._ref_point_spec(_pf.front, self), dtype=mean.dtype)
+            self._ref_point = tf.cast(self._ref_point_spec(_pf.front), dtype=mean.dtype)
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
@@ -426,6 +426,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         reference_point_spec: Sequence[float]
         | TensorType
         | Callable[..., TensorType] = get_reference_point,
+        conservative_ref_point_spec: bool = False
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -438,6 +439,11 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             If the feasible Pareto front location is known, this arg can be used to specify a fixed
             reference point in each bo iteration. A dynamic reference point updating strategy is
             used by default to set a reference point according to the datasets.
+        :param conservative_ref_point_spec: this boolean parameter is used to specify whether the
+            feasible Pareto front or all the Pareto front should the reference point be extracted
+            on, if setting to True, the reference point will be extracted from all Pareto front
+            ignoring constraints, which help enlarge explorability of the method in case the
+            constraint is very strong and hard to satisfy
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         if callable(reference_point_spec):
@@ -447,6 +453,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
+        self._conservative_ref_point_spec = conservative_ref_point_spec
 
     def __repr__(self) -> str:
         """"""
@@ -454,13 +461,14 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             return (
                 f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r},"
                 f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                + f" {self._ref_point_spec.__name__})"
+                f" {self._ref_point_spec.__name__}, {self._conservative_ref_point_spec})"
             )
         else:
             return (
                 f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
                 f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                f" ref_point_specification={repr(self._ref_point_spec)!r})"
+                f" ref_point_specification={repr(self._ref_point_spec)!r}, "
+                f"{self._conservative_ref_point_spec})"
             )
 
     def _update_expected_improvement_fn(
@@ -472,10 +480,13 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         :param objective_model: The objective model.
         :param feasible_mean: The mean of the feasible query points.
         """
-        _pf = Pareto(self._objective_dataset.observations)
+        if self._conservative_ref_point_spec is True:
+            _pf = Pareto(self._objective_dataset.observations)
+        else:
+            _pf = Pareto(feasible_mean)
         if callable(self._ref_point_spec):
             self._ref_point = tf.cast(
-                self._ref_point_spec(feasible_mean, self, self._constraint_builder),
+                self._ref_point_spec(_pf.front),
                 dtype=feasible_mean.dtype,
             )
         else:

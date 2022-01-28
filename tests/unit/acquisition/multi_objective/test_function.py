@@ -153,16 +153,12 @@ class CustomGetReferencePoint:
     def __call__(
         self,
         observations: TensorType,
-        objective_builder: Optional[AcquisitionFunctionBuilder] = None,
-        constraint_builder: Optional[AcquisitionFunctionBuilder] = None,
     ) -> TensorType:
         return tf.reduce_max(observations, -2)
 
 
 def custom_get_ref_point(
     observations: TensorType,
-    objective_builder: Optional[AcquisitionFunctionBuilder] = None,
-    constraint_builder: Optional[AcquisitionFunctionBuilder] = None,
 ) -> TensorType:
     return tf.reduce_min(observations, -2)
 
