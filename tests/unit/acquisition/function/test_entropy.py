@@ -31,6 +31,7 @@ from tests.util.models.gpflow.models import (
 from trieste.acquisition.function.entropy import (
     GIBBON,
     MinValueEntropySearch,
+    SupportsCovarianceObservationNoiseTrajectory,
     gibbon_quality_term,
     gibbon_repulsion_term,
     min_value_entropy_search,
@@ -79,7 +80,9 @@ def test_min_value_entropy_search_builder_raises_for_invalid_init_params(param: 
         ThompsonSamplerFromTrajectory(sample_min_value=False),
     ],
 )
-def test_mes_raises_if_passed_sampler_with_sample_min_value_False(sampler: ThompsonSampler) -> None:
+def test_mes_raises_if_passed_sampler_with_sample_min_value_False(
+    sampler: ThompsonSampler[GaussianProcess],
+) -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
         MinValueEntropySearch(search_space, min_value_sampler=sampler)
@@ -100,7 +103,7 @@ def test_mes_default_sampler_is_exact_thompson() -> None:
         ThompsonSamplerFromTrajectory(sample_min_value=True),
     ],
 )
-def test_mes_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
+def test_mes_initialized_with_passed_sampler(sampler: ThompsonSampler[GaussianProcess]) -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space, min_value_sampler=sampler)
     assert builder._min_value_sampler == sampler
@@ -114,7 +117,7 @@ def test_mes_raises_when_use_trajectory_sampler_and_model_without_trajectories()
     )
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
-        builder.prepare_acquisition_function(model, dataset=dataset)
+        builder.prepare_acquisition_function(model, dataset=dataset)  # type: ignore
 
 
 @unittest.mock.patch("trieste.acquisition.function.entropy.min_value_entropy_search")
@@ -123,7 +126,7 @@ def test_mes_raises_when_use_trajectory_sampler_and_model_without_trajectories()
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
 )
 def test_min_value_entropy_search_builder_builds_min_value_samples(
-    mocked_mves: MagicMock, min_value_sampler: ThompsonSampler
+    mocked_mves: MagicMock, min_value_sampler: ThompsonSampler[GaussianProcess]
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -148,7 +151,7 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
 )
 def test_min_value_entropy_search_builder_updates_acquisition_function(
-    min_value_sampler: ThompsonSampler,
+    min_value_sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
@@ -292,7 +295,7 @@ def test_gibbon_builder_raises_for_invalid_init_params(param: int) -> None:
     ],
 )
 def test_gibbon_raises_if_passed_sampler_with_sample_min_value_False(
-    sampler: ThompsonSampler,
+    sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
@@ -314,7 +317,7 @@ def test_gibbon_default_sampler_is_exact_thompson() -> None:
         ThompsonSamplerFromTrajectory(sample_min_value=True),
     ],
 )
-def test_gibbon_initialized_with_passed_sampler(sampler: ThompsonSampler) -> None:
+def test_gibbon_initialized_with_passed_sampler(sampler: ThompsonSampler[GaussianProcess]) -> None:
     search_space = Box([0, 0], [1, 1])
     builder = GIBBON(search_space, min_value_sampler=sampler)
     assert builder._min_value_sampler == sampler
@@ -323,12 +326,12 @@ def test_gibbon_initialized_with_passed_sampler(sampler: ThompsonSampler) -> Non
 def test_gibbon_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = GIBBON(
+    builder = GIBBON[SupportsCovarianceObservationNoiseTrajectory](
         search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
     )
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
-        builder.prepare_acquisition_function(model, dataset=dataset)
+        builder.prepare_acquisition_function(model, dataset=dataset)  # type: ignore
 
 
 @pytest.mark.parametrize("samples", [tf.constant([]), tf.constant([[[]]])])
@@ -364,7 +367,7 @@ def test_gibbon_quality_term_returns_correct_shape() -> None:
 )
 def test_gibbon_builder_builds_min_value_samples(
     mocked_mves: MagicMock,
-    min_value_sampler: ThompsonSampler,
+    min_value_sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -385,7 +388,9 @@ def test_gibbon_builder_builds_min_value_samples(
     "min_value_sampler",
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
 )
-def test_gibbon_builder_updates_acquisition_function(min_value_sampler: ThompsonSampler) -> None:
+def test_gibbon_builder_updates_acquisition_function(
+    min_value_sampler: ThompsonSampler[GaussianProcess],
+) -> None:
 
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     x_range = tf.cast(tf.linspace(0.0, 1.0, 5), dtype=tf.float64)
@@ -439,7 +444,7 @@ def test_gibbon_builder_builds_min_value_samples_using_trajectories(mocked_mves:
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    builder = GIBBON(
+    builder = GIBBON[SupportsCovarianceObservationNoiseTrajectory](
         search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
     )
     builder.prepare_acquisition_function(model, dataset=dataset)

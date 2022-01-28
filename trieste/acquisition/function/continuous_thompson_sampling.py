@@ -21,13 +21,12 @@ from typing import Optional
 import tensorflow as tf
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
-from ...models.interfaces import TrajectoryFunction, TrajectoryFunctionClass
+from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
 
-class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
     r"""
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder
@@ -45,7 +44,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> TrajectoryFunction:
@@ -55,18 +54,14 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         :param pending_points: The points already in the current batch (not used).
         :return: A negated trajectory sampled from the model.
         """
-
-        try:
-            self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_trajectory()
-
-        except (NotImplementedError):
+        if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
-                """
-            Thompson sampling from trajectory only supports models with a
-            trajectory_sampler method.
-            """
+                f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
+                f"method; received {model.__repr__()}"
             )
+
+        self._trajectory_sampler = model.trajectory_sampler()
+        function = self._trajectory_sampler.get_trajectory()
 
         if isinstance(function, TrajectoryFunctionClass):
             # we want to negate the trajectory function but otherwise leave it alone,
@@ -89,7 +84,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
     def update_acquisition_function(
         self,
         function: TrajectoryFunction,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,

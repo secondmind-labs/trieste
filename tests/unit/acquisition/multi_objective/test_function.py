@@ -255,7 +255,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
 def test_qehvi_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = empty_dataset([2], [num_obj])
-    model = QuadraticMeanAndRBFKernel()
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(2, *[1.0] * 2))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
@@ -271,7 +271,7 @@ def test_qehvi_builder_raises_for_empty_data() -> None:
 def test_batch_monte_carlo_expected_hypervolume_improvement_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = empty_dataset([2], [num_obj])
-    model = QuadraticMeanAndRBFKernel()
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(2, *[1.0] * 2))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=100).prepare_acquisition_function(
@@ -308,7 +308,9 @@ def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> No
     qehvi_builder = BatchMonteCarloExpectedHypervolumeImprovement(sample_size=10)
 
     with pytest.raises(ValueError):
-        qehvi_builder.prepare_acquisition_function(model, dataset=_model_based_tr_dataset)
+        qehvi_builder.prepare_acquisition_function(
+            model, dataset=_model_based_tr_dataset  # type: ignore
+        )
 
 
 @random_seed
@@ -358,7 +360,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_can_reproduce_ehvi(
 ) -> None:
     data_num_seg_per_dim = 10  # test data number per input dim
 
-    model = _mo_test_model(obj_num, *[variance_scale] * obj_num)
+    model = cast(GaussianProcessWithSamplers, _mo_test_model(obj_num, *[variance_scale] * obj_num))
 
     mean, _ = model.predict(training_input)  # gen prepare Pareto
     _model_based_tr_dataset = Dataset(training_input, mean)

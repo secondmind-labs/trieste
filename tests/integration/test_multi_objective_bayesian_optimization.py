@@ -33,7 +33,7 @@ from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.interfaces import (
     TrainableModelStack,
-    TrainablePredictJointModelStack,
+    TrainablePredictJointReparamModelStack,
     TrainableProbabilisticModel,
 )
 from trieste.objectives.multi_objectives import VLMOP2
@@ -104,7 +104,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
             gpflow.utilities.set_trainable(gpr.likelihood, False)
             gprs.append((GaussianProcessRegression(gpr), 1))
 
-        return TrainablePredictJointModelStack(*gprs)
+        return TrainablePredictJointReparamModelStack(*gprs)
 
     observer = mk_observer(VLMOP2().objective(), OBJECTIVE)
 
