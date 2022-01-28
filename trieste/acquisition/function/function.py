@@ -662,7 +662,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
         return mc_ei
 
 
-class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class MonteCarloAugmentedExpectedImprovement(
+    SingleModelAcquisitionBuilder[SupportsGetObservationNoise]
+):
     """
     Builder for a Monte Carlo-based augmented expected improvement function for use with a model
     where we have  to obtain a Monte Carlo estimate of the augmented expected improvement. The
@@ -686,7 +688,7 @@ class MonteCarloAugmentedExpectedImprovement(SingleModelAcquisitionBuilder[Proba
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """

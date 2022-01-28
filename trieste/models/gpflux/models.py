@@ -115,10 +115,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
             samples.append(sample_dgp(self.model_gpflux)(query_points))
         return tf.stack(samples)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
         return DeepGaussianProcessReparamSampler(num_samples, self)
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[GPfluxPredictor]:
         return DeepGaussianProcessTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:

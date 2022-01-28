@@ -130,7 +130,7 @@ class GaussianProcessWithReparamSampler(GaussianProcess):
     ):
         super().__init__(mean_functions, kernels, noise_variance)
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
         return GaussianProcessSampler(num_samples, self)
 
 
@@ -153,11 +153,11 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
         return GaussianProcessSampler(num_samples, self)
 
 
-class GaussianProcessSampler(ReparametrizationSampler):
+class GaussianProcessSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""A :class:`trieste.models.interfaces.ReparametrizationSampler` for a
     :class:`GaussianProcess` model."""
 

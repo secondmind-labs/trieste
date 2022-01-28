@@ -65,7 +65,7 @@ def sample_dgp(model: DeepGP) -> TrajectoryFunction:
     return ChainedSample().__call__
 
 
-class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
+class DeepGaussianProcessTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
     r"""
     This sampler provides trajectory samples from a :class:`DeepGaussianProcess`\ 's predictive
     distribution.
@@ -103,7 +103,7 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler):
         return sample_dgp(self.model)
 
 
-class DeepGaussianProcessReparamSampler(ReparametrizationSampler):
+class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
     :class:`DeepGaussianProcess`\ 's predictive distribution.
