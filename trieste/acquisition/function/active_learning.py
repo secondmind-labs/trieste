@@ -24,9 +24,11 @@ from typing import Optional, Sequence, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.likelihoods.scalar_discrete import Bernoulli
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
+from ...models.gpflow import SparseVariational, VariationalGaussianProcess
 from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -499,10 +501,12 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         :return: The Bayesian Active Learning By Disagreement acquisition function.
         """
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
-        assert (
-            type(model).__name__ == "VariationalGaussianProcess"
-            and type(model.model.likelihood).__name__ == "Bernoulli"  # type: ignore
-        ), "Only support VGP with Bernoulli likelihood"
+
+        if type(model) != VariationalGaussianProcess and type(model) != SparseVariational:
+            raise TypeError
+        elif type(model.model.likelihood) != Bernoulli:
+            raise TypeError
+        "Only support VGP or SVGP with Bernoulli likelihood"
 
         self._model = model
         self._jitter = jitter
