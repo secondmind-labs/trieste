@@ -222,7 +222,7 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(min(num_steps, 5), acquisition_rule)
+    _test_optimizer_finds_minimum(min(num_steps, 7), acquisition_rule)
 
 
 @random_seed
@@ -248,11 +248,11 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
-        90,
+        70,
         acquisition_rule,
         optimize_branin=True,
         model_type="SVGP",
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
     )
 
 
@@ -373,6 +373,7 @@ def _test_optimizer_finds_minimum(
             return VariationalGaussianProcess(vgp, **model_args)
 
     elif model_type == "SVGP":
+        num_initial_query_points = 20
 
         def build_model(data: Dataset) -> SparseVariational:  # type: ignore
             gpr = build_svgp(data, search_space, likelihood_variance=1e-5)
