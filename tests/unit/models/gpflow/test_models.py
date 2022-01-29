@@ -49,7 +49,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import TrainableProbabilisticModel, TrajectorySampler
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -57,6 +57,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflow.models import NumDataPropertyMixin
+from trieste.models.gpflow.sampler import RandomFourierFeatureTrajectorySampler
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 
 
@@ -228,6 +229,14 @@ def test_gaussian_process_regression_raises_for_conditionals_with_sgpr() -> None
         )
 
 
+def test_gaussian_process_regression_correctly_returns_internal_data() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(gpr_model(*data))
+    returned_data = model.get_internal_data()
+    npt.assert_array_equal(returned_data.query_points, data[0])
+    npt.assert_array_equal(returned_data.observations, data[1])
+
+
 @random_seed
 @unittest.mock.patch(
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
@@ -392,8 +401,8 @@ def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
 
 
 @random_seed
-def test_gaussian_process_regression_trajectory_sampler_returns_a_trajectory_sampler(
-    gpflow_interface_factory: ModelFactoryType, dim: int
+def test_gaussian_process_regression_trajectory_sampler_returns_correct_trajectory_sampler(
+    dim: int,
 ) -> None:
 
     x = tf.constant(
@@ -403,13 +412,11 @@ def test_gaussian_process_regression_trajectory_sampler_returns_a_trajectory_sam
     model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     trajectory_sampler = model.trajectory_sampler()
 
-    assert isinstance(trajectory_sampler, TrajectorySampler)
+    assert isinstance(trajectory_sampler, RandomFourierFeatureTrajectorySampler)
 
 
 @random_seed
-def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
-    gpflow_interface_factory: ModelFactoryType,
-) -> None:
+def test_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
 
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = GaussianProcessRegression(gpr_model(x, _3x_plus_gaussian_noise(x)))
@@ -418,9 +425,11 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     samples = []
     num_samples = 10
     trajectory_sampler = model.trajectory_sampler()
-    for _ in range(num_samples):
-        trajectory = trajectory_sampler.get_trajectory()
-        samples.append(trajectory(x_predict))
+    trajectory = trajectory_sampler.get_trajectory()
+    samples.append(-1.0 * trajectory(tf.expand_dims(x_predict, -2)))
+    for _ in range(num_samples - 1):
+        trajectory.resample()  # type: ignore
+        samples.append(trajectory(tf.expand_dims(x_predict, -2)))
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
@@ -484,6 +493,14 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
     with pytest.raises(ValueError):
         optimizer = Optimizer(tf.optimizers.Adam())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
+
+
+def test_variational_gaussian_process_correctly_returns_internal_data() -> None:
+    data = mock_data()
+    model = VariationalGaussianProcess(vgp_model(*data))
+    returned_data = model.get_internal_data()
+    npt.assert_array_equal(returned_data.query_points, data[0])
+    npt.assert_array_equal(returned_data.observations, data[1])
 
 
 def test_variational_gaussian_process_update_updates_num_data() -> None:

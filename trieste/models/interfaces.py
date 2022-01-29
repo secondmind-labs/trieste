@@ -85,27 +85,6 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
-        """
-        Return a reparametrization sampler providing `num_samples` samples.
-
-        Note that this is not supported by all models.
-
-        :param num_samples: The desired number of samples.
-        :return: The reparametrization sampler.
-        """
-        raise NotImplementedError(f"Model {self!r} does not have a reparametrization sampler")
-
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
-        """
-        Return a trajectory sampler.
-
-        Note that this is not supported by all models.
-
-        :return: The trajectory sampler.
-        """
-        raise NotImplementedError(f"Model {self!r} does not have a trajectory sampler")
-
     def log(self) -> None:
         """
         Log model-specific information at a given optimization step.
@@ -175,6 +154,20 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
         Return the variance of observation noise.
 
         :return: The observation noise.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class SupportsInternalData(ProbabilisticModel, Protocol):
+    """A probabilistic model that stores and has access to its own training data."""
+
+    @abstractmethod
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
         """
         raise NotImplementedError
 
@@ -250,6 +243,33 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         )
 
 
+@runtime_checkable
+class HasTrajectorySampler(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated trajectory sampler."""
+
+    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+        """
+        Return a trajectory sampler that supports this model.
+
+        :return: The trajectory sampler.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class HasReparamSampler(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated reparametrization sampler."""
+
+    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
+        """
+        Return a reparametrization sampler providing `num_samples` samples.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        """
+        raise NotImplementedError
+
+
 class ModelStack(ProbabilisticModel, Generic[T]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
@@ -323,34 +343,6 @@ class ModelStack(ProbabilisticModel, Generic[T]):
             with tf.name_scope(f"{i}"):
                 model.log()
 
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[ProbabilisticModel]:
-        """
-        Return a reparameterization sampler providing `num_samples` samples across
-        all the models in the model stack. This is currently only implemented for
-        stacks made from models that have a :class:`BatchReparametrizationSampler`
-        as their reparameterization sampler.
-
-        :param num_samples: The desired number of samples.
-        :return: The reparametrization sampler.
-        :raise NotImplementedError: If the models in the stack do not share the
-            same :meth:`reparam_sampler`.
-        """
-
-        samplers = [model.reparam_sampler(num_samples) for model in self._models]
-        unique_sampler_types = set(type(sampler) for sampler in samplers)
-        if len(unique_sampler_types) == 1:
-            # currently assume that all sampler constructors look the same
-            shared_sampler_type = type(samplers[0])
-            return shared_sampler_type(num_samples, self)
-        else:
-            raise NotImplementedError(
-                f"""
-                Reparameterization sampling is only currently supported for model
-                stacks built from models that use the same reparameterization sampler,
-                however, received samplers of types {unique_sampler_types}.
-                """
-            )
-
 
 class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProbabilisticModel):
     r"""
@@ -390,11 +382,48 @@ class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProb
             model.optimize(Dataset(dataset.query_points, obs))
 
 
+class HasReparamSamplerModelStack(ModelStack[HasReparamSampler], HasReparamSampler):
+    r"""
+    A :class:`PredictJointModelStack` is a wrapper around a number of
+    :class:`HasReparamSampler`\ s.
+    It provides a  :meth:`reparam_sampler` method only if all the submodel samplers
+    are the same.
+    """
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[HasReparamSampler]:
+        """
+        Return a reparameterization sampler providing `num_samples` samples across
+        all the models in the model stack. This is currently only implemented for
+        stacks made from models that have a :class:`BatchReparametrizationSampler`
+        as their reparameterization sampler.
+
+        :param num_samples: The desired number of samples.
+        :return: The reparametrization sampler.
+        :raise NotImplementedError: If the models in the stack do not share the
+            same :meth:`reparam_sampler`.
+        """
+
+        samplers = [model.reparam_sampler(num_samples) for model in self._models]
+        unique_sampler_types = set(type(sampler) for sampler in samplers)
+        if len(unique_sampler_types) == 1:
+            # currently assume that all sampler constructors look the same
+            shared_sampler_type = type(samplers[0])
+            return shared_sampler_type(num_samples, self)
+        else:
+            raise NotImplementedError(
+                f"""
+                Reparameterization sampling is only currently supported for model
+                stacks built from models that use the same reparameterization sampler,
+                however, received samplers of types {unique_sampler_types}.
+                """
+            )
+
+
 class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJoint):
     r"""
     A :class:`PredictJointModelStack` is a wrapper around a number of
     :class:`SupportsPredictJoint`\ s.
-    It delegates :meth:`predict_joint]` to each model.
+    It delegates :meth:`predict_joint` to each model.
     """
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -410,7 +439,8 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
 
-class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilisticModel, Protocol):
+# It's useful, though a bit ugly, to define the stack constructors for some model type combinations
+class TrainableSupportsPredictJoint(TrainableProbabilisticModel, SupportsPredictJoint, Protocol):
     """A model that is both trainable and supports predict_joint."""
 
     pass
@@ -418,6 +448,24 @@ class TrainableSupportsPredictJoint(SupportsPredictJoint, TrainableProbabilistic
 
 class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
+):
+    """A stack of models that are both trainable and support predict_joint."""
+
+    pass
+
+
+class TrainableSupportsPredictJointHasReparamSampler(
+    TrainableSupportsPredictJoint, HasReparamSampler, Protocol
+):
+    """A model that is trainable, supports predict_joint and has a reparameterization sampler."""
+
+    pass
+
+
+class TrainablePredictJointReparamModelStack(
+    TrainablePredictJointModelStack,
+    HasReparamSamplerModelStack,
+    ModelStack[TrainableSupportsPredictJointHasReparamSampler],
 ):
     """A stack of models that are both trainable and support predict_joint."""
 
@@ -471,15 +519,28 @@ class ReparametrizationSampler(ABC, Generic[T]):
 
 TrajectoryFunction = Callable[[TensorType], TensorType]
 """
-Type alias for trajectory functions.
+Type alias for trajectory functions. These have essentially the same behavior as an
+:const:`AcquisitionFunction` but have additional sampling properties.
 
 An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
-points (each of dimension `D`) i.e. takes input of shape `[N, D]` and returns
+points (each of dimension `D`) i.e. takes input of shape `[N, 1, D]` and returns
 shape `[N, 1]`.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
 """
+
+
+class TrajectoryFunctionClass(ABC):
+    """
+    An :class:`TrajectoryFunctionClass` is a trajectory function represented using a class
+    rather than as a standalone function. Using a class to represent a trajectory function
+    makes it easier to update and resample without having to retrace the function.
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call trajectory function."""
 
 
 class TrajectorySampler(ABC, Generic[T]):
@@ -505,7 +566,36 @@ class TrajectorySampler(ABC, Generic[T]):
     @abstractmethod
     def get_trajectory(self) -> TrajectoryFunction:
         """
-        :return: A trajectory function representing an approximate trajectory from the
-            model, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        :return: A trajectory function representing an approximate trajectory
+            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
         raise NotImplementedError
+
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        A :const:`TrajectoryFunction` can often be efficiently updated in-place to provide
+        a new sample without retracing. Note that if the underlying :class:`ProbabilisticModel`
+        has been updated, then we must call :meth:`update_trajectory` to get a new sample from
+        the new model.
+
+        Efficient implementations of a :class:`TrajectorySampler` will have a custom method here
+        to allow in-place resampling. However, the default behavior is just to make a new
+        trajectory from scratch.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
+        """
+        return self.get_trajectory()
+
+    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Update a :const:`TrajectoryFunction` to reflect an update in its
+        underlying :class:`ProbabilisticModel` and resample accordingly.
+
+        Efficient implementations will have a custom method here to allow in-place resampling
+        and updating. However, the default behavior is just to make a new trajectory from scratch.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new trajectory function updated for a new model
+        """
+        return self.get_trajectory()

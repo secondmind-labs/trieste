@@ -30,6 +30,7 @@ from trieste.acquisition import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
+    GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
@@ -80,6 +81,7 @@ from trieste.types import State, TensorType
 # Optimizer parameters for testing against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
+# The various   # type: ignore[arg-type]  are for rules that are only supported by GPR models.
 def OPTIMIZER_PARAMS() -> Tuple[
     str,
     List[
@@ -107,7 +109,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 22,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(
+                    MinValueEntropySearch(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
@@ -142,7 +144,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(  # type: ignore[arg-type]  # (only supported by GPR models)
+                    GIBBON(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
@@ -170,14 +172,25 @@ def OPTIMIZER_PARAMS() -> Tuple[
             ),
             (10, DiscreteThompsonSampling(500, 3)),
             (
-                15,
-                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+                20,
+                DiscreteThompsonSampling(
+                    500,
+                    3,
+                    thompson_sampler=ThompsonSamplerFromTrajectory(),  # type: ignore[arg-type]
+                ),
             ),
             (
                 15,
                 EfficientGlobalOptimization(
-                    Fantasizer(),  # type: ignore[arg-type]  # (only supported by GPR models)
+                    Fantasizer(),  # type: ignore[arg-type]
                     num_query_points=3,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    GreedyContinuousThompsonSampling(),  # type: ignore[arg-type]
+                    num_query_points=5,
                 ),
             ),
         ],
@@ -233,7 +246,13 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(70, acquisition_rule, optimize_branin=True, model_type="SVGP")
+    _test_optimizer_finds_minimum(
+        90,
+        acquisition_rule,
+        optimize_branin=True,
+        model_type="SVGP",
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+    )
 
 
 @random_seed
@@ -241,7 +260,12 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
     acquisition_rule: AcquisitionRule[
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
-    _test_optimizer_finds_minimum(5, acquisition_rule, model_type="SVGP")
+    _test_optimizer_finds_minimum(
+        5,
+        acquisition_rule,
+        model_type="SVGP",
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
+    )
 
 
 @random_seed
@@ -358,7 +382,7 @@ def _test_optimizer_finds_minimum(
                 gpflow.utilities.set_trainable(vgp.likelihood, False)
                 return VariationalGaussianProcess(vgp, **model_args)
             elif model_type == "SVGP":
-                Z = search_space.sample_sobol(20)  # Initialize diverse inducing locations
+                Z = search_space.sample_sobol(50)  # Initialize diverse inducing locations
                 svgp = gpflow.models.SVGP(
                     kernel,
                     gpflow.likelihoods.Gaussian(variance=1e-5),
@@ -366,7 +390,7 @@ def _test_optimizer_finds_minimum(
                     num_data=len(data.observations),
                 )
                 gpflow.utilities.set_trainable(svgp.likelihood, False)
-                return SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(0.1)))
+                return SparseVariational(svgp, **model_args)
 
     elif model_type == "DGP":
         num_initial_query_points = 20

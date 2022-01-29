@@ -29,6 +29,7 @@ from .. import types
 from ..data import Dataset
 from ..logging import get_step_number, get_tensorboard_writer
 from ..models import ProbabilisticModel
+from ..models.interfaces import HasReparamSampler
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
@@ -403,7 +404,7 @@ class AsynchronousOptimization(
 
     @overload
     def __init__(
-        self: "AsynchronousOptimization[SP_contra, ProbabilisticModel]",
+        self: "AsynchronousOptimization[SP_contra, HasReparamSampler]",
         builder: None = None,
         optimizer: AcquisitionOptimizer[SP_contra] | None = None,
         num_query_points: int = 1,
@@ -442,7 +443,9 @@ class AsynchronousOptimization(
             )
 
         if builder is None:
-            builder = BatchMonteCarloExpectedImprovement(10_000)
+            builder = cast(
+                SingleModelAcquisitionBuilder[M_contra], BatchMonteCarloExpectedImprovement(10_000)
+            )
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
@@ -702,7 +705,10 @@ class AsynchronousGreedy(
         return state_func
 
 
-class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
+T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
+
+
+class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, T]):
     r"""
     Implements Thompson sampling for choosing optimal points.
 
@@ -716,11 +722,29 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 
     """
 
+    @overload
+    def __init__(
+        self: "DiscreteThompsonSampling[ProbabilisticModel]",
+        num_search_space_samples: int,
+        num_query_points: int,
+        thompson_sampler: None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "DiscreteThompsonSampling[T]",
+        num_search_space_samples: int,
+        num_query_points: int,
+        thompson_sampler: Optional[ThompsonSampler[T]] = None,
+    ):
+        ...
+
     def __init__(
         self,
         num_search_space_samples: int,
         num_query_points: int,
-        thompson_sampler: Optional[ThompsonSampler] = None,
+        thompson_sampler: Optional[ThompsonSampler[T]] = None,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
@@ -760,7 +784,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, T],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """

@@ -33,6 +33,7 @@ from tests.util.misc import (
 )
 from tests.util.models.gpflow.models import (
     GaussianProcess,
+    GaussianProcessWithSamplers,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
@@ -551,7 +552,12 @@ def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter() -> N
 def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
     builder = BatchMonteCarloExpectedImprovement(100)
     data = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
-    model = QuadraticMeanAndRBFKernel()
+    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
+        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
+    )
+    model = GaussianProcessWithSamplers(
+        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+    )
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(model, dataset=data)
     with pytest.raises(tf.errors.InvalidArgumentError):
@@ -564,7 +570,9 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
     matern52 = tfp.math.psd_kernels.MaternFiveHalves(
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
-    model = GaussianProcess([lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()])
+    model = GaussianProcessWithSamplers(
+        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+    )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(model, dataset=data)
 
@@ -575,7 +583,9 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_without_reparam
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
-        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(model, dataset=data)
+        BatchMonteCarloExpectedImprovement(10_000).prepare_acquisition_function(
+            model, dataset=data  # type: ignore
+        )
 
 
 @random_seed
@@ -649,22 +659,21 @@ def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> N
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-# def test_multiple_optimism_builder_updates_without_retracing() -> None:
-#     model = QuadraticMeanAndRBFKernel()
-#     beta = 1.96
-#     search_space = Box([0, 0], [1, 1])
-#     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
-#     acq_fn = builder.prepare_acquisition_function(model)
-#     assert acq_fn._get_tracing_count() == 0  # type: ignore
-#     query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10,5,2])
-#     expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
-#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+def test_multiple_optimism_builder_updates_without_retracing() -> None:
+    model = QuadraticMeanAndRBFKernel()
+    search_space = Box([0, 0], [1, 1])
+    builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
+    acq_fn = builder.prepare_acquisition_function(model)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
+    expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
-#     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-#     assert up_acq_fn == acq_fn
-#     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-#     assert acq_fn._get_tracing_count() == 1  # type: ignore
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
 
 def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:

@@ -37,7 +37,13 @@ from tensorflow_probability.python.util import TransformedVariable
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    FastUpdateModel,
+    HasTrajectorySampler,
+    SupportsInternalData,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import RandomFourierFeatureTrajectorySampler
@@ -50,7 +56,12 @@ from .utils import (
 
 
 class GaussianProcessRegression(
-    GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel, SupportsCovarianceBetweenPoints
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    FastUpdateModel,
+    SupportsCovarianceBetweenPoints,
+    SupportsInternalData,
+    HasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
@@ -277,8 +288,16 @@ class GaussianProcessRegression(
 
         :return: The trajectory sampler.
         """
-        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
-        return RandomFourierFeatureTrajectorySampler(self, models_data, self._num_rff_features)
+
+        return RandomFourierFeatureTrajectorySampler(self, self._num_rff_features)
+
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
+        """
+        return Dataset(self.model.data[0].value(), self.model.data[1].value())
 
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset
@@ -615,7 +634,9 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         self.model.num_data = num_data
 
 
-class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
+class VariationalGaussianProcess(
+    GPflowPredictor, TrainableProbabilisticModel, SupportsInternalData
+):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
 
@@ -834,3 +855,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         else:
             self.optimizer.optimize(model, dataset)
+
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
+        """
+        return Dataset(self.model.data[0].value(), self.model.data[1].value())
