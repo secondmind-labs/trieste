@@ -403,6 +403,12 @@ def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_fun
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
+def test_bayesian_active_learning_by_disagreement_raise_on_non_vgp_and_svgp_model() -> None:
+    model = QuadraticMeanAndRBFKernel
+    with pytest.raises(Exception):
+        BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+
+
 def test_bayesian_active_learning_by_disagreement_raise_on_non_bernoulli_vgp() -> None:
     x = to_default_float(tf.zeros([1, 1]))
     y = to_default_float(tf.zeros([1, 1]))
