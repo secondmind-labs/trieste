@@ -20,7 +20,6 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import two_layer_dgp_model
@@ -53,6 +52,8 @@ from trieste.models.gpflow import (
     GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
+    build_gpr,
+    build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
 from trieste.models.keras import (
@@ -107,7 +108,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
             (20, EfficientGlobalOptimization()),
             (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
-                22,
+                25,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
@@ -151,12 +152,12 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 ),
             ),
             (
-                10,
+                15,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=3,
+                    num_query_points=4,
                 ),
             ),
             (15, TrustRegion()),
@@ -355,42 +356,27 @@ def _test_optimizer_finds_minimum(
         minima = SIMPLE_QUADRATIC_MINIMUM
         rtol_level = 0.05
 
-    if model_type in ["GPR", "VGP", "SVGP"]:
+    if model_type == "GPR":
 
-        def build_model(data: Dataset) -> GPflowPredictor:  # type: ignore
-            assert model_args is not None
+        def build_model(data: Dataset) -> GaussianProcessRegression:  # type: ignore
+            gpr = build_gpr(data, search_space, likelihood_variance=1e-5)
+            return GaussianProcessRegression(gpr, **model_args)
 
-            variance = tf.math.reduce_variance(data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            scale = tf.constant(1.0, dtype=tf.float64)
-            kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.constant(-2.0, dtype=tf.float64), scale
-            )
-            kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log(kernel.lengthscales), scale
-            )
+    elif model_type == "VGP":
 
-            if model_type == "GPR":
-                gpr = gpflow.models.GPR(
-                    (data.query_points, data.observations), kernel, noise_variance=1e-5
-                )
-                gpflow.utilities.set_trainable(gpr.likelihood, False)
-                return GaussianProcessRegression(gpr, **model_args)
-            elif model_type == "VGP":
-                likelihood = gpflow.likelihoods.Gaussian(1e-3)
-                vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
-                gpflow.utilities.set_trainable(vgp.likelihood, False)
-                return VariationalGaussianProcess(vgp, **model_args)
-            elif model_type == "SVGP":
-                Z = search_space.sample_sobol(50)  # Initialize diverse inducing locations
-                svgp = gpflow.models.SVGP(
-                    kernel,
-                    gpflow.likelihoods.Gaussian(variance=1e-5),
-                    Z,
-                    num_data=len(data.observations),
-                )
-                gpflow.utilities.set_trainable(svgp.likelihood, False)
-                return SparseVariational(svgp, **model_args)
+        def build_model(data: Dataset) -> VariationalGaussianProcess:  # type: ignore
+            empirical_variance = tf.math.reduce_variance(data.observations)
+            kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
+            likelihood = gpflow.likelihoods.Gaussian(1e-3)
+            vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
+            gpflow.utilities.set_trainable(vgp.likelihood, False)
+            return VariationalGaussianProcess(vgp, **model_args)
+
+    elif model_type == "SVGP":
+
+        def build_model(data: Dataset) -> SparseVariational:  # type: ignore
+            gpr = build_svgp(data, search_space, likelihood_variance=1e-5)
+            return SparseVariational(gpr, **model_args)
 
     elif model_type == "DGP":
         num_initial_query_points = 20
@@ -421,7 +407,6 @@ def _test_optimizer_finds_minimum(
         track_state = False
 
         def build_model(data: Dataset) -> KerasPredictor:  # type: ignore
-            assert model_args is not None
             keras_ensemble = build_vanilla_keras_ensemble(data, 5, 3, 25)
             fit_args = {
                 "batch_size": 20,
