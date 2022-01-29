@@ -404,7 +404,7 @@ def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_fun
 
 
 def test_bayesian_active_learning_by_disagreement_raise_on_non_vgp_and_svgp_model() -> None:
-    model = QuadraticMeanAndRBFKernel
+    model = QuadraticMeanAndRBFKernel()
     with pytest.raises(Exception):
         BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
 
