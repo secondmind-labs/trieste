@@ -55,7 +55,7 @@ plt.show()
 # Let's generate some data for our initial model. Here we randomly sample 10 data points.
 
 # %%
-num_initial_points = 10
+num_initial_points = 5
 X = search_space.sample(num_initial_points)
 observer = mk_observer(circle)
 initial_data = observer(X)
@@ -64,29 +64,21 @@ initial_data = observer(X)
 # ## Modelling the binary classification task
 
 # %% [markdown]
-# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see <cite data-cite="Nickisch08a">[Nickisch et al.](https://www.jmlr.org/papers/volume9/nickisch08a/nickisch08a.pdf)</cite>.
+# For the binary classification model, we use the Variational Gaussian Process with Bernoulli likelihood. For more detail of this model, see <cite data-cite="Nickisch08a">[Nickisch et al.](https://www.jmlr.org/papers/volume9/nickisch08a/nickisch08a.pdf)</cite>. Here we use trieste's gpflow model builder `build_vgp_classifier`.
+# User can also use Sparse Variational Gaussian Process(SVGP) for building the classification model via `build_svgp` function and `SparseVariational` class. SVGP is preferable for bigger amount of data.
 
 # %%
 from trieste.models.gpflow import VariationalGaussianProcess
-from trieste.models.optimizer import Optimizer
+from trieste.models.gpflow.builders import build_vgp_classifier
 
-optimizer = Optimizer(
-    optimizer=gpflow.optimizers.Scipy(), minimize_args={"options": dict(maxiter=100)}
+model = VariationalGaussianProcess(
+    build_vgp_classifier(initial_data, search_space, noise_free=True)
 )
-
-
-def create_bo_model(data):
-    kernel = gpflow.kernels.SquaredExponential(lengthscales=[0.2, 0.2])
-    m = gpflow.models.VGP(data.astuple(), likelihood=gpflow.likelihoods.Bernoulli(), kernel=kernel)
-    return VariationalGaussianProcess(m, optimizer)
-
 
 # %% [markdown]
 # Lets see our model landscape using only those initial data
 
 # %%
-model = create_bo_model(initial_data)
-
 model.update(initial_data)
 model.optimize(initial_data)
 
@@ -127,7 +119,7 @@ plt.show()
 # See <cite data-cite="houlsby2011bayesian">[Houlsby et al.](https://arxiv.org/pdf/1112.5745.pdf)</cite> for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
 
 # %%
-initial_models = create_bo_model(initial_data)
+initial_models = model
 acq = BayesianActiveLearningByDisagreement()
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 
@@ -136,7 +128,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 # Let's run our active learning iteration:
 
 # %%
-n_steps = 25
+n_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 results = bo.optimize(n_steps, initial_data, initial_models, rule, track_state=False)
 final_dataset = results.try_get_final_datasets()[OBJECTIVE]
