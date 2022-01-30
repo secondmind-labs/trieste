@@ -316,7 +316,7 @@ def test_optimizer_learns_circle_function(
 
     def build_model(
         initial_data: Dataset, search_space: Box, model_builder: str = "vgp_classifier"
-    ) -> VariationalGaussianProcess | SparseVariational:
+    ) -> VariationalGaussianProcess | SparseVariational | None:
         model = None
         if model_builder == "vgp_classifier":
             model = VariationalGaussianProcess(
