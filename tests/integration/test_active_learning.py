@@ -18,8 +18,6 @@ Integration tests for various forms of active learning implemented in Trieste.
 
 from __future__ import annotations
 
-from typing import Callable
-
 import gpflow
 import pytest
 import tensorflow as tf
@@ -294,17 +292,16 @@ def _get_feasible_set_test_data(
 @pytest.mark.parametrize(
     "num_steps, model_builder",
     [
-        (20, build_vgp_classifier),
-        (70, build_svgp),
+        (20, "vgp_classifier"),
+        (70, "svpg_classifier"),
     ],
 )
 def test_optimizer_learns_circle_function(
     num_steps: int,
-    model_builder: Callable,
+    model_builder: str,
 ) -> None:
 
     search_space = Box([-1, -1], [1, 1])
-    vgp = False
 
     def circle(x: TensorType) -> TensorType:
         return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
@@ -317,20 +314,16 @@ def test_optimizer_learns_circle_function(
     observer = mk_observer(circle)
     initial_data = observer(initial_query_points)
 
-    # build model
-    if model_builder == build_vgp_classifier:
-        vgp = True
-
     def build_model(
-        initial_data: Dataset, search_space: Box, vgp: bool = False
+        initial_data: Dataset, search_space: Box, model_builder: str = "vgp_classifier"
     ) -> VariationalGaussianProcess | SparseVariational:
-        if vgp:
-            model = VariationalGaussianProcess(  # type: ignore
-                model_builder(initial_data, search_space, noise_free=True)
+        if model_builder == "vgp_classifier":
+            model = VariationalGaussianProcess(
+                build_vgp_classifier(initial_data, search_space, noise_free=True)
             )
-        else:
+        elif model_builder == "svgp_classifier":
             model = SparseVariational(  # type: ignore
-                model_builder(initial_data, search_space, classification=True)
+                build_svgp(initial_data, search_space, classification=True)
             )
         return model
 
@@ -341,7 +334,7 @@ def test_optimizer_learns_circle_function(
     criterion = 0.2
 
     # we expect a model with initial data to fail the criterion
-    initial_model = build_model(initial_data, search_space, vgp)
+    initial_model = build_model(initial_data, search_space, model_builder)
     initial_model.optimize(initial_data)
     initial_predicted_means, _ = ilink(initial_model.model.predict_f(test_query_points))
     initial_error = tf.reduce_mean(tf.abs(initial_predicted_means - test_data.observations))
@@ -349,7 +342,7 @@ def test_optimizer_learns_circle_function(
     assert not initial_error < criterion
 
     # after active learning the model should be much more accurate
-    model = build_model(initial_data, search_space, vgp)
+    model = build_model(initial_data, search_space, model_builder)
     acq = BayesianActiveLearningByDisagreement()
     rule = EfficientGlobalOptimization(acq)  # type: ignore
 
