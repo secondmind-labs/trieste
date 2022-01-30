@@ -293,7 +293,7 @@ def _get_feasible_set_test_data(
     "num_steps, model_builder",
     [
         (20, "vgp_classifier"),
-        (70, "svpg_classifier"),
+        (70, "svgp_classifier"),
     ],
 )
 def test_optimizer_learns_circle_function(
@@ -317,6 +317,7 @@ def test_optimizer_learns_circle_function(
     def build_model(
         initial_data: Dataset, search_space: Box, model_builder: str = "vgp_classifier"
     ) -> VariationalGaussianProcess | SparseVariational:
+        model = None
         if model_builder == "vgp_classifier":
             model = VariationalGaussianProcess(
                 build_vgp_classifier(initial_data, search_space, noise_free=True)
@@ -325,6 +326,8 @@ def test_optimizer_learns_circle_function(
             model = SparseVariational(  # type: ignore
                 build_svgp(initial_data, search_space, classification=True)
             )
+        else:
+            raise ValueError("model builder should be 'vgp_classifier' or 'svgp_classifier'")
         return model
 
     # we set a performance criterion at 20% error
