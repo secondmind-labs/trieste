@@ -36,6 +36,7 @@ from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
+    GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
 )
@@ -316,7 +317,7 @@ def test_optimizer_learns_circle_function(
 
     def build_model(
         initial_data: Dataset, search_space: Box, model_builder: str = "vgp_classifier"
-    ) -> VariationalGaussianProcess | SparseVariational | None:
+    ) -> GPflowPredictor:
         model = None
         if model_builder == "vgp_classifier":
             model = VariationalGaussianProcess(
