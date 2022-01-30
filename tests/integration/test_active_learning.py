@@ -348,7 +348,7 @@ def test_optimizer_learns_circle_function(
     rule = EfficientGlobalOptimization(acq)  # type: ignore
 
     final_model = (
-        BayesianOptimizer(observer, search_space)  # type: ignore
+        BayesianOptimizer(observer, search_space)
         .optimize(num_steps, initial_data, model, rule)
         .try_get_final_model()
     )
