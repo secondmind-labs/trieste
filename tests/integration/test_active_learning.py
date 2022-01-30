@@ -18,7 +18,6 @@ Integration tests for various forms of active learning implemented in Trieste.
 
 from __future__ import annotations
 
-from ctypes import Union
 from typing import Callable
 
 import gpflow
@@ -300,14 +299,12 @@ def vgp_classification_model(
 
 
 def svgp_classification_model(initial_data: Dataset, search_space: Box) -> SparseVariational:
-    return SparseVariational(  
-        build_svgp(initial_data, search_space, classification=True)
-    )
+    return SparseVariational(build_svgp(initial_data, search_space, classification=True))
 
 
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, model",
+    "num_steps, model_builder",
     [
         (20, vgp_classification_model),
         (70, svgp_classification_model),
@@ -315,7 +312,7 @@ def svgp_classification_model(initial_data: Dataset, search_space: Box) -> Spars
 )
 def test_optimizer_learns_circle_function(
     num_steps: int,
-    model: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
+    model_builder: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
 ) -> None:
 
     search_space = Box([-1, -1], [1, 1])
@@ -338,7 +335,7 @@ def test_optimizer_learns_circle_function(
     criterion = 0.2
 
     # we expect a model with initial data to fail the criterion
-    initial_model = model(initial_data, search_space)
+    initial_model = model_builder(initial_data, search_space)
     initial_model.optimize(initial_data)
     initial_predicted_means, _ = ilink(initial_model.model.predict_f(test_query_points))
     initial_error = tf.reduce_mean(tf.abs(initial_predicted_means - test_data.observations))
@@ -346,16 +343,16 @@ def test_optimizer_learns_circle_function(
     assert not initial_error < criterion
 
     # after active learning the model should be much more accurate
-    model = model(initial_data, search_space)
+    model = model_builder(initial_data, search_space)
     acq = BayesianActiveLearningByDisagreement()
     rule = EfficientGlobalOptimization(acq)  # type: ignore
 
     final_model = (
-        BayesianOptimizer(observer, search_space) # type: ignore
+        BayesianOptimizer(observer, search_space)  # type: ignore
         .optimize(num_steps, initial_data, model, rule)
         .try_get_final_model()
     )
-    final_predicted_means, _ = ilink(final_model.model.predict_f(test_query_points))  
+    final_predicted_means, _ = ilink(final_model.model.predict_f(test_query_points))  # type: ignore
     final_error = tf.reduce_mean(tf.abs(final_predicted_means - test_data.observations))
 
     assert initial_error > final_error
