@@ -18,6 +18,8 @@ Integration tests for various forms of active learning implemented in Trieste.
 
 from __future__ import annotations
 
+from typing import Callable
+
 import gpflow
 import pytest
 import tensorflow as tf
@@ -25,6 +27,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition.function import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
@@ -33,7 +36,12 @@ from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimizatio
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    SparseVariational,
+    VariationalGaussianProcess,
+)
+from trieste.models.gpflow.builders import build_svgp, build_vgp_classifier
 from trieste.models.interfaces import FastUpdateModel, SupportsPredictJoint
 from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
 from trieste.objectives.utils import mk_observer
@@ -280,3 +288,76 @@ def _get_feasible_set_test_data(
             :n_boundary,
         ],
     )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, model_builder",
+    [
+        (20, build_vgp_classifier),
+        (70, build_svgp),
+    ],
+)
+def test_optimizer_learns_circle_function(
+    num_steps: int,
+    model_builder: Callable[[Dataset, SearchSpace]],
+) -> None:
+
+    search_space = Box([-1, -1], [1, 1])
+    vgp = False
+
+    def circle(x: TensorType):
+        return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
+
+    def ilink(f: TensorType):
+        return gpflow.likelihoods.Bernoulli().invlink(f).numpy()
+
+    num_initial_points = 10
+    initial_query_points = search_space.sample(num_initial_points)
+    observer = mk_observer(circle)
+    initial_data = observer(initial_query_points)
+
+    # build model
+    if model_builder == build_vgp_classifier:
+        vgp = True
+
+    def build_model(initial_data: Dataset, search_space: Box, vgp: bool = False):
+        if vgp:
+            model = VariationalGaussianProcess(
+                model_builder(initial_data, search_space, noise_free=True)
+            )
+        else:
+            model = SparseVariational(
+                model_builder(initial_data, search_space, classification=True)
+            )
+        return model
+
+    # we set a performance criterion at 20% error
+    # predictive error needs to be bettter than this criterion
+    test_query_points = search_space.sample_sobol(10000 * search_space.dimension)
+    test_data = observer(test_query_points)
+    criterion = 0.2
+
+    # we expect a model with initial data to fail the criterion
+    initial_model = build_model(initial_data, search_space, vgp)
+    initial_model.optimize(initial_data)
+    initial_predicted_means, _ = ilink(initial_model.model.predict_f(test_query_points))
+    initial_error = tf.reduce_mean(tf.abs(initial_predicted_means - test_data.observations))
+
+    assert not initial_error < criterion
+
+    # after active learning the model should be much more accurate
+    model = build_model(initial_data, search_space, vgp)
+    acq = BayesianActiveLearningByDisagreement()
+    rule = EfficientGlobalOptimization(acq)
+
+    final_model = (
+        BayesianOptimizer(observer, search_space)
+        .optimize(num_steps, initial_data, model, rule)
+        .try_get_final_model()
+    )
+    final_predicted_means, _ = ilink(final_model.model.predict_f(test_query_points))  # type: ignore
+    final_error = tf.reduce_mean(tf.abs(final_predicted_means - test_data.observations))
+
+    assert initial_error > final_error
+    assert final_error < criterion
