@@ -28,7 +28,9 @@ from ..utils import DEFAULTS
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
 )
-""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`. """
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`.
+This is used to specify classes such as samplers and acquisition function builders that
+take models as input parameters and might ony support models with certain features. """
 
 
 @runtime_checkable
