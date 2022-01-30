@@ -18,6 +18,9 @@ Integration tests for various forms of active learning implemented in Trieste.
 
 from __future__ import annotations
 
+from ctypes import Union
+from typing import Callable
+
 import gpflow
 import pytest
 import tensorflow as tf
@@ -36,7 +39,6 @@ from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
-    GPflowPredictor,
     SparseVariational,
     VariationalGaussianProcess,
 )
@@ -289,17 +291,31 @@ def _get_feasible_set_test_data(
     )
 
 
+def vgp_classification_model(
+    initial_data: Dataset, search_space: Box
+) -> VariationalGaussianProcess:
+    return VariationalGaussianProcess(
+        build_vgp_classifier(initial_data, search_space, noise_free=True)
+    )
+
+
+def svgp_classification_model(initial_data: Dataset, search_space: Box) -> SparseVariational:
+    return SparseVariational(  # type: ignore
+        build_svgp(initial_data, search_space, classification=True)
+    )
+
+
 @random_seed
 @pytest.mark.parametrize(
-    "num_steps, model_builder",
+    "num_steps, model",
     [
-        (20, "vgp_classifier"),
-        (70, "svgp_classifier"),
+        (20, vgp_classification_model),
+        (70, svgp_classification_model),
     ],
 )
 def test_optimizer_learns_circle_function(
     num_steps: int,
-    model_builder: str,
+    model: Callable[[Dataset, Box], Union[VariationalGaussianProcess, SparseVariational]],
 ) -> None:
 
     search_space = Box([-1, -1], [1, 1])
@@ -315,22 +331,6 @@ def test_optimizer_learns_circle_function(
     observer = mk_observer(circle)
     initial_data = observer(initial_query_points)
 
-    def build_model(
-        initial_data: Dataset, search_space: Box, model_builder: str = "vgp_classifier"
-    ) -> GPflowPredictor:
-        model = None
-        if model_builder == "vgp_classifier":
-            model = VariationalGaussianProcess(
-                build_vgp_classifier(initial_data, search_space, noise_free=True)
-            )
-        elif model_builder == "svgp_classifier":
-            model = SparseVariational(  # type: ignore
-                build_svgp(initial_data, search_space, classification=True)
-            )
-        else:
-            raise ValueError("model builder should be 'vgp_classifier' or 'svgp_classifier'")
-        return model
-
     # we set a performance criterion at 20% error
     # predictive error needs to be bettter than this criterion
     test_query_points = search_space.sample_sobol(10000 * search_space.dimension)
@@ -338,7 +338,7 @@ def test_optimizer_learns_circle_function(
     criterion = 0.2
 
     # we expect a model with initial data to fail the criterion
-    initial_model = build_model(initial_data, search_space, model_builder)
+    initial_model = model(initial_data, search_space)
     initial_model.optimize(initial_data)
     initial_predicted_means, _ = ilink(initial_model.model.predict_f(test_query_points))
     initial_error = tf.reduce_mean(tf.abs(initial_predicted_means - test_data.observations))
@@ -346,7 +346,7 @@ def test_optimizer_learns_circle_function(
     assert not initial_error < criterion
 
     # after active learning the model should be much more accurate
-    model = build_model(initial_data, search_space, model_builder)
+    model = model(initial_data, search_space)
     acq = BayesianActiveLearningByDisagreement()
     rule = EfficientGlobalOptimization(acq)  # type: ignore
 
