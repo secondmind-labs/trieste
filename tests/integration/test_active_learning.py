@@ -300,7 +300,7 @@ def vgp_classification_model(
 
 
 def svgp_classification_model(initial_data: Dataset, search_space: Box) -> SparseVariational:
-    return SparseVariational(  # type: ignore
+    return SparseVariational(  
         build_svgp(initial_data, search_space, classification=True)
     )
 
@@ -315,7 +315,7 @@ def svgp_classification_model(initial_data: Dataset, search_space: Box) -> Spars
 )
 def test_optimizer_learns_circle_function(
     num_steps: int,
-    model: Callable[[Dataset, Box], Union[VariationalGaussianProcess, SparseVariational]],
+    model: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
 ) -> None:
 
     search_space = Box([-1, -1], [1, 1])
@@ -351,11 +351,11 @@ def test_optimizer_learns_circle_function(
     rule = EfficientGlobalOptimization(acq)  # type: ignore
 
     final_model = (
-        BayesianOptimizer(observer, search_space)
+        BayesianOptimizer(observer, search_space) # type: ignore
         .optimize(num_steps, initial_data, model, rule)
         .try_get_final_model()
     )
-    final_predicted_means, _ = ilink(final_model.model.predict_f(test_query_points))  # type: ignore
+    final_predicted_means, _ = ilink(final_model.model.predict_f(test_query_points))  
     final_error = tf.reduce_mean(tf.abs(final_predicted_means - test_data.observations))
 
     assert initial_error > final_error
