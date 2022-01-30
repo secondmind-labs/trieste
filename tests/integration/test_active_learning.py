@@ -300,16 +300,16 @@ def _get_feasible_set_test_data(
 )
 def test_optimizer_learns_circle_function(
     num_steps: int,
-    model_builder: Callable[[Dataset, SearchSpace]],
+    model_builder: Callable,
 ) -> None:
 
     search_space = Box([-1, -1], [1, 1])
     vgp = False
 
-    def circle(x: TensorType):
+    def circle(x: TensorType) -> TensorType:
         return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
 
-    def ilink(f: TensorType):
+    def ilink(f: TensorType) -> TensorType:
         return gpflow.likelihoods.Bernoulli().invlink(f).numpy()
 
     num_initial_points = 10
@@ -321,13 +321,15 @@ def test_optimizer_learns_circle_function(
     if model_builder == build_vgp_classifier:
         vgp = True
 
-    def build_model(initial_data: Dataset, search_space: Box, vgp: bool = False):
+    def build_model(
+        initial_data: Dataset, search_space: Box, vgp: bool = False
+    ) -> VariationalGaussianProcess | SparseVariational:
         if vgp:
-            model = VariationalGaussianProcess(
+            model = VariationalGaussianProcess(  # type: ignore
                 model_builder(initial_data, search_space, noise_free=True)
             )
         else:
-            model = SparseVariational(
+            model = SparseVariational(  # type: ignore
                 model_builder(initial_data, search_space, classification=True)
             )
         return model
@@ -349,7 +351,7 @@ def test_optimizer_learns_circle_function(
     # after active learning the model should be much more accurate
     model = build_model(initial_data, search_space, vgp)
     acq = BayesianActiveLearningByDisagreement()
-    rule = EfficientGlobalOptimization(acq)
+    rule = EfficientGlobalOptimization(acq)  # type: ignore
 
     final_model = (
         BayesianOptimizer(observer, search_space)
