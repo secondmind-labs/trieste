@@ -99,59 +99,59 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
     return (
         "num_steps, acquisition_rule",
         [
-            (20, EfficientGlobalOptimization()),
-            (35, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-            (
-                25,
-                EfficientGlobalOptimization(
-                    MinValueEntropySearch(  # type: ignore[arg-type]
-                        BRANIN_SEARCH_SPACE,
-                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
-                    ).using(OBJECTIVE)
-                ),
-            ),
-            (
-                12,
-                EfficientGlobalOptimization(
-                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-            ),
-            (12, AsynchronousOptimization(num_query_points=3)),
-            (
-                10,
-                EfficientGlobalOptimization(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=5,
-                ),
-            ),
-            (
-                10,
-                AsynchronousGreedy(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=5,
-                ),
-            ),
-            (
-                10,
-                EfficientGlobalOptimization(
-                    GIBBON(  # type: ignore[arg-type]
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=2,
-                ),
-            ),
+            # (20, EfficientGlobalOptimization()),
+            # (30, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            # (
+            #     22,
+            #     EfficientGlobalOptimization(
+            #         MinValueEntropySearch(  # type: ignore[arg-type]
+            #             BRANIN_SEARCH_SPACE,
+            #             min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+            #         ).using(OBJECTIVE)
+            #     ),
+            # ),
+            # (
+            #     12,
+            #     EfficientGlobalOptimization(
+            #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            # ),
+            # (12, AsynchronousOptimization(num_query_points=3)),
+            # (
+            #     10,
+            #     EfficientGlobalOptimization(
+            #         LocalPenalization(
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            # ),
+            # (
+            #     10,
+            #     AsynchronousGreedy(
+            #         LocalPenalization(
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            # ),
+            # (
+            #     10,
+            #     EfficientGlobalOptimization(
+            #         GIBBON(  # type: ignore[arg-type]
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=2,
+            #     ),
+            # ),
             (
                 20,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=4,
+                    num_query_points=3,
                 ),
             ),
             (15, TrustRegion()),
