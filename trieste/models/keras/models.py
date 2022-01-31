@@ -21,14 +21,22 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import TrainableProbabilisticModel
+from ..interfaces import (
+    EnsembleModel,
+    HasTrajectorySampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble
 from .interface import KerasPredictor
+from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
 
 
-class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
+class DeepEnsemble(
+    KerasPredictor, TrainableProbabilisticModel, EnsembleModel, HasTrajectorySampler
+):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
     Keras.
@@ -123,6 +131,15 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
         """
         return self._model.ensemble_size
 
+    def sample_index(self, size: int = 1) -> TensorType:
+        """
+        Returns a network index sampled randomly with replacement.
+        """
+        network_index = tf.random.uniform(
+            shape=(tf.cast(size, tf.int32),), maxval=self.ensemble_size, dtype=tf.int32
+        )
+        return network_index
+
     def prepare_dataset(
         self, dataset: Dataset
     ) -> tuple[Dict[str, TensorType], Dict[str, TensorType]]:
@@ -206,9 +223,11 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
 
         return predicted_means, predicted_vars
 
-    def predict_ensemble(self, query_points: TensorType) -> list[tuple[TensorType, TensorType]]:
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
-        Returns mean and variance at ``query_points`` for each member of the ensemble.
+        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+        the ``ensemble_size``.
 
         This method assumes that the final layer in each member of the ensemble is
         probabilistic, an instance of :class:`¬tfp.distributions.Distribution`, in particular
@@ -221,17 +240,16 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
         query_points_transformed = self.prepare_query_points(query_points)
 
         ensemble_distributions = self.model(query_points_transformed)
-        predicted_means_vars = [(dist.mean(), dist.variance()) for dist in ensemble_distributions]
+        predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
+        predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
-        return predicted_means_vars
+        return predicted_means, predicted_vars
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
-        Return ``num_samples`` samples at ``query_points``.
-
-        We use the mixture approximation in :meth:`predict` for ``query_points`` and
-        sample ``num_samples`` times from a Gaussian distribution given by the predicted
-        mean and variance.
+        Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
+        :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian
+        distribution given by the predicted mean and variance.
 
         :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
@@ -244,6 +262,42 @@ class DeepEnsemble(KerasPredictor, TrainableProbabilisticModel):
         samples = normal.sample(num_samples)
 
         return samples  # [num_samples, len(query_points), 1]
+
+    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian
+        distribution given by the predicted mean and variance of a randomly chosen network in the
+        ensemble. This avoids using the Gaussian mixture approximation and samples directly from
+        individual Gaussian distributions given by each network in the ensemble.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        predicted_means, predicted_vars = self.predict_ensemble(query_points)
+
+        stacked_samples = []
+        for _ in range(num_samples):
+            network_index = self.sample_index(1)[0]
+            normal = tfp.distributions.Normal(
+                predicted_means[network_index], tf.sqrt(predicted_vars[network_index])
+            )
+            samples = normal.sample()
+            stacked_samples.append(samples)
+
+        samples = tf.stack(stacked_samples, axis=0)
+        return samples  # [num_samples, len(query_points), 1]
+
+    def trajectory_sampler(self) -> TrajectorySampler[DeepEnsemble]:
+        """
+        Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
+        sampler that randomly picks a network from the ensemble and uses its predicted means
+        for generating a trajectory.
+
+        :return: The trajectory sampler.
+        """
+        return EnsembleTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         """
