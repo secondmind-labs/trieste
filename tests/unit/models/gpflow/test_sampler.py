@@ -459,7 +459,9 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     )  # new sample should agree with data
 
 
-@pytest.mark.skipif(gpflux.__version__ == "0.2.3", reason="Requires GPFlux >= 0.2.4")
+@pytest.mark.skipif(
+    getattr(gpflux, "__version__", "0.2.3") == "0.2.3", reason="Requires GPFlux >= 0.2.4"
+)
 def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
 
     dataset = Dataset(
