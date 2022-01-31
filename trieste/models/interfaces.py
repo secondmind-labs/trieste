@@ -244,6 +244,59 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
+class EnsembleModel(ProbabilisticModel, Protocol):
+    """
+    This is an interface for ensemble types of models. These models can act as probabilistic models
+    by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+    individual models in the ensemble.
+    """
+
+    @abstractmethod
+    def ensemble_size(self) -> int:
+        """
+        Returns the size of the ensemble, that is, the number of base learners or individual
+        models in the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_index(self, size: int) -> TensorType:
+        """
+        Returns indices of individual models in the ensemble sampled randomly with replacement.
+
+        :param size: The number of samples to take.
+        :return: A tensor with indices
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+        the ``ensemble_size``.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points`` for each member of the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples at ``query_points`` where each sample is taken from a
+        distribution given by a randomly chosen model in the ensemble.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
 class HasTrajectorySampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated trajectory sampler."""
 
