@@ -45,7 +45,6 @@ from trieste.acquisition.rule import (
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer
-from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -55,13 +54,8 @@ from trieste.models.gpflow import (
     build_gpr,
     build_svgp,
 )
-from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor
-from trieste.models.keras import (
-    DeepEnsemble,
-    KerasPredictor,
-    build_vanilla_keras_ensemble,
-    negative_log_likelihood,
-)
+from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble, negative_log_likelihood
 from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -83,7 +77,7 @@ from trieste.types import State, TensorType
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
 # The various   # type: ignore[arg-type]  are for rules that are only supported by GPR models.
-def OPTIMIZER_PARAMS() -> Tuple[
+def GPR_OPTIMIZER_PARAMS() -> Tuple[
     str,
     List[
         Tuple[
@@ -106,7 +100,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
         "num_steps, acquisition_rule",
         [
             (20, EfficientGlobalOptimization()),
-            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            (35, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
                 25,
                 EfficientGlobalOptimization(
@@ -130,7 +124,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
                     LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=3,
+                    num_query_points=5,
                 ),
             ),
             (
@@ -139,7 +133,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
                     LocalPenalization(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
-                    num_query_points=3,
+                    num_query_points=5,
                 ),
             ),
             (
@@ -152,7 +146,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
                 ),
             ),
             (
-                15,
+                20,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
                         BRANIN_SEARCH_SPACE,
@@ -200,7 +194,7 @@ def OPTIMIZER_PARAMS() -> Tuple[
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
+@pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
@@ -212,7 +206,7 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
 
 
 @random_seed
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
+@pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
@@ -222,7 +216,11 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(min(num_steps, 7), acquisition_rule)
+    _test_optimizer_finds_minimum(
+        min(num_steps, 5),
+        acquisition_rule,
+        # model_args={"num_kernel_samples": 100}
+    )
 
 
 @random_seed
@@ -248,11 +246,11 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         TensorType, SearchSpace, GPflowPredictor
     ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
-        70,
+        50,
         acquisition_rule,
         optimize_branin=True,
         model_type="SVGP",
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
     )
 
 
@@ -337,12 +335,11 @@ def _test_optimizer_finds_minimum(
         State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
     ],
     optimize_branin: bool = False,
-    model_type: str = "GPR",  # in Python 3.8+ this could be Literal["GPR", "VGP", "SVGP"]
-    model_args: Optional[Mapping[str, Any]] = None,
+    model_type: str = "GPR",  # in Python 3.8+ a Literal["GPR", "VGP", "SVGP", "DGP", "DE"]?
+    model_args: Mapping[str, Any] = {},
 ) -> None:
 
-    model_args = model_args or {}
-    num_initial_query_points = 5
+    num_initial_query_points = 10
     track_state = True
 
     if optimize_branin:
@@ -355,89 +352,81 @@ def _test_optimizer_finds_minimum(
         minimizers = SIMPLE_QUADRATIC_MINIMIZER
         minima = SIMPLE_QUADRATIC_MINIMUM
         rtol_level = 0.05
-
-    if model_type == "GPR":
-
-        def build_model(data: Dataset) -> GaussianProcessRegression:  # type: ignore
-            gpr = build_gpr(data, search_space, likelihood_variance=1e-5)
-            return GaussianProcessRegression(gpr, **model_args)
-
-    elif model_type == "VGP":
-
-        def build_model(data: Dataset) -> VariationalGaussianProcess:  # type: ignore
-            empirical_variance = tf.math.reduce_variance(data.observations)
-            kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
-            likelihood = gpflow.likelihoods.Gaussian(1e-3)
-            vgp = gpflow.models.VGP(data.astuple(), kernel, likelihood)
-            gpflow.utilities.set_trainable(vgp.likelihood, False)
-            return VariationalGaussianProcess(vgp, **model_args)
-
-    elif model_type == "SVGP":
+    if model_type in ["SVGP", "DGP", "DE"]:
         num_initial_query_points = 20
-
-        def build_model(data: Dataset) -> SparseVariational:  # type: ignore
-            gpr = build_svgp(data, search_space, likelihood_variance=1e-5)
-            return SparseVariational(gpr, **model_args)
-
-    elif model_type == "DGP":
-        num_initial_query_points = 20
-        track_state = False
-
-        def build_model(data: Dataset) -> GPfluxPredictor:  # type: ignore
-            epochs = 400
-            batch_size = 100
-            dgp = two_layer_dgp_model(data.query_points)
-
-            def scheduler(epoch: int, lr: float) -> float:
-                if epoch == epochs // 2:
-                    return lr * 0.1
-                else:
-                    return lr
-
-            fit_args = {
-                "batch_size": batch_size,
-                "epochs": epochs,
-                "verbose": 0,
-                "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-            }
-            optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
-            return DeepGaussianProcess(dgp, optimizer)
-
-    elif model_type == "DE":
-        num_initial_query_points = 20
-        track_state = False
-
-        def build_model(data: Dataset) -> KerasPredictor:  # type: ignore
-            keras_ensemble = build_vanilla_keras_ensemble(data, 5, 3, 25)
-            fit_args = {
-                "batch_size": 20,
-                "epochs": 1000,
-                "callbacks": [
-                    tf.keras.callbacks.EarlyStopping(
-                        monitor="loss", patience=25, restore_best_weights=True
-                    )
-                ],
-                "verbose": 0,
-            }
-            optimizer = KerasOptimizer(
-                tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
-            )
-            return DeepEnsemble(keras_ensemble, optimizer, **model_args)
-
-    else:
-        raise ValueError(f"Unsupported model_type '{model_type}'")
 
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
     initial_data = observer(initial_query_points)
-    model = build_model(initial_data)
+
+    if model_type == "GPR":
+        if "LocalPenalization" in acquisition_rule.__repr__():
+            likelihood_variance = 1e-3
+        else:
+            likelihood_variance = 1e-5
+        gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
+        model = GaussianProcessRegression(gpr, **model_args)
+
+    elif model_type == "VGP":
+        empirical_variance = tf.math.reduce_variance(initial_data.observations)
+        kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
+        likelihood = gpflow.likelihoods.Gaussian(1e-3)
+        vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+        gpflow.utilities.set_trainable(vgp.likelihood, False)
+        model = VariationalGaussianProcess(vgp, **model_args)  # type: ignore
+
+    elif model_type == "SVGP":
+        gpr = build_svgp(initial_data, search_space)
+        model = SparseVariational(gpr, **model_args)  # type: ignore
+
+    elif model_type == "DGP":
+        track_state = False
+        epochs = 400
+        batch_size = 100
+        dgp = two_layer_dgp_model(initial_data.query_points)
+
+        def scheduler(epoch: int, lr: float) -> float:
+            if epoch == epochs // 2:
+                return lr * 0.1
+            else:
+                return lr
+
+        fit_args = {
+            "batch_size": batch_size,
+            "epochs": epochs,
+            "verbose": 0,
+            "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+        }
+        dgp_optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
+        model = DeepGaussianProcess(dgp, dgp_optimizer)  # type: ignore
+
+    elif model_type == "DE":
+        track_state = False
+        keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
+        fit_args = {
+            "batch_size": 20,
+            "epochs": 1000,
+            "callbacks": [
+                tf.keras.callbacks.EarlyStopping(
+                    monitor="loss", patience=25, restore_best_weights=True
+                )
+            ],
+            "verbose": 0,
+        }
+        de_optimizer = KerasOptimizer(
+            tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
+        )
+        model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)  # type: ignore
+
+    else:
+        raise ValueError(f"Unsupported model_type '{model_type}'")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
 
             dataset = (
-                BayesianOptimizer(observer, search_space)  # type: ignore
+                BayesianOptimizer(observer, search_space)
                 .optimize(
                     num_steps or 2, initial_data, model, acquisition_rule, track_state=track_state
                 )
