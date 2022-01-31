@@ -120,6 +120,13 @@ class TrainableProbabilisticModel(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
+    def after_load(self) -> None:
+        """
+        Call this after de-pickling the model, or loading it in another way that bypasses
+        `__init__`.
+        """
+        pass
+
 
 @runtime_checkable
 class SupportsPredictJoint(ProbabilisticModel, Protocol):

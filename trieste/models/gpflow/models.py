@@ -19,20 +19,11 @@ from typing import Any, Optional, Tuple, Union
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.base import (
-    DType,
-    Prior,
-    PriorOn,
-    TensorData,
-    Transform,
-    _cast_to_dtype,
-    _validate_unconstrained_value,
-)
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.posteriors import PrecomputeCacheType
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
-from tensorflow_probability.python.util import TransformedVariable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -67,6 +58,13 @@ class GaussianProcessRegression(
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
+
+    As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
+    acquisition functions), rather than calling the model directly at prediction time we instead
+    call the posterior objects built by these models. These posterior objects store the
+    pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
+    note that these posterior objects need to be updated whenever the underlying model is changed
+    (i.e. after calling :meth:`update` or :meth:`optimize`).
     """
 
     def __init__(
@@ -111,6 +109,19 @@ class GaussianProcessRegression(
         self._use_decoupled_sampler = use_decoupled_sampler
         self._ensure_variable_model_data()
 
+        # Cache posterior for fast sequential predictions.
+        # It is important that we create the posterior *after* we ensure that the model data is
+        # variable.
+        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+
+    def after_load(self) -> None:
+        self._ensure_variable_model_data()
+
+        # Cache posterior for fast sequential predictions.
+        # It is important that we create the posterior *after* we ensure that the model data is
+        # variable.
+        self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+
     def __repr__(self) -> str:
         """"""
         return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
@@ -140,6 +151,16 @@ class GaussianProcessRegression(
             ),
         )
 
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
@@ -155,6 +176,7 @@ class GaussianProcessRegression(
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
+        self._posterior.update_cache()  # update cached posterior
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -264,6 +286,7 @@ class GaussianProcessRegression(
             )
 
         self.optimizer.optimize(self.model, dataset)
+        self._posterior.update_cache()  # update cached posterior
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -343,17 +366,17 @@ class GaussianProcessRegression(
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
-        mean_add, cov_add = self.model.predict_f(
-            additional_data.query_points, full_cov=True
+        mean_add, cov_add = self.predict_joint(
+            additional_data.query_points
         )  # [..., N, L], [..., L, N, N]
-        mean_qp, var_qp = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
+        mean_qp, var_qp = self.predict(query_points)  # [M, L], [M, L]
 
         cov_cross = self.covariance_between_points(
             additional_data.query_points, query_points
         )  # [..., L, N, M]
 
         cov_shape = tf.shape(cov_add)
-        noise = self.model.likelihood.variance * tf.eye(
+        noise = self.get_observation_noise() * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
         L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
@@ -418,7 +441,7 @@ class GaussianProcessRegression(
         query_points_r = tf.broadcast_to(query_points, new_shape)  # [..., M, D]
         points = tf.concat([additional_data.query_points, query_points_r], axis=-2)  # [..., N+M, D]
 
-        mean, cov = self.model.predict_f(points, full_cov=True)  # [..., N+M, L], [..., L, N+M, N+M]
+        mean, cov = self.predict_joint(points)  # [..., N+M, L], [..., L, N+M, N+M]
 
         N = tf.shape(additional_data.query_points)[-2]
 
@@ -430,7 +453,7 @@ class GaussianProcessRegression(
         cov_cross = cov[..., :N, N:]  # [..., L, N, M]
 
         cov_shape = tf.shape(cov_add)
-        noise = self.model.likelihood.variance * tf.eye(
+        noise = self.get_observation_noise() * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
         L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
@@ -522,72 +545,6 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class Parameter(gpflow.Parameter):
-    """A modified version of gpflow.Parameter that supports variable shapes."""
-
-    def __init__(
-        self,
-        value: TensorData,
-        *,
-        transform: Optional[Transform] = None,
-        prior: Optional[Prior] = None,
-        prior_on: Union[str, PriorOn] = PriorOn.CONSTRAINED,
-        trainable: bool = True,
-        dtype: Optional[DType] = None,
-        name: Optional[str] = None,
-        transformed_shape: Any = None,
-        pretransformed_shape: Any = None,
-    ):
-        """
-        A copy of gpflow.Parameter's init but with additional shape arguments that are passed
-        to a modified TransformedVariable.
-        """
-        if transform is None:
-            transform = tfp.bijectors.Identity()
-
-        value = _cast_to_dtype(value, dtype)
-        _validate_unconstrained_value(value, transform, dtype)
-
-        # An inlined, modified version of TransformedVariable's __init__ that also passes any shape
-        # parameter specified in kwargs to the DeferredTensor parent's __init__.
-        # (use same parameter names as TransformedVariable)
-        bijector = transform
-        initial_value = value
-
-        for attr in {
-            "forward",
-            "forward_event_shape",
-            "inverse",
-            "inverse_event_shape",
-            "name",
-            "dtype",
-        }:
-            if not hasattr(bijector, attr):
-                raise TypeError(
-                    "Argument `bijector` missing required `Bijector` "
-                    'attribute "{}".'.format(attr)
-                )
-
-        if callable(initial_value):
-            initial_value = initial_value()
-        initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
-        super(TransformedVariable, self).__init__(  # type: ignore[call-arg]
-            pretransformed_input=tf.Variable(
-                initial_value=bijector.inverse(initial_value),
-                name=name,
-                dtype=dtype,
-                shape=pretransformed_shape,
-            ),
-            transform_fn=bijector,
-            shape=transformed_shape or initial_value.shape,
-            name=bijector.name,
-        )
-        self._bijector = bijector
-
-        self.prior = prior
-        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
-
-
 class SparseVariational(
     GPflowPredictor,
     TrainableProbabilisticModel,
@@ -597,6 +554,12 @@ class SparseVariational(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+
+    Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SVGP` wrapper
+    directly calls the posterior objects built by these models at prediction
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+    faster subsequent predictions. However, note that these posterior objects need to be updated
+    whenever the underlying model is changed (i.e. after calling :meth:`update` or :meth:`optimize`).
     """
 
     def __init__(
@@ -643,6 +606,17 @@ class SparseVariational(
             self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
 
+        # Cache posterior for fast sequential predictions:
+        # It is important that we create the posterior *after* we ensure that the model data is
+        # variable.
+        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+
+    def after_load(self) -> None:
+        # Cache posterior for fast sequential predictions.
+        # It is important that we create the posterior *after* we ensure that the model data is
+        # variable.
+        self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+
     def __repr__(self) -> str:
         """"""
         return f"SparseVariational({self.model!r}, {self.optimizer!r})"
@@ -650,6 +624,16 @@ class SparseVariational(
     @property
     def model(self) -> SVGP:
         return self._model
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
@@ -669,6 +653,16 @@ class SparseVariational(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
+        self._posterior.update_cache()  # update cached posterior
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
+        self.optimizer.optimize(self.model, dataset)
+        self._posterior.update_cache()  # update cached posterior
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
@@ -826,6 +820,11 @@ class VariationalGaussianProcess(
         self._natgrad_gamma = natgrad_gamma
         self._ensure_variable_model_data()
 
+        # Cache posterior for fast sequential predictions.
+        # It is important that we create the posterior *after* we ensure that the model data is
+        # variable.
+        self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
@@ -833,57 +832,27 @@ class VariationalGaussianProcess(
         # Sometimes, for instance after serialization-deserialization, the shape can be overridden
         # Thus here we ensure data is stored in dynamic shape Variables
 
-        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
-
-            self._model.data = (
+        model = self.model
+        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in model.data):
+            variable_data = (
                 tf.Variable(
-                    self._model.data[0],
+                    model.data[0],
                     trainable=False,
-                    shape=[None, *self._model.data[0].shape[1:]],
+                    shape=[None, *model.data[0].shape[1:]],
                 ),
                 tf.Variable(
-                    self._model.data[1],
+                    model.data[1],
                     trainable=False,
-                    shape=[None, *self._model.data[1].shape[1:]],
+                    shape=[None, *model.data[1].shape[1:]],
                 ),
             )
-
-            self._model.q_mu = Parameter(
-                self._model.q_mu,
-                transform=self._model.q_mu.bijector,
-                prior=self._model.q_mu.prior,
-                prior_on=self._model.q_mu.prior_on,
-                dtype=self._model.q_mu.dtype,
-                name=self._model.q_mu.unconstrained_variable.name,
-                trainable=self._model.q_mu.trainable,
-                transformed_shape=[None, *self._model.q_mu.shape[1:]],
-                pretransformed_shape=[None, *self._model.q_mu.unconstrained_variable.shape[1:]],
+            model.__init__(
+                variable_data,
+                model.kernel,
+                model.likelihood,
+                model.mean_function,
+                model.num_latent_gps,
             )
-            self._model.q_sqrt = Parameter(
-                self._model.q_sqrt,
-                transform=self._model.q_sqrt.bijector,
-                prior=self._model.q_sqrt.prior,
-                prior_on=self._model.q_sqrt.prior_on,
-                dtype=self._model.q_sqrt.dtype,
-                name=self._model.q_sqrt.unconstrained_variable.name,
-                trainable=self._model.q_sqrt.trainable,
-                transformed_shape=[*self._model.q_sqrt.shape[:-2], None, None],
-                pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
-            )
-
-        # GPflow stores num_data as a number. However, since we want to be able to update it
-        # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, NumDataPropertyMixin):
-
-            class VGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
-                """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and
-                exposes it as a property."""
-
-            self._model._num_data = tf.Variable(
-                self._model.num_data or 0, trainable=False, dtype=tf.float64
-            )
-            self._model.__class__ = VGPWrapper
 
     def __repr__(self) -> str:
         """"""
@@ -892,6 +861,16 @@ class VariationalGaussianProcess(
     @property
     def model(self) -> VGP:
         return self._model
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
     def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
@@ -902,31 +881,11 @@ class VariationalGaussianProcess(
             the covariance matrix.
         """
         self._ensure_variable_model_data()
-
         model = self.model
-
-        x, y = self.model.data[0].value(), self.model.data[1].value()
-        assert_data_is_compatible(dataset, Dataset(x, y))
-
-        f_mu, f_cov = self.model.predict_f(dataset.query_points, full_cov=True)  # [N, L], [L, N, N]
-
-        # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
-        # q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
-        # new_q_mu and new_q_sqrt:
-        Knn = model.kernel(dataset.query_points, full_cov=True)  # [N, N]
-        jitter_mat = jitter * tf.eye(len(dataset), dtype=Knn.dtype)
-        Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]
-        new_q_mu = tf.linalg.triangular_solve(Lnn, f_mu)  # [N, L]
-        tmp = tf.linalg.triangular_solve(Lnn[None], f_cov)  # [L, N, N], L⁻¹ f_cov
-        S_v = tf.linalg.triangular_solve(Lnn[None], tf.linalg.matrix_transpose(tmp))  # [L, N, N]
-        new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
-
         model.data[0].assign(dataset.query_points)
         model.data[1].assign(dataset.observations)
-        model.num_data = len(dataset)
-        model.q_mu.assign(Parameter(new_q_mu))
-        model.q_sqrt.assign(Parameter(new_q_sqrt, transform=gpflow.utilities.triangular()))
+        model.on_data_change()
+        self._posterior.update_cache()  # update cached posterior
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -969,6 +928,9 @@ class VariationalGaussianProcess(
 
         else:
             self.optimizer.optimize(model, dataset)
+
+        self._posterior.update_cache()  # update cached posterior
+
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """

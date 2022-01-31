@@ -226,7 +226,7 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
-def two_output_svgp_model(x: tf.Tensor, type: str) -> SVGP:
+def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
 
     ker1 = gpflow.kernels.Matern32()
     ker2 = gpflow.kernels.Matern52()
@@ -250,7 +250,7 @@ def two_output_svgp_model(x: tf.Tensor, type: str) -> SVGP:
         kernel = ker1
         iv = x[:3]
 
-    return SVGP(kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2)
+    return SVGP(kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2, whiten=whiten)
 
 
 def vgp_model_bernoulli(x: tf.Tensor, y: tf.Tensor) -> VGP:
