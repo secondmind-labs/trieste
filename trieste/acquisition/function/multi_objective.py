@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Optional, TypeVar, cast
+from typing import Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -27,15 +27,18 @@ from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
+from ..interface import (
+    AcquisitionFunction,
+    AcquisitionFunctionClass,
+    ProbabilisticModelType,
+    SingleModelAcquisitionBuilder,
+)
 from ..multi_objective.pareto import (
     Pareto,
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
 from .function import ExpectedConstrainedImprovement
-
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -333,7 +336,9 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M_contra]):
+class ExpectedConstrainedHypervolumeImprovement(
+    ExpectedConstrainedImprovement[ProbabilisticModelType]
+):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -349,7 +354,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
         )
 
     def _update_expected_improvement_fn(
-        self, objective_model: M_contra, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.

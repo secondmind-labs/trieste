@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, TypeVar, cast
+from typing import Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,11 +32,10 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
-
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -422,7 +421,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModelType]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -433,7 +432,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[M_contra],
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -470,7 +469,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, M_contra],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -519,7 +518,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, M_contra],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -567,7 +566,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
         return self._constrained_improvement_fn
 
     def _update_expected_improvement_fn(
-        self, objective_model: M_contra, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.

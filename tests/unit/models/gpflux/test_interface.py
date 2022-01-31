@@ -28,7 +28,6 @@ from gpflux.models import DeepGP
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux import GPfluxPredictor
-from trieste.models.interfaces import SupportsPredictJoint
 from trieste.types import TensorType
 
 
@@ -131,14 +130,6 @@ def test_gpflux_predictor_sample() -> None:
 def test_gpflux_predictor_sample_0_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
-
-
-def test_gpflux_predictor_raises_on_predict_joint_call() -> None:
-    model = _QuadraticPredictor()
-    query_points = tf.ones([5], dtype=gpflow.default_float())
-    assert not isinstance(model, SupportsPredictJoint)
-    with pytest.raises(AttributeError):
-        model.predict_joint(query_points)  # type: ignore
 
 
 def test_gpflux_predictor_get_observation_noise() -> None:

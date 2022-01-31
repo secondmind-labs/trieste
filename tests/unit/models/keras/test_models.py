@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Tuple
+from typing import Any
 
-import gpflow
 import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
-from tests.util.models.keras.models import trieste_keras_ensemble_model
+from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
 from trieste.models import create_model
@@ -74,30 +73,6 @@ def _ensemblise_data(
     return inputs, outputs
 
 
-def _trieste_deep_ensemble_model(
-    example_data: Dataset,
-    ensemble_size: int,
-    bootstrap_data: bool = False,
-    independent_normal: bool = False,
-) -> Tuple[DeepEnsemble, KerasEnsemble, KerasOptimizer]:
-
-    keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
-
-    optimizer = tf.keras.optimizers.Adam()
-    loss = negative_log_likelihood
-    fit_args = {
-        "batch_size": 32,
-        "epochs": 10,
-        "callbacks": [],
-        "verbose": 0,
-    }
-    optimizer_wrapper = KerasOptimizer(optimizer, loss, fit_args)
-
-    model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
-
-    return model, keras_ensemble, optimizer_wrapper
-
-
 @pytest.mark.parametrize("optimizer", [tf.optimizers.Adam(), tf.optimizers.RMSprop()])
 def test_deep_ensemble_repr(
     optimizer: tf.optimizers.Optimizer,
@@ -120,7 +95,7 @@ def test_deep_ensemble_repr(
 
 def test_deep_ensemble_model_attributes() -> None:
     example_data = empty_dataset([1], [1])
-    model, keras_ensemble, optimizer = _trieste_deep_ensemble_model(
+    model, keras_ensemble, optimizer = trieste_deep_ensemble_model(
         example_data, _ENSEMBLE_SIZE, False, False
     )
 
@@ -131,18 +106,9 @@ def test_deep_ensemble_model_attributes() -> None:
 
 def test_deep_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
     example_data = empty_dataset([1], [1])
-    model, _, _ = _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     assert model.ensemble_size == ensemble_size
-
-
-def test_deep_ensemble_raises_for_non_keras_optimizer() -> None:
-    example_data = empty_dataset([1], [1])
-
-    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
-
-    with pytest.raises(ValueError):
-        DeepEnsemble(keras_ensemble, KerasOptimizer(gpflow.optimizers.Scipy()))
 
 
 @pytest.mark.parametrize("ensemble_size", [-1, 1])
@@ -151,7 +117,7 @@ def test_deep_ensemble_raises_for_incorrect_ensemble_size(ensemble_size: int) ->
     example_data = empty_dataset([1], [1])
 
     with pytest.raises(ValueError):
-        _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+        trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
 
 def test_deep_ensemble_default_optimizer_is_correct() -> None:
@@ -194,7 +160,7 @@ def test_deep_ensemble_optimizer_changed_correctly() -> None:
 
 def test_deep_ensemble_is_compiled() -> None:
     example_data = empty_dataset([1], [1])
-    model, _, _ = _trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
     assert model.model.compiled_loss is not None
     assert model.model.compiled_metrics is not None
@@ -221,13 +187,33 @@ def test_config_builds_deep_ensemble_and_default_optimizer_is_correct() -> None:
     assert model.optimizer.fit_args == default_fit_args
 
 
+@pytest.mark.parametrize("size", [0, 1, 10])
+def test_deep_ensemble_sample_index_call_shape(size: int) -> None:
+    example_data = empty_dataset([1], [1])
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
+
+    network_indices = model.sample_index(size)
+
+    assert network_indices.shape == (size,)
+
+
+@random_seed
+@pytest.mark.parametrize("ensemble_size", [2, 5, 10, 20])
+def test_deep_ensemble_sample_index_samples_are_diverse(ensemble_size: int) -> None:
+    example_data = empty_dataset([1], [1])
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+
+    network_indices = model.sample_index(1000)
+    # breakpoint()
+    assert tf.math.reduce_variance(tf.cast(network_indices, tf.float32)) > 0
+    assert tf.reduce_min(network_indices) == 0
+    assert tf.reduce_max(network_indices) == (ensemble_size - 1)
+
+
 @pytest.mark.parametrize("dataset_size", [10, 100])
-def test_deep_ensemble_predict_call_shape(
-    ensemble_size: int,
-    dataset_size: int,
-) -> None:
+def test_deep_ensemble_predict_call_shape(ensemble_size: int, dataset_size: int) -> None:
     example_data = _get_example_data([dataset_size, 1])
-    model, _, _ = _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     predicted_means, predicted_vars = model.predict(example_data.query_points)
 
@@ -238,37 +224,39 @@ def test_deep_ensemble_predict_call_shape(
 
 
 @pytest.mark.parametrize("dataset_size", [10, 100])
-def test_deep_ensemble_predict_ensemble_call_shape(
-    ensemble_size: int,
-    dataset_size: int,
-) -> None:
+def test_deep_ensemble_predict_ensemble_call_shape(ensemble_size: int, dataset_size: int) -> None:
     example_data = _get_example_data([dataset_size, 1])
-    model, _, _ = _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
-    predictions = model.predict_ensemble(example_data.query_points)
+    predicted_means, predicted_vars = model.predict_ensemble(example_data.query_points)
 
-    assert isinstance(predictions, list)
-    assert len(predictions) == ensemble_size
-    for pred in predictions:
-        assert isinstance(pred, tuple)
-        predicted_means, predicted_vars = pred
-        assert tf.is_tensor(predicted_vars)
-        assert predicted_vars.shape == example_data.observations.shape
-        assert tf.is_tensor(predicted_means)
-        assert predicted_means.shape == example_data.observations.shape
+    assert predicted_means.shape[-3] == ensemble_size
+    assert predicted_vars.shape[-3] == ensemble_size
+    assert tf.is_tensor(predicted_means)
+    assert tf.is_tensor(predicted_vars)
+    assert predicted_means.shape[-2:] == example_data.observations.shape
+    assert predicted_vars.shape[-2:] == example_data.observations.shape
 
 
-@pytest.mark.parametrize("num_samples", [10, 100])
-@pytest.mark.parametrize("dataset_size", [50, 150])
-def test_deep_ensemble_sample_call_shape(
-    ensemble_size: int,
-    num_samples: int,
-    dataset_size: int,
-) -> None:
+@pytest.mark.parametrize("num_samples", [6, 12])
+@pytest.mark.parametrize("dataset_size", [4, 8])
+def test_deep_ensemble_sample_call_shape(num_samples: int, dataset_size: int) -> None:
     example_data = _get_example_data([dataset_size, 1])
-    model, _, _ = _trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
 
     samples = model.sample(example_data.query_points, num_samples)
+
+    assert tf.is_tensor(samples)
+    assert samples.shape == [num_samples, dataset_size, 1]
+
+
+@pytest.mark.parametrize("num_samples", [6, 12])
+@pytest.mark.parametrize("dataset_size", [4, 8])
+def test_deep_ensemble_sample_ensemble_call_shape(num_samples: int, dataset_size: int) -> None:
+    example_data = _get_example_data([dataset_size, 1])
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
+
+    samples = model.sample_ensemble(example_data.query_points, num_samples)
 
     assert tf.is_tensor(samples)
     assert samples.shape == [num_samples, dataset_size, 1]
@@ -350,9 +338,7 @@ def test_deep_ensemble_loss(
 
 
 @random_seed
-def test_deep_ensemble_predict_ensemble(
-    independent_normal: bool,
-) -> None:
+def test_deep_ensemble_predict_ensemble(independent_normal: bool) -> None:
     example_data = _get_example_data([100, 1])
 
     loss = negative_log_likelihood
@@ -367,28 +353,23 @@ def test_deep_ensemble_predict_ensemble(
     reference_model.model.compile(optimizer=optimizer, loss=loss)
     reference_model.model.set_weights(model.model.get_weights())
 
-    means_vars = model.predict_ensemble(example_data.query_points)
+    predicted_means, predicted_vars = model.predict_ensemble(example_data.query_points)
     tranformed_x, tranformed_y = _ensemblise_data(
         reference_model, example_data, _ENSEMBLE_SIZE, False
     )
     ensemble_distributions = reference_model.model(tranformed_x)
-    reference_means_vars = [(dist.mean(), dist.variance()) for dist in ensemble_distributions]
+    reference_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
+    reference_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
-    assert len(means_vars) == len(reference_means_vars)
-    for i in range(len(means_vars)):
-        npt.assert_allclose(means_vars[i][0], reference_means_vars[i][0])  # means
-        npt.assert_allclose(means_vars[i][1], reference_means_vars[i][1])  # vars
+    npt.assert_allclose(predicted_means, reference_means)
+    npt.assert_allclose(predicted_vars, reference_vars)
 
 
 @random_seed
-def test_deep_ensemble_sample(
-    independent_normal: bool,
-    ensemble_size: int,
-    bootstrap_data: bool,
-) -> None:
+def test_deep_ensemble_sample(independent_normal: bool) -> None:
     example_data = _get_example_data([100, 1])
-    model, _, _ = _trieste_deep_ensemble_model(
-        example_data, ensemble_size, bootstrap_data, independent_normal
+    model, _, _ = trieste_deep_ensemble_model(
+        example_data, _ENSEMBLE_SIZE, False, independent_normal
     )
     num_samples = 100_000
 
@@ -404,6 +385,23 @@ def test_deep_ensemble_sample(
 
 
 @random_seed
+def test_deep_ensemble_sample_ensemble(independent_normal: bool, ensemble_size: int) -> None:
+    example_data = _get_example_data([20, 1])
+    model, _, _ = trieste_deep_ensemble_model(
+        example_data, ensemble_size, False, independent_normal
+    )
+    num_samples = 2000
+
+    samples = model.sample_ensemble(example_data.query_points, num_samples)
+    sample_mean = tf.reduce_mean(samples, axis=0)
+
+    ref_mean, _ = model.predict(example_data.query_points)
+
+    error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
+    npt.assert_allclose(sample_mean, ref_mean, atol=2.5 * error)
+
+
+@random_seed
 def test_deep_ensemble_prepare_data_call(
     independent_normal: bool,
     ensemble_size: int,
@@ -414,7 +412,7 @@ def test_deep_ensemble_prepare_data_call(
     y = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
     example_data = Dataset(x, y)
 
-    model, _, _ = _trieste_deep_ensemble_model(
+    model, _, _ = trieste_deep_ensemble_model(
         example_data, ensemble_size, bootstrap_data, independent_normal
     )
 
