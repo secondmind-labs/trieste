@@ -23,7 +23,7 @@ import tensorflow_probability as tfp
 
 try:
     from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     # temporary support for gpflux 0.2.3
     from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
 
