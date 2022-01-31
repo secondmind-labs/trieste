@@ -40,6 +40,8 @@ from trieste.models.gpflow import (
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives.single_objectives import branin
 
+GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
+
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
     IndependentReparametrizationSampler,
@@ -459,9 +461,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     )  # new sample should agree with data
 
 
-@pytest.mark.skipif(
-    getattr(gpflux, "__version__", "0.2.3") == "0.2.3", reason="Requires GPFlux >= 0.2.4"
-)
+@pytest.mark.skipif(GPFLUX_VERSION == "0.2.3", reason="Requires GPFlux >= 0.2.4")
 def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
 
     dataset = Dataset(
