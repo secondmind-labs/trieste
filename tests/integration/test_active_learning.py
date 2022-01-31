@@ -310,7 +310,7 @@ def svgp_classification_model(initial_data: Dataset, search_space: Box) -> Spars
         (70, svgp_classification_model),
     ],
 )
-def test_optimizer_learns_circle_function(
+def test_bald_learner_learns_circle_function(
     num_steps: int,
     model_builder: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
 ) -> None:
