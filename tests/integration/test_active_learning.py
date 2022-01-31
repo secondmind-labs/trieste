@@ -303,6 +303,7 @@ def svgp_classification_model(initial_data: Dataset, search_space: Box) -> Spars
 
 
 @random_seed
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, model_builder",
     [
