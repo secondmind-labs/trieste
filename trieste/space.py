@@ -25,7 +25,7 @@ import tensorflow_probability as tfp
 from .types import TensorType
 from .utils import shapes_equal
 
-SP = TypeVar("SP", bound="SearchSpace")
+SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
 
@@ -67,13 +67,13 @@ class SearchSpace(ABC):
         """The highest value taken by each search space dimension."""
 
     @abstractmethod
-    def __mul__(self: SP, other: SP) -> SP:
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
         """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
         """
 
-    def __pow__(self: SP, other: int) -> SP:
+    def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for
         an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to

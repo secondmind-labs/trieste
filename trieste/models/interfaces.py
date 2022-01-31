@@ -25,7 +25,12 @@ from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
 
-T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
+)
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`.
+This is used to specify classes such as samplers and acquisition function builders that
+take models as input parameters and might ony support models with certain features. """
 
 
 @runtime_checkable
@@ -300,7 +305,9 @@ class EnsembleModel(ProbabilisticModel, Protocol):
 class HasTrajectorySampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated trajectory sampler."""
 
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+    def trajectory_sampler(
+        self: ProbabilisticModelType,
+    ) -> TrajectorySampler[ProbabilisticModelType]:
         """
         Return a trajectory sampler that supports this model.
 
@@ -313,7 +320,9 @@ class HasTrajectorySampler(ProbabilisticModel, Protocol):
 class HasReparamSampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated reparametrization sampler."""
 
-    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
+    def reparam_sampler(
+        self: ProbabilisticModelType, num_samples: int
+    ) -> ReparametrizationSampler[ProbabilisticModelType]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
@@ -323,10 +332,11 @@ class HasReparamSampler(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
 
-class ModelStack(ProbabilisticModel, Generic[T]):
+class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
-    :class:`T`. It combines the outputs of each model for predictions and sampling.
+    :class:`ProbabilisticModelType`. It combines the outputs of each model for predictions and
+    sampling.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
@@ -339,8 +349,8 @@ class ModelStack(ProbabilisticModel, Generic[T]):
 
     def __init__(
         self,
-        model_with_event_size: tuple[T, int],
-        *models_with_event_sizes: tuple[T, int],
+        model_with_event_size: tuple[ProbabilisticModelType, int],
+        *models_with_event_sizes: tuple[ProbabilisticModelType, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -525,14 +535,14 @@ class TrainablePredictJointReparamModelStack(
     pass
 
 
-class ReparametrizationSampler(ABC, Generic[T]):
+class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     These samplers employ the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
     points. See :cite:`wilson2018maximizing` for details.
     """
 
-    def __init__(self, sample_size: int, model: T):
+    def __init__(self, sample_size: int, model: ProbabilisticModelType):
         r"""
         Note that our :class:`TrainableModelStack` currently assumes that
         all :class:`ReparametrizationSampler` constructors have **only** these inputs
@@ -596,7 +606,7 @@ class TrajectoryFunctionClass(ABC):
         """Call trajectory function."""
 
 
-class TrajectorySampler(ABC, Generic[T]):
+class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     This class builds functions that approximate a trajectory sampled from an
     underlying :class:`ProbabilisticModel`.
@@ -606,7 +616,7 @@ class TrajectorySampler(ABC, Generic[T]):
     of a particular trajectory function).
     """
 
-    def __init__(self, model: T):
+    def __init__(self, model: ProbabilisticModelType):
         """
         :param model: The model to sample from.
         """
