@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type
+from typing import List, Type, cast
 
 import gpflow
+import gpflux
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -456,3 +457,18 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     npt.assert_array_less(
         tf.abs(eval_after - quadratic(xs_predict)), 1e-3
     )  # new sample should agree with data
+
+
+@pytest.mark.skipif(gpflux.__version__ == "0.2.3", reason="Requires GPFlux >= 0.2.4")
+def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = gpflow.kernels.RBF()
+    sampler = RandomFourierFeatureTrajectorySampler(model)
+    trajectory = cast(fourier_feature_trajectory, sampler.get_trajectory())
+    assert trajectory._feature_functions.__class__.__name__ == "RandomFourierFeaturesCosine"
