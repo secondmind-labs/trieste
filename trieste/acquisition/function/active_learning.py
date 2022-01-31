@@ -502,9 +502,11 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         """
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
 
-        if type(model) != VariationalGaussianProcess and type(model) != SparseVariational:
+        if not isinstance(model, VariationalGaussianProcess) and not isinstance(
+            model, SparseVariational
+        ):
             raise TypeError
-        elif type(model.model.likelihood) != Bernoulli:
+        elif not isinstance(model.model.likelihood, Bernoulli):
             raise TypeError
         "Only support VGP or SVGP with Bernoulli likelihood"
 
