@@ -32,6 +32,7 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionClass,
     PenalizationFunction,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
@@ -41,10 +42,7 @@ from ..sampler import ExactThompsonSampler, ThompsonSampler
 CLAMP_LB = 1e-8
 
 
-T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
-
-
-class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -69,11 +67,11 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
 
     @overload
     def __init__(
-        self: "MinValueEntropySearch[T]",
+        self: "MinValueEntropySearch[ProbabilisticModelType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler[T]] = None,
+        min_value_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
     ):
         ...
 
@@ -82,7 +80,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler[T]] = None,
+        min_value_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -116,7 +114,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
 
     def prepare_acquisition_function(
         self,
-        model: T,
+        model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -141,7 +139,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[T]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: T,
+        model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -228,10 +226,13 @@ class SupportsCovarianceObservationNoiseTrajectory(
     has an associated trajectory sampler."""
 
 
-GIBBONT = TypeVar("GIBBONT", bound=SupportsCovarianceObservationNoise, contravariant=True)
+GIBBONModelType = TypeVar(
+    "GIBBONModelType", bound=SupportsCovarianceObservationNoise, contravariant=True
+)
+""" Type variable bound to :class:`~trieste.models.SupportsCovarianceObservationNoise`. """
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -259,11 +260,11 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
 
     @overload
     def __init__(
-        self: "GIBBON[GIBBONT]",
+        self: "GIBBON[GIBBONModelType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler[GIBBONT]] = None,
+        min_value_sampler: Optional[ThompsonSampler[GIBBONModelType]] = None,
         rescaled_repulsion: bool = True,
     ):
         ...
@@ -273,7 +274,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
-        min_value_sampler: Optional[ThompsonSampler[GIBBONT]] = None,
+        min_value_sampler: Optional[ThompsonSampler[GIBBONModelType]] = None,
         rescaled_repulsion: bool = True,
     ):
         """
@@ -317,7 +318,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
 
     def prepare_acquisition_function(
         self,
-        model: GIBBONT,
+        model: GIBBONModelType,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -347,7 +348,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: GIBBONT,
+        model: GIBBONModelType,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -381,7 +382,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
         self,
         function: Optional[AcquisitionFunction],
         dataset: Dataset,
-        model: GIBBONT,
+        model: GIBBONModelType,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         tf.debugging.assert_rank(pending_points, 2)
@@ -407,7 +408,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONT]):
             self._gibbon_acquisition = gibbon_acquisition
             return gibbon_acquisition
 
-    def _update_quality_term(self, dataset: Dataset, model: GIBBONT) -> AcquisitionFunction:
+    def _update_quality_term(self, dataset: Dataset, model: GIBBONModelType) -> AcquisitionFunction:
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
