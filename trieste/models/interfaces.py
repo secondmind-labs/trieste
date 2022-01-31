@@ -25,7 +25,12 @@ from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
 
-T = TypeVar("T", bound="ProbabilisticModel", contravariant=True)
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
+)
+""" Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`.
+This is used to specify classes such as samplers and acquisition function builders that
+take models as input parameters and might ony support models with certain features. """
 
 
 @runtime_checkable
@@ -244,10 +249,65 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
+class EnsembleModel(ProbabilisticModel, Protocol):
+    """
+    This is an interface for ensemble types of models. These models can act as probabilistic models
+    by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+    individual models in the ensemble.
+    """
+
+    @abstractmethod
+    def ensemble_size(self) -> int:
+        """
+        Returns the size of the ensemble, that is, the number of base learners or individual
+        models in the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_index(self, size: int) -> TensorType:
+        """
+        Returns indices of individual models in the ensemble sampled randomly with replacement.
+
+        :param size: The number of samples to take.
+        :return: A tensor with indices
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+        the ``ensemble_size``.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points`` for each member of the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples at ``query_points`` where each sample is taken from a
+        distribution given by a randomly chosen model in the ensemble.
+
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
 class HasTrajectorySampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated trajectory sampler."""
 
-    def trajectory_sampler(self: T) -> TrajectorySampler[T]:
+    def trajectory_sampler(
+        self: ProbabilisticModelType,
+    ) -> TrajectorySampler[ProbabilisticModelType]:
         """
         Return a trajectory sampler that supports this model.
 
@@ -260,7 +320,9 @@ class HasTrajectorySampler(ProbabilisticModel, Protocol):
 class HasReparamSampler(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated reparametrization sampler."""
 
-    def reparam_sampler(self: T, num_samples: int) -> ReparametrizationSampler[T]:
+    def reparam_sampler(
+        self: ProbabilisticModelType, num_samples: int
+    ) -> ReparametrizationSampler[ProbabilisticModelType]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
@@ -270,10 +332,11 @@ class HasReparamSampler(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
 
-class ModelStack(ProbabilisticModel, Generic[T]):
+class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
-    :class:`T`. It combines the outputs of each model for predictions and sampling.
+    :class:`ProbabilisticModelType`. It combines the outputs of each model for predictions and
+    sampling.
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
@@ -286,8 +349,8 @@ class ModelStack(ProbabilisticModel, Generic[T]):
 
     def __init__(
         self,
-        model_with_event_size: tuple[T, int],
-        *models_with_event_sizes: tuple[T, int],
+        model_with_event_size: tuple[ProbabilisticModelType, int],
+        *models_with_event_sizes: tuple[ProbabilisticModelType, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -472,14 +535,14 @@ class TrainablePredictJointReparamModelStack(
     pass
 
 
-class ReparametrizationSampler(ABC, Generic[T]):
+class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     These samplers employ the *reparameterization trick* to draw samples from a
     :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
     points. See :cite:`wilson2018maximizing` for details.
     """
 
-    def __init__(self, sample_size: int, model: T):
+    def __init__(self, sample_size: int, model: ProbabilisticModelType):
         r"""
         Note that our :class:`TrainableModelStack` currently assumes that
         all :class:`ReparametrizationSampler` constructors have **only** these inputs
@@ -543,7 +606,7 @@ class TrajectoryFunctionClass(ABC):
         """Call trajectory function."""
 
 
-class TrajectorySampler(ABC, Generic[T]):
+class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     This class builds functions that approximate a trajectory sampled from an
     underlying :class:`ProbabilisticModel`.
@@ -553,7 +616,7 @@ class TrajectorySampler(ABC, Generic[T]):
     of a particular trajectory function).
     """
 
-    def __init__(self, model: T):
+    def __init__(self, model: ProbabilisticModelType):
         """
         :param model: The model to sample from.
         """

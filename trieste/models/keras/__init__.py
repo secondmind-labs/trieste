@@ -25,4 +25,5 @@ from .architectures import GaussianNetwork, KerasEnsemble, KerasEnsembleNetwork
 from .builders import build_vanilla_keras_ensemble
 from .interface import KerasPredictor
 from .models import DeepEnsemble
+from .sampler import EnsembleTrajectorySampler
 from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement
