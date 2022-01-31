@@ -99,52 +99,52 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
     return (
         "num_steps, acquisition_rule",
         [
-            # (20, EfficientGlobalOptimization()),
-            # (30, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-            # (
-            #     22,
-            #     EfficientGlobalOptimization(
-            #         MinValueEntropySearch(  # type: ignore[arg-type]
-            #             BRANIN_SEARCH_SPACE,
-            #             min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
-            #         ).using(OBJECTIVE)
-            #     ),
-            # ),
-            # (
-            #     12,
-            #     EfficientGlobalOptimization(
-            #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            # ),
-            # (12, AsynchronousOptimization(num_query_points=3)),
-            # (
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         LocalPenalization(
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            # ),
-            # (
-            #     10,
-            #     AsynchronousGreedy(
-            #         LocalPenalization(
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            # ),
-            # (
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         GIBBON(  # type: ignore[arg-type]
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=2,
-            #     ),
-            # ),
+            (20, EfficientGlobalOptimization()),
+            (30, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
+            (
+                22,
+                EfficientGlobalOptimization(
+                    MinValueEntropySearch(  # type: ignore[arg-type]
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
+                ),
+            ),
+            (
+                12,
+                EfficientGlobalOptimization(
+                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+            ),
+            (12, AsynchronousOptimization(num_query_points=3)),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    LocalPenalization(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+            ),
+            (
+                10,
+                AsynchronousGreedy(
+                    LocalPenalization(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    GIBBON(  # type: ignore[arg-type]
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=2,
+                ),
+            ),
             (
                 20,
                 EfficientGlobalOptimization(
@@ -216,11 +216,7 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(
-        min(num_steps, 5),
-        acquisition_rule,
-        # model_args={"num_kernel_samples": 100}
-    )
+    _test_optimizer_finds_minimum(min(num_steps, 5), acquisition_rule)
 
 
 @random_seed
