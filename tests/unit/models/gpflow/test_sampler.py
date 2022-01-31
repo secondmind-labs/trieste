@@ -443,7 +443,11 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     model.update(new_dataset)
     model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
-    trajectory = trajectory_sampler.update_trajectory(trajectory)
+    trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+    if GPFLUX_VERSION != "0.2.3":
+        assert trajectory_updated is trajectory
+    else:
+        trajectory = trajectory_updated
     eval_after = trajectory(tf.expand_dims(xs_predict, -2))
 
     assert (
@@ -461,7 +465,6 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     )  # new sample should agree with data
 
 
-@pytest.mark.skipif(GPFLUX_VERSION == "0.2.3", reason="Requires GPFlux >= 0.2.4")
 def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
 
     dataset = Dataset(
@@ -473,4 +476,6 @@ def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
     model.kernel = gpflow.kernels.RBF()
     sampler = RandomFourierFeatureTrajectorySampler(model)
     trajectory = cast(fourier_feature_trajectory, sampler.get_trajectory())
-    assert trajectory._feature_functions.__class__.__name__ == "RandomFourierFeaturesCosine"
+    assert trajectory._feature_functions.__class__.__name__ == (
+        "RandomFourierFeaturesCosine" if GPFLUX_VERSION != "0.2.3" else "RandomFourierFeatures"
+    )

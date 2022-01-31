@@ -391,6 +391,10 @@ class RandomFourierFeatureTrajectorySampler(
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
 
+        if not hasattr(self._feature_functions, "_bias_init"):
+            # maintain support for gpflux 0.2.3 (but with retracing)
+            return self.get_trajectory()
+
         bias_shape = tf.shape(self._feature_functions.b)
         bias_dtype = self._feature_functions.b.dtype
         weight_shape = tf.shape(self._feature_functions.W)
