@@ -49,6 +49,7 @@ from trieste.types import TensorType
         (VariationalGaussianProcess, vgp_model),
         (SparseVariational, svgp_model),
     ],
+    ids=lambda mf: mf[1].__name__,
 )
 def _gpflow_interface_factory(request: Any) -> ModelFactoryType:
     def model_interface_factory(
