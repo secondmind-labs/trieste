@@ -38,18 +38,20 @@ from .space import SearchSpace
 from .types import State, TensorType
 from .utils import Err, Ok, Result, map_values
 
-S = TypeVar("S")
+StateType = TypeVar("StateType")
 """ Unbound type variable. """
 
-SP = TypeVar("SP", bound=SearchSpace)
+SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
-M_contra = TypeVar("M_contra", bound=TrainableProbabilisticModel, contravariant=True)
-""" Type variable bound to :class:`TrainableProbabilisticModel`. """
+TrainableProbabilisticModelType = TypeVar(
+    "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
+)
+""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
 @dataclass(frozen=True)
-class Record(Generic[S]):
+class Record(Generic[StateType]):
     """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[str, Dataset]
@@ -58,7 +60,7 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    acquisition_state: S | None
+    acquisition_state: StateType | None
     """ The acquisition state. """
 
     @property
@@ -81,23 +83,23 @@ class Record(Generic[S]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[S]):
+class OptimizationResult(Generic[StateType]):
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[S]]
+    final_result: Result[Record[StateType]]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[S]]
+    history: list[Record[StateType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
     :attr:`final_result`.
     """
 
-    def astuple(self) -> tuple[Result[Record[S]], list[Record[S]]]:
+    def astuple(self) -> tuple[Result[Record[StateType]], list[Record[StateType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -153,14 +155,14 @@ class OptimizationResult(Generic[S]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
 
-class BayesianOptimizer(Generic[SP]):
+class BayesianOptimizer(Generic[SearchSpaceType]):
     """
     This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(self, observer: Observer, search_space: SP):
+    def __init__(self, observer: Observer, search_space: SearchSpaceType):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -190,8 +192,10 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, M_contra],
-        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -208,7 +212,9 @@ class BayesianOptimizer(Generic[SP]):
         datasets: Mapping[str, Dataset],
         # there's no way to statically check config-based models
         model_specs: Mapping[str, ModelConfigType],
-        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -223,13 +229,15 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, M_contra],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
-        acquisition_state: S | None = None,
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[StateType]:
         ...
 
     @overload
@@ -239,12 +247,14 @@ class BayesianOptimizer(Generic[SP]):
         datasets: Mapping[str, Dataset],
         # there's no way to statically check config-based models
         model_specs: Mapping[str, ModelConfigType],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
-        acquisition_state: S | None = None,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[StateType]:
         ...
 
     @overload
@@ -264,8 +274,10 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: M_contra,
-        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -278,7 +290,9 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelConfigType,
-        acquisition_rule: AcquisitionRule[TensorType, SP, M_contra],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -290,13 +304,15 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: M_contra,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
-        acquisition_state: S | None = None,
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[StateType]:
         ...
 
     @overload
@@ -305,26 +321,35 @@ class BayesianOptimizer(Generic[SP]):
         num_steps: int,
         datasets: Dataset,
         model_specs: ModelConfigType,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP, M_contra],
-        acquisition_state: S | None = None,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[StateType]:
         ...
 
     def optimize(
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, M_contra] | Mapping[str, ModelSpec] | M_contra | ModelConfigType,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP, M_contra]
+        model_specs: Mapping[str, TrainableProbabilisticModelType]
+        | Mapping[str, ModelSpec]
+        | TrainableProbabilisticModelType
+        | ModelConfigType,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ]
         | None = None,
-        acquisition_state: S | None = None,
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S] | OptimizationResult[None]:
+    ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -410,12 +435,16 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = EfficientGlobalOptimization[SP, M_contra]()
+            acquisition_rule = EfficientGlobalOptimization[
+                SearchSpaceType, TrainableProbabilisticModelType
+            ]()
 
         # note that this cast is justified for explicit models but not for models created
         # from config, which can't be statically type checked; those will fail at runtime instead
-        models = cast(Dict[str, M_contra], map_values(create_model, model_specs))
-        history: list[Record[S]] = []
+        models = cast(
+            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
+        )
+        history: list[Record[StateType]] = []
 
         for step in range(num_steps):
             set_step_number(step)
