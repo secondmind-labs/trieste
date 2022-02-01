@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Callable, Mapping, Optional, Sequence, TypeVar, cast
+from typing import Callable, Mapping, Optional, Sequence, cast
 
 import numpy.testing as npt
 import pytest
@@ -57,11 +57,9 @@ from trieste.acquisition.multi_objective.partition import (
     prepare_default_non_dominated_partition_bounds,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, ReparametrizationSampler
+from trieste.models import ProbabilisticModel, ProbabilisticModelType, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
-
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 def _mo_test_model(
@@ -434,7 +432,9 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_based_on_specified_r
     xs = tf.linspace([[-10.0]], [[10.0]], 10)
     sampler = BatchReparametrizationSampler(sample_size, model)
     expected = batch_ehvi(
-        sampler, sampler_jitter=DEFAULTS.JITTER, partition_bounds=_partition_bounds
+        sampler,
+        sampler_jitter=DEFAULTS.JITTER,  # type: ignore[arg-type]
+        partition_bounds=_partition_bounds,
     )(xs)
     npt.assert_allclose(acq_fn(xs), expected, rtol=0.01, atol=0.02)
 
@@ -739,7 +739,7 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
 
-    class _Certainty(AcquisitionFunctionBuilder[M_contra]):
+    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModelType]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
