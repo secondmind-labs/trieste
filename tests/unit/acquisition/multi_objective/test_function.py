@@ -432,8 +432,8 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_based_on_specified_r
     xs = tf.linspace([[-10.0]], [[10.0]], 10)
     sampler = BatchReparametrizationSampler(sample_size, model)
     expected = batch_ehvi(
-        sampler,
-        sampler_jitter=DEFAULTS.JITTER,  # type: ignore[arg-type]
+        sampler,  # type: ignore[arg-type]
+        sampler_jitter=DEFAULTS.JITTER,
         partition_bounds=_partition_bounds,
     )(xs)
     npt.assert_allclose(acq_fn(xs), expected, rtol=0.01, atol=0.02)
