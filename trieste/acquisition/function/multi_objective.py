@@ -17,7 +17,7 @@ This module contains multi-objective acquisition function builders.
 from __future__ import annotations
 
 from itertools import combinations, product
-from typing import Callable, Optional, Sequence, TypeVar, cast
+from typing import Callable, Optional, Sequence, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -31,6 +31,7 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
 )
 from ..multi_objective.pareto import (
@@ -39,8 +40,6 @@ from ..multi_objective.pareto import (
     prepare_default_non_dominated_partition_bounds,
 )
 from .function import ExpectedConstrainedImprovement
-
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -342,7 +341,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler[M_contra],
+    sampler: ReparametrizationSampler[HasReparamSampler],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -407,7 +406,9 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M_contra]):
+class ExpectedConstrainedHypervolumeImprovement(
+    ExpectedConstrainedImprovement[ProbabilisticModelType]
+):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -417,7 +418,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[M_contra],
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
         | TensorType
@@ -466,7 +467,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
             )
 
     def _update_expected_improvement_fn(
-        self, objective_model: M_contra, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.
