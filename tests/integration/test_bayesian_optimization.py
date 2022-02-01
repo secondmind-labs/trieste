@@ -338,9 +338,9 @@ def _test_optimizer_finds_minimum(
     ],
     optimize_branin: bool = False,
     model_type: str = "GPR",  # in Python 3.8+ a Literal["GPR", "VGP", "SVGP", "DGP", "DE"]?
-    model_args: Mapping[str, Any] = {},
+    model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
-
+    model_args = model_args or {}
     num_initial_query_points = 10
     track_state = True
 
