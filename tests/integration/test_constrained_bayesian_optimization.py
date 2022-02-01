@@ -26,7 +26,7 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
-from trieste.space import Box, SearchSpace
+from trieste.space import Box
 from trieste.types import TensorType
 
 
@@ -34,7 +34,7 @@ from trieste.types import TensorType
 @pytest.mark.parametrize(
     "num_steps, acquisition_function_builder",
     [
-        (20, ExpectedConstrainedImprovement),
+        (12, ExpectedConstrainedImprovement),
     ],
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(
@@ -73,17 +73,9 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     num_initial_points = 6
     initial_data = observer(search_space.sample(num_initial_points))
 
-    def build_model(data: Dataset, search_space: SearchSpace) -> GaussianProcessRegression:
-        gpr = build_gpr(data, search_space, likelihood_variance=1e-7)
-        return GaussianProcessRegression(gpr)
-
     models = {
-        OBJECTIVE: GaussianProcessRegression(
-            build_gpr(initial_data[OBJECTIVE], search_space, likelihood_variance=1e-7)
-        ),
-        CONSTRAINT: GaussianProcessRegression(
-            build_gpr(initial_data[CONSTRAINT], search_space, likelihood_variance=1e-7)
-        ),
+        OBJECTIVE: GaussianProcessRegression(build_gpr(initial_data[OBJECTIVE], search_space)),
+        CONSTRAINT: GaussianProcessRegression(build_gpr(initial_data[CONSTRAINT], search_space)),
     }
 
     pof = ProbabilityOfFeasibility(threshold=0.5)

@@ -102,7 +102,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
             (20, EfficientGlobalOptimization()),
             (30, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
             (
-                22,
+                24,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(  # type: ignore[arg-type]
                         BRANIN_SEARCH_SPACE,
@@ -341,7 +341,6 @@ def _test_optimizer_finds_minimum(
     model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
     model_args = model_args or {}
-    num_initial_query_points = 10
     track_state = True
 
     if optimize_branin:
@@ -349,11 +348,13 @@ def _test_optimizer_finds_minimum(
         minimizers = BRANIN_MINIMIZERS
         minima = SCALED_BRANIN_MINIMUM
         rtol_level = 0.005
+        num_initial_query_points = 5
     else:
         search_space = SIMPLE_QUADRATIC_SEARCH_SPACE
         minimizers = SIMPLE_QUADRATIC_MINIMIZER
         minima = SIMPLE_QUADRATIC_MINIMUM
         rtol_level = 0.05
+        num_initial_query_points = 10
     if model_type in ["SVGP", "DGP", "DE"]:
         num_initial_query_points = 20
 

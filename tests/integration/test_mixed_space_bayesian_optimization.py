@@ -52,9 +52,9 @@ from trieste.types import TensorType
             ]
         ],
         [
-            (24, EfficientGlobalOptimization()),
+            (25, EfficientGlobalOptimization()),
             (
-                8,
+                5,
                 EfficientGlobalOptimization(
                     BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                     num_query_points=3,
@@ -87,7 +87,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     observer = mk_observer(scaled_branin)
     initial_data = observer(initial_query_points)
     model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-5)
+        build_gpr(initial_data, search_space, likelihood_variance=1e-8)
     )
 
     dataset = (
