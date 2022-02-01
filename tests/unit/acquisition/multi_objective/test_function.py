@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Callable, Mapping, Optional, Sequence, cast
+from typing import Callable, Mapping, Optional, Sequence, TypeVar, cast
 
 import numpy.testing as npt
 import pytest
@@ -36,6 +36,7 @@ from tests.util.misc import (
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     GaussianProcessWithSamplers,
+    HasReparamSampler,
     QuadraticMeanAndRBFKernel,
 )
 from trieste.acquisition import (
@@ -59,6 +60,8 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
+
+M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 def _mo_test_model(
@@ -414,6 +417,7 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_based_on_specified_r
     )
 
     model = _mo_test_model(num_obj, *[1, 1] * num_obj)
+    assert isinstance(model, HasReparamSampler)
     acq_fn = BatchMonteCarloExpectedHypervolumeImprovement(
         sample_size, reference_point_spec=specify_ref_points
     ).prepare_acquisition_function(model, dataset)
@@ -713,8 +717,6 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
 
 def custom_get_ref_point_echvi(
     observations: TensorType,
-    objective_builder: Optional[AcquisitionFunctionBuilder] = None,
-    constraint_builder: Optional[AcquisitionFunctionBuilder] = None,
 ) -> TensorType:
     return tf.reduce_min(observations, -2)
 
@@ -737,7 +739,7 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
 
-    class _Certainty(AcquisitionFunctionBuilder):
+    class _Certainty(AcquisitionFunctionBuilder[M_contra]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -748,7 +750,7 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
     models_ = {"foo": obj_model}
 
-    builder = ExpectedConstrainedHypervolumeImprovement(
+    builder = ExpectedConstrainedHypervolumeImprovement(  # type: ignore
         "foo",
         _Certainty(),
         0,

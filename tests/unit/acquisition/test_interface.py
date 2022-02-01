@@ -116,7 +116,10 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
             (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
             (NegativePredictiveMean(), "NegativePredictiveMean()"),
             (ProbabilityOfFeasibility(0.5), "ProbabilityOfFeasibility(0.5)"),
-            (ExpectedHypervolumeImprovement(), "ExpectedHypervolumeImprovement(get_reference_point)"),
+            (
+                ExpectedHypervolumeImprovement(),
+                "ExpectedHypervolumeImprovement(get_reference_point)",
+            ),
             (
                 BatchMonteCarloExpectedImprovement(10_000),
                 f"BatchMonteCarloExpectedImprovement(10000, jitter={DEFAULTS.JITTER})",

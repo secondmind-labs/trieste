@@ -342,7 +342,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler[HasReparamSampler],
+    sampler: ReparametrizationSampler[M_contra],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -417,7 +417,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder,
+        constraint_builder: AcquisitionFunctionBuilder[M_contra],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
         | TensorType
@@ -475,6 +475,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement[M
         :param feasible_mean: The mean of the feasible query points.
         """
         if self._conservative_ref_point_spec is True:
+            assert isinstance(self._objective_dataset, Dataset)
             _pf = Pareto(self._objective_dataset.observations)
         else:
             _pf = Pareto(feasible_mean)
