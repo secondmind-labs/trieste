@@ -19,20 +19,18 @@ acquisition functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
 
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasTrajectorySampler
+from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
 from ..types import TensorType
 
-T = TypeVar("T", bound=ProbabilisticModel, contravariant=True)
 
-
-class ThompsonSampler(ABC, Generic[T]):
+class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
     modeled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
@@ -56,7 +54,7 @@ class ThompsonSampler(ABC, Generic[T]):
         """
 
     @abstractmethod
-    def sample(self, model: T, sample_size: int, at: TensorType) -> TensorType:
+    def sample(self, model: ProbabilisticModelType, sample_size: int, at: TensorType) -> TensorType:
         """
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
