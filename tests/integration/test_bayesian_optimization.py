@@ -295,9 +295,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
         (30, DiscreteThompsonSampling(500, 3)),
         (
             30,
-            DiscreteThompsonSampling(
-                1000, 3, thompson_sampler=ThompsonSamplerFromTrajectory()  # type: ignore[arg-type]
-            ),
+            DiscreteThompsonSampling(1000, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
         ),
     ],
 )
@@ -322,9 +320,7 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         (5, DiscreteThompsonSampling(500, 1)),
         (
             5,
-            DiscreteThompsonSampling(
-                500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()  # type: ignore[arg-type]
-            ),
+            DiscreteThompsonSampling(500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
         ),
     ],
 )

@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type
+from typing import List, Type, cast
 
 import gpflow
+import gpflux
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -38,6 +39,8 @@ from trieste.models.gpflow import (
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives.single_objectives import branin
+
+GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
@@ -440,7 +443,11 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     model.update(new_dataset)
     model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
-    trajectory = trajectory_sampler.update_trajectory(trajectory)
+    trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+    if GPFLUX_VERSION != "0.2.3":
+        assert trajectory_updated is trajectory
+    else:
+        trajectory = trajectory_updated
     eval_after = trajectory(tf.expand_dims(xs_predict, -2))
 
     assert (
@@ -456,3 +463,19 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     npt.assert_array_less(
         tf.abs(eval_after - quadratic(xs_predict)), 1e-3
     )  # new sample should agree with data
+
+
+def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = gpflow.kernels.RBF()
+    sampler = RandomFourierFeatureTrajectorySampler(model)
+    trajectory = cast(fourier_feature_trajectory, sampler.get_trajectory())
+    assert trajectory._feature_functions.__class__.__name__ == (
+        "RandomFourierFeaturesCosine" if GPFLUX_VERSION != "0.2.3" else "RandomFourierFeatures"
+    )

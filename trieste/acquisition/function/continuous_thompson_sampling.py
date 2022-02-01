@@ -62,24 +62,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
         self._trajectory_sampler = model.trajectory_sampler()
         function = self._trajectory_sampler.get_trajectory()
-
-        if isinstance(function, TrajectoryFunctionClass):
-            # we want to negate the trajectory function but otherwise leave it alone,
-            # as it may have e.g. update and resample methods
-
-            class NegatedTrajectory(type(function)):  # type: ignore[misc]
-                def __call__(self, x: TensorType) -> TensorType:
-                    return -1.0 * super().__call__(x)
-
-            function.__class__ = NegatedTrajectory
-        else:
-
-            def negated_trajectory(x: TensorType) -> TensorType:
-                return -1.0 * function(x)
-
-            function = negated_trajectory
-
-        return function
+        return self._negate_trajectory_function(function)
 
     def update_acquisition_function(
         self,
@@ -102,8 +85,31 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         tf.debugging.Assert(self._trajectory_sampler is not None, [])
 
         if new_optimization_step:  # update sampler and resample trajectory
-            function = self._trajectory_sampler.update_trajectory(function)
+            new_function = self._trajectory_sampler.update_trajectory(function)
         else:  # just resample trajectory but without updating sampler
-            function = self._trajectory_sampler.resample_trajectory(function)
+            new_function = self._trajectory_sampler.resample_trajectory(function)
+
+        if new_function is not function:
+            function = self._negate_trajectory_function(new_function)
+
+        return function
+
+    def _negate_trajectory_function(self, function: TrajectoryFunction) -> TrajectoryFunction:
+
+        if isinstance(function, TrajectoryFunctionClass):
+            # we want to negate the trajectory function object but otherwise leave it alone,
+            # as it may have e.g. update and resample methods
+
+            class NegatedTrajectory(type(function)):  # type: ignore[misc]
+                def __call__(self, x: TensorType) -> TensorType:
+                    return -1.0 * super().__call__(x)
+
+            function.__class__ = NegatedTrajectory
+        else:
+
+            def negated_trajectory(x: TensorType) -> TensorType:
+                return -1.0 * function(x)
+
+            function = negated_trajectory
 
         return function
