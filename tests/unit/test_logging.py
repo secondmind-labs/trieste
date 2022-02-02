@@ -14,10 +14,18 @@
 from __future__ import annotations
 
 import tempfile
+import unittest.mock
+from collections.abc import Mapping
+from time import sleep
+from typing import Optional
 
 import pytest
 import tensorflow as tf
 
+from tests.util.misc import FixedAcquisitionRule, mk_dataset
+from tests.util.models.gpflow.models import PseudoTrainableProbModel, QuadraticMeanAndRBFKernel
+from trieste.bayesian_optimizer import BayesianOptimizer
+from trieste.data import Dataset
 from trieste.logging import (
     get_step_number,
     get_tensorboard_writer,
@@ -26,6 +34,13 @@ from trieste.logging import (
     step_number,
     tensorboard_writer,
 )
+from trieste.models import ProbabilisticModel
+from trieste.space import Box, SearchSpace
+from trieste.types import TensorType
+
+
+class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+    pass
 
 
 def test_get_tensorboard_writer_default() -> None:
@@ -75,3 +90,90 @@ def test_step_number(step: int) -> None:
             assert get_step_number() == 0
         assert get_step_number() == step
     assert get_step_number() == 0
+
+
+@unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
+def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        steps = 5
+        rule = FixedAcquisitionRule([[0.0]])
+        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+            steps, data, models, rule
+        )
+
+    ordered_scalar_names = [
+        "A.observation.best_overall",
+        "A.observation.best_new",
+        "Wallclock.total",
+        "Wallclock.query_point_generation",
+        "Wallclock.model_fitting",
+    ]
+    N = len(ordered_scalar_names)
+
+    for step in range(steps):  # iterate over saved scalars
+        counter = 0
+        for scalar_name in ordered_scalar_names:
+            assert mocked_summary_scalar.call_args_list[step * N + counter][0][0] == scalar_name
+            assert mocked_summary_scalar.call_args_list[step * N + counter][-1]["step"] == step
+            assert isinstance(mocked_summary_scalar.call_args_list[step + counter][0][1], float)
+            if scalar_name[:9] == "Wallclock":
+                print("DOING IT")
+                assert (
+                    mocked_summary_scalar.call_args_list[step + counter][0][1] > 0
+                )  # want positive wallclock times
+            counter += 1
+
+
+@unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
+@pytest.mark.parametrize("fit_initial_model", [True, False])
+def test_wallclock_time_logging(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    fit_initial_model: bool,
+) -> None:
+
+    model_fit_time = 0.1
+    acq_time = 1e-3
+
+    class _PseudoTrainableQuadraticWithWaiting(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+        def optimize(self, dataset: Dataset) -> None:
+            sleep(model_fit_time)
+
+    class _FixedAcquisitionRuleWithWaiting(FixedAcquisitionRule):
+        def acquire(
+            self,
+            search_space: SearchSpace,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
+        ) -> TensorType:
+            """
+            :param search_space: Unused.
+            :param models: Unused.
+            :param datasets: Unused.
+            :return: The fixed value specified on initialisation.
+            """
+            sleep(acq_time)
+            return self._qp
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {
+            "A": _PseudoTrainableQuadraticWithWaiting()
+        }
+        steps = 5
+        rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
+        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+            steps, data, models, rule, fit_initial_model=fit_initial_model
+        )
+
+    for scalar in mocked_summary_scalar.call_args_list:
+        if scalar[0][0][:9] == "Wallclock":
+            assert scalar[0][1] > 0  # want positive wallclock times
+
+    if fit_initial_model:  # logging should count two model fits
+        assert mocked_summary_scalar.call_args_list[2][0][1] > 2 * model_fit_time
+        assert mocked_summary_scalar.call_args_list[4][0][1] > 2 * model_fit_time
+    else:
+        assert mocked_summary_scalar.call_args_list[2][0][1] < 2 * model_fit_time
+        assert mocked_summary_scalar.call_args_list[4][0][1] < 2 * model_fit_time
