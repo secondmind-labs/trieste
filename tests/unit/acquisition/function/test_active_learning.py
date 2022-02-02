@@ -31,7 +31,7 @@ from tests.util.models.gpflow.models import (
     vgp_model,
     vgp_model_bernoulli,
 )
-from tests.util.models.models import fnc_2sin_x_over_3
+from tests.util.models.models import binary_line, fnc_2sin_x_over_3
 from trieste.acquisition.function.active_learning import (
     BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
@@ -43,8 +43,13 @@ from trieste.acquisition.function.active_learning import (
     predictive_variance,
 )
 from trieste.data import Dataset
-from trieste.models.gpflow import GaussianProcessRegression, VariationalGaussianProcess
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    VariationalGaussianProcess,
+    build_vgp_classifier,
+)
 from trieste.objectives import branin
+from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -391,6 +396,41 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
 
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
     assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "at",
+    [
+        (tf.constant([[[-1.0]]])),
+        (tf.constant([[-0.5]])),
+        (tf.constant([[0.0]])),
+        (tf.constant([[0.5]])),
+        (tf.constant([[1.0]])),
+    ],
+)
+def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
+
+    search_space = Box([-1], [1])
+    x = to_default_float(tf.constant(np.linspace(-1, 1, 8).reshape(-1, 1)))
+    y = to_default_float(tf.reshape(binary_line(x), [-1, 1]))
+    model = VariationalGaussianProcess(
+        build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
+    )
+
+    p, _ = model.model.predict_y(to_default_float(at))
+    term1 = -p * tf.math.log(p) - (1 - p) * tf.math.log(1 - p)
+
+    mean, variance = model.predict(to_default_float(at))
+    C2 = (np.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
+    term2 = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
+
+    expected = term1 - term2
+
+    actual = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(
+        [to_default_float(at)]
+    )
+
+    npt.assert_allclose(actual, expected, rtol=0.01)
 
 
 def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
