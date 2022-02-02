@@ -28,7 +28,6 @@ from gpflow.likelihoods.scalar_discrete import Bernoulli
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.gpflow import SparseVariational, VariationalGaussianProcess
 from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
 from ...types import TensorType
 from ...utils import DEFAULTS
