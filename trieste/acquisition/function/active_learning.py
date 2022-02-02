@@ -492,7 +492,9 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
             \mathrm{h}(p)=-p \log p-(1-p) \log (1-p)
 
         This acquisition function is intended to use for Binary Gaussian Process Classification
-        model with Bernoulli likelihood. integrating over nuisance parameters is currently not
+        model with Bernoulli likelihood. It is designed for VGP but other Gaussian approximation
+        of the posterior can be used. SVGP for instance, or some other model that is not currently
+        supported by Trieste. integrating over nuisance parameters is currently not
         supported (see equation 6 of the paper)
 
         :param model: The model of the objective function.
@@ -502,13 +504,8 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         """
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
 
-        if not isinstance(model, VariationalGaussianProcess) and not isinstance(
-            model, SparseVariational
-        ):
+        if not isinstance(model.model.likelihood, Bernoulli):
             raise TypeError
-        elif not isinstance(model.model.likelihood, Bernoulli):
-            raise TypeError
-        "Only support VGP or SVGP with Bernoulli likelihood"
 
         self._model = model
         self._jitter = jitter
