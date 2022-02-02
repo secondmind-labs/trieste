@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import math
 
-import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -26,17 +25,16 @@ from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.space import Box
 from trieste.types import TensorType
-from trieste.utils import map_values
 
 
 @random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_function_builder",
     [
-        (10, ExpectedConstrainedImprovement),
+        (12, ExpectedConstrainedImprovement),
     ],
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(
@@ -75,14 +73,10 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     num_initial_points = 6
     initial_data = observer(search_space.sample(num_initial_points))
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
-
-    models = map_values(build_model, initial_data)
+    models = {
+        OBJECTIVE: GaussianProcessRegression(build_gpr(initial_data[OBJECTIVE], search_space)),
+        CONSTRAINT: GaussianProcessRegression(build_gpr(initial_data[CONSTRAINT], search_space)),
+    }
 
     pof = ProbabilityOfFeasibility(threshold=0.5)
     acq = acquisition_function_builder(OBJECTIVE, pof.using(CONSTRAINT))

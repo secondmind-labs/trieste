@@ -15,11 +15,9 @@ from __future__ import annotations
 
 from typing import List, Tuple, cast
 
-import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
@@ -29,9 +27,8 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
-from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -55,7 +52,7 @@ from trieste.types import TensorType
             ]
         ],
         [
-            (15, EfficientGlobalOptimization()),
+            (25, EfficientGlobalOptimization()),
             (
                 5,
                 EfficientGlobalOptimization(
@@ -64,7 +61,7 @@ from trieste.types import TensorType
                 ),
             ),
             (
-                5,
+                8,
                 EfficientGlobalOptimization(
                     LocalPenalization(
                         BRANIN_SEARCH_SPACE,
@@ -86,24 +83,12 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         tags=["continuous", "discrete"],
     )
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-        scale = tf.constant(1.0, dtype=tf.float64)
-        kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.constant(-2.0, dtype=tf.float64), scale
-        )
-        kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), scale
-        )
-        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
-
     initial_query_points = search_space.sample(5)
     observer = mk_observer(scaled_branin)
     initial_data = observer(initial_query_points)
-    model = build_model(initial_data)
+    model = GaussianProcessRegression(
+        build_gpr(initial_data, search_space, likelihood_variance=1e-8)
+    )
 
     dataset = (
         BayesianOptimizer(observer, search_space)
