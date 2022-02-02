@@ -43,6 +43,7 @@ from trieste.types import TensorType
 
 
 @random_seed
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
@@ -55,7 +56,7 @@ from trieste.types import TensorType
         ),
     ],
 )
-def test_active_learner_learns_scaled_branin_function(
+def test_optimizer_learns_scaled_branin_function(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, SupportsPredictJoint],
 ) -> None:
@@ -78,7 +79,7 @@ def test_active_learner_learns_scaled_branin_function(
 
     # we expect a model with initial data to fail the criterion
     initial_model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+        build_gpr(initial_data, search_space, likelihood_variance=1e-5)
     )
     initial_model.optimize(initial_data)
     initial_predicted_means, _ = initial_model.model.predict_f(test_query_points)
@@ -88,7 +89,7 @@ def test_active_learner_learns_scaled_branin_function(
 
     # after active learning the model should be much more accurate
     model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+        build_gpr(initial_data, search_space, likelihood_variance=1e-5)
     )
     final_model = (
         BayesianOptimizer(observer, search_space)
