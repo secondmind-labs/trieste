@@ -130,6 +130,69 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
+
+
+
+
+
+
+
+
+
+def test_bayesian_optimizer_returns_final_result_with_wallclock_times() -> None:
+    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
+    steps=2
+    rule = FixedAcquisitionRule([[0.0]])
+    result = BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(steps, data, models, rule)
+    final_result = result.final_result.unwrap()
+
+
+    assert isinstance(final_result.total_wallclock_time, float)
+    assert isinstance(final_result.query_point_generation_time, float)
+    assert isinstance(final_result.model_fitting_time, float)
+    
+    assert final_result.total_wallclock_time>0.0
+    assert final_result.query_point_generation_time>0.0
+    assert final_result.model_fitting_time>0.0
+
+
+
+@pytest.mark.parametrize("fit_initial_model", [True, False])
+def test_bayesian_optimizer_returns_history_with_wallclock_times(fit_initial_model: bool) -> None:
+
+    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
+    steps=5
+    rule = FixedAcquisitionRule([[0.0]])
+    result = BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(steps, data, models, rule, fit_initial_model = fit_initial_model)
+    history = result.history
+
+    result = history[0]
+    assert isinstance(result.total_wallclock_time, float)
+    assert isinstance(result.query_point_generation_time, float)
+    assert isinstance(result.model_fitting_time, float)
+    
+
+    if fit_initial_model: # have positive model and total wallclock times for 0th iteration
+        assert result.model_fitting_time>0.0
+        assert result.total_wallclock_time>0.0
+    else: # no fitting required for 0th iterations
+        assert result.model_fitting_time==0.0
+        assert result.total_wallclock_time==0.0
+    assert result.query_point_generation_time==0.0 # never acq time for 0th iteration
+        
+    for i in range(1,steps): # check the rest of the history
+        result = history[i]
+        assert isinstance(result.total_wallclock_time, float)
+        assert isinstance(result.query_point_generation_time, float)
+        assert isinstance(result.model_fitting_time, float)
+        
+        assert result.total_wallclock_time>0.0
+        assert result.query_point_generation_time>0.0
+        assert result.model_fitting_time>0.0
+
+
+
+
 @pytest.mark.parametrize("fit_initial_model", [True, False])
 def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):

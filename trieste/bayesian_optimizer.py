@@ -23,6 +23,7 @@ import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
+from time import time
 
 import numpy as np
 import tensorflow as tf
@@ -60,6 +61,24 @@ class Record(Generic[StateType]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
+    total_wallclock_time: list[float]
+    """ 
+    The overall time in seconds spent by Trieste for each step of the optimization
+    process.
+    """
+
+    query_point_generation_time: list[float]
+    """ 
+    The time in seconds spent by Trieste when building, updating and optimizing
+    acquisition functions, for each step of the optimization process.
+    """
+
+    model_fitting_time: list[float]
+    """ 
+    The time in seconds spent by Trieste when building, updating and fitting
+    models, for each step of the optimization process.
+    """
+
     acquisition_state: StateType | None
     """ The acquisition state. """
 
@@ -78,6 +97,10 @@ class Record(Generic[StateType]):
             return next(iter(self.models.values()))
         else:
             raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+
+
+
 
 
 # this should be a generic NamedTuple, but mypy doesn't support them
@@ -444,31 +467,50 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         models = cast(
             Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
         )
+        
         history: list[Record[StateType]] = []
+        total_wallclock_time = 0.0
+        query_point_generation_time = 0.0
+        model_fitting_time= 0.0
 
         for step in range(num_steps):
             set_step_number(step)
             try:
-                if track_state:
-                    models_copy = copy.deepcopy(models)
-                    acquisition_state_copy = copy.deepcopy(acquisition_state)
-                    history.append(Record(datasets, models_copy, acquisition_state_copy))
+                 
+
+                t_0_total = time() # start wallclock for total BO step time
 
                 if step == 0 and fit_initial_model:
+                    t_0_model = time() # start wallclock for initial model fitting
                     for tag, model in models.items():
                         dataset = datasets[tag]
                         model.update(dataset)
                         model.optimize(dataset)
+                    model_fitting_time=time()-t_0_model # end wallclock for 0th model fit
+                    total_wallclock_time = time() - t_0_total # end wallclock for 0th iteration
+                    
+                if track_state:
+                    models_copy = copy.deepcopy(models)
+                    acquisition_state_copy = copy.deepcopy(acquisition_state)
+                    history.append(Record(datasets, 
+                        models_copy, 
+                        total_wallclock_time, 
+                        query_point_generation_time,
+                        model_fitting_time,
+                        acquisition_state_copy)
+                    )
 
+                t_0_acq = time() # start wallclock for query point generation
                 points_or_stateful = acquisition_rule.acquire(
                     self._search_space, models, datasets=datasets
                 )
+                query_point_generation_time = time() - t_0_acq # end wallclock
 
                 if callable(points_or_stateful):
                     acquisition_state, query_points = points_or_stateful(acquisition_state)
                 else:
                     query_points = points_or_stateful
-
+                
                 observer_output = self._observer(query_points)
 
                 tagged_output = (
@@ -479,10 +521,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
+                t_0_model = time() # start wallclock for model fitting time
                 for tag, model in models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
                     model.optimize(dataset)
+                model_fitting_time = time()-t_0_model # end wallclock
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
@@ -500,7 +544,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 np.min(tagged_output[tag].observations),
                                 step=step,
                             )
-
+                total_wallclock_time = time() - t_0_total # end wallclock
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
                     f"\nOptimization failed at step {step}, encountered error with traceback:"
@@ -511,8 +555,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     output_stream=logging.ERROR,
                 )
                 return OptimizationResult(Err(error), history)
-
+        
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
 
-        record = Record(datasets, models, acquisition_state)
+        record = Record(
+            datasets, 
+            models, 
+            total_wallclock_time, 
+            query_point_generation_time,
+            model_fitting_time,acquisition_state,
+            )
         return OptimizationResult(Ok(record), history)
+
+
