@@ -185,7 +185,7 @@ def test_wallclock_time_logging(
 
     npt.assert_allclose(mocked_summary_scalar.call_args_list[3][0][1], acq_time, rtol=0.01)
 
-    # also check logs of second BO step 
+    # also check logs of second BO step
     npt.assert_allclose(
         mocked_summary_scalar.call_args_list[7][0][1], 1 * model_fit_time + acq_time, rtol=0.1
     )
