@@ -503,7 +503,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         """
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
 
-        if not isinstance(model.model.likelihood, Bernoulli):
+        if not isinstance(model.model.likelihood, Bernoulli): # type: ignore
             raise TypeError
 
         self._model = model
