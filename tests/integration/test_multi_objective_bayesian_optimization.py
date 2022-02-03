@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gpflow
 import pytest
 import tensorflow as tf
 
@@ -30,7 +29,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.models.interfaces import (
     TrainableModelStack,
     TrainablePredictJointReparamModelStack,
@@ -98,10 +97,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
             single_obj_data = Dataset(
                 data.query_points, tf.gather(data.observations, [idx], axis=1)
             )
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            gpr = gpflow.models.GPR(single_obj_data.astuple(), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-5)
             gprs.append((GaussianProcessRegression(gpr), 1))
 
         return TrainablePredictJointReparamModelStack(*gprs)
