@@ -25,6 +25,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import (
     HasReparamSampler,
+    HasTrajectorySampler,
     ReparametrizationSampler,
     TrainableProbabilisticModel,
     TrajectorySampler,
@@ -38,7 +39,9 @@ from .sampler import (
 )
 
 
-class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler):
+class DeepGaussianProcess(
+    GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
