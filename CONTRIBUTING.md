@@ -72,7 +72,7 @@ $ tox -e tests
 
 To save time, some slower tests are not run by default. Run these with:
 ```bash
-$ tox -e alltests
+$ tox -e tests -- --runslow yes
 ```
 
 #### Code formatting

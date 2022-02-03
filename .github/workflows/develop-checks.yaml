@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: 3.7
     - run: pip install tox
-    - run: tox -e alltests
+    - run: tox -e tests -- --runslow yes
 
   fulldocs:
     runs-on: ubuntu-latest
