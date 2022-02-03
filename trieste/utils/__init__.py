@@ -24,5 +24,6 @@ from .misc import (
     jit,
     map_values,
     shapes_equal,
+    timeit,
     to_numpy,
 )

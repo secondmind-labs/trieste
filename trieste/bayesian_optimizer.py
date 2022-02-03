@@ -22,7 +22,6 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from time import time
 from typing import Dict, Generic, TypeVar, cast, overload
 
 import numpy as np
@@ -37,7 +36,7 @@ from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, map_values
+from .utils import Err, Ok, Result, map_values, timeit
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -452,52 +451,44 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             set_step_number(step)
             try:
 
-                t_0_total = time()  # start wallclock for total BO step time
-
-                if step == 0 and fit_initial_model:
-                    t_0_model = time()  # start wallclock for initial model fitting
-                    for tag, model in models.items():
-                        dataset = datasets[tag]
-                        model.update(dataset)
-                        model.optimize(dataset)
-                    initial_model_fitting_time = time() - t_0_model
-
                 if track_state:
                     models_copy = copy.deepcopy(models)
                     acquisition_state_copy = copy.deepcopy(acquisition_state)
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
-                t_0_acq = time()  # start wallclock for query point generation
-                points_or_stateful = acquisition_rule.acquire(
-                    self._search_space, models, datasets=datasets
-                )
-                query_point_generation_time = time() - t_0_acq  # end wallclock
+                with timeit() as total_wallclock_timer:
+                    if step == 0 and fit_initial_model:
+                        with timeit() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
-                if callable(points_or_stateful):
-                    acquisition_state, query_points = points_or_stateful(acquisition_state)
-                else:
-                    query_points = points_or_stateful
+                    with timeit() as query_point_generation_timer:
+                        points_or_stateful = acquisition_rule.acquire(
+                            self._search_space, models, datasets=datasets
+                        )
 
-                observer_output = self._observer(query_points)
+                    if callable(points_or_stateful):
+                        acquisition_state, query_points = points_or_stateful(acquisition_state)
+                    else:
+                        query_points = points_or_stateful
 
-                tagged_output = (
-                    observer_output
-                    if isinstance(observer_output, Mapping)
-                    else {OBJECTIVE: observer_output}
-                )
+                    observer_output = self._observer(query_points)
 
-                datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
+                    tagged_output = (
+                        observer_output
+                        if isinstance(observer_output, Mapping)
+                        else {OBJECTIVE: observer_output}
+                    )
 
-                t_0_model = time()  # start wallclock for model fitting time
-                for tag, model in models.items():
-                    dataset = datasets[tag]
-                    model.update(dataset)
-                    model.optimize(dataset)
+                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
-                model_fitting_time = time() - t_0_model  # end wallclock
-                if step == 0 and fit_initial_model:
-                    model_fitting_time += initial_model_fitting_time
-                total_wallclock_time = time() - t_0_total  # end wallclock
+                    with timeit() as model_fitting_timer:
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
@@ -516,18 +507,23 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 step=step,
                             )
                         tf.summary.scalar(
-                            "Wallclock.total",
-                            total_wallclock_time,
+                            "wallclock.total",
+                            total_wallclock_timer.time,
                             step=step,
                         )
                         tf.summary.scalar(
-                            "Wallclock.query_point_generation",
-                            query_point_generation_time,
+                            "wallclock.query_point_generation",
+                            query_point_generation_timer.time,
                             step=step,
                         )
                         tf.summary.scalar(
-                            "Wallclock.model_fitting",
-                            model_fitting_time,
+                            "wallclock.model_fitting",
+                            model_fitting_timer.time
+                            + (
+                                initial_model_fitting_timer.time
+                                if (step == 0 and fit_initial_model)
+                                else 0
+                            ),
                             step=step,
                         )
 

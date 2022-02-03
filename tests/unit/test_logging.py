@@ -16,6 +16,7 @@ from __future__ import annotations
 import tempfile
 import unittest.mock
 from collections.abc import Mapping
+from itertools import product, zip_longest
 from time import sleep
 from typing import Optional
 
@@ -107,19 +108,18 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
     ordered_scalar_names = [
         "A.observation.best_overall",
         "A.observation.best_new",
-        "Wallclock.total",
-        "Wallclock.query_point_generation",
-        "Wallclock.model_fitting",
+        "wallclock.total",
+        "wallclock.query_point_generation",
+        "wallclock.model_fitting",
     ]
-    N = len(ordered_scalar_names)
 
-    for step in range(steps):  # iterate over saved scalars
-        counter = 0
-        for scalar_name in ordered_scalar_names:
-            assert mocked_summary_scalar.call_args_list[step * N + counter][0][0] == scalar_name
-            assert mocked_summary_scalar.call_args_list[step * N + counter][-1]["step"] == step
-            assert isinstance(mocked_summary_scalar.call_args_list[step + counter][0][1], float)
-            counter += 1
+    for call_arg, (step, scalar_name) in zip_longest(
+        mocked_summary_scalar.call_args_list, product(range(steps), ordered_scalar_names)
+    ):
+
+        assert call_arg[0][0] == scalar_name
+        assert call_arg[-1]["step"] == step
+        assert isinstance(call_arg[0][1], float)
 
 
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
@@ -143,12 +143,6 @@ def test_wallclock_time_logging(
             models: Mapping[str, ProbabilisticModel],
             datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> TensorType:
-            """
-            :param search_space: Unused.
-            :param models: Unused.
-            :param datasets: Unused.
-            :return: The fixed value specified on initialisation.
-            """
             sleep(acq_time)
             return self._qp
 
@@ -157,37 +151,34 @@ def test_wallclock_time_logging(
         data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {
             "A": _PseudoTrainableQuadraticWithWaiting()
         }
-        steps = 2
+        steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
         BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
             steps, data, models, rule, fit_initial_model=fit_initial_model
         )
 
+    other_scalars = 0
+
     for scalar in mocked_summary_scalar.call_args_list:
-        if scalar[0][0][:9] == "Wallclock":
-            assert scalar[0][1] > 0  # want positive wallclock times
+        name = scalar[0][0]
+        value = scalar[0][1]
+        step = scalar[-1]["step"]
+        if name.startswith("wallclock"):
+            assert value > 0  # want positive wallclock times
+        if name == "wallclock.total":
+            if fit_initial_model and step == 0:
+                npt.assert_allclose(value, 2.0 * model_fit_time + acq_time, rtol=0.1)
+            else:
+                npt.assert_allclose(value, model_fit_time + acq_time, rtol=0.1)
+        elif name == "wallclock.query_point_generation":
+            npt.assert_allclose(value, acq_time, rtol=0.01)
+        elif name == "wallclock.model_fitting":
+            if fit_initial_model and step == 0:
+                npt.assert_allclose(value, 2.0 * model_fit_time, rtol=0.1)
+            else:
+                npt.assert_allclose(value, model_fit_time, rtol=0.1)
+        else:
+            other_scalars += 1
 
-    # check logs of first BO step
-    if fit_initial_model:  # logging should count two model fits
-        npt.assert_allclose(
-            mocked_summary_scalar.call_args_list[2][0][1], 2 * model_fit_time + acq_time, rtol=0.1
-        )
-        npt.assert_allclose(
-            mocked_summary_scalar.call_args_list[4][0][1], 2 * model_fit_time, rtol=0.1
-        )
-    else:
-        npt.assert_allclose(
-            mocked_summary_scalar.call_args_list[2][0][1], 1 * model_fit_time + acq_time, rtol=0.1
-        )
-        npt.assert_allclose(
-            mocked_summary_scalar.call_args_list[4][0][1], 1 * model_fit_time, rtol=0.1
-        )
-
-    npt.assert_allclose(mocked_summary_scalar.call_args_list[3][0][1], acq_time, rtol=0.01)
-
-    # also check logs of second BO step
-    npt.assert_allclose(
-        mocked_summary_scalar.call_args_list[7][0][1], 1 * model_fit_time + acq_time, rtol=0.1
-    )
-    npt.assert_allclose(mocked_summary_scalar.call_args_list[9][0][1], 1 * model_fit_time, rtol=0.1)
-    npt.assert_allclose(mocked_summary_scalar.call_args_list[8][0][1], acq_time, rtol=0.01)
+    # check that we processed all the wallclocks we were expecting
+    assert len(mocked_summary_scalar.call_args_list) == other_scalars + 3 * steps

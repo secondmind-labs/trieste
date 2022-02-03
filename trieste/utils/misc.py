@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Mapping, NoReturn, TypeVar
+from time import perf_counter
+from types import TracebackType
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Type, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -210,3 +212,18 @@ def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
         applying ``f`` to each value in ``mapping``.
     """
     return {k: f(u) for k, u in mapping.items()}
+
+
+class timeit:
+    def __enter__(self) -> timeit:
+        self.start = perf_counter()
+        return self
+
+    def __exit__(
+        self,
+        type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        self.end = perf_counter()
+        self.time = self.end - self.start
