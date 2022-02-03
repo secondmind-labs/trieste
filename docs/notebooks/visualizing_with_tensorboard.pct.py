@@ -42,9 +42,10 @@ summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment1")
 trieste.logging.set_tensorboard_writer(summary_writer)
 
 # %% [markdown]
-# We can now also load the TensorBoard extension, though at this point there will not be any data to dispay.
+# We can now also load the TensorBoard extension, though at this point there will not be any data to dispay. To run this notebook locally, remove the %%script line.
 
-# %%
+# %% magic_args="echo Loading TensorBoard..." language="script"
+
 # %load_ext tensorboard
 # %tensorboard --logdir "logs/tensorboard"
 

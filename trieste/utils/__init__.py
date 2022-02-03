@@ -19,11 +19,11 @@ from .misc import (
     Ok,
     Result,
     ResultType,
+    Timer,
     U,
     V,
     jit,
     map_values,
     shapes_equal,
-    timeit,
     to_numpy,
 )

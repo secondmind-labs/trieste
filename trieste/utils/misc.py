@@ -214,8 +214,15 @@ def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
     return {k: f(u) for k, u in mapping.items()}
 
 
-class timeit:
-    def __enter__(self) -> timeit:
+class Timer:
+    """
+    Functionality for timing chunks of code. For example:
+    >>> with Timer() as timer: time.sleep(2.0)
+    >>> timer.time
+    2.0
+    """
+
+    def __enter__(self) -> Timer:
         self.start = perf_counter()
         return self
 

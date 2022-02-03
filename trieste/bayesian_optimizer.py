@@ -36,7 +36,7 @@ from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, map_values, timeit
+from .utils import Err, Ok, Result, Timer, map_values
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -456,15 +456,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     acquisition_state_copy = copy.deepcopy(acquisition_state)
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
-                with timeit() as total_wallclock_timer:
+                with Timer() as total_step_wallclock_timer:
                     if step == 0 and fit_initial_model:
-                        with timeit() as initial_model_fitting_timer:
+                        with Timer() as initial_model_fitting_timer:
                             for tag, model in models.items():
                                 dataset = datasets[tag]
                                 model.update(dataset)
                                 model.optimize(dataset)
 
-                    with timeit() as query_point_generation_timer:
+                    with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
                         )
@@ -484,7 +484,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
-                    with timeit() as model_fitting_timer:
+                    with Timer() as model_fitting_timer:
                         for tag, model in models.items():
                             dataset = datasets[tag]
                             model.update(dataset)
@@ -507,8 +507,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 step=step,
                             )
                         tf.summary.scalar(
-                            "wallclock.total",
-                            total_wallclock_timer.time,
+                            "wallclock.step",
+                            total_step_wallclock_timer.time,
                             step=step,
                         )
                         tf.summary.scalar(

@@ -108,7 +108,7 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
     ordered_scalar_names = [
         "A.observation.best_overall",
         "A.observation.best_new",
-        "wallclock.total",
+        "wallclock.step",
         "wallclock.query_point_generation",
         "wallclock.model_fitting",
     ]
@@ -165,7 +165,7 @@ def test_wallclock_time_logging(
         step = scalar[-1]["step"]
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times
-        if name == "wallclock.total":
+        if name == "wallclock.step":
             if fit_initial_model and step == 0:
                 npt.assert_allclose(value, 2.0 * model_fit_time + acq_time, rtol=0.1)
             else:
