@@ -217,7 +217,8 @@ def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
 class Timer:
     """
     Functionality for timing chunks of code. For example:
-    >>> with Timer() as timer: time.sleep(2.0)
+    >>> from time import sleep
+    >>> with Timer() as timer: sleep(2.0)
     >>> timer.time
     2.0
     """
