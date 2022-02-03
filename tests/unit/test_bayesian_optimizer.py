@@ -298,7 +298,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
     data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
-    result, history = optimizer.optimize(3, data, models, rule, fit_initial_model=False).astuple()
+    result, history = optimizer.optimize(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
         result.unwrap()
