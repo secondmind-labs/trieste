@@ -219,7 +219,7 @@ class Timer:
     Functionality for timing chunks of code. For example:
     >>> from time import sleep
     >>> with Timer() as timer: sleep(2.0)
-    >>> timer.time
+    >>> timer.time  # doctest: +SKIP
     2.0
     """
 
