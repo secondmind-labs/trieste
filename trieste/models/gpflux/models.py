@@ -38,7 +38,7 @@ from .sampler import (
 )
 
 
-class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler):
+class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
