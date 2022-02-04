@@ -143,12 +143,7 @@ final_model = results.try_get_final_models()[OBJECTIVE]
 # %% Plot BO results
 mean, variance = final_model.predict(query_points)
 
-
-def invlink(f):
-    return gpflow.likelihoods.Bernoulli().invlink(f).numpy()
-
-
-mean = invlink(mean)
+mean = gpflow.likelihoods.Bernoulli().invlink(mean).numpy()
 
 plt.figure(figsize=(7, 5))
 plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
