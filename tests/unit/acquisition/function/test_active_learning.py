@@ -417,7 +417,7 @@ def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
         build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
     )
 
-    p, _ = model.model.predict_y(to_default_float(at))
+    p, _ = model.predict_y(to_default_float(at))
     term1 = -p * tf.math.log(p) - (1 - p) * tf.math.log(1 - p)
 
     mean, variance = model.predict(to_default_float(at))
