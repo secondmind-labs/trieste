@@ -19,6 +19,7 @@ from .misc import (
     Ok,
     Result,
     ResultType,
+    Timer,
     U,
     V,
     jit,
