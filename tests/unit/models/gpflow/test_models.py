@@ -34,7 +34,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import SVGP
+from gpflow.models import SGPR, SVGP, VGP, GPR
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import (
@@ -160,31 +160,6 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
         )
 
 
-def test_gaussian_process_regression_pairwise_covariance() -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    y = fnc_3x_plus_10(x)
-    model = GaussianProcessRegression(gpr_model(x, y))
-
-    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
-    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
-
-    all_query_points = tf.concat([query_points_1, query_points_2], 0)
-    _, predictive_covariance = model.predict_joint(all_query_points)
-    expected_covariance = predictive_covariance[0, :8, 8:]
-
-    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
-
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
-
-
-def test_gaussian_process_regression_sgpr_raises_for_covariance_between_points() -> None:
-    data = mock_data()
-    model = GaussianProcessRegression(sgpr_model(*data))
-
-    with pytest.raises(NotImplementedError):
-        model.covariance_between_points(data[0], data[0])
-
-
 def test_gaussian_process_regression_raises_for_invalid_init() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -200,14 +175,6 @@ def test_gaussian_process_regression_raises_for_invalid_init() -> None:
     with pytest.raises(ValueError):
         optimizer2 = Optimizer(tf.optimizers.Adam())
         GaussianProcessRegression(gpr_model(x, y), optimizer=optimizer2)
-
-
-def test_gaussian_process_regression_raises_for_covariance_between_invalid_query_points_2() -> None:
-    data = mock_data()
-    model = GaussianProcessRegression(gpr_model(*data))
-
-    with pytest.raises(ValueError):
-        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
 
 
 def test_gaussian_process_regression_raises_for_conditionals_with_sgpr() -> None:
@@ -934,3 +901,73 @@ def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
         sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
         np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
         np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
+
+
+def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactoryType) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if isinstance(model.model, SGPR):
+        pytest.skip("Covariance between points is not supported for SGPR.")
+
+    if isinstance(model.model, GPR): 
+        model.optimize(Dataset(x,y))
+    elif isinstance(model.model, (VGP, SVGP)): # for speed just update q_sqrt rather than optimize
+        num_inducing_points = tf.shape(model.model.q_sqrt)[1]
+        model.update(Dataset(x,y))
+        # sampled_q_sqrt = tfp.distributions.WishartTriL(5,tf.eye(num_inducing_points)).sample(1)
+        # model.model.q_sqrt.assign(sampled_q_sqrt)
+
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[0, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
+
+
+@pytest.mark.parametrize("whiten", [True, False])
+def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten:bool) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model = SparseVariational(svgp_model(x,y))
+    model.model.whiten=whiten
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[0, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
+
+
+
+def test_sparse_variational_raises_for_pairwise_covariance_for_invalid_query_points(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    data = mock_data()
+    model, _ = gpflow_interface_factory(*data)
+
+    if isinstance(model.model, (SGPR)):
+        pytest.skip("Covariance between points is not supported for SGPR.")
+
+    with pytest.raises(ValueError):
+        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
+
+
+def test_gaussian_process_regression_sgpr_raises_for_pairwise_covariance() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(sgpr_model(*data))
+
+    with pytest.raises(NotImplementedError):
+        model.covariance_between_points(data[0], data[0])

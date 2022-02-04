@@ -573,7 +573,11 @@ class Parameter(gpflow.Parameter):  # type: ignore[misc]
         self.prior_on = prior_on
 
 
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+class SparseVariational(
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    SupportsCovarianceBetweenPoints,
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
@@ -632,6 +636,33 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        todo update letters
+        :param query_points_1: Set of query points with shape [..., N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+
+        return _covariance_between_points_for_variational_models(
+            kernel=self.get_kernel(),
+            inducing_points=self.model.inducing_variable.Z,
+            q_sqrt=self.model.q_sqrt,
+            query_points_1=query_points_1,
+            query_points_2=query_points_2,
+            whiten = self.model.whiten
+        )
 
 
 class VariationalGaussianProcess(
@@ -863,3 +894,111 @@ class VariationalGaussianProcess(
         :return: The model's training data.
         """
         return Dataset(self.model.data[0].value(), self.model.data[1].value())
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        todo update letters
+        :param query_points_1: Set of query points with shape [..., N, D]
+        :param query_points_2: Sets of query points with shape [M, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+
+        return _covariance_between_points_for_variational_models(
+            kernel=self.get_kernel(),
+            inducing_points=self.model.data[0].value(),  # pass copy
+            q_sqrt=self.model.q_sqrt,
+            query_points_1=query_points_1,
+            query_points_2=query_points_2,
+            whiten=True, # GPflow's VGP model is hard-coded to use the whitened representation
+        )
+
+
+def _covariance_between_points_for_variational_models(
+    kernel: gpflow.kernels.Kernel,
+    inducing_points: TensorType,
+    q_sqrt: TensorType,
+    query_points_1: TensorType,
+    query_points_2: TensorType,
+    whiten: bool,
+) -> TensorType:
+    r"""
+    Compute the posterior covariance between sets of query points.
+
+    .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+    Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+    have leading dimensions.
+
+    todo update letters
+    :param query_points_1: Set of query points with shape [..., N, D]
+    :param query_points_2: Sets of query points with shape [M, D]
+    :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+        (L being the number of latent GPs = number of output dimensions)
+    """
+
+    tf.debugging.assert_shapes([(query_points_1, [..., "A", "D"]), (query_points_2, ["B", "D"])])
+
+    K = kernel(inducing_points)  # [M, M]
+    Kx1 = kernel(inducing_points, query_points_1)  # [..., M, A]
+    Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
+    K12 = kernel(query_points_1, query_points_2)  # [..., A, B]
+
+    if len(tf.shape(K)) == 2:
+        K = tf.expand_dims(K, -3)
+        Kx1 = tf.expand_dims(Kx1, -3)
+        Kx2 = tf.expand_dims(Kx2, -3)
+        K12 = tf.expand_dims(K12, -3)
+    elif len(tf.shape(K)) > 3:
+        raise NotImplementedError(
+            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
+        )
+
+    L = tf.linalg.cholesky(K)  # [L, M, M]
+    Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, M, A]
+    Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [..., L, M, B]
+
+    def _leading_mul(
+        M_1: TensorType, M_2: TensorType, transpose_a: bool
+    ) -> TensorType:  
+        if transpose_a: # The einsum below is just A^T*B over the last 2 dimensions.
+            return tf.einsum("...lji,ljk->...lik",  M_1, M_2) 
+        else: # The einsum below is just A*B^T over the last 2 dimensions.
+            return tf.einsum("...lij,lkj->...lik", M_1, M_2)  
+
+
+    if whiten:
+        first_cov_term = _leading_mul(
+            _leading_mul(Linv_Kx1, q_sqrt, transpose_a=True),  # [..., L, A, M]
+            _leading_mul(Linv_Kx2, q_sqrt, transpose_a=True), # [..., L, B, M]
+            transpose_a=False
+            ) # [..., L, A, B]
+    else:
+        Linv_qsqrt = tf.linalg.triangular_solve(L, q_sqrt)  # [L, M, M]
+        first_cov_term = _leading_mul(
+            _leading_mul(Linv_Kx1, Linv_qsqrt, transpose_a=True),  # [..., L, A, M]
+            _leading_mul(Linv_Kx2, Linv_qsqrt, transpose_a=True), # [..., L, B, M]
+            transpose_a=False
+            ) # [..., L, A, B]
+
+    second_cov_term = K12  # [..., L, A, B]
+    third_cov_term = _leading_mul(Linv_Kx1, Linv_Kx2, transpose_a=True)  # [..., L, A, B]
+    cov = first_cov_term + second_cov_term - third_cov_term  # [..., L, A, B]
+
+    tf.debugging.assert_shapes(
+        [
+            (query_points_1, [..., "N", "D"]),
+            (query_points_2, ["M", "D"]),
+            (cov, [..., "L", "N", "M"]),
+        ]
+    )
+    return cov
