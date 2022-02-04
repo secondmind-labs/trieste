@@ -494,7 +494,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         model with Bernoulli likelihood. It is designed for VGP but other Gaussian approximation
         of the posterior can be used. SVGP for instance, or some other model that is not currently
         supported by Trieste. Integrating over nuisance parameters is currently not
-        supported (see equation 6 of the paper)
+        supported (see equation 6 of the paper).
 
         :param model: The model of the objective function.
         :param jitter: The size of the jitter to avoid numerical problem caused by the
