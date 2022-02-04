@@ -28,7 +28,6 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
     gpr_model,
-    vgp_model,
     vgp_model_bernoulli,
 )
 from tests.util.models.models import binary_line, fnc_2sin_x_over_3
@@ -425,18 +424,14 @@ def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
     normal = tfp.distributions.Normal(to_default_float(0), to_default_float(1))
     p_mc = np.mean(normal.cdf(samples))
     term1 = -p_mc * tf.math.log(p_mc) - (1 - p_mc) * tf.math.log(1 - p_mc)
-
-    mean, variance = model.predict(to_default_float(at))
-    C2 = (np.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
-    term2 = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
-
+    term2 = np.mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
     expected = term1 - term2
 
     actual = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(
         [to_default_float(at)]
     )
 
-    npt.assert_allclose(actual, expected, rtol=0.05)
+    npt.assert_allclose(actual, expected, rtol=0.05, atol=0.05)
 
 
 def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
