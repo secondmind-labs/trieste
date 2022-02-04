@@ -417,8 +417,14 @@ def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
         build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
     )
 
-    p, _ = model.predict_y(to_default_float(at))
-    term1 = -p * tf.math.log(p) - (1 - p) * tf.math.log(1 - p)
+    mean, var = model.predict(to_default_float(at))
+    samples = tfp.distributions.Normal(
+        to_default_float(mean), to_default_float(tf.sqrt(var))
+    ).sample(100000)
+
+    normal = tfp.distributions.Normal(to_default_float(0), to_default_float(1))
+    p_mc = np.mean(normal.cdf(samples))
+    term1 = -p_mc * tf.math.log(p_mc) - (1 - p_mc) * tf.math.log(1 - p_mc)
 
     mean, variance = model.predict(to_default_float(at))
     C2 = (np.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
@@ -430,7 +436,7 @@ def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
         [to_default_float(at)]
     )
 
-    npt.assert_allclose(actual, expected, rtol=0.01)
+    npt.assert_allclose(actual, expected, rtol=0.05)
 
 
 def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
@@ -441,8 +447,6 @@ def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_fun
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-
-
 
 
 @pytest.mark.parametrize("jitter", [0.0, -1.0])
