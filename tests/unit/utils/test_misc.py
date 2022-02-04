@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from time import sleep
 from typing import Any
 
 import numpy as np
@@ -20,7 +21,7 @@ import tensorflow as tf
 
 from tests.util.misc import ShapeLike, various_shapes
 from trieste.types import TensorType
-from trieste.utils.misc import Err, Ok, jit, shapes_equal, to_numpy
+from trieste.utils.misc import Err, Ok, Timer, jit, shapes_equal, to_numpy
 
 
 @pytest.mark.parametrize("apply", [True, False])
@@ -81,3 +82,20 @@ def test_err() -> None:
 
     assert Err(ValueError()).is_ok is False
     assert Err(ValueError()).is_err is True
+
+
+def test_Timer() -> None:
+    sleep_time = 0.1
+    with Timer() as timer:
+        sleep(sleep_time)
+    npt.assert_allclose(timer.time, sleep_time, rtol=0.01)
+
+
+def test_Timer_with_nesting() -> None:
+    sleep_time = 0.1
+    with Timer() as timer_1:
+        sleep(sleep_time)
+        with Timer() as timer_2:
+            sleep(sleep_time)
+    npt.assert_allclose(timer_1.time, 2.0 * sleep_time, rtol=0.01)
+    npt.assert_allclose(timer_2.time, 1.0 * sleep_time, rtol=0.01)
