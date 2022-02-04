@@ -32,6 +32,7 @@ input_dim = 2
 def circle(x):
     return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
 
+
 # %% [markdown]
 # Let's first illustrate how this two dimensional problem looks like.
 
@@ -81,34 +82,44 @@ model = VariationalGaussianProcess(
 # Lets see our model landscape using only those initial data
 
 # %%
+from util.plotting import plot_bo_points, plot_function_2d
+
 model.update(initial_data)
 model.optimize(initial_data)
 
-mean, variance = model.predict(query_points)
 
-plt.figure()
-plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
-plt.plot(
-    initial_data.query_points[:, 0],
-    initial_data.query_points[:, 1],
-    "ko",
-    markersize=10,
-)
-plt.title("Mean")
-plt.colorbar()
-plt.show()
+def plot_active_learning_query(function, points, num_initial_points, title):
+    _, ax = plot_function_2d(
+        function,
+        search_space.lower,
+        search_space.upper,
+        grid_density=100,
+        contour=True,
+        colorbar=True,
+        title=[title],
+        xlabel="$X_1$",
+        ylabel="$X_2$",
+    )
 
-plt.figure()
-plt.contourf(*grid_query_points, np.reshape(variance, [density] * input_dim))
-plt.colorbar()
-plt.plot(
-    initial_data.query_points[:, 0],
-    initial_data.query_points[:, 1],
-    "ko",
-    markersize=10,
-)
-plt.title("Variance")
-plt.show()
+    plot_bo_points(
+        points,
+        ax[0, 0],
+        num_initial_points,
+    )
+
+
+def pred_var(x):
+    _, var = model.predict(x)
+    return var
+
+
+def pred_mean(x):
+    mean, _ = model.predict(x)
+    return mean
+
+
+plot_active_learning_query(pred_mean, X, num_initial_points, title="Mean")
+plot_active_learning_query(pred_var, X, num_initial_points, title="Variance")
 
 
 # %% [markdown]
