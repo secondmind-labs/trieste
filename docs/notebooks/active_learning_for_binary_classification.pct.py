@@ -22,7 +22,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # In Trieste, it is also possible to query most interesting points for learning the problem, i.e we want to have as little data as possible to construct the best possible model (active learning). In this tutorial we will try to do active learning for binary classification problem using Bayesain Active Learning by Disagreement (BALD) for a Gaussian Process Classification Model.
 #
-# Our problem is classification problem of circle dataset. In this toturial we assume that the input space is continous so we can use continuous optimiser for our BALD acquisition function.
+# We will illustrate the BALD algorithm on a synthetic binary classification problem where one class takes shape of a circle in the search space. The input space is continuous so we can use continuous optimiser for our BALD acquisition function.
 
 # %%
 search_space = trieste.space.Box([-1, -1], [1, 1])
@@ -32,6 +32,8 @@ input_dim = 2
 def circle(x):
     return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
 
+# %% [markdown]
+# Let's first illustrate how this two dimensional problem looks like.
 
 # %%
 density = 100
@@ -52,7 +54,7 @@ plt.legend()
 plt.show()
 
 # %% [markdown]
-# Let's generate some data for our initial model. Here we randomly sample 10 data points.
+# Let's generate some data for our initial model. Here we randomly sample a small number of data points.
 
 # %%
 num_initial_points = 5
@@ -112,7 +114,7 @@ plt.show()
 # %% [markdown]
 # ## The acquisition process
 #
-# We can construct the BALD acqusition function which maximise information gain about the model parameters, by maximising the mutual information between predictions and model posterior:
+# We can construct the BALD acquisition function which maximises information gain about the model parameters, by maximising the mutual information between predictions and model posterior:
 #
 # $$\mathbb{I}\left[y, \boldsymbol{\theta} \mid \mathbf{x}, \mathcal{D}\right]=\mathbb{H}\left[y \mid \mathbf{x}, \mathcal{D}\right]-\mathbb{E}_{p\left(\boldsymbol{\theta} \mid \mathcal{D}\right)}[\mathbb{H}[y \mid \mathbf{x}, \boldsymbol{\theta}]]$$
 #

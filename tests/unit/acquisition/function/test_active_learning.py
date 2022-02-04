@@ -417,7 +417,7 @@ def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
         build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
     )
 
-    p, _ = model.model.predict_y(to_default_float(at))
+    p, _ = model.predict_y(to_default_float(at))
     term1 = -p * tf.math.log(p) - (1 - p) * tf.math.log(1 - p)
 
     mean, variance = model.predict(to_default_float(at))
@@ -443,13 +443,6 @@ def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_fun
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-def test_bayesian_active_learning_by_disagreement_raise_on_non_bernoulli_vgp() -> None:
-    x = to_default_float(tf.zeros([1, 1]))
-    y = to_default_float(tf.zeros([1, 1]))
-    model = VariationalGaussianProcess(vgp_model(x, y))
-
-    with pytest.raises(Exception):
-        BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
 
 
 @pytest.mark.parametrize("jitter", [0.0, -1.0])

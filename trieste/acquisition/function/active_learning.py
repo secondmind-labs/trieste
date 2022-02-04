@@ -493,8 +493,8 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         This acquisition function is intended to use for Binary Gaussian Process Classification
         model with Bernoulli likelihood. It is designed for VGP but other Gaussian approximation
         of the posterior can be used. SVGP for instance, or some other model that is not currently
-        supported by Trieste. integrating over nuisance parameters is currently not
-        supported (see equation 6 of the paper)
+        supported by Trieste. Integrating over nuisance parameters is currently not
+        supported (see equation 6 of the paper).
 
         :param model: The model of the objective function.
         :param jitter: The size of the jitter to avoid numerical problem caused by the
@@ -503,8 +503,6 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         """
         tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
 
-        if not isinstance(model.model.likelihood, Bernoulli):  # type: ignore
-            raise TypeError
 
         self._model = model
         self._jitter = jitter
