@@ -941,8 +941,10 @@ def _covariance_between_points_for_variational_models(
 
     where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`
     or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using
-    a whitened representation (REF) in our variational approximation. Here
-    :math:`L` is the Cholesky decomposition of :math:`K_{xx}`
+    a whitened representation in our variational approximation. Here
+    :math:`L` is the Cholesky decomposition of :math:`K_{xx}`.  
+    See :cite:`titsias2009variational` for a derivation.
+
 
     Note that this function can also be applied to
     our :class:`VariationalGaussianProcess` models by passing in the training
