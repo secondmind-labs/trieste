@@ -132,7 +132,6 @@ plot_active_learning_query(pred_var, X, num_initial_points, title="Variance")
 # See <cite data-cite="houlsby2011bayesian">[Houlsby et al.](https://arxiv.org/pdf/1112.5745.pdf)</cite> for more details. Then, Trieste's `EfficientGlobalOptimization` is used for the query rule:
 
 # %%
-initial_models = model
 acq = BayesianActiveLearningByDisagreement()
 rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 
@@ -143,7 +142,7 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 # %%
 n_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-results = bo.optimize(n_steps, initial_data, initial_models, rule, track_state=False)
+results = bo.optimize(n_steps, initial_data, model, rule, track_state=False)
 final_dataset = results.try_get_final_datasets()[OBJECTIVE]
 final_model = results.try_get_final_models()[OBJECTIVE]
 
