@@ -22,7 +22,7 @@ tf.random.set_seed(1793)
 # %% [markdown]
 # In Trieste, it is also possible to query most interesting points for learning the problem, i.e we want to have as little data as possible to construct the best possible model (active learning). In this tutorial we will try to do active learning for binary classification problem using Bayesain Active Learning by Disagreement (BALD) for a Gaussian Process Classification Model.
 #
-# Our problem is classification problem of circle dataset. In this toturial we assume that the input space is continous so we can use continuous optimiser for our BALD acquisition function.
+# We will illustrate the BALD algorithm on a synthetic binary classification problem where one class takes shape of a circle in the search space. The input space is continuous so we can use continuous optimiser for our BALD acquisition function.
 
 # %%
 search_space = trieste.space.Box([-1, -1], [1, 1])
