@@ -54,7 +54,7 @@ plt.legend()
 plt.show()
 
 # %% [markdown]
-# Let's generate some data for our initial model. Here we randomly sample 10 data points.
+# Let's generate some data for our initial model. Here we randomly sample a small number of data points.
 
 # %%
 num_initial_points = 5
