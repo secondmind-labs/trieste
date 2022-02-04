@@ -34,7 +34,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import SGPR, SVGP, VGP, GPR
+from gpflow.models import GPR, SGPR, SVGP, VGP
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import (
@@ -911,14 +911,12 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
     if isinstance(model.model, SGPR):
         pytest.skip("Covariance between points is not supported for SGPR.")
 
-    if isinstance(model.model, GPR): 
-        model.optimize(Dataset(x,y))
-    elif isinstance(model.model, (VGP, SVGP)): # for speed just update q_sqrt rather than optimize
+    if isinstance(model.model, GPR):
+        model.optimize(Dataset(x, y))
+    elif isinstance(model.model, (VGP, SVGP)):  # for speed just update q_sqrt rather than optimize
         num_inducing_points = tf.shape(model.model.q_sqrt)[1]
-        model.update(Dataset(x,y))
-        # sampled_q_sqrt = tfp.distributions.WishartTriL(5,tf.eye(num_inducing_points)).sample(1)
-        # model.model.q_sqrt.assign(sampled_q_sqrt)
-
+        sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
+        model.model.q_sqrt.assign(sampled_q_sqrt)
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
@@ -927,17 +925,19 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
     _, predictive_covariance = model.predict_joint(all_query_points)
     expected_covariance = predictive_covariance[0, :8, 8:]
 
-    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+    actual_covariance = model.covariance_between_points(  # type: ignore
+        query_points_1, query_points_2
+    )
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], rtol=1e-5)
 
 
 @pytest.mark.parametrize("whiten", [True, False])
-def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten:bool) -> None:
+def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten: bool) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     y = fnc_3x_plus_10(x)
-    model = SparseVariational(svgp_model(x,y))
-    model.model.whiten=whiten
+    model = SparseVariational(svgp_model(x, y))
+    model.model.whiten = whiten
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
@@ -948,8 +948,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten:bool) ->
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
-
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], rtol=1e-5)
 
 
 def test_sparse_variational_raises_for_pairwise_covariance_for_invalid_query_points(
@@ -962,7 +961,7 @@ def test_sparse_variational_raises_for_pairwise_covariance_for_invalid_query_poi
         pytest.skip("Covariance between points is not supported for SGPR.")
 
     with pytest.raises(ValueError):
-        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
+        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))  # type: ignore
 
 
 def test_gaussian_process_regression_sgpr_raises_for_pairwise_covariance() -> None:

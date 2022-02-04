@@ -661,12 +661,15 @@ class SparseVariational(
             q_sqrt=self.model.q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
-            whiten = self.model.whiten
+            whiten=self.model.whiten,
         )
 
 
 class VariationalGaussianProcess(
-    GPflowPredictor, TrainableProbabilisticModel, SupportsInternalData
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    SupportsInternalData,
+    SupportsCovarianceBetweenPoints,
 ):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
@@ -919,7 +922,7 @@ class VariationalGaussianProcess(
             q_sqrt=self.model.q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
-            whiten=True, # GPflow's VGP model is hard-coded to use the whitened representation
+            whiten=True,  # GPflow's VGP model is hard-coded to use the whitened representation
         )
 
 
@@ -934,15 +937,27 @@ def _covariance_between_points_for_variational_models(
     r"""
     Compute the posterior covariance between sets of query points.
 
-    .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+    .. math:: \Sigma_{12} = K_{12} - K_{1x}(K_{xx}^{-1} - B)K_{x2}
 
-    Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+    where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`
+    or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using
+    a whitened representation (REF) in our variational approximation. Here
+    :math:`L` is the Cholesky decomposition of :math:`K_{xx}`
+
+    Note that this function can also be applied to
+    our :class:`VariationalGaussianProcess` models by passing in the training
+    data rather than the locations of the inducing points.
+
+    Although query_points_2 must be a rank 2 tensor, query_points_1 can
     have leading dimensions.
 
-    todo update letters
-    :param query_points_1: Set of query points with shape [..., N, D]
-    :param query_points_2: Sets of query points with shape [M, D]
-    :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+    :inducing points: The input locations chosen for our variational approximation.
+    :q_sqrt: The Cholesky decomposition of the covariance matrix of our
+        variational distribution.
+    :param query_points_1: Set of query points with shape [..., A, D]
+    :param query_points_2: Sets of query points with shape [B, D]
+    :param whiten:  If True then use whitened representations.
+    :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
         (L being the number of latent GPs = number of output dimensions)
     """
 
@@ -967,28 +982,25 @@ def _covariance_between_points_for_variational_models(
     Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, M, A]
     Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [..., L, M, B]
 
-    def _leading_mul(
-        M_1: TensorType, M_2: TensorType, transpose_a: bool
-    ) -> TensorType:  
-        if transpose_a: # The einsum below is just A^T*B over the last 2 dimensions.
-            return tf.einsum("...lji,ljk->...lik",  M_1, M_2) 
-        else: # The einsum below is just A*B^T over the last 2 dimensions.
-            return tf.einsum("...lij,lkj->...lik", M_1, M_2)  
-
+    def _leading_mul(M_1: TensorType, M_2: TensorType, transpose_a: bool) -> TensorType:
+        if transpose_a:  # The einsum below is just A^T*B over the last 2 dimensions.
+            return tf.einsum("...lji,ljk->...lik", M_1, M_2)
+        else:  # The einsum below is just A*B^T over the last 2 dimensions.
+            return tf.einsum("...lij,lkj->...lik", M_1, M_2)
 
     if whiten:
         first_cov_term = _leading_mul(
             _leading_mul(Linv_Kx1, q_sqrt, transpose_a=True),  # [..., L, A, M]
-            _leading_mul(Linv_Kx2, q_sqrt, transpose_a=True), # [..., L, B, M]
-            transpose_a=False
-            ) # [..., L, A, B]
+            _leading_mul(Linv_Kx2, q_sqrt, transpose_a=True),  # [..., L, B, M]
+            transpose_a=False,
+        )  # [..., L, A, B]
     else:
         Linv_qsqrt = tf.linalg.triangular_solve(L, q_sqrt)  # [L, M, M]
         first_cov_term = _leading_mul(
             _leading_mul(Linv_Kx1, Linv_qsqrt, transpose_a=True),  # [..., L, A, M]
-            _leading_mul(Linv_Kx2, Linv_qsqrt, transpose_a=True), # [..., L, B, M]
-            transpose_a=False
-            ) # [..., L, A, B]
+            _leading_mul(Linv_Kx2, Linv_qsqrt, transpose_a=True),  # [..., L, B, M]
+            transpose_a=False,
+        )  # [..., L, A, B]
 
     second_cov_term = K12  # [..., L, A, B]
     third_cov_term = _leading_mul(Linv_Kx1, Linv_Kx2, transpose_a=True)  # [..., L, A, B]
