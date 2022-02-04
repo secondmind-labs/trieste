@@ -114,7 +114,7 @@ plt.show()
 # %% [markdown]
 # ## The acquisition process
 #
-# We can construct the BALD acqusition function which maximise information gain about the model parameters, by maximising the mutual information between predictions and model posterior:
+# We can construct the BALD acquisition function which maximises information gain about the model parameters, by maximising the mutual information between predictions and model posterior:
 #
 # $$\mathbb{I}\left[y, \boldsymbol{\theta} \mid \mathbf{x}, \mathcal{D}\right]=\mathbb{H}\left[y \mid \mathbf{x}, \mathcal{D}\right]-\mathbb{E}_{p\left(\boldsymbol{\theta} \mid \mathcal{D}\right)}[\mathbb{H}[y \mid \mathbf{x}, \boldsymbol{\theta}]]$$
 #
