@@ -643,15 +643,12 @@ class SparseVariational(
         r"""
         Compute the posterior covariance between sets of query points.
 
-        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
-
         Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
         have leading dimensions.
 
-        todo update letters
-        :param query_points_1: Set of query points with shape [..., N, D]
-        :param query_points_2: Sets of query points with shape [M, D]
-        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+        :param query_points_1: Set of query points with shape [..., A, D]
+        :param query_points_2: Sets of query points with shape [B, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
             (L being the number of latent GPs = number of output dimensions)
         """
 
@@ -904,15 +901,12 @@ class VariationalGaussianProcess(
         r"""
         Compute the posterior covariance between sets of query points.
 
-        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
-
         Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
         have leading dimensions.
 
-        todo update letters
-        :param query_points_1: Set of query points with shape [..., N, D]
-        :param query_points_2: Sets of query points with shape [M, D]
-        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+        :param query_points_1: Set of query points with shape [..., A, D]
+        :param query_points_2: Sets of query points with shape [B, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
             (L being the number of latent GPs = number of output dimensions)
         """
 
