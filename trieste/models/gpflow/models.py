@@ -931,7 +931,7 @@ def _covariance_between_points_for_variational_models(
     r"""
     Compute the posterior covariance between sets of query points.
 
-    .. math:: \Sigma_{12} = K_{12} - K_{1x}(K_{xx}^{-1} - B)K_{x2}
+    .. math:: \Sigma_{12} = K_{1x}BK_{x2} + K_{12} - K_{1x}K_{xx}^{-1}K_{x2}
 
     where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`
     or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using
