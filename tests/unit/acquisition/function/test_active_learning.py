@@ -443,13 +443,6 @@ def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_fun
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
 
-def test_bayesian_active_learning_by_disagreement_raise_on_non_bernoulli_vgp() -> None:
-    x = to_default_float(tf.zeros([1, 1]))
-    y = to_default_float(tf.zeros([1, 1]))
-    model = VariationalGaussianProcess(vgp_model(x, y))
-
-    with pytest.raises(Exception):
-        BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
 
 
 @pytest.mark.parametrize("jitter", [0.0, -1.0])
