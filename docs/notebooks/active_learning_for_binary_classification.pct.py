@@ -32,6 +32,8 @@ input_dim = 2
 def circle(x):
     return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
 
+# %% [markdown]
+# Let's first illustrate how this two dimensional problem looks like.
 
 # %%
 density = 100
