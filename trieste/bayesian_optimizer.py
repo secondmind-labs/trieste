@@ -36,7 +36,7 @@ from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, map_values
+from .utils import Err, Ok, Result, Timer, map_values
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -444,45 +444,51 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         models = cast(
             Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
         )
+
         history: list[Record[StateType]] = []
 
         for step in range(num_steps):
             set_step_number(step)
             try:
+
                 if track_state:
                     models_copy = copy.deepcopy(models)
                     acquisition_state_copy = copy.deepcopy(acquisition_state)
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
-                if step == 0 and fit_initial_model:
-                    for tag, model in models.items():
-                        dataset = datasets[tag]
-                        model.update(dataset)
-                        model.optimize(dataset)
+                with Timer() as total_step_wallclock_timer:
+                    if step == 0 and fit_initial_model:
+                        with Timer() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(
-                    self._search_space, models, datasets=datasets
-                )
+                    with Timer() as query_point_generation_timer:
+                        points_or_stateful = acquisition_rule.acquire(
+                            self._search_space, models, datasets=datasets
+                        )
 
-                if callable(points_or_stateful):
-                    acquisition_state, query_points = points_or_stateful(acquisition_state)
-                else:
-                    query_points = points_or_stateful
+                    if callable(points_or_stateful):
+                        acquisition_state, query_points = points_or_stateful(acquisition_state)
+                    else:
+                        query_points = points_or_stateful
 
-                observer_output = self._observer(query_points)
+                    observer_output = self._observer(query_points)
 
-                tagged_output = (
-                    observer_output
-                    if isinstance(observer_output, Mapping)
-                    else {OBJECTIVE: observer_output}
-                )
+                    tagged_output = (
+                        observer_output
+                        if isinstance(observer_output, Mapping)
+                        else {OBJECTIVE: observer_output}
+                    )
 
-                datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
+                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
-                for tag, model in models.items():
-                    dataset = datasets[tag]
-                    model.update(dataset)
-                    model.optimize(dataset)
+                    with Timer() as model_fitting_timer:
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
@@ -500,6 +506,26 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 np.min(tagged_output[tag].observations),
                                 step=step,
                             )
+                        tf.summary.scalar(
+                            "wallclock.step",
+                            total_step_wallclock_timer.time,
+                            step=step,
+                        )
+                        tf.summary.scalar(
+                            "wallclock.query_point_generation",
+                            query_point_generation_timer.time,
+                            step=step,
+                        )
+                        tf.summary.scalar(
+                            "wallclock.model_fitting",
+                            model_fitting_timer.time
+                            + (
+                                initial_model_fitting_timer.time
+                                if (step == 0 and fit_initial_model)
+                                else 0
+                            ),
+                            step=step,
+                        )
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
