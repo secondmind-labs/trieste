@@ -903,6 +903,7 @@ def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
         np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
 
 
+@random_seed
 def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactoryType) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     y = fnc_3x_plus_10(x)
@@ -929,9 +930,10 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
         query_points_1, query_points_2
     )
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], rtol=1e-5)
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-4)
 
 
+@random_seed
 @pytest.mark.parametrize("whiten", [True, False])
 def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten: bool) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
@@ -948,9 +950,10 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten: bool) -
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], rtol=1e-5)
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-4)
 
 
+@random_seed
 def test_sparse_variational_raises_for_pairwise_covariance_for_invalid_query_points(
     gpflow_interface_factory: ModelFactoryType,
 ) -> None:

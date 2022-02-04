@@ -939,7 +939,6 @@ def _covariance_between_points_for_variational_models(
     :math:`L` is the Cholesky decomposition of :math:`K_{xx}`.
     See :cite:`titsias2009variational` for a derivation.
 
-
     Note that this function can also be applied to
     our :class:`VariationalGaussianProcess` models by passing in the training
     data rather than the locations of the inducing points.
