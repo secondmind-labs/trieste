@@ -160,22 +160,27 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
         )
 
 
-def test_gaussian_process_regression_pairwise_covariance() -> None:
+@pytest.mark.parametrize("num_outputs", [1, 2])
+def test_gaussian_process_regression_pairwise_covariance(num_outputs) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     y = fnc_3x_plus_10(x)
-    model = GaussianProcessRegression(gpr_model(x, y))
+    model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, num_outputs, axis=1)))
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
 
     all_query_points = tf.concat([query_points_1, query_points_2], 0)
     _, predictive_covariance = model.predict_joint(all_query_points)
-    expected_covariance = predictive_covariance[0, :8, 8:]
+    expected_covariance = predictive_covariance[:, :8, 8:]
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-5)
+    # tf.assert_equal(samples_fm5.shape, [4, 3, num_samples, 5, 1])
 
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
+
+
+test_gaussian_process_regression_pairwise_covariance(2)
 
 def test_gaussian_process_regression_sgpr_raises_for_covariance_between_points() -> None:
     data = mock_data()
