@@ -175,8 +175,6 @@ def test_gaussian_process_regression_pairwise_covariance(num_outputs) -> None:
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    # tf.assert_equal(samples_fm5.shape, [4, 3, num_samples, 5, 1])
-
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
