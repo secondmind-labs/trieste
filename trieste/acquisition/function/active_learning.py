@@ -24,7 +24,6 @@ from typing import Optional, Sequence, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.likelihoods.scalar_discrete import Bernoulli
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
