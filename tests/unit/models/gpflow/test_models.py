@@ -161,7 +161,7 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
 
 
 @pytest.mark.parametrize("num_outputs", [1, 2])
-def test_gaussian_process_regression_pairwise_covariance(num_outputs) -> None:
+def test_gaussian_process_regression_pairwise_covariance(num_outputs: int) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     y = fnc_3x_plus_10(x)
     model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, num_outputs, axis=1)))
