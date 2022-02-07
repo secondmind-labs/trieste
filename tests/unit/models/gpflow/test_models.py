@@ -178,8 +178,6 @@ def test_gaussian_process_regression_pairwise_covariance(num_outputs) -> None:
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
-test_gaussian_process_regression_pairwise_covariance(2)
-
 def test_gaussian_process_regression_sgpr_raises_for_covariance_between_points() -> None:
     data = mock_data()
     model = GaussianProcessRegression(sgpr_model(*data))
