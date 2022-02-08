@@ -407,31 +407,40 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
         (tf.constant([[1.0]])),
     ],
 )
-def test_bayesian_active_learning_by_disagreement(at: tf.Tensor) -> None:
-
+def test_bayesian_active_learning_by_disagreement_is_correct(at: tf.Tensor) -> None:
+    """ "
+    We perform an MC check as in Section 5 of Houlsby 2011 paper. We check only the
+    2nd, more complicated term.
+    """
     search_space = Box([-1], [1])
     x = to_default_float(tf.constant(np.linspace(-1, 1, 8).reshape(-1, 1)))
     y = to_default_float(tf.reshape(binary_line(x), [-1, 1]))
     model = VariationalGaussianProcess(
         build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
     )
-
     mean, var = model.predict(to_default_float(at))
-    samples = tfp.distributions.Normal(
-        to_default_float(mean), to_default_float(tf.sqrt(var))
-    ).sample(100000)
 
+    def entropy(p: TensorType) -> TensorType:
+        return -p * tf.math.log(p + DEFAULTS.JITTER) - (1 - p) * tf.math.log(
+            1 - p + DEFAULTS.JITTER
+        )
+
+    # we get the actual but substract term 1 which is computed here the same as in the method
     normal = tfp.distributions.Normal(to_default_float(0), to_default_float(1))
-    p_mc = np.mean(normal.cdf(samples))
-    term1 = -p_mc * tf.math.log(p_mc) - (1 - p_mc) * tf.math.log(1 - p_mc)
-    term2 = np.mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
-    expected = term1 - term2
-
-    actual = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(
+    actual_term1 = entropy(normal.cdf((mean / tf.sqrt(var + 1))))
+    actual_term2 = actual_term1 - bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(
         [to_default_float(at)]
     )
 
-    npt.assert_allclose(actual, expected, rtol=0.05, atol=0.05)
+    # MC based term 2, 1st and 2nd approximation
+    samples = tfp.distributions.Normal(
+        to_default_float(mean), to_default_float(tf.sqrt(var))
+    ).sample(100000)
+    MC_term21 = tf.reduce_mean(entropy(normal.cdf(samples)))
+    MC_term22 = tf.reduce_mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
+
+    npt.assert_allclose(actual_term2, MC_term21, rtol=0.05, atol=0.05)
+    npt.assert_allclose(actual_term2, MC_term22, rtol=0.05, atol=0.05)
 
 
 def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
@@ -476,7 +485,9 @@ def test_bayesian_active_learning_by_disagreement_returns_correct_shape(
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_bayesian_active_learning_raises_for_invalid_batch_size(at: TensorType) -> None:
+def test_bayesian_active_learning_by_disagreement_raises_for_invalid_batch_size(
+    at: TensorType,
+) -> None:
     x = to_default_float(tf.zeros([1, 1]))
     y = to_default_float(tf.zeros([1, 1]))
     model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))

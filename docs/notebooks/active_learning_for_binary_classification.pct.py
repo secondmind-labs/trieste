@@ -30,29 +30,32 @@ input_dim = 2
 
 
 def circle(x):
-    return tf.cast((tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0, tf.float64)
+    return tf.cast(
+        (tf.reduce_sum(tf.square(x), axis=1, keepdims=True) - 0.5) > 0,
+        tf.float64,
+    )
 
 
 # %% [markdown]
-# Let's first illustrate how this two dimensional problem looks like.
+# Let's first illustrate how this two dimensional problem looks like. Class 1 is the area outside of the circle and class 0 is area inside the circle.
 
 # %%
-density = 100
-query_points = np.linspace(search_space.lower[0], search_space.upper[0], density)
+from util.plotting import plot_function_2d
 
-grid_query_points = np.meshgrid(*[query_points] * input_dim)
-query_points = np.vstack([g.ravel() for g in grid_query_points]).T
-observations = circle(query_points).numpy()
-
-plt.figure(figsize=(5, 5))
-plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
-idx = np.squeeze(observations).astype(bool)
-plt.scatter(query_points[idx][:, 0], query_points[idx][:, 1], label="1")
-plt.scatter(
-    query_points[np.logical_not(idx)][:, 0], query_points[np.logical_not(idx)][:, 1], label="0"
+_, ax = plot_function_2d(
+    circle,
+    search_space.lower,
+    search_space.upper,
+    grid_density=200,
+    contour=True,
+    figsize=(7, 7),
+    title=["Circle classification problem (1 outside, 0 inside)"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    fill=True,
 )
-plt.legend()
 plt.show()
+
 
 # %% [markdown]
 # Let's generate some data for our initial model. Here we randomly sample a small number of data points.
@@ -82,7 +85,10 @@ model = VariationalGaussianProcess(
 # Lets see our model landscape using only those initial data
 
 # %%
-from util.plotting_plotly import plot_model_predictions_plotly, add_bo_points_plotly
+from util.plotting_plotly import (
+    plot_model_predictions_plotly,
+    add_bo_points_plotly,
+)
 
 model.update(initial_data)
 model.optimize(initial_data)
@@ -122,42 +128,35 @@ rule = trieste.acquisition.rule.EfficientGlobalOptimization(acq)  # type: ignore
 # Let's run our active learning iteration:
 
 # %%
-n_steps = 30
+num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-results = bo.optimize(n_steps, initial_data, model, rule, track_state=False)
+results = bo.optimize(num_steps, initial_data, model, rule)
 final_dataset = results.try_get_final_datasets()[OBJECTIVE]
 final_model = results.try_get_final_models()[OBJECTIVE]
 
 # %% [markdown]
 # ## Visualising the result
-# Now, we can visualize our model after the active learning run
+# Now, we can visualize our model after the active learning run. Points marked with a cross are initial points while circles are points queried by the optimizer.
 
 # %% Plot BO results
-mean, variance = final_model.predict(query_points)
+from util.plotting import plot_bo_points
 
-mean = gpflow.likelihoods.Bernoulli().invlink(mean).numpy()
-
-plt.figure(figsize=(7, 5))
-plt.contourf(*grid_query_points, np.reshape(mean, [density] * input_dim))
-plt.colorbar()
-plt.plot(
-    final_dataset.query_points[:-n_steps, 0],
-    final_dataset.query_points[:-n_steps, 1],
-    "ko",
-    markersize=10,
-    label="Initial points",
+_, ax = plot_function_2d(
+    lambda x: gpflow.likelihoods.Bernoulli().invlink(final_model.predict(x)[0]),
+    search_space.lower,
+    search_space.upper,
+    grid_density=200,
+    contour=True,
+    colorbar=True,
+    figsize=(7, 7),
+    title=["Predictive mean of the final model"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    fill=True,
 )
-plt.plot(
-    final_dataset.query_points[-n_steps:, 0],
-    final_dataset.query_points[-n_steps:, 1],
-    "rx",
-    mew=10,
-    label="queried points",
-)
-plt.contour(*grid_query_points, np.reshape(observations, [density] * input_dim), levels=[0.5])
-plt.title("Updated Mean")
-plt.legend()
+plot_bo_points(final_dataset.query_points, ax[0, 0], num_initial_points)
 plt.show()
+
 
 # %% [markdown]
 # As expected, BALD will query in important regions like points near the domain boundary and class boundary.
