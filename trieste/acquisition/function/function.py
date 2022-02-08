@@ -653,7 +653,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
 
 
 class monte_carlo_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, sampler: ReparametrizationSampler, eta: TensorType):
+    def __init__(self, sampler: ReparametrizationSampler[ProbabilisticModel], eta: TensorType):
         r"""
         Return a Monte Carlo based Expected Improvement (EI) acquisition function for
         single-objective global optimization. Improvement is with respect to the current "best"
@@ -758,7 +758,10 @@ class MonteCarloAugmentedExpectedImprovement(
 
 class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
     def __init__(
-        self, model: SupportsGetObservationNoise, sampler: ReparametrizationSampler, eta: TensorType
+        self,
+        model: SupportsGetObservationNoise,
+        sampler: ReparametrizationSampler[SupportsGetObservationNoise],
+        eta: TensorType,
     ):
         r"""
         Return a Monte Carlo based Augmented Expected Improvement (AEI) acquisition function for
