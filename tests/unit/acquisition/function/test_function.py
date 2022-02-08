@@ -36,6 +36,7 @@ from tests.util.models.gpflow.models import (
     GaussianProcessWithReparamSampler,
     GaussianProcessWithSamplers,
     QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithReparamSampler,
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
 )
@@ -255,7 +256,7 @@ def test_mc_expected_improvement_builds_expected_improvement_using_best_from_mod
         tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
         tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
     )
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithReparamSampler()
     acq_fn = MonteCarloExpectedImprovement(int(1e6)).prepare_acquisition_function(model, dataset)
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
@@ -263,11 +264,11 @@ def test_mc_expected_improvement_builds_expected_improvement_using_best_from_mod
 
 
 def test_mc_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
-    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    data = Dataset(tf.zeros([1, 1]), tf.ones([1, 1]))
     kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
     noise_variance = 1.0
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError, match="The model must have .*"):
         (
             MonteCarloExpectedImprovement(100).prepare_acquisition_function(
                 GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
@@ -281,7 +282,7 @@ def test_mc_expected_improvement_builder_raises_for_empty_data() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         (
             MonteCarloExpectedImprovement(100).prepare_acquisition_function(
-                QuadraticMeanAndRBFKernel(), data
+                QuadraticMeanAndRBFKernelWithSamplers(data), data
             )
         )
 
@@ -342,7 +343,7 @@ def test_mc_augmented_expected_improvement_builds_aei_using_best_from_model() ->
         tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
         tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
     )
-    model = QuadraticMeanAndRBFKernel()
+    model = QuadraticMeanAndRBFKernelWithReparamSampler()
     acq_fn = MonteCarloAugmentedExpectedImprovement(int(1e6)).prepare_acquisition_function(
         model, dataset
     )
@@ -352,11 +353,11 @@ def test_mc_augmented_expected_improvement_builds_aei_using_best_from_model() ->
 
 
 def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
-    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+    data = Dataset(tf.zeros([1, 1]), tf.ones([1, 1]))
     kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
     noise_variance = 1.0
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError, match="The model must have .*"):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
                 GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
@@ -370,7 +371,7 @@ def test_mc_augmented_expected_improvement_builder_raises_for_empty_data() -> No
     with pytest.raises(tf.errors.InvalidArgumentError):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
-                QuadraticMeanAndRBFKernel(), data
+                QuadraticMeanAndRBFKernelWithSamplers(data), data
             )
         )
 
