@@ -592,7 +592,8 @@ def batchify_vectorize(
 
 # TODO: move this elsewhere as it might be useful not just for optimizers
 def batchify_acquisition_function(
-    fn: AcquisitionFunction, batch_size: int = 1
+    fn: AcquisitionFunction,
+    batch_size: int,
 ) -> AcquisitionFunction:
     """
     A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
