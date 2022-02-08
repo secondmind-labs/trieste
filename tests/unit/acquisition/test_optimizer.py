@@ -25,6 +25,7 @@ from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
     FailedOptimizationError,
     automatic_optimizer_selector,
+    batchify_acquisition_function_calls,
     batchify_joint,
     batchify_vectorize,
     generate_continuous_optimizer,
@@ -544,8 +545,10 @@ def test_batchify_vectorize_raises_with_vectorized_acquisition_function(batch_si
 @pytest.mark.parametrize(
     "optimizer", [generate_random_search_optimizer(10_000), generate_continuous_optimizer()]
 )
+@pytest.mark.parametrize("batch_af", [False, True])
 def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_quadratic(
     optimizer: AcquisitionOptimizer[Box],
+    batch_af: bool,
 ) -> None:
     search_space = Box([-1, -2], [1.5, 2.5])
     shifts = [[0.3, -0.4], [1.0, 4]]
@@ -559,6 +562,8 @@ def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_
         return tf.concat(individual_func, axis=-1)
 
     batched_optimizer = batchify_vectorize(optimizer, batch_size=vectorized_batch_size)
+    if batch_af:
+        batched_optimizer = batchify_acquisition_function_calls(batched_optimizer, 1000)
     maximizers = batched_optimizer(search_space, vectorized_target)
     npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
 

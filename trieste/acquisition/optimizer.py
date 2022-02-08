@@ -19,6 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
+import functools
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import greenlet as gr
@@ -587,6 +588,84 @@ def batchify_vectorize(
         return batch_size_one_optimizer(search_space, (f, batch_size))
 
     return optimizer
+
+
+# TODO: move this elsewhere as it might be useful not just for optimizers
+def batchify_acquisition_function(
+    fn: AcquisitionFunction, batch_size: int = 1
+) -> AcquisitionFunction:
+    """
+    A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
+    Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
+    the results back together, so that it looks like `fn` was called with all of `x` in one batch.
+    :param fn: Acquisition function to call with batches of data.
+    :param batch_size: Call fn with tensors of at most this size.
+    :returns Batched acquisition function.
+    """
+    assert batch_size > 0, f"Batch size has to be positive integer! Found {batch_size}."
+
+    @functools.wraps(fn)
+    def wrapper(x: TensorType) -> TensorType:
+        # This function assumes leading dimension of x is batch dimension.
+        x = tf.convert_to_tensor(x)
+
+        length = x.shape[0]
+        if length == 0:
+            return fn(x)
+
+        elements_per_block = tf.size(x) / length
+        blocks_per_batch = tf.cast(tf.math.ceil(batch_size / elements_per_block), tf.int32)
+
+        num_batches = tf.cast(tf.math.ceil(length / blocks_per_batch) - 1, tf.int32)
+        batch_sizes = tf.concat(
+            [
+                tf.ones(num_batches, tf.int32) * blocks_per_batch,
+                [length - num_batches * blocks_per_batch],
+            ],
+            axis=0,
+        )
+
+        if batch_sizes.shape[0] <= 1:
+            return fn(x)
+
+        batch_inputs = tf.split(x, batch_sizes)
+
+        batch_outputs = []
+        for batch_input in batch_inputs:
+            output = fn(batch_input)
+            batch_outputs.append(output)
+
+        return tf.concat(batch_outputs, axis=0)
+
+    return wrapper
+
+
+def batchify_acquisition_function_calls(
+    optimizer: AcquisitionOptimizer[SearchSpaceType],
+    batch_size: int,
+) -> AcquisitionOptimizer[SearchSpaceType]:
+    """
+    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+    :const:`AcquisitionOptimizer` so that evaluations of the acquisition functions
+    are split into batches on the first dimension and then stitched back tohether.
+    This can be useful to reduce memory usage when evaluating functions over large spaces.
+
+    :param optimizer: An optimizer that returns batches of points with shape [V, ...].
+    :param batch_size: The maximum number of points in acquisition function evaluations.
+    :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
+        but evaluates at most batch_size points at a time.
+    """
+
+    def batchified_optimizer(
+        search_space: SearchSpaceType,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+    ) -> TensorType:
+
+        af, n = f if isinstance(f, tuple) else (f, 1)
+        baf = batchify_acquisition_function(af, batch_size)
+        return optimizer(search_space, (baf, n) if isinstance(f, tuple) else baf)
+
+    return batchified_optimizer
 
 
 def generate_random_search_optimizer(
