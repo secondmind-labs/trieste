@@ -124,9 +124,21 @@ class DeepGaussianProcess(
         return tf.stack(samples)
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
+        """
+        Return a reparametrization sampler for :class:`DeepGaussianProcess` models.
+
+        :param num_samples: The number of samples to obtain.
+        :return: The reparametrization sampler.
+        """
         return DeepGaussianProcessReparamSampler(num_samples, self)
 
     def trajectory_sampler(self) -> TrajectorySampler[GPfluxPredictor]:
+        """
+        Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+        trajectories using the GPflux default sampler.
+
+        :return: The trajectory sampler.
+        """
         return DeepGaussianProcessTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
