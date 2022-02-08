@@ -248,7 +248,11 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     prior_for_lengthscale: bool,
 ) -> None:
     x = tf.constant(np.arange(1, 5 * dim + 1).reshape(-1, dim), dtype=tf.float64)  # shape: [5, d]
-    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)))
+    optimizer = Optimizer(
+        optimizer=gpflow.optimizers.Scipy(),
+        minimize_args={"options": dict(maxiter=10)},
+    )
+    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer)
     model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([dim], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
