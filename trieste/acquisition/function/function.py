@@ -585,8 +585,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
 class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
-    Builder for a Monte Carlo-based expected improvement function for use with a model where we have
-    to obtain a Monte Carlo estimate of the expected improvement. The "best" value is taken to be
+    Builder for a Monte Carlo-based expected improvement function for use with a model without
+    analytical expected improvement (e.g. a deep GP). The "best" value is taken to be
     the minimum of the posterior mean at observed points.
     """
 
@@ -612,7 +612,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :param dataset: The data from the observer. Must be populated.
+        :param dataset: The data from the observer. Cannot be empty.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an event shape of [1] or does not have a ``reparam_sample`` method.
@@ -666,8 +666,8 @@ class MonteCarloAugmentedExpectedImprovement(
 ):
     """
     Builder for a Monte Carlo-based augmented expected improvement function for use with a model
-    where we have  to obtain a Monte Carlo estimate of the augmented expected improvement. The
-    "best" value is taken to be the minimum of the posterior mean at observed points.
+    without analytical augmented expected improvement (e.g. a deep GP). The "best" value is taken to
+    be the minimum of the posterior mean at observed points.
     """
 
     def __init__(self, sample_size: int):
@@ -692,7 +692,7 @@ class MonteCarloAugmentedExpectedImprovement(
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :param dataset: The data from the observer. Must be populated.
+        :param dataset: The data from the observer. Cannot be empty.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an event shape of [1] or does not have a ``reparam_sample`` method.
