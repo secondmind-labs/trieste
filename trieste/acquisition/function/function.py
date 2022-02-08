@@ -611,11 +611,11 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :param model: The model over the specified ``dataset``. Must have output dimension [1].
         :param dataset: The data from the observer. Cannot be empty.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an event shape of [1] or does not have a ``reparam_sample`` method.
+            does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
         """
         get_sampler = getattr(model, "reparam_sampler", None)
         if not callable(get_sampler):
@@ -644,21 +644,45 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
         )
 
         eta = tf.reduce_min(mean, axis=0)
 
-        def mc_ei(at: TensorType) -> TensorType:
-            tf.debugging.assert_shapes(
-                [(at, [..., 1, None])],
-                message="This acquisition function only supports batch sizes of one.",
-            )
-            samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
-            improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
-            return tf.reduce_mean(improvement, axis=0)  # [N, 1]
+        return monte_carlo_expected_improvement(sampler, eta)
 
-        return mc_ei
+
+class monte_carlo_expected_improvement(AcquisitionFunctionClass):
+    def __init__(self, sampler: ReparametrizationSampler, eta: TensorType):
+        r"""
+        Return a Monte Carlo based Expected Improvement (EI) acquisition function for
+        single-objective global optimization. Improvement is with respect to the current "best"
+        observation ``eta``, where an improvement moves towards the objective function's minimum
+        and the expectation is calculated with respect to the ``model`` posterior. For model
+        posterior :math:`f`, this is
+
+        .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right].
+
+        For the Monte Carlo version, the expectation is calculated by samples that we save.
+
+        :param sampler: The model sampler of the objective function.
+        :param eta: The "best" observation.
+        :return: The Monte Carlo expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._sampler = sampler
+        self._eta = tf.Variable(eta)
+
+    @tf.function
+    def __call__(self, at: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(at, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        samples = self._sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
+        improvement = tf.maximum(self._eta - samples, 0.0)  # [S, N, 1]
+        return tf.reduce_mean(improvement, axis=0)  # [N, 1]
 
 
 class MonteCarloAugmentedExpectedImprovement(
@@ -691,11 +715,11 @@ class MonteCarloAugmentedExpectedImprovement(
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
+        :param model: The model over the specified ``dataset``. Must have output dimension [1].
         :param dataset: The data from the observer. Cannot be empty.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an event shape of [1] or does not have a ``reparam_sample`` method.
+            does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
         """
         get_sampler = getattr(model, "reparam_sampler", None)
         if not callable(get_sampler):
@@ -724,27 +748,47 @@ class MonteCarloAugmentedExpectedImprovement(
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with event shape [1]."
+            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
         )
 
         eta = tf.reduce_min(mean, axis=0)
 
-        noise_variance = model.get_observation_noise()
+        return monte_carlo_augmented_expected_improvement(model, sampler, eta)
 
-        def mc_aei(at: TensorType) -> TensorType:
-            tf.debugging.assert_shapes(
-                [(at, [..., 1, None])],
-                message="This acquisition function only supports batch sizes of one.",
-            )
-            samples = sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
-            improvement = tf.maximum(eta - samples, 0.0)  # [S, N, 1]
-            variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
-            augmentation = 1 - (
-                tf.math.sqrt(noise_variance) / tf.math.sqrt(noise_variance + variance)
-            )
-            return augmentation * tf.reduce_mean(improvement, axis=0)  # [N, 1]
 
-        return mc_aei
+class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
+    def __init__(
+        self, model: SupportsGetObservationNoise, sampler: ReparametrizationSampler, eta: TensorType
+    ):
+        r"""
+        Return a Monte Carlo based Augmented Expected Improvement (AEI) acquisition function for
+        single-objective global optimization.
+
+        :param model: The model of the objective function.
+        :param sampler: The model sampler of the objective function.
+        :param eta: The "best" observation.
+        :return: The Monte Carlo expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        self._model = model
+        self._sampler = sampler
+        self._eta = tf.Variable(eta)
+        self._noise_variance = model.get_observation_noise()
+
+    @tf.function
+    def __call__(self, at: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(at, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        samples = self._sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
+        improvement = tf.maximum(self._eta - samples, 0.0)  # [S, N, 1]
+        variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
+        augmentation = 1 - (
+            tf.math.sqrt(self._noise_variance) / tf.math.sqrt(self._noise_variance + variance)
+        )
+        return augmentation * tf.reduce_mean(improvement, axis=0)  # [N, 1]
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
