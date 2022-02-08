@@ -115,30 +115,21 @@ class GaussianProcess(
 
 
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
-    """A (static) Gaussian process over a vector random variable with a reparam sampler"""
+    """A (static) Gaussian process over a vector random variable with independent reparam sampler"""
 
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[GaussianProcessWithSamplers]:
-        return BatchReparametrizationSampler(num_samples, self)
+        return GaussianProcessSampler(num_samples, self)
 
 
-class GaussianProcessWithReparamSampler(GaussianProcess, HasReparamSampler):
-    """A (static) Gaussian process over a vector random variable with :func:`reparam_sampler`
-    method."""
-
-    def __init__(
-        self,
-        mean_functions: Sequence[Callable[[TensorType], TensorType]],
-        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
-        noise_variance: float = 1.0,
-    ):
-        super().__init__(mean_functions, kernels, noise_variance)
+class GaussianProcessWithBatchSamplers(GaussianProcess, HasReparamSampler):
+    """A (static) Gaussian process over a vector random variable with a batch reparam sampler"""
 
     def reparam_sampler(
         self, num_samples: int
-    ) -> ReparametrizationSampler[GaussianProcessWithReparamSampler]:
-        return GaussianProcessSampler(num_samples, self)
+    ) -> ReparametrizationSampler[GaussianProcessWithBatchSamplers]:
+        return BatchReparametrizationSampler(num_samples, self)
 
 
 class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetObservationNoise):
@@ -185,23 +176,12 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     )
 
 
-class QuadraticMeanAndRBFKernelWithReparamSampler(QuadraticMeanAndRBFKernel, HasReparamSampler):
-    r"""
-    A Gaussian process with scalar quadratic mean, an RBF kernel and a reparam_sampler method.
-    """
-
-    def reparam_sampler(
-        self, num_samples: int
-    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithReparamSampler]:
-        return GaussianProcessSampler(num_samples, self)
-
-
 class QuadraticMeanAndRBFKernelWithSamplers(
     QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
-    a trajectory_sampler and reparam_sampler methods.
+    trajectory_sampler and reparam_sampler methods.
     """
 
     def __init__(
@@ -223,6 +203,42 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
+        return GaussianProcessSampler(num_samples, self)
+
+    def get_internal_data(self) -> Dataset:
+        return self._dataset
+
+    def update(self, dataset: Dataset) -> None:
+        self._dataset = dataset
+
+
+class QuadraticMeanAndRBFKernelWithBatchSamplers(
+    QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and batch reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+        self._dataset = dataset
+
+    def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithBatchSamplers]:
+        return RandomFourierFeatureTrajectorySampler(self, 100)
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithBatchSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
