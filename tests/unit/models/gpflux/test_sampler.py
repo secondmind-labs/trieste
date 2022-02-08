@@ -24,7 +24,7 @@ Trieste model).
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Tuple
 
 import gpflow
 import numpy.testing as npt
@@ -72,7 +72,7 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
 
 def build_dataset_and_train_deep_gp(
     two_layer_model: Callable[[TensorType], DeepGP]
-) -> [Dataset, DeepGaussianProcess]:
+) -> Tuple[Dataset, DeepGaussianProcess]:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     y = tf.random.normal([100, 1], dtype=tf.float64)
     dataset = Dataset(x, y)
