@@ -70,12 +70,9 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
         sampler.sample(tf.zeros(shape))
 
 
-@random_seed
-def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
-) -> None:
-    sample_size = 1000
+def build_dataset_and_train_deep_gp(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> [Dataset, DeepGaussianProcess]:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     y = tf.random.normal([100, 1], dtype=tf.float64)
     dataset = Dataset(x, y)
@@ -84,9 +81,22 @@ def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution
     model = DeepGaussianProcess(dgp)
     model.optimize(dataset)
 
-    samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(x)  # [S, N, L]
+    return dataset, model
 
-    assert samples.shape == [sample_size, len(x), 1]
+
+@random_seed
+def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution(
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
+) -> None:
+    sample_size = 1000
+    dataset, model = build_dataset_and_train_deep_gp(two_layer_model)
+
+    samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(
+        dataset.query_points
+    )  # [S, N, L]
+
+    assert samples.shape == [sample_size, len(dataset.query_points), 1]
 
     sample_mean = tf.reduce_mean(samples, axis=0)
     sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
@@ -95,7 +105,7 @@ def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution
     means = []
     vars = []
     for _ in range(num_samples):
-        Fmean_sample, Fvar_sample = model.predict(x)
+        Fmean_sample, Fvar_sample = model.predict(dataset.query_points)
         means.append(Fmean_sample)
         vars.append(Fvar_sample)
     ref_mean = tf.reduce_mean(tf.stack(means), axis=0)
@@ -111,13 +121,7 @@ def test_deep_gaussian_process_sampler_sample_is_continuous(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    y = tf.random.normal([100, 1], dtype=tf.float64)
-    dataset = Dataset(x, y)
-
-    dgp = two_layer_model(x)
-    model = DeepGaussianProcess(dgp)
-    model.optimize(dataset)
+    _, model = build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -128,13 +132,7 @@ def test_deep_gaussian_process_sampler_sample_is_repeatable(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    y = tf.random.normal([100, 1], dtype=tf.float64)
-    dataset = Dataset(x, y)
-
-    dgp = two_layer_model(x)
-    model = DeepGaussianProcess(dgp)
-    model.optimize(dataset)
+    _, model = build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -146,13 +144,7 @@ def test_deep_gaussian_process_sampler_samples_are_distinct_for_new_instances(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    y = tf.random.normal([100, 1], dtype=tf.float64)
-    dataset = Dataset(x, y)
-
-    dgp = two_layer_model(x)
-    model = DeepGaussianProcess(dgp)
-    model.optimize(dataset)
+    _, model = build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler1 = DeepGaussianProcessReparamSampler(100, model)
     sampler2 = DeepGaussianProcessReparamSampler(100, model)
