@@ -26,3 +26,7 @@ def fnc_3x_plus_10(x: tf.Tensor) -> tf.Tensor:
 
 def fnc_2sin_x_over_3(x: tf.Tensor) -> tf.Tensor:
     return 2.0 * tf.math.sin(x / 3.0)
+
+
+def binary_line(x: tf.Tensor) -> tf.Tensor:
+    return tf.stack([1 if xi > 0 else 0 for xi in x])
