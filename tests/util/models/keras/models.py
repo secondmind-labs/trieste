@@ -18,8 +18,19 @@ Utilities for creating (Keras) neural network models to be used in the tests.
 
 from __future__ import annotations
 
+from typing import Tuple
+
+import tensorflow as tf
+
 from trieste.data import Dataset
-from trieste.models.keras import GaussianNetwork, KerasEnsemble, get_tensor_spec_from_data
+from trieste.models.keras import (
+    DeepEnsemble,
+    GaussianNetwork,
+    KerasEnsemble,
+    get_tensor_spec_from_data,
+    negative_log_likelihood,
+)
+from trieste.models.optimizer import KerasOptimizer
 
 
 def trieste_keras_ensemble_model(
@@ -45,3 +56,27 @@ def trieste_keras_ensemble_model(
     keras_ensemble = KerasEnsemble(networks)
 
     return keras_ensemble
+
+
+def trieste_deep_ensemble_model(
+    example_data: Dataset,
+    ensemble_size: int,
+    bootstrap_data: bool = False,
+    independent_normal: bool = False,
+) -> Tuple[DeepEnsemble, KerasEnsemble, KerasOptimizer]:
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
+
+    optimizer = tf.keras.optimizers.Adam()
+    loss = negative_log_likelihood
+    fit_args = {
+        "batch_size": 32,
+        "epochs": 10,
+        "callbacks": [],
+        "verbose": 0,
+    }
+    optimizer_wrapper = KerasOptimizer(optimizer, loss, fit_args)
+
+    model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
+
+    return model, keras_ensemble, optimizer_wrapper

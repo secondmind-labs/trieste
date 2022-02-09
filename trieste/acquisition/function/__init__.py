@@ -13,9 +13,11 @@
 # limitations under the License.
 """ This folder contains single-objective optimization functions. """
 from .active_learning import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
+    bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
     integrated_variance_reduction,
     predictive_variance,

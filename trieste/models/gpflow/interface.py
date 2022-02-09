@@ -25,6 +25,7 @@ from ...data import Dataset
 from ...logging import get_step_number, get_tensorboard_writer
 from ...types import TensorType
 from ..interfaces import (
+    HasReparamSampler,
     ReparametrizationSampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
@@ -34,7 +35,9 @@ from ..optimizer import Optimizer
 from .sampler import BatchReparametrizationSampler
 
 
-class GPflowPredictor(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, ABC):
+class GPflowPredictor(
+    SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, HasReparamSampler, ABC
+):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
     def __init__(self, optimizer: Optimizer | None = None):

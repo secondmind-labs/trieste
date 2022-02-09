@@ -20,7 +20,13 @@ from __future__ import annotations
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+
+try:
+    from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
+except (ModuleNotFoundError, ImportError):
+    # temporary support for gpflux 0.2.3
+    from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
+
 from typing_extensions import Protocol, runtime_checkable
 
 from ...types import TensorType
@@ -342,19 +348,18 @@ class RandomFourierFeatureTrajectorySampler(
             theta_posterior_mean, theta_posterior_chol_covariance
         )
 
-    def get_trajectory(self, negate: bool = False) -> TrajectoryFunction:
+    def get_trajectory(self) -> TrajectoryFunction:
         """
         Generate an approximate function draw (trajectory) by sampling weights
         and evaluating the feature functions.
 
-        :param negate: Return the negative trajectory.
         :return: A trajectory function representing an approximate trajectory from the Gaussian
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
         data_dtype = self._model.get_internal_data().query_points.dtype
 
-        self._feature_functions = RandomFourierFeaturesCosine(
+        self._feature_functions = RFF(
             self._model.get_kernel(), self._num_features, dtype=data_dtype
         )  # prep feature functions at data
 
@@ -370,7 +375,6 @@ class RandomFourierFeatureTrajectorySampler(
         return fourier_feature_trajectory(
             feature_functions=self._feature_functions,
             weight_distribution=self._theta_posterior,
-            negate=negate,
         )
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -386,6 +390,10 @@ class RandomFourierFeatureTrajectorySampler(
         :return: The new resampled trajectory function.
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
+
+        if not hasattr(self._feature_functions, "_bias_init"):
+            # maintain support for gpflux 0.2.3 (but with retracing)
+            return self.get_trajectory()
 
         bias_shape = tf.shape(self._feature_functions.b)
         bias_dtype = self._feature_functions.b.dtype
@@ -432,22 +440,16 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
 
     def __init__(
         self,
-        feature_functions: RandomFourierFeaturesCosine,
+        feature_functions: RFF,
         weight_distribution: tfp.distributions.MultivariateNormalTriL,
-        negate: bool = False,
     ):
         """
         :param feature_functions: Set of feature function.
         :param weight_distribution: Distribution from which feature weights are to be sampled.
-        :param negate: Return the negative of the trajectory.
         """
-        if negate:
-            self._feature_functions = lambda x: -1.0 * feature_functions(x)
-        else:
-            self._feature_functions = feature_functions
+        self._feature_functions = feature_functions
         self._weight_distribution = weight_distribution
         self._theta_sample = tf.Variable(self._weight_distribution.sample(1))  # sample weights
-        self._negate = (negate,)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, 1, d] -> [N, 1]

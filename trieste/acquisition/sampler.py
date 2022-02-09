@@ -19,16 +19,18 @@ acquisition functions.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Generic
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.optimize import bisect
 
 from ..models import ProbabilisticModel
+from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
 from ..types import TensorType
 
 
-class ThompsonSampler(ABC):
+class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
     modeled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
@@ -52,7 +54,7 @@ class ThompsonSampler(ABC):
         """
 
     @abstractmethod
-    def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
+    def sample(self, model: ProbabilisticModelType, sample_size: int, at: TensorType) -> TensorType:
         """
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
@@ -61,7 +63,7 @@ class ThompsonSampler(ABC):
         """
 
 
-class ExactThompsonSampler(ThompsonSampler):
+class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
     r"""
     This sampler provides exact Thompson samples of the objective function's
     minimiser :math:`x^*` over a discrete set of input locations.
@@ -98,7 +100,7 @@ class ExactThompsonSampler(ThompsonSampler):
         return thompson_samples
 
 
-class GumbelSampler(ThompsonSampler):
+class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
     r"""
     This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
     minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
@@ -176,7 +178,7 @@ class GumbelSampler(ThompsonSampler):
         return gumbel_samples
 
 
-class ThompsonSamplerFromTrajectory(ThompsonSampler):
+class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
     r"""
     This sampler provides approximate Thompson samples of the objective function's
     minimiser :math:`x^*` by minimizing approximate trajectories sampled from the
@@ -184,7 +186,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
     probabilistic model with a :meth:`trajectory_sampler` method.
     """
 
-    def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
+    def sample(self, model: HasTrajectorySampler, sample_size: int, at: TensorType) -> TensorType:
         """
         Return approximate samples from either the objective function's minimser or its minimal
         value over the candidate set `at`.
@@ -200,15 +202,13 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler):
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_shapes([(at, ["N", None])])
 
-        try:
-            trajectory_sampler = model.trajectory_sampler()
-        except (NotImplementedError):
+        if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
-                """
-            Thompson sampling from trajectory only supports models with a
-            trajectory_sampler method.
-            """
+                f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
+                f"method; received {model.__repr__()}"
             )
+
+        trajectory_sampler = model.trajectory_sampler()
 
         if self._sample_min_value:
             thompson_samples = tf.zeros([0, 1], dtype=at.dtype)  # [0,1]

@@ -21,13 +21,12 @@ from typing import Optional
 import tensorflow as tf
 
 from ...data import Dataset
-from ...models import ProbabilisticModel
-from ...models.interfaces import TrajectoryFunction
+from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder
 
 
-class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
     r"""
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder
@@ -45,7 +44,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
     ) -> TrajectoryFunction:
@@ -53,26 +52,22 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         :param model: The model.
         :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
-        :return: A trajectory sampled from the model.
+        :return: A negated trajectory sampled from the model.
         """
-
-        try:
-            self._trajectory_sampler = model.trajectory_sampler()
-            function = self._trajectory_sampler.get_trajectory(negate=True)
-        except (NotImplementedError):
+        if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
-                """
-            Thompson sampling from trajectory only supports models with a
-            trajectory_sampler method.
-            """
+                f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
+                f"method; received {model.__repr__()}"
             )
 
-        return function
+        self._trajectory_sampler = model.trajectory_sampler()
+        function = self._trajectory_sampler.get_trajectory()
+        return self._negate_trajectory_function(function)
 
     def update_acquisition_function(
         self,
         function: TrajectoryFunction,
-        model: ProbabilisticModel,
+        model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -90,8 +85,31 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[Proba
         tf.debugging.Assert(self._trajectory_sampler is not None, [])
 
         if new_optimization_step:  # update sampler and resample trajectory
-            function = self._trajectory_sampler.update_trajectory(function)
+            new_function = self._trajectory_sampler.update_trajectory(function)
         else:  # just resample trajectory but without updating sampler
-            function = self._trajectory_sampler.resample_trajectory(function)
+            new_function = self._trajectory_sampler.resample_trajectory(function)
+
+        if new_function is not function:
+            function = self._negate_trajectory_function(new_function)
+
+        return function
+
+    def _negate_trajectory_function(self, function: TrajectoryFunction) -> TrajectoryFunction:
+
+        if isinstance(function, TrajectoryFunctionClass):
+            # we want to negate the trajectory function object but otherwise leave it alone,
+            # as it may have e.g. update and resample methods
+
+            class NegatedTrajectory(type(function)):  # type: ignore[misc]
+                def __call__(self, x: TensorType) -> TensorType:
+                    return -1.0 * super().__call__(x)
+
+            function.__class__ = NegatedTrajectory
+        else:
+
+            def negated_trajectory(x: TensorType) -> TensorType:
+                return -1.0 * function(x)
+
+            function = negated_trajectory
 
         return function

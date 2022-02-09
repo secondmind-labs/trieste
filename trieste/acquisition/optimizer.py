@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import greenlet as gr
 import numpy as np
@@ -27,13 +27,9 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
 from .interface import AcquisitionFunction
-
-SP = TypeVar("SP", bound=SearchSpace)
-""" Type variable bound to :class:`~trieste.space.SearchSpace`. """
-
 
 NUM_SAMPLES_MIN: int = 5000
 """
@@ -63,7 +59,7 @@ class FailedOptimizationError(Exception):
 
 
 AcquisitionOptimizer = Callable[
-    [SP, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
+    [SearchSpaceType, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
 ]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
@@ -112,6 +108,35 @@ def automatic_optimizer_selector(
         )
 
 
+def _get_max_discrete_points(
+    points: TensorType, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+) -> TensorType:
+    # check if we need a vectorized optimizer
+    if isinstance(target_func, tuple):
+        target_func, V = target_func
+    else:
+        V = 1
+
+    if V < 0:
+        raise ValueError(f"vectorization must be positive, got {V}")
+
+    tiled_points = tf.tile(points, [1, V, 1])
+    target_func_values = target_func(tiled_points)
+    tf.debugging.assert_shapes(
+        [(target_func_values, ("_", V))],
+        message=(
+            f"""
+            The result of function target_func has shape
+            {tf.shape(target_func_values)}, however, expected a trailing
+            dimension of size {V}.
+            """
+        ),
+    )
+
+    best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
+    return tf.gather(tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1)  # [V, D]
+
+
 def optimize_discrete(
     space: DiscreteSearchSpace,
     target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
@@ -128,31 +153,8 @@ def optimize_discrete(
             [..., V].
     :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
     """
-
-    if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-        target_func, V = target_func
-    else:
-        V = 1
-
-    if V < 0:
-        raise ValueError(f"vectorization must be positive, got {V}")
-
     points = space.points[:, None, :]
-    tiled_points = tf.tile(points, [1, V, 1])
-    target_func_values = target_func(tiled_points)
-    tf.debugging.assert_shapes(
-        [(target_func_values, ("_", V))],
-        message=(
-            f"""
-            The result of function target_func has shape
-            {tf.shape(target_func_values)}, however, expected a trailing
-            dimension of size {V}.
-            """
-        ),
-    )
-
-    best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
-    return tf.gather(tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1)  # [V, D]
+    return _get_max_discrete_points(points, target_func)
 
 
 def generate_continuous_optimizer(
@@ -518,9 +520,9 @@ def get_bounds_of_box_relaxation_around_point(
 
 
 def batchify_joint(
-    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
     batch_size: int,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to jointly optimize the batch elements considered
@@ -535,7 +537,8 @@ def batchify_joint(
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(
-        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+        search_space: SearchSpaceType,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
@@ -559,9 +562,9 @@ def batchify_joint(
 
 
 def batchify_vectorize(
-    batch_size_one_optimizer: AcquisitionOptimizer[SP],
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
     batch_size: int,
-) -> AcquisitionOptimizer[SP]:
+) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
@@ -579,7 +582,8 @@ def batchify_vectorize(
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def optimizer(
-        search_space: SP, f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+        search_space: SearchSpaceType,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         if isinstance(f, tuple):
             raise ValueError(
@@ -626,31 +630,7 @@ def generate_random_search_optimizer(
                 [..., V].
         :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
         """
-        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-            target_func, V = target_func
-        else:
-            V = 1
-
-        if V < 0:
-            raise ValueError(f"vectorization must be positive, got {V}")
-
         points = space.sample(num_samples)[:, None, :]
-        tiled_points = tf.tile(points, [1, V, 1])
-        target_func_values = target_func(tiled_points)
-        tf.debugging.assert_shapes(
-            [(target_func_values, ("_", V))],
-            message=(
-                f"""
-                The result of function target_func has shape
-                {tf.shape(target_func_values)}, however, expected a trailing
-                dimension of size {V}.
-                """
-            ),
-        )
-
-        best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
-        return tf.gather(
-            tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1
-        )  # [V, D]
+        return _get_max_discrete_points(points, target_func)
 
     return optimize_random

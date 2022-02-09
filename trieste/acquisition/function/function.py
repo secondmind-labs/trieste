@@ -17,14 +17,14 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, TypeVar, cast
+from typing import Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel
-from ...models.interfaces import SupportsGetObservationNoise
+from ...models.interfaces import HasReparamSampler, SupportsGetObservationNoise
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -32,11 +32,10 @@ from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AcquisitionFunctionClass,
+    ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
-
-M_contra = TypeVar("M_contra", bound=ProbabilisticModel, contravariant=True)
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -422,7 +421,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModelType]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -433,7 +432,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[M_contra],
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -470,7 +469,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, M_contra],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -519,7 +518,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, M_contra],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
@@ -567,7 +566,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
         return self._constrained_improvement_fn
 
     def _update_expected_improvement_fn(
-        self, objective_model: M_contra, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.
@@ -584,7 +583,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[M_contra]):
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
@@ -616,7 +615,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -642,7 +641,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -661,7 +660,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[Probabili
 
 
 class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, sample_size: int, model: ProbabilisticModel, eta: TensorType, jitter: float):
+    def __init__(self, sample_size: int, model: HasReparamSampler, eta: TensorType, jitter: float):
         """
         :param sample_size: The number of Monte-Carlo samples.
         :param model: The model of the objective function.
@@ -675,15 +674,13 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         """
         self._sample_size = sample_size
 
-        try:
-            sampler = model.reparam_sampler(self._sample_size)
-        except (NotImplementedError):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                """
-                The batch Monte-Carlo expected improvement acquisition function
-                only supports models that implement a reparam_sampler method.
-                """
+                f"The batch Monte-Carlo expected improvement acquisition function only supports "
+                f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )
+
+        sampler = model.reparam_sampler(self._sample_size)
 
         self._sampler = sampler
         self._eta = tf.Variable(eta)

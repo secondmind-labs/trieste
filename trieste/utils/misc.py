@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, NoReturn, TypeVar
+from time import perf_counter
+from types import TracebackType
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Type, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -61,11 +63,11 @@ def to_numpy(t: TensorType) -> np.ndarray:
     return t
 
 
-T_co = TypeVar("T_co", covariant=True)
+ResultType = TypeVar("ResultType", covariant=True)
 """ An unbounded covariant type variable. """
 
 
-class Result(Generic[T_co], ABC):
+class Result(Generic[ResultType], ABC):
     """
     Represents the result of an operation that can fail with an exception. It contains either the
     operation return value (in an :class:`Ok`), or the exception raised (in an :class:`Err`).
@@ -113,7 +115,7 @@ class Result(Generic[T_co], ABC):
         return not self.is_ok
 
     @abstractmethod
-    def unwrap(self) -> T_co:
+    def unwrap(self) -> ResultType:
         """
         :return: The contained value, if it exists.
         :raise Exception: If there is no contained value.
@@ -121,10 +123,10 @@ class Result(Generic[T_co], ABC):
 
 
 @final
-class Ok(Result[T_co]):
+class Ok(Result[ResultType]):
     """Wraps the result of a successful evaluation."""
 
-    def __init__(self, value: T_co):
+    def __init__(self, value: ResultType):
         """
         :param value: The result of a successful evaluation.
         """
@@ -139,7 +141,7 @@ class Ok(Result[T_co]):
         """`True` always."""
         return True
 
-    def unwrap(self) -> T_co:
+    def unwrap(self) -> ResultType:
         """
         :return: The wrapped value.
         """
@@ -180,3 +182,56 @@ class DEFAULTS:
     The default jitter, typically used to stabilise computations near singular points, such as in
     Cholesky decomposition.
     """
+
+
+K = TypeVar("K")
+""" An unbound type variable. """
+
+U = TypeVar("U")
+""" An unbound type variable. """
+
+V = TypeVar("V")
+""" An unbound type variable. """
+
+
+def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
+    """
+    Apply ``f`` to each value in ``mapping`` and return the result. If ``f`` does not modify its
+    argument, :func:`map_values` does not modify ``mapping``. For example:
+
+    >>> import math
+    >>> squares = {'a': 1, 'b': 4, 'c': 9}
+    >>> map_values(math.sqrt, squares)['b']
+    2.0
+    >>> squares
+    {'a': 1, 'b': 4, 'c': 9}
+
+    :param f: The function to apply to the values in ``mapping``.
+    :param mapping: A mapping.
+    :return: A new mapping, whose keys are the same as ``mapping``, and values are the result of
+        applying ``f`` to each value in ``mapping``.
+    """
+    return {k: f(u) for k, u in mapping.items()}
+
+
+class Timer:
+    """
+    Functionality for timing chunks of code. For example:
+    >>> from time import sleep
+    >>> with Timer() as timer: sleep(2.0)
+    >>> timer.time  # doctest: +SKIP
+    2.0
+    """
+
+    def __enter__(self) -> Timer:
+        self.start = perf_counter()
+        return self
+
+    def __exit__(
+        self,
+        type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        self.end = perf_counter()
+        self.time = self.end - self.start

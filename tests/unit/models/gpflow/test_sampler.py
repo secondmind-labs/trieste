@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type
+from typing import List, Type, cast
 
 import gpflow
+import gpflux
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -38,6 +39,8 @@ from trieste.models.gpflow import (
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives.single_objectives import branin
+
+GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
@@ -333,32 +336,6 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
 
 
-@pytest.mark.parametrize("negate", [True, False])
-def test_rff_trajectory_sampler_can_return_negative_trajectory(negate: bool) -> None:
-    x_range = tf.linspace(2.0, 3.0, 5)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    ys = quadratic(xs)
-    dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1e-5, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
-
-    sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
-    trajectory = sampler.get_trajectory(negate=negate)
-
-    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
-    trajectory_evals = trajectory(xs)
-
-    if negate:
-        npt.assert_array_less(trajectory_evals, 0.0)
-    else:
-        npt.assert_array_less(0.0, trajectory_evals)
-
-
 def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_method() -> None:
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -438,8 +415,7 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
 
 
 @random_seed
-@pytest.mark.parametrize("negate", [True, False])
-def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: bool) -> None:
+def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -459,7 +435,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: boo
     )
 
     trajectory_sampler = RandomFourierFeatureTrajectorySampler(model)
-    trajectory = trajectory_sampler.get_trajectory(negate=negate)
+    trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(tf.expand_dims(xs_predict, -2))
 
     new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
@@ -467,25 +443,39 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(negate: boo
     model.update(new_dataset)
     model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
-    trajectory = trajectory_sampler.update_trajectory(trajectory)
+    trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+    if GPFLUX_VERSION != "0.2.3":
+        assert trajectory_updated is trajectory
+    else:
+        trajectory = trajectory_updated
     eval_after = trajectory(tf.expand_dims(xs_predict, -2))
 
-    if not negate:
-        assert (
-            trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
-        )  # check kernel updated in sampler
-        assert (
-            trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
-        )  # check kernel updated in trajectory
+    assert (
+        trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
+    )  # check kernel updated in sampler
+    assert (
+        trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
+    )  # check kernel updated in trajectory
 
-        assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
 
     npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
-    if negate:
-        npt.assert_array_less(
-            tf.abs(-1.0 * eval_after - quadratic(xs_predict)), 1e-3
-        )  # negative of new sample should agree with data
-    else:
-        npt.assert_array_less(
-            tf.abs(eval_after - quadratic(xs_predict)), 1e-3
-        )  # new sample should agree with data
+    npt.assert_array_less(
+        tf.abs(eval_after - quadratic(xs_predict)), 1e-3
+    )  # new sample should agree with data
+
+
+def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = gpflow.kernels.RBF()
+    sampler = RandomFourierFeatureTrajectorySampler(model)
+    trajectory = cast(fourier_feature_trajectory, sampler.get_trajectory())
+    assert trajectory._feature_functions.__class__.__name__ == (
+        "RandomFourierFeaturesCosine" if GPFLUX_VERSION != "0.2.3" else "RandomFourierFeatures"
+    )
