@@ -37,8 +37,6 @@ class KerasPredictor(ProbabilisticModel, ABC):
             :class:`~tf.optimizers.Adam` optimizer with default parameters.
         :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
         """
-        super().__init__()
-
         if optimizer is None:
             optimizer = KerasOptimizer(tf.optimizers.Adam())
         self._optimizer = optimizer

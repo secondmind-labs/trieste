@@ -227,8 +227,6 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        super().__init__()
-
         self._sample_size = sample_size
         self._jitter = jitter
 

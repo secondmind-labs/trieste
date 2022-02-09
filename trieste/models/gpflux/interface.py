@@ -36,8 +36,6 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam`.
         """
-        super().__init__()
-
         if optimizer is None:
             optimizer = BatchOptimizer(tf.optimizers.Adam())
 
