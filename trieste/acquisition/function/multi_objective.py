@@ -57,11 +57,11 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
     ):
         """
         :param reference_point_spec: this method is used to determine how the reference point is
-            calculated. If a Callable function specified, it is expected to take existing pareto
-            front and return a reference point with shape [D] (D represents number of objectives).
-            If the Pareto front location is known, this arg can be used to specify a fixed
-            reference point in each bo iteration. A dynamic reference point updating strategy is
-            used by default to set a reference point according to the datasets.
+            calculated. If a Callable function specified, it is expected to take existing
+            observations and return a reference point with shape [D] (D represents number of
+            objectives). If the Pareto front location is known, this arg can be used to specify
+            a fixed reference point in each bo iteration. A dynamic reference point updating
+            strategy is used by default to set a reference point according to the datasets.
         """
         if callable(reference_point_spec):
             self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
@@ -91,11 +91,12 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        _pf = Pareto(mean)
         if callable(self._ref_point_spec):
-            self._ref_point = tf.cast(self._ref_point_spec(_pf.front), dtype=mean.dtype)
+            self._ref_point = tf.cast(self._ref_point_spec(mean), dtype=mean.dtype)
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
+
+        _pf = Pareto(mean)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
@@ -121,12 +122,13 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
         mean, _ = model.predict(dataset.query_points)
 
-        _pf = Pareto(mean)
         if callable(self._ref_point_spec):
-            self._ref_point = self._ref_point_spec(_pf.front)
+            self._ref_point = self._ref_point_spec(mean)
         else:
             assert isinstance(self._ref_point_spec, tf.Tensor)  # specified a fixed ref point
             self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
+
+        _pf = Pareto(mean)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             self._ref_point, screened_front
@@ -318,11 +320,12 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        _pf = Pareto(mean)
         if callable(self._ref_point_spec):
-            self._ref_point = tf.cast(self._ref_point_spec(_pf.front), dtype=mean.dtype)
+            self._ref_point = tf.cast(self._ref_point_spec(mean), dtype=mean.dtype)
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
+
+        _pf = Pareto(mean)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
@@ -423,7 +426,6 @@ class ExpectedConstrainedHypervolumeImprovement(
         reference_point_spec: Sequence[float]
         | TensorType
         | Callable[..., TensorType] = get_reference_point,
-        conservative_ref_point_spec: bool = False,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -431,16 +433,11 @@ class ExpectedConstrainedHypervolumeImprovement(
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
         :param reference_point_spec: this method is used to determine how the reference point is
-            calculated. If a Callable function specified, it is expected to take existing pareto
-            front and return a reference point with shape [D] (D represents number of objectives).
-            If the feasible Pareto front location is known, this arg can be used to specify a fixed
-            reference point in each bo iteration. A dynamic reference point updating strategy is
-            used by default to set a reference point according to the datasets.
-        :param conservative_ref_point_spec: this boolean parameter is used to specify whether the
-            feasible Pareto front or all the Pareto front should the reference point be extracted
-            on, if setting to True, the reference point will be extracted from all Pareto front
-            ignoring constraints, which help enlarge explorability of the method in case the
-            constraint is very strong and hard to satisfy
+            calculated. If a Callable function specified, it is expected to take existing feasible
+            observations and return a reference point with shape [D] (D represents number of
+            objectives). If the feasible Pareto front location is known, this arg can be used to
+            specify a fixed reference point in each bo iteration. A dynamic reference point
+            updating strategy is used by default to set a reference point according to the datasets.
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         if callable(reference_point_spec):
@@ -448,7 +445,6 @@ class ExpectedConstrainedHypervolumeImprovement(
         else:
             self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
         self._ref_point = None
-        self._conservative_ref_point_spec = conservative_ref_point_spec
 
     def __repr__(self) -> str:
         """"""
@@ -456,14 +452,13 @@ class ExpectedConstrainedHypervolumeImprovement(
             return (
                 f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r},"
                 f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                f" {self._ref_point_spec.__name__}, {self._conservative_ref_point_spec})"
+                f" {self._ref_point_spec.__name__})"
             )
         else:
             return (
                 f"ExpectedConstrainedHypervolumeImprovement({self._objective_tag!r}, "
                 f" {self._constraint_builder!r}, {self._min_feasibility_probability!r},"
-                f" ref_point_specification={repr(self._ref_point_spec)!r}, "
-                f"{self._conservative_ref_point_spec})"
+                f" ref_point_specification={repr(self._ref_point_spec)!r}"
             )
 
     def _update_expected_improvement_fn(
@@ -475,18 +470,15 @@ class ExpectedConstrainedHypervolumeImprovement(
         :param objective_model: The objective model.
         :param feasible_mean: The mean of the feasible query points.
         """
-        if self._conservative_ref_point_spec is True:
-            assert isinstance(self._objective_dataset, Dataset)
-            _pf = Pareto(self._objective_dataset.observations)
-        else:
-            _pf = Pareto(feasible_mean)
         if callable(self._ref_point_spec):
             self._ref_point = tf.cast(
-                self._ref_point_spec(_pf.front),
+                self._ref_point_spec(feasible_mean),
                 dtype=feasible_mean.dtype,
             )
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=feasible_mean.dtype)
+
+        _pf = Pareto(feasible_mean)
         screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area

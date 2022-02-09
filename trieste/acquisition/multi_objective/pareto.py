@@ -78,7 +78,8 @@ def get_reference_point(
     observations: TensorType,
 ) -> TensorType:
     """
-    reference point calculation method.
+    default reference point calculation method: a Pareto front will firstly be
+    extracted and the reference point will be calculated upon this front.
 
     :param observations: observations referred to calculate the reference
         point, with shape [..., N, D]
@@ -88,7 +89,6 @@ def get_reference_point(
     if tf.equal(tf.size(observations), 0):
         raise ValueError("empty observations cannot be used to calculate reference point")
 
-    f = tf.math.reduce_max(observations, axis=-2) - tf.math.reduce_min(observations, axis=-2)
-    return tf.math.reduce_max(observations, axis=-2) + 2 * f / tf.cast(
-        tf.shape(observations)[-2], f.dtype
-    )
+    front = Pareto(observations).front
+    f = tf.math.reduce_max(front, axis=-2) - tf.math.reduce_min(front, axis=-2)
+    return tf.math.reduce_max(front, axis=-2) + 2 * f / tf.cast(tf.shape(front)[-2], f.dtype)
