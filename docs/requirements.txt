@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ping sphinx to 3.5 for now to work around https://github.com/plotly/plotly.js/issues/4563
+# pin sphinx to 3.5 for now to work around https://github.com/plotly/plotly.js/issues/4563
 # setting mathjax_path in docs/confg.py to https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML
 # SHOULD fix this, but it doesn't seem to quite
 sphinx~=3.5.4
@@ -21,6 +21,10 @@ pydata-sphinx-theme
 ipython
 nbsphinx
 sphinxcontrib-bibtex
+
 # pin typing-extensions so we're compatible with venvs that have tensorflow installed
 typing-extensions~=3.7.4
 
+# pin to version of TF used in prod
+tensorflow ~= 2.4.1
+tensorflow-probability ~= 0.12.0

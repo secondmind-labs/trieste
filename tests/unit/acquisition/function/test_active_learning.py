@@ -24,19 +24,31 @@ import tensorflow_probability as tfp
 from gpflow.utilities import to_default_float
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, various_shapes
-from tests.util.models.gpflow.models import GaussianProcess, QuadraticMeanAndRBFKernel, gpr_model
-from tests.util.models.models import fnc_2sin_x_over_3
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    QuadraticMeanAndRBFKernel,
+    gpr_model,
+    vgp_model_bernoulli,
+)
+from tests.util.models.models import binary_line, fnc_2sin_x_over_3
 from trieste.acquisition.function.active_learning import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
+    bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
     integrated_variance_reduction,
     predictive_variance,
 )
 from trieste.data import Dataset
-from trieste.models.gpflow import GaussianProcessRegression
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    VariationalGaussianProcess,
+    build_vgp_classifier,
+)
 from trieste.objectives import branin
+from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -376,6 +388,128 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = integrated_variance_reduction(model, integration_points, threshold)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert up_acq_fn == acq_fn
+
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "at",
+    [
+        (tf.constant([[[-1.0]]])),
+        (tf.constant([[-0.5]])),
+        (tf.constant([[0.0]])),
+        (tf.constant([[0.5]])),
+        (tf.constant([[1.0]])),
+    ],
+)
+def test_bayesian_active_learning_by_disagreement_is_correct(at: tf.Tensor) -> None:
+    """ "
+    We perform an MC check as in Section 5 of Houlsby 2011 paper. We check only the
+    2nd, more complicated term.
+    """
+    search_space = Box([-1], [1])
+    x = to_default_float(tf.constant(np.linspace(-1, 1, 8).reshape(-1, 1)))
+    y = to_default_float(tf.reshape(binary_line(x), [-1, 1]))
+    model = VariationalGaussianProcess(
+        build_vgp_classifier(Dataset(x, y), search_space, noise_free=True)
+    )
+    mean, var = model.predict(to_default_float(at))
+
+    def entropy(p: TensorType) -> TensorType:
+        return -p * tf.math.log(p + DEFAULTS.JITTER) - (1 - p) * tf.math.log(
+            1 - p + DEFAULTS.JITTER
+        )
+
+    # we get the actual but substract term 1 which is computed here the same as in the method
+    normal = tfp.distributions.Normal(to_default_float(0), to_default_float(1))
+    actual_term1 = entropy(normal.cdf((mean / tf.sqrt(var + 1))))
+    actual_term2 = actual_term1 - bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(
+        [to_default_float(at)]
+    )
+
+    # MC based term 2, 1st and 2nd approximation
+    samples = tfp.distributions.Normal(
+        to_default_float(mean), to_default_float(tf.sqrt(var))
+    ).sample(100000)
+    MC_term21 = tf.reduce_mean(entropy(normal.cdf(samples)))
+    MC_term22 = tf.reduce_mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
+
+    npt.assert_allclose(actual_term2, MC_term21, rtol=0.05, atol=0.05)
+    npt.assert_allclose(actual_term2, MC_term22, rtol=0.05, atol=0.05)
+
+
+def test_bayesian_active_learning_by_disagreement_builder_builds_acquisition_function() -> None:
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+    acq_fn = BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+
+@pytest.mark.parametrize("jitter", [0.0, -1.0])
+def test_bayesian_active_learning_by_disagreement_raise_on_non_positive_jitter(
+    jitter: float,
+) -> None:
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        BayesianActiveLearningByDisagreement(jitter).prepare_acquisition_function(model)
+
+
+@pytest.mark.parametrize(
+    "x, at, acquisition_shape",
+    [
+        (tf.zeros([1, 1]), tf.constant([[[1.0]]]), tf.constant([1, 1])),
+        (tf.zeros([1, 1]), tf.linspace([[-10.0]], [[10.0]], 5), tf.constant([5, 1])),
+        (tf.zeros([1, 2]), tf.constant([[[1.0, 1.0]]]), tf.constant([1, 1])),
+        (tf.zeros([1, 2]), tf.linspace([[-10.0, -10.0]], [[10.0, 10.0]], 5), tf.constant([5, 1])),
+    ],
+)
+def test_bayesian_active_learning_by_disagreement_returns_correct_shape(
+    x: TensorType, at: TensorType, acquisition_shape: TensorType
+) -> None:
+    x = to_default_float(x)
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+    acq_fn = BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+    npt.assert_array_equal(acq_fn(to_default_float(at)).shape, acquisition_shape)
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_bayesian_active_learning_by_disagreement_raises_for_invalid_batch_size(
+    at: TensorType,
+) -> None:
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+    acq_fn = BayesianActiveLearningByDisagreement().prepare_acquisition_function(model)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        acq_fn(to_default_float(at))
+
+
+def test_bayesian_active_learning_by_disagreement_builder_updates_without_retracing() -> None:
+    x = to_default_float(tf.zeros([1, 1]))
+    y = to_default_float(tf.zeros([1, 1]))
+    model = VariationalGaussianProcess(vgp_model_bernoulli(x, y))
+    builder = BayesianActiveLearningByDisagreement()
+    acq_fn = builder.prepare_acquisition_function(model)
+
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+
+    query_at = tf.linspace([[-10]], [[10]], 100)
+    expected = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(query_at)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
     assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)

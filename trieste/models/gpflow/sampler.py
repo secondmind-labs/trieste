@@ -20,7 +20,13 @@ from __future__ import annotations
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+
+try:
+    from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
+except (ModuleNotFoundError, ImportError):
+    # temporary support for gpflux 0.2.3
+    from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
+
 from typing_extensions import Protocol, runtime_checkable
 
 from ...types import TensorType
@@ -353,7 +359,7 @@ class RandomFourierFeatureTrajectorySampler(
 
         data_dtype = self._model.get_internal_data().query_points.dtype
 
-        self._feature_functions = RandomFourierFeaturesCosine(
+        self._feature_functions = RFF(
             self._model.get_kernel(), self._num_features, dtype=data_dtype
         )  # prep feature functions at data
 
@@ -384,6 +390,10 @@ class RandomFourierFeatureTrajectorySampler(
         :return: The new resampled trajectory function.
         """
         tf.debugging.Assert(isinstance(trajectory, fourier_feature_trajectory), [])
+
+        if not hasattr(self._feature_functions, "_bias_init"):
+            # maintain support for gpflux 0.2.3 (but with retracing)
+            return self.get_trajectory()
 
         bias_shape = tf.shape(self._feature_functions.b)
         bias_dtype = self._feature_functions.b.dtype
@@ -430,7 +440,7 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
 
     def __init__(
         self,
-        feature_functions: RandomFourierFeaturesCosine,
+        feature_functions: RFF,
         weight_distribution: tfp.distributions.MultivariateNormalTriL,
     ):
         """

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-black
+black~=21.7b0
 flake8
 isort
+
 # pin typing-extensions so we're compatible with venvs that have tensorflow installed
 typing-extensions~=3.7.4
