@@ -49,7 +49,7 @@ from trieste.types import TensorType
     [
         (50, EfficientGlobalOptimization[SearchSpace, SupportsPredictJoint](PredictiveVariance())),
         (
-            75,
+            70,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000))
             ),
@@ -75,7 +75,7 @@ def test_optimizer_learns_scaled_branin_function(
     test_query_points = search_space.sample_sobol(10000 * search_space.dimension)
     test_data = observer(test_query_points)
     test_range = tf.reduce_max(test_data.observations) - tf.reduce_min(test_data.observations)
-    criterion = 0.01 * test_range
+    criterion = 0.02 * test_range
 
     # we expect a model with initial data to fail the criterion
     initial_model = GaussianProcessRegression(
