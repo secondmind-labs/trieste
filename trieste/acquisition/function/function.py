@@ -457,7 +457,6 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
         self._constraint_fn: Optional[AcquisitionFunction] = None
-        self._objective_dataset: Optional[Dataset] = None
         self._expected_improvement_fn: Optional[AcquisitionFunction] = None
         self._constrained_improvement_fn: Optional[AcquisitionFunction] = None
 
