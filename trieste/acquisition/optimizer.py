@@ -19,7 +19,6 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-import functools
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import greenlet as gr
@@ -30,6 +29,7 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
+from .batch import batchify_acquisition_function
 from .interface import AcquisitionFunction
 
 NUM_SAMPLES_MIN: int = 5000
@@ -588,57 +588,6 @@ def batchify_vectorize(
         return batch_size_one_optimizer(search_space, (f, batch_size))
 
     return optimizer
-
-
-# TODO: move this elsewhere as it might be useful not just for optimizers
-def batchify_acquisition_function(
-    fn: AcquisitionFunction,
-    batch_size: int,
-) -> AcquisitionFunction:
-    """
-    A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
-    Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
-    the results back together, so that it looks like `fn` was called with all of `x` in one batch.
-    :param fn: Acquisition function to call with batches of data.
-    :param batch_size: Call fn with tensors of at most this size.
-    :returns Batched acquisition function.
-    """
-    assert batch_size > 0, f"Batch size has to be positive integer! Found {batch_size}."
-
-    @functools.wraps(fn)
-    def wrapper(x: TensorType) -> TensorType:
-        # This function assumes leading dimension of x is batch dimension.
-        x = tf.convert_to_tensor(x)
-
-        length = x.shape[0]
-        if length == 0:
-            return fn(x)
-
-        elements_per_block = tf.size(x) / length
-        blocks_per_batch = tf.cast(tf.math.ceil(batch_size / elements_per_block), tf.int32)
-
-        num_batches = tf.cast(tf.math.ceil(length / blocks_per_batch) - 1, tf.int32)
-        batch_sizes = tf.concat(
-            [
-                tf.ones(num_batches, tf.int32) * blocks_per_batch,
-                [length - num_batches * blocks_per_batch],
-            ],
-            axis=0,
-        )
-
-        if batch_sizes.shape[0] <= 1:
-            return fn(x)
-
-        batch_inputs = tf.split(x, batch_sizes)
-
-        batch_outputs = []
-        for batch_input in batch_inputs:
-            output = fn(batch_input)
-            batch_outputs.append(output)
-
-        return tf.concat(batch_outputs, axis=0)
-
-    return wrapper
 
 
 def batchify_acquisition_function_calls(
