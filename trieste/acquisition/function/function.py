@@ -486,10 +486,10 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
-        self._objective_dataset = datasets[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
 
         tf.debugging.assert_positive(
-            len(self._objective_dataset),
+            len(objective_dataset),
             message="Expected improvement is defined with respect to existing points in the"
             " objective data, but the objective data is empty.",
         )
@@ -497,13 +497,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         self._constraint_fn = self._constraint_builder.prepare_acquisition_function(
             models, datasets=datasets
         )
-        pof = self._constraint_fn(self._objective_dataset.query_points[:, None, ...])
+        pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return self._constraint_fn
 
-        feasible_query_points = tf.boolean_mask(self._objective_dataset.query_points, is_feasible)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         self._update_expected_improvement_fn(objective_model, feasible_mean)
 
@@ -531,10 +531,10 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
-        self._objective_dataset = datasets[self._objective_tag]
+        objective_dataset = datasets[self._objective_tag]
 
         tf.debugging.assert_positive(
-            len(self._objective_dataset),
+            len(objective_dataset),
             message="Expected improvement is defined with respect to existing points in the"
             " objective data, but the objective data is empty.",
         )
@@ -544,13 +544,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         self._constraint_builder.update_acquisition_function(
             constraint_fn, models, datasets=datasets
         )
-        pof = constraint_fn(self._objective_dataset.query_points[:, None, ...])
+        pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
 
-        feasible_query_points = tf.boolean_mask(self._objective_dataset.query_points, is_feasible)
+        feasible_query_points = tf.boolean_mask(objective_dataset.query_points, is_feasible)
         feasible_mean, _ = objective_model.predict(feasible_query_points)
         self._update_expected_improvement_fn(objective_model, feasible_mean)
 
