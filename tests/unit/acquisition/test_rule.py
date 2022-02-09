@@ -206,7 +206,7 @@ def test_random_sampling_acquire_returns_correct_shape(num_query_points: int) ->
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
     )
-    query_points = rule.acquire(search_space, model)
+    query_points = rule.acquire_single(search_space, model)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 

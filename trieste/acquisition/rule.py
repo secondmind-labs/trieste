@@ -718,7 +718,7 @@ class AsynchronousGreedy(
         return state_func
 
 
-class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]):
+class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     """
     This class performs random search for choosing optimal points. It uses ``sample`` method
     from :class:`~trieste.space.SearchSpace` to take random samples from the search space that
@@ -744,7 +744,7 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModelType],
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
