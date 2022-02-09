@@ -131,7 +131,7 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
         "epochs": 1000,
         "batch_size": 16,
     }
-    del model.optimizer.fit_args['callbacks']
+    del model.optimizer.fit_args["callbacks"]
 
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)

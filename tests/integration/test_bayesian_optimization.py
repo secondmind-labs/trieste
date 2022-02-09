@@ -53,8 +53,8 @@ from trieste.models.gpflow import (
     build_gpr,
     build_svgp,
 )
-from trieste.models.gpflux import DeepGaussianProcess, GPfluxPredictor, build_vanilla_deep_gp
-from trieste.models.keras import DeepEnsemble, KerasPredictor, build_vanilla_keras_ensemble
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
 from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -385,7 +385,7 @@ def _test_optimizer_finds_minimum(
         track_state = False
         epochs = 400
         batch_size = 100
-        dgp = build_vanilla_deep_gp(data, 2)
+        dgp = build_vanilla_deep_gp(initial_data, 2)
 
         def scheduler(epoch: int, lr: float) -> float:
             if epoch == epochs // 2:
@@ -399,8 +399,8 @@ def _test_optimizer_finds_minimum(
             "verbose": 0,
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
-        optimizer = KerasOptimizer(tf.optimizers.Adam(0.01), fit_args)
-        model = DeepGaussianProcess(dgp, dgp_optimizer)  # type: ignore
+        dgp_optimizer = KerasOptimizer(tf.optimizers.Adam(0.01), fit_args)
+        model = DeepGaussianProcess(dgp, dgp_optimizer, **model_args)  # type: ignore
 
     elif model_type == "DE":
         track_state = False
@@ -416,9 +416,7 @@ def _test_optimizer_finds_minimum(
             ],
             "verbose": 0,
         }
-        de_optimizer = KerasOptimizer(
-            tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
-        )
+        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
         model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)  # type: ignore
 
     else:
