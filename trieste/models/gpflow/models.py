@@ -1018,6 +1018,20 @@ def _compute_kernel_blocks(
     query_points_2: TensorType,
     num_latent: int,
 ) -> tuple[TensorType, TensorType, TensorType, TensorType]:
+    """
+    Return all the prior covariances required to calculate posterior covariances for each latent
+    Gaussian process, as specified by the `num_latent` input.
+
+    This function returns the covariance between: `inducing_variables` and `query_points_1`;
+    `inducing_variables` and `query_points_2`; `query_points_1` and `query_points_2`;
+    `inducing_variables` and `inducing_variables`.
+
+    The calculations are performed differently depending on the type of
+    kernel (single output, separate independent multi-output or shared independent
+    multi-output) and inducing variables (simple set, SharedIndependent or SeparateIndependent).
+
+    Note that `num_latents` is only used when we use a single kernel for a multi-output model.
+    """
 
     if type(inducing_variable) in [gpflow.inducing_variables.SharedIndependentInducingVariables]:
         inducing_points = inducing_variable.inducing_variable.Z
@@ -1064,7 +1078,7 @@ def _compute_kernel_blocks(
             K12 = kernel(
                 query_points_1, query_points_2, full_cov=True, full_output_cov=False
             )  # [..., L, A, B]
-    else:
+    else:  # simple calculations for the single output case
         K = kernel(inducing_points)  # [M, M]
         Kx1 = kernel(inducing_points, query_points_1)  # [..., M, A]
         Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
