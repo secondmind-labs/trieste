@@ -718,6 +718,49 @@ class AsynchronousGreedy(
         return state_func
 
 
+class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
+    """
+    This class performs random search for choosing optimal points. It uses ``sample`` method
+    from :class:`~trieste.space.SearchSpace` to take random samples from the search space that
+    are used as optimal points. Hence, it does not use any acquisition function. This
+    acquisition rule can be useful as a baseline for other acquisition functions of interest.
+    """
+
+    def __init__(self, num_query_points: int = 1):
+        """
+        :param num_query_points: The number of points to acquire. By default set to 1 point.
+        :raise ValueError: If ``num_query_points`` is less or equal to 0.
+        """
+        if num_query_points <= 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+        self._num_query_points = num_query_points
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""RandomSampling({self._num_query_points!r})"""
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> TensorType:
+        """
+        Sample ``num_query_points`` (see :meth:`__init__`) points from the
+        ``search_space``.
+
+        :param search_space: The acquisition search space.
+        :param models: Unused.
+        :param datasets: Unused.
+        :return: The ``num_query_points`` points to query.
+        """
+        samples = search_space.sample(self._num_query_points)
+
+        return samples
+
+
 class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]):
     r"""
     Implements Thompson sampling for choosing optimal points.
