@@ -1084,7 +1084,7 @@ def _compute_kernel_blocks(
         Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
         K12 = kernel(query_points_1, query_points_2)  # [..., A, B]
 
-    if len(tf.shape(K)) == 2:
+    if len(tf.shape(K)) == 2:  # if single kernel then repeat for all latent dimensions
         K = tf.repeat(tf.expand_dims(K, -3), num_latent, axis=-3)
         Kx1 = tf.repeat(tf.expand_dims(Kx1, -3), num_latent, axis=-3)
         Kx2 = tf.repeat(tf.expand_dims(Kx2, -3), num_latent, axis=-3)
@@ -1093,5 +1093,14 @@ def _compute_kernel_blocks(
         raise NotImplementedError(
             "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
         )
+
+    tf.debugging.assert_shapes(
+        [
+            (K, ["L", "M", "M"]),
+            (Kx1, ["L", "M", "A"]),
+            (Kx2, ["L", "M", "B"]),
+            (K12, ["L", "A", "B"]),
+        ]
+    )
 
     return K, Kx1, Kx2, K12
