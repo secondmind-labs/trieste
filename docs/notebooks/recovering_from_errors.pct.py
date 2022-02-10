@@ -127,17 +127,15 @@ if result.is_ok:
 # %% [markdown]
 # ## Out of memory errors
 #
-# At the moment, trieste's `OptimizationResult` doesn't allow you to recover from Out Of Memory errors, which normally result in the Python process shutting down. One possible cause of memory errors is performing a gradient-based optimization over a large dataset. To work around this, you can specify that evaluations of the acquisition function be batchified: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit batchified optimizer and specify a desired batch size.
+# At the moment, trieste's `OptimizationResult` doesn't allow you to recover from Out Of Memory errors, which normally result in the Python process shutting down. One possible cause of memory errors is trying to evaluate an acquisition function over a large dataset, e.g. when initializing our gradient-based optimizers. To work around this, you can specify that evaluations of the acquisition function be split up: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit split optimizer and specify a desired batch size.
 
 # %%
-from trieste.acquisition.optimizer import (
-    automatic_optimizer_selector,
-    batchify_acquisition_function_calls,
-)
+from trieste.acquisition.optimizer import automatic_optimizer_selector
 from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.acquisition.utils import split_acquisition_function_calls
 
-optimizer = batchify_acquisition_function_calls(
-    automatic_optimizer_selector, batch_size=10_000
+optimizer = split_acquisition_function_calls(
+    automatic_optimizer_selector, split_size=10_000
 )
 query_rule = EfficientGlobalOptimization(optimizer=optimizer)
 acquisition_rule = trieste.acquisition.rule.TrustRegion(rule=query_rule)

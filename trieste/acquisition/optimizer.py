@@ -29,7 +29,6 @@ import tensorflow_probability as tfp
 
 from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
-from .batch import batchify_acquisition_function
 from .interface import AcquisitionFunction
 
 NUM_SAMPLES_MIN: int = 5000
@@ -594,36 +593,6 @@ def batchify_vectorize(
         return batch_size_one_optimizer(search_space, (f, batch_size))
 
     return optimizer
-
-
-def batchify_acquisition_function_calls(
-    optimizer: AcquisitionOptimizer[SearchSpaceType],
-    batch_size: int,
-) -> AcquisitionOptimizer[SearchSpaceType]:
-    """
-    A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
-    :const:`AcquisitionOptimizer` so that evaluations of the acquisition functions
-    are split into batches on the first dimension and then stitched back together.
-    This can be useful to reduce memory usage when evaluating functions over large spaces.
-
-    :param optimizer: An optimizer that returns batches of points with shape [V, ...].
-    :param batch_size: The desired maximum number of points in acquisition function evaluations.
-    :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
-        but evaluates at most batch_size points at a time.
-    """
-    if batch_size <= 0:
-        raise ValueError(f"batch_size must be positive, got {batch_size}")
-
-    def batchified_optimizer(
-        search_space: SearchSpaceType,
-        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
-    ) -> TensorType:
-
-        af, n = f if isinstance(f, tuple) else (f, 1)
-        baf = batchify_acquisition_function(af, batch_size)
-        return optimizer(search_space, (baf, n) if isinstance(f, tuple) else baf)
-
-    return batchified_optimizer
 
 
 def generate_random_search_optimizer(

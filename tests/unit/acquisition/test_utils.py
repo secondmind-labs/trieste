@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.batch import batchify_acquisition_function
+from trieste.acquisition.utils import split_acquisition_function
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ from trieste.acquisition.batch import batchify_acquisition_function
     ],
 )
 @pytest.mark.parametrize(
-    "x, batch_size, expected_batches",
+    "x, split_size, expected_batches",
     [
         (np.zeros((0,)), 2, 1),
         (np.array([1]), 2, 1),
@@ -40,18 +40,18 @@ from trieste.acquisition.batch import batchify_acquisition_function
         (np.array([1, 2, 3, 4]), 10, 1),
     ],
 )
-def test_batchify_acquisition_function(
-    f: AcquisitionFunction, x: np.ndarray, batch_size: int, expected_batches: int
+def test_split_acquisition_function(
+    f: AcquisitionFunction, x: np.ndarray, split_size: int, expected_batches: int
 ) -> None:
 
     mock_f = MagicMock()
     mock_f.side_effect = f
-    batch_f = batchify_acquisition_function(mock_f, batch_size=batch_size)
+    batch_f = split_acquisition_function(mock_f, split_size=split_size)
     np.testing.assert_allclose(f(x), batch_f(x))
     assert expected_batches == mock_f.call_count
 
 
-@pytest.mark.parametrize("batch_size", [0, -1])
-def test_batchify_acquisition_function__invalid_batch_size(batch_size: int) -> None:
+@pytest.mark.parametrize("split_size", [0, -1])
+def test_split_acquisition_function__invalid_split_size(split_size: int) -> None:
     with pytest.raises(ValueError):
-        batchify_acquisition_function(MagicMock(), batch_size=batch_size)
+        split_acquisition_function(MagicMock(), split_size=split_size)
