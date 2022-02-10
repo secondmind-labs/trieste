@@ -31,7 +31,8 @@ def batchify_acquisition_function(
     :param batch_size: Call fn with tensors of at most this size.
     :returns Batched acquisition function.
     """
-    assert batch_size > 0, f"Batch size has to be positive integer! Found {batch_size}."
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     @functools.wraps(fn)
     def wrapper(x: TensorType) -> TensorType:

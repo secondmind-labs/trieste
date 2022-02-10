@@ -611,6 +611,8 @@ def batchify_acquisition_function_calls(
     :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
         but evaluates at most batch_size points at a time.
     """
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
 
     def batchified_optimizer(
         search_space: SearchSpaceType,

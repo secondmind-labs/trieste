@@ -53,5 +53,5 @@ def test_batchify_acquisition_function(
 
 @pytest.mark.parametrize("batch_size", [0, -1])
 def test_batchify_acquisition_function__invalid_batch_size(batch_size: int) -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         batchify_acquisition_function(MagicMock(), batch_size=batch_size)
