@@ -125,6 +125,24 @@ if result.is_ok:
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
 
 # %% [markdown]
+# ## Out of memory errors
+#
+# At the moment, trieste's `OptimizationResult` doesn't allow you to recover from Out Of Memory errors, which normally result in the Python process shutting down. One possible cause of memory errors is performing a gradient-based optimization over a large dataset. To work around this, you can specify that evaluations of the acquisition function be batchified: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit batchified optimizer and specify a desired batch size.
+
+# %%
+from trieste.acquisition.optimizer import (
+    automatic_optimizer_selector,
+    batchify_acquisition_function_calls,
+)
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
+optimizer = batchify_acquisition_function_calls(
+    automatic_optimizer_selector, batch_size=10_000
+)
+query_rule = EfficientGlobalOptimization(optimizer=optimizer)
+acquisition_rule = trieste.acquisition.rule.TrustRegion(rule=query_rule)
+
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)

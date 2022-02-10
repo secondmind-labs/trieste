@@ -603,11 +603,11 @@ def batchify_acquisition_function_calls(
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
     :const:`AcquisitionOptimizer` so that evaluations of the acquisition functions
-    are split into batches on the first dimension and then stitched back tohether.
+    are split into batches on the first dimension and then stitched back together.
     This can be useful to reduce memory usage when evaluating functions over large spaces.
 
     :param optimizer: An optimizer that returns batches of points with shape [V, ...].
-    :param batch_size: The maximum number of points in acquisition function evaluations.
+    :param batch_size: The desired maximum number of points in acquisition function evaluations.
     :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
         but evaluates at most batch_size points at a time.
     """
