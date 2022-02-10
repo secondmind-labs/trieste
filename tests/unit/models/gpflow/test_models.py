@@ -43,6 +43,7 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
 )
@@ -935,22 +936,33 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
 
 @random_seed
 @pytest.mark.parametrize("whiten", [True, False])
-def test_sparse_variational_pairwise_covariance_for_non_whitened(whiten: bool) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    y = fnc_3x_plus_10(x)
-    model = SparseVariational(svgp_model(x, y))
+@pytest.mark.parametrize(
+    "mo_type", ["shared+shared", "separate+shared", "separate+separate", "auto"]
+)
+def test_sparse_variational_pairwise_covariance_for_non_whitened(
+    whiten: bool, mo_type: str
+) -> None:
+    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
+    y1 = fnc_3x_plus_10(x)
+    y2 = y1 * 0.5
+
+    svgp = two_output_svgp_model(x, mo_type)
+
+    model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
 
-    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
-    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+    model.optimize(Dataset(x, tf.concat([y1, y2], axis=-1)))
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [12, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [18, 1]
 
     all_query_points = tf.concat([query_points_1, query_points_2], 0)
     _, predictive_covariance = model.predict_joint(all_query_points)
-    expected_covariance = predictive_covariance[0, :8, 8:]
+    expected_covariance = predictive_covariance[:, :12, 12:]
 
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
-    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-4)
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
 
 
 @random_seed

@@ -216,3 +216,30 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
     return m
+
+
+def two_output_svgp_model(x: tf.Tensor, type: str) -> SVGP:
+
+    ker1 = gpflow.kernels.Matern32()
+    ker2 = gpflow.kernels.Matern52()
+
+    if type == "shared+shared":
+        kernel = gpflow.kernels.SharedIndependent(ker1, output_dim=2)
+        iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
+            gpflow.inducing_variables.InducingPoints(x[:3])
+        )
+    elif type == "separate+shared":
+        kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
+        iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
+            gpflow.inducing_variables.InducingPoints(x[:3])
+        )
+    elif type == "separate+separate":
+        kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
+        Zs = [x[(3 * i) : (3 * i + 3)] for i in range(2)]
+        iv_list = [gpflow.inducing_variables.InducingPoints(Z) for Z in Zs]
+        iv = gpflow.inducing_variables.SeparateIndependentInducingVariables(iv_list)
+    else:
+        kernel = ker1
+        iv = x[:3]
+
+    return SVGP(kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2)
