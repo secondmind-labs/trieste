@@ -386,7 +386,16 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
     trajectory2 = sampler2.get_trajectory()
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
-    npt.assert_array_less(1e-3, tf.abs(trajectory1(xs) - trajectory2(xs)))
+    xs = tf.tile(xs, [1, 2, 1])  # [N, 2, D]
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory1(xs) - trajectory2(xs))
+    )  # distinct between samples
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
+    )  # distinct within samples
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
+    )  # distinct within samples
 
 
 @random_seed
