@@ -43,6 +43,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 
+
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
@@ -453,41 +454,45 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         self._weight_distribution = weight_distribution
         self._initialized = tf.Variable(False)
 
-        num_features = tf.shape(weight_distribution.mean())[0] # m
-        self._theta_sample  = tf.Variable( # dummy init to be updated before trajectory evaluation
+        num_features = tf.shape(weight_distribution.mean())[0]  # m
+        self._theta_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
             tf.ones([0, num_features], dtype=tf.float64), shape=[None, num_features]
         )  # [0, m]
-        self._batch_size =  tf.Variable(0,dtype=tf.int32) #  dummy init to be updated before trajectory evaluation
+        self._batch_size = tf.Variable(
+            0, dtype=tf.int32
+        )  # dummy init to be updated before trajectory evaluation
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
         """Call trajectory function."""
 
-        if not self._initialized: # work out desired batch size from input
-            self._batch_size.assign(tf.shape(x)[-2]) # B
-            self.resample() # sample B feature weights
+        if not self._initialized:  # work out desired batch size from input
+            self._batch_size.assign(tf.shape(x)[-2])  # B
+            self.resample()  # sample B feature weights
             self._initialized.assign(True)
 
         tf.debugging.assert_equal(
-            tf.shape(x)[-2],self._batch_size.value(),
-            message=
-            """
+            tf.shape(x)[-2],
+            self._batch_size.value(),
+            message="""
             This trajectory only supports batch sizes of {self._batch_size}}.
             If you wish to change the batch size you must get a new trajectory
             by calling the get_trajectory method of the trajectory sampler.
-            """
-         )
+            """,
+        )
 
-        flat_x, unflatten = flatten_leading_dims(x) # [N*B, d]
+        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
-        feature_evaluations = unflatten(flattened_feature_evaluations) # [N, B, m]
-        return tf.reduce_sum(feature_evaluations *  self._theta_sample,-1) # [N, B]
+        feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
+        return tf.reduce_sum(feature_evaluations * self._theta_sample, -1)  # [N, B]
 
     def resample(self) -> None:
         """
         Efficiently resample in-place without retracing.
         """
-        self._theta_sample.assign(self._weight_distribution.sample(self._batch_size))  # resample weights
+        self._theta_sample.assign(
+            self._weight_distribution.sample(self._batch_size)
+        )  # resample weights
 
     def update(self, weight_distribution: tfp.distributions.MultivariateNormalTriL) -> None:
         """
@@ -496,4 +501,6 @@ class fourier_feature_trajectory(TrajectoryFunctionClass):
         :param weight_distribution: new distribution from which feature weights are to be sampled.
         """
         self._weight_distribution = weight_distribution  # update weight distribution.
-        self._theta_sample.assign(self._weight_distribution.sample(self._batch_size))  # resample weights
+        self._theta_sample.assign(
+            self._weight_distribution.sample(self._batch_size)
+        )  # resample weights

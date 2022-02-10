@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from time import perf_counter
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Type, TypeVar
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -235,7 +235,6 @@ class Timer:
     ) -> None:
         self.end = perf_counter()
         self.time = self.end - self.start
-
 
 
 def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:

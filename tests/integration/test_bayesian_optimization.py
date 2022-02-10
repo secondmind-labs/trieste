@@ -30,10 +30,10 @@ from trieste.acquisition import (
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
     GreedyContinuousThompsonSampling,
-    ParallelContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
+    ParallelContinuousThompsonSampling,
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,

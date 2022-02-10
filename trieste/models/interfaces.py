@@ -587,7 +587,7 @@ Type alias for trajectory functions. These have essentially the same behavior as
 
 An :const:`TrajectoryFunction` evaluates `B` samples, each across different sets of `N` query
 points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
-shape `[N, B]`. 
+shape `[N, B]`.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
