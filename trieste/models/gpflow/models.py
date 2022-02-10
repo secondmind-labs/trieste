@@ -29,6 +29,7 @@ from gpflow.base import (
     _validate_unconstrained_value,
 )
 from gpflow.conditionals.util import sample_mvn
+from gpflow.inducing_variables import InducingPoints, InducingVariables
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
@@ -184,8 +185,6 @@ class GaussianProcessRegression(
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M] or [..., L, N, M]
 
         if len(tf.shape(K)) == 2:
-            # if single output GPR, the kernel does not return the latent dimension so
-            # we add it back here
             K = tf.expand_dims(K, -3)
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
@@ -205,12 +204,6 @@ class GaussianProcessRegression(
 
         # The line below is just A^T*B over the last 2 dimensions.
         cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
-
-        num_latent = self.model.num_latent_gps
-        if cov.shape[-3] == 1 and num_latent > 1:
-            # For multioutput GPR with shared kernel, we need to duplicate cov
-            # for each output
-            cov = tf.repeat(cov, num_latent, axis=-3)
 
         tf.debugging.assert_shapes(
             [
@@ -662,7 +655,7 @@ class SparseVariational(
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),
-            inducing_points=self.model.inducing_variable.Z,
+            inducing_variable=self.model.inducing_variable,
             q_sqrt=self.model.q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
@@ -920,7 +913,7 @@ class VariationalGaussianProcess(
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),
-            inducing_points=self.model.data[0].value(),  # pass copy
+            inducing_variable=InducingPoints(self.model.data[0].value()),  # pass copy
             q_sqrt=self.model.q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
@@ -930,7 +923,7 @@ class VariationalGaussianProcess(
 
 def _covariance_between_points_for_variational_models(
     kernel: gpflow.kernels.Kernel,
-    inducing_points: TensorType,
+    inducing_variable: InducingVariables,
     q_sqrt: TensorType,
     query_points_1: TensorType,
     query_points_2: TensorType,
@@ -966,20 +959,11 @@ def _covariance_between_points_for_variational_models(
 
     tf.debugging.assert_shapes([(query_points_1, [..., "A", "D"]), (query_points_2, ["B", "D"])])
 
-    K = kernel(inducing_points)  # [M, M]
-    Kx1 = kernel(inducing_points, query_points_1)  # [..., M, A]
-    Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
-    K12 = kernel(query_points_1, query_points_2)  # [..., A, B]
+    num_latent = q_sqrt.shape[0]
 
-    if len(tf.shape(K)) == 2:
-        K = tf.expand_dims(K, -3)
-        Kx1 = tf.expand_dims(Kx1, -3)
-        Kx2 = tf.expand_dims(Kx2, -3)
-        K12 = tf.expand_dims(K12, -3)
-    elif len(tf.shape(K)) > 3:
-        raise NotImplementedError(
-            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
-        )
+    K, Kx1, Kx2, K12 = compute_kernel_blocks(
+        kernel, inducing_variable, query_points_1, query_points_2, num_latent
+    )
 
     L = tf.linalg.cholesky(K)  # [L, M, M]
     Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, M, A]
@@ -1017,3 +1001,75 @@ def _covariance_between_points_for_variational_models(
         ]
     )
     return cov
+
+
+def compute_kernel_blocks(
+    kernel: gpflow.kernels.Kernel,
+    inducing_variable: InducingVariables,
+    query_points_1: TensorType,
+    query_points_2: TensorType,
+    num_latent: int,
+) -> tuple[TensorType, TensorType, TensorType, TensorType]:
+
+    if type(inducing_variable) in [gpflow.inducing_variables.SharedIndependentInducingVariables]:
+        inducing_points = inducing_variable.inducing_variable.Z
+    elif type(inducing_variable) in [
+        gpflow.inducing_variables.SeparateIndependentInducingVariables
+    ]:
+        inducing_points = [
+            inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables
+        ]
+    else:
+        inducing_points = inducing_variable.Z
+
+    if type(kernel) in [gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent]:
+        if type(inducing_points) == list:
+
+            K = tf.concat(
+                [ker(Z)[None, ...] for ker, Z in zip(kernel.kernels, inducing_points)], axis=0
+            )
+            Kx1 = tf.concat(
+                [
+                    ker(Z, query_points_1)[None, ...]
+                    for ker, Z in zip(kernel.kernels, inducing_points)
+                ],
+                axis=0,
+            )  # [..., L, M, A]
+            Kx2 = tf.concat(
+                [
+                    ker(Z, query_points_2)[None, ...]
+                    for ker, Z in zip(kernel.kernels, inducing_points)
+                ],
+                axis=0,
+            )  # [L, M, B]
+            K12 = tf.concat(
+                [ker(query_points_1, query_points_2)[None, ...] for ker in kernel.kernels], axis=0
+            )  # [L, M, B]
+        else:
+            K = kernel(inducing_points, full_cov=True, full_output_cov=False)  # [L, M, M]
+            Kx1 = kernel(
+                inducing_points, query_points_1, full_cov=True, full_output_cov=False
+            )  # [..., L, M, A]
+            Kx2 = kernel(
+                inducing_points, query_points_2, full_cov=True, full_output_cov=False
+            )  # [L, M, B]
+            K12 = kernel(
+                query_points_1, query_points_2, full_cov=True, full_output_cov=False
+            )  # [..., L, A, B]
+    else:
+        K = kernel(inducing_points)  # [M, M]
+        Kx1 = kernel(inducing_points, query_points_1)  # [..., M, A]
+        Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
+        K12 = kernel(query_points_1, query_points_2)  # [..., A, B]
+
+    if len(tf.shape(K)) == 2:
+        K = tf.repeat(tf.expand_dims(K, -3), num_latent, axis=-3)
+        Kx1 = tf.repeat(tf.expand_dims(Kx1, -3), num_latent, axis=-3)
+        Kx2 = tf.repeat(tf.expand_dims(Kx2, -3), num_latent, axis=-3)
+        K12 = tf.repeat(tf.expand_dims(K12, -3), num_latent, axis=-3)
+    elif len(tf.shape(K)) > 3:
+        raise NotImplementedError(
+            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
+        )
+
+    return K, Kx1, Kx2, K12
