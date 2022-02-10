@@ -235,3 +235,22 @@ class Timer:
     ) -> None:
         self.end = perf_counter()
         self.time = self.end - self.start
+
+
+
+def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:
+    """
+    Flattens the leading dimensions of `x`, and returns a function that can be used to restore them.
+    """
+    x_batched_shape = tf.shape(x)
+    batch_shape = x_batched_shape[:-1]
+    input_shape = x_batched_shape[-1:]
+    x_flat_shape = tf.concat([[-1], input_shape], axis=0)
+
+    def unflatten(y: TensorType) -> TensorType:
+        y_flat_shape = tf.shape(y)
+        output_shape = y_flat_shape[1:]
+        y_batched_shape = tf.concat([batch_shape, output_shape], axis=0)
+        return tf.reshape(y, y_batched_shape)
+
+    return tf.reshape(x, x_flat_shape), unflatten

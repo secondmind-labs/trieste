@@ -49,6 +49,7 @@ from .function import (
     ExpectedImprovement,
     Fantasizer,
     GreedyContinuousThompsonSampling,
+    ParallelContinuousThompsonSampling,
     IntegratedVarianceReduction,
     LocalPenalization,
     MinValueEntropySearch,

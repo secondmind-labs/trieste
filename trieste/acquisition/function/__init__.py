@@ -22,7 +22,7 @@ from .active_learning import (
     integrated_variance_reduction,
     predictive_variance,
 )
-from .continuous_thompson_sampling import GreedyContinuousThompsonSampling
+from .continuous_thompson_sampling import GreedyContinuousThompsonSampling, ParallelContinuousThompsonSampling
 from .entropy import (
     GIBBON,
     MinValueEntropySearch,

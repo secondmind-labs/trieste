@@ -26,4 +26,5 @@ from .misc import (
     map_values,
     shapes_equal,
     to_numpy,
+    flatten_leading_dims,
 )
