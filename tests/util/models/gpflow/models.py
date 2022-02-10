@@ -84,7 +84,6 @@ class GaussianProcess(
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
         noise_variance: float = 1.0,
     ):
-        super().__init__()
         self._mean_functions = mean_functions
         self._kernels = kernels
         self._noise_variance = noise_variance

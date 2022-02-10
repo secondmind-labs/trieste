@@ -361,7 +361,6 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
             method signature requires at least one model. It is not treated specially.
         :param \*models_with_event_sizes: The other models, and sizes of their output events.
         """
-        super().__init__()
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
