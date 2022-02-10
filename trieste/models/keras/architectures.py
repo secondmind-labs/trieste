@@ -42,9 +42,6 @@ class KerasEnsemble:
         :param networks: A list of neural network specifications, one for each member of the
             ensemble. The ensemble will be built using these specifications.
         """
-
-        super().__init__()
-
         for index, network in enumerate(networks):
             if not isinstance(network, KerasEnsembleNetwork):
                 raise ValueError(

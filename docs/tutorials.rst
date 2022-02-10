@@ -32,6 +32,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/deep_gaussian_processes
    notebooks/deep_ensembles
    notebooks/active_learning
+   notebooks/active_learning_for_binary_classification
    notebooks/feasible_sets
    notebooks/openai_gym_lunar_lander
 

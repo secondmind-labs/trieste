@@ -84,7 +84,6 @@ class GaussianProcess(
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
         noise_variance: float = 1.0,
     ):
-        super().__init__()
         self._mean_functions = mean_functions
         self._kernels = kernels
         self._noise_variance = noise_variance
@@ -213,6 +212,13 @@ def vgp_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
 
 def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
+    m = VGP((x, y), kernel, likelihood)
+    return m
+
+
+def vgp_model_bernoulli(x: tf.Tensor, y: tf.Tensor) -> VGP:
+    likelihood = gpflow.likelihoods.Bernoulli()
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     m = VGP((x, y), kernel, likelihood)
     return m

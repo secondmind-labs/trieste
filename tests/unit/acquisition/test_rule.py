@@ -44,6 +44,7 @@ from trieste.acquisition.rule import (
     AsynchronousRuleState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
+    RandomSampling,
     TrustRegion,
 )
 from trieste.acquisition.sampler import (
@@ -187,6 +188,25 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
     query_points = ts.acquire_single(search_space, model, dataset=dataset)
+
+    npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
+
+
+@pytest.mark.parametrize("num_query_points", [-1, 0])
+def test_random_sampling_raises_for_invalid_init_params(num_query_points: int) -> None:
+    with pytest.raises(ValueError):
+        RandomSampling(num_query_points)
+
+
+@pytest.mark.parametrize("num_query_points", [1, 10, 50])
+def test_random_sampling_acquire_returns_correct_shape(num_query_points: int) -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    rule = RandomSampling(num_query_points)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
+    )
+    query_points = rule.acquire_single(search_space, model)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
