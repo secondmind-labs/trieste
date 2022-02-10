@@ -216,7 +216,11 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     prior_for_lengthscale: bool,
 ) -> None:
     x = tf.constant(np.arange(1, 5 * dim + 1).reshape(-1, dim), dtype=tf.float64)  # shape: [5, d]
-    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)))
+    optimizer = Optimizer(
+        optimizer=gpflow.optimizers.Scipy(),
+        minimize_args={"options": dict(maxiter=10)},
+    )
+    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer)
     model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([dim], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
@@ -902,6 +906,24 @@ def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
         sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
         np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
         np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
+
+
+@pytest.mark.parametrize("num_outputs", [1, 2])
+def test_gaussian_process_regression_pairwise_covariance(num_outputs: int) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, num_outputs, axis=1)))
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[:, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
 @random_seed

@@ -48,6 +48,16 @@ jobs:
     - run: pip install tox
     - run: tox -e tests
 
+  tests_latest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - run: pip install tox
+    - run: tox -e tests_latest
+
   docs:
     runs-on: ubuntu-latest
     steps:

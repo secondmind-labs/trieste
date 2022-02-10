@@ -184,6 +184,8 @@ class GaussianProcessRegression(
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M] or [..., L, N, M]
 
         if len(tf.shape(K)) == 2:
+            # if single output GPR, the kernel does not return the latent dimension so
+            # we add it back here
             K = tf.expand_dims(K, -3)
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
@@ -203,6 +205,12 @@ class GaussianProcessRegression(
 
         # The line below is just A^T*B over the last 2 dimensions.
         cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
+
+        num_latent = self.model.num_latent_gps
+        if cov.shape[-3] == 1 and num_latent > 1:
+            # For multioutput GPR with shared kernel, we need to duplicate cov
+            # for each output
+            cov = tf.repeat(cov, num_latent, axis=-3)
 
         tf.debugging.assert_shapes(
             [

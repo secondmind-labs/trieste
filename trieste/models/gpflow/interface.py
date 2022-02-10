@@ -45,8 +45,6 @@ class GPflowPredictor(
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
-        super().__init__()
-
         if optimizer is None:
             optimizer = Optimizer(gpflow.optimizers.Scipy())
 
