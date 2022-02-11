@@ -28,5 +28,6 @@ from .interfaces import (
     TrainableModelStack,
     TrainableProbabilisticModel,
     TrajectoryFunction,
+    TrajectoryFunctionClass,
     TrajectorySampler,
 )
