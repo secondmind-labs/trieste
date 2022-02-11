@@ -55,6 +55,7 @@ from .function import (
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
+    ParallelContinuousThompsonSampling,
     PredictiveVariance,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
