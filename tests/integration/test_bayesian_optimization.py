@@ -192,7 +192,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    ParallelContinuousThompsonSampling(),  # type: ignore[arg-type]
+                    ParallelContinuousThompsonSampling(),
                     num_query_points=5,
                 ),
             ),
