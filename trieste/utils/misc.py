@@ -239,7 +239,9 @@ class Timer:
 
 def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:
     """
-    Flattens the leading dimensions of `x`, and returns a function that can be used to restore them.
+    Flattens the leading dimensions of `x` (all but the last two dimensions), and returns a
+    function that can be used to restore them (typically after first manipulating the
+    flattened tensor).
     """
     x_batched_shape = tf.shape(x)
     batch_shape = x_batched_shape[:-1]
@@ -247,9 +249,12 @@ def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorTyp
     x_flat_shape = tf.concat([[-1], input_shape], axis=0)
 
     def unflatten(y: TensorType) -> TensorType:
+        tf.debugging.assert_rank(y, 2, message="unflatten is expecting a rank two tensor.")
         y_flat_shape = tf.shape(y)
         output_shape = y_flat_shape[1:]
         y_batched_shape = tf.concat([batch_shape, output_shape], axis=0)
-        return tf.reshape(y, y_batched_shape)
+        y_batched = tf.reshape(y, y_batched_shape)
+        tf.debugging.assert_shapes([(y, ["N", "D"]), (y_batched, [..., "M", "D"])])
+        return y_batched
 
     return tf.reshape(x, x_flat_shape), unflatten

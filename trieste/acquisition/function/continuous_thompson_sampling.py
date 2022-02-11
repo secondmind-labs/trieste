@@ -18,8 +18,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-import tensorflow as tf
-
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
@@ -82,7 +80,6 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             for the current step. Defaults to ``True``.
         :return: A new trajectory sampled from the model.
         """
-        tf.debugging.Assert(isinstance(function, TrajectoryFunctionClass), [])
 
         if new_optimization_step:  # update sampler and resample trajectory
             new_function = self._trajectory_sampler.update_trajectory(function)
@@ -139,7 +136,6 @@ class ParallelContinuousThompsonSampling(
         :param dataset: The data from the observer (not used).
         :return: A new trajectory sampled from the model.
         """
-        tf.debugging.Assert(isinstance(function, TrajectoryFunctionClass), [])
 
         new_function = self._trajectory_sampler.update_trajectory(function)
 
@@ -157,11 +153,19 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
     We negate the trajectory function object's call method but otherwise leave it alone,
     as it may have e.g. update and resample methods.
     """
+    if isinstance(function, TrajectoryFunctionClass):
 
-    class NegatedTrajectory(type(function)):  # type: ignore[misc]
-        def __call__(self, x: TensorType) -> TensorType:
-            return -1.0 * super().__call__(x)
+        class NegatedTrajectory(type(function)):  # type: ignore[misc]
+            def __call__(self, x: TensorType) -> TensorType:
+                return -1.0 * super().__call__(x)
 
-    function.__class__ = NegatedTrajectory
+        function.__class__ = NegatedTrajectory
+
+    else:
+
+        def negated_trajectory(x: TensorType) -> TensorType:
+            return -1.0 * function(x)
+
+        function = negated_trajectory
 
     return function

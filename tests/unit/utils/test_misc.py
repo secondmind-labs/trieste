@@ -19,7 +19,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import ShapeLike, various_shapes
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.types import TensorType
 from trieste.utils.misc import Err, Ok, Timer, flatten_leading_dims, jit, shapes_equal, to_numpy
 
@@ -104,5 +104,15 @@ def test_Timer_with_nesting() -> None:
 def test_flatten_leading_dims() -> None:
     x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
     flat_x_old, unflatten = flatten_leading_dims(x_old)  # [24, 5]
+
+    npt.assert_array_equal(tf.shape(flat_x_old), [24, 5])
+
     x_new = unflatten(flat_x_old)  # [2, 3, 4, 5]
     npt.assert_array_equal(x_old, x_new)
+
+
+def test_unflatten_raises_for_invalid_shape() -> None:
+    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
+    flat_x_old, unflatten = flatten_leading_dims(x_old)  # [24, 5]
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        unflatten(x_old)
