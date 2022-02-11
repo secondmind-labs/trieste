@@ -33,6 +33,7 @@ from trieste.acquisition import (
     LocalPenalization,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
+    ParallelContinuousThompsonSampling,
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -185,6 +186,13 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
                 10,
                 EfficientGlobalOptimization(
                     GreedyContinuousThompsonSampling(),
+                    num_query_points=5,
+                ),
+            ),
+            (
+                10,
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),  # type: ignore[arg-type]
                     num_query_points=5,
                 ),
             ),
