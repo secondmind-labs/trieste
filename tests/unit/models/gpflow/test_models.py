@@ -34,7 +34,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.models import SGPR, SVGP, VGP
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import (
@@ -935,9 +935,7 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
     if isinstance(model.model, SGPR):
         pytest.skip("Covariance between points is not supported for SGPR.")
 
-    if isinstance(model.model, GPR):
-        model.optimize(Dataset(x, y))
-    elif isinstance(model.model, (VGP, SVGP)):  # for speed just update q_sqrt rather than optimize
+    if isinstance(model.model, (VGP, SVGP)):  # for speed just update q_sqrt rather than optimize
         num_inducing_points = tf.shape(model.model.q_sqrt)[1]
         sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
         model.model.q_sqrt.assign(sampled_q_sqrt)
