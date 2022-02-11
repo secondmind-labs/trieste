@@ -104,7 +104,7 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # ![TensorBoard custom graphs](figures/tensorboard_custom.png)
 
 # %% [markdown]
-# ## Logging additional acqusition rule metrics
+# ## Logging additional acquisition rule metrics
 #
 #
 # Similarly, it is possible to log additional metrics connected to the acquisition rule by overriding rule's `acquire` method (or any other method used while evaluating the rule). For example, the following class also logs the mean coordinates of the selected points:
