@@ -102,6 +102,9 @@ class ParallelContinuousThompsonSampling(
     however optimizes trajectory samples in parallel rather than sequentially.
     Consequently, :class:`ParallelContinuousThompsonSampling` can choose query points faster
     than  :class:`GreedyContinuousThompsonSampler` however it has much larger memory usage.
+
+    For a convenient way to control the total memory usage of this acquisition function, see
+    our :const:`split_acquisition_function_calls` wrapper.
     """
 
     def prepare_acquisition_function(
