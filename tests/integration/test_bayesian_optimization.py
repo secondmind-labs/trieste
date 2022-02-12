@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import Any, List, Mapping, Optional, Tuple, Union
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union, cast
 
 import gpflow
 import numpy.testing as npt
@@ -45,8 +45,9 @@ from trieste.acquisition.rule import (
     TrustRegion,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
-from trieste.bayesian_optimizer import BayesianOptimizer
+from trieste.bayesian_optimizer import BayesianOptimizer, TrainableProbabilisticModelType
 from trieste.logging import tensorboard_writer
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
@@ -74,24 +75,23 @@ from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
 
-# Optimizer parameters for testing against the branin function.
+# Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
-# The various   # type: ignore[arg-type]  are for rules that are only supported by GPR models.
 def GPR_OPTIMIZER_PARAMS() -> Tuple[
     str,
     List[
         Tuple[
             int,
             Union[
-                AcquisitionRule[TensorType, Box, GPflowPredictor],
+                AcquisitionRule[TensorType, Box, GaussianProcessRegression],
                 AcquisitionRule[
                     State[
                         TensorType,
                         Union[AsynchronousRuleState, TrustRegion.State],
                     ],
                     Box,
-                    GPflowPredictor,
+                    GaussianProcessRegression,
                 ],
             ],
         ]
@@ -105,7 +105,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
             (
                 24,
                 EfficientGlobalOptimization(
-                    MinValueEntropySearch(  # type: ignore[arg-type]
+                    MinValueEntropySearch(
                         BRANIN_SEARCH_SPACE,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
@@ -140,7 +140,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
             (
                 10,
                 EfficientGlobalOptimization(
-                    GIBBON(  # type: ignore[arg-type]
+                    GIBBON(
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                     num_query_points=2,
@@ -172,27 +172,27 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
                 DiscreteThompsonSampling(
                     500,
                     3,
-                    thompson_sampler=ThompsonSamplerFromTrajectory(),  # type: ignore[arg-type]
+                    thompson_sampler=ThompsonSamplerFromTrajectory(),
                 ),
             ),
             (
                 15,
                 EfficientGlobalOptimization(
-                    Fantasizer(),  # type: ignore[arg-type]
+                    Fantasizer(),
                     num_query_points=3,
                 ),
             ),
             (
                 10,
                 EfficientGlobalOptimization(
-                    GreedyContinuousThompsonSampling(),  # type: ignore[arg-type]
+                    GreedyContinuousThompsonSampling(),
                     num_query_points=5,
                 ),
             ),
             (
                 10,
                 EfficientGlobalOptimization(
-                    ParallelContinuousThompsonSampling(),  # type: ignore[arg-type]
+                    ParallelContinuousThompsonSampling(),
                     num_query_points=5,
                 ),
             ),
@@ -205,26 +205,28 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
     ],
 ) -> None:
-    _test_optimizer_finds_minimum(num_steps, acquisition_rule, optimize_branin=True)
+    _test_optimizer_finds_minimum(
+        GaussianProcessRegression, num_steps, acquisition_rule, optimize_branin=True
+    )
 
 
 @random_seed
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
     ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(min(num_steps, 5), acquisition_rule)
+    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 5), acquisition_rule)
 
 
 @random_seed
@@ -232,13 +234,10 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgrads: bool) -> None:
     # regression test for [#406]; use natgrads doesn't work well as a model for the objective
     # so don't bother checking the results, just that it doesn't crash
-    acquisition_rule: AcquisitionRule[
-        TensorType, SearchSpace, GPflowPredictor
-    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
         None if use_natgrads else 5,
-        acquisition_rule,
-        model_type="VGP",
+        EfficientGlobalOptimization[SearchSpace, GPflowPredictor](),
         model_args={"use_natgrads": use_natgrads},
     )
 
@@ -246,27 +245,21 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgra
 @random_seed
 @pytest.mark.slow
 def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
-    acquisition_rule: AcquisitionRule[
-        TensorType, SearchSpace, GPflowPredictor
-    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
+        SparseVariational,
         50,
-        acquisition_rule,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         optimize_branin=True,
-        model_type="SVGP",
         model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
     )
 
 
 @random_seed
 def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
-    acquisition_rule: AcquisitionRule[
-        TensorType, SearchSpace, GPflowPredictor
-    ] = EfficientGlobalOptimization()
     _test_optimizer_finds_minimum(
+        SparseVariational,
         5,
-        acquisition_rule,
-        model_type="SVGP",
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
     )
 
@@ -276,11 +269,11 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 @pytest.mark.parametrize("num_steps, acquisition_rule", [(25, DiscreteThompsonSampling(1000, 8))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
     keras_float: None,
 ) -> None:
     _test_optimizer_finds_minimum(
-        num_steps, acquisition_rule, optimize_branin=True, model_type="DGP"
+        DeepGaussianProcess, num_steps, acquisition_rule, optimize_branin=True
     )
 
 
@@ -288,10 +281,10 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 @pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
     keras_float: None,
 ) -> None:
-    _test_optimizer_finds_minimum(num_steps, acquisition_rule, model_type="DGP")
+    _test_optimizer_finds_minimum(DeepGaussianProcess, num_steps, acquisition_rule)
 
 
 @random_seed
@@ -309,13 +302,13 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
 ) -> None:
     _test_optimizer_finds_minimum(
+        DeepEnsemble,
         num_steps,
         acquisition_rule,
         optimize_branin=True,
-        model_type="DE",
         model_args={"bootstrap": True},
     )
 
@@ -333,19 +326,21 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
 ) -> None:
-    _test_optimizer_finds_minimum(num_steps, acquisition_rule, model_type="DE")
+    _test_optimizer_finds_minimum(DeepEnsemble, num_steps, acquisition_rule)
 
 
 def _test_optimizer_finds_minimum(
+    model_type: Type[TrainableProbabilisticModelType],
     num_steps: Optional[int],
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GPflowPredictor]
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GPflowPredictor
+        State[TensorType, AsynchronousRuleState | TrustRegion.State],
+        Box,
+        TrainableProbabilisticModelType,
     ],
     optimize_branin: bool = False,
-    model_type: str = "GPR",  # in Python 3.8+ a Literal["GPR", "VGP", "SVGP", "DGP", "DE"]?
     model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
     model_args = model_args or {}
@@ -363,14 +358,17 @@ def _test_optimizer_finds_minimum(
         minima = SIMPLE_QUADRATIC_MINIMUM
         rtol_level = 0.05
         num_initial_query_points = 10
-    if model_type in ["SVGP", "DGP", "DE"]:
+
+    if model_type in [SparseVariational, DeepGaussianProcess, DeepEnsemble]:
         num_initial_query_points = 20
 
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
     initial_data = observer(initial_query_points)
 
-    if model_type == "GPR":
+    model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
+
+    if model_type is GaussianProcessRegression:
         if "LocalPenalization" in acquisition_rule.__repr__():
             likelihood_variance = 1e-3
         else:
@@ -378,19 +376,19 @@ def _test_optimizer_finds_minimum(
         gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
         model = GaussianProcessRegression(gpr, **model_args)
 
-    elif model_type == "VGP":
+    elif model_type is VariationalGaussianProcess:
         empirical_variance = tf.math.reduce_variance(initial_data.observations)
         kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
         likelihood = gpflow.likelihoods.Gaussian(1e-3)
         vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
         gpflow.utilities.set_trainable(vgp.likelihood, False)
-        model = VariationalGaussianProcess(vgp, **model_args)  # type: ignore
+        model = VariationalGaussianProcess(vgp, **model_args)
 
-    elif model_type == "SVGP":
+    elif model_type is SparseVariational:
         gpr = build_svgp(initial_data, search_space)
-        model = SparseVariational(gpr, **model_args)  # type: ignore
+        model = SparseVariational(gpr, **model_args)
 
-    elif model_type == "DGP":
+    elif model_type is DeepGaussianProcess:
         track_state = False
         epochs = 400
         batch_size = 100
@@ -409,9 +407,9 @@ def _test_optimizer_finds_minimum(
             "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
         }
         dgp_optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
-        model = DeepGaussianProcess(dgp, dgp_optimizer)  # type: ignore
+        model = DeepGaussianProcess(dgp, dgp_optimizer)
 
-    elif model_type == "DE":
+    elif model_type is DeepEnsemble:
         track_state = False
         keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
         fit_args = {
@@ -427,7 +425,7 @@ def _test_optimizer_finds_minimum(
         de_optimizer = KerasOptimizer(
             tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
         )
-        model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)  # type: ignore
+        model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
     else:
         raise ValueError(f"Unsupported model_type '{model_type}'")
@@ -439,7 +437,11 @@ def _test_optimizer_finds_minimum(
             dataset = (
                 BayesianOptimizer(observer, search_space)
                 .optimize(
-                    num_steps or 2, initial_data, model, acquisition_rule, track_state=track_state
+                    num_steps or 2,
+                    initial_data,
+                    cast(TrainableProbabilisticModelType, model),
+                    acquisition_rule,
+                    track_state=track_state,
                 )
                 .try_get_final_dataset()
             )
