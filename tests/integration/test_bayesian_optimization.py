@@ -231,14 +231,13 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
 
 @random_seed
 @pytest.mark.slow
-def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
+def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         VariationalGaussianProcess,
         10,
         EfficientGlobalOptimization[SearchSpace, GPflowPredictor](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
-        model_args={"use_natgrads": use_natgrads},
     )
 
 
