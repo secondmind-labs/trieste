@@ -40,9 +40,10 @@ from ...utils import DEFAULTS, jit
 from ..interfaces import (
     FastUpdateModel,
     HasTrajectorySampler,
-    SupportsInternalData,
+    SupportsGetInternalData,
     TrainableProbabilisticModel,
     TrajectorySampler,
+    SupportsGetInducingPoints,
 )
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
@@ -60,7 +61,7 @@ class GaussianProcessRegression(
     TrainableProbabilisticModel,
     FastUpdateModel,
     SupportsCovarianceBetweenPoints,
-    SupportsInternalData,
+    SupportsGetInternalData,
     HasTrajectorySampler,
 ):
     """
@@ -581,7 +582,7 @@ class Parameter(gpflow.Parameter):  # type: ignore[misc]
         self.prior_on = prior_on
 
 
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+class SparseVariational(GPflowPredictor, TrainableProbabilisticModel, SupportsGetInducingPoints):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
@@ -643,7 +644,7 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
 
 
 class VariationalGaussianProcess(
-    GPflowPredictor, TrainableProbabilisticModel, SupportsInternalData
+    GPflowPredictor, TrainableProbabilisticModel, SupportsGetInducingPoints,
 ):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
@@ -864,10 +865,3 @@ class VariationalGaussianProcess(
         else:
             self.optimizer.optimize(model, dataset)
 
-    def get_internal_data(self) -> Dataset:
-        """
-        Return the model's training data.
-
-        :return: The model's training data.
-        """
-        return Dataset(self.model.data[0], self.model.data[1])

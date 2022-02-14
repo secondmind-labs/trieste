@@ -164,7 +164,7 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
-class SupportsInternalData(ProbabilisticModel, Protocol):
+class SupportsGetInternalData(ProbabilisticModel, Protocol):
     """A probabilistic model that stores and has access to its own training data."""
 
     @abstractmethod
@@ -666,3 +666,19 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
         :return: The new trajectory function updated for a new model
         """
         return self.get_trajectory()
+
+
+
+@runtime_checkable
+class SupportsGetInducingPoints(ProbabilisticModel, Protocol):
+    """A probabilistic model that stores and has access to its own training data.TODO"""
+
+    @abstractmethod
+    def get_inducing_points(self) -> Dataset:
+        """
+        Return the model's training data. TODO
+
+        :return: The model's training data.
+        """
+        raise NotImplementedError
+

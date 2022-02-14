@@ -269,9 +269,8 @@ def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
-    sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     with pytest.raises(AssertionError):
-        sampler.get_trajectory()
+        RandomFourierFeatureTrajectorySampler(model, num_features=100)
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -487,13 +486,10 @@ def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
     model.kernel = gpflow.kernels.RBF()
     sampler = RandomFourierFeatureTrajectorySampler(model)
     trajectory = cast(feature_decomposition_trajectory, sampler.get_trajectory())
-    assert trajectory._feature_functions.__class__.__name__ == (
-        "RandomFourierFeaturesCosine" if GPFLUX_VERSION != "0.2.3" else "RandomFourierFeatures"
+    assert (
+        trajectory._feature_functions.__class__.__name__
+        == "ResampleableRandomFourierFeatureFunctions"
     )
-
-
-
-
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
@@ -517,9 +513,8 @@ def test_decoupled_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
-    sampler = DecoupledTrajectorySampler(model, num_features=100)
     with pytest.raises(AssertionError):
-        sampler.get_trajectory()
+        DecoupledTrajectorySampler(model, num_features=100)
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -547,13 +542,11 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-
     tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
     tf.debugging.assert_shapes(
-        [(trajectory._feature_functions(xs), [num_evals, num_features])]  # type: ignore
+        [(trajectory._feature_functions(xs), [num_evals, num_features + len(dataset.query_points)])]  # type: ignore
     )
     assert isinstance(trajectory, feature_decomposition_trajectory)
-
 
 
 @random_seed
@@ -582,8 +575,6 @@ def test_decoupled_trajectory_sampler_returns_deterministic_trajectory(batch_siz
     npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
 
 
-
-
 @random_seed
 def test_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances() -> None:
     x_range = tf.linspace(0.0, 1.0, 5)
@@ -607,13 +598,13 @@ def test_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances() -
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, 2, 1])  # [N, 2, D]
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory1(xs) - trajectory2(xs))
+        1e-4, tf.abs(trajectory1(xs) - trajectory2(xs))
     )  # distinct between samples
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
+        1e-4, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
     )  # distinct within samples
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
+        1e-4, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
     )  # distinct within samples
 
 
@@ -650,9 +641,6 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
     npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_2))  # check all samples are different
     npt.assert_array_less(1e-5, tf.abs(evals_2 - evals_3))
     npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_3))
-
-
-
 
 
 @random_seed
@@ -694,13 +682,6 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
         trajectory = trajectory_updated
     eval_after = trajectory(xs_predict_with_batching)
 
-    # assert (
-    #     trajectory_sampler._prior_feature_functions.kernel.lengthscales == new_lengthscales
-    # )  # check kernel updated in sampler
-    # assert (
-    #     trajectory._prior_feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
-    # )  # check kernel updated in trajectory
-
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
 
     npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
@@ -708,3 +689,38 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
         tf.abs(eval_after - quadratic(xs_predict)), 1e-3
     )  # new sample should agree with data
 
+
+@random_seed
+def test_rff_and_decoupled_trajectory_give_similar_results() -> None:
+    x_range = tf.linspace(1.0, 2.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    dataset = Dataset(xs, quadratic(xs))
+
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
+    x_range = tf.linspace(1.4, 2.8, 3)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs_predict = tf.reshape(
+        tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
+    )
+    batch_size = 25
+    xs_predict_with_batching = tf.expand_dims(xs_predict, -2)
+    xs_predict_with_batching = tf.tile(xs_predict_with_batching, [1, batch_size, 1])  # [N, B, D]
+
+    trajectory_sampler_1 = RandomFourierFeatureTrajectorySampler(model)
+    trajectory_1 = trajectory_sampler_1.get_trajectory()
+    eval_1 = trajectory_1(xs_predict_with_batching)
+
+    trajectory_sampler_2 = DecoupledTrajectorySampler(model)
+    trajectory_2 = trajectory_sampler_2.get_trajectory()
+    eval_2 = trajectory_2(xs_predict_with_batching)
+
+    npt.assert_allclose(
+        tf.reduce_mean(eval_1, -1), tf.reduce_mean(eval_2, -1), rtol=0.1
+    )  # means across samples should agree

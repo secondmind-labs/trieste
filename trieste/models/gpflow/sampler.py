@@ -17,34 +17,39 @@ GPflow wrappers.
 """
 
 from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Generic, Union
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-from typing import Generic
-from abc import ABC, abstractmethod
+
 try:
     from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
 except (ModuleNotFoundError, ImportError):
     # temporary support for gpflux 0.2.3
     from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
-from gpflux.math import compute_A_inv_b
 
+from gpflux.layers.basis_functions.fourier_features.base import FourierFeaturesBase
+from gpflux.layers.basis_functions.fourier_features.random.base import RFF_SUPPORTED_KERNELS
+from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, runtime_checkable
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import (
     ProbabilisticModel,
+    ProbabilisticModelType,
     ReparametrizationSampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
-    SupportsInternalData,
+    SupportsGetInternalData,
     SupportsPredictJoint,
+    SupportsGetInducingPoints,
     TrajectoryFunction,
     TrajectoryFunctionClass,
     TrajectorySampler,
-    ProbabilisticModelType,
 )
-
 
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
@@ -192,49 +197,35 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-@runtime_checkable
-class SupportsGetKernelObservationNoiseInternalData(
-    SupportsGetKernel, SupportsGetObservationNoise, SupportsInternalData, Protocol
+
+
+
+class FeatureDecompositionTrajectorySampler(
+    TrajectorySampler, ABC, Generic[ProbabilisticModelType]
 ):
-    """
-    A probabilistic model that supports get_kernel, get_observation noise
-    and get_internal_data.
-    """
-
-    pass
-
-
-
-
-class FeatureDecompositionTrajectorySampler(TrajectorySampler, ABC,  Generic[ProbabilisticModelType]):
     r"""TODO"""
-
 
     def __init__(
         self,
         model: ProbabilisticModel,
-        num_features: int = 1000,
+        feature_functions: ResampleableFeatureFunctions,
     ):
         """
         :param sample_size: The desired number of samples.
         :param model: The model to sample from.
-        :param num_features: The number of features used to approximate the kernel. We use a default
-            of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
-            kernels (e.g. RBF) can be well-approximated with fewer features.
         :raise ValueError: If ``dataset`` is empty.
         """
 
         super().__init__(model)
-        tf.debugging.assert_positive(num_features)
-        self._num_features = num_features  # m
+        self._feature_functions = feature_functions
+        self._weight_sampler: Optional[Callable[[int], TensorType]] = None  # lazy init
 
     def __repr__(self) -> str:
         """"""
         return f"""{self.__class__.__name__}(
         {self._model!r},
-        {self._num_features!r})
+        {self._feature_functions!r})
         """
-
 
     def get_trajectory(self) -> TrajectoryFunction:
         """
@@ -245,7 +236,6 @@ class FeatureDecompositionTrajectorySampler(TrajectorySampler, ABC,  Generic[Pro
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
-        self._feature_functions = self._prepare_feature_functions()
         weight_sampler = self._prepare_weight_sampler()  # prep feature weight distribution
 
         return feature_decomposition_trajectory(
@@ -267,7 +257,7 @@ class FeatureDecompositionTrajectorySampler(TrajectorySampler, ABC,  Generic[Pro
         """
         tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
 
-        self._resample_feature_functions(self._feature_functions)
+        self._feature_functions.resample()  # TODO
         weight_sampler = self._prepare_weight_sampler()  # recalculate weight distribution
 
         trajectory.update(weight_sampler=weight_sampler)  # type: ignore
@@ -286,105 +276,28 @@ class FeatureDecompositionTrajectorySampler(TrajectorySampler, ABC,  Generic[Pro
         trajectory.resample()  # type: ignore
         return trajectory  # return trajectory with resampled weights
 
-
     @abstractmethod
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
-        # Calculate the posterior of theta (the feature weights) for the specified feature function.
-        raise NotImplementedError
-
-    @abstractmethod
-    def _prepare_feature_functions(self) -> Callable[[int], TensorType]:
-        #TODO
-        raise NotImplementedError
-
-    @abstractmethod
-    def _resample_feature_functions(self, feature_functions: Callable[[int], TensorType]) -> Callable[[int], TensorType]:
-        #TODO
+        # Calculate the posterior of theta (the feature weights) for the specified feature function. TODO
         raise NotImplementedError
 
 
 
-class feature_decomposition_trajectory(TrajectoryFunctionClass):
-    r"""
-    An approximate sample from a Gaussian processes' posterior samples represented as a
-    finite weighted sum of features.
-
-    A trajectory is given by
-
-    .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
-
-    where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
-    feature weights sampled from a posterior distribution.
-
-    The number of trajectories (i.e. batch size) is determined from the first call of the
-    trajectory. In order to change the batch size, a new :class:`TrajectoryFunction` must be built.
+@runtime_checkable
+class SupportsGetKernelGetObservationNoiseSupportsGetInternalData(
+    SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel, get_observation_noise 
+    and get_internal_data methods.
     """
 
-    def __init__(
-        self,
-        feature_functions: Callable[[TensorType], TensorType],
-        weight_sampler: Callable[[int], TensorType],
-    ):
-        """
-        :param feature_functions: Set of feature function.
-        :param weight_sampler: Distribution from which feature weights are to be sampled. TODO
-        """
-        self._feature_functions = feature_functions
-        self._weight_sampler = weight_sampler
-        self._initialized = tf.Variable(False)
-
-        self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
-            tf.ones([0, 0], dtype=tf.float64), shape=[None, None]
-        )  
-        self._batch_size = tf.Variable(
-            0, dtype=tf.int32
-        )  # dummy init to be updated before trajectory evaluation
-
-    @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
-        """Call trajectory function."""
-
-        if not self._initialized:  # work out desired batch size from input
-            self._batch_size.assign(tf.shape(x)[-2])  # B
-            self.resample()  # sample B feature weights
-            self._initialized.assign(True)
-
-        tf.debugging.assert_equal(
-            tf.shape(x)[-2],
-            self._batch_size.value(),
-            message="""
-            This trajectory only supports batch sizes of {self._batch_size}}.
-            If you wish to change the batch size you must get a new trajectory
-            by calling the get_trajectory method of the trajectory sampler.
-            """,
-        )
-
-        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
-        feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
-
-    def resample(self) -> None:
-        """
-        Efficiently resample in-place without retracing.
-        """
-        self._weights_sample.assign( # [B, m]
-            self._weight_sampler(self._batch_size)
-        )  # resample weights
-
-    def update(self, weight_sampler: Callable[[int], TensorType]) -> None:
-        """
-        Efficiently update the trajectory with a new weight distribution and resample its weights.
-
-        :param weight_sampler: new distribution from which feature weights are to be sampled. TODO
-        """
-        self._weight_sampler = weight_sampler  # update weight sampler
-        self.resample()  
+    pass
 
 
 
 class RandomFourierFeatureTrajectorySampler(
-    FeatureDecompositionTrajectorySampler[SupportsGetKernelObservationNoiseInternalData]
+    FeatureDecompositionTrajectorySampler[SupportsGetKernelGetObservationNoiseSupportsGetInternalData]
 ):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
@@ -423,7 +336,7 @@ class RandomFourierFeatureTrajectorySampler(
 
     def __init__(
         self,
-        model: SupportsGetKernelObservationNoiseInternalData,
+        model: GaussianProcessRegression,
         num_features: int = 1000,
     ):
         """
@@ -435,53 +348,19 @@ class RandomFourierFeatureTrajectorySampler(
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        if not isinstance(model, SupportsGetKernelObservationNoiseInternalData):
+        if not isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData):
             raise NotImplementedError(
-                f"RandomFourierFeatureTrajectorySampler only works with models that support "
-                f"get_kernel, get_observation_noise and get_internal_data; "
+                f"RandomFourierFeatureTrajectorySampler only works with models with "
+                f"get_kernel, get_observation_noise and get_internal_data methods; "
                 f"but received {model.__repr__()}."
             )
 
-        super().__init__(model, num_features)
-
-
-    def _prepare_feature_functions(self) -> Callable[[TensorType], TensorType]:
-        # TODO
-        X = self._model.get_internal_data().query_points
-        data_dtype = X.dtype
-        feature_functions = RFF(
-            self._model.get_kernel(), self._num_features, dtype=data_dtype
-        )  # prep feature functions at data
-
-        _ = feature_functions(X[0:1,:]) # dummy eval to init features
-
-        feature_functions.b = tf.Variable(
-            feature_functions.b
-        )  # store bias as a variable to allow in place updating
-        feature_functions.W = tf.Variable(
-            feature_functions.W
-        )  # store weights as a variable to allow in place updating
-
-        return feature_functions
-
-    def _resample_feature_functions(self, feature_functions: Callable[[TensorType], TensorType]) -> Callable[[TensorType],TensorType]:
-        # TODO
-        if not hasattr(feature_functions, "_bias_init"):
-            # maintain support for gpflux 0.2.3 (but with retracing)
-            return self.get_trajectory()
-
-        bias_shape = tf.shape(feature_functions.b)
-        bias_dtype = feature_functions.b.dtype
-        weight_shape = tf.shape(feature_functions.W)
-        weight_dtype = feature_functions.W.dtype
-        feature_functions.b.assign(  # resample feature function's bias
-            feature_functions._bias_init(bias_shape, dtype=bias_dtype)
+        tf.debugging.assert_positive(num_features)
+        self._num_features = num_features
+        self._model = model
+        super().__init__(
+            self._model, ResampleableRandomFourierFeatureFunctions(self._model, self._num_features)
         )
-        feature_functions.W.assign(  # resample feature function's weights
-            feature_functions._weights_init(weight_shape, dtype=weight_dtype)
-        )
-        return feature_functions
-
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
         # Calculate the posterior of theta (the feature weights) for the specified feature function.
@@ -490,9 +369,9 @@ class RandomFourierFeatureTrajectorySampler(
         if (
             self._num_features < num_data
         ):  # if m < n  then calculate posterior in design space (an m*m matrix inversion)
-            theta_posterior =  self._prepare_theta_posterior_in_design_space()
+            theta_posterior = self._prepare_theta_posterior_in_design_space()
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
-            theta_posterior =  self._prepare_theta_posterior_in_gram_space()
+            theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
         return lambda b: theta_posterior.sample(b)
 
@@ -561,16 +440,21 @@ class RandomFourierFeatureTrajectorySampler(
 
 
 
+@runtime_checkable
+class SupportsGetKernelGetInducingPoint(
+    SupportsGetKernel, SupportsGetInducingPoints, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel and get_inducing_point methods.
+    """
 
-
-
-
+    pass
 
 
 
 
 class DecoupledTrajectorySampler(
-    FeatureDecompositionTrajectorySampler[SupportsGetKernelObservationNoiseInternalData]
+    FeatureDecompositionTrajectorySampler[Union[SupportsGetKernelGetInducingPoint, SupportsGetKernelGetObservationNoiseSupportsGetInternalData]]
 ):
     r"""
     TODO
@@ -578,7 +462,7 @@ class DecoupledTrajectorySampler(
 
     def __init__(
         self,
-        model: SupportsGetKernelObservationNoiseInternalData,
+        model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData],
         num_features: int = 1000,
     ):
         """
@@ -590,123 +474,224 @@ class DecoupledTrajectorySampler(
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        if not isinstance(model, SupportsGetKernelObservationNoiseInternalData):
+        if not (isinstance(model, SupportsGetKernelGetInducingPoint) or isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)):
             raise NotImplementedError(
-                f"RandomFourierFeatureTrajectorySampler only works with models that support "
-                f"get_kernel, get_observation_noise and get_internal_data; " # TODO sort out this check
-                f"but received {model.__repr__()}."
+                f"RandomFourierFeatureTrajectorySampler only works with models that either support "
+                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
+                f"get_observation_noise and get_internal_data; but received {model.__repr__()}."
             )
 
-        super().__init__(model, num_features)
-
-
+        tf.debugging.assert_positive(num_features)
+        self._num_features = num_features
+        self._model = model
+        super().__init__(
+            self._model, ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
+        )
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
         # Calculate the posterior of theta (the feature weights) for the specified feature function.
 
-        if isinstance(self._model, SupportsGetKernelObservationNoiseInternalData):
-            inducing_variable = self._model.get_internal_data().query_points 
-            observation_noise = self._model.get_observation_noise()
-            kernel = self._model.get_kernel()
-        # else:
-        #     inducing_variable = 
-        data_dtype = inducing_variable.dtype
-        
-
-        q_sqrt =  tf.math.sqrt(observation_noise)*tf.eye(tf.shape(inducing_variable)[0], dtype=data_dtype)  # [M, M]
-        Kmm = kernel.K(inducing_variable,inducing_variable) + q_sqrt**2 # [M, M]
-        q_mu = self._model.get_internal_data().observations # [M, 1]
-
-        #else: TODO sort out VGP and SVGP
-
+        if isinstance(self._model, SupportsGetKernelGetInducingPoint):
+            inducing_variable, q_mu, q_srt = self._model.get_inducing_points()  # [M, d], [M, M], [M, 1]
+            Kmm = self._model.get_kernel().K(inducing_variable,inducing_variable) # [M, M]
+        else: # Have GaussianProcessRegressionModel
+            inducing_variable = self._model.get_internal_data().query_points  # [M, d]
+            data_dtype = inducing_variable.dtype
+            q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * tf.eye(
+                tf.shape(inducing_variable)[0], dtype=data_dtype
+            )  # [M, M]
+            q_mu = self._model.get_internal_data().observations  # [M, 1]
+            Kmm = (
+                self._model.get_kernel().K(inducing_variable, inducing_variable) + q_sqrt ** 2
+            )  # [M, M]
 
         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
-  
-            prior_weights = tf.random.normal( # Non-RFF features will require scaling here
+
+            prior_weights = tf.random.normal(  # Non-RFF features will require scaling here
                 [self._num_features, batch_size], dtype=data_dtype
-            )  # [L, B] 
+            )  # [L, B]
 
             u_noise_sample = tf.matmul(
-                q_sqrt, # [M, M]
-                tf.random.normal((tf.shape(inducing_variable)[0], batch_size), dtype=data_dtype),  # [ M, B]  
+                q_sqrt,  # [M, M]
+                tf.random.normal(
+                    (tf.shape(inducing_variable)[0], batch_size), dtype=data_dtype
+                ),  # [ M, B]
             )  # [M, B]
 
-            u_sample = q_mu + u_noise_sample # [M, B]
+            u_sample = q_mu + u_noise_sample  # [M, B]
 
-            # if whiten:
-            #     Luu = tf.linalg.cholesky(Kmm)  # [M, M]
-            #     u_sample = tf.matmul(Luu, u_sample)  # [M, P]
+            if isinstance(self._model, SupportsGetKernelGetInducingPoint) and self._model.whiten:
+                Luu = tf.linalg.cholesky(Kmm)  # [M, M]
+                u_sample = tf.matmul(Luu, u_sample)  # [M, P]
 
-            phi_Z = self._prior_feature_functions(inducing_variable)  # [M, L]
-            weight_space_prior_Z = phi_Z @ prior_weights   # [M, B]
+            phi_Z = self._feature_functions(inducing_variable)[:, : self._num_features]  # [M, L]
+            weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
             diff = u_sample - weight_space_prior_Z  # [M, P] -- using implicit broadcasting
             v = compute_A_inv_b(Kmm, diff)  # [M, P]
 
-            return tf.transpose(tf.concat([prior_weights, v], axis=0)) # [B, L + M]
+            return tf.transpose(tf.concat([prior_weights, v], axis=0))  # [B, L + M]
 
         return weight_sampler
 
 
+class ResampleableFeatureFunctions(ABC):
+    """
+    TODO this is a callable
+    """
 
-    def _prepare_feature_functions(self) -> Callable[[TensorType], TensorType]:
-        # TODO
-        X = self._model.get_internal_data().query_points
-        data_dtype = X.dtype
+    @abstractmethod
+    def resample(self) -> None:
+        """
+        TODO Resample weights and biases
+        """
+        raise NotImplementedError
+
+
+class ResampleableRandomFourierFeatureFunctions(RFF, ResampleableFeatureFunctions):
+    """
+    TODO talk about init
+
+    store bias as a variable to allow in place updating
+    store weights as a variable to allow in place updating
+    """
+
+    def __init__(self, model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData], n_components: int):
         
-        self._prior_feature_functions = RFF(
-            self._model.get_kernel(), self._num_features, dtype=data_dtype
-        )  # prep feature functions at data
 
-        _ = self._prior_feature_functions(X[0:1,:]) # dummy eval to init features
+        if not isinstance(model, (SupportsGetKernelGetInducingPoint, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)):
+            raise NotImplementedError(
+                f"ResampleableRandomFourierFeatureFunctions only work with models that either support "
+                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
+                f"get_observation_noise and get_internal_data; but received {model.__repr__()}."
+            )
 
-        self._prior_feature_functions.b = tf.Variable(
-            self._prior_feature_functions.b
-        )  # store bias as a variable to allow in place updating
-        self._prior_feature_functions.W = tf.Variable(
-            self._prior_feature_functions.W
-        )  # store weights as a variable to allow in place updating
+        self._kernel = model.get_kernel()
+        self._n_components = n_components
+        super().__init__(self._kernel, self._n_components, dtype=tf.float64)
 
-        if isinstance(self._model, SupportsInternalData):
-            inducing_variable = self._model.get_internal_data().query_points 
-        # else: # TODO sort this out
-        #     inducing_variable = 
-
-        kernel = self._model.get_kernel()
-
-        def feature_functions(x:TensorType) -> TensorType: # [N,D] -> [N, M]
-            #TODO combine with cannonical basis functions
-            evaluated_prior_features = self._prior_feature_functions(x) # [N, M]
-            cannonical_basis_functions = tf.linalg.matrix_transpose(kernel.K(inducing_variable, x))  # [N, M]
-            return tf.concat([evaluated_prior_features, cannonical_basis_functions], axis=-1)  # [N, L + M]
-
-        return feature_functions
+        if isinstance(model, SupportsGetInternalData):
+            dummy_X = model.get_internal_data().query_points[0:1, :]
+        else:
+            dummy_X = model.get_inducing_points().Z[0:1, :]
+        self.__call__(dummy_X) # dummy call to force init of weights
+        self.b, self.W = tf.Variable(self.b), tf.Variable(self.W)  # allow updateable weights
 
 
+    def resample(self) -> None:
+        """
+        Resample weights and biases
+        """
 
-
-    def _resample_feature_functions(self, feature_functions: Callable[[TensorType], TensorType]) -> Callable[[TensorType],TensorType]:
-        # TODO PERHPAS DO THIS ONE IN PLACE?
-        if not hasattr(self._prior_feature_functions, "_bias_init"):
+        if not hasattr(self, "_bias_init"):
             # maintain support for gpflux 0.2.3 (but with retracing)
-            return self.get_trajectory()
+            return super().__init__(self._kernel, self._n_components, dtype=self._dtype)
 
-        bias_shape = tf.shape(self._prior_feature_functions.b)
-        bias_dtype = self._prior_feature_functions.b.dtype
-        weight_shape = tf.shape(self._prior_feature_functions.W)
-        weight_dtype = self._prior_feature_functions.W.dtype
-        self._prior_feature_functions.b.assign(  # resample feature function's bias
-            self._prior_feature_functions._bias_init(bias_shape, dtype=bias_dtype)
+        self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
+        self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+
+
+class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
+    """
+    TODO
+
+    """
+
+    def __init__(self, model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData], n_components: int):
+        
+        if isinstance(model, SupportsGetInternalData):
+            inducing_variable = model.get_internal_data().query_points  # [M, D]
+        else:
+            inducing_variable = model.get_inducing_points().Z # [M, D]
+
+        self._cannonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+            model.get_kernel().K(inducing_variable, x)
+            )
+
+        super().__init__(model, n_components)
+
+    def __call__(self, x: TensorType) -> TensorType:  # [N,D] -> [N, L + M]
+        """
+        combine prior basis functions with cannonical basis functions
+        """
+        fourier_feature_eval = super().__call__(x)  # [N, L]
+        cannonical_feature_eval = self._cannonical_feature_functions(x)  # [N, M]
+        return tf.concat([fourier_feature_eval, cannonical_feature_eval], axis=-1)  # [N, L + M]
+
+
+class feature_decomposition_trajectory(TrajectoryFunctionClass):
+    r"""
+    An approximate sample from a Gaussian processes' posterior samples represented as a
+    finite weighted sum of features.
+
+    A trajectory is given by
+
+    .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+    where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
+    feature weights sampled from a posterior distribution.
+
+    The number of trajectories (i.e. batch size) is determined from the first call of the
+    trajectory. In order to change the batch size, a new :class:`TrajectoryFunction` must be built.
+    """
+
+    def __init__(
+        self,
+        feature_functions: Callable[[TensorType], TensorType],
+        weight_sampler: Callable[[int], TensorType],
+    ):
+        """
+        :param feature_functions: Set of feature function.
+        :param weight_sampler: Distribution from which feature weights are to be sampled. TODO
+        """
+        self._feature_functions = feature_functions
+        self._weight_sampler = weight_sampler
+        self._initialized = tf.Variable(False)
+
+        self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
+            tf.ones([0, 0], dtype=tf.float64), shape=[None, None]
         )
-        self._prior_feature_functions.W.assign(  # resample feature function's weights
-            self._prior_feature_functions._weights_init(weight_shape, dtype=weight_dtype)
+        self._batch_size = tf.Variable(
+            0, dtype=tf.int32
+        )  # dummy init to be updated before trajectory evaluation
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
+        """Call trajectory function."""
+
+        if not self._initialized:  # work out desired batch size from input
+            self._batch_size.assign(tf.shape(x)[-2])  # B
+            self.resample()  # sample B feature weights
+            self._initialized.assign(True)
+
+        tf.debugging.assert_equal(
+            tf.shape(x)[-2],
+            self._batch_size.value(),
+            message="""
+            This trajectory only supports batch sizes of {self._batch_size}}.
+            If you wish to change the batch size you must get a new trajectory
+            by calling the get_trajectory method of the trajectory sampler.
+            """,
         )
 
+        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
+        flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
+        feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
 
+    def resample(self) -> None:
+        """
+        Efficiently resample in-place without retracing.
+        """
+        self._weights_sample.assign(  # [B, m]
+            self._weight_sampler(self._batch_size)
+        )  # resample weights
 
+    def update(self, weight_sampler: Callable[[int], TensorType]) -> None:
+        """
+        Efficiently update the trajectory with a new weight distribution and resample its weights.
 
-
-        return feature_functions
-
-
-   
+        :param weight_sampler: new distribution from which feature weights are to be sampled. TODO
+        """
+        self._weight_sampler = weight_sampler  # update weight sampler
+        self.resample()  # resample TODO
