@@ -34,7 +34,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import SVGP
+from gpflow.models import SGPR, SVGP, VGP
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import (
@@ -43,6 +43,7 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
 )
@@ -57,7 +58,10 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.gpflow.models import NumDataPropertyMixin
-from trieste.models.gpflow.sampler import RandomFourierFeatureTrajectorySampler
+from trieste.models.gpflow.sampler import (
+    DecoupledTrajectorySampler,
+    RandomFourierFeatureTrajectorySampler,
+)
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 
 
@@ -160,32 +164,6 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
         )
 
 
-@pytest.mark.parametrize("num_outputs", [1, 2])
-def test_gaussian_process_regression_pairwise_covariance(num_outputs: int) -> None:
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    y = fnc_3x_plus_10(x)
-    model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, num_outputs, axis=1)))
-
-    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
-    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
-
-    all_query_points = tf.concat([query_points_1, query_points_2], 0)
-    _, predictive_covariance = model.predict_joint(all_query_points)
-    expected_covariance = predictive_covariance[:, :8, 8:]
-
-    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
-
-    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
-
-
-def test_gaussian_process_regression_sgpr_raises_for_covariance_between_points() -> None:
-    data = mock_data()
-    model = GaussianProcessRegression(sgpr_model(*data))
-
-    with pytest.raises(NotImplementedError):
-        model.covariance_between_points(data[0], data[0])
-
-
 def test_gaussian_process_regression_raises_for_invalid_init() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -195,20 +173,18 @@ def test_gaussian_process_regression_raises_for_invalid_init() -> None:
         GaussianProcessRegression(gpr_model(x, y), num_kernel_samples=-1)
 
     with pytest.raises(ValueError):
+        GaussianProcessRegression(gpr_model(x, y), num_rff_features=-1)
+
+    with pytest.raises(ValueError):
+        GaussianProcessRegression(gpr_model(x, y), num_rff_features=0)
+
+    with pytest.raises(ValueError):
         optimizer1 = BatchOptimizer(gpflow.optimizers.Scipy())
         GaussianProcessRegression(gpr_model(x, y), optimizer=optimizer1)
 
     with pytest.raises(ValueError):
         optimizer2 = Optimizer(tf.optimizers.Adam())
         GaussianProcessRegression(gpr_model(x, y), optimizer=optimizer2)
-
-
-def test_gaussian_process_regression_raises_for_covariance_between_invalid_query_points_2() -> None:
-    data = mock_data()
-    model = GaussianProcessRegression(gpr_model(*data))
-
-    with pytest.raises(ValueError):
-        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
 
 
 def test_gaussian_process_regression_raises_for_conditionals_with_sgpr() -> None:
@@ -406,44 +382,41 @@ def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
 
 
 @random_seed
-def test_gaussian_process_regression_trajectory_sampler_returns_correct_trajectory_sampler(
-    dim: int,
+@pytest.mark.parametrize("use_decoupled_sampler", [True, False])
+def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
+    use_decoupled_sampler: bool,
 ) -> None:
-
-    x = tf.constant(
-        np.arange(1, 1 + 10 * dim).reshape(-1, dim), dtype=gpflow.default_float()
-    )  # shape: [10, dim]
-    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)[:, 0:1]))
-    model.model.kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
-    trajectory_sampler = model.trajectory_sampler()
-
-    assert isinstance(trajectory_sampler, RandomFourierFeatureTrajectorySampler)
-
-
-@random_seed
-def test_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
-
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = GaussianProcessRegression(gpr_model(x, _3x_plus_gaussian_noise(x)))
-    x_predict = tf.constant([[50.5]], gpflow.default_float())
+    model = GaussianProcessRegression(
+        gpr_model(x, _3x_plus_gaussian_noise(x)), use_decoupled_sampler=use_decoupled_sampler
+    )
+    model.model.likelihood.variance.assign(1e-3)
 
-    samples = []
-    num_samples = 10
+    num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
-    trajectory = trajectory_sampler.get_trajectory()
-    samples.append(-1.0 * trajectory(tf.expand_dims(x_predict, -2)))
-    for _ in range(num_samples - 1):
-        trajectory.resample()  # type: ignore
-        samples.append(trajectory(tf.expand_dims(x_predict, -2)))
 
-    sample_mean = tf.reduce_mean(samples, axis=0)
-    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2)
+    if use_decoupled_sampler:
+        assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
+    else:
+        assert isinstance(trajectory_sampler, RandomFourierFeatureTrajectorySampler)
+
+    trajectory = trajectory_sampler.get_trajectory()
+    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
+    x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
+    x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
+    samples = trajectory(x_predict_parallel)  # [N, B]
+    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
+    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
 
     true_mean, true_variance = model.predict(x_predict)
 
-    linear_error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
-    npt.assert_allclose(sample_mean + 1.0, true_mean + 1.0, rtol=linear_error)
-    npt.assert_allclose(sample_variance, true_variance, rtol=2 * linear_error)
+    # test predictions approx correct away from data
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
+
+    # test predictions correct at data
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.001)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.15)
 
 
 def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -> None:
@@ -486,6 +459,12 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
 
     with pytest.raises(ValueError):
         VariationalGaussianProcess(vgp_model(x, y), natgrad_gamma=1)
+
+    with pytest.raises(ValueError):
+        VariationalGaussianProcess(vgp_model(x, y), num_rff_features=-1)
+
+    with pytest.raises(ValueError):
+        VariationalGaussianProcess(vgp_model(x, y), num_rff_features=0)
 
     with pytest.raises(ValueError):
         optimizer = Optimizer(gpflow.optimizers.Scipy())
@@ -559,6 +538,41 @@ def test_variational_gaussian_process_update_q_mu_sqrt_unchanged() -> None:
 
     npt.assert_allclose(old_q_mu, new_q_mu, atol=1e-5)
     npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
+
+
+@random_seed
+def test_variational_gaussian_process_trajectory_sampler_has_correct_samples() -> None:
+    x_observed = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
+    y_observed = _3x_plus_gaussian_noise(x_observed)
+    optimizer = BatchOptimizer(tf.optimizers.Adam(), max_iter=20)
+    likelihood = gpflow.likelihoods.Gaussian(1e-5)
+    kernel = gpflow.kernels.Matern32(lengthscales=0.2)
+    vgp = VGP((x_observed, y_observed), kernel, likelihood)
+    model = VariationalGaussianProcess(vgp, optimizer=optimizer, use_natgrads=True)
+    model.update(Dataset(x_observed, y_observed))
+    model.optimize(Dataset(x_observed, y_observed))
+
+    num_samples = 100
+    trajectory_sampler = model.trajectory_sampler()
+    assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
+
+    trajectory = trajectory_sampler.get_trajectory()
+    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
+    x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
+    x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
+    samples = trajectory(x_predict_parallel)  # [N, B]
+    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
+    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+
+    true_mean, true_variance = model.predict(x_predict)
+
+    # test predictions approx correct away from data
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
+
+    # test predictions correct at data
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.001)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.1)
 
 
 @random_seed
@@ -707,6 +721,41 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
     assert model.model.training_loss(data) < loss
 
 
+@random_seed
+@pytest.mark.parametrize("whiten", [True, False])
+def test_sparse_variational_trajectory_sampler_has_correct_samples(whiten: bool) -> None:
+    x = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
+    y = _3x_plus_gaussian_noise(x)
+    svgp = SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x, num_data=len(x))
+    model = SparseVariational(svgp)
+    # for speed just pretend update rather than optimize
+    model.model.q_sqrt.assign(tf.expand_dims(tf.eye(len(x)) * tf.math.sqrt(1e-5), 0))
+    model.model.q_mu.assign(y)
+
+    num_samples = 100
+    trajectory_sampler = model.trajectory_sampler()
+    assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
+
+    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [4.5], [8.5]], gpflow.default_float())
+
+    trajectory = trajectory_sampler.get_trajectory()
+    x_predict = tf.constant([[1.5], [4.5], [8.5]], gpflow.default_float())
+    x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
+    x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
+    samples = trajectory(x_predict_parallel)  # [N, B]
+    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
+    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+
+    true_mean, true_variance = model.predict(x_predict)
+    # test predictions approx correct away from data
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.2)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
+
+    # test predictions almost correct at data
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.01)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
+
+
 def test_sparse_variational_default_optimizer_is_correct() -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -731,6 +780,12 @@ def test_svgp_config_builds_and_default_optimizer_is_correct() -> None:
 def test_sparse_variational_raises_for_invalid_init() -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
+
+    with pytest.raises(ValueError):
+        SparseVariational(svgp_model(x_observed, y_observed), num_rff_features=0)
+
+    with pytest.raises(ValueError):
+        SparseVariational(svgp_model(x_observed, y_observed), num_rff_features=-1)
 
     with pytest.raises(ValueError):
         optimizer1 = BatchOptimizer(gpflow.optimizers.Scipy())
@@ -939,3 +994,102 @@ def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
         sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
         np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
         np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
+
+
+@pytest.mark.parametrize("num_outputs", [1, 2])
+def test_gaussian_process_regression_pairwise_covariance(num_outputs: int) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, num_outputs, axis=1)))
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[:, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
+
+
+@random_seed
+def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactoryType) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if isinstance(model.model, SGPR):
+        pytest.skip("Covariance between points is not supported for SGPR.")
+
+    if isinstance(model.model, (VGP, SVGP)):  # for speed just update q_sqrt rather than optimize
+        num_inducing_points = tf.shape(model.model.q_sqrt)[1]
+        sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
+        model.model.q_sqrt.assign(sampled_q_sqrt)
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[0, :8, 8:]
+
+    actual_covariance = model.covariance_between_points(  # type: ignore
+        query_points_1, query_points_2
+    )
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-4)
+
+
+@random_seed
+@pytest.mark.parametrize("whiten", [True, False])
+@pytest.mark.parametrize(
+    "mo_type", ["shared+shared", "separate+shared", "separate+separate", "auto"]
+)
+def test_sparse_variational_pairwise_covariance_for_non_whitened(
+    whiten: bool, mo_type: str
+) -> None:
+    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
+    y1 = fnc_3x_plus_10(x)
+    y2 = y1 * 0.5
+
+    svgp = two_output_svgp_model(x, mo_type)
+
+    model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
+    model.model.whiten = whiten
+
+    model.optimize(Dataset(x, tf.concat([y1, y2], axis=-1)))
+
+    query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [12, 1]
+    query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [18, 1]
+
+    all_query_points = tf.concat([query_points_1, query_points_2], 0)
+    _, predictive_covariance = model.predict_joint(all_query_points)
+    expected_covariance = predictive_covariance[:, :12, 12:]
+
+    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+
+    np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
+
+
+@random_seed
+def test_sparse_variational_raises_for_pairwise_covariance_for_invalid_query_points(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    data = mock_data()
+    model, _ = gpflow_interface_factory(*data)
+
+    if isinstance(model.model, (SGPR)):
+        pytest.skip("Covariance between points is not supported for SGPR.")
+
+    with pytest.raises(ValueError):
+        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))  # type: ignore
+
+
+def test_gaussian_process_regression_sgpr_raises_for_pairwise_covariance() -> None:
+    data = mock_data()
+    model = GaussianProcessRegression(sgpr_model(*data))
+
+    with pytest.raises(NotImplementedError):
+        model.covariance_between_points(data[0], data[0])

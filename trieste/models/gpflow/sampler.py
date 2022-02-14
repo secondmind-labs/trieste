@@ -30,6 +30,7 @@ except (ModuleNotFoundError, ImportError):
     # temporary support for gpflux 0.2.3
     from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
 
+from gpflow.config import default_jitter
 from gpflux.layers.basis_functions.fourier_features.base import FourierFeaturesBase
 from gpflux.layers.basis_functions.fourier_features.random.base import RFF_SUPPORTED_KERNELS
 from gpflux.math import compute_A_inv_b
@@ -41,15 +42,16 @@ from ..interfaces import (
     ProbabilisticModel,
     ProbabilisticModelType,
     ReparametrizationSampler,
+    SupportsGetInducingVariables,
+    SupportsGetInternalData,
     SupportsGetKernel,
     SupportsGetObservationNoise,
-    SupportsGetInternalData,
     SupportsPredictJoint,
-    SupportsGetInducingPoints,
     TrajectoryFunction,
     TrajectoryFunctionClass,
     TrajectorySampler,
 )
+
 
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
@@ -197,9 +199,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
-
-
-
 class FeatureDecompositionTrajectorySampler(
     TrajectorySampler, ABC, Generic[ProbabilisticModelType]
 ):
@@ -282,22 +281,22 @@ class FeatureDecompositionTrajectorySampler(
         raise NotImplementedError
 
 
-
 @runtime_checkable
 class SupportsGetKernelGetObservationNoiseSupportsGetInternalData(
     SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
 ):
     """
-    A probabilistic model that supports get_kernel, get_observation_noise 
+    A probabilistic model that supports get_kernel, get_observation_noise
     and get_internal_data methods.
     """
 
     pass
 
 
-
 class RandomFourierFeatureTrajectorySampler(
-    FeatureDecompositionTrajectorySampler[SupportsGetKernelGetObservationNoiseSupportsGetInternalData]
+    FeatureDecompositionTrajectorySampler[
+        SupportsGetKernelGetObservationNoiseSupportsGetInternalData
+    ]
 ):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
@@ -438,12 +437,8 @@ class RandomFourierFeatureTrajectorySampler(
         )
 
 
-
-
 @runtime_checkable
-class SupportsGetKernelGetInducingPoint(
-    SupportsGetKernel, SupportsGetInducingPoints, Protocol
-):
+class SupportsGetKernelGetInducingPoint(SupportsGetKernel, SupportsGetInducingVariables, Protocol):
     """
     A probabilistic model that supports get_kernel and get_inducing_point methods.
     """
@@ -451,10 +446,13 @@ class SupportsGetKernelGetInducingPoint(
     pass
 
 
-
-
 class DecoupledTrajectorySampler(
-    FeatureDecompositionTrajectorySampler[Union[SupportsGetKernelGetInducingPoint, SupportsGetKernelGetObservationNoiseSupportsGetInternalData]]
+    FeatureDecompositionTrajectorySampler[
+        Union[
+            SupportsGetKernelGetInducingPoint,
+            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+        ]
+    ]
 ):
     r"""
     TODO
@@ -462,7 +460,10 @@ class DecoupledTrajectorySampler(
 
     def __init__(
         self,
-        model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData],
+        model: Union[
+            SupportsGetKernelGetInducingPoint,
+            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+        ],
         num_features: int = 1000,
     ):
         """
@@ -474,7 +475,10 @@ class DecoupledTrajectorySampler(
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        if not (isinstance(model, SupportsGetKernelGetInducingPoint) or isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)):
+        if not (
+            isinstance(model, SupportsGetKernelGetInducingPoint)
+            or isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)
+        ):
             raise NotImplementedError(
                 f"RandomFourierFeatureTrajectorySampler only works with models that either support "
                 f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
@@ -489,42 +493,52 @@ class DecoupledTrajectorySampler(
         )
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
+        """
+        TODO
+        """
         # Calculate the posterior of theta (the feature weights) for the specified feature function.
 
         if isinstance(self._model, SupportsGetKernelGetInducingPoint):
-            inducing_variable, q_mu, q_srt = self._model.get_inducing_points()  # [M, d], [M, M], [M, 1]
-            Kmm = self._model.get_kernel().K(inducing_variable,inducing_variable) # [M, M]
-        else: # Have GaussianProcessRegressionModel
-            inducing_variable = self._model.get_internal_data().query_points  # [M, d]
-            data_dtype = inducing_variable.dtype
-            q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * tf.eye(
-                tf.shape(inducing_variable)[0], dtype=data_dtype
-            )  # [M, M]
+            (
+                inducing_points,
+                q_mu,
+                q_sqrt,
+                whiten,
+            ) = self._model.get_inducing_variables()  # [M, d], [M, M], [1, M, 1]
+            q_sqrt = q_sqrt[0, :, :]  # [M, M]
+            Kmm = self._model.get_kernel().K(inducing_points, inducing_points)  # [M, M]
+            Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
+        else:  # massage quantities from GP to look like variational parameters
+            internal_data = self._model.get_internal_data()
+            inducing_points = internal_data.query_points  # [M, d]
             q_mu = self._model.get_internal_data().observations  # [M, 1]
+            tf.float64 = inducing_points.dtype
+            q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
+            q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
+            whiten = False
             Kmm = (
-                self._model.get_kernel().K(inducing_variable, inducing_variable) + q_sqrt ** 2
+                self._model.get_kernel().K(inducing_points, inducing_points) + q_sqrt ** 2
             )  # [M, M]
 
         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
 
             prior_weights = tf.random.normal(  # Non-RFF features will require scaling here
-                [self._num_features, batch_size], dtype=data_dtype
+                [self._num_features, batch_size], dtype=tf.float64
             )  # [L, B]
 
             u_noise_sample = tf.matmul(
                 q_sqrt,  # [M, M]
                 tf.random.normal(
-                    (tf.shape(inducing_variable)[0], batch_size), dtype=data_dtype
+                    (tf.shape(inducing_points)[0], batch_size), dtype=tf.float64
                 ),  # [ M, B]
             )  # [M, B]
 
             u_sample = q_mu + u_noise_sample  # [M, B]
-
-            if isinstance(self._model, SupportsGetKernelGetInducingPoint) and self._model.whiten:
+            if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, P]
 
-            phi_Z = self._feature_functions(inducing_variable)[:, : self._num_features]  # [M, L]
+            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L]
             weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
             diff = u_sample - weight_space_prior_Z  # [M, P] -- using implicit broadcasting
@@ -556,10 +570,22 @@ class ResampleableRandomFourierFeatureFunctions(RFF, ResampleableFeatureFunction
     store weights as a variable to allow in place updating
     """
 
-    def __init__(self, model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData], n_components: int):
-        
+    def __init__(
+        self,
+        model: Union[
+            SupportsGetKernelGetInducingPoint,
+            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+        ],
+        n_components: int,
+    ):
 
-        if not isinstance(model, (SupportsGetKernelGetInducingPoint, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)):
+        if not isinstance(
+            model,
+            (
+                SupportsGetKernelGetInducingPoint,
+                SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+            ),
+        ):
             raise NotImplementedError(
                 f"ResampleableRandomFourierFeatureFunctions only work with models that either support "
                 f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
@@ -573,10 +599,9 @@ class ResampleableRandomFourierFeatureFunctions(RFF, ResampleableFeatureFunction
         if isinstance(model, SupportsGetInternalData):
             dummy_X = model.get_internal_data().query_points[0:1, :]
         else:
-            dummy_X = model.get_inducing_points().Z[0:1, :]
-        self.__call__(dummy_X) # dummy call to force init of weights
+            dummy_X = model.get_inducing_variables()[0][0:1, :]
+        self.__call__(dummy_X)  # dummy call to force init of weights
         self.b, self.W = tf.Variable(self.b), tf.Variable(self.W)  # allow updateable weights
-
 
     def resample(self) -> None:
         """
@@ -597,16 +622,23 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
 
     """
 
-    def __init__(self, model: Union[SupportsGetKernelGetInducingPoint,SupportsGetKernelGetObservationNoiseSupportsGetInternalData], n_components: int):
-        
+    def __init__(
+        self,
+        model: Union[
+            SupportsGetKernelGetInducingPoint,
+            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+        ],
+        n_components: int,
+    ):
+
         if isinstance(model, SupportsGetInternalData):
-            inducing_variable = model.get_internal_data().query_points  # [M, D]
+            inducing_points = model.get_internal_data().query_points  # [M, D]
         else:
-            inducing_variable = model.get_inducing_points().Z # [M, D]
+            inducing_points = model.get_inducing_variables()[0]  # [M, D]
 
         self._cannonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-            model.get_kernel().K(inducing_variable, x)
-            )
+            model.get_kernel().K(inducing_points, x)
+        )
 
         super().__init__(model, n_components)
 
@@ -651,11 +683,12 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
             tf.ones([0, 0], dtype=tf.float64), shape=[None, None]
         )
+
         self._batch_size = tf.Variable(
             0, dtype=tf.int32
         )  # dummy init to be updated before trajectory evaluation
 
-    @tf.function
+    # @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
         """Call trajectory function."""
 

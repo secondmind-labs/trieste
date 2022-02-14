@@ -33,9 +33,9 @@ from tests.util.models.gpflow.models import (
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     BatchReparametrizationSampler,
+    DecoupledTrajectorySampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
-    DecoupledTrajectorySampler,
     feature_decomposition_trajectory,
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint

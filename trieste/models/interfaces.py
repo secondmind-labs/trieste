@@ -668,17 +668,15 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
         return self.get_trajectory()
 
 
-
 @runtime_checkable
-class SupportsGetInducingPoints(ProbabilisticModel, Protocol):
+class SupportsGetInducingVariables(ProbabilisticModel, Protocol):
     """A probabilistic model that stores and has access to its own training data.TODO"""
 
     @abstractmethod
-    def get_inducing_points(self) -> Dataset:
+    def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
         Return the model's training data. TODO
 
         :return: The model's training data.
         """
         raise NotImplementedError
-
