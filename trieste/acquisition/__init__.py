@@ -49,6 +49,8 @@ from .function import (
     GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
