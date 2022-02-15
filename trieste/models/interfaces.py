@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Tuple, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -670,13 +670,16 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
 
 @runtime_checkable
 class SupportsGetInducingVariables(ProbabilisticModel, Protocol):
-    """A probabilistic model that stores and has access to its own training data.TODO"""
+    """A probabilistic model uses and has access to an inducing point approximation."""
 
     @abstractmethod
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
-        Return the model's training data. TODO
+        Return the model's inducing variables.
 
-        :return: The model's training data.
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or not whitened representations.
         """
         raise NotImplementedError

@@ -528,6 +528,7 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
+    N = len(dataset.query_points)
     model = QuadraticMeanAndRBFKernelWithSamplers(
         noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
     )
@@ -544,7 +545,7 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
 
     tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
     tf.debugging.assert_shapes(
-        [(trajectory._feature_functions(xs), [num_evals, num_features + len(dataset.query_points)])]  # type: ignore
+        [(trajectory._feature_functions(xs), [num_evals, num_features + N])]  # type: ignore
     )
     assert isinstance(trajectory, feature_decomposition_trajectory)
 

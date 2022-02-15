@@ -479,14 +479,6 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
 
 
-def test_variational_gaussian_process_correctly_returns_internal_data() -> None:
-    data = mock_data()
-    model = VariationalGaussianProcess(vgp_model(*data))
-    returned_data = model.get_internal_data()
-    npt.assert_array_equal(returned_data.query_points, data[0])
-    npt.assert_array_equal(returned_data.observations, data[1])
-
-
 def test_variational_gaussian_process_update_updates_num_data() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -499,6 +491,20 @@ def test_variational_gaussian_process_update_updates_num_data() -> None:
     m.update(Dataset(x_new, y_new))
     new_num_data = m.model.num_data
     assert new_num_data - num_data == 2
+
+
+def test_variational_gaussian_process_correctly_returns_inducing_points() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    data = Dataset(x, fnc_3x_plus_10(x))
+    model = VariationalGaussianProcess(vgp_model(data.query_points, data.observations))
+    model.update(data)
+
+    inducing_points, q_mu, q_sqrt, whiten = model.get_inducing_variables()
+
+    npt.assert_allclose(inducing_points, x, atol=1e-5)
+    npt.assert_allclose(q_mu, model.model.q_mu, atol=1e-5)
+    npt.assert_allclose(q_sqrt, model.model.q_sqrt, atol=1e-5)
+    assert whiten
 
 
 def test_variational_gaussian_process_update() -> None:
@@ -676,6 +682,22 @@ def test_sparse_variational_update_updates_num_data() -> None:
     )
     model.update(Dataset(tf.zeros([5, 4]), tf.zeros([5, 1])))
     assert model.model.num_data == 5
+
+
+@pytest.mark.parametrize("whiten", [True, False])
+def test_sparse_variational_correctly_returns_inducing_points(whiten: bool) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    data = Dataset(x, fnc_3x_plus_10(x))
+    model = SparseVariational(svgp_model(data.query_points, data.observations))
+    model.model.whiten = whiten
+    model.update(data)
+
+    inducing_points, q_mu, q_sqrt, w = model.get_inducing_variables()
+
+    npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
+    npt.assert_allclose(q_mu, model.model.q_mu, atol=1e-5)
+    npt.assert_allclose(q_sqrt, model.model.q_sqrt, atol=1e-5)
+    assert whiten == w
 
 
 @pytest.mark.parametrize(

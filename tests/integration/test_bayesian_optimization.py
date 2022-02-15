@@ -236,7 +236,7 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
         VariationalGaussianProcess,
         10,
         EfficientGlobalOptimization[SearchSpace, GPflowPredictor](
-            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5  # type: ignore
         ),
     )
 
@@ -268,7 +268,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         SparseVariational,
         10,
         EfficientGlobalOptimization[SearchSpace, GPflowPredictor](
-            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5  # type: ignore
         ),
         optimize_branin=True,
         model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},

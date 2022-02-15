@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Tuple, Union
 
 import gpflow
 import tensorflow as tf
@@ -29,7 +29,7 @@ from gpflow.base import (
     _validate_unconstrained_value,
 )
 from gpflow.conditionals.util import sample_mvn
-from gpflow.inducing_variables import InducingPoints, InducingVariables
+from gpflow.inducing_variables import InducingPoints
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
@@ -89,7 +89,9 @@ class GaussianProcessRegression(
             kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
-        :param used_decoupled_sampler: TODO
+        :param used_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
+            just use a random Fourier feature sampler. The decoupled sampler is suffers less from
+            overestimating variance and can typically get away with a lower num_rff_features.
         """
         super().__init__(optimizer)
         self._model = model
@@ -595,16 +597,13 @@ class SparseVariational(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
-
-
-        TODO Decoupled
     """
 
     def __init__(
         self,
         model: SVGP,
         optimizer: Optimizer | None = None,
-        num_rff_features: Optional[int] = 1000,
+        num_rff_features: int = 1000,
     ):
         """
         :param model: The underlying GPflow sparse variational model.
@@ -612,9 +611,10 @@ class SparseVariational(
             :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
             batch size 100.
         :param num_rff_features: The number of random Fourier features used to approximate the
-            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
-            typically perfoms well for a wide range of kernels. Note that very smooth
-            kernels (e.g. RBF) can be well-approximated with fewer features.
+            kernel when performing decoupled Thompson sampling through
+            its :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+            perfoms well for a wide range of kernels. Note that very smooth kernels (e.g. RBF)
+            can be well-approximated with fewer features.
         """
 
         if optimizer is None:
@@ -672,7 +672,12 @@ class SparseVariational(
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
-        TODO
+        Return the model's inducing variables.
+
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or not whitened representations.
         """
         inducing_variable = self.model.inducing_variable
 
@@ -705,15 +710,15 @@ class SparseVariational(
         :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
             (L being the number of latent GPs = number of output dimensions)
         """
-        inducing_points, _, q_sqrt = self.get_inducing_variables()
+        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),
-            inducing_variable=inducing_points,
+            inducing_points=inducing_points,
             q_sqrt=q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
-            whiten=self.model.whiten,
+            whiten=whiten,
         )
 
     def trajectory_sampler(self) -> TrajectorySampler[SparseVariational]:
@@ -746,8 +751,6 @@ class VariationalGaussianProcess(
 
     A whitened representation and (optional) natural gradient steps are used to aid
     model optimization.
-
-    TODO Decoupled
     """
 
     def __init__(
@@ -756,7 +759,7 @@ class VariationalGaussianProcess(
         optimizer: Optimizer | None = None,
         use_natgrads: bool = False,
         natgrad_gamma: Optional[float] = None,
-        num_rff_features: Optional[int] = 1000,
+        num_rff_features: int = 1000,
     ):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
@@ -768,9 +771,10 @@ class VariationalGaussianProcess(
             :class:`~tf.optimizers.Optimizer` optimizer.
         :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
         :param num_rff_features: The number of random Fourier features used to approximate the
-            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
-            typically perfoms well for a wide range of kernels. Note that very smooth
-            kernels (e.g. RBF) can be well-approximated with fewer features.
+            kernel when performing decoupled Thompson sampling through
+            its :meth:`trajectory_sampler`. We use a default of 1000 as it typically perfoms
+            well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+            be well-approximated with fewer features.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
             optimizer.
@@ -967,7 +971,13 @@ class VariationalGaussianProcess(
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
-        TODO
+        Return the model's inducing variables. Note that GPflow's VGP model is
+        hard-coded to use the whitened representation.
+
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or not whitened representations.
         """
 
         return self.model.data[0], self.model.q_mu, self.model.q_sqrt, True
@@ -997,7 +1007,7 @@ class VariationalGaussianProcess(
             (L being the number of latent GPs = number of output dimensions)
         """
 
-        inducing_points, _, q_sqrt = self.get_inducing_variables()
+        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),
@@ -1005,7 +1015,7 @@ class VariationalGaussianProcess(
             q_sqrt=q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
-            whiten=True,  # GPflow's VGP model is hard-coded to use the whitened representation
+            whiten=whiten,  # GPflow's VGP model is hard-coded to use the whitened representation
         )
 
 
