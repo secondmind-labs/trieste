@@ -125,7 +125,7 @@ class DeepGaussianProcess(
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
         """
-        Return a reparametrization sampler for :class:`DeepGaussianProcess` models.
+        Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
 
         :param num_samples: The number of samples to obtain.
         :return: The reparametrization sampler.
