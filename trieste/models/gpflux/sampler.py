@@ -172,23 +172,24 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         tf.debugging.assert_equal(len(tf.shape(at)), 2)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        eps_is_populated = tf.size(self._eps_list[0]) != 0
-
         samples = tf.tile(tf.expand_dims(at, 0), [self._sample_size, 1, 1])
         for i, layer in enumerate(self.model.f_layers):
             if isinstance(layer, LatentVariableLayer):
-                if not eps_is_populated:
+                if not self._initialized:
                     self._eps_list[i].assign(layer.prior.sample([tf.shape(samples)[:-1]]))
                 samples = layer.compositor([samples, self._eps_list[i]])
                 continue
 
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
 
-            if not eps_is_populated:
+            if not self._initialized:
                 self._eps_list[i].assign(
                     tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
                 )
 
             samples = mean + tf.sqrt(var) * tf.cast(self._eps_list[i][:, None, :], var.dtype)
+
+        if not self._initialized:
+            self._initialized.assign(True)
 
         return samples

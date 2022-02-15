@@ -593,7 +593,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
     :class:`monte_carlo_expected_improvement` for details.
     """
 
-    def __init__(self, sample_size: int, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The jitter for the reparametrization sampler.
@@ -610,7 +610,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
 
     def __repr__(self) -> str:
         """"""
-        return f"MonteCarloExpectedImprovement({self._sample_size!r}, {self._jitter!r})"
+        return f"MonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
@@ -634,6 +634,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
 
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
@@ -645,6 +646,34 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         eta = tf.reduce_min(mean, axis=0)
 
         return monte_carlo_expected_improvement(sampler, eta)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: HasReparamSampler,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model. Must have output dimension [1].
+        :param dataset: The data from the observer. Cannot be empty
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, monte_carlo_expected_improvement), [])
+        sampler = function._sampler  # type: ignore
+        sampler.reset_sampler()
+        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
+        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
 
 
 class monte_carlo_expected_improvement(AcquisitionFunctionClass):
@@ -672,6 +701,10 @@ class monte_carlo_expected_improvement(AcquisitionFunctionClass):
         self._sampler = sampler
         self._eta = tf.Variable(eta)
 
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value."""
+        self._eta.assign(eta)
+
     @tf.function
     def __call__(self, at: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
@@ -693,7 +726,7 @@ class MonteCarloAugmentedExpectedImprovement(
     :class:`monte_carlo_augmented_expected_improvement` for details.
     """
 
-    def __init__(self, sample_size: int, jitter: float = DEFAULTS.JITTER):
+    def __init__(self, sample_size: int, *, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The jitter for the reparametrization sampler.
@@ -710,7 +743,10 @@ class MonteCarloAugmentedExpectedImprovement(
 
     def __repr__(self) -> str:
         """"""
-        return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r}, {self._jitter!r})"
+        return (
+            f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r}, "
+            f"jitter={self._jitter!r})"
+        )
 
     def prepare_acquisition_function(
         self,
@@ -748,6 +784,34 @@ class MonteCarloAugmentedExpectedImprovement(
 
         return monte_carlo_augmented_expected_improvement(model, sampler, eta)
 
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: SupportsReparamSamplerObservationNoise,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model. Must have output dimension [1].
+        :param dataset: The data from the observer. Cannot be empty
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, monte_carlo_augmented_expected_improvement), [])
+        sampler = function._sampler  # type: ignore
+        sampler.reset_sampler()
+        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
+        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        function.update(eta)  # type: ignore
+        return function
+
 
 class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
     r"""
@@ -775,6 +839,11 @@ class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
         self._sampler = sampler
         self._eta = tf.Variable(eta)
         self._noise_variance = model.get_observation_noise()
+
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta and noise variance"""
+        self._eta.assign(eta)
+        self._noise_variance.assign(self._model.get_observation_noise())
 
     @tf.function
     def __call__(self, at: TensorType) -> TensorType:
