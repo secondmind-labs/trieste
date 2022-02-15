@@ -598,10 +598,10 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The jitter for the reparametrization sampler.
         :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
-            not positive.
+            negative.
         """
         tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_positive(jitter)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
 
         super().__init__()
 
@@ -698,10 +698,10 @@ class MonteCarloAugmentedExpectedImprovement(
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The jitter for the reparametrization sampler.
         :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
-            not positive.
+            negative.
         """
         tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_positive(jitter)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
 
         super().__init__()
 
