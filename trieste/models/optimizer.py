@@ -177,7 +177,7 @@ class KerasOptimizer:
 
 @singledispatch
 def create_loss_function(
-    model: TrainableProbabilisticModel, dataset: TrainingData, compile: bool = False
+    model: Any, dataset: TrainingData, compile: bool = False
 ) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
