@@ -24,7 +24,11 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
-from ...models.interfaces import HasReparamSampler, SupportsGetObservationNoise
+from ...models.interfaces import (
+    HasReparamSampler,
+    SupportsGetObservationNoise,
+    SupportsReparamSamplerObservationNoise,
+)
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -583,31 +587,36 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
     """
     Builder for a Monte Carlo-based expected improvement function for use with a model without
     analytical expected improvement (e.g. a deep GP). The "best" value is taken to be
-    the minimum of the posterior mean at observed points.
+    the minimum of the posterior mean at observed points. See
+    :class:`monte_carlo_expected_improvement` for details.
     """
 
-    def __init__(self, sample_size: int):
+    def __init__(self, sample_size: int, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
-        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
+        :param jitter: The jitter for the reparametrization sampler.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
+            not positive.
         """
         tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_positive(jitter)
 
         super().__init__()
 
         self._sample_size = sample_size
+        self._jitter = jitter
 
     def __repr__(self) -> str:
         """"""
-        return f"MonteCarloExpectedImprovement({self._sample_size!r})"
+        return f"MonteCarloExpectedImprovement({self._sample_size!r}, {self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -617,30 +626,17 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
         """
-        get_sampler = getattr(model, "reparam_sampler", None)
-        if not callable(get_sampler):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                "The model must have a `reparam_sampler` method, which takes `num_samples` and "
-                "which returns a reparametrization `ReparametrizationSampler` to create smooth "
-                "samples at query points."
+                f"MonteCarloExpectedImprovement only supports models with a reparam_sampler method;"
+                f"received {model.__repr__()}"
             )
 
-        sampler = get_sampler(self._sample_size)
+        sampler = model.reparam_sampler(self._sample_size)
 
-        if not isinstance(sampler, ReparametrizationSampler):
-            raise ValueError(
-                "The sampler returned by the model's `reparam_sampler` method must be an instance "
-                "of a `trieste.models.interfaces.ReparametrizationSampler`."
-            )
+        tf.debugging.Assert(dataset is not None, [])
 
-        if not isinstance(dataset, Dataset):
-            raise ValueError(
-                f"`dataset` must be a Dataset for {self.__repr__()}, received" f"{type(dataset)}"
-            )
-
-        tf.debugging.assert_positive(len(dataset))
-
-        samples_at_query_points = sampler.sample(dataset.query_points)
+        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
 
         tf.debugging.assert_shapes(
@@ -653,18 +649,21 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticM
 
 
 class monte_carlo_expected_improvement(AcquisitionFunctionClass):
-    def __init__(self, sampler: ReparametrizationSampler[ProbabilisticModel], eta: TensorType):
+    r"""
+    Return a Monte Carlo based Expected Improvement (EI) acquisition function for
+    single-objective global optimization. Improvement is with respect to the current "best"
+    observation ``eta``, where an improvement moves towards the objective function's minimum
+    and the expectation is calculated with respect to the ``model`` posterior. For model
+    posterior :math:`f`, this is
+
+    .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right].
+
+    For the Monte Carlo version, the expectation is calculated by samples that we save. See
+    :cite:`wilson2018maximizing` for details.
+    """
+
+    def __init__(self, sampler: ReparametrizationSampler[HasReparamSampler], eta: TensorType):
         r"""
-        Return a Monte Carlo based Expected Improvement (EI) acquisition function for
-        single-objective global optimization. Improvement is with respect to the current "best"
-        observation ``eta``, where an improvement moves towards the objective function's minimum
-        and the expectation is calculated with respect to the ``model`` posterior. For model
-        posterior :math:`f`, this is
-
-        .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right].
-
-        For the Monte Carlo version, the expectation is calculated by samples that we save.
-
         :param sampler: The model sampler of the objective function.
         :param eta: The "best" observation.
         :return: The Monte Carlo expected improvement function. This function will raise
@@ -686,32 +685,37 @@ class monte_carlo_expected_improvement(AcquisitionFunctionClass):
 
 
 class MonteCarloAugmentedExpectedImprovement(
-    SingleModelAcquisitionBuilder[SupportsGetObservationNoise]
+    SingleModelAcquisitionBuilder[SupportsReparamSamplerObservationNoise]
 ):
     """
     Builder for a Monte Carlo-based augmented expected improvement function for use with a model
     without analytical augmented expected improvement (e.g. a deep GP). The "best" value is taken to
-    be the minimum of the posterior mean at observed points.
+    be the minimum of the posterior mean at observed points. See
+    :class:`monte_carlo_augmented_expected_improvement` for details.
     """
 
-    def __init__(self, sample_size: int):
+    def __init__(self, sample_size: int, jitter: float = DEFAULTS.JITTER):
         """
         :param sample_size: The number of samples for each batch of points.
-        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive.
+        :param jitter: The jitter for the reparametrization sampler.
+        :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
+            not positive.
         """
         tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_positive(jitter)
 
         super().__init__()
 
         self._sample_size = sample_size
+        self._jitter = jitter
 
     def __repr__(self) -> str:
         """"""
-        return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r})"
+        return f"MonteCarloAugmentedExpectedImprovement({self._sample_size!r}, {self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
-        model: SupportsGetObservationNoise,
+        model: SupportsReparamSamplerObservationNoise,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -719,32 +723,21 @@ class MonteCarloAugmentedExpectedImprovement(
         :param dataset: The data from the observer. Cannot be empty.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
-            does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
+            does not have an output dimension of [1], does not have a ``reparam_sample`` method, or
+            does not support observation noise.
         """
-        get_sampler = getattr(model, "reparam_sampler", None)
-        if not callable(get_sampler):
+        if not isinstance(model, SupportsReparamSamplerObservationNoise):
             raise ValueError(
-                "The model must have a `reparam_sampler` method, which takes `num_samples` and "
-                "which returns a reparametrization `Sampler` to create smooth samples at query "
-                "points."
+                f"MonteCarloAugmentedExpectedImprovement only supports models with a "
+                f"reparam_sampler method and that support observation noise; received "
+                f"{model.__repr__()}."
             )
 
-        sampler = get_sampler(self._sample_size)
+        sampler = model.reparam_sampler(self._sample_size)
 
-        if not isinstance(sampler, ReparametrizationSampler):
-            raise ValueError(
-                "The sampler returned by the model's `reparam_sampler` method must be an instance "
-                "of a `trieste.acquisition.interfaces.ReparametrizationSampler`."
-            )
+        tf.debugging.Assert(dataset is not None, [])
 
-        if not isinstance(dataset, Dataset):
-            raise ValueError(
-                f"`dataset` must be a Dataset for {self.__repr__()}, received" f"{type(dataset)}"
-            )
-
-        tf.debugging.assert_positive(len(dataset))
-
-        samples_at_query_points = sampler.sample(dataset.query_points)
+        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
 
         tf.debugging.assert_shapes(
@@ -757,16 +750,20 @@ class MonteCarloAugmentedExpectedImprovement(
 
 
 class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
+    r"""
+    Return a Monte Carlo based Augmented Expected Improvement (AEI) acquisition function for
+    single-objective global optimization with high levels of observation noise. See
+    :cite:`wilson2018maximizing` for details on using the reparametrization trick for optimizing
+    acquisition functions and :cite:`Huang:2006`: for details of AEI.
+    """
+
     def __init__(
         self,
-        model: SupportsGetObservationNoise,
-        sampler: ReparametrizationSampler[SupportsGetObservationNoise],
+        model: SupportsReparamSamplerObservationNoise,
+        sampler: ReparametrizationSampler[SupportsReparamSamplerObservationNoise],
         eta: TensorType,
     ):
         r"""
-        Return a Monte Carlo based Augmented Expected Improvement (AEI) acquisition function for
-        single-objective global optimization.
-
         :param model: The model of the objective function.
         :param sampler: The model sampler of the objective function.
         :param eta: The "best" observation.
