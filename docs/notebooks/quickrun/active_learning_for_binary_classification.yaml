@@ -1,0 +1,2 @@
+replace:
+  - { from: "num_steps = \\d+", to: "num_steps = 2" }

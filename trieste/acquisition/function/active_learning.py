@@ -19,6 +19,7 @@ learning.
 
 from __future__ import annotations
 
+import math
 from typing import Optional, Sequence, Union
 
 import tensorflow as tf
@@ -43,8 +44,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         """
-        super().__init__()
-
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -136,8 +135,6 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.assert_positive(alpha, message="Parameter alpha must be positive.")
         tf.debugging.assert_scalar(delta)
         tf.debugging.Assert(delta in [1, 2], [delta])
-
-        super().__init__()
 
         self._threshold = threshold
         self._alpha = alpha
@@ -421,3 +418,103 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         )
 
         return -tf.reduce_mean(variance * self._weights, axis=-2)
+
+
+class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    """
+    Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
+    :cite:`houlsby2011bayesian`.
+    """
+
+    def __init__(self, jitter: float = DEFAULTS.JITTER) -> None:
+        """
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
+        """
+        self._jitter = jitter
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BayesianActiveLearningByDisagreement(jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+
+        :return: The determinant of the predictive function.
+        """
+
+        return bayesian_active_learning_by_disagreement(model, self._jitter)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+
+class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, jitter: float):
+
+        r"""
+        The Bayesian active learning by disagrement acquisition function computes
+        the information gain of the predictive entropy :cite:`houlsby2011bayesian`.
+        the acquisiton function is calculated by:
+
+        .. math::
+            \mathrm{h}\left(\Phi\left(\frac{\mu_{\boldsymbol{x}, \mathcal{D}}}
+            {\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+1}}\right)\right)
+            -\frac{C \exp \left(-\frac{\mu_{\boldsymbol{x}, \mathcal{D}}^{2}}
+            {2\left(\sigma_{\boldsymbol{w}, \mathcal{D}}^{+C^{2}}\right)}\right)}
+            {\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+C^{2}}}
+
+        Here :math:`\mathrm{h}(p)` is defined as:
+
+        .. math::
+            \mathrm{h}(p)=-p \log p-(1-p) \log (1-p)
+
+        This acquisition function is intended to use for Binary Gaussian Process Classification
+        model with Bernoulli likelihood. It is designed for VGP but other Gaussian approximation
+        of the posterior can be used. SVGP for instance, or some other model that is not currently
+        supported by Trieste. Integrating over nuisance parameters is currently not
+        supported (see equation 6 of the paper).
+
+        :param model: The model of the objective function.
+        :param jitter: The size of the jitter to avoid numerical problem caused by the
+                log operation if variance is close to zero.
+        :return: The Bayesian Active Learning By Disagreement acquisition function.
+        """
+        tf.debugging.assert_positive(jitter, message="Jitter must be positive.")
+
+        self._model = model
+        self._jitter = jitter
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
+        variance = tf.maximum(variance, self._jitter)
+
+        normal = tfp.distributions.Normal(tf.cast(0, mean.dtype), tf.cast(1, mean.dtype))
+        p = normal.cdf((mean / tf.sqrt(variance + 1)))
+
+        C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
+        Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
+
+        return -p * tf.math.log(p + self._jitter) - (1 - p) * tf.math.log(1 - p + self._jitter) - Ef
