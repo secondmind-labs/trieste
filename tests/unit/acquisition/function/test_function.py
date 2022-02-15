@@ -271,7 +271,8 @@ def test_mc_expected_improvement_raises_for_model_without_reparam_sampler() -> N
     with pytest.raises(ValueError, match="The model must have .*"):
         (
             MonteCarloExpectedImprovement(100).prepare_acquisition_function(
-                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
+                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance),  # type: ignore
+                data,
             )
         )
 
@@ -360,7 +361,8 @@ def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_samp
     with pytest.raises(ValueError, match="The model must have .*"):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
-                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance), data
+                GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance),  # type: ignore
+                data,
             )
         )
 

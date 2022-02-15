@@ -633,6 +633,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         sampler = model.reparam_sampler(self._sample_size)
 
         tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
 
         samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
@@ -734,6 +735,7 @@ class MonteCarloAugmentedExpectedImprovement(
         sampler = model.reparam_sampler(self._sample_size)
 
         tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
 
         samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)
