@@ -344,8 +344,6 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         """
         tf.debugging.assert_scalar(threshold)
 
-        super().__init__()
-
         self._threshold = threshold
 
     def __repr__(self) -> str:
@@ -814,8 +812,6 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         """
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
-
-        super().__init__()
 
         self._sample_size = sample_size
         self._jitter = jitter

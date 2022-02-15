@@ -22,6 +22,7 @@ from .misc import (
     Timer,
     U,
     V,
+    flatten_leading_dims,
     jit,
     map_values,
     shapes_equal,

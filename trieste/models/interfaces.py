@@ -361,7 +361,6 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
             method signature requires at least one model. It is not treated specially.
         :param \*models_with_event_sizes: The other models, and sizes of their output events.
         """
-        super().__init__()
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -585,9 +584,9 @@ TrajectoryFunction = Callable[[TensorType], TensorType]
 Type alias for trajectory functions. These have essentially the same behavior as an
 :const:`AcquisitionFunction` but have additional sampling properties.
 
-An :const:`TrajectoryFunction` evaluates a particular sample at a set of `N` query
-points (each of dimension `D`) i.e. takes input of shape `[N, 1, D]` and returns
-shape `[N, 1]`.
+An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
+of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
+shape `[N, B]`.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
@@ -629,8 +628,13 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
     @abstractmethod
     def get_trajectory(self) -> TrajectoryFunction:
         """
+        Sample a batch of `B` trajectories. Note that the batch size `B` is determined
+        by the first call of the :const:`TrajectoryFunction`. To change the batch size
+        of a :const:`TrajectoryFunction` after initialization, you must
+        recall :meth:`get_trajecotry`.
+
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
         """
         raise NotImplementedError
 

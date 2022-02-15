@@ -536,6 +536,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     f"optimization step.\n",
                     output_stream=logging.ERROR,
                 )
+                if isinstance(error, MemoryError):
+                    tf.print(
+                        "\nOne possible cause of memory errors is trying to evaluate acquisition "
+                        "\nfunctions over large datasets, e.g. when initializing optimizers. "
+                        "\nYou may be able to word around this by splitting up the evaluation "
+                        "\nusing split_acquisition_function or split_acquisition_function_calls.",
+                        output_stream=logging.ERROR,
+                    )
                 return OptimizationResult(Err(error), history)
 
         tf.print("Optimization completed without errors", output_stream=logging.INFO)
