@@ -54,7 +54,7 @@ def test_deep_gaussian_process_sampler_raises_for_invalid_sample_size(
 
 def test_deep_gaussian_process_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
-        DeepGaussianProcessReparamSampler(10, QuadraticMeanAndRBFKernel())
+        DeepGaussianProcessReparamSampler(10, QuadraticMeanAndRBFKernel())  # type: ignore
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3, 4]])
