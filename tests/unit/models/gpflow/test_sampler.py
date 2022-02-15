@@ -275,9 +275,11 @@ def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
 
 @pytest.mark.parametrize("num_evals", [10, 100])
 @pytest.mark.parametrize("num_features", [5, 50])
+@pytest.mark.parametrize("batch_size", [1, 5])
 def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     num_evals: int,
     num_features: int,
+    batch_size: int,
 ) -> None:
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
@@ -291,10 +293,11 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
-    xs = tf.linspace([-10.0], [10.0], num_evals)
-    xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)
+    xs = tf.linspace([-10.0], [10.0], num_evals)  # [N, D]
+    xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
+    xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-    tf.debugging.assert_shapes([(trajectory(xs_with_dummy_batch_dim), [num_evals, 1])])
+    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
     tf.debugging.assert_shapes(
         [(trajectory._feature_functions(xs), [num_evals, num_features])]  # type: ignore
     )
@@ -313,7 +316,9 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     assert isinstance(trajectory, fourier_feature_trajectory)
 
 
-def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
+@random_seed
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_rff_trajectory_sampler_returns_deterministic_trajectory(batch_size: int) -> None:
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -329,7 +334,8 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory() -> None:
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
 
-    xs = tf.expand_dims(xs, -2)  # [N, 1, d]
+    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
+    xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
     trajectory_eval_1 = trajectory(xs)
     trajectory_eval_2 = trajectory(xs)
 
@@ -380,11 +386,23 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
     trajectory2 = sampler2.get_trajectory()
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
-    npt.assert_array_less(1e-3, tf.abs(trajectory1(xs) - trajectory2(xs)))
+    xs = tf.tile(xs, [1, 2, 1])  # [N, 2, D]
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory1(xs) - trajectory2(xs))
+    )  # distinct between samples
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
+    )  # distinct within samples
+    npt.assert_array_less(
+        1e-3, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
+    )  # distinct within samples
 
 
 @random_seed
-def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retracing() -> None:
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retracing(
+    batch_size: int,
+) -> None:
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -397,6 +415,7 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
+    xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
@@ -409,13 +428,14 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
     evals_3 = trajectory(xs)
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-    npt.assert_array_less(1e-3, tf.abs(evals_1 - evals_2))  # check all samples are different
-    npt.assert_array_less(1e-3, tf.abs(evals_2 - evals_3))
-    npt.assert_array_less(1e-3, tf.abs(evals_1 - evals_3))
+    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_2))  # check all samples are different
+    npt.assert_array_less(1e-5, tf.abs(evals_2 - evals_3))
+    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_3))
 
 
 @random_seed
-def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
+@pytest.mark.parametrize("batch_size", [1, 5])
+def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size: int) -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -433,10 +453,12 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
     xs_predict = tf.reshape(
         tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
     )
+    xs_predict_with_batching = tf.expand_dims(xs_predict, -2)
+    xs_predict_with_batching = tf.tile(xs_predict_with_batching, [1, batch_size, 1])  # [N, B, D]
 
     trajectory_sampler = RandomFourierFeatureTrajectorySampler(model)
     trajectory = trajectory_sampler.get_trajectory()
-    eval_before = trajectory(tf.expand_dims(xs_predict, -2))
+    eval_before = trajectory(xs_predict_with_batching)
 
     new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
     new_lengthscales = 0.5 * tf.ones_like(model.kernel.lengthscales, dtype=tf.float64)
@@ -448,7 +470,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace() -> None:
         assert trajectory_updated is trajectory
     else:
         trajectory = trajectory_updated
-    eval_after = trajectory(tf.expand_dims(xs_predict, -2))
+    eval_after = trajectory(xs_predict_with_batching)
 
     assert (
         trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales

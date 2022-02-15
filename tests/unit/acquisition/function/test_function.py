@@ -704,6 +704,3 @@ def test_multiple_optimism_negative_confidence_bound_raises_for_changing_batch_s
     with pytest.raises(tf.errors.InvalidArgumentError):
         query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5, 10, 2])
         acq_fn(query_at)
-
-
-# check builder update with different acq

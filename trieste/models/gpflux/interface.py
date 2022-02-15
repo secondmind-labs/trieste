@@ -40,8 +40,6 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
             be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
             :class:`~tf.optimizers.Adam` optimizer with default parameters.
         """
-        super().__init__()
-
         if optimizer is None:
             optimizer = KerasOptimizer(tf.optimizers.Adam())
 

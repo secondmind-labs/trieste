@@ -44,8 +44,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         """
-        super().__init__()
-
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -137,8 +135,6 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.assert_positive(alpha, message="Parameter alpha must be positive.")
         tf.debugging.assert_scalar(delta)
         tf.debugging.Assert(delta in [1, 2], [delta])
-
-        super().__init__()
 
         self._threshold = threshold
         self._alpha = alpha

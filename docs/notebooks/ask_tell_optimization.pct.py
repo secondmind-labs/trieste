@@ -51,7 +51,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Timing acquisition function: simple use case for Ask-Tell
 #
-# Let's say we are very concerned with the performance of the acqusition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such customization functionality, and this is where Ask-Tell comes in handy.
+# Let's say we are very concerned with the performance of the acquisition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such customization functionality, and this is where Ask-Tell comes in handy.
 
 # %%
 import timeit
