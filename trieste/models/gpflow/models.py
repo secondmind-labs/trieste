@@ -29,7 +29,6 @@ from gpflow.base import (
     _validate_unconstrained_value,
 )
 from gpflow.conditionals.util import sample_mvn
-from gpflow.inducing_variables import InducingPoints
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
@@ -1013,7 +1012,7 @@ class VariationalGaussianProcess(
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),
-            inducing_points=InducingPoints(self.model.data[0]),
+            inducing_points=self.model.data[0],
             q_sqrt=q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,

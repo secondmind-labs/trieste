@@ -225,8 +225,8 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
-    # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 5), acquisition_rule)
+    # branin; currently assume that every rule should be able to solve this in 6 steps
+    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 6), acquisition_rule)
 
 
 @random_seed

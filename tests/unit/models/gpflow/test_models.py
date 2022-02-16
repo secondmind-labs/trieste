@@ -578,7 +578,7 @@ def test_variational_gaussian_process_trajectory_sampler_has_correct_samples() -
 
     # test predictions correct at data
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.001)
-    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.1)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.5)
 
 
 @random_seed
