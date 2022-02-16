@@ -168,10 +168,10 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
             ),
             (15, DiscreteThompsonSampling(500, 5)),
             (
-                20,
+                15,
                 DiscreteThompsonSampling(
-                    500,
-                    3,
+                    1000,
+                    5,
                     thompson_sampler=ThompsonSamplerFromTrajectory(),
                 ),
             ),

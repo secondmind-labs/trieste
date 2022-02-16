@@ -656,9 +656,9 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
             # maintain support for gpflux 0.2.3
             self.b.assign(self._sample_bias(tf.shape(self.b), dtype=self._dtype))
             self.W.assign(self._sample_weights(tf.shape(self.W), dtype=self._dtype))
-
-        self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
-        self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+        else:
+            self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
+            self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
