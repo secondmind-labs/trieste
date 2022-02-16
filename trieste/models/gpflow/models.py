@@ -522,7 +522,7 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class Parameter(gpflow.Parameter):  # type: ignore[misc]
+class Parameter(gpflow.Parameter):
     """A modified version of gpflow.Parameter that supports variable shapes."""
 
     def __init__(
@@ -571,7 +571,7 @@ class Parameter(gpflow.Parameter):  # type: ignore[misc]
         if callable(initial_value):
             initial_value = initial_value()
         initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
-        super(TransformedVariable, self).__init__(
+        super(TransformedVariable, self).__init__(  # type: ignore[call-arg]
             pretransformed_input=tf.Variable(
                 initial_value=bijector.inverse(initial_value),
                 name=name,
@@ -585,7 +585,7 @@ class Parameter(gpflow.Parameter):  # type: ignore[misc]
         self._bijector = bijector
 
         self.prior = prior
-        self.prior_on = prior_on
+        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
 
 
 class SparseVariational(
@@ -1124,7 +1124,7 @@ def _compute_kernel_blocks(
     Note that `num_latents` is only used when we use a single kernel for a multi-output model.
     """
 
-    if type(kernel) in [gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent]:
+    if isinstance(kernel, (gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent)):
         if type(inducing_points) == list:
 
             K = tf.concat(

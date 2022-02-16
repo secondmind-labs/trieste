@@ -23,7 +23,7 @@ Trieste is a research toolbox built on `TensorFlow <http://www.tensorflow.org/>`
 
 Without loss of generality, Trieste only supports minimizing the
 objective function. In the simplest case of an objective function with one-dimensional real
-output :math:`f: X \mapsto \mathbb R`, this is
+output :math:`f: X \to \mathbb R`, this is
 
 .. math:: \mathop{\mathrm{argmin}}_{x \in X} f(x) \qquad .
 
