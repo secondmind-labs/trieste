@@ -26,7 +26,7 @@ def test_get_tensor_spec_from_data_raises_for_incorrect_dataset() -> None:
     dataset = empty_dataset([1], [1])
 
     with pytest.raises(ValueError):
-        get_tensor_spec_from_data(dataset.query_points)
+        get_tensor_spec_from_data(dataset.query_points)  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -53,7 +53,7 @@ def test_sample_with_replacement_raises_for_invalid_dataset() -> None:
     dataset = empty_dataset([1], [1])
 
     with pytest.raises(ValueError):
-        sample_with_replacement(dataset.query_points)
+        sample_with_replacement(dataset.query_points)  # type: ignore
 
 
 def test_sample_with_replacement_raises_for_empty_dataset() -> None:

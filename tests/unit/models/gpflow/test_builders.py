@@ -362,7 +362,7 @@ def _check_kernel(
             else:
                 variance = CLASSIFICATION_KERNEL_VARIANCE
     else:
-        variance = empirical_variance
+        variance = float(empirical_variance)
     npt.assert_allclose(model.kernel.variance, variance, rtol=1e-6)
     if kernel_priors:
         if noise_free:
