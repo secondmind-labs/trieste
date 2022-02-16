@@ -462,6 +462,7 @@ def test_async_keeps_track_of_pending_points(
     state, point2 = state_fn(state)
 
     assert state is not None
+    assert state.pending_points is not None
     assert len(state.pending_points) == 2
 
     # pretend we saw observation for the first point
@@ -477,6 +478,7 @@ def test_async_keeps_track_of_pending_points(
     state, point3 = state_fn(state)
 
     assert state is not None
+    assert state.pending_points is not None
     assert len(state.pending_points) == 2
 
     # we saw first point, so pendings points are
