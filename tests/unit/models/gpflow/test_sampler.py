@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type, cast
+from typing import List, Type
 
 import gpflow
 import gpflux
@@ -273,9 +273,9 @@ def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
         RandomFourierFeatureTrajectorySampler(model, num_features=100)
 
 
-@pytest.mark.parametrize("num_evals", [10, 100])
-@pytest.mark.parametrize("num_features", [5, 50])
-@pytest.mark.parametrize("batch_size", [1, 5])
+@pytest.mark.parametrize("num_evals", [1, 5])
+@pytest.mark.parametrize("num_features", [5, 10])
+@pytest.mark.parametrize("batch_size", [1])
 def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     num_evals: int,
     num_features: int,
@@ -287,8 +287,8 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     model = QuadraticMeanAndRBFKernelWithSamplers(
         noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
     )
-    model.kernel = (
-        gpflow.kernels.RBF()
+    model.kernel = gpflow.kernels.RBF(
+        tf.random.uniform([1])
     )  # need a gpflow kernel object for random feature decompositions
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
@@ -375,15 +375,16 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances() -> None
 
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, 2, 1])  # [N, 2, D]
+
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory1(xs) - trajectory2(xs))
-    )  # distinct between samples
+        1e-1, tf.reduce_max(tf.abs(trajectory1(xs) - trajectory2(xs)))
+    )  # distinct between seperate draws
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
-    )  # distinct within samples
+        1e-1, tf.reduce_max(tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1]))
+    )  # distinct for two samples within same draw
     npt.assert_array_less(
-        1e-3, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
-    )  # distinct within samples
+        1e-1, tf.reduce_max(tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1]))
+    )  # distinct for two samples within same draw
 
 
 @random_seed
@@ -408,17 +409,14 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
     evals_1 = trajectory(xs)
-
-    trajectory = sampler.resample_trajectory(trajectory)
-    evals_2 = trajectory(xs)
-
-    trajectory = sampler.resample_trajectory(trajectory)
-    evals_3 = trajectory(xs)
+    for _ in range(5):
+        trajectory = sampler.resample_trajectory(trajectory)
+        evals_new = trajectory(xs)
+        npt.assert_array_less(
+            1e-1, tf.reduce_max(tf.abs(evals_1 - evals_new))
+        )  # check all samples are different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_2))  # check all samples are different
-    npt.assert_array_less(1e-5, tf.abs(evals_2 - evals_3))
-    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_3))
 
 
 @random_seed
@@ -426,8 +424,8 @@ def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retraci
 def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size: int) -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    dataset = Dataset(xs, quadratic(xs))
+    x_train = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    dataset = Dataset(x_train, quadratic(x_train))
 
     model = QuadraticMeanAndRBFKernelWithSamplers(
         noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
@@ -436,7 +434,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size:
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    x_range = tf.linspace(1.4, 2.8, 3)
+    x_range = tf.random.uniform([5])  # sample test locations
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs_predict = tf.reshape(
         tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
@@ -448,48 +446,34 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size:
     trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(xs_predict_with_batching)
 
-    new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
-    new_lengthscales = 0.5 * tf.ones_like(model.kernel.lengthscales, dtype=tf.float64)
-    model.update(new_dataset)
-    model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
+    for _ in range(3):  # do three updates on new data and see if samples are new
+        x_range = tf.random.uniform([5])
+        x_range = tf.cast(x_range, dtype=tf.float64)
+        x_train = tf.reshape(
+            tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
+        )
 
-    trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
-    if GPFLUX_VERSION != "0.2.3":
-        assert trajectory_updated is trajectory
-    else:
-        trajectory = trajectory_updated
-    eval_after = trajectory(xs_predict_with_batching)
+        new_dataset = Dataset(x_train, quadratic(x_train))
+        new_lengthscales = 0.5 * model.kernel.lengthscales
+        model.update(new_dataset)
+        model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
-    assert (
-        trajectory_sampler._feature_functions.kernel.lengthscales == new_lengthscales
-    )  # check kernel updated in sampler
-    assert (
-        trajectory._feature_functions.kernel.lengthscales == new_lengthscales  # type: ignore
-    )  # check kernel updated in trajectory
+        trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+        eval_after = trajectory(xs_predict_with_batching)
+
+        assert trajectory_updated is trajectory  # check update was in place
+
+        npt.assert_allclose(
+            trajectory_sampler._feature_functions.kernel.lengthscales, new_lengthscales
+        )
+        npt.assert_allclose(
+            trajectory._feature_functions.kernel.lengthscales, new_lengthscales  # type: ignore
+        )
+        npt.assert_array_less(
+            0.1, tf.reduce_max(tf.abs(eval_before - eval_after))
+        )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-
-    npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
-    npt.assert_array_less(
-        tf.abs(eval_after - quadratic(xs_predict)), 1e-3
-    )  # new sample should agree with data
-
-
-def test_rff_trajectory_samplers_uses_RandomFourierFeaturesCosine() -> None:
-
-    dataset = Dataset(
-        tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
-    )
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = gpflow.kernels.RBF()
-    sampler = RandomFourierFeatureTrajectorySampler(model)
-    trajectory = cast(feature_decomposition_trajectory, sampler.get_trajectory())
-    assert (
-        trajectory._feature_functions.__class__.__name__
-        == "ResampleableRandomFourierFeatureFunctions"
-    )
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
@@ -599,14 +583,14 @@ def test_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances() -
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, 2, 1])  # [N, 2, D]
     npt.assert_array_less(
-        1e-4, tf.abs(trajectory1(xs) - trajectory2(xs))
-    )  # distinct between samples
+        1e-1, tf.reduce_max(tf.abs(trajectory1(xs) - trajectory2(xs)))
+    )  # distinct between sample draws
     npt.assert_array_less(
-        1e-4, tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1])
-    )  # distinct within samples
+        1e-1, tf.reduce_max(tf.abs(trajectory1(xs)[:, 0] - trajectory1(xs)[:, 1]))
+    )  # distinct between samples within draws
     npt.assert_array_less(
-        1e-4, tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1])
-    )  # distinct within samples
+        1e-1, tf.reduce_max(tf.abs(trajectory2(xs)[:, 0] - trajectory2(xs)[:, 1]))
+    )  # distinct between samples within draws
 
 
 @random_seed
@@ -631,17 +615,12 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
     sampler = DecoupledTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
     evals_1 = trajectory(xs)
-
-    trajectory = sampler.resample_trajectory(trajectory)
-    evals_2 = trajectory(xs)
-
-    trajectory = sampler.resample_trajectory(trajectory)
-    evals_3 = trajectory(xs)
-
-    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_2))  # check all samples are different
-    npt.assert_array_less(1e-5, tf.abs(evals_2 - evals_3))
-    npt.assert_array_less(1e-5, tf.abs(evals_1 - evals_3))
+    for _ in range(5):
+        trajectory = sampler.resample_trajectory(trajectory)
+        evals_new = trajectory(xs)
+        npt.assert_array_less(
+            1e-1, tf.reduce_max(tf.abs(evals_1 - evals_new))
+        )  # check all samples are different
 
 
 @random_seed
@@ -649,8 +628,8 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
 def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size: int) -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    dataset = Dataset(xs, quadratic(xs))
+    x_train = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    dataset = Dataset(x_train, quadratic(x_train))
 
     model = QuadraticMeanAndRBFKernelWithSamplers(
         noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
@@ -659,7 +638,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    x_range = tf.linspace(1.4, 2.8, 3)
+    x_range = tf.random.uniform([5])  # sample test locations
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs_predict = tf.reshape(
         tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
@@ -671,24 +650,34 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
     trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(xs_predict_with_batching)
 
-    new_dataset = Dataset(xs_predict, quadratic(xs_predict))  # give predict data as new training
-    new_lengthscales = 0.5 * tf.ones_like(model.kernel.lengthscales, dtype=tf.float64)
-    model.update(new_dataset)
-    model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
+    for _ in range(3):  # do three updates on new data and see if samples are new
+        x_range = tf.random.uniform([5])
+        x_range = tf.cast(x_range, dtype=tf.float64)
+        x_train = tf.reshape(
+            tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
+        )
 
-    trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
-    if GPFLUX_VERSION != "0.2.3":
-        assert trajectory_updated is trajectory
-    else:
-        trajectory = trajectory_updated
-    eval_after = trajectory(xs_predict_with_batching)
+        new_dataset = Dataset(x_train, quadratic(x_train))
+        new_lengthscales = 0.5 * model.kernel.lengthscales
+        model.update(new_dataset)
+        model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
+
+        trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+        eval_after = trajectory(xs_predict_with_batching)
+
+        assert trajectory_updated is trajectory  # check update was in place
+
+        npt.assert_allclose(
+            trajectory_sampler._feature_functions.kernel.lengthscales, new_lengthscales
+        )
+        npt.assert_allclose(
+            trajectory._feature_functions.kernel.lengthscales, new_lengthscales  # type: ignore
+        )
+        npt.assert_array_less(
+            0.1, tf.reduce_max(tf.abs(eval_before - eval_after))
+        )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-
-    npt.assert_array_less(1e-5, tf.abs(eval_before - eval_after))  # two samples should be different
-    npt.assert_array_less(
-        tf.abs(eval_after - quadratic(xs_predict)), 1e-3
-    )  # new sample should agree with data
 
 
 @random_seed

@@ -166,7 +166,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
                     )
                 ),
             ),
-            (10, DiscreteThompsonSampling(500, 3)),
+            (15, DiscreteThompsonSampling(500, 5)),
             (
                 20,
                 DiscreteThompsonSampling(
