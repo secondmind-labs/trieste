@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module is the home of  Trieste's functionality for controlling the inducing points
+This module is the home of  Trieste's functionality for choosing the inducing points
 of sparse variational Gaussian processes.
 """
 
@@ -34,20 +34,49 @@ from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...space import Box, SearchSpace
 
+
+
+
 class InducingPointSelector(ABC):
-    def __init__(self, search_space: SearchSpace, model : ProbabilisticModel):
+    """
+    TODO
+    """
+
+    def __init__(self, search_space: SearchSpace, model : ProbabilisticModel, resample_every_step : bool = True):
         self._search_space = search_space
         self._model = model
+        self._resample_for_every_step = resample_every_step
         # todo add required checks
 
 
     @abstractmethod
-    def get_points(self, M: int, dataset: Optional[Dataset]=None):
+    def get_inducing_points(self, M: int, dataset: Optional[Dataset]=None):
         """
         :param M: Desired number of inducing points.
-        :param dataset: TODO
+        :param dataset: TODO 
+        :return: TODO perhaps need Variable
         """
         raise NotImplementedError
+
+    def update_inducing_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
+        """
+        TODO
+
+        :param inducing_points: Current inducing point locations (to be updated by calling this method).
+        :param dataset: TODO
+        """
+        M = tf.shape(inducing_points)[0]
+
+        if resample_every_step: # get M new points
+            return inducing_points.update(self.get_inducing_points(M, dataset))
+        else: # otherwise keep the same points
+            return inducing_points
+
+
+
+
+
+
 
 
 class UniformSampler(InducingPointSelector):
@@ -56,10 +85,10 @@ class UniformSampler(InducingPointSelector):
 	"""
 
     @abstractmethod
-    def get_points(self, M: int, dataset: Optional[Dataset]=None):
+    def get_points(self,inducing_points: TensorType, dataset: Optional[Dataset]=None):
         """
-        :param M: Desired number of inducing points. NOT OPTIONAL
-        :param dataset: TODO
+        :param inducing_points: Current inducing point locations (to be updated by calling this method).
+        :param dataset: TODO (not optional)
         """
 
         N = tf.shape(dataset.query_points)[0]
@@ -74,7 +103,7 @@ class RandomSampler(InducingPointSelector):
 	"""
 	TODO
 	"""
-    def get_points(self, M: int, dataset: Optional[Dataset]=None):
+    def get_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
     	
     	if isinstance(self.search_space, Box):
         	return self._space.sample_halton(M)
@@ -87,7 +116,7 @@ class KMeans(InducingPointSelector):
 	TODO
 	"""  
 
-    def get_points(self, M: int, dataset: Optional[Dataset]=None):
+    def get_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
     
         N = len(dataset.query_points)
         if N < M:
