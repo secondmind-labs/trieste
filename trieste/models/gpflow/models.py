@@ -594,6 +594,7 @@ class SparseVariational(
     TrainableProbabilisticModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
+    HasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
@@ -681,13 +682,13 @@ class SparseVariational(
         """
         inducing_variable = self.model.inducing_variable
 
-        if type(inducing_variable) in [
-            gpflow.inducing_variables.SharedIndependentInducingVariables
-        ]:
+        if isinstance(
+            inducing_variable, gpflow.inducing_variables.SharedIndependentInducingVariables
+        ):
             inducing_points = inducing_variable.inducing_variable.Z
-        elif type(inducing_variable) in [
-            gpflow.inducing_variables.SeparateIndependentInducingVariables
-        ]:
+        elif isinstance(
+            inducing_variable, gpflow.inducing_variables.SeparateIndependentInducingVariables
+        ):
             inducing_points = [
                 inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables
             ]
@@ -737,6 +738,7 @@ class VariationalGaussianProcess(
     TrainableProbabilisticModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
+    HasTrajectorySampler,
 ):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.

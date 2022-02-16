@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Tuple, TypeVar
+from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -673,7 +673,7 @@ class SupportsGetInducingVariables(ProbabilisticModel, Protocol):
     """A probabilistic model uses and has access to an inducing point approximation."""
 
     @abstractmethod
-    def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
+    def get_inducing_variables(self) -> tuple[TensorType, TensorType, TensorType, bool]:
         """
         Return the model's inducing variables.
 

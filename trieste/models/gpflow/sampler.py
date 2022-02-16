@@ -19,7 +19,7 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -274,7 +274,7 @@ class FeatureDecompositionTrajectorySampler(
         self._feature_functions.resample()  # resample Fourier feature decomposition
         weight_sampler = self._prepare_weight_sampler()  # recalculate weight distribution
 
-        trajectory.update(weight_sampler=weight_sampler)  # type: ignore
+        cast(feature_decomposition_trajectory, trajectory).update(weight_sampler=weight_sampler)
 
         return trajectory  # return trajectory with updated features and weight distribution
 
@@ -287,7 +287,7 @@ class FeatureDecompositionTrajectorySampler(
         :return: The new resampled trajectory function.
         """
         tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
-        trajectory.resample()  # type: ignore
+        cast(feature_decomposition_trajectory, trajectory).resample()
         return trajectory  # return trajectory with resampled weights
 
     @abstractmethod
@@ -301,7 +301,7 @@ class FeatureDecompositionTrajectorySampler(
 
 
 @runtime_checkable
-class SupportsGetKernelGetObservationNoiseSupportsGetInternalData(
+class FeatureDecompositionInternalDataModel(
     SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
 ):
     """
@@ -312,10 +312,19 @@ class SupportsGetKernelGetObservationNoiseSupportsGetInternalData(
     pass
 
 
+@runtime_checkable
+class FeatureDecompositionInducingPointModel(
+    SupportsGetKernel, SupportsGetInducingVariables, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel and get_inducing_point methods.
+    """
+
+    pass
+
+
 class RandomFourierFeatureTrajectorySampler(
-    FeatureDecompositionTrajectorySampler[
-        SupportsGetKernelGetObservationNoiseSupportsGetInternalData
-    ]
+    FeatureDecompositionTrajectorySampler[FeatureDecompositionInternalDataModel]
 ):
     r"""
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
@@ -349,7 +358,7 @@ class RandomFourierFeatureTrajectorySampler(
 
     def __init__(
         self,
-        model: SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+        model: FeatureDecompositionInternalDataModel,
         num_features: int = 1000,
     ):
         """
@@ -361,7 +370,7 @@ class RandomFourierFeatureTrajectorySampler(
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        if not isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData):
+        if not isinstance(model, FeatureDecompositionInternalDataModel):
             raise NotImplementedError(
                 f"RandomFourierFeatureTrajectorySampler only works with models with "
                 f"get_kernel, get_observation_noise and get_internal_data methods; "
@@ -371,9 +380,10 @@ class RandomFourierFeatureTrajectorySampler(
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
-        super().__init__(
-            self._model, ResampleableRandomFourierFeatureFunctions(self._model, self._num_features)
+        feature_functions = ResampleableRandomFourierFeatureFunctions(
+            self._model, self._num_features
         )
+        super().__init__(self._model, feature_functions)
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
         """
@@ -456,20 +466,11 @@ class RandomFourierFeatureTrajectorySampler(
         )
 
 
-@runtime_checkable
-class SupportsGetKernelGetInducingPoint(SupportsGetKernel, SupportsGetInducingVariables, Protocol):
-    """
-    A probabilistic model that supports get_kernel and get_inducing_point methods.
-    """
-
-    pass
-
-
 class DecoupledTrajectorySampler(
     FeatureDecompositionTrajectorySampler[
         Union[
-            SupportsGetKernelGetInducingPoint,
-            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+            FeatureDecompositionInducingPointModel,
+            FeatureDecompositionInternalDataModel,
         ]
     ]
 ):
@@ -500,8 +501,8 @@ class DecoupledTrajectorySampler(
     def __init__(
         self,
         model: Union[
-            SupportsGetKernelGetInducingPoint,
-            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+            FeatureDecompositionInducingPointModel,
+            FeatureDecompositionInternalDataModel,
         ],
         num_features: int = 1000,
     ):
@@ -514,9 +515,8 @@ class DecoupledTrajectorySampler(
         :raise ValueError: If ``dataset`` is empty.
         """
 
-        if not (
-            isinstance(model, SupportsGetKernelGetInducingPoint)
-            or isinstance(model, SupportsGetKernelGetObservationNoiseSupportsGetInternalData)
+        if not isinstance(
+            model, (FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel)
         ):
             raise NotImplementedError(
                 f"RandomFourierFeatureTrajectorySampler only works with models that either support "
@@ -527,9 +527,8 @@ class DecoupledTrajectorySampler(
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
-        super().__init__(
-            self._model, ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
-        )
+        feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
+        super().__init__(self._model, feature_functions)
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
         """
@@ -539,7 +538,7 @@ class DecoupledTrajectorySampler(
         the `L`  RFF features and `N` cannonical features.
         """
 
-        if isinstance(self._model, SupportsGetKernelGetInducingPoint):
+        if isinstance(self._model, FeatureDecompositionInducingPointModel):
             (  # extract variational parameters
                 inducing_points,
                 q_mu,
@@ -600,7 +599,7 @@ class DecoupledTrajectorySampler(
         return weight_sampler
 
 
-class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore
+class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
     """
     A wrapper around GPFlux's random Fourier feature function that allows for
     efficient in-place updating when generating new decompositions.
@@ -612,17 +611,21 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore
     def __init__(
         self,
         model: Union[
-            SupportsGetKernelGetInducingPoint,
-            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+            FeatureDecompositionInducingPointModel,
+            FeatureDecompositionInternalDataModel,
         ],
         n_components: int,
     ):
+        """
+        :param model: The model that will be approximed by these feature functions.
+        :param n_components: The desired number of features.
+        """
 
         if not isinstance(
             model,
             (
-                SupportsGetKernelGetInducingPoint,
-                SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+                FeatureDecompositionInducingPointModel,
+                FeatureDecompositionInternalDataModel,
             ),
         ):
             raise NotImplementedError(
@@ -667,11 +670,15 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
     def __init__(
         self,
         model: Union[
-            SupportsGetKernelGetInducingPoint,
-            SupportsGetKernelGetObservationNoiseSupportsGetInternalData,
+            FeatureDecompositionInducingPointModel,
+            FeatureDecompositionInternalDataModel,
         ],
         n_components: int,
     ):
+        """
+        :param model: The model that will be approximed by these feature functions.
+        :param n_components: The desired number of features.
+        """
 
         if isinstance(model, SupportsGetInternalData):
             inducing_points = model.get_internal_data().query_points  # [M, D]
