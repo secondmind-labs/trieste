@@ -89,7 +89,7 @@ class GaussianProcessRegression(
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
         :param used_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
-            just use a random Fourier feature sampler. The decoupled sampler is suffers less from
+            just use a random Fourier feature sampler. The decoupled sampler suffers less from
             overestimating variance and can typically get away with a lower num_rff_features.
         """
         super().__init__(optimizer)
@@ -677,7 +677,7 @@ class SparseVariational(
         :return: Tensors containing: the inducing points (i.e. locations of the inducing
             variables); the variational mean q_mu; the Cholesky decomposition of the
             variational covariance q_sqrt; and a bool denoting if we are using whitened
-            or not whitened representations.
+            or non-whitened representations.
         """
         inducing_variable = self.model.inducing_variable
 
@@ -978,10 +978,13 @@ class VariationalGaussianProcess(
         :return: Tensors containing: the inducing points (i.e. locations of the inducing
             variables); the variational mean q_mu; the Cholesky decomposition of the
             variational covariance q_sqrt; and a bool denoting if we are using whitened
-            or not whitened representations.
+            or non-whitened representations.
         """
-
-        return self.model.data[0], self.model.q_mu, self.model.q_sqrt, True
+        inducing_points = self.model.data[0]
+        q_mu = self.model.q_mu
+        q_sqrt = self.model.q_sqrt
+        whiten = True  # GPflow's VGP model is hard-coded to use the whitened representation
+        return inducing_points, q_mu, q_sqrt, whiten
 
     def trajectory_sampler(self) -> TrajectorySampler[VariationalGaussianProcess]:
         """
@@ -1016,7 +1019,7 @@ class VariationalGaussianProcess(
             q_sqrt=q_sqrt,
             query_points_1=query_points_1,
             query_points_2=query_points_2,
-            whiten=whiten,  # GPflow's VGP model is hard-coded to use the whitened representation
+            whiten=whiten,
         )
 
 
