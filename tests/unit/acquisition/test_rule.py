@@ -450,7 +450,7 @@ def test_async_greedy_raises_for_incorrect_query_points() -> None:
     ],
 )
 def test_async_keeps_track_of_pending_points(
-    async_rule: AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    async_rule: AcquisitionRule[State[Optional[AsynchronousRuleState], TensorType], Box, ProbabilisticModel]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
