@@ -389,24 +389,8 @@ def _test_optimizer_finds_minimum(
 
     elif model_type is DeepGaussianProcess:
         track_state = False
-        epochs = 400
-        batch_size = 100
-        dgp = build_vanilla_deep_gp(initial_data, 2)
-
-        def scheduler(epoch: int, lr: float) -> float:
-            if epoch == epochs // 2:
-                return lr * 0.1
-            else:
-                return lr
-
-        fit_args = {
-            "batch_size": batch_size,
-            "epochs": epochs,
-            "verbose": 0,
-            "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-        }
-        dgp_optimizer = KerasOptimizer(tf.optimizers.Adam(0.01), fit_args)
-        model = DeepGaussianProcess(dgp, dgp_optimizer, **model_args)
+        dgp = build_vanilla_deep_gp(initial_data, search_space)
+        model = DeepGaussianProcess(dgp, **model_args)
 
     elif model_type is DeepEnsemble:
         track_state = False

@@ -46,11 +46,10 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
             :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
-            :class:`~tf.optimizers.Adam`.
-            This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
-            used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
-            a dictionary of arguments to be used in the Keras `fit` method. Defaults to
-            using 100 epochs, batch size 100, and verbose 0. See
+            :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
+            used when compiling the model and ``fit_args`` is a dictionary of arguments to be used
+            in the Keras ``fit`` method. Defaults to 400 epochs, batch size of 1000, and verbose 0.
+            A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param continuous_optimisation: if True (default), the optimizer will keep track of the
@@ -75,11 +74,18 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
+        def scheduler(epoch: int, lr: float) -> float:
+            if epoch == epochs // 2:
+                return lr * 0.1
+            else:
+                return lr
+
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 100,
-                "batch_size": 100,
+                "epochs": 400,
+                "batch_size": 1000,
+                "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
             }
 
         self._model_gpflux = model

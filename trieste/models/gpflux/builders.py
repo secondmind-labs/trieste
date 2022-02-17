@@ -33,34 +33,71 @@ from ...space import Box, SearchSpace
 from ...types import TensorType
 
 
+NUM_LAYERS:int = 2
+"""
+Default number of layers in the deep gaussian process model.
+"""
+
+
+MAX_NUM_INDUCING_POINTS: int = 500
+"""
+Default maximum number of inducing points.
+"""
+
+
+NUM_INDUCING_POINTS_PER_DIM: int = 50
+"""
+Default number of inducing points per dimension of the search space.
+"""
+
+
+INNER_LAYER_SQRT_FACTOR: float = 1e-5
+"""
+Default value for a multiplicative factor used to rescale hidden layers.
+"""
+
+
+LIKELIHOOD_VARIANCE: float = 1e-3
+"""
+Default value for an initial noise variance in the likelihood function.
+"""
+
+
 def build_vanilla_deep_gp(
     data: Dataset,
-    num_layers: int = 2,
+    search_space: SearchSpace,
+    num_layers: int = NUM_LAYERS,
     num_inducing_points: Optional[int] = None,
-    search_space: Optional[SearchSpace] = None,
-    inner_layer_sqrt_factor: float = 1e-5,
-    likelihood_variance: float = 1e-2,
+    inner_layer_sqrt_factor: float = INNER_LAYER_SQRT_FACTOR,
+    likelihood_variance: float = LIKELIHOOD_VARIANCE,
     trainable_likelihood: bool = True,
 ) -> DeepGP:
     """
-    Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters.
-    We rely on ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build
-    the model. We found the default configuration used here to work well in most situation,
-    but it should not be taken as a universally good solution.
+    Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters. We found the
+    default configuration used here to work well in most situation, but it should not be taken as a
+    universally good solution.
+
+    Note that although we set all the relevant parameters to sensible values, we rely on
+    ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.
 
     :param data: Dataset from the initial design, used to estimate the variance of observations
         and to provide query points which are used to determine inducing point locations with
         k-means.
-    :param num_layers: Number of layers in deep GP.
-    :param num_inducing_points: Number of inducing points to use in each layer. If left unset
-        (default) it will be set to the number of query points in ``data``.
     :param search_space: Search space for performing Bayesian optimization. Used for initialization
         of inducing locations if ``num_inducing_points`` is larger than the amount of data.
-    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers. See
-        :class:`~gpflux.architectures.Config` for details.
-    :param likelihood_variance: Initial noise variance in the likelihood function. See
-        :class:`~gpflux.architectures.Config` for details.
+    :param num_layers: Number of layers in deep GP. By default set to ``NUM_LAYERS``.
+    :param num_inducing_points: Number of inducing points to use in each layer. If left unspecified
+        (default), this number is set to either ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of
+        the search space or value given by ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, see
+        :class:`~gpflux.architectures.Config` for details. By default set to
+        ``INNER_LAYER_SQRT_FACTOR``.
+    :param likelihood_variance: Initial noise variance in the likelihood function, see
+        :class:`~gpflux.architectures.Config` for details. By default set to
+        ``LIKELIHOOD_VARIANCE``.
     :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.
+    :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``
+        or ``num_inducing_points`` is provided.
     """
     tf.debugging.assert_positive(num_layers)
     tf.debugging.assert_positive(inner_layer_sqrt_factor)
@@ -72,25 +109,22 @@ def build_vanilla_deep_gp(
     empirical_mean, empirical_variance, num_data_points = _get_data_stats(data)
 
     if num_inducing_points is None:
-        num_inducing_points = num_data_points
+        num_inducing_points = min(
+            MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * search_space.dimension
+        )
     else:
         tf.debugging.assert_positive(num_inducing_points)
 
     # Pad query_points with additional random values to provide enough inducing points
     if num_inducing_points > len(query_points):
-        if search_space is not None:
-            if not isinstance(search_space, Box):
-                raise ValueError(
-                    f"Currently only `Box` instances are supported for `search_space`,"
-                    f" received {type(search_space)}."
-                )
+        if isinstance(search_space, Box):
             additional_points = search_space.sample_sobol(
                 num_inducing_points - len(query_points)
             ).numpy()
         else:
-            additional_points = np.random.randn(
-                num_inducing_points - len(query_points), *query_points.shape[1:]
-            )
+            additional_points = search_space.sample(
+                num_inducing_points - len(query_points)
+            ).numpy()
         query_points = np.concatenate([query_points, additional_points], 0)
 
     config = Config(

@@ -28,7 +28,50 @@ from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
-from trieste.models.gpflux.builders import _get_data_stats, build_vanilla_deep_gp
+from trieste.models.gpflux.builders import (
+    _get_data_stats, build_vanilla_deep_gp,
+    NUM_LAYERS, 
+    MAX_NUM_INDUCING_POINTS,
+    NUM_INDUCING_POINTS_PER_DIM,
+    INNER_LAYER_SQRT_FACTOR,
+    LIKELIHOOD_VARIANCE,
+)
+from trieste.space import Box
+
+# @pytest.mark.skip
+def test_build_vanilla_deep_gp_returns_correct_defaults(keras_float: None) -> None:
+    search_space = Box([0.0], [1.0])**4
+    x = search_space.sample(100)
+    data = mk_dataset(x, quadratic(x))
+
+    empirical_mean, empirical_variance, _ = _get_data_stats(data)
+
+    num_inducing = min(
+        MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * search_space.dimension
+    )
+
+    vanilla_deep_gp = build_vanilla_deep_gp(data, search_space)
+
+    # basics
+    assert isinstance(vanilla_deep_gp, DeepGP)
+    assert len(vanilla_deep_gp.f_layers) == NUM_LAYERS
+
+    # check mean function
+    assert isinstance(vanilla_deep_gp.f_layers[-1].mean_function, gpflow.mean_functions.Constant)
+    npt.assert_allclose(vanilla_deep_gp.f_layers[-1].mean_function.parameters[0], empirical_mean)
+
+    # check kernel
+    assert isinstance(vanilla_deep_gp.f_layers[-1].kernel.kernel, gpflow.kernels.RBF)
+    npt.assert_allclose(vanilla_deep_gp.f_layers[-1].kernel.kernel.variance, empirical_variance)
+
+    # check likelihood
+    assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood, gpflow.likelihoods.Gaussian)
+    npt.assert_allclose(vanilla_deep_gp.likelihood_layer.likelihood.variance, LIKELIHOOD_VARIANCE)
+    assert vanilla_deep_gp.likelihood_layer.likelihood.variance.trainable
+
+    # inducing variables and scaling factor
+    for layer in vanilla_deep_gp.f_layers:
+        assert layer.inducing_variable.num_inducing == num_inducing
 
 
 @pytest.mark.parametrize("num_layers", [1, 3])
@@ -45,13 +88,13 @@ def test_build_vanilla_deep_gp_returns_correct_model(
     num_data = 10
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
     data = mk_dataset(x, quadratic(x))
-
-    empirical_mean, empirical_variance, _ = _get_data_stats(data)
+    search_space = Box([0.0], [10.0])
 
     num_inducing = num_data
 
     vanilla_deep_gp = build_vanilla_deep_gp(
         data,
+        search_space,
         num_layers,
         num_inducing,
         inner_layer_sqrt_factor=inner_layer_sqrt_factor,
@@ -59,20 +102,7 @@ def test_build_vanilla_deep_gp_returns_correct_model(
         trainable_likelihood=trainable_likelihood,
     )
 
-    # basics
-    assert isinstance(vanilla_deep_gp, DeepGP)
-    assert len(vanilla_deep_gp.f_layers) == num_layers
-
-    # check mean function
-    assert isinstance(vanilla_deep_gp.f_layers[-1].mean_function, gpflow.mean_functions.Constant)
-    npt.assert_allclose(vanilla_deep_gp.f_layers[-1].mean_function.parameters[0], empirical_mean)
-
-    # check kernel
-    assert isinstance(vanilla_deep_gp.f_layers[-1].kernel.kernel, gpflow.kernels.RBF)
-    npt.assert_allclose(vanilla_deep_gp.f_layers[-1].kernel.kernel.variance, empirical_variance)
-
     # check likelihood
-    assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood, gpflow.likelihoods.Gaussian)
     npt.assert_allclose(vanilla_deep_gp.likelihood_layer.likelihood.variance, likelihood_variance)
     assert vanilla_deep_gp.likelihood_layer.likelihood.variance.trainable == trainable_likelihood
 
@@ -100,18 +130,19 @@ def test_build_vanilla_deep_gp_returns_correct_model(
 def test_build_vanilla_deep_gp_raises_for_incorrect_args(keras_float: None) -> None:
     x = np.arange(10).reshape(-1, 1).astype(np.double)
     data = mk_dataset(x, quadratic(x))
+    search_space = Box([0.0], [10.0])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        build_vanilla_deep_gp(data, 0)
+        build_vanilla_deep_gp(data, search_space, 0)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        build_vanilla_deep_gp(data, num_inducing_points=0)
+        build_vanilla_deep_gp(data, search_space, num_inducing_points=0)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        build_vanilla_deep_gp(data, inner_layer_sqrt_factor=0)
+        build_vanilla_deep_gp(data, search_space, inner_layer_sqrt_factor=0)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        build_vanilla_deep_gp(data, likelihood_variance=0)
+        build_vanilla_deep_gp(data, search_space, likelihood_variance=0)
 
 
 @pytest.mark.parametrize("multiplier", [1, 2, 5])
@@ -121,10 +152,11 @@ def test_build_vanilla_deep_gp_gives_correct_num_inducing_points_and_num_data(
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
     data = mk_dataset(x, quadratic(x))
+    search_space = Box([0.0], [10.0])
 
     num_inducing_points = num_data * multiplier
 
-    vanilla_deep_gp = build_vanilla_deep_gp(data, num_inducing_points=num_inducing_points)
+    vanilla_deep_gp = build_vanilla_deep_gp(data, search_space, num_inducing_points=num_inducing_points)
 
     # correct num_inducing_points
     for layer in vanilla_deep_gp.f_layers:

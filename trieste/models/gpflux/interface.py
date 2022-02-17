@@ -38,10 +38,10 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
             be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
-            :class:`~tf.optimizers.Adam` optimizer with default parameters.
+            :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
         """
         if optimizer is None:
-            optimizer = KerasOptimizer(tf.optimizers.Adam())
+            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01))
 
         self._optimizer = optimizer
 
