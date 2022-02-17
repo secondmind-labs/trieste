@@ -47,7 +47,7 @@ from trieste.acquisition.rule import (
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer, TrainableProbabilisticModelType
 from trieste.logging import tensorboard_writer
-from trieste.models import TrainableProbabilisticModel
+from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
@@ -166,12 +166,12 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[
                     )
                 ),
             ),
-            (10, DiscreteThompsonSampling(500, 3)),
+            (15, DiscreteThompsonSampling(500, 5)),
             (
-                20,
+                15,
                 DiscreteThompsonSampling(
-                    500,
-                    3,
+                    1000,
+                    5,
                     thompson_sampler=ThompsonSamplerFromTrajectory(),
                 ),
             ),
@@ -225,8 +225,20 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
-    # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 5), acquisition_rule)
+    # branin; currently assume that every rule should be able to solve this in 6 steps
+    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 6), acquisition_rule)
+
+
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
+        10,
+        EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+    )
 
 
 @random_seed
@@ -249,6 +261,15 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         SparseVariational,
         50,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        optimize_branin=True,
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+    )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        10,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
         optimize_branin=True,
         model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
     )
@@ -464,5 +485,5 @@ def _test_optimizer_finds_minimum(
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule._acquisition_function
-                if isinstance(acq_function, AcquisitionFunctionClass):
+                if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
