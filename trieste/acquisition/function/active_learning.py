@@ -83,7 +83,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         return function  # no need to update anything
 
 
-def predictive_variance(model: SupportsPredictJoint, jitter: float) -> TensorType:
+def predictive_variance(model: SupportsPredictJoint, jitter: float) -> AcquisitionFunction:
     """
     The predictive variance acquisition function for active learning, based on
     the determinant of the covariance (see :cite:`MacKay1992` for details).
@@ -176,7 +176,7 @@ def bichon_ranjan_criterion(
     threshold: float,
     alpha: float,
     delta: int,
-) -> TensorType:
+) -> AcquisitionFunction:
     r"""
     Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
     (:cite:`ranjan2008sequential`) used in Expected feasibility acquisition function for active
