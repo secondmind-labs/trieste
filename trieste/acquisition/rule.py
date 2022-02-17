@@ -332,9 +332,12 @@ class AsynchronousRuleState:
                 # point to remove isn't there, nothing to do
                 return pending_points
 
+            # since we're compiling, we still need to handle pending_points = [] here
+            top = tf.cond(tf.math.greater(1, tf.shape(are_points_equal)[0]), lambda: 0, lambda: 1)
+
             # this line converts all bool values to 0 and 1
             # then finds first 1 and returns its index as 1x1 tensor
-            _, first_index_tensor = tf.math.top_k(tf.cast(are_points_equal, tf.int8), k=1)
+            _, first_index_tensor = tf.math.top_k(tf.cast(are_points_equal, tf.int8), k=top)
             # to use it as index for slicing, we need to convert 1x1 tensor to a TF scalar
             first_index = tf.reshape(first_index_tensor, [])
             return tf.concat(
