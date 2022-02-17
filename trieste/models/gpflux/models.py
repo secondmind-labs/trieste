@@ -75,6 +75,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         epochs = 400
+
         def scheduler(epoch: int, lr: float) -> float:
             if epoch == epochs // 2:
                 return lr * 0.1
