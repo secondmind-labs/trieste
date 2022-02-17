@@ -39,7 +39,6 @@ from trieste.models.gpflux.builders import (
 from trieste.space import Box
 
 
-@pytest.mark.skip
 def test_build_vanilla_deep_gp_returns_correct_defaults(keras_float: None) -> None:
     search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(100)

@@ -109,7 +109,7 @@ def build_vanilla_deep_gp(
 
     if num_inducing_points is None:
         num_inducing_points = min(
-            MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * search_space.dimension
+            MAX_NUM_INDUCING_POINTS, NUM_INDUCING_POINTS_PER_DIM * int(search_space.dimension)
         )
     else:
         tf.debugging.assert_positive(num_inducing_points)
