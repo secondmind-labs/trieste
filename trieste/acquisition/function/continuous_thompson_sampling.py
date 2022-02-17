@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import tensorflow as tf
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
@@ -159,13 +160,14 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
     if isinstance(function, TrajectoryFunctionClass):
 
         class NegatedTrajectory(type(function)):  # type: ignore[misc]
+            @tf.function
             def __call__(self, x: TensorType) -> TensorType:
                 return -1.0 * super().__call__(x)
 
         function.__class__ = NegatedTrajectory
 
     else:
-
+        @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
             return -1.0 * function(x)
 

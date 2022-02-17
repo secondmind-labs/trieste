@@ -23,9 +23,10 @@ from .interface import GPflowPredictor
 from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
 from .sampler import (
     BatchReparametrizationSampler,
+    DecoupledTrajectorySampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
-    fourier_feature_trajectory,
+    feature_decomposition_trajectory,
 )
 from .utils import (
     assert_data_is_compatible,
