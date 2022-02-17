@@ -591,13 +591,15 @@ class SparseVariational(
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
+    def __init__(self, model: SVGP, optimizer: Optimizer | None = None, inducing_point_selector = Optional[InducingPointSelector]=None):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
             batch size 100.
         """
+
+
 
         if optimizer is None:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
@@ -606,6 +608,10 @@ class SparseVariational(
         self._model = model
 
         check_optimizer(optimizer)
+
+        if inducing_point_selector is None: # TODO do nothing
+            inducing_point_selector = DummyInducingPointSelector() 
+        self._inducing_point_selector = inducing_point_selector
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
@@ -645,6 +651,19 @@ class SparseVariational(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
+
+
+
+
+
+        new_inducing_points = self._inducing_point_selector.update(self.model.inducing_variable.Z.copy(), self, self.dataset)
+
+
+
+
+
+
+
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType

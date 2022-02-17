@@ -33,3 +33,4 @@ from .utils import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+from .inducing_point_selectors import InducingPointSelector

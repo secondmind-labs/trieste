@@ -34,6 +34,10 @@ from ...models import ProbabilisticModel
 from ...types import TensorType
 from ...space import Box, SearchSpace
 
+from .builders import NUM_INDUCING_POINTS_PER_DIM, MAX_NUM_INDUCING_POINTS
+
+
+
 
 
 
@@ -42,103 +46,147 @@ class InducingPointSelector(ABC):
     TODO
     """
 
-    def __init__(self, search_space: SearchSpace, model : ProbabilisticModel, resample_every_step : bool = True):
-        self._search_space = search_space
-        self._model = model
-        self._resample_for_every_step = resample_every_step
-        # todo add required checks
-
-
+ 
     @abstractmethod
-    def get_inducing_points(self, M: int, dataset: Optional[Dataset]=None):
+    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
         """
-        :param M: Desired number of inducing points.
-        :param dataset: TODO 
-        :return: TODO perhaps need Variable
+        TODO
         """
         raise NotImplementedError
 
-    def update_inducing_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
+
+class DummyInducingPointSelector(InducingPointSelector):
+    """
+    Does nuffing
+    """
+    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
         """
         TODO
-
-        :param inducing_points: Current inducing point locations (to be updated by calling this method).
-        :param dataset: TODO
         """
-        M = tf.shape(inducing_points)[0]
-
-        if resample_every_step: # get M new points
-            return inducing_points.update(self.get_inducing_points(M, dataset))
-        else: # otherwise keep the same points
-            return inducing_points
+        return current_inducing_points
 
 
 
+class DynamicInducingPointSelector(ABC):
+    """
+    TODO
+    """
+
+    def __init__(self, search_space: SearchSpace,resample_every_step : bool = True):
+        """
+        TODO
+        """ 
+
+        self._search_space = search_space
+        self._resample_for_every_step = resample_every_step
+        self._initialized = False
+        # todo add required checks
 
 
+    
+    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
+        """
+        TODO
+        """
 
+        if self._initialized and not self._resample_for_every_step: # TODO
+            return current_inducing_points
+        else:
+            self._initialized = True
+            M = tf.shape(current_inducing_points)[0]
+            return recalculate_inducing_points(M, model, dataset)
 
-
-class UniformSampler(InducingPointSelector):
-	"""
-	TODO
-	"""
+ 
 
     @abstractmethod
-    def get_points(self,inducing_points: TensorType, dataset: Optional[Dataset]=None):
+    def _recalculate_inducing_points(M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None)
+        """
+        :param M: Desired number of inducing points.
+        :param model: TODO
+        :param dataset: TODO 
+        :return: TODO
+        """
+        raise NotImplementedError
+
+
+
+    
+
+
+
+
+
+class UniformInducingPointSelector(DynamicInducingPointSelector):
+    """
+    Choose points at random across space
+    """
+    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
+        
+        if isinstance(self._search_space, Box):
+            return self._seach_space.sample_sobol(M)
+        else:
+            return self._search_space.sample(M) 
+
+
+
+class RandomSubSampleInducingPointSelector(DynamicInducingPointSelector):
+	"""
+    Choose points at random from training data (fill remainder uniformly)
+
+	"""
+
+    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
         """
         :param inducing_points: Current inducing point locations (to be updated by calling this method).
         :param dataset: TODO (not optional)
         """
-
-        N = tf.shape(dataset.query_points)[0]
-        if N < M: 
-            raise ValueError("Need N>M") # TODO make select random for rest?
-
-        indicies = tf.random.categorical(tf.math.log(tf.ones([1, N])), M)
-        return tf.gather(X, tf.squeeze(indicies, 0))
+        # TODO say need dataset
 
 
-class RandomSampler(InducingPointSelector):
-	"""
-	TODO
-	"""
-    def get_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
-    	
-    	if isinstance(self.search_space, Box):
-        	return self._space.sample_halton(M)
-        else:
-            return self._space.sample(M)	
+        N = tf.shape(dataset.query_points)[0] # training data size
+        random_indicies = tf.random.categorical(tf.math.log(tf.ones([1, N])), tf.math.minimum(N, M))
+        sub_sample = tf.gather(X, tf.squeeze(random_indicies, 0)) # [min(N, M), d]
+
+        if N < M: # if fewer data than inducing points then sample remaining uniformly
+            uniform_sampler =  UniformInducingPointSelector(self._search_space, self._model)
+            uniform_sample = uniform_sampler.get_inducing_points(M-N) # [M-N, d]
+           
+        return tf.concat([sub_sample, uniform_sample],0) # [M, d]
 
 
-class KMeans(InducingPointSelector):
+class KMeansInducingPointSelector(DynamicInducingPointSelector):
     """
-	TODO
+	Choose points as the centroids from k-mean clustering
 	"""  
 
-    def get_points(self, inducing_points: TensorType, dataset: Optional[Dataset]=None):
+    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
     
-        N = len(dataset.query_points)
-        if N < M:
+        # TODO say need dataset
+
+        query_points = dataset.query_points # [N, d]
+        N = tf.shape(query_points)[0] 
+
+        if N < M: # TODO
             raise ValueError("Need N>M")
 
-        perm = tf.random.shuffle(tf.range(N))
-        
-        X = tf.gather(dataset.query_points, perm)
-        X_stds = tf.math.reduce_std(X, 0)
-        if tf.math.count_nonzero(X_stds)==len(X_stds):
-            X_norm = X / X_stds
-        else:
-            X_norm = X
+        shuffled_query_points = tf.shuffle(query_points)
+        query_points_stds = tf.math.reduce_std(shuffled_query_points, 1)
 
-        centroids, _ = kmeans(X_norm, int(M))
-        if len(centroids) < M:  # sometimes scipy returns fewer centroids
-            extra_points = M - len(centroids)
-            extra_indicies = tf.random.categorical(tf.math.log(tf.ones([1, N])), extra_points)
-            extra_centroids = tf.gather(X_norm, tf.squeeze(extra_indicies, 0))
+        if  tf.math.count_nonzero(X_stds) == N:
+            normalize = True
+            shuffled_query_points = shuffled_query_points / query_points_stds
+        else:
+            normalize = False
+
+        centroids, _ = kmeans(shuffled_query_points, int(M))
+
+        if len(centroids) < M:  # sometimes scipy returns fewer centroids so choose rest as uniform
+            uniform_sampler =  UniformInducingPointSelector(self._search_space, self._model)
+            extra_centroids = uniform_sampler.get_inducing_points(M- len(centroids)) 
+            extra_centroids = extra_centroids / query_points_stds # remember to standardize
             centroids = tf.concat([centroids, extra_centroids], axis=0)
         
-        if tf.math.count_nonzero(X_stds)==len(X_stds):
-            return centroids * X_stds
+        if normalize:
+            return centroids * query_points_stds
         else:
             return centroids
