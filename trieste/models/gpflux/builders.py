@@ -32,8 +32,7 @@ from ...data import Dataset
 from ...space import Box, SearchSpace
 from ...types import TensorType
 
-
-NUM_LAYERS:int = 2
+NUM_LAYERS: int = 2
 """
 Default number of layers in the deep gaussian process model.
 """
@@ -122,9 +121,7 @@ def build_vanilla_deep_gp(
                 num_inducing_points - len(query_points)
             ).numpy()
         else:
-            additional_points = search_space.sample(
-                num_inducing_points - len(query_points)
-            ).numpy()
+            additional_points = search_space.sample(num_inducing_points - len(query_points)).numpy()
         query_points = np.concatenate([query_points, additional_points], 0)
 
     config = Config(

@@ -25,7 +25,6 @@ from trieste.models.objectives import HARTMANN_6_SEARCH_SPACE
 from trieste.models.optimizer import KerasOptimizer
 
 
-
 @pytest.fixture(name="depth", params=[2, 3])
 def _depth_fixture(request: Any) -> int:
     return request.param
@@ -36,12 +35,16 @@ def _depth_fixture(request: Any) -> int:
 def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
     dataset_size = 50
     num_inducing = 50
-    batch_size = 50
-
+    
     example_data = hartmann_6_dataset(dataset_size)
 
     dgp = build_vanilla_deep_gp(
-        example_data, HARTMANN_6_SEARCH_SPACE, depth, num_inducing, likelihood_variance=1e-5, trainable_likelihood=False
+        example_data,
+        HARTMANN_6_SEARCH_SPACE,
+        depth,
+        num_inducing,
+        likelihood_variance=1e-5,
+        trainable_likelihood=False,
     )
     model = DeepGaussianProcess(dgp)
     model.optimize(example_data)

@@ -29,18 +29,19 @@ from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
 from trieste.models.gpflux.builders import (
-    _get_data_stats, build_vanilla_deep_gp,
-    NUM_LAYERS, 
+    LIKELIHOOD_VARIANCE,
     MAX_NUM_INDUCING_POINTS,
     NUM_INDUCING_POINTS_PER_DIM,
-    INNER_LAYER_SQRT_FACTOR,
-    LIKELIHOOD_VARIANCE,
+    NUM_LAYERS,
+    _get_data_stats,
+    build_vanilla_deep_gp,
 )
 from trieste.space import Box
 
-# @pytest.mark.skip
+
+@pytest.mark.skip
 def test_build_vanilla_deep_gp_returns_correct_defaults(keras_float: None) -> None:
-    search_space = Box([0.0], [1.0])**4
+    search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(100)
     data = mk_dataset(x, quadratic(x))
 
@@ -156,7 +157,9 @@ def test_build_vanilla_deep_gp_gives_correct_num_inducing_points_and_num_data(
 
     num_inducing_points = num_data * multiplier
 
-    vanilla_deep_gp = build_vanilla_deep_gp(data, search_space, num_inducing_points=num_inducing_points)
+    vanilla_deep_gp = build_vanilla_deep_gp(
+        data, search_space, num_inducing_points=num_inducing_points
+    )
 
     # correct num_inducing_points
     for layer in vanilla_deep_gp.f_layers:
