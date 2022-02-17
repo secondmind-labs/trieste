@@ -13,8 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Tuple, cast
-
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -44,33 +42,27 @@ from trieste.types import TensorType
 @random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
-    cast(
-        List[
-            Tuple[
-                int,
-                AcquisitionRule[TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel],
-            ]
-        ],
-        [
-            (25, EfficientGlobalOptimization()),
-            (
-                5,
-                EfficientGlobalOptimization(
-                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
+    [
+        pytest.param(25, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                num_query_points=3,
             ),
-            (
-                8,
-                EfficientGlobalOptimization(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
+            id="BatchMonteCarloExpectedImprovement",
+        ),
+        pytest.param(
+            8,
+            EfficientGlobalOptimization(
+                LocalPenalization(
+                    BRANIN_SEARCH_SPACE,
+                ).using(OBJECTIVE),
+                num_query_points=3,
             ),
-        ],
-    ),
+            id="LocalPenalization",
+        ),
+    ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
