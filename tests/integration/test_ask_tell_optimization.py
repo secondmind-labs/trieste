@@ -77,11 +77,18 @@ OPTIMIZER_PARAMS = (
             ]
         ],
         [
-            (20, False, lambda: EfficientGlobalOptimization()),
-            (20, True, lambda: EfficientGlobalOptimization()),
-            (15, False, lambda: TrustRegion()),
-            (15, True, lambda: TrustRegion()),
-            (
+            pytest.param(
+                20, False, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"
+            ),
+            pytest.param(
+                20,
+                True,
+                lambda: EfficientGlobalOptimization(),
+                id="EfficientGlobalOptimization/reload_state",
+            ),
+            pytest.param(15, False, lambda: TrustRegion(), id="TrustRegion"),
+            pytest.param(15, True, lambda: TrustRegion(), id="TrustRegion/reload_state"),
+            pytest.param(
                 10,
                 False,
                 lambda: EfficientGlobalOptimization(
@@ -90,8 +97,9 @@ OPTIMIZER_PARAMS = (
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="LocalPenalization",
             ),
-            (
+            pytest.param(
                 30,
                 False,
                 lambda: AsynchronousGreedy(
@@ -99,6 +107,7 @@ OPTIMIZER_PARAMS = (
                         BRANIN_SEARCH_SPACE,
                     ).using(OBJECTIVE),
                 ),
+                id="LocalPenalization/AsynchronousGreedy",
             ),
         ],
     ),

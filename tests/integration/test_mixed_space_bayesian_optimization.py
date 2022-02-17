@@ -52,15 +52,16 @@ from trieste.types import TensorType
             ]
         ],
         [
-            (25, EfficientGlobalOptimization()),
-            (
+            pytest.param(25, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            pytest.param(
                 5,
                 EfficientGlobalOptimization(
                     BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="BatchMonteCarloExpectedImprovement",
             ),
-            (
+            pytest.param(
                 8,
                 EfficientGlobalOptimization(
                     LocalPenalization(
@@ -68,6 +69,7 @@ from trieste.types import TensorType
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="LocalPenalization",
             ),
         ],
     ),
