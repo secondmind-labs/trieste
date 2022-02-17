@@ -47,7 +47,7 @@ from trieste.acquisition.rule import (
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import BayesianOptimizer, TrainableProbabilisticModelType
 from trieste.logging import tensorboard_writer
-from trieste.models import TrainableProbabilisticModel
+from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
@@ -485,5 +485,5 @@ def _test_optimizer_finds_minimum(
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule._acquisition_function
-                if isinstance(acq_function, AcquisitionFunctionClass):
+                if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
