@@ -14,12 +14,13 @@
 from __future__ import annotations
 
 import tempfile
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union, cast
+from typing import Any, List, Mapping, Optional, Tuple, Type, cast
 
 import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from _pytest.mark import ParameterSet
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import two_layer_dgp_model
@@ -78,25 +79,7 @@ from trieste.types import State, TensorType
 # Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
-def GPR_OPTIMIZER_PARAMS() -> Tuple[
-    str,
-    List[
-        Tuple[
-            int,
-            Union[
-                AcquisitionRule[TensorType, Box, GaussianProcessRegression],
-                AcquisitionRule[
-                    State[
-                        TensorType,
-                        Union[AsynchronousRuleState, TrustRegion.State],
-                    ],
-                    Box,
-                    GaussianProcessRegression,
-                ],
-            ],
-        ]
-    ],
-]:
+def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
