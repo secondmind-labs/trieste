@@ -91,7 +91,7 @@ class Dataset:
             tf.concat([self.observations, rhs.observations], axis=0),
         )
 
-    def __len__(self) -> TensorType:
+    def __len__(self) -> tf.Tensor:
         """
         :return: The number of query points, or equivalently the number of observations.
         """

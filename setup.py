@@ -38,7 +38,7 @@ setup(
     python_requires="~=3.7",
     install_requires=[
         "absl-py",
-        "gpflow==2.2.*",
+        "gpflow>=2.3.0",
         "gpflux>=0.2.3",
         "numpy",
         "tensorflow>=2.4",
