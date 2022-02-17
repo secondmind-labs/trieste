@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import greenlet as gr
 import numpy as np
@@ -480,7 +480,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
                 # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
                 cache_y, cache_dy_dx = self.parent.switch(cache_x)
 
-            return cache_y, cache_dy_dx
+            return cast(np.ndarray, cache_y), cast(np.ndarray, cache_dy_dx)
 
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],

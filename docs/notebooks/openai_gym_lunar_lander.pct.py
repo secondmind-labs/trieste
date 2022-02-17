@@ -243,7 +243,7 @@ plotting.plot_regret(
 # Here we choose the query point that gives the best predictive expected reward according to our model. When running the simulation with at this point, we expect to see mostly large positive rewards.
 
 # %%
-mean, _ = result.model.predict(result.dataset.query_points)
+mean = result.model.predict(result.dataset.query_points)[0]
 w_best = result.dataset.query_points[np.argmin(mean), :]
 
 for _ in range(10):

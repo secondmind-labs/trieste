@@ -44,6 +44,7 @@ from trieste.models.gpflow.builders import (
     build_vgp_classifier,
 )
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize("kernel_priors", [True, False])
@@ -315,7 +316,7 @@ def _check_likelihood(
     model: GPModel,
     classification: bool,
     likelihood_variance: Optional[float],
-    empirical_variance: Optional[float],
+    empirical_variance: Optional[TensorType],
     trainable_likelihood: bool,
 ) -> None:
     if classification:
@@ -334,7 +335,7 @@ def _check_likelihood(
 
 
 def _check_mean_function(
-    model: GPModel, classification: bool, empirical_mean: Optional[float]
+    model: GPModel, classification: bool, empirical_mean: Optional[TensorType]
 ) -> None:
     assert isinstance(model.mean_function, gpflow.mean_functions.Constant)
     if classification:
@@ -347,7 +348,7 @@ def _check_kernel(
     model: GPModel,
     classification: bool,
     kernel_variance: Optional[float],
-    empirical_variance: float,
+    empirical_variance: TensorType,
     kernel_priors: bool,
     noise_free: bool,
 ) -> None:
@@ -361,7 +362,7 @@ def _check_kernel(
             else:
                 variance = CLASSIFICATION_KERNEL_VARIANCE
     else:
-        variance = empirical_variance
+        variance = float(empirical_variance)
     npt.assert_allclose(model.kernel.variance, variance, rtol=1e-6)
     if kernel_priors:
         if noise_free:
