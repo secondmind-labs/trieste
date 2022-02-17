@@ -21,7 +21,7 @@ from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 
 from tests.util.misc import hartmann_6_dataset, random_seed
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.objectives import HARTMANN_6_SEARCH_SPACE
+from trieste.objectives import HARTMANN_6_SEARCH_SPACE
 from trieste.models.optimizer import KerasOptimizer
 
 
@@ -30,7 +30,7 @@ def _depth_fixture(request: Any) -> int:
     return request.param
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
 @random_seed
 def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
     dataset_size = 50
@@ -53,7 +53,7 @@ def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
     np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
 @random_seed
 def test_dgp_model_close_to_simple_implementation(depth: int, keras_float: None) -> None:
     dataset_size = 50

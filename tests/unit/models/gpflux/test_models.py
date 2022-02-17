@@ -258,15 +258,17 @@ def test_deep_gaussian_process_default_optimizer_is_correct(
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
     model = DeepGaussianProcess(two_layer_model(x))
+    model_fit_args = dict(model.optimizer.fit_args)
+    model_fit_args.pop("callbacks")
     fit_args = {
         "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
+        "epochs": 400,
+        "batch_size": 1000,
     }
 
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    assert model.optimizer.fit_args == fit_args
+    assert model_fit_args == fit_args
 
 
 def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
@@ -278,15 +280,17 @@ def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
     model = DummySubClass(two_layer_model(x))
+    model_fit_args = dict(model.optimizer.fit_args)
+    model_fit_args.pop("callbacks")
     fit_args = {
         "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
+        "epochs": 400,
+        "batch_size": 1000,
     }
 
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    assert model.optimizer.fit_args == fit_args
+    assert model_fit_args == fit_args
 
 
 @pytest.mark.skip

@@ -74,6 +74,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
+        epochs = 400
         def scheduler(epoch: int, lr: float) -> float:
             if epoch == epochs // 2:
                 return lr * 0.1
@@ -83,7 +84,7 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 400,
+                "epochs": epochs,
                 "batch_size": 1000,
                 "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
             }
