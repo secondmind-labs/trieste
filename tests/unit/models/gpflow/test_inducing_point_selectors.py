@@ -13,14 +13,8 @@
 # limitations under the License.
 
 """
-In this module, we test the *behaviour* of trieste models against reference GPflow models (thus
-implicitly assuming the latter are correct).
+In this module, we test the *behaviour* of trieste's iducing point selectors.
 
-*NOTE:* Where GPflow models are used as the underlying model in an trieste model, we should
-*not* test that the underlying model is used in any particular way. To do so would break
-encapsulation. For example, we should *not* test that methods on the GPflow models are called
-(except in the rare case that such behaviour is an explicitly documented behaviour of the
-trieste model).
 """
 
 from __future__ import annotations
