@@ -398,8 +398,8 @@ def _test_optimizer_finds_minimum(
         model = VariationalGaussianProcess(vgp, **model_args)
 
     elif model_type is SparseVariational:
-        gpr = build_svgp(initial_data, search_space)
-        model = SparseVariational(gpr, **model_args)
+        svgp = build_svgp(initial_data, search_space)
+        model = SparseVariational(svgp, **model_args)
 
     elif model_type is DeepGaussianProcess:
         track_state = False
