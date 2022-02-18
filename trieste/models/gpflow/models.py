@@ -709,7 +709,13 @@ class SparseVariational(
             new_inducing_points = self._inducing_point_selector.update(
                 current_inducing_points, self, dataset
             )
-            self._update_inducing_variables(new_inducing_points)
+            if not tf.reduce_all(
+                tf.math.equal(
+                    new_inducing_points,
+                    current_inducing_points,
+                )
+            ):  # only bother updating if points actually change
+                self._update_inducing_variables(new_inducing_points)
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
@@ -990,14 +996,14 @@ class VariationalGaussianProcess(
         x, y = self.model.data[0].value(), self.model.data[1].value()
         assert_data_is_compatible(dataset, Dataset(x, y))
 
-        model.data[0].assign(dataset.query_points)
-        model.data[1].assign(dataset.observations)
-        model.num_data = len(dataset)
-
         # GPflow's VGP model is hard-coded to use the whitened representation.
         new_q_mu, new_q_sqrt = _whiten_points(self, dataset.query_points)
         model.q_mu.assign(new_q_mu)
         model.q_sqrt.assign(new_q_sqrt)
+
+        model.data[0].assign(dataset.query_points)  # do not update data until called _whiten_points
+        model.data[1].assign(dataset.observations)
+        model.num_data = len(dataset)
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -1273,7 +1279,7 @@ def _whiten_points(
     :para inducing_points: The new inducing point locations.
     :return: The updated q_mu and q_sqrt with shapes [N, L] and [L, N, N], respectively.
     """
-    f_mu, f_cov = model.predict_joint(inducing_points)  # [N, L], [L, N, N]
+    f_mu, f_cov = model.model.predict_f(inducing_points, full_cov=True)  # [N, L], [L, N, N]
     Knn = model.get_kernel()(inducing_points, full_cov=True)  # [N, N]
     jitter_mat = DEFAULTS.JITTER * tf.eye(tf.shape(inducing_points)[0], dtype=Knn.dtype)
     Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]

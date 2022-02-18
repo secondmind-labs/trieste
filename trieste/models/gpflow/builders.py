@@ -182,7 +182,9 @@ def build_sgpr(
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
-    inducing_points = _get_inducing_points(search_space, num_inducing_points)
+    inducing_points = gpflow.inducing_variables.InducingPoints(
+        _get_inducing_points(search_space, num_inducing_points)
+    )
 
     model = SGPR(data.astuple(), kernel, inducing_points, mean_function=mean)
 

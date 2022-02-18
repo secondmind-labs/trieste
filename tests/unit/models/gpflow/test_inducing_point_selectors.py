@@ -25,28 +25,23 @@ trieste model).
 
 from __future__ import annotations
 
-import unittest.mock
-from typing import Any, cast
+from typing import Callable
 
-import gpflow
-import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
-from tests.util.models.gpflow.models import svgp_model
+from tests.util.misc import random_seed
+from tests.util.models.gpflow.models import mock_data, svgp_model
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models.gpflow import SparseVariational,
+from trieste.models.gpflow import SparseVariational
 from trieste.models.gpflow.inducing_point_selectors import (
     InducingPointSelector,
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
 )
-
 from trieste.space import Box, SearchSpace
 
 
@@ -67,24 +62,6 @@ def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
     inducing_points = [mock_data()[0], mock_data()[0]]
     with pytest.raises(NotImplementedError):
         selector.update(inducing_points, model, dataset)
-
-
-@pytest.mark.parametrize(
-    "selector",
-    [
-        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
-        KMeansInducingPointSelector(Box([0.0], [1.0])),
-    ],
-)
-def test_some_inducing_point_selectors_raise_if_empty_dataset(
-    selector: InducingPointSelector[SparseVariational],
-) -> None:
-    dataset = Dataset(*mock_data())
-    svgp = svgp_model(*mock_data())
-    model = SparseVariational(svgp)
-    inducing_points = mock_data()[0]
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        selector.update(inducing_points, model, None)
 
 
 @pytest.mark.parametrize("more_inducing_points_than_data", [True, False])
@@ -143,7 +120,7 @@ def test_inducing_point_selectors_choose_points_still_in_space(
 )
 @pytest.mark.parametrize("recalc_every_model_update", [True, False])
 def test_inducing_point_selectors_update_correct_number_of_times(
-    selector_name: Callable[[SearchSpace, bool], InducingPointSelector],
+    selector_name: Callable[[SearchSpace, bool], InducingPointSelector[SparseVariational]],
     recalc_every_model_update: bool,
 ) -> None:
     selector = selector_name(Box([0.0], [1.0]), recalc_every_model_update)

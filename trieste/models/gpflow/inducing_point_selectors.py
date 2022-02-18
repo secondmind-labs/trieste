@@ -155,7 +155,7 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[SupportsGetIndu
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
 
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(len(dataset.query_points) is not None, [])
 
         N = tf.shape(dataset.query_points)[0]  # training data size
         shuffled_query_points = tf.random.shuffle(dataset.query_points)  # [N, d]
