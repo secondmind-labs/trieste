@@ -180,7 +180,7 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     best = tf.constant([0], dtype=tf.float64)
     lipschitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
+        penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_method() -> None:
