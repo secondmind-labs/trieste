@@ -31,95 +31,103 @@ from scipy.cluster.vq import kmeans
 
 from ...data import Dataset
 from ..interfaces import ProbabilisticModel
+from .models import SparseVariational
 from ...types import TensorType
 from ...space import Box, SearchSpace
 
-from .builders import NUM_INDUCING_POINTS_PER_DIM, MAX_NUM_INDUCING_POINTS
-
+from gpflow.inducing_variables import SeparateIndependentInducingVariables
 
 
 class InducingPointSelector(ABC):
     """
-    TODO
-    """
+    This class provides functionality to update the inducing points of a :class:`SparseVariational` model
+    as the Bayesian optimization progresses.
 
- 
-    @abstractmethod
-    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
-        """
-        TODO
-        """
-        
+    The only constraint on subclasses of :class:`InducingPointSelector` is that they preserve the shape of the inducing points
+    so not to trigger expensive retracing.
 
-
-class DummyInducingPointSelector(InducingPointSelector):
-    """
-    Does nuffing
-    """
-    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
-        """
-        TODO
-        """
-        return current_inducing_points
-
-
-
-class DynamicInducingPointSelector(ABC):
-    """
-    TODO
+    It can often be beneficial to change the inducing points during optimization, for example
+    to allow the model to focus its limited modelling resources into promising areas of the space.
+    See :cite:`vakili2021scalable` for demonstrations of some of our :class:`InducingPointSelectors`.
     """
 
     def __init__(self, search_space: SearchSpace,recalc_every_model_update : bool = True):
         """
-        TODO
+        :param search_space: The global search space over which the optimization is defined.
+        :param recalc_every_model_update: If True then update the inducing points for each
+            model update, otherwise just update on the first call.
         """ 
 
         self._search_space = search_space
         self._recalc_every_model_update = recalc_every_model_update
         self._initialized = False
-        # todo add required checks
 
 
-    
-    def update(self, current_inducing_points: TensorType, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
+    def update(self, current_inducing_points: TensorType, model: Optional[SparseVariational], dataset: Optional[Dataset]=None) -> TensorType:
         """
-        TODO
+        Calculate the new inducing points given the existing inducing points. 
+
+        If `recalc_every_model_update` is set to False then we only generate new inducing points for the
+        first :meth:`update` call, otherwise we just return the current inducing points.
+
+        :param current_inducing_points: The current inducing points used by the model.
+        :param model: The sparse model (optional).
+        :param dataset: The data from the observer (optional).
+        :return: The new updated inducing points.
+        :raise NotImplementedError: If model has more than one set of inducing variables.
         """
+        tf.debugging.Assert(current_inducing_points is not None, [])
+
         if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
-            raise ValueError(
-                f"TODO"
-            )     
+            raise NotImplementedError(
+                f"""
+                InducingPointSelectors only currently support models with a single set of inducing points
+                however received inducing points of type {type(self.model.inducing_variable)}.
+                """
+                )
 
-        if self._initialized and (not self._recalc_every_model_update): # TODO
-            return current_inducing_points
-        else:
+        if (not self._initialized) or self._recalc_every_model_update: # calculate new inducing points when required
             self._initialized = True
             M = tf.shape(current_inducing_points)[0]
+            new_inducing_points = self._recalculate_inducing_points(M, model, dataset) # [M, D]
+            tf.assert_equal(tf.shape(current_inducing_points), tf.shape(new_inducing_points)) 
+            return new_inducing_points # [M, D]
+        else: # otherwise dont recalculate
+            return current_inducing_points # [M, D]
 
-            # TODO check new is of same shape!
-
-            return self._recalculate_inducing_points(M, model, dataset)
- 
-
+           
     @abstractmethod
-    def _recalculate_inducing_points(M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
+    def _recalculate_inducing_points(M: int, model: Optional[SparseVariational], dataset: Optional[Dataset]=None) -> TensorType:
         """
+        Method for calculating new inducing points given a `model` and `dataset`.
+
+        This method is to be implemented by all subclasses of :class:`InducingPointSelector`.
+
         :param M: Desired number of inducing points.
-        :param model: TODO
-        :param dataset: TODO 
-        :return: TODO
+        :param model: The sparse model (optional).
+        :param dataset: The data from the observer (optional).
+        :return: The new updated inducing points.
         """
         raise NotImplementedError
 
 
 
 
-class UniformInducingPointSelector(DynamicInducingPointSelector):
+class UniformInducingPointSelector(InducingPointSelector):
     """
-    Choose points at random across space
+    An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space. 
     """
-    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
-        
+    def _recalculate_inducing_points(self,M: int, model: Optional[SparseVariational], dataset: Optional[Dataset]=None) -> TensorType:
+        """
+        Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol design to
+        ensure high diversity.
+
+        :param M: Desired number of inducing points.
+        :param model: The sparse model (not needed).
+        :param dataset: The data from the observer (not needed). 
+        :return: The new updated inducing points.
+        """   
+
         if isinstance(self._search_space, Box):
             return self._search_space.sample_sobol(M)
         else:
@@ -127,18 +135,24 @@ class UniformInducingPointSelector(DynamicInducingPointSelector):
 
 
 
-class RandomSubSampleInducingPointSelector(DynamicInducingPointSelector):
+class RandomSubSampleInducingPointSelector(InducingPointSelector):
     """
-    Choose points at random from training data (fill remainder uniformly)
+    An :class:`InducingPointSelector` that chooses points at random from the training data.
     """
 
-    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
+    def _recalculate_inducing_points(self,M: int, model: Optional[SparseVariational], dataset: Optional[Dataset]=None) -> TensorType:
         """
-        :param inducing_points: Current inducing point locations (to be updated by calling this method).
-        :param dataset: TODO (not optional)
-        """
+        Sample `M` points from the training data. If we require more inducing points than training data,
+        then we fill the remaining points with random samples across the search space.
+
+        :param M: Desired number of inducing points.
+        :param model: The sparse model (not needed).
+        :param dataset: The data from the observer. Must be populated.
+        :return: The new updated inducing points.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """   
         # TODO say need dataset
-
+        tf.debugging.Assert(dataset is not None, [])
 
         N = tf.shape(dataset.query_points)[0] # training data size
         random_indicies = tf.random.categorical(tf.math.log(tf.ones([1, N])), tf.math.minimum(N, M))
@@ -151,14 +165,27 @@ class RandomSubSampleInducingPointSelector(DynamicInducingPointSelector):
         return tf.concat([sub_sample, uniform_sample],0) # [M, d]
 
 
-class KMeansInducingPointSelector(DynamicInducingPointSelector):
+class KMeansInducingPointSelector(InducingPointSelector):
     """
-	Choose points as the centroids from k-mean clustering
-	"""  
+    An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering of the
+    training data.
+    """
 
-    def _recalculate_inducing_points(self,M: int, model: Optional[ProbabilisticModel], dataset: Optional[Dataset]=None):
-    
-        # TODO say need dataset
+    def _recalculate_inducing_points(self,M: int, model: Optional[SparseVariational], dataset: Optional[Dataset]=None) -> TensorType:
+        """
+        Calculate `M` centroids from a K-means clustering of the training data.
+
+        If the clustering returns fewer than `M` centroids or if we have fewer than `M` training data,
+        then we fill the remaining points with random samples across the search space.
+
+        :param M: Desired number of inducing points.
+        :param model: The sparse model (not needed).
+        :param dataset: The data from the observer. Must be populated.
+        :return: The new updated inducing points.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """   
+
+        tf.debugging.Assert(dataset is not None, [])
 
         query_points = dataset.query_points # [N, d]
         N = tf.shape(query_points)[0] 
@@ -174,7 +201,7 @@ class KMeansInducingPointSelector(DynamicInducingPointSelector):
 
         centroids, _ = kmeans(shuffled_query_points, int(tf.math.minimum(M,N))) # [C, d]
 
-        if len(centroids) < M:  # sometimes scipy returns fewer centroids or if less data than desred TODO so choose rest as uniform
+        if len(centroids) < M:  # choose remaining points as random samples
             uniform_sampler =  UniformInducingPointSelector(self._search_space, self._model)
             extra_centroids = uniform_sampler.get_inducing_points(M - len(centroids)) # [M-C, d]
             extra_centroids = extra_centroids / query_points_stds # remember to standardize

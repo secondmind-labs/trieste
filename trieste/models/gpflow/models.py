@@ -52,7 +52,7 @@ from ..interfaces import (
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
-from .inducing_point_selectors import InducingPointSelector, DummyInducingPointSelector
+from .inducing_point_selectors import InducingPointSelector
 from .utils import (
     assert_data_is_compatible,
     check_optimizer,
@@ -645,9 +645,6 @@ class SparseVariational(
                 raise ValueError(
                 f"TODO"
             )     
-        else:
-            if inducing_point_selector is None: # TODO do nothing
-                inducing_point_selector = DummyInducingPointSelector() 
 
         self._inducing_point_selector = inducing_point_selector
 
