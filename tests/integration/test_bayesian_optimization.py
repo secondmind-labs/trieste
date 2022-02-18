@@ -164,15 +164,6 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(
                 15,
-                DiscreteThompsonSampling(
-                    1000,
-                    5,
-                    thompson_sampler=ThompsonSamplerFromTrajectory(),
-                ),
-                id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
-            ),
-            pytest.param(
-                15,
                 EfficientGlobalOptimization(
                     Fantasizer(),
                     num_query_points=3,
@@ -265,7 +256,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
-        10,
+        15,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
