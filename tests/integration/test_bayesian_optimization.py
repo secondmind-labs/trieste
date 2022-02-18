@@ -23,7 +23,6 @@ import tensorflow as tf
 from _pytest.mark import ParameterSet
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflux.models import two_layer_dgp_model
 from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
@@ -57,8 +56,8 @@ from trieste.models.gpflow import (
     build_gpr,
     build_svgp,
 )
-from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble, negative_log_likelihood
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
 from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -404,27 +403,12 @@ def _test_optimizer_finds_minimum(
 
     elif model_type is DeepGaussianProcess:
         track_state = False
-        epochs = 400
-        batch_size = 100
-        dgp = two_layer_dgp_model(initial_data.query_points)
-
-        def scheduler(epoch: int, lr: float) -> float:
-            if epoch == epochs // 2:
-                return lr * 0.1
-            else:
-                return lr
-
-        fit_args = {
-            "batch_size": batch_size,
-            "epochs": epochs,
-            "verbose": 0,
-            "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-        }
-        dgp_optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
-        model = DeepGaussianProcess(dgp, dgp_optimizer)
+        dgp = build_vanilla_deep_gp(initial_data, search_space)
+        model = DeepGaussianProcess(dgp, **model_args)
 
     elif model_type is DeepEnsemble:
         track_state = False
+
         keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
         fit_args = {
             "batch_size": 20,
@@ -436,9 +420,7 @@ def _test_optimizer_finds_minimum(
             ],
             "verbose": 0,
         }
-        de_optimizer = KerasOptimizer(
-            tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
-        )
+        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
         model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
     else:
