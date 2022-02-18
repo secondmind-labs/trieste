@@ -24,9 +24,15 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
+from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
+from ..interface import (
+    AcquisitionFunction,
+    AcquisitionFunctionClass,
+    ProbabilisticModelType,
+    SingleModelAcquisitionBuilder,
+)
 from ..multi_objective.pareto import (
     Pareto,
     get_reference_point,
@@ -201,7 +207,7 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[ProbabilisticModel]
+    SingleModelAcquisitionBuilder[HasReparamSampler]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
@@ -221,8 +227,6 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        super().__init__()
-
         self._sample_size = sample_size
         self._jitter = jitter
 
@@ -235,7 +239,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
 
     def prepare_acquisition_function(
         self,
-        model: ProbabilisticModel,
+        model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -254,21 +258,18 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(_reference_pt, _pf.front)
 
-        try:
-            sampler = model.reparam_sampler(self._sample_size)
-        except (NotImplementedError):
+        if not isinstance(model, HasReparamSampler):
             raise ValueError(
-                """
-                The batch Monte-Carlo expected hyper-volume improvment acquisition function
-                only supports models that implement a reparam_sampler method.
-                """
+                f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
+                f"models that implement a reparam_sampler method; received {model.__repr__()}"
             )
 
+        sampler = model.reparam_sampler(self._sample_size)
         return batch_ehvi(sampler, self._jitter, _partition_bounds)
 
 
 def batch_ehvi(
-    sampler: ReparametrizationSampler,
+    sampler: ReparametrizationSampler[HasReparamSampler],
     sampler_jitter: float,
     partition_bounds: tuple[TensorType, TensorType],
 ) -> AcquisitionFunction:
@@ -333,7 +334,9 @@ def batch_ehvi(
     return acquisition
 
 
-class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
+class ExpectedConstrainedHypervolumeImprovement(
+    ExpectedConstrainedImprovement[ProbabilisticModelType]
+):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
     This function essentially combines ExpectedConstrainedImprovement and
@@ -349,7 +352,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
         )
 
     def _update_expected_improvement_fn(
-        self, objective_model: ProbabilisticModel, feasible_mean: TensorType
+        self, objective_model: ProbabilisticModelType, feasible_mean: TensorType
     ) -> None:
         """
         Set or update the unconstrained expected improvement function.
@@ -366,6 +369,7 @@ class ExpectedConstrainedHypervolumeImprovement(ExpectedConstrainedImprovement):
             _pf.front,
         )
 
+        self._expected_improvement_fn: Optional[AcquisitionFunction]
         if self._expected_improvement_fn is None:
             self._expected_improvement_fn = expected_hv_improvement(
                 objective_model, _partition_bounds

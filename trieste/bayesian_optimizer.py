@@ -32,20 +32,26 @@ from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
+from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, map_values
+from .utils import Err, Ok, Result, Timer, map_values
 
-S = TypeVar("S")
+StateType = TypeVar("StateType")
 """ Unbound type variable. """
 
-SP = TypeVar("SP", bound=SearchSpace)
+SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
+
+TrainableProbabilisticModelType = TypeVar(
+    "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
+)
+""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
 @dataclass(frozen=True)
-class Record(Generic[S]):
+class Record(Generic[StateType]):
     """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[str, Dataset]
@@ -54,7 +60,7 @@ class Record(Generic[S]):
     models: Mapping[str, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
-    acquisition_state: S | None
+    acquisition_state: StateType | None
     """ The acquisition state. """
 
     @property
@@ -77,23 +83,23 @@ class Record(Generic[S]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[S]):
+class OptimizationResult(Generic[StateType]):
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[S]]
+    final_result: Result[Record[StateType]]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[S]]
+    history: list[Record[StateType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
     :attr:`final_result`.
     """
 
-    def astuple(self) -> tuple[Result[Record[S]], list[Record[S]]]:
+    def astuple(self) -> tuple[Result[Record[StateType]], list[Record[StateType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -149,18 +155,14 @@ class OptimizationResult(Generic[S]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
 
-class BayesianOptimizer(Generic[SP]):
+class BayesianOptimizer(Generic[SearchSpaceType]):
     """
     This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(
-        self,
-        observer: Observer,
-        search_space: SP,
-    ):
+    def __init__(self, observer: Observer, search_space: SearchSpaceType):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -190,8 +192,10 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -206,13 +210,51 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
-        acquisition_state: S | None = None,
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+        # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
+        # checker can't differentiate between TensorType and State[S | None, TensorType], and
+        # the return types clash. object is close enough to None that object will do.
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[StateType]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Mapping[str, Dataset],
+        # there's no way to statically check config-based models
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[StateType]:
         ...
 
     @overload
@@ -232,8 +274,10 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -245,27 +289,67 @@ class BayesianOptimizer(Generic[SP]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
-        acquisition_state: S | None = None,
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S]:
+    ) -> OptimizationResult[object]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[StateType]:
+        ...
+
+    @overload
+    def optimize(
+        self,
+        num_steps: int,
+        datasets: Dataset,
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        fit_initial_model: bool = True,
+    ) -> OptimizationResult[StateType]:
         ...
 
     def optimize(
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        model_specs: Mapping[str, TrainableProbabilisticModelType]
+        | Mapping[str, ModelSpec]
+        | TrainableProbabilisticModelType
+        | ModelConfigType,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ]
         | None = None,
-        acquisition_state: S | None = None,
+        acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
-    ) -> OptimizationResult[S] | OptimizationResult[None]:
+    ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -351,48 +435,60 @@ class BayesianOptimizer(Generic[SP]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = cast(AcquisitionRule[TensorType, SP], EfficientGlobalOptimization())
+            acquisition_rule = EfficientGlobalOptimization[
+                SearchSpaceType, TrainableProbabilisticModelType
+            ]()
 
-        models = map_values(create_model, model_specs)
-        history: list[Record[S]] = []
+        # note that this cast is justified for explicit models but not for models created
+        # from config, which can't be statically type checked; those will fail at runtime instead
+        models = cast(
+            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
+        )
+
+        history: list[Record[StateType]] = []
 
         for step in range(num_steps):
             set_step_number(step)
             try:
+
                 if track_state:
                     models_copy = copy.deepcopy(models)
                     acquisition_state_copy = copy.deepcopy(acquisition_state)
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
-                if step == 0 and fit_initial_model:
-                    for tag, model in models.items():
-                        dataset = datasets[tag]
-                        model.update(dataset)
-                        model.optimize(dataset)
+                with Timer() as total_step_wallclock_timer:
+                    if step == 0 and fit_initial_model:
+                        with Timer() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
-                points_or_stateful = acquisition_rule.acquire(
-                    self._search_space, models, datasets=datasets
-                )
+                    with Timer() as query_point_generation_timer:
+                        points_or_stateful = acquisition_rule.acquire(
+                            self._search_space, models, datasets=datasets
+                        )
 
-                if callable(points_or_stateful):
-                    acquisition_state, query_points = points_or_stateful(acquisition_state)
-                else:
-                    query_points = points_or_stateful
+                    if callable(points_or_stateful):
+                        acquisition_state, query_points = points_or_stateful(acquisition_state)
+                    else:
+                        query_points = points_or_stateful
 
-                observer_output = self._observer(query_points)
+                    observer_output = self._observer(query_points)
 
-                tagged_output = (
-                    observer_output
-                    if isinstance(observer_output, Mapping)
-                    else {OBJECTIVE: observer_output}
-                )
+                    tagged_output = (
+                        observer_output
+                        if isinstance(observer_output, Mapping)
+                        else {OBJECTIVE: observer_output}
+                    )
 
-                datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
+                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
 
-                for tag, model in models.items():
-                    dataset = datasets[tag]
-                    model.update(dataset)
-                    model.optimize(dataset)
+                    with Timer() as model_fitting_timer:
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
@@ -410,6 +506,26 @@ class BayesianOptimizer(Generic[SP]):
                                 np.min(tagged_output[tag].observations),
                                 step=step,
                             )
+                        tf.summary.scalar(
+                            "wallclock.step",
+                            total_step_wallclock_timer.time,
+                            step=step,
+                        )
+                        tf.summary.scalar(
+                            "wallclock.query_point_generation",
+                            query_point_generation_timer.time,
+                            step=step,
+                        )
+                        tf.summary.scalar(
+                            "wallclock.model_fitting",
+                            model_fitting_timer.time
+                            + (
+                                initial_model_fitting_timer.time
+                                if (step == 0 and fit_initial_model)
+                                else 0
+                            ),
+                            step=step,
+                        )
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
@@ -420,6 +536,14 @@ class BayesianOptimizer(Generic[SP]):
                     f"optimization step.\n",
                     output_stream=logging.ERROR,
                 )
+                if isinstance(error, MemoryError):
+                    tf.print(
+                        "\nOne possible cause of memory errors is trying to evaluate acquisition "
+                        "\nfunctions over large datasets, e.g. when initializing optimizers. "
+                        "\nYou may be able to word around this by splitting up the evaluation "
+                        "\nusing split_acquisition_function or split_acquisition_function_calls.",
+                        output_stream=logging.ERROR,
+                    )
                 return OptimizationResult(Err(error), history)
 
         tf.print("Optimization completed without errors", output_stream=logging.INFO)

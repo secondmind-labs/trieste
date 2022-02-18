@@ -61,7 +61,7 @@ class _QuadraticPredictor(GPfluxPredictor):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
-        mean, cov = self.model_gpflux.predict_f(query_points, full_cov=True)
+        mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
         samples = sample_mvn(mean_for_sample, cov, True, num_samples=num_samples)
         samples = tf.linalg.adjoint(samples)
@@ -130,14 +130,6 @@ def test_gpflux_predictor_sample() -> None:
 def test_gpflux_predictor_sample_0_samples() -> None:
     samples = _QuadraticPredictor().sample(tf.constant([[50.0]], gpflow.default_float()), 0)
     assert samples.shape == (0, 1, 1)
-
-
-def test_gpflux_predictor_raises_on_predict_joint_call() -> None:
-    model = _QuadraticPredictor()
-    query_points = tf.ones([5], dtype=gpflow.default_float())
-
-    with pytest.raises(NotImplementedError):
-        model.predict_joint(query_points)
 
 
 def test_gpflux_predictor_get_observation_noise() -> None:

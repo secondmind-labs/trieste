@@ -19,3 +19,9 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
+gym
+box2d
+
+# pin to version of TF used in prod
+tensorflow ~= 2.4.1
+tensorflow-probability ~= 0.12.0

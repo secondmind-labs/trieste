@@ -13,12 +13,18 @@
 # limitations under the License.
 """ This folder contains single-objective optimization functions. """
 from .active_learning import (
+    BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
+    bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
     integrated_variance_reduction,
     predictive_variance,
+)
+from .continuous_thompson_sampling import (
+    GreedyContinuousThompsonSampling,
+    ParallelContinuousThompsonSampling,
 )
 from .entropy import (
     GIBBON,
@@ -32,12 +38,14 @@ from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
+    multiple_optimism_lower_confidence_bound,
     probability_of_feasibility,
 )
 from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer

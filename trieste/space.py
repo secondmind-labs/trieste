@@ -25,7 +25,7 @@ import tensorflow_probability as tfp
 from .types import TensorType
 from .utils import shapes_equal
 
-SP = TypeVar("SP", bound="SearchSpace")
+SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
 
@@ -67,13 +67,13 @@ class SearchSpace(ABC):
         """The highest value taken by each search space dimension."""
 
     @abstractmethod
-    def __mul__(self: SP, other: SP) -> SP:
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
         """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
         """
 
-    def __pow__(self: SP, other: int) -> SP:
+    def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for
         an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
@@ -107,6 +107,7 @@ class DiscreteSearchSpace(SearchSpace):
         :param points: The points that define the discrete space, with shape ('N', 'D').
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.
         """
+
         tf.debugging.assert_shapes([(points, ("N", "D"))])
         self._points = points
         self._dimension = tf.shape(self._points)[-1]
@@ -241,12 +242,12 @@ class Box(SearchSpace):
         return f"Box({self._lower!r}, {self._upper!r})"
 
     @property
-    def lower(self) -> TensorType:
+    def lower(self) -> tf.Tensor:
         """The lower bounds of the box."""
         return self._lower
 
     @property
-    def upper(self) -> TensorType:
+    def upper(self) -> tf.Tensor:
         """The upper bounds of the box."""
         return self._upper
 
@@ -566,3 +567,6 @@ class TaggedProductSearchSpace(SearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
+        return self

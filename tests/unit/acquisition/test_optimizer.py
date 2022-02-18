@@ -13,7 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Callable, TypeVar
+from math import ceil
+from typing import Callable, Tuple, TypeVar, Union
+from unittest.mock import MagicMock
 
 import numpy.testing as npt
 import pytest
@@ -25,22 +27,31 @@ from trieste.acquisition.optimizer import (
     AcquisitionOptimizer,
     FailedOptimizationError,
     automatic_optimizer_selector,
-    batchify,
+    batchify_joint,
+    batchify_vectorize,
     generate_continuous_optimizer,
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
 )
+from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_SEARCH_SPACE,
+    BRANIN_MINIMUM,
+    BRANIN_SEARCH_SPACE,
     HARTMANN_3_MINIMIZER,
     HARTMANN_3_SEARCH_SPACE,
     HARTMANN_6_MINIMIZER,
     HARTMANN_6_SEARCH_SPACE,
+    SCALED_BRANIN_MINIMUM,
+    SIMPLE_QUADRATIC_MINIMUM,
     ackley_5,
+    branin,
     hartmann_3,
     hartmann_6,
+    scaled_branin,
+    simple_quadratic,
 )
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
@@ -57,6 +68,22 @@ def _delta_function(power: float) -> AcquisitionFunction:
 def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
     with pytest.raises(ValueError):
         generate_random_search_optimizer(num_samples=-5)
+
+
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_optimize_discrete_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = DiscreteSearchSpace(tf.constant([[-0.5], [0.2], [1.2], [1.7]]))
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        optimize_discrete(search_space, (acq_fn, batch_size))
+
+
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_random_optimizer_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = Box([-1], [2])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        generate_random_search_optimizer()(search_space, (acq_fn, batch_size))
 
 
 SP = TypeVar("SP", bound=SearchSpace)
@@ -104,13 +131,17 @@ SP = TypeVar("SP", bound=SearchSpace)
         ),  # 2D with maximum outside search space
     ],
 )
+@pytest.mark.parametrize("split_acquisition_function", [False, True])
 def test_discrete_and_random_optimizer_on_quadratic(
     search_space: SP,
     shift: list[float],
     expected_maximizer: list[list[float]],
     optimizers: list[AcquisitionOptimizer[SP]],
+    split_acquisition_function: bool,
 ) -> None:
     for optimizer in optimizers:
+        if split_acquisition_function:
+            optimizer = split_acquisition_function_calls(optimizer, 97)
         maximizer = optimizer(search_space, _quadratic_sum(shift))
         if optimizer is optimize_discrete:
             npt.assert_allclose(maximizer, expected_maximizer, rtol=1e-4)
@@ -169,6 +200,14 @@ def test_optimize_continuous_raises_for_impossible_optimization(
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
     )
+
+
+@pytest.mark.parametrize("batch_size", [0, -2])
+def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_size: int) -> None:
+    search_space = Box([-1], [2])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(ValueError):
+        generate_continuous_optimizer()(search_space, (acq_fn, batch_size))
 
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])
@@ -456,10 +495,20 @@ def test_get_bounds_of_box_relaxation_around_point(
     npt.assert_array_equal(bounds.ub, upper)
 
 
-def test_optimize_batch_raises_with_invalid_batch_size() -> None:
+def test_batchify_joint_raises_with_invalid_batch_size() -> None:
     batch_size_one_optimizer = generate_continuous_optimizer()
     with pytest.raises(ValueError):
-        batchify(batch_size_one_optimizer, -5)
+        batchify_joint(batch_size_one_optimizer, -5)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
+def test_batchify_joint_raises_with_vectorized_acquisition_function(batch_size: int) -> None:
+    batch_size_one_optimizer = generate_continuous_optimizer()
+    optimizer = batchify_joint(batch_size_one_optimizer, 5)
+    search_space = Box([-1], [1])
+    acq_fn = _quadratic_sum([0.5])
+    with pytest.raises(ValueError):
+        optimizer(search_space, (acq_fn, batch_size))
 
 
 @random_seed
@@ -471,15 +520,126 @@ def test_optimize_batch_raises_with_invalid_batch_size() -> None:
         (Box([-1, -1, -1], [1, 1, 1]), _quadratic_sum([0.5, -0.5, 0.2]), ([[0.5, -0.5, 0.2]])),
     ],
 )
-def test_optimize_batch(
+def test_batchify_joint(
     search_space: Box, acquisition: AcquisitionFunction, maximizer: TensorType, batch_size: int
 ) -> None:
     batch_size_one_optimizer = generate_continuous_optimizer(num_optimization_runs=5)
-    batch_optimizer = batchify(batch_size_one_optimizer, batch_size)
+    batch_optimizer = batchify_joint(batch_size_one_optimizer, batch_size)
     points = batch_optimizer(search_space, acquisition)
     assert points.shape == [batch_size] + search_space.lower.shape
     for point in points:
         npt.assert_allclose(tf.expand_dims(point, 0), maximizer, rtol=2e-4)
+
+
+def test_batchify_vectorized_raises_with_invalid_batch_size() -> None:
+    batch_size_one_optimizer = generate_continuous_optimizer()
+    with pytest.raises(ValueError):
+        batchify_vectorize(batch_size_one_optimizer, -5)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 5])
+def test_batchify_vectorize_raises_with_vectorized_acquisition_function(batch_size: int) -> None:
+    batch_size_one_optimizer = generate_continuous_optimizer()
+    optimizer = batchify_vectorize(batch_size_one_optimizer, 5)
+    search_space = Box([-1], [1])
+    acq_fn = _quadratic_sum([0.5])
+    with pytest.raises(ValueError):
+        optimizer(search_space, (acq_fn, batch_size))
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "optimizer", [generate_random_search_optimizer(10_000), generate_continuous_optimizer()]
+)
+@pytest.mark.parametrize("split_acquisition_function", [False, True])
+def test_batchify_vectorized_for_random_and_continuous_optimizers_on_vectorized_quadratic(
+    optimizer: AcquisitionOptimizer[Box],
+    split_acquisition_function: bool,
+) -> None:
+    search_space = Box([-1, -2], [1.5, 2.5])
+    shifts = [[0.3, -0.4], [1.0, 4]]
+    expected_maximizers = [[0.3, -0.4], [1.0, 2.5]]
+    vectorized_batch_size = 2
+
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorized_batch_size)
+        ]
+        return tf.concat(individual_func, axis=-1)
+
+    batched_optimizer = batchify_vectorize(optimizer, batch_size=vectorized_batch_size)
+    if split_acquisition_function:
+        batched_optimizer = split_acquisition_function_calls(batched_optimizer, 1000)
+    maximizers = batched_optimizer(search_space, vectorized_target)
+    npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
+
+
+def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() -> None:
+    search_space = DiscreteSearchSpace(
+        tf.constant([[0.3, -0.4], [1.0, 2.5], [0.2, 0.5], [0.5, 2.0], [2.0, 0.1]])
+    )
+    shifts = [[0.3, -0.4], [1.0, 4]]
+    expected_maximizers = [[0.3, -0.4], [1.0, 2.5]]
+    vectorized_batch_size = 2
+
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorized_batch_size)
+        ]
+        return tf.concat(individual_func, axis=-1)
+
+    batched_optimizer = batchify_vectorize(optimize_discrete, batch_size=vectorized_batch_size)
+    maximizers = batched_optimizer(search_space, vectorized_target)
+    npt.assert_allclose(maximizers, expected_maximizers, rtol=1e-1)
+
+
+@random_seed
+@pytest.mark.parametrize("vectorization", [1, 5])
+@pytest.mark.parametrize(
+    "neg_function, expected_maximizer, search_space",
+    [
+        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
+        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
+        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+    ],
+)
+def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems(
+    vectorization: int,
+    neg_function: Callable[[TensorType], TensorType],
+    expected_maximizer: TensorType,
+    search_space: Box,
+) -> None:
+    def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
+        individual_func = [-1 * neg_function(x[:, i, :]) for i in range(vectorization)]
+        return tf.concat(individual_func, axis=-1)  # vectorize by repeating same function
+
+    optimizer = batchify_vectorize(
+        generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10),
+        batch_size=vectorization,
+    )
+    maximizer = optimizer(search_space, target_function)
+    npt.assert_allclose(maximizer, tf.tile(expected_maximizer, [vectorization, 1]), rtol=1e-1)
+
+
+@random_seed
+def test_batchify_vectorized_for_continuous_optimizer_on_vectorized_toy_problems() -> None:
+    search_space = BRANIN_SEARCH_SPACE
+    functions = [branin, scaled_branin, simple_quadratic]
+    expected_maximimums = [-BRANIN_MINIMUM, -SCALED_BRANIN_MINIMUM, -SIMPLE_QUADRATIC_MINIMUM]
+    vectorized_batch_size = 3
+
+    def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
+        individual_func = [-1 * functions[i](x[:, i, :]) for i in range(vectorized_batch_size)]
+        return tf.concat(individual_func, axis=-1)  # vectorize by concatenating three functions
+
+    optimizer = batchify_vectorize(
+        generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10),
+        batch_size=vectorized_batch_size,
+    )
+    maximizer = optimizer(search_space, target_function)
+    npt.assert_allclose(
+        target_function(maximizer[None, :, :]), tf.transpose(expected_maximimums), rtol=1e-5
+    )
 
 
 @random_seed
@@ -513,3 +673,32 @@ def test_automatic_optimizer_selector(
     optimizer = automatic_optimizer_selector
     point = optimizer(search_space, acquisition)
     npt.assert_allclose(point, maximizer, rtol=2e-4)
+
+
+def test_split_acquisition_function_calls_raises_with_invalid_batch_size() -> None:
+    optimizer = generate_continuous_optimizer()
+    with pytest.raises(ValueError):
+        split_acquisition_function_calls(optimizer, -5)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 9, 10, 11, 19, 20, 21, 100])
+def test_split_acquisition_function(batch_size: int) -> None:
+    acquisition_function = MagicMock()
+    acquisition_function.side_effect = lambda x: x
+
+    def dummy_optimizer(
+        search_space: SearchSpace,
+        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+    ) -> TensorType:
+        af, n = f if isinstance(f, tuple) else (f, 1)
+        return af(tf.linspace([0, 0], [1, 1], n))
+
+    batched_optimizer = split_acquisition_function_calls(dummy_optimizer, batch_size)
+    value = batched_optimizer(Box([0, 0], [1, 1]), (acquisition_function, 10))
+    npt.assert_array_equal(value, tf.linspace([0, 0], [1, 1], 10))
+    # since each row has two elements, actual batch size will always be even
+    expected_batch_size = 2 * ceil(batch_size / 2)
+    assert all(
+        tf.size(call[0][0]) <= expected_batch_size for call in acquisition_function.call_args_list
+    )
+    assert acquisition_function.call_count == ceil(20 / expected_batch_size)

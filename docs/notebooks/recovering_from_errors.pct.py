@@ -44,20 +44,15 @@ observer = FaultyBranin()
 # We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`. `TrustRegion` is stateful, and we'll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.
 
 # %%
-import gpflow
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 
 search_space = trieste.space.Box(
     tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64)
 )
 initial_data = observer(search_space.sample(5))
 
-variance = tf.math.reduce_variance(initial_data.observations)
-kernel = gpflow.kernels.Matern52(variance, [0.2, 0.2]) + gpflow.kernels.White(
-    1e-12
-)
-gpr = gpflow.models.GPR(initial_data.astuple(), kernel, noise_variance=1e-5)
-gpflow.set_trainable(gpr.likelihood, False)
-model = trieste.models.gpflow.GaussianProcessRegression(gpr)
+gpr = build_gpr(initial_data, search_space)
+model = GaussianProcessRegression(gpr)
 
 acquisition_rule = trieste.acquisition.rule.TrustRegion()
 
@@ -76,7 +71,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 15
 result, history = bo.optimize(
-    num_steps, initial_data, model, acquisition_rule
+    num_steps, initial_data, model, acquisition_rule, None
 ).astuple()
 
 # %% [markdown]
@@ -128,6 +123,22 @@ if result.is_ok:
         branin, search_space.lower, search_space.upper, 30, contour=True
     )
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
+
+# %% [markdown]
+# ## Out of memory errors
+#
+# At the moment, trieste's `OptimizationResult` doesn't allow you to recover from Out Of Memory errors, which normally result in the Python process shutting down. One possible cause of memory errors is trying to evaluate an acquisition function over a large dataset, e.g. when initializing our gradient-based optimizers. To work around this, you can specify that evaluations of the acquisition function be split up: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit split optimizer and specify a desired batch size.
+
+# %%
+from trieste.acquisition.optimizer import automatic_optimizer_selector
+from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.acquisition.utils import split_acquisition_function_calls
+
+optimizer = split_acquisition_function_calls(
+    automatic_optimizer_selector, split_size=10_000
+)
+query_rule = EfficientGlobalOptimization(optimizer=optimizer)
+acquisition_rule = trieste.acquisition.rule.TrustRegion(rule=query_rule)
 
 # %% [markdown]
 # ## LICENSE

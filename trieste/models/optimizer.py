@@ -26,11 +26,11 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
 import scipy
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..types import TensorType
 from ..utils import jit
-from .interfaces import TrainableProbabilisticModel
 
 TrainingData = Union[Tuple[TensorType, TensorType], Iterable[Tuple[TensorType, TensorType]]]
 """ Type alias for a batch, or batches, of training data. """
@@ -151,10 +151,33 @@ class BatchOptimizer(Optimizer):
             train_fn()
 
 
+@dataclass
+class KerasOptimizer:
+    """Optimizer wrapper for training models implemented with Keras."""
+
+    optimizer: tf.keras.optimizers.Optimizer
+    """ The underlying optimizer to use for training the model. """
+
+    fit_args: dict[str, Any] = field(default_factory=lambda: {})
+    """
+    The keyword arguments to pass to the ``fit`` method of a :class:`~tf.keras.Model` instance.
+    See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+    arguments in the dictionary.
+    """
+
+    loss: Optional[
+        Union[
+            tf.keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
+        ]
+    ] = None
+    """ Optional loss function for training the model. """
+
+    metrics: Optional[list[tf.keras.metrics.Metric]] = None
+    """ Optional metrics for monitoring the performance of the network. """
+
+
 @singledispatch
-def create_loss_function(
-    model: TrainableProbabilisticModel, dataset: TrainingData, compile: bool = False
-) -> LossClosure:
+def create_loss_function(model: Any, dataset: TrainingData, compile: bool = False) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
     The implementations depends on the type of the model, which should use this function as a

@@ -12,85 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
-
 import numpy as np
-import tensorflow as tf
-from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+import pytest
 
-from tests.util.misc import random_seed
-from tests.util.models.gpflux.models import trieste_deep_gaussian_process
-from trieste.data import Dataset
+from tests.util.misc import hartmann_6_dataset, random_seed
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.objectives import HARTMANN_6_SEARCH_SPACE
 
 
+@pytest.mark.slow
 @random_seed
-def test_dgp_model_close_to_actuals(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
-) -> None:
-    """
-    Ensure that DGP model fits well and predictions are close to actual output values.
-    """
-
+@pytest.mark.parametrize("depth", [2, 3])
+def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
     dataset_size = 50
     num_inducing = 50
-    batch_size = 50
-    epochs = 500
 
-    example_data = hartmann_6_dataset_function(dataset_size)
+    example_data = hartmann_6_dataset(dataset_size)
 
-    model, _ = trieste_deep_gaussian_process(
-        query_points=example_data.query_points,
-        depth=depth,
-        num_inducing=num_inducing,
-        learning_rate=0.01,
-        batch_size=batch_size,
-        epochs=epochs,
-        fix_noise=True,
+    dgp = build_vanilla_deep_gp(
+        example_data,
+        HARTMANN_6_SEARCH_SPACE,
+        depth,
+        num_inducing,
+        likelihood_variance=1e-5,
+        trainable_likelihood=False,
     )
-
+    model = DeepGaussianProcess(dgp)
     model.optimize(example_data)
     predicted_means, _ = model.predict(example_data.query_points)
 
     np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
-
-
-@random_seed
-def test_dgp_model_close_to_simple_implementation(
-    hartmann_6_dataset_function: Callable[[int], Dataset], depth: int, keras_float: None
-) -> None:
-    dataset_size = 50
-    num_inducing = 50
-    batch_size = 50
-    epochs = 500
-    learning_rate = 0.01
-
-    example_data = hartmann_6_dataset_function(dataset_size)
-
-    # Trieste implementation
-    trieste_model, fit_args = trieste_deep_gaussian_process(
-        query_points=example_data.query_points,
-        depth=depth,
-        num_inducing=num_inducing,
-        learning_rate=learning_rate,
-        batch_size=batch_size,
-        epochs=epochs,
-    )
-    trieste_model.optimize(example_data)
-    trieste_predicted_means, _ = trieste_model.predict(example_data.query_points)
-
-    # GPflux implementation
-    config = Config(
-        num_inducing=num_inducing, inner_layer_qsqrt_factor=1e-5, likelihood_noise_variance=1e-2
-    )
-
-    gpflux_model = build_constant_input_dim_deep_gp(example_data.query_points, depth, config)
-
-    keras_model = gpflux_model.as_training_model()
-    keras_model.compile(tf.optimizers.Adam(learning_rate))
-    keras_model.fit(
-        {"inputs": example_data.query_points, "targets": example_data.observations}, **fit_args
-    )
-
-    gpflux_predicted_means, _ = gpflux_model.predict_f(example_data.query_points)
-
-    np.testing.assert_allclose(trieste_predicted_means, gpflux_predicted_means, atol=0.2, rtol=0.2)

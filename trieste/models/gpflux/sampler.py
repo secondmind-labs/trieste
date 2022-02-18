@@ -14,17 +14,12 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
-
 import tensorflow as tf
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
-
-M = TypeVar("M", bound=tf.Module)
-""" A type variable bound to :class:`tf.Module`. """
 
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:

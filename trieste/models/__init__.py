@@ -23,9 +23,11 @@ from .interfaces import (
     FastUpdateModel,
     ModelStack,
     ProbabilisticModel,
+    ProbabilisticModelType,
     ReparametrizationSampler,
     TrainableModelStack,
     TrainableProbabilisticModel,
     TrajectoryFunction,
+    TrajectoryFunctionClass,
     TrajectorySampler,
 )

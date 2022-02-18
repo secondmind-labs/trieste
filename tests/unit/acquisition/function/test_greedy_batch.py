@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Callable, Union
+from typing import Callable, Mapping, Union
 
 import numpy as np
 import numpy.testing as npt
@@ -35,13 +35,15 @@ from trieste.acquisition import (
 from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
 from trieste.acquisition.function.greedy_batch import (
     Fantasizer,
+    FantasizerModelOrStack,
+    FantasizerModelStack,
     LocalPenalization,
     _generate_fantasized_model,
     hard_local_penalizer,
     soft_local_penalizer,
 )
 from trieste.data import Dataset
-from trieste.models import TrainableModelStack
+from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
@@ -87,7 +89,7 @@ def test_locally_penalized_expected_improvement_builder_raises_for_invalid_pendi
     ],
 )
 def test_locally_penalized_acquisitions_match_base_acquisition(
-    base_builder: ExpectedImprovement | MinValueEntropySearch,
+    base_builder: ExpectedImprovement | MinValueEntropySearch[ProbabilisticModel],
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -118,7 +120,7 @@ def test_locally_penalized_acquisitions_match_base_acquisition(
 )
 def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalizer: Callable[..., Union[PenalizationFunction, UpdatablePenalizationFunction]],
-    base_builder: ExpectedImprovement | MinValueEntropySearch,
+    base_builder: ExpectedImprovement | MinValueEntropySearch[ProbabilisticModel],
 ) -> None:
     data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -137,7 +139,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
 
     best = acq_builder._eta
     lipschitz_constant = acq_builder._lipschitz_constant
-    penalizer = penalizer(model, pending_points, lipschitz_constant, best)
+    penalizer_value = penalizer(model, pending_points, lipschitz_constant, best)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -145,7 +147,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
 
     lp_acq_values = lp_acq(xs[..., None, :])
     base_acq_values = base_acq(xs[..., None, :])
-    penal_values = penalizer(xs[..., None, :])
+    penal_values = penalizer_value(xs[..., None, :])
     penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penal_values))
 
     if isinstance(base_builder, ExpectedImprovement):
@@ -195,14 +197,16 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> N
     builder = Fantasizer()
 
     with pytest.raises(NotImplementedError):
-        builder.prepare_acquisition_function(models, data, pending_points)
+        builder.prepare_acquisition_function(models, data, pending_points)  # type: ignore
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_shape() -> None:
-    data = {
-        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
-    }
-    models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
+    x = tf.zeros([3, 2], dtype=tf.float64)
+    y1 = tf.ones([3, 1], dtype=tf.float64)
+    y2 = tf.ones([3, 2], dtype=tf.float64)
+
+    data = {"OBJECTIVE": Dataset(x, y1)}
+    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y2))}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
@@ -236,8 +240,11 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
-        models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+        models = {
+            "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
+        }
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
@@ -261,8 +268,11 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
-        models = {"OBJECTIVE": TrainableModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
+        models = {
+            "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
+        }
     else:
         models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
 
@@ -302,7 +312,9 @@ def test_fantasize_allows_query_points_with_leading_dimensions(model_type: str) 
     query_points = tf.reshape(query_points, [4, 5, 1])
 
     if model_type == "stack":
-        fanta_model5 = _generate_fantasized_model(TrainableModelStack((model5, 1)), additional_data)
+        fanta_model5 = _generate_fantasized_model(
+            FantasizerModelStack((model5, 1)), additional_data
+        )
     else:
         fanta_model5 = _generate_fantasized_model(model5, additional_data)
 
@@ -360,7 +372,7 @@ def test_fantasized_stack_is_the_same_as_individually_fantasized() -> None:
     y2 = fnc_3x_plus_10(x)
     model1 = GaussianProcessRegression(gpr_model(x[:5, :], y1[:5, :]))
     model2 = GaussianProcessRegression(gpr_model(x[:5, :], y2[:5, :]))
-    stacked_models = TrainableModelStack((model1, 1), (model2, 1))
+    stacked_models = FantasizerModelStack((model1, 1), (model2, 1))
 
     additional_data1 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y1[5:, :], [3, 6, -1]))
     additional_data2 = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y2[5:, :], [3, 6, -1]))

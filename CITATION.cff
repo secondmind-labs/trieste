@@ -17,11 +17,15 @@ authors:
   given-names: "Ivo"
 - family-names: "Qing"
   given-names: "Jixiang"
-- family-names: "Satrio"
-  given-names: "Loka"
+- family-names: "Loka"
+  given-names: "Nasrulloh"
+- family-names: "Paleyes"
+  given-names: "Andrei"
+- family-names: "Ober"
+  given-names: "Sebastian W."
 - family-names: "Picheny"
   given-names: "Victor"
 title: "Trieste"
-version: 0.8.0
-date-released: 2021-08-20
+version: 0.10.0
+date-released: 2022-02-15
 url: "https://github.com/secondmind-labs/trieste"

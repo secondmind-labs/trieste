@@ -2,9 +2,9 @@
 
 ### Who are we?
 
-*Administrators* (Henry Moss, Artem Artemev, Uri Granta) look after the GitHub repository itself.
+*Administrators* (Artem Artemev, Uri Granta, Henry Moss, Hrvoje Stojic) look after the GitHub repository itself.
 
-*Maintainers* (Henry Moss, Victor Picheny, Artem Artemev, Uri Granta) steer the project, keep the community thriving, and manage contributions.
+*Maintainers* (Artem Artemev, Uri Granta, Henry Moss, Victor Picheny, Hrvoje Stojic) steer the project, keep the community thriving, and manage contributions.
 
 *Contributors* (you?) submit issues, make pull requests, answer questions on Slack, and more.
 
@@ -72,7 +72,7 @@ $ tox -e tests
 
 To save time, some slower tests are not run by default. Run these with:
 ```bash
-$ tox -e alltests
+$ tox -e tests -- --runslow yes
 ```
 
 #### Code formatting

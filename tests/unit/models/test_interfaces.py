@@ -34,10 +34,17 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models import TrainableModelStack, TrainableProbabilisticModel
+from trieste.models.interfaces import (
+    TrainablePredictJointReparamModelStack,
+    TrainableSupportsPredictJoint,
+    TrainableSupportsPredictJointHasReparamSampler,
+)
 from trieste.types import TensorType
 
 
-class _QuadraticModel(GaussianProcessWithSamplers, PseudoTrainableProbModel):
+class _QuadraticModel(
+    GaussianProcessWithSamplers, PseudoTrainableProbModel, TrainableSupportsPredictJoint
+):
     def __init__(
         self,
         mean_shifts: list[float],
@@ -51,11 +58,18 @@ class _QuadraticModel(GaussianProcessWithSamplers, PseudoTrainableProbModel):
         )
 
 
-def _model_stack() -> tuple[TrainableModelStack, tuple[TrainableProbabilisticModel, ...]]:
+def _model_stack() -> tuple[
+    TrainablePredictJointReparamModelStack,
+    tuple[TrainableSupportsPredictJointHasReparamSampler, ...],
+]:
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = _QuadraticModel([2.0], [2.0])
     model3 = _QuadraticModel([-1.0], [0.1])
-    return TrainableModelStack((model01, 2), (model2, 1), (model3, 1)), (model01, model2, model3)
+    return TrainablePredictJointReparamModelStack((model01, 2), (model2, 1), (model3, 1)), (
+        model01,
+        model2,
+        model3,
+    )
 
 
 def test_model_stack_predict() -> None:
@@ -185,8 +199,8 @@ def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sample
     model2 = QuadraticMeanAndRBFKernel()
     model_stack = TrainableModelStack((model01, 2), (model2, 1))  # type: ignore
 
-    with pytest.raises(NotImplementedError):
-        model_stack.reparam_sampler(1)
+    with pytest.raises(AttributeError):
+        model_stack.reparam_sampler(1)  # type: ignore
 
 
 def test_model_stack_reparam_sampler() -> None:

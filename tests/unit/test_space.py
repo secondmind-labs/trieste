@@ -816,3 +816,14 @@ def test_product_space___mul___() -> None:
     subspace_1_D = subspace_1.get_subspace("D")  # type: ignore
     assert isinstance(subspace_1_D, DiscreteSearchSpace)
     npt.assert_array_equal(subspace_1_D.points, tf.ones([5, 3], dtype=tf.float64))
+
+
+def test_product_search_space_deepcopy() -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
+
+    copied_space = copy.deepcopy(product_space)
+    npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
+    npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
+    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore

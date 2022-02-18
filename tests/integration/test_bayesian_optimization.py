@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import List, Tuple, Union
+from typing import Any, List, Mapping, Optional, Tuple, Type, cast
 
 import gpflow
 import numpy as np
@@ -22,17 +22,20 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from _pytest.mark import ParameterSet
 
 from tests.util.misc import random_seed
-from tests.util.models.gpflux.models import two_layer_dgp_model
 from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
+    GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
+    MultipleOptimismNegativeLowerConfidenceBound,
+    ParallelContinuousThompsonSampling,
 )
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -44,21 +47,29 @@ from trieste.acquisition.rule import (
     TrustRegion,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
-from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
+from trieste.bayesian_optimizer import BayesianOptimizer, TrainableProbabilisticModelType
 from trieste.logging import tensorboard_writer
-from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.optimizer import BatchOptimizer
+from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
+from trieste.models.gpflow import (
+    GaussianProcessRegression,
+    GPflowPredictor,
+    SparseVariational,
+    VariationalGaussianProcess,
+    build_gpr,
+    build_svgp,
+)
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
+from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
 from trieste.models.transforms import StandardTransformer, transform_data
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
-    MICHALEWICZ_2_MINIMIZER,
-    MICHALEWICZ_2_MINIMUM,
     SCALED_BRANIN_MINIMUM,
     SIMPLE_QUADRATIC_MINIMIZER,
     SIMPLE_QUADRATIC_MINIMUM,
+    SIMPLE_QUADRATIC_SEARCH_SPACE,
     TRID_10_MINIMIZER,
     TRID_10_MINIMUM,
     TRID_10_SEARCH_SPACE,
@@ -73,50 +84,41 @@ from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
 
-# Optimizer parameters for testing against the branin function.
+# Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
-def OPTIMIZER_PARAMS() -> Tuple[
-    str,
-    List[
-        Tuple[
-            int,
-            Union[
-                AcquisitionRule[TensorType, Box],
-                AcquisitionRule[
-                    State[
-                        TensorType,
-                        Union[AsynchronousRuleState, TrustRegion.State],
-                    ],
-                    Box,
-                ],
-            ],
-        ]
-    ],
-]:
+def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
-            (20, EfficientGlobalOptimization()),
-            (25, EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE))),
-            (
-                22,
+            pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            pytest.param(
+                30,
+                EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
+                id="AugmentedExpectedImprovement",
+            ),
+            pytest.param(
+                24,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
                         BRANIN_SEARCH_SPACE,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
                 ),
+                id="MinValueEntropySearch",
             ),
-            (
+            pytest.param(
                 12,
                 EfficientGlobalOptimization(
                     BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="BatchMonteCarloExpectedImprovement",
             ),
-            (12, AsynchronousOptimization(num_query_points=3)),
-            (
+            pytest.param(
+                12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
+            ),
+            pytest.param(
                 10,
                 EfficientGlobalOptimization(
                     LocalPenalization(
@@ -124,8 +126,9 @@ def OPTIMIZER_PARAMS() -> Tuple[
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="LocalPenalization",
             ),
-            (
+            pytest.param(
                 10,
                 AsynchronousGreedy(
                     LocalPenalization(
@@ -133,8 +136,9 @@ def OPTIMIZER_PARAMS() -> Tuple[
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                id="LocalPenalization/AsynchronousGreedy",
             ),
-            (
+            pytest.param(
                 10,
                 EfficientGlobalOptimization(
                     GIBBON(
@@ -142,9 +146,20 @@ def OPTIMIZER_PARAMS() -> Tuple[
                     ).using(OBJECTIVE),
                     num_query_points=2,
                 ),
+                id="GIBBON",
             ),
-            (15, TrustRegion()),
-            (
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MultipleOptimismNegativeLowerConfidenceBound(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="MultipleOptimismNegativeLowerConfidenceBound",
+            ),
+            pytest.param(15, TrustRegion(), id="TrustRegion"),
+            pytest.param(
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
@@ -153,18 +168,32 @@ def OPTIMIZER_PARAMS() -> Tuple[
                         ).using(OBJECTIVE)
                     )
                 ),
+                id="TrustRegion/MinValueEntropySearch",
             ),
-            (10, DiscreteThompsonSampling(500, 3)),
-            (
-                15,
-                DiscreteThompsonSampling(500, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
-            ),
-            (
+            pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
+            pytest.param(
                 15,
                 EfficientGlobalOptimization(
                     Fantasizer(),
                     num_query_points=3,
                 ),
+                id="Fantasizer",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    GreedyContinuousThompsonSampling(),
+                    num_query_points=5,
+                ),
+                id="GreedyContinuousThompsonSampling",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    num_query_points=5,
+                ),
+                id="ParallelContinuousThompsonSampling",
             ),
         ],
     )
@@ -172,54 +201,239 @@ def OPTIMIZER_PARAMS() -> Tuple[
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
-def test_optimizer_finds_minima_of_the_scaled_branin_function(
+@pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
+def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
+    ],
 ) -> None:
-    _test_optimizer_finds_minimum(True, num_steps, acquisition_rule)
+    _test_optimizer_finds_minimum(
+        GaussianProcessRegression, num_steps, acquisition_rule, optimize_branin=True
+    )
 
 
 @random_seed
-@pytest.mark.parametrize(*OPTIMIZER_PARAMS())
-def test_optimizer_finds_minima_of_simple_quadratic(
+@pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
+def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
+    ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
-    # branin; currently assume that every rule should be able to solve this in 5 steps
-    _test_optimizer_finds_minimum(False, min(num_steps, 5), acquisition_rule)
+    # branin; currently assume that every rule should be able to solve this in 6 steps
+    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 6), acquisition_rule)
+
+
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
+        10,
+        EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+    )
+
+
+@random_seed
+@pytest.mark.parametrize("use_natgrads", [False, True])
+def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgrads: bool) -> None:
+    # regression test for [#406]; use natgrads doesn't work well as a model for the objective
+    # so don't bother checking the results, just that it doesn't crash
+    _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
+        None if use_natgrads else 5,
+        EfficientGlobalOptimization[SearchSpace, GPflowPredictor](),
+        model_args={"use_natgrads": use_natgrads},
+    )
+
+
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        50,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        optimize_branin=True,
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+    )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        15,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        optimize_branin=True,
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+    )
+
+
+@random_seed
+def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
+    )
+
+
+@random_seed
+@pytest.mark.slow
+@pytest.mark.parametrize("num_steps, acquisition_rule", [(25, DiscreteThompsonSampling(1000, 8))])
+def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
+    keras_float: None,
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepGaussianProcess, num_steps, acquisition_rule, optimize_branin=True
+    )
+
+
+@random_seed
+@pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
+def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
+    keras_float: None,
+) -> None:
+    _test_optimizer_finds_minimum(DeepGaussianProcess, num_steps, acquisition_rule)
+
+
+@random_seed
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(90, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(30, DiscreteThompsonSampling(500, 3), id="DiscreteThompsonSampling"),
+        pytest.param(
+            30,
+            DiscreteThompsonSampling(1000, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
+        model_args={"bootstrap": True},
+    )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(5, DiscreteThompsonSampling(500, 1), id="DiscreteThompsonSampling"),
+        pytest.param(
+            5,
+            DiscreteThompsonSampling(500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
+) -> None:
+    _test_optimizer_finds_minimum(DeepEnsemble, num_steps, acquisition_rule)
 
 
 def _test_optimizer_finds_minimum(
-    optimize_branin: bool,
-    num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace]
-    | AcquisitionRule[State[TensorType, AsynchronousRuleState | TrustRegion.State], Box],
+    model_type: Type[TrainableProbabilisticModelType],
+    num_steps: Optional[int],
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType]
+    | AcquisitionRule[
+        State[TensorType, AsynchronousRuleState | TrustRegion.State],
+        Box,
+        TrainableProbabilisticModelType,
+    ],
+    optimize_branin: bool = False,
+    model_args: Optional[Mapping[str, Any]] = None,
 ) -> None:
+    model_args = model_args or {}
+    track_state = True
 
-    search_space = BRANIN_SEARCH_SPACE
+    if optimize_branin:
+        search_space = BRANIN_SEARCH_SPACE
+        minimizers = BRANIN_MINIMIZERS
+        minima = SCALED_BRANIN_MINIMUM
+        rtol_level = 0.005
+        num_initial_query_points = 5
+    else:
+        search_space = SIMPLE_QUADRATIC_SEARCH_SPACE
+        minimizers = SIMPLE_QUADRATIC_MINIMIZER
+        minima = SIMPLE_QUADRATIC_MINIMUM
+        rtol_level = 0.05
+        num_initial_query_points = 10
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-        scale = tf.constant(1.0, dtype=tf.float64)
-        kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.constant(-2.0, dtype=tf.float64), scale
-        )
-        kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), scale
-        )
-        gpr = gpflow.models.GPR((data.query_points, data.observations), kernel, noise_variance=1e-5)
-        gpflow.utilities.set_trainable(gpr.likelihood, False)
-        return GaussianProcessRegression(gpr)
+    if model_type in [SparseVariational, DeepGaussianProcess, DeepEnsemble]:
+        num_initial_query_points = 20
 
-    initial_query_points = search_space.sample(5)
+    initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
     initial_data = observer(initial_query_points)
-    model = build_model(initial_data)
+
+    model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
+
+    if model_type is GaussianProcessRegression:
+        if "LocalPenalization" in acquisition_rule.__repr__():
+            likelihood_variance = 1e-3
+        else:
+            likelihood_variance = 1e-5
+        gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
+        model = GaussianProcessRegression(gpr, **model_args)
+
+    elif model_type is VariationalGaussianProcess:
+        empirical_variance = tf.math.reduce_variance(initial_data.observations)
+        kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
+        likelihood = gpflow.likelihoods.Gaussian(1e-3)
+        vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+        gpflow.utilities.set_trainable(vgp.likelihood, False)
+        model = VariationalGaussianProcess(vgp, **model_args)
+
+    elif model_type is SparseVariational:
+        gpr = build_svgp(initial_data, search_space)
+        model = SparseVariational(gpr, **model_args)
+
+    elif model_type is DeepGaussianProcess:
+        track_state = False
+        dgp = build_vanilla_deep_gp(initial_data, search_space)
+        model = DeepGaussianProcess(dgp, **model_args)
+
+    elif model_type is DeepEnsemble:
+        track_state = False
+
+        keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
+        fit_args = {
+            "batch_size": 20,
+            "epochs": 1000,
+            "callbacks": [
+                tf.keras.callbacks.EarlyStopping(
+                    monitor="loss", patience=25, restore_best_weights=True
+                )
+            ],
+            "verbose": 0,
+        }
+        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
+        model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
+
+    else:
+        raise ValueError(f"Unsupported model_type '{model_type}'")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
@@ -227,89 +441,36 @@ def _test_optimizer_finds_minimum(
 
             dataset = (
                 BayesianOptimizer(observer, search_space)
-                .optimize(num_steps, initial_data, model, acquisition_rule)
+                .optimize(
+                    num_steps or 2,
+                    initial_data,
+                    cast(TrainableProbabilisticModelType, model),
+                    acquisition_rule,
+                    track_state=track_state,
+                )
                 .try_get_final_dataset()
             )
 
             arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-
             best_y = dataset.observations[arg_min_idx]
             best_x = dataset.query_points[arg_min_idx]
 
-            if optimize_branin:
-                relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+            if num_steps is None:
+                # this test is just being run to check for crashes, not performance
+                pass
+            else:
+                minimizer_err = tf.abs((best_x - minimizers) / minimizers)
                 # these accuracies are the current best for the given number of optimization
                 # steps, which makes this is a regression test
-                assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
-                npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
-            else:
-                absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
-                assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
-                npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
+                assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
+                npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule._acquisition_function
-                if isinstance(acq_function, AcquisitionFunctionClass):
+                if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
-
-
-@random_seed
-@pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
-    [
-        (1, DiscreteThompsonSampling(1000, 50)),
-    ],
-)
-def test_two_layer_dgp_optimizer_finds_minima_of_michalewicz_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace], keras_float: None
-) -> None:
-
-    # this unit test fails sometimes for
-    # normal search space used with MICHALEWICZ function
-    # so for stability we reduce its size here
-    search_space = Box(MICHALEWICZ_2_MINIMIZER[0] - 0.5, MICHALEWICZ_2_MINIMIZER[0] + 0.5)
-
-    def build_model(data: Dataset) -> DeepGaussianProcess:
-        epochs = int(4e2)
-        batch_size = 100
-
-        dgp = two_layer_dgp_model(data.query_points)
-
-        def scheduler(epoch: int, lr: float) -> float:
-            if epoch == epochs // 2:
-                return lr * 0.1
-            else:
-                return lr
-
-        fit_args = {
-            "batch_size": batch_size,
-            "epochs": epochs,
-            "verbose": 0,
-            "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
-        }
-        optimizer = BatchOptimizer(tf.optimizers.Adam(0.01), fit_args)
-
-        return DeepGaussianProcess(model=dgp, optimizer=optimizer)
-
-    initial_query_points = search_space.sample_sobol(20)
-    observer = mk_observer(michalewicz, OBJECTIVE)
-    initial_data = observer(initial_query_points)
-    model = build_model(initial_data[OBJECTIVE])
-    dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule, track_state=False)
-        .try_get_final_dataset()
-    )
-    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-
-    best_y = dataset.observations[arg_min_idx]
-    best_x = dataset.query_points[arg_min_idx]
-    relative_minimizer_err = tf.abs((best_x - MICHALEWICZ_2_MINIMIZER) / MICHALEWICZ_2_MINIMIZER)
-
-    assert tf.reduce_all(relative_minimizer_err < 0.03, axis=-1)
-    npt.assert_allclose(best_y, MICHALEWICZ_2_MINIMUM, rtol=0.03)
 
 
 @random_seed

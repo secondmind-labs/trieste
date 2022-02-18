@@ -14,23 +14,40 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, Tuple, Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.base import (
+    DType,
+    Prior,
+    PriorOn,
+    TensorData,
+    Transform,
+    _cast_to_dtype,
+    _validate_unconstrained_value,
+)
 from gpflow.conditionals.util import sample_mvn
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
+from tensorflow_probability.python.util import TransformedVariable
 
 from ...data import Dataset
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
-from ..interfaces import FastUpdateModel, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    FastUpdateModel,
+    HasTrajectorySampler,
+    SupportsGetInducingVariables,
+    SupportsGetInternalData,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import BatchOptimizer, Optimizer
-from .interface import GPflowPredictor
-from .sampler import RandomFourierFeatureTrajectorySampler
+from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
+from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
 from .utils import (
     assert_data_is_compatible,
     check_optimizer,
@@ -39,7 +56,14 @@ from .utils import (
 )
 
 
-class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, FastUpdateModel):
+class GaussianProcessRegression(
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    FastUpdateModel,
+    SupportsCovarianceBetweenPoints,
+    SupportsGetInternalData,
+    HasTrajectorySampler,
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
@@ -51,6 +75,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         optimizer: Optimizer | None = None,
         num_kernel_samples: int = 10,
         num_rff_features: int = 1000,
+        use_decoupled_sampler: bool = True,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -59,10 +84,13 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
             evaluate before beginning model optimization. Therefore, for a kernel with `p`
             (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
-        :param num_rff_features: The number of random Foruier features used to approximate the
+        :param num_rff_features: The number of random Fourier features used to approximate the
             kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
+        :param used_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
+            just use a random Fourier feature sampler. The decoupled sampler suffers less from
+            overestimating variance and can typically get away with a lower num_rff_features.
         """
         super().__init__(optimizer)
         self._model = model
@@ -80,7 +108,7 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
                 f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
             )
         self._num_rff_features = num_rff_features
-
+        self._use_decoupled_sampler = use_decoupled_sampler
         self._ensure_variable_model_data()
 
     def __repr__(self) -> str:
@@ -161,6 +189,8 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
         K12 = self.model.kernel(query_points_1, query_points_2)  # [..., N, M] or [..., L, N, M]
 
         if len(tf.shape(K)) == 2:
+            # if single output GPR, the kernel does not return the latent dimension so
+            # we add it back here
             K = tf.expand_dims(K, -3)
             Kx1 = tf.expand_dims(Kx1, -3)
             Kx2 = tf.expand_dims(Kx2, -3)
@@ -180,6 +210,12 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         # The line below is just A^T*B over the last 2 dimensions.
         cov = K12 - tf.einsum("...lji,ljk->...lik", Linv_Kx1, Linv_Kx2)  # [..., L, N, M]
+
+        num_latent = self.model.num_latent_gps
+        if cov.shape[-3] == 1 and num_latent > 1:
+            # For multioutput GPR with shared kernel, we need to duplicate cov
+            # for each output
+            cov = tf.repeat(cov, num_latent, axis=-3)
 
         tf.debugging.assert_shapes(
             [
@@ -258,15 +294,25 @@ class GaussianProcessRegression(GPflowPredictor, TrainableProbabilisticModel, Fa
 
         multiple_assign(self.model, current_best_parameters)
 
-    def trajectory_sampler(self) -> TrajectorySampler:
+    def trajectory_sampler(self) -> TrajectorySampler[GaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.
 
         :return: The trajectory sampler.
         """
-        models_data = Dataset(self.model.data[0].value(), self.model.data[1].value())
-        return RandomFourierFeatureTrajectorySampler(self, models_data, self._num_rff_features)
+        if self._use_decoupled_sampler:
+            return DecoupledTrajectorySampler(self, self._num_rff_features)
+        else:
+            return RandomFourierFeatureTrajectorySampler(self, self._num_rff_features)
+
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
+        """
+        return Dataset(self.model.data[0], self.model.data[1])
 
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset
@@ -476,22 +522,99 @@ class NumDataPropertyMixin:
         self._num_data.assign(value)
 
 
-class SVGPWrapper(SVGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
+class Parameter(gpflow.Parameter):
+    """A modified version of gpflow.Parameter that supports variable shapes."""
+
+    def __init__(
+        self,
+        value: TensorData,
+        *,
+        transform: Optional[Transform] = None,
+        prior: Optional[Prior] = None,
+        prior_on: Union[str, PriorOn] = PriorOn.CONSTRAINED,
+        trainable: bool = True,
+        dtype: Optional[DType] = None,
+        name: Optional[str] = None,
+        transformed_shape: Any = None,
+        pretransformed_shape: Any = None,
+    ):
+        """
+        A copy of gpflow.Parameter's init but with additional shape arguments that are passed
+        to a modified TransformedVariable.
+        """
+        if transform is None:
+            transform = tfp.bijectors.Identity()
+
+        value = _cast_to_dtype(value, dtype)
+        _validate_unconstrained_value(value, transform, dtype)
+
+        # An inlined, modified version of TransformedVariable's __init__ that also passes any shape
+        # parameter specified in kwargs to the DeferredTensor parent's __init__.
+        # (use same parameter names as TransformedVariable)
+        bijector = transform
+        initial_value = value
+
+        for attr in {
+            "forward",
+            "forward_event_shape",
+            "inverse",
+            "inverse_event_shape",
+            "name",
+            "dtype",
+        }:
+            if not hasattr(bijector, attr):
+                raise TypeError(
+                    "Argument `bijector` missing required `Bijector` "
+                    'attribute "{}".'.format(attr)
+                )
+
+        if callable(initial_value):
+            initial_value = initial_value()
+        initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
+        super(TransformedVariable, self).__init__(  # type: ignore[call-arg]
+            pretransformed_input=tf.Variable(
+                initial_value=bijector.inverse(initial_value),
+                name=name,
+                dtype=dtype,
+                shape=pretransformed_shape,
+            ),
+            transform_fn=bijector,
+            shape=transformed_shape or initial_value.shape,
+            name=bijector.name,
+        )
+        self._bijector = bijector
+
+        self.prior = prior
+        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
 
 
-class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
+class SparseVariational(
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    SupportsCovarianceBetweenPoints,
+    SupportsGetInducingVariables,
+    HasTrajectorySampler,
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-    def __init__(self, model: SVGP, optimizer: Optimizer | None = None):
+    def __init__(
+        self,
+        model: SVGP,
+        optimizer: Optimizer | None = None,
+        num_rff_features: int = 1000,
+    ):
         """
         :param model: The underlying GPflow sparse variational model.
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
             batch size 100.
+        :param num_rff_features: The number of random Fourier features used to approximate the
+            kernel when performing decoupled Thompson sampling through
+            its :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+            perfoms well for a wide range of kernels. Note that very smooth kernels (e.g. RBF)
+            can be well-approximated with fewer features.
         """
 
         if optimizer is None:
@@ -500,12 +623,23 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         super().__init__(optimizer)
         self._model = model
 
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
+
         check_optimizer(optimizer)
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, SVGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class SVGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
+                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
             self._model.__class__ = SVGPWrapper
 
@@ -536,13 +670,75 @@ class SparseVariational(GPflowPredictor, TrainableProbabilisticModel):
         num_data = dataset.query_points.shape[0]
         self.model.num_data = num_data
 
+    def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
+        """
+        Return the model's inducing variables.
 
-class VGPWrapper(VGP, NumDataPropertyMixin):
-    """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and exposes
-    it as a property."""
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or non-whitened representations.
+        """
+        inducing_variable = self.model.inducing_variable
+
+        if isinstance(
+            inducing_variable, gpflow.inducing_variables.SharedIndependentInducingVariables
+        ):
+            inducing_points = inducing_variable.inducing_variable.Z
+        elif isinstance(
+            inducing_variable, gpflow.inducing_variables.SeparateIndependentInducingVariables
+        ):
+            inducing_points = [
+                inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables
+            ]
+        else:
+            inducing_points = inducing_variable.Z
+
+        return inducing_points, self.model.q_mu, self.model.q_sqrt, self.model.whiten
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., A, D]
+        :param query_points_2: Sets of query points with shape [B, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
+
+        return _covariance_between_points_for_variational_models(
+            kernel=self.get_kernel(),
+            inducing_points=inducing_points,
+            q_sqrt=q_sqrt,
+            query_points_1=query_points_1,
+            query_points_2=query_points_2,
+            whiten=whiten,
+        )
+
+    def trajectory_sampler(self) -> TrajectorySampler[SparseVariational]:
+        """
+        Return a trajectory sampler. For :class:`SparseVariational`, we build
+        trajectories using a decoupled random Fourier feature approximation.
+
+        :return: The trajectory sampler.
+        """
+
+        return DecoupledTrajectorySampler(self, self._num_rff_features)
 
 
-class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
+class VariationalGaussianProcess(
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    SupportsCovarianceBetweenPoints,
+    SupportsGetInducingVariables,
+    HasTrajectorySampler,
+):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
 
@@ -564,6 +760,7 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         optimizer: Optimizer | None = None,
         use_natgrads: bool = False,
         natgrad_gamma: Optional[float] = None,
+        num_rff_features: int = 1000,
     ):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
@@ -574,6 +771,11 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
             a :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
             :class:`~tf.optimizers.Optimizer` optimizer.
         :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
+        :param num_rff_features: The number of random Fourier features used to approximate the
+            kernel when performing decoupled Thompson sampling through
+            its :meth:`trajectory_sampler`. We use a default of 1000 as it typically perfoms
+            well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+            be well-approximated with fewer features.
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
             optimizer.
@@ -613,29 +815,75 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
                     """
                 )
 
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
+
         self._model = model
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
+        self._ensure_variable_model_data()
+
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
+        # Thus here we ensure data is stored in dynamic shape Variables
+
+        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+
+            self._model.data = (
+                tf.Variable(
+                    self._model.data[0],
+                    trainable=False,
+                    shape=[None, *self._model.data[0].shape[1:]],
+                ),
+                tf.Variable(
+                    self._model.data[1],
+                    trainable=False,
+                    shape=[None, *self._model.data[1].shape[1:]],
+                ),
+            )
+
+            self._model.q_mu = Parameter(
+                self._model.q_mu,
+                transform=self._model.q_mu.bijector,
+                prior=self._model.q_mu.prior,
+                prior_on=self._model.q_mu.prior_on,
+                dtype=self._model.q_mu.dtype,
+                name=self._model.q_mu.unconstrained_variable.name,
+                trainable=self._model.q_mu.trainable,
+                transformed_shape=[None, *self._model.q_mu.shape[1:]],
+                pretransformed_shape=[None, *self._model.q_mu.unconstrained_variable.shape[1:]],
+            )
+            self._model.q_sqrt = Parameter(
+                self._model.q_sqrt,
+                transform=self._model.q_sqrt.bijector,
+                prior=self._model.q_sqrt.prior,
+                prior_on=self._model.q_sqrt.prior_on,
+                dtype=self._model.q_sqrt.dtype,
+                name=self._model.q_sqrt.unconstrained_variable.name,
+                trainable=self._model.q_sqrt.trainable,
+                transformed_shape=[*self._model.q_sqrt.shape[:-2], None, None],
+                pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
+            )
 
         # GPflow stores num_data as a number. However, since we want to be able to update it
         # without having to retrace the acquisition functions, put it in a Variable instead.
         # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, VGPWrapper):
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class VGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
+                """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
             self._model._num_data = tf.Variable(
-                model.num_data or 0, trainable=False, dtype=tf.float64
+                self._model.num_data or 0, trainable=False, dtype=tf.float64
             )
             self._model.__class__ = VGPWrapper
-
-        # GPflow stores the data in Tensors. However, since we want to be able to update the data
-        # without having to retrace the acquisition functions, put it in Variables instead.
-        self._model.data = (
-            tf.Variable(
-                self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
-            ),
-            tf.Variable(
-                self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
-            ),
-        )
 
     def __repr__(self) -> str:
         """"""
@@ -653,6 +901,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         :param jitter: The size of the jitter to use when stabilizing the Cholesky decomposition of
             the covariance matrix.
         """
+        self._ensure_variable_model_data()
+
         model = self.model
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -675,8 +925,8 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
         model.data[0].assign(dataset.query_points)
         model.data[1].assign(dataset.observations)
         model.num_data = len(dataset)
-        model.q_mu = gpflow.Parameter(new_q_mu)
-        model.q_sqrt = gpflow.Parameter(new_q_sqrt, transform=gpflow.utilities.triangular())
+        model.q_mu.assign(Parameter(new_q_mu))
+        model.q_sqrt.assign(Parameter(new_q_sqrt, transform=gpflow.utilities.triangular()))
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -719,3 +969,221 @@ class VariationalGaussianProcess(GPflowPredictor, TrainableProbabilisticModel):
 
         else:
             self.optimizer.optimize(model, dataset)
+
+    def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
+        """
+        Return the model's inducing variables. Note that GPflow's VGP model is
+        hard-coded to use the whitened representation.
+
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or non-whitened representations.
+        """
+        inducing_points = self.model.data[0]
+        q_mu = self.model.q_mu
+        q_sqrt = self.model.q_sqrt
+        whiten = True  # GPflow's VGP model is hard-coded to use the whitened representation
+        return inducing_points, q_mu, q_sqrt, whiten
+
+    def trajectory_sampler(self) -> TrajectorySampler[VariationalGaussianProcess]:
+        """
+        Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
+        trajectories using a decoupled random Fourier feature approximation.
+
+        :return: The trajectory sampler.
+        """
+
+        return DecoupledTrajectorySampler(self, self._num_rff_features)
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., A, D]
+        :param query_points_2: Sets of query points with shape [B, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+
+        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
+
+        return _covariance_between_points_for_variational_models(
+            kernel=self.get_kernel(),
+            inducing_points=self.model.data[0],
+            q_sqrt=q_sqrt,
+            query_points_1=query_points_1,
+            query_points_2=query_points_2,
+            whiten=whiten,
+        )
+
+
+def _covariance_between_points_for_variational_models(
+    kernel: gpflow.kernels.Kernel,
+    inducing_points: TensorType,
+    q_sqrt: TensorType,
+    query_points_1: TensorType,
+    query_points_2: TensorType,
+    whiten: bool,
+) -> TensorType:
+    r"""
+    Compute the posterior covariance between sets of query points.
+
+    .. math:: \Sigma_{12} = K_{1x}BK_{x2} + K_{12} - K_{1x}K_{xx}^{-1}K_{x2}
+
+    where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`
+    or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using
+    a whitened representation in our variational approximation. Here
+    :math:`L` is the Cholesky decomposition of :math:`K_{xx}`.
+    See :cite:`titsias2009variational` for a derivation.
+
+    Note that this function can also be applied to
+    our :class:`VariationalGaussianProcess` models by passing in the training
+    data rather than the locations of the inducing points.
+
+    Although query_points_2 must be a rank 2 tensor, query_points_1 can
+    have leading dimensions.
+
+    :inducing points: The input locations chosen for our variational approximation.
+    :q_sqrt: The Cholesky decomposition of the covariance matrix of our
+        variational distribution.
+    :param query_points_1: Set of query points with shape [..., A, D]
+    :param query_points_2: Sets of query points with shape [B, D]
+    :param whiten:  If True then use whitened representations.
+    :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+        (L being the number of latent GPs = number of output dimensions)
+    """
+
+    tf.debugging.assert_shapes([(query_points_1, [..., "A", "D"]), (query_points_2, ["B", "D"])])
+
+    num_latent = q_sqrt.shape[0]
+
+    K, Kx1, Kx2, K12 = _compute_kernel_blocks(
+        kernel, inducing_points, query_points_1, query_points_2, num_latent
+    )
+
+    L = tf.linalg.cholesky(K)  # [L, M, M]
+    Linv_Kx1 = tf.linalg.triangular_solve(L, Kx1)  # [..., L, M, A]
+    Linv_Kx2 = tf.linalg.triangular_solve(L, Kx2)  # [..., L, M, B]
+
+    def _leading_mul(M_1: TensorType, M_2: TensorType, transpose_a: bool) -> TensorType:
+        if transpose_a:  # The einsum below is just A^T*B over the last 2 dimensions.
+            return tf.einsum("...lji,ljk->...lik", M_1, M_2)
+        else:  # The einsum below is just A*B^T over the last 2 dimensions.
+            return tf.einsum("...lij,lkj->...lik", M_1, M_2)
+
+    if whiten:
+        first_cov_term = _leading_mul(
+            _leading_mul(Linv_Kx1, q_sqrt, transpose_a=True),  # [..., L, A, M]
+            _leading_mul(Linv_Kx2, q_sqrt, transpose_a=True),  # [..., L, B, M]
+            transpose_a=False,
+        )  # [..., L, A, B]
+    else:
+        Linv_qsqrt = tf.linalg.triangular_solve(L, q_sqrt)  # [L, M, M]
+        first_cov_term = _leading_mul(
+            _leading_mul(Linv_Kx1, Linv_qsqrt, transpose_a=True),  # [..., L, A, M]
+            _leading_mul(Linv_Kx2, Linv_qsqrt, transpose_a=True),  # [..., L, B, M]
+            transpose_a=False,
+        )  # [..., L, A, B]
+
+    second_cov_term = K12  # [..., L, A, B]
+    third_cov_term = _leading_mul(Linv_Kx1, Linv_Kx2, transpose_a=True)  # [..., L, A, B]
+    cov = first_cov_term + second_cov_term - third_cov_term  # [..., L, A, B]
+
+    tf.debugging.assert_shapes(
+        [
+            (query_points_1, [..., "N", "D"]),
+            (query_points_2, ["M", "D"]),
+            (cov, [..., "L", "N", "M"]),
+        ]
+    )
+    return cov
+
+
+def _compute_kernel_blocks(
+    kernel: gpflow.kernels.Kernel,
+    inducing_points: TensorType,
+    query_points_1: TensorType,
+    query_points_2: TensorType,
+    num_latent: int,
+) -> tuple[TensorType, TensorType, TensorType, TensorType]:
+    """
+    Return all the prior covariances required to calculate posterior covariances for each latent
+    Gaussian process, as specified by the `num_latent` input.
+
+    This function returns the covariance between: `inducing_points` and `query_points_1`;
+    `inducing_points` and `query_points_2`; `query_points_1` and `query_points_2`;
+    `inducing_points` and `inducing_points`.
+
+    The calculations are performed differently depending on the type of
+    kernel (single output, separate independent multi-output or shared independent
+    multi-output) and inducing variables (simple set, SharedIndependent or SeparateIndependent).
+
+    Note that `num_latents` is only used when we use a single kernel for a multi-output model.
+    """
+
+    if isinstance(kernel, (gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent)):
+        if type(inducing_points) == list:
+
+            K = tf.concat(
+                [ker(Z)[None, ...] for ker, Z in zip(kernel.kernels, inducing_points)], axis=0
+            )
+            Kx1 = tf.concat(
+                [
+                    ker(Z, query_points_1)[None, ...]
+                    for ker, Z in zip(kernel.kernels, inducing_points)
+                ],
+                axis=0,
+            )  # [..., L, M, A]
+            Kx2 = tf.concat(
+                [
+                    ker(Z, query_points_2)[None, ...]
+                    for ker, Z in zip(kernel.kernels, inducing_points)
+                ],
+                axis=0,
+            )  # [L, M, B]
+            K12 = tf.concat(
+                [ker(query_points_1, query_points_2)[None, ...] for ker in kernel.kernels], axis=0
+            )  # [L, M, B]
+        else:
+            K = kernel(inducing_points, full_cov=True, full_output_cov=False)  # [L, M, M]
+            Kx1 = kernel(
+                inducing_points, query_points_1, full_cov=True, full_output_cov=False
+            )  # [..., L, M, A]
+            Kx2 = kernel(
+                inducing_points, query_points_2, full_cov=True, full_output_cov=False
+            )  # [L, M, B]
+            K12 = kernel(
+                query_points_1, query_points_2, full_cov=True, full_output_cov=False
+            )  # [..., L, A, B]
+    else:  # simple calculations for the single output case
+        K = kernel(inducing_points)  # [M, M]
+        Kx1 = kernel(inducing_points, query_points_1)  # [..., M, A]
+        Kx2 = kernel(inducing_points, query_points_2)  # [M, B]
+        K12 = kernel(query_points_1, query_points_2)  # [..., A, B]
+
+    if len(tf.shape(K)) == 2:  # if single kernel then repeat for all latent dimensions
+        K = tf.repeat(tf.expand_dims(K, -3), num_latent, axis=-3)
+        Kx1 = tf.repeat(tf.expand_dims(Kx1, -3), num_latent, axis=-3)
+        Kx2 = tf.repeat(tf.expand_dims(Kx2, -3), num_latent, axis=-3)
+        K12 = tf.repeat(tf.expand_dims(K12, -3), num_latent, axis=-3)
+    elif len(tf.shape(K)) > 3:
+        raise NotImplementedError(
+            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
+        )
+
+    tf.debugging.assert_shapes(
+        [
+            (K, ["L", "M", "M"]),
+            (Kx1, ["L", "M", "A"]),
+            (Kx2, ["L", "M", "B"]),
+            (K12, ["L", "A", "B"]),
+        ]
+    )
+
+    return K, Kx1, Kx2, K12
