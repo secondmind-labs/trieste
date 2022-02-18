@@ -766,10 +766,10 @@ class SparseVariational(
         Return the model's inducing variables.
 
         :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
-        list of Tensors (when the model has multiple inducing points); A tensor containing the
-        variational mean q_mu; a tensor containing the Cholesky decomposition of the variational
-        covariance q_sqrt; and a bool denoting if we are using whitened or
-        non-whitened representations.
+            list of Tensors (when the model has multiple inducing points); A tensor containing the
+            variational mean q_mu; a tensor containing the Cholesky decomposition of the variational
+            covariance q_sqrt; and a bool denoting if we are using whitened or
+            non-whitened representations.
         """
         inducing_variable = self.model.inducing_variable
 
