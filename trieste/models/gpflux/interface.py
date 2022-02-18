@@ -21,23 +21,27 @@ from gpflow.base import Module
 
 from ...types import TensorType
 from ..interfaces import SupportsGetObservationNoise
-from ..optimizer import BatchOptimizer
+from ..optimizer import KerasOptimizer
 
 
 class GPfluxPredictor(SupportsGetObservationNoise, ABC):
-    """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
+    """
+    A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
-    dtype errors."""
+    dtype errors.
+    """
 
-    def __init__(self, optimizer: BatchOptimizer | None = None):
+    def __init__(self, optimizer: KerasOptimizer | None = None):
         """
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam`.
+        :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+            model and arguments for the wrapper and the optimizer. The optimizer must
+            be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+            :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
         """
         if optimizer is None:
-            optimizer = BatchOptimizer(tf.optimizers.Adam())
+            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01))
 
         self._optimizer = optimizer
 
@@ -52,8 +56,8 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    def optimizer(self) -> BatchOptimizer:
-        """The optimizer with which to train the model."""
+    def optimizer(self) -> KerasOptimizer:
+        """The optimizer wrapper for training the model."""
         return self._optimizer
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:

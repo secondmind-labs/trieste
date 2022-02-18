@@ -50,7 +50,7 @@ from trieste.types import TensorType
             20,
             EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
             -3.65,
-            id="ehvi_vlmop2",
+            id="ExpectedHypervolumeImprovement",
         ),
         pytest.param(
             15,
@@ -60,7 +60,7 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.44,
-            id="qehvi_vlmop2_q_2",
+            id="BatchMonteCarloExpectedHypervolumeImprovement/2",
         ),
         pytest.param(
             10,
@@ -70,7 +70,7 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,
-            id="qehvi_vlmop2_q_4",
+            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
         ),
         pytest.param(
             10,
@@ -80,7 +80,7 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,
-            id="qehvi_vlmop2_q_4",
+            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
         ),
     ],
 )
