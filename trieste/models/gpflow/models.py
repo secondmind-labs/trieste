@@ -29,14 +29,14 @@ from gpflow.base import (
     _validate_unconstrained_value,
 )
 from gpflow.conditionals.util import sample_mvn
+from gpflow.inducing_variables import (
+    SeparateIndependentInducingVariables,
+    SharedIndependentInducingVariables,
+)
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.utilities import multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 from tensorflow_probability.python.util import TransformedVariable
-from gpflow.inducing_variables import SharedIndependentInducingVariables, SeparateIndependentInducingVariables
-
-
-from ...utils import DEFAULTS
 
 from ...data import Dataset
 from ...types import TensorType
@@ -50,9 +50,9 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import BatchOptimizer, Optimizer
+from .inducing_point_selectors import InducingPointSelector
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
-from .inducing_point_selectors import InducingPointSelector
 from .utils import (
     assert_data_is_compatible,
     check_optimizer,
@@ -604,13 +604,12 @@ class SparseVariational(
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
     """
 
-
     def __init__(
         self,
         model: SVGP,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[InducingPointSelector] = None,
+        inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = None,
     ):
         """
         :param model: The underlying GPflow sparse variational model.
@@ -622,8 +621,11 @@ class SparseVariational(
             its :meth:`trajectory_sampler`. We use a default of 1000 as it typically
             perfoms well for a wide range of kernels. Note that very smooth kernels (e.g. RBF)
             can be well-approximated with fewer features.
-        :param inducing_point_selector: TODO
-        :raises :TODO
+        :param inducing_point_selector: The (optional) desired inducing_point_selector that
+            will update the underlying GPflow sparse variational model's inducing points as
+            the optimization progresses.
+        :raise NotImplementedError: If we try to use an inducing_point_selector with a model
+            that has more than one set of inducing points.
         """
 
         if optimizer is None:
@@ -642,9 +644,13 @@ class SparseVariational(
 
         if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
             if inducing_point_selector is not None:
-                raise ValueError(
-                f"TODO"
-            )     
+                raise NotImplementedError(
+                    f"""
+                    InducingPointSelectors only currently support models with a single set
+                    of inducing points however received inducing points of
+                    type {type(self.model.inducing_variable)}.
+                    """
+                )
 
         self._inducing_point_selector = inducing_point_selector
 
@@ -669,15 +675,15 @@ class SparseVariational(
         return self._model
 
     @property
-    def inducing_point_selector(self) -> SVGP:
+    def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
 
     def update(self, dataset: Dataset) -> None:
         # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
 
         current_inducing_points, q_mu, _, _ = self.get_inducing_variables()
-       
-        if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
+
+        if isinstance(current_inducing_points, list):
             inducing_points_trailing_dim = current_inducing_points[0].shape[-1]
         else:
             inducing_points_trailing_dim = current_inducing_points.shape[-1]
@@ -700,74 +706,77 @@ class SparseVariational(
         self.model.num_data = num_data
 
         if self._inducing_point_selector is not None:
-            new_inducing_points = self._inducing_point_selector.update(current_inducing_points, self, dataset)
-            if not tf.reduce_all(tf.math.equal(new_inducing_points, current_inducing_points)): # TODO
-                self._update_inducing_variables(new_inducing_points)      
-
+            new_inducing_points = self._inducing_point_selector.update(
+                current_inducing_points, self, dataset
+            )
+            self._update_inducing_variables(new_inducing_points)
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
-        SAY START FROM PREVIOUS MODEL (with whitening)
+        When updating the inducing points of a model, we must also update the other
+        inducing variables, i.e. `q_mu` and `q_sqrt` accordingly. The exact form of this update
+        depends if we are using whitened representations of the inducing variables.
+        See :meth:`_whiten_points` for details.
+
+        :param new_inducing_points: The desired values for the new inducing points.
+        :raise NotImplementedError: If we try to update the inducing variables of a model
+            that has more than one set of inducing points.
         """
-        # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
-        # q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
-        # new_q_mu and new_q_sqrt: TODO
 
+        if isinstance(new_inducing_points, list):
+            raise NotImplementedError(
+                f"""
+                We do not currently support updating models with multiple sets of
+                inducing points however received; {new_inducing_points}
+                """
+            )
 
-        if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
-            raise ValueError(
-                f"TODO"
-            )    
-
-        old_inducing_points, _, _,  whiten = self.get_inducing_variables()
-        tf.assert_equal(tf.shape(old_inducing_points), tf.shape(new_inducing_points)) # number of inducing points must not change
+        old_inducing_points, _, _, whiten = self.get_inducing_variables()
+        tf.assert_equal(
+            tf.shape(old_inducing_points), tf.shape(new_inducing_points)
+        )  # number of inducing points must not change
 
         if whiten:
             new_q_mu, new_q_sqrt = _whiten_points(self, new_inducing_points)
         else:
             new_q_mu, new_f_cov = self.predict_joint(new_inducing_points)  # [N, L], [L, N, N]
-            jitter_mat = DEFAULTS.JITTER * tf.eye(tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype)
+            jitter_mat = DEFAULTS.JITTER * tf.eye(
+                tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
+            )
             new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
 
-        self.model.q_mu.assign(new_q_mu) #  [N, L]
-        self.model.q_sqrt.assign(new_q_sqrt) #  [L, N, N]
+        self.model.q_mu.assign(new_q_mu)  # [N, L]
+        self.model.q_sqrt.assign(new_q_sqrt)  # [L, N, N]
 
-        if isinstance(
-            self.model.inducing_variable, SharedIndependentInducingVariables
-        ):
-            self.model.inducing_variable.inducing_variable.Z.assign(new_inducing_points) # [M, D]
+        if isinstance(self.model.inducing_variable, SharedIndependentInducingVariables):
+            self.model.inducing_variable.inducing_variable.Z.assign(new_inducing_points)  # [M, D]
         else:
             self.model.inducing_variable.Z.assign(new_inducing_points)  # [M, D]
 
-
-    def get_inducing_variables(self) -> Tuple[Union[TensorType, list[TensorType]], TensorType, TensorType, bool]:
+    def get_inducing_variables(
+        self,
+    ) -> Tuple[Union[TensorType, list[TensorType]], TensorType, TensorType, bool]:
         """
         Return the model's inducing variables.
 
-        TODO, say can be list
-
-        :return: Tensors containing: the inducing points (i.e. locations of the inducing
-            variables) TODO THIS COULD BE LIST; the variational mean q_mu; the Cholesky decomposition of the
-            variational covariance q_sqrt; and a bool denoting if we are using whitened
-            or non-whitened representations.
+        :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
+        list of Tensors (when the model has multiple inducing points); A tensor containing the
+        variational mean q_mu; a tensor containing the Cholesky decomposition of the variational
+        covariance q_sqrt; and a bool denoting if we are using whitened or
+        non-whitened representations.
         """
         inducing_variable = self.model.inducing_variable
 
-        if isinstance(
-            inducing_variable, SharedIndependentInducingVariables
-        ):
-            inducing_points = inducing_variable.inducing_variable.Z # [M, D]
-        elif isinstance(
-            inducing_variable, SeparateIndependentInducingVariables
-        ):
-            inducing_points = [inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables] # list of L [M, D] tensors
+        if isinstance(inducing_variable, SharedIndependentInducingVariables):
+            inducing_points = inducing_variable.inducing_variable.Z  # [M, D]
+        elif isinstance(inducing_variable, SeparateIndependentInducingVariables):
+            inducing_points = [
+                inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables
+            ]  # list of L [M, D] tensors
         else:
-            inducing_points = inducing_variable.Z # [M, D]
+            inducing_points = inducing_variable.Z  # [M, D]
 
         return inducing_points, self.model.q_mu, self.model.q_sqrt, self.model.whiten
-
-
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -803,24 +812,6 @@ class SparseVariational(
         """
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class VariationalGaussianProcess(
@@ -1003,10 +994,7 @@ class VariationalGaussianProcess(
         model.data[1].assign(dataset.observations)
         model.num_data = len(dataset)
 
-        # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
-        # q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
-        # new_q_mu and new_q_sqrt: TODO
+        # GPflow's VGP model is hard-coded to use the whitened representation.
         new_q_mu, new_q_sqrt = _whiten_points(self, dataset.query_points)
         model.q_mu.assign(new_q_mu)
         model.q_sqrt.assign(new_q_sqrt)
@@ -1272,16 +1260,19 @@ def _compute_kernel_blocks(
     return K, Kx1, Kx2, K12
 
 
-
-def _whiten_points(model: GPflowPredictor,inducing_points: TensorType) -> Tuple[TensorType, TensorType]:
+def _whiten_points(
+    model: GPflowPredictor, inducing_points: TensorType
+) -> Tuple[TensorType, TensorType]:
     """
-    TODO
+    GPFlow's VGP and SVGP can use whitened representation, i.e.
+    q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
+    Hence we need to back-transform from f_mu and f_cov to obtain the updated
+    new_q_mu and new_q_sqrt.
 
-            # GPflow's VGP model is hard-coded to use the whitened representation, i.e.
-        # q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
-        # Hence we need to back-transform from f_mu and f_cov to obtain the updated
-        # new_q_mu and new_q_sqrt: TODO
-    """ 
+    :param model: The whitened model.
+    :para inducing_points: The new inducing point locations.
+    :return: The updated q_mu and q_sqrt with shapes [N, L] and [L, N, N], respectively.
+    """
     f_mu, f_cov = model.predict_joint(inducing_points)  # [N, L], [L, N, N]
     Knn = model.get_kernel()(inducing_points, full_cov=True)  # [N, N]
     jitter_mat = DEFAULTS.JITTER * tf.eye(tf.shape(inducing_points)[0], dtype=Knn.dtype)
@@ -1292,4 +1283,3 @@ def _whiten_points(model: GPflowPredictor,inducing_points: TensorType) -> Tuple[
     new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
     return new_q_mu, new_q_sqrt
-

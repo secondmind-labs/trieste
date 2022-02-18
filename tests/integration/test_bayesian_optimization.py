@@ -52,6 +52,7 @@ from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
     SparseVariational,
+    UniformInducingPointSelector,
     VariationalGaussianProcess,
     build_gpr,
     build_svgp,
@@ -407,7 +408,9 @@ def _test_optimizer_finds_minimum(
 
     elif model_type is SparseVariational:
         gpr = build_svgp(initial_data, search_space)
-        model = SparseVariational(gpr, **model_args)
+        model = SparseVariational(
+            gpr, **model_args, inducing_point_selector=UniformInducingPointSelector(search_space)
+        )
 
     elif model_type is DeepGaussianProcess:
         track_state = False

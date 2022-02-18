@@ -172,7 +172,7 @@ def build_sgpr(
     :param num_inducing_points: The number of inducing points can be optionally set to a
         certain value. If left unspecified (default), this number is set to either
         ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
-        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.  TODO WILL BE UPDATED
+        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
     :param trainable_inducing_points: If set to `True` inducing points will be set to
         be trainable. This option should be used with caution. By default set to `False`.
     :return: An :class:`~gpflow.models.SGPR` model.
@@ -313,7 +313,7 @@ def build_svgp(
     :param num_inducing_points: The number of inducing points can be optionally set to a
         certain value. If left unspecified (default), this number is set to either
         ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
-        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller. TODO WILL BE UPDATED
+        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
     :param trainable_inducing_points: If set to `True` inducing points will be set to
         be trainable. This option should be used with caution. By default set to `False`.
     :return: An :class:`~gpflow.models.SVGP` model.

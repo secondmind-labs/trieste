@@ -34,9 +34,13 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.inducing_variables import (
+    SeparateIndependentInducingVariables,
+    SharedIndependentInducingVariables,
+)
 from gpflow.models import SGPR, SVGP, VGP
 
-from tests.util.misc import random_seed
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
 from tests.util.models.gpflow.models import (
     ModelFactoryType,
     gpr_model,
@@ -57,17 +61,21 @@ from trieste.models.gpflow import (
     SparseVariational,
     VariationalGaussianProcess,
 )
+from trieste.models.gpflow.inducing_point_selectors import (
+    InducingPointSelector,
+    KMeansInducingPointSelector,
+    RandomSubSampleInducingPointSelector,
+    UniformInducingPointSelector,
+)
 from trieste.models.gpflow.models import NumDataPropertyMixin
 from trieste.models.gpflow.sampler import (
     DecoupledTrajectorySampler,
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.space import Box
-from gpflow.inducing_variables import SharedIndependentInducingVariables, SeparateIndependentInducingVariables
 
-from trieste.models.gpflow.inducing_point_selectors import InducingPointSelector, DummyInducingPointSelector, UniformInducingPointSelector, RandomSubSampleInducingPointSelector, KMeansInducingPointSelector
+
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
     return 3.0 * x + np.random.normal(scale=0.01, size=x.shape)
 
@@ -660,36 +668,54 @@ def test_sparse_variational_model_attribute() -> None:
     assert sv.model is model
     assert isinstance(sv.model, SVGP)
     assert isinstance(sv.model, NumDataPropertyMixin)
-    assert isinstance(sv.inducing_point_selector, DummyInducingPointSelector)
+    assert sv.inducing_point_selector is None
 
 
-@pytest.mark.parametrize("selector", [DummyInducingPointSelector(),UniformInducingPointSelector(Box([0.0],[1.0])),RandomSubSampleInducingPointSelector(Box([0.0],[1.0])), KMeansInducingPointSelector(Box([0.0],[1.0]))])
-def test_sparse_variational_assigns_correct_inducing_point_selector(selector: InducingPointSelector) -> None:
+@pytest.mark.parametrize(
+    "selector",
+    [
+        UniformInducingPointSelector(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
+        KMeansInducingPointSelector(Box([0.0], [1.0])),
+    ],
+)
+def test_sparse_variational_assigns_correct_inducing_point_selector(
+    selector: InducingPointSelector[SparseVariational],
+) -> None:
     model = svgp_model(*mock_data())
     sv = SparseVariational(model, inducing_point_selector=selector)
     assert isinstance(sv.inducing_point_selector, type(selector))
-   
 
 
 @pytest.mark.parametrize("recalc_every_model_update", [True, False])
-def test_sparse_variational_chooses_new_inducing_points_correct_number_of_times(recalc_every_model_update: bool):
+def test_sparse_variational_chooses_new_inducing_points_correct_number_of_times(
+    recalc_every_model_update: bool,
+) -> None:
     model = svgp_model(*mock_data())
-    selector = UniformInducingPointSelector(Box([0.0],[1.0]), recalc_every_model_update=recalc_every_model_update)
+    selector = UniformInducingPointSelector(
+        Box([0.0], [1.0]), recalc_every_model_update=recalc_every_model_update
+    )
     sv = SparseVariational(model, inducing_point_selector=selector)
     old_inducing_points = sv.model.inducing_variable.Z.numpy()
     sv.update(Dataset(*mock_data()))
     first_inducing_points = sv.model.inducing_variable.Z.numpy()
-    npt.assert_raises(AssertionError, npt.assert_array_equal, old_inducing_points, first_inducing_points)
+    npt.assert_raises(
+        AssertionError, npt.assert_array_equal, old_inducing_points, first_inducing_points
+    )
     sv.update(Dataset(*mock_data()))
     second_inducing_points = sv.model.inducing_variable.Z.numpy()
     if recalc_every_model_update:
-        npt.assert_raises(AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points)
-        npt.assert_raises(AssertionError, npt.assert_array_equal, first_inducing_points, second_inducing_points)
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points
+        )
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, first_inducing_points, second_inducing_points
+        )
     else:
-        npt.assert_raises(AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points)
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points
+        )
         npt.assert_array_equal(first_inducing_points, second_inducing_points)
-
-
 
 
 def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
@@ -713,7 +739,7 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
 @pytest.mark.parametrize(
     "mo_type", ["shared+shared", "separate+shared", "separate+separate", "auto"]
 )
-def test_sparse_variational_update_updates_num_data(mo_type:str) -> None:
+def test_sparse_variational_update_updates_num_data(mo_type: str) -> None:
     x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
     svgp = two_output_svgp_model(x, mo_type)
     model = SparseVariational(svgp)
@@ -742,7 +768,9 @@ def test_sparse_variational_correctly_returns_inducing_points(whiten: bool) -> N
     "mo_type", ["shared+shared", "separate+shared", "separate+separate", "auto"]
 )
 @pytest.mark.parametrize("whiten", [True, False])
-def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(whiten: bool, mo_type:str) -> None:
+def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
+    whiten: bool, mo_type: str
+) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     svgp = two_output_svgp_model(x, mo_type)
     model = SparseVariational(svgp)
@@ -751,35 +779,31 @@ def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(w
 
     inducing_points, q_mu, q_sqrt, w = model.get_inducing_variables()
 
-    if isinstance(
-            model.model.inducing_variable, SharedIndependentInducingVariables
-        ):
-            npt.assert_allclose(inducing_points, model.model.inducing_variable.inducing_variable.Z, atol=1e-5)
-    elif isinstance(
-            model.model.inducing_variable, SeparateIndependentInducingVariables
-        ):
+    if isinstance(model.model.inducing_variable, SharedIndependentInducingVariables):
+        npt.assert_allclose(
+            inducing_points, model.model.inducing_variable.inducing_variable.Z, atol=1e-5
+        )
+    elif isinstance(model.model.inducing_variable, SeparateIndependentInducingVariables):
         for i, points in enumerate(model.model.inducing_variable.inducing_variables):
             npt.assert_allclose(inducing_points[i], points.Z, atol=1e-5)
     else:
-            npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
+        npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
 
     npt.assert_allclose(q_mu, model.model.q_mu, atol=1e-5)
     npt.assert_allclose(q_sqrt, model.model.q_sqrt, atol=1e-5)
     assert whiten == w
 
 
-
 @random_seed
 @pytest.mark.parametrize("whiten", [True, False])
-def test_sparse_variational_updates_inducing_points_raises_if_you_change_shape(whiten: bool) -> None:
-    # check whitening is correctly applied when updating inducing points by comparing with gpflow model
+def test_sparse_variational_updates_inducing_points_raises_if_you_change_shape(
+    whiten: bool,
+) -> None:
     model = SparseVariational(
         svgp_model(tf.zeros([5, 2]), tf.zeros([5, 1])),
     )
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES): # current inducing point has 2 elements
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # current inducing point has 2 elements
         model._update_inducing_variables(tf.zeros([3, 2]))
-
-
 
 
 @pytest.mark.parametrize(
