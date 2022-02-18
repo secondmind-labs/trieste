@@ -165,15 +165,6 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(
                 15,
-                DiscreteThompsonSampling(
-                    1000,
-                    5,
-                    thompson_sampler=ThompsonSamplerFromTrajectory(),
-                ),
-                id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
-            ),
-            pytest.param(
-                15,
                 EfficientGlobalOptimization(
                     Fantasizer(),
                     num_query_points=3,
