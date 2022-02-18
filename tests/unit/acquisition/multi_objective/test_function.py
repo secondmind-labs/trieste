@@ -44,8 +44,10 @@ from trieste.acquisition.function.multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
+    MOLocalPenalizationAcquisitionFunction,
     batch_ehvi,
     expected_hv_improvement,
+    mo_penalizer
 )
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.multi_objective.partition import (
@@ -617,3 +619,44 @@ def test_echvi_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(models_, datasets=data)
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(models_)
+
+
+
+def test_molp_builder_raises_for_empty_data() -> None:
+    num_obj = 3
+    dataset = empty_dataset([2], [num_obj])
+    model = QuadraticMeanAndRBFKernel()
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        MOLocalPenalizationAcquisitionFunction().prepare_acquisition_function(model, dataset=dataset)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        MOLocalPenalizationAcquisitionFunction().prepare_acquisition_function(model, dataset)
+
+def test_mo_penalizer_raises_for_empty_pending_points() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mo_penalizer(QuadraticMeanAndRBFKernel(), None)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mo_penalizer(QuadraticMeanAndRBFKernel(), tf.zeros((0, 2)))
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_mo_penalizer_raises_for_invalid_batch_size(
+    at: TensorType
+) -> None:
+    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    mo_lp = mo_penalizer(QuadraticMeanAndRBFKernel(), pending_points)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        mo_lp(at)
+
+
+@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
+def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
+    pending_points: TensorType,
+    penalizer: Callable[..., PenalizationFunction],
+) -> None:
+    best = tf.constant([0], dtype=tf.float64)
+    lipschitz_constant = tf.constant([1], dtype=tf.float64)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
+

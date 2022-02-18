@@ -53,6 +53,7 @@ from .multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
+    MOLocalPenalizationAcquisitionFunction,
     batch_ehvi,
     expected_hv_improvement,
 )
