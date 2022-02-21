@@ -35,7 +35,7 @@ from .models.config import ModelConfigType
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Ok, map_values
+from .utils import Ok, Timer, map_values
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -368,14 +368,23 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         #   which, when called, returns state and points
         # so code below is needed to cater for both cases
 
-        points_or_stateful = self._acquisition_rule.acquire(
-            self._search_space, self._models, datasets=self._datasets
-        )
+        with Timer() as query_point_generation_timer:
+            points_or_stateful = self._acquisition_rule.acquire(
+                self._search_space, self._models, datasets=self._datasets
+            )
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
         else:
             query_points = points_or_stateful
+
+        summary_writer = get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=get_step_number()):
+                tf.summary.scalar(
+                    "wallclock.query_point_generation",
+                    query_point_generation_timer.time,
+                )
 
         return query_points
 
@@ -396,25 +405,22 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
 
         self._datasets = {tag: self._datasets[tag] + new_data[tag] for tag in new_data}
 
-        for tag, model in self._models.items():
-            dataset = self._datasets[tag]
-            model.update(dataset)
-            model.optimize(dataset)
+        with Timer() as model_fitting_timer:
+            for tag, model in self._models.items():
+                dataset = self._datasets[tag]
+                model.update(dataset)
+                model.optimize(dataset)
 
         summary_writer = get_tensorboard_writer()
-        step_number = get_step_number()
         if summary_writer:
-            with summary_writer.as_default():
+            with summary_writer.as_default(step=get_step_number()):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
                     tf.summary.scalar(
-                        f"{tag}.observation.best_overall",
-                        np.min(self._datasets[tag].observations),
-                        step=step_number,
+                        f"{tag}.observation.best_overall", np.min(self._datasets[tag].observations)
                     )
                     tf.summary.scalar(
-                        f"{tag}.observation.best_new",
-                        np.min(new_data[tag].observations),
-                        step=step_number,
+                        f"{tag}.observation.best_in_batch", np.min(new_data[tag].observations)
                     )
+                    tf.summary.scalar("wallclock.model_fitting", model_fitting_timer.time)

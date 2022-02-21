@@ -492,29 +492,22 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
-                    with summary_writer.as_default():
+                    with summary_writer.as_default(step=step):
                         for tag in datasets:
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
                             tf.summary.scalar(
                                 f"{tag}.observation.best_overall",
                                 np.min(datasets[tag].observations),
-                                step=step,
                             )
                             tf.summary.scalar(
-                                f"{tag}.observation.best_new",
+                                f"{tag}.observation.best_in_batch",
                                 np.min(tagged_output[tag].observations),
-                                step=step,
                             )
-                        tf.summary.scalar(
-                            "wallclock.step",
-                            total_step_wallclock_timer.time,
-                            step=step,
-                        )
+                        tf.summary.scalar("wallclock.step", total_step_wallclock_timer.time)
                         tf.summary.scalar(
                             "wallclock.query_point_generation",
                             query_point_generation_timer.time,
-                            step=step,
                         )
                         tf.summary.scalar(
                             "wallclock.model_fitting",
@@ -524,7 +517,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 if (step == 0 and fit_initial_model)
                                 else 0
                             ),
-                            step=step,
                         )
 
             except Exception as error:  # pylint: disable=broad-except
