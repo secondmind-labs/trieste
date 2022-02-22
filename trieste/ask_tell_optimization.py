@@ -381,8 +381,14 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         summary_writer = get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=get_step_number()):
+                if tf.rank(query_points) == 2:
+                    for i in tf.range(tf.shape(query_points)[1]):
+                        if len(query_points) == 1:
+                            tf.summary.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                        else:
+                            tf.summary.histogram(f"query_points/[{i}]", query_points[:, i])
                 tf.summary.scalar(
-                    "wallclock.query_point_generation",
+                    "wallclock/query_point_generation",
                     query_point_generation_timer.time,
                 )
 
@@ -418,12 +424,12 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
                     tf.summary.histogram(
-                        f"{tag}.observation.new_observations", new_data[tag].observations
+                        f"{tag}.observation/new_observations", new_data[tag].observations
                     )
                     tf.summary.scalar(
-                        f"{tag}.observation.best_in_batch", np.min(new_data[tag].observations)
+                        f"{tag}.observation/best_in_batch", np.min(new_data[tag].observations)
                     )
                     tf.summary.scalar(
-                        f"{tag}.observation.best_overall", np.min(self._datasets[tag].observations)
+                        f"{tag}.observation/best_overall", np.min(self._datasets[tag].observations)
                     )
-                    tf.summary.scalar("wallclock.model_fitting", model_fitting_timer.time)
+                    tf.summary.scalar("wallclock/model_fitting", model_fitting_timer.time)

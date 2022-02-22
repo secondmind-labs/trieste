@@ -497,24 +497,34 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
                             tf.summary.histogram(
-                                f"{tag}.observation.new_observations",
+                                f"{tag}.observation/new_observations",
                                 tagged_output[tag].observations,
                             )
                             tf.summary.scalar(
-                                f"{tag}.observation.best_in_batch",
+                                f"{tag}.observation/best_in_batch",
                                 np.min(tagged_output[tag].observations),
                             )
                             tf.summary.scalar(
-                                f"{tag}.observation.best_overall",
+                                f"{tag}.observation/best_overall",
                                 np.min(datasets[tag].observations),
                             )
-                        tf.summary.scalar("wallclock.step", total_step_wallclock_timer.time)
+
+                        if tf.rank(query_points) == 2:
+                            for i in tf.range(tf.shape(query_points)[1]):
+                                if len(query_points) == 1:
+                                    tf.summary.scalar(
+                                        f"query_points/[{i}]", float(query_points[0, i])
+                                    )
+                                else:
+                                    tf.summary.histogram(f"query_points/[{i}]", query_points[:, i])
+
+                        tf.summary.scalar("wallclock/step", total_step_wallclock_timer.time)
                         tf.summary.scalar(
-                            "wallclock.query_point_generation",
+                            "wallclock/query_point_generation",
                             query_point_generation_timer.time,
                         )
                         tf.summary.scalar(
-                            "wallclock.model_fitting",
+                            "wallclock/model_fitting",
                             model_fitting_timer.time
                             + (
                                 initial_model_fitting_timer.time

@@ -262,13 +262,15 @@ class EfficientGlobalOptimization(
 
         summary_writer = get_tensorboard_writer()
         step_number = get_step_number()
+        greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
+
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
                 value = self._acquisition_function(batched_points)[0][0]
-                tf.summary.scalar("EGO.acquisition_function.maximum_found", value)
+                tf.summary.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
 
-        if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
+        if greedy:
             for i in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
@@ -281,6 +283,12 @@ class EfficientGlobalOptimization(
                 )
                 chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
+
+                if summary_writer:
+                    with summary_writer.as_default(step=step_number):
+                        batched_points = tf.expand_dims(chosen_point, axis=0)
+                        value = self._acquisition_function(batched_points)[0][0]
+                        tf.summary.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
 
         return points
 
