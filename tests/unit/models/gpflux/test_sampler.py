@@ -26,20 +26,19 @@ from __future__ import annotations
 
 from typing import Callable, Tuple
 
-import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from gpflux.models import DeepGP
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, mk_dataset, quadratic
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import DeepGaussianProcessReparamSampler
-from trieste.types import TensorType
 from trieste.space import Box
+from trieste.types import TensorType
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])

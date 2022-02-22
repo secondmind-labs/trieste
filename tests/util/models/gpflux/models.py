@@ -25,12 +25,11 @@ from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.space import SearchSpace
-from trieste.data import Dataset
-from trieste.models.optimizer import KerasOptimizer
 
-from trieste.data import TensorType
+from trieste.data import Dataset, TensorType
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.optimizer import KerasOptimizer
+from trieste.space import SearchSpace
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
