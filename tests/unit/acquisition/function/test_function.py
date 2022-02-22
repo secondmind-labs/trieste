@@ -439,12 +439,35 @@ def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_samp
 def test_mc_augmented_expected_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
-    with pytest.raises(tf.errors.InvalidArgumentError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="Dataset must be populated."):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
-                QuadraticMeanAndRBFKernelWithSamplers(data), data
+                QuadraticMeanAndRBFKernelWithSamplers(data), dataset=data
             )
         )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        (
+            MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
+                QuadraticMeanAndRBFKernelWithSamplers(data)
+            )
+        )
+
+
+def test_mc_augmented_expected_improvement_updater_raises_for_empty_data() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset)
+    builder = MonteCarloAugmentedExpectedImprovement(10)
+    acq_fn = builder.prepare_acquisition_function(model, dataset)
+
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="Dataset must be populated."):
+        builder.update_acquisition_function(acq_fn, model, dataset=data)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        builder.update_acquisition_function(acq_fn, model)
 
 
 @random_seed
@@ -496,6 +519,29 @@ def test_mc_augmented_expected_improvement(
     aei = aeif(xs[..., None, :])  # type: ignore
 
     npt.assert_allclose(aei, aei_approx, rtol=rtol, atol=atol)
+
+
+@random_seed
+def test_mc_augmented_expected_improvement_updates_without_retracing() -> None:
+    known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
+    data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
+    model._noise_variance = tf.cast(model.get_observation_noise(), tf.float64)
+    builder = MonteCarloAugmentedExpectedImprovement(10_000)
+    aei = AugmentedExpectedImprovement().prepare_acquisition_function(model, dataset=data)
+    xs = tf.random.uniform([5, 1, 2], dtype=tf.float64)
+
+    mcaei = builder.prepare_acquisition_function(model, dataset=data)
+    assert mcaei.__call__._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(mcaei(xs), aei(xs), rtol=0.06)
+    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
+
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    up_mcaei = builder.update_acquisition_function(mcaei, model, dataset=data)
+    assert up_mcaei == mcaei
+    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
+    npt.assert_allclose(mcaei(xs), aei(xs), rtol=0.06)
+    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:

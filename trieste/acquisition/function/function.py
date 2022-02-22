@@ -839,7 +839,7 @@ class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
         self._model = model
         self._sampler = sampler
         self._eta = tf.Variable(eta)
-        self._noise_variance = model.get_observation_noise()
+        self._noise_variance = tf.Variable(model.get_observation_noise())
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta and noise variance"""
