@@ -53,7 +53,7 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
 
     @property
@@ -132,7 +132,7 @@ class DiscreteSearchSpace(SearchSpace):
         return self._points
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -252,7 +252,7 @@ class Box(SearchSpace):
         return self._upper
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -456,9 +456,9 @@ class TaggedProductSearchSpace(SearchSpace):
         return self._tags
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this product search space."""
-        return int(self._dimension)
+        return self._dimension
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """
