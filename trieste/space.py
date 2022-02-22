@@ -242,12 +242,12 @@ class Box(SearchSpace):
         return f"Box({self._lower!r}, {self._upper!r})"
 
     @property
-    def lower(self) -> TensorType:
+    def lower(self) -> tf.Tensor:
         """The lower bounds of the box."""
         return self._lower
 
     @property
-    def upper(self) -> TensorType:
+    def upper(self) -> tf.Tensor:
         """The upper bounds of the box."""
         return self._upper
 

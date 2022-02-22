@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
@@ -30,13 +28,13 @@ from ..interfaces import (
     TrainableProbabilisticModel,
     TrajectorySampler,
 )
-from ..optimizer import BatchOptimizer
-from .interface import GPfluxPredictor
 from .sampler import (
     DeepGaussianProcessReparamSampler,
     DeepGaussianProcessTrajectorySampler,
     sample_dgp,
 )
+from ..optimizer import KerasOptimizer
+from .interface import GPfluxPredictor
 
 
 class DeepGaussianProcess(
@@ -53,18 +51,17 @@ class DeepGaussianProcess(
     def __init__(
         self,
         model: DeepGP,
-        optimizer: BatchOptimizer | None = None,
+        optimizer: KerasOptimizer | None = None,
         continuous_optimisation: bool = True,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
         :param optimizer: The optimizer configuration for training the model. Defaults to
-            :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
-            :class:`~tf.optimizers.Adam`.
-            This wrapper itself is not used, instead only its `optimizer` and `minimize_args` are
-            used. Its optimizer is used when compiling a Keras GPflux model and `minimize_args` is
-            a dictionary of arguments to be used in the Keras `fit` method. Defaults to
-            using 100 epochs, batch size 100, and verbose 0. See
+            :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
+            :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
+            used when compiling the model and ``fit_args`` is a dictionary of arguments to be used
+            in the Keras ``fit`` method. Defaults to 400 epochs, batch size of 1000, and verbose 0.
+            A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param continuous_optimisation: if True (default), the optimizer will keep track of the
@@ -89,14 +86,21 @@ class DeepGaussianProcess(
 
         self.original_lr = self.optimizer.optimizer.lr.numpy()
 
-        if not self.optimizer.minimize_args:
-            self._fit_args: Dict[str, Any] = {
+        epochs = 400
+
+        def scheduler(epoch: int, lr: float) -> float:
+            if epoch == epochs // 2:
+                return lr * 0.1
+            else:
+                return lr
+
+        if not self.optimizer.fit_args:
+            self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 100,
-                "batch_size": 100,
+                "epochs": epochs,
+                "batch_size": 1000,
+                "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
             }
-        else:
-            self._fit_args = self.optimizer.minimize_args
 
         self._model_gpflux = model
 
@@ -183,7 +187,7 @@ class DeepGaussianProcess(
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
-        fit_args = dict(self._fit_args)
+        fit_args = dict(self.optimizer.fit_args)
 
         # Tell optimizer how many epochs have been used before: the optimizer will "continue"
         # optimization across multiple BO iterations rather than start fresh at each iteration.

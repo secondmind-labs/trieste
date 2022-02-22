@@ -34,7 +34,7 @@ from trieste.types import TensorType
 @pytest.mark.parametrize(
     "num_steps, acquisition_function_builder",
     [
-        (12, ExpectedConstrainedImprovement),
+        pytest.param(12, ExpectedConstrainedImprovement, id="ExpectedConstrainedImprovement"),
     ],
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(

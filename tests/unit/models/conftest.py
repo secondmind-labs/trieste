@@ -54,7 +54,7 @@ def _gpflow_interface_factory(request: Any) -> ModelFactoryType:
     def model_interface_factory(
         x: TensorType, y: TensorType, optimizer: Optimizer | None = None
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
-        model_interface: type[GaussianProcessRegression] = request.param[0]
+        model_interface: Callable[..., GPflowPredictor] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
         reference_model: Callable[[TensorType, TensorType], GPModel] = request.param[1]
         return model_interface(base_model, optimizer=optimizer), reference_model
