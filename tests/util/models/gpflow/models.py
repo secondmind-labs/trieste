@@ -113,6 +113,44 @@ class GaussianProcess(
         return tf.concat(covs, axis=-3)
 
 
+class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
+    """A (static) Gaussian process over a vector random variable with independent reparam sampler
+    but without noise variance."""
+
+    def __init__(
+        self,
+        mean_functions: Sequence[Callable[[TensorType], TensorType]],
+        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+    ):
+        self._mean_functions = mean_functions
+        self._kernels = kernels
+
+    def __repr__(self) -> str:
+        return f"GaussianProcessWithoutNoise({self._mean_functions!r}, {self._kernels!r})"
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, cov = self.predict_joint(query_points[..., None, :])
+        return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        means = [f(query_points) for f in self._mean_functions]
+        covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
+        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        covs = [
+            k.tensor(query_points_1, query_points_2, 1, 1)[..., None, :, :] for k in self._kernels
+        ]
+        return tf.concat(covs, axis=-3)
+
+    def reparam_sampler(
+        self: GaussianProcessWithoutNoise, num_samples: int
+    ) -> ReparametrizationSampler[GaussianProcessWithoutNoise]:
+        return GaussianProcessSampler(num_samples, self)
+
+
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler"""
 

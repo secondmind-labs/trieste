@@ -34,6 +34,7 @@ from tests.util.misc import (
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     GaussianProcessWithBatchSamplers,
+    GaussianProcessWithoutNoise,
     GaussianProcessWithSamplers,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithBatchSamplers,
@@ -329,11 +330,12 @@ def test_mc_expected_improvement_updater_raises_for_empty_data() -> None:
 
 
 @random_seed
+@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
         (0.1, 25_000, 0.01, 1e-3),
-        (1.0, 50_000, 0.01, 1e-3),
+        (1.0, 50_000, 0.01, 2e-3),
         (10.0, 100_000, 0.01, 1e-2),
         (100.0, 150_000, 0.01, 1e-1),
     ],
@@ -343,6 +345,7 @@ def test_mc_expected_improvement(
     num_samples_per_point: int,
     rtol: float,
     atol: float,
+    test_update: bool,
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
 
@@ -360,9 +363,18 @@ def test_mc_expected_improvement(
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
     model = GaussianProcessWithSamplers([branin], [kernel])
 
-    eif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
-        model, dataset
-    )
+    if test_update:
+        builder = MonteCarloExpectedImprovement(num_samples_per_point)
+
+        init_data = Dataset(
+            tf.constant([[0.1, 0.1]], dtype=tf.float64), tf.constant([[100.0]], dtype=tf.float64)
+        )
+        eif = builder.prepare_acquisition_function(model, init_data)
+        eif = builder.update_acquisition_function(eif, model, dataset)
+    else:
+        eif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
+            model, dataset
+        )
     ei_approx = eif(xs[..., None, :])
 
     best = tf.reduce_min(branin(dataset.query_points))
@@ -375,7 +387,7 @@ def test_mc_expected_improvement(
 @random_seed
 def test_mc_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
-    data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
+    data = Dataset(known_query_points[8:], quadratic(known_query_points[8:]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     builder = MonteCarloExpectedImprovement(10_000)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
@@ -388,6 +400,7 @@ def test_mc_expected_improvement_updates_without_retracing() -> None:
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_mcei = builder.update_acquisition_function(mcei, model, dataset=data)
+    ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     assert up_mcei == mcei
     assert mcei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(mcei(xs), ei(xs), rtol=0.06)
@@ -420,17 +433,26 @@ def test_mc_augmented_expected_improvement_builds_aei_using_best_from_model() ->
     npt.assert_allclose(acq_fn(xs), expected, rtol=1e-4, atol=2e-3)
 
 
-def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_sampler() -> None:
+def test_mc_augmented_expected_improvement_raises_for_invalid_models() -> None:
     data = Dataset(tf.zeros([1, 1]), tf.ones([1, 1]))
     kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
     noise_variance = 1.0
 
     with pytest.raises(
-        ValueError, match="MonteCarloAugmentedExpectedImprovement only supports " "models .*"
+        ValueError, match="MonteCarloAugmentedExpectedImprovement only supports models .*"
     ):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
                 GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance),  # type: ignore
+                data,
+            )
+        )
+    with pytest.raises(
+        ValueError, match="MonteCarloAugmentedExpectedImprovement only supports models .*"
+    ):
+        (
+            MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
+                GaussianProcessWithoutNoise([lambda x: quadratic(x)], [kernel]),  # type: ignore
                 data,
             )
         )
@@ -471,17 +493,18 @@ def test_mc_augmented_expected_improvement_updater_raises_for_empty_data() -> No
 
 
 @random_seed
+@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, noise_variance, num_samples_per_point, rtol, atol",
     [
-        (0.1, 1e-4, 100_000, 0.1, 1e-1),
-        (1.0, 1e-4, 100_000, 0.01, 1e-2),
-        (10.0, 1e-4, 100_000, 0.01, 1e-2),
-        (100.0, 1e-4, 150_000, 0.01, 1e-1),
-        (0.1, 1e-3, 150_000, 0.3, 1e-1),
-        (1.0, 1e-3, 150_000, 0.1, 1e-1),
-        (10.0, 1e-3, 150_000, 0.01, 1e-2),
-        (100.0, 1e-3, 150_000, 0.01, 1e-1),
+        (0.1, 1e-4, 150_000, 0.01, 1e-3),
+        (1.0, 1e-4, 150_000, 0.01, 1e-3),
+        (10.0, 1e-4, 150_000, 0.01, 2e-3),
+        (100.0, 1e-4, 150_000, 0.01, 1e-2),
+        (0.1, 1e-3, 150_000, 0.01, 1e-3),
+        (1.0, 1e-3, 150_000, 0.01, 1e-3),
+        (10.0, 1e-3, 150_000, 0.01, 2e-3),
+        (100.0, 1e-3, 150_000, 0.01, 1e-2),
     ],
 )
 def test_mc_augmented_expected_improvement(
@@ -490,6 +513,7 @@ def test_mc_augmented_expected_improvement(
     num_samples_per_point: int,
     rtol: float,
     atol: float,
+    test_update: bool,
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
 
@@ -509,9 +533,18 @@ def test_mc_augmented_expected_improvement(
         [branin], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
     )
 
-    aeif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
-        model, dataset
-    )
+    if test_update:
+        init_data = Dataset(
+            tf.constant([[0.1, 0.1]], dtype=tf.float64), tf.constant([[100.0]], dtype=tf.float64)
+        )
+        builder = MonteCarloAugmentedExpectedImprovement(num_samples_per_point)
+        aeif = builder.prepare_acquisition_function(model, init_data)
+        model._noise_variance = tf.constant(noise_variance, tf.float64)
+        aeif = builder.update_acquisition_function(aeif, model, dataset)
+    else:
+        aeif = MonteCarloAugmentedExpectedImprovement(
+            num_samples_per_point
+        ).prepare_acquisition_function(model, dataset)
     aei_approx = aeif(xs[..., None, :])
 
     best = tf.reduce_min(branin(dataset.query_points))
@@ -524,7 +557,7 @@ def test_mc_augmented_expected_improvement(
 @random_seed
 def test_mc_augmented_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
-    data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
+    data = Dataset(known_query_points[8:], quadratic(known_query_points[8:]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=data)
     model._noise_variance = tf.cast(model.get_observation_noise(), tf.float64)
     builder = MonteCarloAugmentedExpectedImprovement(10_000)
@@ -538,6 +571,7 @@ def test_mc_augmented_expected_improvement_updates_without_retracing() -> None:
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_mcaei = builder.update_acquisition_function(mcaei, model, dataset=data)
+    aei = AugmentedExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     assert up_mcaei == mcaei
     assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(mcaei(xs), aei(xs), rtol=0.06)
@@ -935,7 +969,7 @@ def test_batch_monte_carlo_expected_improvement() -> None:
 @random_seed
 def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> None:
     known_query_points = tf.random.uniform([10, 2], dtype=tf.float64)
-    data = Dataset(known_query_points[:5], quadratic(known_query_points[:5]))
+    data = Dataset(known_query_points[8:], quadratic(known_query_points[8:]))
     model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
     builder = BatchMonteCarloExpectedImprovement(10_000)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
@@ -948,6 +982,7 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_batch_ei = builder.update_acquisition_function(batch_ei, model, dataset=data)
+    ei = ExpectedImprovement().update_acquisition_function(ei, model, dataset=data)
     assert up_batch_ei == batch_ei
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
