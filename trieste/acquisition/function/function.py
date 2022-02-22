@@ -772,6 +772,7 @@ class MonteCarloAugmentedExpectedImprovement(
 
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
         mean = tf.reduce_mean(samples_at_query_points, axis=0)

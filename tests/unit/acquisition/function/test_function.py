@@ -268,7 +268,7 @@ def test_mc_expected_improvement_raises_for_model_without_reparam_sampler() -> N
     kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
     noise_variance = 1.0
 
-    with pytest.raises(ValueError, match="The model must have .*"):
+    with pytest.raises(ValueError, match="MonteCarloExpectedImprovement only supports models *."):
         (
             MonteCarloExpectedImprovement(100).prepare_acquisition_function(
                 GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance),  # type: ignore
@@ -358,7 +358,9 @@ def test_mc_augmented_expected_improvement_raises_for_model_without_reparam_samp
     kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(1.0)
     noise_variance = 1.0
 
-    with pytest.raises(ValueError, match="The model must have .*"):
+    with pytest.raises(
+        ValueError, match="MonteCarloAugmentedExpectedImprovement only supports " "models .*"
+    ):
         (
             MonteCarloAugmentedExpectedImprovement(100).prepare_acquisition_function(
                 GaussianProcess([lambda x: quadratic(x)], [kernel], noise_variance),  # type: ignore
