@@ -655,7 +655,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param model: The model. Must have output dimension [1].
+        :param model: The model. Must have output dimension [1]. Unused here.
         :param dataset: The data from the observer. Cannot be empty
         """
         tf.debugging.Assert(dataset is not None, [])
@@ -793,7 +793,7 @@ class MonteCarloAugmentedExpectedImprovement(
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param model: The model. Must have output dimension [1].
+        :param model: The model. Must have output dimension [1]. Unused here
         :param dataset: The data from the observer. Cannot be empty
         """
         tf.debugging.Assert(dataset is not None, [])
