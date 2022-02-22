@@ -26,6 +26,7 @@ import tensorflow as tf
 
 from tests.util.misc import FixedAcquisitionRule, mk_dataset
 from tests.util.models.gpflow.models import PseudoTrainableProbModel, QuadraticMeanAndRBFKernel
+from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import (
@@ -113,12 +114,10 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         "wallclock.model_fitting",
     ]
 
-    for call_arg, (step, scalar_name) in zip_longest(
+    for call_arg, (_, scalar_name) in zip_longest(
         mocked_summary_scalar.call_args_list, product(range(steps), ordered_scalar_names)
     ):
-
         assert call_arg[0][0] == scalar_name
-        assert call_arg[-1]["step"] == step
         assert isinstance(call_arg[0][1], float)
 
 
@@ -159,10 +158,10 @@ def test_wallclock_time_logging(
 
     other_scalars = 0
 
-    for scalar in mocked_summary_scalar.call_args_list:
+    for i, scalar in enumerate(mocked_summary_scalar.call_args_list):
         name = scalar[0][0]
         value = scalar[0][1]
-        step = scalar[-1]["step"]
+        step = i // (len(mocked_summary_scalar.call_args_list) / steps)
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times
         if name == "wallclock.step":
@@ -182,3 +181,29 @@ def test_wallclock_time_logging(
 
     # check that we processed all the wallclocks we were expecting
     assert len(mocked_summary_scalar.call_args_list) == other_scalars + 3 * steps
+
+
+@unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
+def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        rule = FixedAcquisitionRule([[0.0]])
+        ask_tell = AskTellOptimizer(Box([-1], [1]), data, models, rule)
+        with step_number(3):
+            new_point = ask_tell.ask()
+            ask_tell.tell({"A": Dataset(new_point, new_point ** 2)})
+
+    ordered_scalar_names = [
+        "wallclock.query_point_generation",
+        "A.observation.best_overall",
+        "A.observation.best_in_batch",
+        "wallclock.model_fitting",
+    ]
+    print(mocked_summary_scalar.call_args_list)
+
+    for call_arg, scalar_name in zip_longest(
+        mocked_summary_scalar.call_args_list, ordered_scalar_names
+    ):
+        assert call_arg[0][0] == scalar_name
+        assert isinstance(call_arg[0][1], float)

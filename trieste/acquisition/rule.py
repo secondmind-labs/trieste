@@ -282,12 +282,6 @@ class EfficientGlobalOptimization(
                 chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
-                if summary_writer:
-                    with summary_writer.as_default(step=step_number):
-                        batched_points = tf.expand_dims(chosen_point, axis=0)
-                        value = self._acquisition_function(batched_points)[0][0]
-                        tf.summary.scalar(f"EGO.acquisition_function.maximum_found.{i+1}", value)
-
         return points
 
 
