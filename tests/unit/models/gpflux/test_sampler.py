@@ -32,21 +32,25 @@ import pytest
 import tensorflow as tf
 from gpflux.models import DeepGP
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, random_seed, mk_dataset, quadratic
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import DeepGaussianProcessReparamSampler
 from trieste.types import TensorType
+from trieste.space import Box
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_deep_gaussian_process_sampler_raises_for_invalid_sample_size(
     sample_size: int, keras_float: None
 ) -> None:
-    x = tf.constant([[0.0]], dtype=gpflow.default_float())
-    dgp = two_layer_trieste_dgp(x)
+    search_space = Box([0.0], [1.0]) ** 4
+    x = search_space.sample(10)
+    data = mk_dataset(x, quadratic(x))
+
+    dgp = two_layer_trieste_dgp(data, search_space)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DeepGaussianProcessReparamSampler(sample_size, dgp)
@@ -62,8 +66,11 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
     keras_float: None,
 ) -> None:
-    x = tf.constant([[0.0]], dtype=gpflow.default_float())
-    dgp = two_layer_trieste_dgp(x)
+    search_space = Box([0.0], [1.0])
+    x = search_space.sample(10)
+    data = mk_dataset(x, quadratic(x))
+
+    dgp = two_layer_trieste_dgp(data, search_space)
     sampler = DeepGaussianProcessReparamSampler(1, dgp)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):

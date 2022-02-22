@@ -213,10 +213,11 @@ class QuadraticMeanAndRBFKernelWithSamplers(
         return GaussianProcessSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
-        return self._dataset
+        return Dataset(self._dataset[0], self._dataset[1])
 
     def update(self, dataset: Dataset) -> None:
-        self._dataset = dataset
+        self._dataset[0].assign(dataset.query_points)
+        self._dataset[1].assign(dataset.observations)
 
 
 class QuadraticMeanAndRBFKernelWithBatchSamplers(
@@ -238,7 +239,14 @@ class QuadraticMeanAndRBFKernelWithBatchSamplers(
         super().__init__(
             x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
         )
-        self._dataset = dataset
+        self._dataset = (  # mimic that when our models store data, it is as variables
+            tf.Variable(
+                dataset.query_points, trainable=False, shape=[None, *dataset.query_points.shape[1:]]
+            ),
+            tf.Variable(
+                dataset.observations, trainable=False, shape=[None, *dataset.observations.shape[1:]]
+            ),
+        )
 
     def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithBatchSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, 100)

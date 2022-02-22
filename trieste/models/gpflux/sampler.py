@@ -35,7 +35,7 @@ def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
         samples
     """
 
-    class SampleLV(Sample):  # type: ignore[misc]
+    class SampleLV(Sample):
         def __call__(self, X: TensorType) -> tf.Tensor:
             sample = layer.prior.sample()
             batch_shape = tf.shape(X)[:-1]
@@ -68,7 +68,7 @@ def sample_dgp(model: DeepGP) -> TrajectoryFunction:
         else:
             raise NotImplementedError(f"Sampling not implemented for {type(layer)}")
 
-    class ChainedSample(Sample):  # type: ignore[misc]
+    class ChainedSample(Sample):
         def __call__(self, X: TensorType) -> tf.Tensor:
             for f in function_draws:
                 X = f(X)
