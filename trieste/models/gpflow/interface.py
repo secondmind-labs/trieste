@@ -115,7 +115,7 @@ class GPflowPredictor(
                     tf.summary.scalar("kernel.lengthscale", lengthscales)
                 elif tf.rank(lengthscales) == 1:
                     for i, lengthscale in enumerate(lengthscales):
-                        tf.summary.scalar(f"kernel.lengthscale.{i}", lengthscale)
+                        tf.summary.scalar(f"kernel.lengthscale[{i}]", lengthscale)
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
