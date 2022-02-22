@@ -496,13 +496,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         for tag in datasets:
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
-                            tf.summary.scalar(
-                                f"{tag}.observation.best_overall",
-                                np.min(datasets[tag].observations),
+                            tf.summary.histogram(
+                                f"{tag}.observation.new_observations",
+                                tagged_output[tag].observations,
                             )
                             tf.summary.scalar(
                                 f"{tag}.observation.best_in_batch",
                                 np.min(tagged_output[tag].observations),
+                            )
+                            tf.summary.scalar(
+                                f"{tag}.observation.best_overall",
+                                np.min(datasets[tag].observations),
                             )
                         tf.summary.scalar("wallclock.step", total_step_wallclock_timer.time)
                         tf.summary.scalar(

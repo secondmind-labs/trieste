@@ -417,10 +417,13 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
-                    tf.summary.scalar(
-                        f"{tag}.observation.best_overall", np.min(self._datasets[tag].observations)
+                    tf.summary.histogram(
+                        f"{tag}.observation.new_observations", new_data[tag].observations
                     )
                     tf.summary.scalar(
                         f"{tag}.observation.best_in_batch", np.min(new_data[tag].observations)
+                    )
+                    tf.summary.scalar(
+                        f"{tag}.observation.best_overall", np.min(self._datasets[tag].observations)
                     )
                     tf.summary.scalar("wallclock.model_fitting", model_fitting_timer.time)
