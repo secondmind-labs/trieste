@@ -200,7 +200,6 @@ def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.Magic
         "A.observation.best_in_batch",
         "wallclock.model_fitting",
     ]
-    print(mocked_summary_scalar.call_args_list)
 
     for call_arg, scalar_name in zip_longest(
         mocked_summary_scalar.call_args_list, ordered_scalar_names
