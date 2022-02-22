@@ -28,13 +28,13 @@ from ..interfaces import (
     TrainableProbabilisticModel,
     TrajectorySampler,
 )
+from ..optimizer import KerasOptimizer
+from .interface import GPfluxPredictor
 from .sampler import (
     DeepGaussianProcessReparamSampler,
     DeepGaussianProcessTrajectorySampler,
     sample_dgp,
 )
-from ..optimizer import KerasOptimizer
-from .interface import GPfluxPredictor
 
 
 class DeepGaussianProcess(
