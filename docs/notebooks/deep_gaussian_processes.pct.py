@@ -77,7 +77,12 @@ from trieste.models.optimizer import KerasOptimizer
 
 def build_dgp_model(data, search_space):
     dgp = build_vanilla_deep_gp(
-        data, search_space, 2, 100, likelihood_variance=1e-5, trainable_likelihood=False
+        data,
+        search_space,
+        2,
+        100,
+        likelihood_variance=1e-5,
+        trainable_likelihood=False,
     )
     return DeepGaussianProcess(dgp)
 

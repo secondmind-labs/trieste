@@ -25,6 +25,7 @@ from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from trieste.types import TensorType
 
 
 class Integers(SearchSpace):
@@ -43,7 +44,7 @@ class Integers(SearchSpace):
     def sample(self, num_samples: int) -> tf.Tensor:
         return tf.random.shuffle(tf.range(self.limit))[:num_samples]
 
-    def __contains__(self, point: tf.Tensor) -> tf.Tensor:
+    def __contains__(self, point: tf.Tensor) -> bool | TensorType:
         tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
@@ -51,7 +52,7 @@ class Integers(SearchSpace):
         return Integers(self.limit * other.limit)
 
     @property
-    def dimension(self) -> tf.Tensor:
+    def dimension(self) -> TensorType:
         pass
 
 
