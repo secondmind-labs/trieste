@@ -24,13 +24,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Dict, Generic, TypeVar, cast, overload
 
+import absl
 import numpy as np
 import tensorflow as tf
-from absl import logging
 
+from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .logging import get_tensorboard_writer, set_step_number
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .models.config import ModelConfigType
 from .observer import OBJECTIVE, Observer
@@ -363,7 +363,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         If any errors are raised during the optimization loop, this method will catch and return
         them instead, along with the history of the optimization process, and print a message (using
-        `absl` at level `logging.ERROR`).
+        `absl` at level `absl.logging.ERROR`).
 
         **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
         mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will
@@ -448,7 +448,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         history: list[Record[StateType]] = []
 
         for step in range(num_steps):
-            set_step_number(step)
+            logging.set_step_number(step)
             try:
 
                 if track_state:
@@ -490,21 +490,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             model.update(dataset)
                             model.optimize(dataset)
 
-                summary_writer = get_tensorboard_writer()
+                summary_writer = logging.get_tensorboard_writer()
                 if summary_writer:
                     with summary_writer.as_default(step=step):
                         for tag in datasets:
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
-                            tf.summary.histogram(
+                            logging.histogram(
                                 f"{tag}.observation/new_observations",
                                 tagged_output[tag].observations,
                             )
-                            tf.summary.scalar(
+                            logging.scalar(
                                 f"{tag}.observation/best_new_observation",
                                 np.min(tagged_output[tag].observations),
                             )
-                            tf.summary.scalar(
+                            logging.scalar(
                                 f"{tag}.observation/best_overall",
                                 np.min(datasets[tag].observations),
                             )
@@ -512,18 +512,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         if tf.rank(query_points) == 2:
                             for i in tf.range(tf.shape(query_points)[1]):
                                 if len(query_points) == 1:
-                                    tf.summary.scalar(
-                                        f"query_points/[{i}]", float(query_points[0, i])
-                                    )
+                                    logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                                 else:
-                                    tf.summary.histogram(f"query_points/[{i}]", query_points[:, i])
+                                    logging.histogram(f"query_points/[{i}]", query_points[:, i])
 
-                        tf.summary.scalar("wallclock/step", total_step_wallclock_timer.time)
-                        tf.summary.scalar(
+                        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
+                        logging.scalar(
                             "wallclock/query_point_generation",
                             query_point_generation_timer.time,
                         )
-                        tf.summary.scalar(
+                        logging.scalar(
                             "wallclock/model_fitting",
                             model_fitting_timer.time
                             + (
@@ -540,7 +538,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     f"\nTerminating optimization and returning the optimization history. You may "
                     f"be able to use the history to restart the process from a previous successful "
                     f"optimization step.\n",
-                    output_stream=logging.ERROR,
+                    output_stream=absl.logging.ERROR,
                 )
                 if isinstance(error, MemoryError):
                     tf.print(
@@ -548,11 +546,11 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         "\nfunctions over large datasets, e.g. when initializing optimizers. "
                         "\nYou may be able to word around this by splitting up the evaluation "
                         "\nusing split_acquisition_function or split_acquisition_function_calls.",
-                        output_stream=logging.ERROR,
+                        output_stream=absl.logging.ERROR,
                     )
                 return OptimizationResult(Err(error), history)
 
-        tf.print("Optimization completed without errors", output_stream=logging.INFO)
+        tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
         return OptimizationResult(Ok(record), history)

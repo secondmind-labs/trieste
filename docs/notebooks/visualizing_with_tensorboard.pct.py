@@ -82,7 +82,7 @@ class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
             with summary_writer.as_default(
                 step=trieste.logging.get_step_number()
             ):
-                tf.summary.scalar(
+                trieste.logging.scalar(
                     "kernel.lengthscales.mean",
                     np.mean(self.get_kernel().lengthscales),
                 )
@@ -118,7 +118,7 @@ class EGOExtraLogging(trieste.acquisition.rule.EfficientGlobalOptimization):
             with summary_writer.as_default(
                 step=trieste.logging.get_step_number()
             ):
-                tf.summary.scalar(
+                trieste.logging.scalar(
                     "EGO.points_selected.mean", tf.math.reduce_mean(points)
                 )
         return points
