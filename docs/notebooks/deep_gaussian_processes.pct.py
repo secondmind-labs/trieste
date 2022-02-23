@@ -66,38 +66,28 @@ initial_data = observer(initial_query_points)
 #
 # Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` function which returns a GPflux model of `DeepGP` class. As with other models (e.g. GPflow), we cannot use it directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepGaussianProcess` wrapper in this case.
 #
-# Few other useful notes regarding building a DGP model. The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model. For this problem we need to modify the default optimizer settings slightly, so we initialize a new optimizer wrapper instance (`Optimizer`) with custom minimization arguments `minimize_args` which are passed to Keras' `fit` method (check [Keras API documentation](https://keras.io/api/models/model_training_apis/#fit-method) for a list of possible arguments).
+# Few other useful notes regarding building a DGP model. The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model.
 
 # %%
 from gpflow.utilities import set_trainable
 
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.optimizer import Optimizer
+from trieste.models.optimizer import KerasOptimizer
 
 
-def build_dgp_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-
+def build_dgp_model(data, search_space):
     dgp = build_vanilla_deep_gp(
-        data.query_points, num_layers=2, num_inducing=100
+        data,
+        search_space,
+        2,
+        100,
+        likelihood_variance=1e-5,
+        trainable_likelihood=False,
     )
-    dgp.f_layers[-1].kernel.kernel.variance.assign(variance)
-    dgp.f_layers[-1].mean_function = gpflow.mean_functions.Constant()
-    dgp.likelihood_layer.likelihood.variance.assign(1e-5)
-    set_trainable(dgp.likelihood_layer.likelihood.variance, False)
-
-    # These are just arguments for the Keras `fit` method.
-    minimize_args = {
-        "batch_size": 100,
-        "epochs": 200,
-        "verbose": 0,
-    }
-    optimizer = Optimizer(tf.optimizers.Adam(0.01), minimize_args)
-
-    return DeepGaussianProcess(model=dgp, optimizer=optimizer)
+    return DeepGaussianProcess(dgp)
 
 
-dgp_model = build_dgp_model(initial_data)
+dgp_model = build_dgp_model(initial_data, search_space)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -298,7 +288,7 @@ initial_data = observer(initial_query_points)
 
 # %%
 
-dgp_model = build_dgp_model(initial_data)
+dgp_model = build_dgp_model(initial_data, search_space)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 acquisition_rule = DiscreteThompsonSampling(grid_size, 1)

@@ -492,39 +492,45 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 summary_writer = get_tensorboard_writer()
                 if summary_writer:
-                    with summary_writer.as_default():
+                    with summary_writer.as_default(step=step):
                         for tag in datasets:
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
-                            tf.summary.scalar(
-                                f"{tag}.observation.best_overall",
-                                np.min(datasets[tag].observations),
-                                step=step,
+                            tf.summary.histogram(
+                                f"{tag}.observation/new_observations",
+                                tagged_output[tag].observations,
                             )
                             tf.summary.scalar(
-                                f"{tag}.observation.best_new",
+                                f"{tag}.observation/best_new_observation",
                                 np.min(tagged_output[tag].observations),
-                                step=step,
                             )
+                            tf.summary.scalar(
+                                f"{tag}.observation/best_overall",
+                                np.min(datasets[tag].observations),
+                            )
+
+                        if tf.rank(query_points) == 2:
+                            for i in tf.range(tf.shape(query_points)[1]):
+                                if len(query_points) == 1:
+                                    tf.summary.scalar(
+                                        f"query_points/[{i}]", float(query_points[0, i])
+                                    )
+                                else:
+                                    tf.summary.histogram(f"query_points/[{i}]", query_points[:, i])
+
+                        tf.summary.scalar("wallclock/step", total_step_wallclock_timer.time)
                         tf.summary.scalar(
-                            "wallclock.step",
-                            total_step_wallclock_timer.time,
-                            step=step,
-                        )
-                        tf.summary.scalar(
-                            "wallclock.query_point_generation",
+                            "wallclock/query_point_generation",
                             query_point_generation_timer.time,
-                            step=step,
                         )
                         tf.summary.scalar(
-                            "wallclock.model_fitting",
+                            "wallclock/model_fitting",
                             model_fitting_timer.time
                             + (
                                 initial_model_fitting_timer.time
                                 if (step == 0 and fit_initial_model)
                                 else 0
                             ),
-                            step=step,
                         )
 
             except Exception as error:  # pylint: disable=broad-except

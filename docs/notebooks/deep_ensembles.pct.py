@@ -82,7 +82,6 @@ from trieste.models.keras import (
     DeepEnsemble,
     KerasPredictor,
     build_vanilla_keras_ensemble,
-    negative_log_likelihood,
 )
 from trieste.models.optimizer import KerasOptimizer
 
@@ -101,9 +100,7 @@ def build_cubic_model(data: Dataset) -> DeepEnsemble:
         "epochs": 1000,
         "verbose": 0,
     }
-    optimizer = KerasOptimizer(
-        tf.keras.optimizers.Adam(0.01), negative_log_likelihood, fit_args
-    )
+    optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
 
     return DeepEnsemble(keras_ensemble, optimizer)
 
@@ -222,9 +219,7 @@ def build_model(data: Dataset) -> DeepEnsemble:
         ],
         "verbose": 0,
     }
-    optimizer = KerasOptimizer(
-        tf.keras.optimizers.Adam(0.001), negative_log_likelihood, fit_args
-    )
+    optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
 
     return DeepEnsemble(keras_ensemble, optimizer)
 

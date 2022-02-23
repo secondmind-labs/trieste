@@ -164,7 +164,7 @@ class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
-class SupportsInternalData(ProbabilisticModel, Protocol):
+class SupportsGetInternalData(ProbabilisticModel, Protocol):
     """A probabilistic model that stores and has access to its own training data."""
 
     @abstractmethod
@@ -666,3 +666,20 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
         :return: The new trajectory function updated for a new model
         """
         return self.get_trajectory()
+
+
+@runtime_checkable
+class SupportsGetInducingVariables(ProbabilisticModel, Protocol):
+    """A probabilistic model uses and has access to an inducing point approximation."""
+
+    @abstractmethod
+    def get_inducing_variables(self) -> tuple[TensorType, TensorType, TensorType, bool]:
+        """
+        Return the model's inducing variables.
+
+        :return: Tensors containing: the inducing points (i.e. locations of the inducing
+            variables); the variational mean q_mu; the Cholesky decomposition of the
+            variational covariance q_sqrt; and a bool denoting if we are using whitened
+            or not whitened representations.
+        """
+        raise NotImplementedError
