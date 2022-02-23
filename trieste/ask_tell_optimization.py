@@ -427,7 +427,8 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                         f"{tag}.observation/new_observations", new_data[tag].observations
                     )
                     tf.summary.scalar(
-                        f"{tag}.observation/best_in_batch", np.min(new_data[tag].observations)
+                        f"{tag}.observation/best_new_observation",
+                        np.min(new_data[tag].observations),
                     )
                     tf.summary.scalar(
                         f"{tag}.observation/best_overall", np.min(self._datasets[tag].observations)

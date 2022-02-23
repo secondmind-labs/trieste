@@ -501,7 +501,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 tagged_output[tag].observations,
                             )
                             tf.summary.scalar(
-                                f"{tag}.observation/best_in_batch",
+                                f"{tag}.observation/best_new_observation",
                                 np.min(tagged_output[tag].observations),
                             )
                             tf.summary.scalar(
