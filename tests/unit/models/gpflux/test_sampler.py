@@ -96,7 +96,7 @@ def test_deep_gaussian_process_sampler_samples_approximate_expected_distribution
     keras_float: None,
 ) -> None:
     sample_size = 1000
-    dataset, model = build_dataset_and_train_deep_gp(two_layer_model)
+    dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(
         dataset.query_points
@@ -127,7 +127,7 @@ def test_deep_gaussian_process_sampler_sample_is_continuous(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    _, model = build_dataset_and_train_deep_gp(two_layer_model)
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -138,7 +138,7 @@ def test_deep_gaussian_process_sampler_sample_is_repeatable(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    _, model = build_dataset_and_train_deep_gp(two_layer_model)
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -150,7 +150,7 @@ def test_deep_gaussian_process_sampler_samples_are_distinct_for_new_instances(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    _, model = build_dataset_and_train_deep_gp(two_layer_model)
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler1 = DeepGaussianProcessReparamSampler(100, model)
     sampler2 = DeepGaussianProcessReparamSampler(100, model)
