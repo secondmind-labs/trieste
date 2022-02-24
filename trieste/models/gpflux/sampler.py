@@ -79,7 +79,7 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
     r"""
     This sampler provides trajectory samples from a :class:`GPfluxPredictor`\ 's predictive
     distribution, for :class:`GPfluxPredictor`\s with an underlying
-    :class:`~gpflux.models.DeepGP model`.
+    :class:`~gpflux.models.DeepGP` model.
     """
 
     def __init__(self, model: GPfluxPredictor):
