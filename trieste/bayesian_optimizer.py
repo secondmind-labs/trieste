@@ -456,8 +456,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         plot_df: Optional[pd.DataFrame] = None
 
         summary_writer = logging.get_tensorboard_writer()
-        if summary_writer and not (pd and sns):
-            if logging.include_summary("query_points/_pairplot"):
+        if summary_writer:
+            with summary_writer.as_default(step=0):
+                logging.text(
+                    "metadata",
+                    f"Number of steps: `{num_steps}`\n\n"
+                    f"Number of initial points: "
+                    f"`{dict((k, len(v)) for k,v in datasets.items())}`\n\n"
+                    f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
+                    f"Models:\n\n    {models}",
+                )
+            if logging.include_summary("query_points/_pairplot") and not (pd and sns):
                 tf.print(
                     "Pairplot TensorBoard summaries require seaborn to be installed",
                     output_stream=absl.logging.INFO,

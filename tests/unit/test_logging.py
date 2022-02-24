@@ -44,6 +44,7 @@ from trieste.logging import (
     set_tensorboard_writer,
     step_number,
     tensorboard_writer,
+    text,
 )
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
@@ -156,6 +157,19 @@ def test_histogram(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
     assert len(mocked_summary_histogram.call_args_list) == 2
     for i, j in enumerate([1, 3]):
         assert mocked_summary_histogram.call_args_list[i][0] == ("this", tf.constant(j))
+        assert mocked_summary_histogram.call_args_list[i][1] == {"step": j}
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.text")
+def test_text(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
+    text("this", "1", step=1)
+    text("_that", "2", step=2)
+    with tf.name_scope("foo"):
+        text("this", "3", step=3)
+        text("_that", "4", step=4)
+    assert len(mocked_summary_histogram.call_args_list) == 2
+    for i, j in enumerate([1, 3]):
+        assert mocked_summary_histogram.call_args_list[i][0] == ("this", str(j))
         assert mocked_summary_histogram.call_args_list[i][1] == {"step": j}
 
 

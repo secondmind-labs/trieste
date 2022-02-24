@@ -162,6 +162,13 @@ def scalar(name: str, data: float, **kwargs: Any) -> bool:
     return False
 
 
+def text(name: str, data: str, **kwargs: Any) -> bool:
+    """Wrapper for tf.summary.text that first filters out unwanted summaries by name."""
+    if include_summary(name):
+        return tf.summary.text(name, data, **kwargs)
+    return False
+
+
 def pyplot(name: str, figure: "matplotlib.figure.Figure") -> bool:
     """Utility function for passing a matplotlib figure to tf.summary.image."""
     if include_summary(name):
