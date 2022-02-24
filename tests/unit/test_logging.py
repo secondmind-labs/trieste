@@ -193,8 +193,8 @@ def test_wallclock_time_logging(
     fit_initial_model: bool,
 ) -> None:
 
-    model_fit_time = 0.1
-    acq_time = 0.05
+    model_fit_time = 0.2
+    acq_time = 0.1
 
     class _PseudoTrainableQuadraticWithWaiting(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
         def optimize(self, dataset: Dataset) -> None:
