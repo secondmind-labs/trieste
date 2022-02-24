@@ -455,6 +455,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         history: list[Record[StateType]] = []
         plot_df: Optional[pd.DataFrame] = None
 
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer and not (pd and sns):
+            if logging.include_summary("query_points/_pairplot"):
+                tf.print(
+                    "Pairplot TensorBoard summaries require seaborn to be installed",
+                    output_stream=absl.logging.INFO,
+                )
+
         for step in range(num_steps):
             logging.set_step_number(step)
             try:
@@ -497,7 +505,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             model.update(dataset)
                             model.optimize(dataset)
 
-                summary_writer = logging.get_tensorboard_writer()
                 if summary_writer:
                     with summary_writer.as_default(step=step):
                         for tag in datasets:
