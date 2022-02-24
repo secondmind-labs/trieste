@@ -535,7 +535,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             new_df = pd.DataFrame(query_points, columns=columns)
                             new_df["query points"] = "new"
                             plot_df = pd.concat((plot_df, new_df), copy=False, ignore_index=True)
-                            pairplot = sns.pairplot(plot_df, hue="query points", diag_kind="hist")
+                            pairplot = sns.pairplot(plot_df, hue="query points")
                             padding = 0.025 * (self._search_space.upper - self._search_space.lower)
                             upper_limits = self._search_space.upper + padding
                             lower_limits = self._search_space.lower - padding
