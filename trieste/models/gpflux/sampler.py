@@ -27,7 +27,7 @@ from .interface import GPfluxPredictor
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
     r"""
-    Returns a gpflux.sampling.sample.Sample object which allows for consistent sampling from a given
+    Returns a :class:`~gpflux.sampling.sample.Sample` object which allows for consistent sampling from a given
     gpflux.layers.LatentVariableLayer.
 
     :param layer: the gpflux.layers.LatentVariableLayer to obtain samples from
