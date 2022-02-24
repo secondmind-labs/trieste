@@ -27,12 +27,12 @@ from .interface import GPfluxPredictor
 
 def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
     r"""
-    Returns a :class:`~gpflux.sampling.sample.Sample` object which allows for consistent sampling from a given
-    gpflux.layers.LatentVariableLayer.
+    Returns a :class:`~gpflux.sampling.sample.Sample` object which allows for consistent sampling
+    from a given :class:`~gpflux.layers.LatentVariableLayer`.
 
-    :param layer: the gpflux.layers.LatentVariableLayer to obtain samples from
-    :return: the gpflux.sampling.sample.Sample object which can be called to obtain consistent
-        samples
+    :param layer: The GPflux latent variable layer to obtain samples from.
+    :return: The GPflux sampling object which can be called to obtain consistent
+        samples.
     """
 
     class SampleLV(Sample):
@@ -52,12 +52,12 @@ def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
 
 def sample_dgp(model: DeepGP) -> TrajectoryFunction:
     r"""
-    Builds a :class:`TrajectoryFunction` that can be called for a gpflux.models.DeepGP, which
-    will give consistent (i.e. function) samples from a deep GP model.
+    Builds a :class:`TrajectoryFunction` that can be called for a :class:`~gpflux.models.DeepGP,
+    which will give consistent (i.e. function) samples from a deep GP model.
 
-    :param model: the gpflux.models.DeepGP model to sample from
-    :return: the :class:`TrajectoryFunction` which gives a consistent sample function from the
-        model
+    :param model: The GPflux deep GP model to sample from.
+    :return: The trajectory function that gives a consistent sample function from the
+        model.
     """
     function_draws = []
     for layer in model.f_layers:
@@ -97,11 +97,11 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
 
         super().__init__(model)
 
-        self.model = model.model_gpflux
+        self._model_gpflux = model.model_gpflux
 
-        if not isinstance(self.model, DeepGP):
+        if not isinstance(self._model_gpflux, DeepGP):
             raise ValueError(
-                f"GPflux model must be a gpflux.models.DeepGP, received {type(self.model)}"
+                f"GPflux model must be a gpflux.models.DeepGP, received {type(self._model_gpflux)}"
             )
 
     def get_trajectory(self) -> TrajectoryFunction:
@@ -114,7 +114,7 @@ class DeepGaussianProcessTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
-        return sample_dgp(self.model)
+        return sample_dgp(self._model_gpflux)
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):

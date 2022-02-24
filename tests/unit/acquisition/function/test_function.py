@@ -340,7 +340,7 @@ def test_mc_expected_improvement_updater_raises_for_empty_data() -> None:
         (100.0, 150_000, 0.01, 1e-1),
     ],
 )
-def test_mc_expected_improvement(
+def test_mc_expected_improvement_close_to_expected_improvement(
     variance_scale: float,
     num_samples_per_point: int,
     rtol: float,
@@ -507,7 +507,7 @@ def test_mc_augmented_expected_improvement_updater_raises_for_empty_data() -> No
         (100.0, 1e-3, 150_000, 0.01, 1e-2),
     ],
 )
-def test_mc_augmented_expected_improvement(
+def test_mc_augmented_expected_improvement_close_to_augmented_expected_improvement(
     variance_scale: float,
     noise_variance: float,
     num_samples_per_point: int,
