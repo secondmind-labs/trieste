@@ -14,6 +14,7 @@
 """ This module contains logging utilities. """
 from __future__ import annotations
 
+import io
 from contextlib import contextmanager
 from typing import Any, Callable, Iterator, Optional
 
@@ -21,6 +22,12 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 
 from trieste.types import TensorType
+
+try:
+    from matplotlib.figure import Figure
+except ModuleNotFoundError:
+    pass
+
 
 SummaryFilter = Callable[[str], bool]
 
@@ -124,7 +131,7 @@ def get_summary_filter() -> SummaryFilter:
 
 
 def get_current_name_scope() -> str:
-    """Returns the full name scope specified by `tf.name_scope(...)`s. Copied from TF 2.5."""
+    """Returns the full name scope. Copied from TF 2.5."""
     ctx = context.context()
     if ctx.executing_eagerly():
         return ctx.scope_name.rstrip("/")
@@ -154,4 +161,16 @@ def scalar(name: str, data: float, **kwargs: Any) -> bool:
     """Wrapper for tf.summary.scalar that first filters out unwanted summaries by name."""
     if include_summary(name):
         return tf.summary.scalar(name, data, **kwargs)
+    return False
+
+
+def pyplot(name: str, figure: Figure) -> bool:
+    """Utility function for passing a matplotlib figure to tf.summary.image."""
+    if include_summary(name):
+        buffer = io.BytesIO()
+        figure.savefig(buffer, format="png")
+        buffer.seek(0)
+        image = tf.image.decode_png(buffer.getvalue(), channels=4)
+        image = tf.expand_dims(image, 0)
+        return tf.summary.image(name, image)
     return False

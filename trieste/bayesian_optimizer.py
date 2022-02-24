@@ -22,11 +22,18 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, TypeVar, cast, overload
+from typing import Dict, Generic, Optional, TypeVar, cast, overload
 
 import absl
 import numpy as np
 import tensorflow as tf
+
+try:
+    import pandas as pd
+    import seaborn as sns
+except ModuleNotFoundError:
+    pd = None
+    sns = None
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -446,6 +453,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         )
 
         history: list[Record[StateType]] = []
+        plot_df: Optional[pd.DataFrame] = None
 
         for step in range(num_steps):
             logging.set_step_number(step)
@@ -457,8 +465,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
                 with Timer() as total_step_wallclock_timer:
-                    if step == 0 and fit_initial_model:
-                        with Timer() as initial_model_fitting_timer:
+                    with Timer() as initial_model_fitting_timer:
+                        if step == 0 and fit_initial_model:
                             for tag, model in models.items():
                                 dataset = datasets[tag]
                                 model.update(dataset)
@@ -468,11 +476,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
                         )
-
-                    if callable(points_or_stateful):
-                        acquisition_state, query_points = points_or_stateful(acquisition_state)
-                    else:
-                        query_points = points_or_stateful
+                        if callable(points_or_stateful):
+                            acquisition_state, query_points = points_or_stateful(acquisition_state)
+                        else:
+                            query_points = points_or_stateful
 
                     observer_output = self._observer(query_points)
 
@@ -516,6 +523,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 else:
                                     logging.histogram(f"query_points/[{i}]", query_points[:, i])
 
+                        if pd and sns and logging.include_summary("query_points/_pairplot"):
+                            columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
+                            new_df = pd.DataFrame(query_points, columns=columns)
+                            new_df["query points"] = "new"
+                            plot_df = pd.concat((plot_df, new_df), copy=False, ignore_index=True)
+                            pairplot = sns.pairplot(plot_df, hue="query points", diag_kind="hist")
+                            padding = 0.025 * (self._search_space.upper - self._search_space.lower)
+                            upper_limits = self._search_space.upper + padding
+                            lower_limits = self._search_space.lower - padding
+                            for i in range(self._search_space.dimension):
+                                pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
+                                pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
+                            logging.pyplot("query_points/_pairplot", pairplot.fig)
+                            plot_df["query points"] = "old"
+
                         logging.scalar("wallclock/step", total_step_wallclock_timer.time)
                         logging.scalar(
                             "wallclock/query_point_generation",
@@ -523,12 +545,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         )
                         logging.scalar(
                             "wallclock/model_fitting",
-                            model_fitting_timer.time
-                            + (
-                                initial_model_fitting_timer.time
-                                if (step == 0 and fit_initial_model)
-                                else 0
-                            ),
+                            model_fitting_timer.time + initial_model_fitting_timer.time,
                         )
 
             except Exception as error:  # pylint: disable=broad-except
