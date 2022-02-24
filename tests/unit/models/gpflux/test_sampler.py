@@ -76,7 +76,7 @@ def test_deep_gaussian_process_sampler_sample_raises_for_invalid_at_shape(
         sampler.sample(tf.zeros(shape))
 
 
-def build_dataset_and_train_deep_gp(
+def _build_dataset_and_train_deep_gp(
     two_layer_model: Callable[[TensorType], DeepGP]
 ) -> Tuple[Dataset, DeepGaussianProcess]:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
