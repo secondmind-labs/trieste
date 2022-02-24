@@ -16,17 +16,15 @@ from __future__ import annotations
 
 import io
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import tensorflow as tf
 from tensorflow.python.eager import context
 
 from trieste.types import TensorType
 
-try:
-    from matplotlib.figure import Figure
-except ModuleNotFoundError:
-    pass
+if TYPE_CHECKING:
+    import matplotlib
 
 
 SummaryFilter = Callable[[str], bool]
@@ -164,13 +162,13 @@ def scalar(name: str, data: float, **kwargs: Any) -> bool:
     return False
 
 
-def pyplot(name: str, figure: Figure) -> bool:
+def pyplot(name: str, figure: "matplotlib.figure.Figure") -> bool:
     """Utility function for passing a matplotlib figure to tf.summary.image."""
     if include_summary(name):
-        buffer = io.BytesIO()
-        figure.savefig(buffer, format="png")
-        buffer.seek(0)
-        image = tf.image.decode_png(buffer.getvalue(), channels=4)
+        with io.BytesIO() as buffer:
+            figure.savefig(buffer, format="png")
+            buffer.seek(0)
+            image = tf.image.decode_png(buffer.getvalue(), channels=4)
         image = tf.expand_dims(image, 0)
         return tf.summary.image(name, image)
     return False
