@@ -21,6 +21,6 @@ consistent with the GPflow float type being used.
 """
 
 from . import config
-from .architectures import build_vanilla_deep_gp
+from .builders import build_vanilla_deep_gp
 from .interface import GPfluxPredictor
 from .models import DeepGaussianProcess

@@ -52,6 +52,8 @@ from .function import (
     IntegratedVarianceReduction,
     LocalPenalization,
     MinValueEntropySearch,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,

@@ -27,11 +27,11 @@ from trieste.models.gpflow import GaussianProcessRegression, SparseVariational
 from trieste.models.optimizer import BatchOptimizer, Optimizer
 
 
-class GPRcopy(GPR):  # type: ignore[misc]
+class GPRcopy(GPR):
     """A copy of the GPR model."""
 
 
-class SVGPcopy(SVGP):  # type: ignore[misc]
+class SVGPcopy(SVGP):
     """A copy of the SVGP model."""
 
 
@@ -39,7 +39,7 @@ def gpr_copy_model() -> GPRcopy:
     return GPRcopy(mock_data(), gpflow.kernels.Matern32())
 
 
-class Scipy_copy(gpflow.optimizers.Scipy):  # type: ignore[misc]
+class Scipy_copy(gpflow.optimizers.Scipy):
     """A copy of the scipy optimizer."""
 
 

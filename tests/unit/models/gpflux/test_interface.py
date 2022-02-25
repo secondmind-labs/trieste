@@ -61,7 +61,7 @@ class _QuadraticPredictor(GPfluxPredictor):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
-        mean, cov = self.model_gpflux.predict_f(query_points, full_cov=True)
+        mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
         samples = sample_mvn(mean_for_sample, cov, True, num_samples=num_samples)
         samples = tf.linalg.adjoint(samples)
@@ -71,7 +71,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         pass
 
 
-class _QuadraticGPModel(DeepGP):  # type: ignore[misc]
+class _QuadraticGPModel(DeepGP):
     def __init__(
         self, likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01)
     ) -> None:

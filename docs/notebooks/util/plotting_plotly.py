@@ -164,9 +164,7 @@ def plot_model_predictions_plotly(
 
     n_output = Fmean.shape[1]
 
-    fig = make_subplots(
-        rows=1, cols=n_output, specs=[np.repeat({"type": "surface"}, n_output).tolist()]
-    )
+    fig = make_subplots(rows=1, cols=n_output, specs=[[{"type": "surface"}] * n_output])
 
     for k in range(n_output):
         fmean = Fmean[:, k].numpy()
@@ -216,7 +214,7 @@ def plot_function_plotly(
     fig = make_subplots(
         rows=1,
         cols=n_output,
-        specs=[np.repeat({"type": "surface"}, n_output).tolist()],
+        specs=[[{"type": "surface"}] * n_output],
         subplot_titles=title,
     )
 
