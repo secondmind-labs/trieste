@@ -22,11 +22,120 @@ from __future__ import annotations
 
 import math
 from math import pi
+from collections import namedtuple
+from enum import Enum
 
 import tensorflow as tf
 
-from ..space import Box
+from ..space import Box, SearchSpace
 from ..types import TensorType
+
+
+SingleObjectiveSpec = namedtuple(
+    "SingleObjectiveSpec", ("fun", "search_space", "minimizers", "minima")
+)
+"""
+This named tuple defines all the relevant objects related to objectives in
+:class:`SingleObjectives`.
+"""
+
+
+class SingleObjectives(Enum):
+    """
+    This enumeration lists all the single objective functions available. This enumeration
+    can then be used to get an overview of objectives available and to fetch all the relevant
+    objects for a specific objective function (also defined in ``SingleObjectiveSpec``).
+    """
+
+    ACKLEY_5 = "ACKLEY_5", ackley_5, ACKLEY_5_SEARCH_SPACE, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM
+    BRANIN = "BRANIN", branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMIZERS, BRANIN_MINIMUM
+    GRAMACY_LEE = (
+        "GRAMACY_LEE",
+        gramacy_lee,
+        GRAMACY_LEE_SEARCH_SPACE,
+        GRAMACY_LEE_MINIMIZER,
+        GRAMACY_LEE_MINIMUM,
+    )
+    HARTMANN_3 = (
+        "HARTMANN_3",
+        hartmann_3,
+        HARTMANN_3_SEARCH_SPACE,
+        HARTMANN_3_MINIMIZER,
+        HARTMANN_3_MINIMUM,
+    )
+    HARTMANN_6 = (
+        "HARTMANN_6",
+        hartmann_6,
+        HARTMANN_6_SEARCH_SPACE,
+        HARTMANN_6_MINIMIZER,
+        HARTMANN_6_MINIMUM,
+    )
+    LOGARITHMIC_GOLDSTEIN_PRICE = (
+        "LOGARITHMIC_GOLDSTEIN_PRICE",
+        logarithmic_goldstein_price,
+        LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
+        LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
+        LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+    )
+    MICHALEWICZ_2 = (
+        "MICHALEWICZ_2",
+        michalewicz_2,
+        MICHALEWICZ_2_SEARCH_SPACE,
+        MICHALEWICZ_2_MINIMIZER,
+        MICHALEWICZ_2_MINIMUM,
+    )
+    MICHALEWICZ_5 = (
+        "MICHALEWICZ_5",
+        michalewicz_5,
+        MICHALEWICZ_5_SEARCH_SPACE,
+        MICHALEWICZ_5_MINIMIZER,
+        MICHALEWICZ_5_MINIMUM,
+    )
+    MICHALEWICZ_10 = (
+        "MICHALEWICZ_10",
+        michalewicz_10,
+        MICHALEWICZ_10_SEARCH_SPACE,
+        MICHALEWICZ_10_MINIMIZER,
+        MICHALEWICZ_10_MINIMUM,
+    )
+    ROSENBROCK_4 = (
+        "ROSENBROCK_4",
+        rosenbrock_4,
+        ROSENBROCK_4_SEARCH_SPACE,
+        ROSENBROCK_4_MINIMIZER,
+        ROSENBROCK_4_MINIMUM,
+    )
+    SCALED_BRANIN = (
+        "SCALED_BRANIN",
+        scaled_branin,
+        BRANIN_SEARCH_SPACE,
+        BRANIN_MINIMIZERS,
+        SCALED_BRANIN_MINIMUM,
+    )
+    SHEKEL_4 = "SHEKEL_4", shekel_4, SHEKEL_4_SEARCH_SPACE, SHEKEL_4_MINIMIZER, SHEKEL_4_MINIMUM
+    SIMPLE_QUADRATIC = (
+        "SIMPLE_QUADRATIC",
+        simple_quadratic,
+        SIMPLE_QUADRATIC_SEARCH_SPACE,
+        SIMPLE_QUADRATIC_MINIMIZER,
+        SIMPLE_QUADRATIC_MINIMUM,
+    )
+    TRID_10 = "TRID_10", trid_10, TRID_10_SEARCH_SPACE, TRID_10_MINIMIZER, TRID_10_MINIMUM
+
+    def __init__(
+        self, name: str, fun, search_space: SearchSpace, minimizers: TensorType, minimum: TensorType
+    ):
+        self.__doc__ = name
+        self.fun = fun
+        self.search_space = search_space
+        self.minimizers = minimizers
+        self.minimum = minimum
+        self.specs = SingleObjectiveSpec(fun, search_space, minimizers, minimum)
+
+    @classmethod
+    def list_available(cls):
+        """Lists all available objectives."""
+        return [e.name for e in cls]
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:

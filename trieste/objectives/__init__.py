@@ -16,9 +16,6 @@
 This package contains examples of popular objective functions used in (Bayesian) optimization.
 """
 
-from collections import namedtuple
-from enum import Enum
-
 from . import multi_objectives, utils
 from .single_objectives import (
     ACKLEY_5_MINIMIZER,
@@ -58,6 +55,8 @@ from .single_objectives import (
     SIMPLE_QUADRATIC_MINIMIZER,
     SIMPLE_QUADRATIC_MINIMUM,
     SIMPLE_QUADRATIC_SEARCH_SPACE,
+    SingleObjectives,
+    SingleObjectiveSpec,
     TRID_10_MINIMIZER,
     TRID_10_MINIMUM,
     TRID_10_SEARCH_SPACE,
@@ -78,50 +77,3 @@ from .single_objectives import (
     trid,
     trid_10,
 )
-
-
-
-class Objective(Enum):
-    """
-    This enumeration lists all the names of the objective functions available in trieste.
-    """
-    ACKLEY_5 = "ACKLEY_5"
-    BRANIN = "BRANIN"
-    GRAMACY_LEE = "GRAMACY_LEE"
-    HARTMANN_3 = "HARTMANN_3"
-    HARTMANN_6 = "HARTMANN_6"
-    LOGARITHMIC_GOLDSTEIN_PRICE = "LOGARITHMIC_GOLDSTEIN_PRICE"
-    MICHALEWICZ_2 = "MICHALEWICZ_2"
-    MICHALEWICZ_5 = "MICHALEWICZ_5"
-    MICHALEWICZ_10 = "MICHALEWICZ_10"
-    ROSENBROCK_4 = "ROSENBROCK_4"
-    SCALED_BRANIN = "SCALED_BRANIN"
-    SHEKEL_4 = "SHEKEL_4"
-    SIMPLE_QUADRATIC = "SIMPLE_QUADRATIC"
-    TRID_10 = "TRID_10"
-
-
-ObjectiveSpec = namedtuple("ObjectiveSpec", ("fun", "search_space", "minimizers", "minima"))
-"""
-This named tuple defines all the relevant objects from Trieste related to objectives in
-``Objective`` that we need for finding thresholds corresponding to targeted volumes.
-"""
-
-
-OBJECTIVE_FUNCTION_SPECS = {
-    Objective.ACKLEY_5: ObjectiveSpec(ackley_5, ACKLEY_5_SEARCH_SPACE),
-    Objective.GRAMACY_LEE: ObjectiveSpec(gramacy_lee, GRAMACY_LEE_SEARCH_SPACE),
-    Objective.HARTMANN_3: ObjectiveSpec(hartmann_3, HARTMANN_3_SEARCH_SPACE),
-    Objective.HARTMANN_6: ObjectiveSpec(hartmann_6, HARTMANN_6_SEARCH_SPACE),
-    Objective.LOGARITHMIC_GOLDSTEIN_PRICE: ObjectiveSpec(
-        logarithmic_goldstein_price, LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE
-    ),
-    Objective.MICHALEWICZ_2: ObjectiveSpec(michalewicz_2, MICHALEWICZ_2_SEARCH_SPACE),
-    Objective.MICHALEWICZ_5: ObjectiveSpec(michalewicz_5, MICHALEWICZ_5_SEARCH_SPACE),
-    Objective.MICHALEWICZ_10: ObjectiveSpec(michalewicz_10, MICHALEWICZ_10_SEARCH_SPACE),
-    Objective.ROSENBROCK_4: ObjectiveSpec(rosenbrock_4, ROSENBROCK_4_SEARCH_SPACE),
-    Objective.SCALED_BRANIN: ObjectiveSpec(scaled_branin, BRANIN_SEARCH_SPACE),
-    Objective.SHEKEL_4: ObjectiveSpec(shekel_4, SHEKEL_4_SEARCH_SPACE),
-    Objective.SIMPLE_QUADRATIC: ObjectiveSpec(simple_quadratic, SIMPLE_QUADRATIC_SEARCH_SPACE),
-    Objective.TRID_10: ObjectiveSpec(trid_10, TRID_10_SEARCH_SPACE),
-}
