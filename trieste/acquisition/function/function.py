@@ -804,6 +804,10 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
     r"""
     Converts an acquisition function builder into one that only returns positive values, via
     :math:`x \mapsto \log(1 + \exp(x))`.
+
+    This is sometimes a useful transformation: for example, converting non-batch acquisition
+    functions into batch acquisition functions with local penalization requires functions
+    that only return positive values.
     """
 
     def __init__(

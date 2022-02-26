@@ -51,6 +51,7 @@ from .function import (
     GreedyContinuousThompsonSampling,
     IntegratedVarianceReduction,
     LocalPenalization,
+    MakePositive,
     MinValueEntropySearch,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,

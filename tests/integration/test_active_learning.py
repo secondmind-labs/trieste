@@ -115,7 +115,7 @@ def test_optimizer_learns_scaled_branin_function(
 
 
 @random_seed
-# @pytest.mark.slow
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, threshold",
     [
