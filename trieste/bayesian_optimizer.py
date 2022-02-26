@@ -140,7 +140,7 @@ class OptimizationResult(Generic[StateType]):
         """
         dataset = self.try_get_final_dataset()
         if tf.rank(dataset.observations) != 2 or dataset.observations.shape[1] != 1:
-            raise ValueError(f"Expected a single objective")
+            raise ValueError("Expected a single objective")
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
 
