@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import copy
 import itertools
-import operator
 from collections import Sequence
 from collections.abc import Container
-from functools import reduce
 
 import numpy.testing as npt
 import pytest
@@ -50,7 +48,7 @@ class Integers(SearchSpace):
         tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
-    def product(self, other: Integers) -> Integers:
+    def __mul__(self, other: Integers) -> Integers:
         return Integers(self.limit * other.limit)
 
     @property
@@ -534,8 +532,8 @@ def test_product_space_subspace_tags_default_behaviour() -> None:
 def test_product_search_space_returns_correct_dimension(
     spaces: Sequence[SearchSpace], dimension: int
 ) -> None:
-    for space in (TaggedProductSearchSpace(spaces=spaces), reduce(operator.mul, spaces)):
-        assert space.dimension == dimension
+    space = TaggedProductSearchSpace(spaces=spaces)
+    assert space.dimension == dimension
 
 
 @pytest.mark.parametrize(
@@ -566,9 +564,9 @@ def test_product_search_space_returns_correct_dimension(
 def test_product_space_returns_correct_bounds(
     spaces: Sequence[SearchSpace], lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
-    for space in (TaggedProductSearchSpace(spaces=spaces), reduce(operator.mul, spaces)):
-        npt.assert_array_equal(space.lower, lower)
-        npt.assert_array_equal(space.upper, upper)
+    space = TaggedProductSearchSpace(spaces=spaces)
+    npt.assert_array_equal(space.lower, lower)
+    npt.assert_array_equal(space.upper, upper)
 
 
 def test_product_space_get_subspace_raises_for_invalid_tag() -> None:
@@ -749,9 +747,9 @@ def test_product_space_contains_raises_on_point_of_different_shape(
 def test_product_space_sampling_returns_correct_shape(num_samples: int) -> None:
     space_A = Box([-1], [2])
     space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    for product_space in (TaggedProductSearchSpace(spaces=[space_A, space_B]), space_A * space_B):
-        samples = product_space.sample(num_samples)
-        npt.assert_array_equal(tf.shape(samples), [num_samples, 3])
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    samples = product_space.sample(num_samples)
+    npt.assert_array_equal(tf.shape(samples), [num_samples, 3])
 
 
 @pytest.mark.parametrize("num_samples", [-1, -10])

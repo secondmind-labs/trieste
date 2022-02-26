@@ -67,37 +67,17 @@ class SearchSpace(ABC):
         """The highest value taken by each search space dimension."""
 
     @abstractmethod
-    def product(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
         """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
         """
 
-    @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
-        ...
-
-    @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
-        # mypy complains that this is superfluous, but it seems to use it fine to infer
-        # that Box * Box = Box, while Box * Discrete = SearchSpace.
-        ...
-
-    def __mul__(self, other: SearchSpace) -> SearchSpace:
-        """
-        :param other: A search space.
-        :return: The Cartesian product of this search space with the ``other``.
-            If both spaces are of the same type then this calls the :meth:`product` method.
-            Otherwise, it generates a :class:`TaggedProductSearchSpace`.
-        """
-        if isinstance(other, type(self)):
-            return self.product(other)
-        return TaggedProductSearchSpace((self, other))
-
     def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for
-        an exponent of `3`, and search space `s`, this is `s ** 3`. Note that this is
+        an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
+        `s * s * s`.
 
         :param other: The exponent, or number of instances of this search space to multiply
             together. Must be strictly positive.
@@ -106,14 +86,6 @@ class SearchSpace(ABC):
         """
         tf.debugging.assert_positive(other, message="Exponent must be strictly positive")
         return reduce(operator.mul, [self] * other)
-
-    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
-        """
-        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
-        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
-            this :class:`Box`.
-        """
-        return DiscreteSearchSpace(points=self.sample(num_samples))
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -182,7 +154,7 @@ class DiscreteSearchSpace(SearchSpace):
             )
             return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
 
-    def product(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
+    def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
 
@@ -364,7 +336,15 @@ class Box(SearchSpace):
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
         ) + self._lower
 
-    def product(self, other: Box) -> Box:
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
+            this :class:`Box`.
+        """
+        return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __mul__(self, other: Box) -> Box:
         r"""
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
         lower and upper bounds). For example:
@@ -382,6 +362,9 @@ class Box(SearchSpace):
         :raise TypeError: If the bounds of one :class:`Box` have different dtypes to those of
             the other :class:`Box`.
         """
+        if self.lower.dtype is not other.lower.dtype:
+            return NotImplemented
+
         product_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
         product_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
 
@@ -567,7 +550,15 @@ class TaggedProductSearchSpace(SearchSpace):
         subspace_samples = [self._spaces[tag].sample(num_samples) for tag in self._tags]
         return tf.concat(subspace_samples, -1)
 
-    def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled
+            uniformly across the space.
+        """
+        return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    def __mul__(self, other: SearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
         building a tree of :class:`TaggedProductSearchSpace`\ s.
