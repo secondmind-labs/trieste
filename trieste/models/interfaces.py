@@ -332,6 +332,15 @@ class HasReparamSampler(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
 
+@runtime_checkable
+class SupportsReparamSamplerObservationNoise(
+    HasReparamSampler, SupportsGetObservationNoise, Protocol
+):
+    """A model that supports both reparam_sampler and get_observation_noise."""
+
+    pass
+
+
 class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
     r"""
     A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
