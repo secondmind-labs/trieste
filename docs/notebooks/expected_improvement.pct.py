@@ -263,8 +263,8 @@ result = bo.optimize(
     num_steps, result.try_get_final_dataset(), result.try_get_final_model()
 )
 dataset = result.try_get_final_dataset()
+_, _, arg_min_idx = result.try_get_optimal_point()
 
-arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 _, ax = plot_function_2d(
     scaled_branin,
     search_space.lower,
