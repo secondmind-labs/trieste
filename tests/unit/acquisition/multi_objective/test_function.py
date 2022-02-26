@@ -44,10 +44,10 @@ from trieste.acquisition.function.multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
-    MOLocalPenalizationAcquisitionFunction,
+    HippoPenalizationAcquisitionFunction,
     batch_ehvi,
     expected_hv_improvement,
-    mo_penalizer
+    hippo_penalizer,
 )
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.multi_objective.partition import (
@@ -69,6 +69,15 @@ def _mo_test_model(
         return GaussianProcessWithSamplers(means[:num_obj], kernels[:num_obj])
     else:
         return GaussianProcess(means[:num_obj], kernels[:num_obj])
+
+
+class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        return lambda x: tf.ones((tf.shape(x)[0], 1), dtype=tf.float64)
 
 
 def test_ehvi_builder_raises_for_empty_data() -> None:
@@ -524,18 +533,12 @@ def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_s
 
 def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> None:
     num_obj = 2
-    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+    train_x = tf.constant(
+        [[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]], dtype=tf.float64
+    )
 
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
-
-    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
-        def prepare_acquisition_function(
-            self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
-        ) -> AcquisitionFunction:
-            return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
     data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
     models_ = {"foo": obj_model}
@@ -549,7 +552,7 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
         .prepare_acquisition_function(models_, datasets=data)
     )
 
-    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]], dtype=tf.float64)
     npt.assert_allclose(echvi(at), ehvi(at))
 
     new_data = {"foo": Dataset(train_x, model_pred_observation)}
@@ -621,42 +624,117 @@ def test_echvi_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(models_)
 
 
-
-def test_molp_builder_raises_for_empty_data() -> None:
+def test_hippo_builder_raises_for_empty_data() -> None:
     num_obj = 3
-    dataset = empty_dataset([2], [num_obj])
-    model = QuadraticMeanAndRBFKernel()
+    dataset = {"": empty_dataset([2], [num_obj])}
+    model = {"": QuadraticMeanAndRBFKernel()}
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        MOLocalPenalizationAcquisitionFunction().prepare_acquisition_function(model, dataset=dataset)
+        HippoPenalizationAcquisitionFunction("").prepare_acquisition_function(model, dataset)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        MOLocalPenalizationAcquisitionFunction().prepare_acquisition_function(model, dataset)
+        HippoPenalizationAcquisitionFunction("").prepare_acquisition_function(model, dataset)
 
-def test_mo_penalizer_raises_for_empty_pending_points() -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        mo_penalizer(QuadraticMeanAndRBFKernel(), None)
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        mo_penalizer(QuadraticMeanAndRBFKernel(), tf.zeros((0, 2)))
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_mo_penalizer_raises_for_invalid_batch_size(
-    at: TensorType
-) -> None:
+def test_hippo_penalizer_raises_for_invalid_batch_size(at: TensorType) -> None:
     pending_points = tf.zeros([1, 2], dtype=tf.float64)
-    mo_lp = mo_penalizer(QuadraticMeanAndRBFKernel(), pending_points)
+    hp = hippo_penalizer(QuadraticMeanAndRBFKernel(), pending_points)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        mo_lp(at)
+        hp(at)
 
 
-@pytest.mark.parametrize("pending_points", [tf.constant([0.0]), tf.constant([[[0.0], [1.0]]])])
-def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
-    pending_points: TensorType,
-    penalizer: Callable[..., PenalizationFunction],
+def test_hippo_penalizer_raises_for_empty_pending_points() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        hippo_penalizer(QuadraticMeanAndRBFKernel(), None)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        hippo_penalizer(QuadraticMeanAndRBFKernel(), tf.zeros([0, 2]))
+
+
+def test_hippo_penalizer_update_raises_for_empty_pending_points() -> None:
+    pending_points = tf.zeros([1, 2], dtype=tf.float64)
+    hp = hippo_penalizer(QuadraticMeanAndRBFKernel(), pending_points)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        hp.update(None)
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        hp.update(tf.zeros([0, 2]))
+
+
+@pytest.mark.parametrize(
+    "point_to_penalize", [tf.constant([[[0.0, 1.0]]]), tf.constant([[[3.0, 4.0]]])]
+)
+def test_hippo_penalizer_penalizes_pending_point(point_to_penalize: TensorType) -> None:
+    pending_points = tf.constant([[0.0, 1.0], [2.0, 3.0], [3.0, 4.0]])
+    hp = hippo_penalizer(QuadraticMeanAndRBFKernel(), pending_points)
+
+    penalty = hp(point_to_penalize)
+
+    # if the point is already collected, it shall be penalized to 0
+    npt.assert_allclose(penalty, tf.zeros((1, 1)))
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "base_builder",
+    [
+        ExpectedHypervolumeImprovement().using(""),
+        ExpectedConstrainedHypervolumeImprovement("", _Certainty(), 0.0),
+    ],
+)
+def test_hippo_penalized_acquisitions_match_base_acquisition(
+    base_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
 ) -> None:
-    best = tf.constant([0], dtype=tf.float64)
-    lipschitz_constant = tf.constant([1], dtype=tf.float64)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
+    data = {"": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
+    model = {"": _mo_test_model(2, *[None] * 2)}
 
+    hippo_acq_builder = HippoPenalizationAcquisitionFunction(
+        "", base_acquisition_function_builder=base_builder
+    )
+    hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, None)
+
+    base_acq = base_builder.prepare_acquisition_function(model, data)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    hippo_acq_values = hippo_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
+
+    npt.assert_array_equal(hippo_acq_values, base_acq_values)
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "base_builder",
+    [
+        ExpectedHypervolumeImprovement().using(""),
+        ExpectedConstrainedHypervolumeImprovement("", _Certainty(), 0.0),
+    ],
+)
+def test_hippo_penalized_acquisitions_combine_base_and_penalization_correctly(
+    base_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
+) -> None:
+    data = {"": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
+    model = {"": _mo_test_model(2, *[None] * 2)}
+    pending_points = tf.zeros([2, 2], dtype=tf.float64)
+
+    hippo_acq_builder = HippoPenalizationAcquisitionFunction(
+        "", base_acquisition_function_builder=base_builder
+    )
+    hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, pending_points)
+    base_acq = base_builder.prepare_acquisition_function(model, data)
+    penalizer = hippo_penalizer(model[""], pending_points)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    hippo_acq_values = hippo_acq(xs[..., None, :])
+    base_acq_values = base_acq(xs[..., None, :])
+    penalty_values = penalizer(xs[..., None, :])
+    penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penalty_values))
+
+    npt.assert_array_equal(hippo_acq_values, penalized_base_acq)
