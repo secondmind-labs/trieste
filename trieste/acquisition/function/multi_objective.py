@@ -388,7 +388,7 @@ class ExpectedConstrainedHypervolumeImprovement(
 
 class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
     r"""
-    HIPPO: Highly Parallelizable Pareto Optimization
+    HIPPO: HIghly Parallelizable Pareto Optimization
 
     Builder of the acquisition function for greedily collecting batches by HIPPO
     penalization in multi-objective optimization. The resulting acquistion function
