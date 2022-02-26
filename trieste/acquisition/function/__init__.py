@@ -39,6 +39,8 @@ from .function import (
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
     MakePositive,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,

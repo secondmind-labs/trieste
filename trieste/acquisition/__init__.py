@@ -53,6 +53,8 @@ from .function import (
     LocalPenalization,
     MakePositive,
     MinValueEntropySearch,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
