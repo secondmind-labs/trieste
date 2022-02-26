@@ -460,15 +460,18 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             with summary_writer.as_default(step=0):
                 logging.text(
                     "metadata",
+                    f"Observer: `{self._observer}`\n\n"
                     f"Number of steps: `{num_steps}`\n\n"
                     f"Number of initial points: "
                     f"`{dict((k, len(v)) for k,v in datasets.items())}`\n\n"
+                    f"Search Space: `{self._search_space}`\n\n"
                     f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
                     f"Models:\n\n    {models}",
                 )
             if logging.include_summary("query_points/_pairplot") and not (pd and sns):
                 tf.print(
-                    "Pairplot TensorBoard summaries require seaborn to be installed",
+                    "\nPairplot TensorBoard summaries require seaborn to be installed."
+                    "\nOne way to do this is to install 'trieste[plotting]'.",
                     output_stream=absl.logging.INFO,
                 )
 
