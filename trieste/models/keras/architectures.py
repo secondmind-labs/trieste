@@ -253,7 +253,7 @@ class DropoutNetwork():
         self.input_tensor_spec = input_tensor_spec
         self.output_tensor_spec = output_tensor_spec
         self._hidden_layer_args = hidden_layer_args
-        self.network_name = network_name
+        self.network_name = network_name #Do we want to implement network name in a different way?
         self._dropout_prob = dropout_prob
 
     #Probably want to move these properties to an abstract class when refactoring
@@ -262,7 +262,7 @@ class DropoutNetwork():
         return int(np.prod(self.output_tensor_spec.shape))
 
     @property
-    def dropout_prob(self):
+    def dropout_prob(self) -> Sequence:
         return self._dropout_prob
     
     @dropout_prob.setter
@@ -282,7 +282,7 @@ class DropoutNetwork():
         else:
             raise TypeError(f"dropout_prob needs to be a sequence, float or int. Instead got {type(dropout_prob)}")
 
-    def _check_probability(self, p: float | int):
+    def _check_probability(self, p: float | int) -> None:
         if not 0 <= p <= 1:
             raise ValueError(
                 f"Invalid probability {p} received."
@@ -308,25 +308,28 @@ class DropoutNetwork():
         return input_tensor
 
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
         dropout = MCDropout(self._dropout_prob[-1])
         output_layer = tf.keras.layers.Dense(units=self.flattened_output_shape, name=self.network_name + "output")
         dropout_tensor = dropout(input_tensor)
         output_tensor = output_layer(dropout_tensor)
         return output_tensor
-        #Need to generate output layer that outputs correct shape
 
     def connect_layers(self) -> tuple[tf.Tensor, tf.Tensor]:
+
         input_tensor = self._gen_input_tensor()
         hidden_tensor = self._gen_hidden_layers(input_tensor)
         output_tensor = self._gen_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor
 
+#Does this really need to be a separate class?
 class DropConnectNetwork(DropoutNetwork):
     def __init__(self):
         super(DropConnectNetwork, self).__init__()
     
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
             layer = MCDropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
@@ -334,6 +337,7 @@ class DropConnectNetwork(DropoutNetwork):
         return input_tensor
     
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
         output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output")
         output_tensor = output_layer(input_tensor)
         return output_tensor

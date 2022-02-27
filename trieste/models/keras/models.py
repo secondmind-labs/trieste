@@ -28,7 +28,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
-from .architectures import KerasEnsemble
+from .architectures import KerasEnsemble, DropoutNetwork
 from .interface import KerasPredictor
 from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
@@ -332,3 +332,48 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+
+class MCDropout(KerasPredictor, TrainableProbabilisticModel):
+    def __init__(
+        self,
+        model: DropoutNetwork,
+        optimizer: Optional[KerasOptimizer] = None #Look into what is KerasOptimizer doing under the hood
+    ) -> None:
+
+        super().__init__(optimizer)
+
+        if not self.optimizer.fit_args:
+            self.optimizer.fit_args = {
+                "verbose": 0,
+                "epochs": 1000,
+                "batch_size": 16,
+                "callbacks": [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="loss", patience=50, restore_best_weights=True
+                    )
+                ],
+            }
+
+        if self.optimizer.loss is None:
+            self.optimizer.loss = negative_log_likelihood
+
+        model.model.compile(
+            self.optimizer.optimizer,
+            loss=[self.optimizer.loss],
+            metrics=[self.optimizer.metrics],
+        )
+
+        self._model = model
+
+    @property
+    def model(self) -> tf.keras.Model:
+        return self._model.model
+
+    def optimize(self, dataset:Dataset) -> None:
+        ...
+    def update(self, dataset: Dataset) -> None:
+        ...
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        ...
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        ...
