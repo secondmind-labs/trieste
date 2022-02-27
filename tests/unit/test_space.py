@@ -57,6 +57,11 @@ class Integers(SearchSpace):
     def dimension(self) -> TensorType:
         pass
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Integers):
+            return NotImplemented
+        return self.limit == other.limit
+
 
 @pytest.mark.parametrize("exponent", [0, -2])
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
@@ -830,3 +835,52 @@ def test_product_search_space_deepcopy() -> None:
     npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
     npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
     npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "a, b, equal",
+    [
+        (Box([-1], [2]), Box([-1], [2]), True),
+        (Box([-1], [2]), Box([0], [2]), False),
+        (Box([-1], [2]), DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])), False),
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            True,
+        ),
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            False,
+        ),
+        (
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+            DiscreteSearchSpace(tf.constant([[1.2, 0.4], [-0.5, -0.3]])),
+            True,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            True,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            TaggedProductSearchSpace([Box([-1], [1]), Box([3], [4])]),
+            False,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["A", "B"]),
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["B", "A"]),
+            False,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["A", "B"]),
+            TaggedProductSearchSpace([Box([1], [2]), Box([-1], [1])], tags=["B", "A"]),
+            False,
+        ),
+    ],
+)
+def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> None:
+    assert (a == b) is equal
+    assert (a != b) is (not equal)
+    assert (a == a) and (b == b)

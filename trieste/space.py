@@ -115,6 +115,13 @@ class SearchSpace(ABC):
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
+    @abstractmethod
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+
 
 class DiscreteSearchSpace(SearchSpace):
     r"""
@@ -208,6 +215,15 @@ class DiscreteSearchSpace(SearchSpace):
         cartesian_product = tf.concat([tile_self, tile_other], axis=2)
         product_space_dimension = self.points.shape[-1] + other.points.shape[-1]
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [-1, product_space_dimension]))
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, DiscreteSearchSpace):
+            return NotImplemented
+        return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
     def __deepcopy__(self, memo: dict[int, object]) -> DiscreteSearchSpace:
         return self
@@ -382,10 +398,24 @@ class Box(SearchSpace):
         :raise TypeError: If the bounds of one :class:`Box` have different dtypes to those of
             the other :class:`Box`.
         """
+        if self.lower.dtype is not other.lower.dtype:
+            return NotImplemented
+
         product_lower_bound = tf.concat([self._lower, other.lower], axis=-1)
         product_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
 
         return Box(product_lower_bound, product_upper_bound)
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, Box):
+            return NotImplemented
+        return bool(
+            tf.reduce_all(self.lower == other.lower) and tf.reduce_all(self.upper == other.upper)
+        )
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
@@ -576,6 +606,15 @@ class TaggedProductSearchSpace(SearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, TaggedProductSearchSpace):
+            return NotImplemented
+        return self._tags == other._tags and self._spaces == other._spaces
 
     def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
         return self
