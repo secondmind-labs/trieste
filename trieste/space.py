@@ -111,7 +111,7 @@ class SearchSpace(ABC):
         """
         :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
         :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
-            this :class:`Box`.
+            this search space.
         """
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
