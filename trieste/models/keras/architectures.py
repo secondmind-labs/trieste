@@ -19,9 +19,11 @@ This file contains implementations of neural network architectures with Keras.
 from __future__ import annotations
 
 from abc import abstractmethod
+from multiprocessing.sharedctypes import Value
 from typing import Any, Sequence
 
 import numpy as np
+from layers import DropConnect
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -233,3 +235,96 @@ class GaussianNetwork(KerasEnsembleNetwork):
         output_tensor = self._gen_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor
+
+
+class DropoutNetwork():
+
+    def __init__(
+        self,
+        input_tensor_spec: tf.TensorSpec,
+        output_tensor_spec: tf.TensorSpec,
+        hidden_layer_args: Sequence[dict[str, Any]] = (
+            {"units": 50, "activation": "relu"},
+            {"units": 50, "activation": "relu"},
+            {"units": 50, "activation": "relu"},
+        ),
+        dropout_prob: Sequence[float] | float | int = 0.5,
+        network_name: str = ""
+    ):
+        self.input_tensor_spec = input_tensor_spec
+        self.output_tensor_spec = output_tensor_spec
+        self._hidden_layer_args = hidden_layer_args
+        self.network_name = network_name
+        self._dropout_prob = dropout_prob
+
+    #Probably want to move these properties to an abstract class when refactoring
+    @property
+    def dropout_prob(self):
+        return self._dropout_prob
+    
+    @dropout_prob.setter
+    def dropout_prop(self, dropout_prob):
+        if isinstance(dropout_prob, Sequence):
+            if not len(dropout_prob) == len(self._hidden_layer_args):
+                raise ValueError(
+                    f"""Requires a dropout probability for each hidden layer. 
+                    Got {len(dropout_prob)} dropout probabilities for {len(self._hidden_layer_args)} hidden layers."""
+                )
+            for p in dropout_prob:
+                self._check_probability(p)
+            self._dropout_prob = dropout_prob
+        else:
+            self._check_probability(dropout_prob)
+            self._dropout_prob = [dropout_prob for _ in range(len(self._hidden_layer_args))]
+
+    def _check_probability(self, p: float | int):
+        if not 0 <= p <= 1:
+            raise ValueError(
+                f"Invalid probability {p} received."
+            )
+
+    def _gen_input_tensor(self) -> tf.keras.Input:
+
+        input_tensor = tf.keras.Input(
+            shape=self.input_tensor_spec.shape,
+            dtype=self.input_tensor_spec.dtype,
+            name=self.network_name + "input"
+        )
+        return input_tensor
+
+    def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
+        for index, hidden_layer_args in enumerate(self._hidden_layer_args):
+            layer_name = f"{self.network_name}dense_{index}"
+            dropout = tf.keras.layers.Dropout(self._dropout_prob[index])
+            layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
+            dropout_tensor = dropout(input_tensor, training=False) #TEST THAT PASSING TRAINING HERE IS ENOUGH ONCE MODEL CONNECTED
+            input_tensor = layer(dropout_tensor)
+        return input_tensor
+
+    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+        ...    
+        #Need to generate output layer that outputs correct shape
+
+    def connect_layers(self) -> tuple[tf.Tensor, tf.Tensor]:
+        input_tensor = self._gen_input_tensor()
+        hidden_tensor = self._gen_hidden_layers(input_tensor)
+        output_tensor = self._gen_output_layer(hidden_tensor)
+
+        return input_tensor, output_tensor
+
+class DropConnectNetwork(DropoutNetwork):
+    def __init__(self):
+        super(DropConnectNetwork, self).__init__()
+    
+    def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
+        for index, hidden_layer_args in enumerate(self._hidden_layer_args):
+            layer_name = f"{self.network_name}dense_{index}"
+            layer = DropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
+            input_tensor = layer(input_tensor)
+
+        return input_tensor
+    
+    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+        ...
