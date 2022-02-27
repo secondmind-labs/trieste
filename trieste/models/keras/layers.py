@@ -22,13 +22,14 @@ class DropConnect(Dense):
     def call(self, inputs, training = False):
         if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:
             inputs = math_ops.cast(inputs, dtype=self._compute_dtype_object)
+
         #Drop Connect Code to mask the kernel
         if training:
             mask = tf.cast(tf.random.uniform(shape=self.kernel.shape) >= self.p_dropout, dtype=self.kernel.dtype)
             kernel = mask * self.kernel
-
         else:
             kernel = self.kernel
+
         #Code below from Tensorflow Dense Class
         rank = inputs.shape.rank
         if rank == 2 or rank is None:
@@ -58,3 +59,9 @@ class DropConnect(Dense):
         if self.activation is not None:
             outputs = self.activation(outputs)
         return outputs
+class MCDropout(Dropout):
+    def call(self, x):
+        return super().call(x, training=True)
+class MCDropConnect(DropConnect):
+    def call(self, x):
+        return super().call(x, training=True)

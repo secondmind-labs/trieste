@@ -19,14 +19,13 @@ This file contains implementations of neural network architectures with Keras.
 from __future__ import annotations
 
 from abc import abstractmethod
+from layers import DropConnect, MCDropConnect, MCDropout
 from multiprocessing.sharedctypes import Value
 from typing import Any, Sequence
 
 import numpy as np
-from layers import DropConnect
 import tensorflow as tf
 import tensorflow_probability as tfp
-
 
 class KerasEnsemble:
     """
@@ -259,6 +258,10 @@ class DropoutNetwork():
 
     #Probably want to move these properties to an abstract class when refactoring
     @property
+    def flattened_output_shape(self) -> int:
+        return int(np.prod(self.output_tensor_spec.shape))
+
+    @property
     def dropout_prob(self):
         return self._dropout_prob
     
@@ -267,15 +270,17 @@ class DropoutNetwork():
         if isinstance(dropout_prob, Sequence):
             if not len(dropout_prob) == len(self._hidden_layer_args):
                 raise ValueError(
-                    f"""Requires a dropout probability for each hidden layer. 
-                    Got {len(dropout_prob)} dropout probabilities for {len(self._hidden_layer_args)} hidden layers."""
+                    f"""Requires a dropout probability for each hidden layer and the output layer. 
+                    Got {len(dropout_prob)} dropout probabilities for {len(self._hidden_layer_args) + 1} layers."""
                 )
             for p in dropout_prob:
                 self._check_probability(p)
             self._dropout_prob = dropout_prob
-        else:
+        elif isinstance(dropout_prob, [float, int]):
             self._check_probability(dropout_prob)
-            self._dropout_prob = [dropout_prob for _ in range(len(self._hidden_layer_args))]
+            self._dropout_prob = [dropout_prob for _ in range(len(self._hidden_layer_args) + 1)]
+        else:
+            raise TypeError(f"dropout_prob needs to be a sequence, float or int. Instead got {type(dropout_prob)}")
 
     def _check_probability(self, p: float | int):
         if not 0 <= p <= 1:
@@ -296,14 +301,18 @@ class DropoutNetwork():
 
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            dropout = tf.keras.layers.Dropout(self._dropout_prob[index])
+            dropout = MCDropout(self._dropout_prob[index])
             layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
-            dropout_tensor = dropout(input_tensor, training=False) #TEST THAT PASSING TRAINING HERE IS ENOUGH ONCE MODEL CONNECTED
+            dropout_tensor = dropout(input_tensor) #TEST THAT PASSING TRAINING HERE IS ENOUGH ONCE MODEL CONNECTED
             input_tensor = layer(dropout_tensor)
         return input_tensor
 
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-        ...    
+        dropout = MCDropout(self._dropout_prob[-1])
+        output_layer = tf.keras.layers.Dense(units=self.flattened_output_shape, name=self.network_name + "output")
+        dropout_tensor = dropout(input_tensor)
+        output_tensor = output_layer(dropout_tensor)
+        return output_tensor
         #Need to generate output layer that outputs correct shape
 
     def connect_layers(self) -> tuple[tf.Tensor, tf.Tensor]:
@@ -318,13 +327,13 @@ class DropConnectNetwork(DropoutNetwork):
         super(DropConnectNetwork, self).__init__()
     
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
-
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            layer = DropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
+            layer = MCDropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
             input_tensor = layer(input_tensor)
-
         return input_tensor
     
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-        ...
+        output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output")
+        output_tensor = output_layer(input_tensor)
+        return output_tensor

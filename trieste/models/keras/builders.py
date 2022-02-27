@@ -19,13 +19,14 @@ universally good solutions.
 """
 
 from __future__ import annotations
+from multiprocessing.sharedctypes import Value
 
-from typing import Union
+from typing import Union, Sequence
 
 import tensorflow as tf
 
 from ...data import Dataset
-from .architectures import GaussianNetwork, KerasEnsemble
+from .architectures import DropConnectNetwork, GaussianNetwork, KerasEnsemble, DropoutNetwork
 from .utils import get_tensor_spec_from_data
 
 
@@ -80,3 +81,40 @@ def build_vanilla_keras_ensemble(
     keras_ensemble = KerasEnsemble(networks)
 
     return keras_ensemble
+
+def build_vanilla_keras_mcdropout(
+    data: Dataset,
+    num_hidden_layers: int = 3,
+    units: int = 50,
+    activation: str | tf.keras.layers.Activation = "relu",
+    dropout_prob: Sequence[float | int] | float | int = 0.5,
+    dropout: str = "standard"
+) -> DropoutNetwork:
+    
+    input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(data)
+
+    hidden_layer_args = []
+    for i in range(num_hidden_layers):
+        hidden_layer_args.append({"units": units, "activation": activation})
+
+    if dropout == "standard":
+        keras_mcdropout = DropoutNetwork(
+            input_tensor_spec,
+            output_tensor_spec,
+            hidden_layer_args,
+            dropout_prob
+        )
+    elif dropout == "dropconnect":
+        keras_mcdropout = DropConnectNetwork(
+            input_tensor_spec,
+            output_tensor_spec,
+            hidden_layer_args,
+            dropout_prob
+        )
+    else:
+        raise ValueError(
+            f"""dropout should be set to either 'standard' for MCDropout or 'dropconnect' for MCDropConnect.
+            Instead got {dropout}."""
+        )
+
+    return keras_mcdropout
