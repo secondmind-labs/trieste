@@ -277,7 +277,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 
 @random_seed
 @pytest.mark.slow
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(30, DiscreteThompsonSampling(1000, 8))])
+@pytest.mark.parametrize("num_steps, acquisition_rule", [(35, DiscreteThompsonSampling(1000, 8))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
