@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Optional
+from unittest.mock import MagicMock
 
 import numpy.testing as npt
 import pytest
@@ -48,6 +49,7 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MakePositive,
     MonteCarloAugmentedExpectedImprovement,
     MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
@@ -1045,3 +1047,29 @@ def test_multiple_optimism_negative_confidence_bound_raises_for_changing_batch_s
     with pytest.raises(tf.errors.InvalidArgumentError):
         query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5, 10, 2])
         acq_fn(query_at)
+
+
+@pytest.mark.parametrize("in_place_update", [False, True])
+def test_make_positive(in_place_update: bool) -> None:
+    base = MagicMock()
+    base.prepare_acquisition_function.side_effect = lambda *args: lambda x: x
+    if in_place_update:
+        base.update_acquisition_function.side_effect = lambda f, *args: f
+    else:
+        base.update_acquisition_function.side_effect = lambda *args: lambda x: 3.0
+    builder: MakePositive[ProbabilisticModel] = MakePositive(base)
+
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = builder.prepare_acquisition_function(model)
+    xs = tf.linspace([-1], [1], 10)
+    npt.assert_allclose(acq_fn(xs), tf.math.log(1 + tf.math.exp(xs)))
+    assert base.prepare_acquisition_function.call_count == 1
+    assert base.update_acquisition_function.call_count == 0
+
+    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
+    assert base.prepare_acquisition_function.call_count == 1
+    assert base.update_acquisition_function.call_count == 1
+    if in_place_update:
+        assert up_acq_fn is acq_fn
+    else:
+        npt.assert_allclose(up_acq_fn(xs), tf.math.log(1 + tf.math.exp(3.0)))
