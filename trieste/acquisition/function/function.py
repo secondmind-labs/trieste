@@ -1078,3 +1078,69 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
         mean, variance = self._model.predict(x)  # [..., B, 1]
         mean, variance = tf.squeeze(mean, -1), tf.squeeze(variance, -1)
         return -mean + tf.sqrt(variance) * self._betas  # [..., B]
+
+
+class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
+    r"""
+    Converts an acquisition function builder into one that only returns positive values, via
+    :math:`x \mapsto \log(1 + \exp(x))`.
+
+    This is sometimes a useful transformation: for example, converting non-batch acquisition
+    functions into batch acquisition functions with local penalization requires functions
+    that only return positive values.
+    """
+
+    def __init__(
+        self,
+        base_acquisition_function_builder: SingleModelAcquisitionBuilder[ProbabilisticModelType],
+    ) -> None:
+        """
+        :param base_acquisition_function_builder: Base acquisition function to be made positive.
+        """
+        self._base_builder = base_acquisition_function_builder
+
+    def __repr__(self) -> str:
+        """"""
+        return f"MakePositive({self._base_builder})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data to use to build the acquisition function (optional).
+        :return: An acquisition function.
+        """
+        self._base_function = self._base_builder.prepare_acquisition_function(model, dataset)
+
+        @tf.function
+        def acquisition(x: TensorType) -> TensorType:
+            return tf.math.log(1 + tf.math.exp(self._base_function(x)))
+
+        return acquisition
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
+        :return: The updated acquisition function.
+        """
+        up_fn = self._base_builder.update_acquisition_function(self._base_function, model, dataset)
+        if up_fn is self._base_function:
+            return function
+        else:
+            self._base_function = up_fn
+
+            @tf.function
+            def acquisition(x: TensorType) -> TensorType:
+                return tf.math.log(1 + tf.math.exp(self._base_function(x)))
+
+            return acquisition
