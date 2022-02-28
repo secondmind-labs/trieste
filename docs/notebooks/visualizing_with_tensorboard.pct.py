@@ -66,6 +66,8 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 # The data remains available when the optimization is over.
 #
 # ![TensorBoard graphs](figures/tensorboard_bo.png)
+#
+#  In addition to these scalar plots, there may also be histograms, textual metadata and image plots.
 
 # %% [markdown]
 # ## Deciding what to log
