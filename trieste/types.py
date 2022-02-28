@@ -14,7 +14,6 @@
 """This module contains type aliases."""
 from typing import Callable, Tuple, TypeVar, Union
 
-import numpy as np
 import tensorflow as tf
 
 TensorType = Union[tf.Tensor, tf.Variable]

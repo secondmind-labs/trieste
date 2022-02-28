@@ -42,5 +42,6 @@ generate_for_env common_build/types false
 generate_for_env notebooks true
 generate_for_env tests true
 generate_for_env tests/latest true
+generate_for_env tests/latest_tf true
 
 rm -rf $VENV_DIR

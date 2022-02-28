@@ -463,7 +463,10 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
     """
 
     def run(
-        self, start: np.ndarray[Any, Any], bounds: spo.Bounds, optimizer_args: dict[str, Any] = dict()
+        self,
+        start: np.ndarray[Any, Any],
+        bounds: spo.Bounds,
+        optimizer_args: dict[str, Any] = dict(),
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
         cache_y: Optional[np.ndarray[Any, Any]] = None
