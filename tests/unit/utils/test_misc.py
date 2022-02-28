@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from time import sleep
 from typing import Any
 
@@ -66,7 +68,7 @@ def test_shapes_equal(this_shape: ShapeLike, that_shape: ShapeLike) -> None:
         (tf.reshape(tf.range(12), [3, -1]), np.arange(12).reshape(3, -1)),
     ],
 )
-def test_to_numpy(t: TensorType, expected: np.ndarray) -> None:
+def test_to_numpy(t: TensorType, expected: "np.ndarray[Any, Any]") -> None:
     npt.assert_array_equal(to_numpy(t), expected)
 
 
