@@ -43,6 +43,7 @@ class Problem:
     """
     This class stores base information we need for defining a Bayesian optimization problem.
     """
+
     problem_name: str
     """"""
 
@@ -62,6 +63,7 @@ class FunctionOptimizationProblem(Problem):
     """
     Stores all information we need to define a function optimization type of problem.
     """
+
     minima: TensorType
     minimizers: TensorType
     test_data: Dataset
@@ -72,6 +74,7 @@ class FunctionLearningProblem(Problem):
     """
     Stores all information we need to define a function learning type of problem.
     """
+
     test_data: Dataset
 
 
@@ -80,6 +83,7 @@ class LevelSetProblem(Problem):
     """
     Stores all information we need to define a level set type of problem.
     """
+
     threshold: float
     estimated_volume: TensorType
     global_data: Dataset
@@ -112,7 +116,7 @@ def get_function_optimization_problem(
     problem.minima = SINGLE_OBJECTIVE_SPECS[objective].minima
     problem.minimizers = SINGLE_OBJECTIVE_SPECS[objective].minimizers
     problem.test_data = _get_search_space_samples(
-        problem.fun, problem.search_space, int(num_samples_per_dim*problem.dim)
+        problem.fun, problem.search_space, int(num_samples_per_dim * problem.dim)
     )
 
     return problem
@@ -140,7 +144,7 @@ def get_function_learning_problem(
     problem.fun = SINGLE_OBJECTIVE_SPECS[objective].fun
     problem.search_space = SINGLE_OBJECTIVE_SPECS[objective].search_space
     problem.test_data = _get_search_space_samples(
-        problem.fun, problem.search_space, int(num_samples_per_dim*problem.dim)
+        problem.fun, problem.search_space, int(num_samples_per_dim * problem.dim)
     )
 
     return problem
@@ -151,7 +155,7 @@ def get_level_set_problem(
     proportion: float,
     num_global_samples_per_dim: int = NUM_TEST_POINTS_PER_DIM,
     num_boundary_samples_per_dim: int = NUM_TEST_POINTS_PER_DIM,
-    range_pct: float = RANGE_PCT
+    range_pct: float = RANGE_PCT,
 ) -> LevelSetProblem:
     """
     Create a LevelSetProblem from one of the existing objective functions.
@@ -183,14 +187,14 @@ def get_level_set_problem(
     problem.search_space = SINGLE_OBJECTIVE_SPECS[objective].search_space
     problem.threshold = threshold
     problem.global_data = _get_search_space_samples(
-        problem.fun, problem.search_space, int(num_global_samples_per_dim*problem.dim)
+        problem.fun, problem.search_space, int(num_global_samples_per_dim * problem.dim)
     )
-    problem.global_feasible = tf.cast(problem.global_data.observations < threshold, tf.float32)    
+    problem.global_feasible = tf.cast(problem.global_data.observations < threshold, tf.float32)
     problem.boundary_data = _get_boundary_samples(
         problem.fun,
         problem.search_space,
         threshold,
-        int(num_boundary_samples_per_dim*problem.dim),
+        int(num_boundary_samples_per_dim * problem.dim),
         range_pct,
     )
     problem.boundary_feasible = tf.cast(problem.boundary_data.observations < threshold, tf.float32)
@@ -237,7 +241,9 @@ def _get_boundary_samples(
         boundary_x = tf.concat([boundary_x, tf.boolean_mask(query_points, mask)], 0)
         if boundary_x.shape[0] > num_samples:
             boundary_done = True
-    boundary_x = boundary_x[:num_samples,]
+    boundary_x = boundary_x[
+        :num_samples,
+    ]
     boundary_y = fun(boundary_x)
 
     return Dataset(boundary_x, boundary_y)

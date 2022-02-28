@@ -33,6 +33,11 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.data import Dataset
 from trieste.observer import OBJECTIVE
 from trieste.utils import Timer
+from .. import logging
+
+
+summary_writer = tf.summary.create_file_writer("logs/tensorboard/experiment4")
+trieste.logging.set_tensorboard_writer(summary_writer)
 
 
 class Experiment:
@@ -104,6 +109,8 @@ class Experiment:
         # optimization
         num_iterations = get_num_iterations(data)
         for step in range(num_iterations):
+
+            logging.set_step_number(step)
 
             if self._config.retrain:
                 model = self.get_model(data)
