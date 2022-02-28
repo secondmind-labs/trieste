@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -41,7 +42,7 @@ from trieste.acquisition.utils import split_acquisition_function
     ],
 )
 def test_split_acquisition_function(
-    f: AcquisitionFunction, x: np.ndarray, split_size: int, expected_batches: int
+    f: AcquisitionFunction, x: np.ndarray[Any, Any], split_size: int, expected_batches: int
 ) -> None:
 
     mock_f = MagicMock()

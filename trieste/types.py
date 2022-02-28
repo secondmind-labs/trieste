@@ -17,7 +17,7 @@ from typing import Callable, Tuple, TypeVar, Union
 import numpy as np
 import tensorflow as tf
 
-TensorType = Union[np.ndarray, tf.Tensor]
+TensorType = Union[tf.Tensor, tf.Variable]
 """Type alias for tensor-like types."""
 
 S = TypeVar("S")
