@@ -26,12 +26,14 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import random_seed
+from trieste.acquisition import LocalPenalization
 from trieste.acquisition.function import (
     BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
 )
+from trieste.acquisition.function.function import MakePositive
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
@@ -117,24 +119,55 @@ def test_optimizer_learns_scaled_branin_function(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, threshold",
     [
-        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)), 80),
-        (50, EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)), 80),
-        (70, EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)), 20),
-        (
+        pytest.param(
+            50,
+            EfficientGlobalOptimization(ExpectedFeasibility(80, delta=1)),
+            80,
+            id="ExpectedFeasibility/80/1",
+        ),
+        pytest.param(
+            50,
+            EfficientGlobalOptimization(ExpectedFeasibility(80, delta=2)),
+            80,
+            id="ExpectedFeasibility/80/2",
+        ),
+        pytest.param(
+            70,
+            EfficientGlobalOptimization(ExpectedFeasibility(20, delta=1)),
+            20,
+            id="ExpectedFeasibility/20",
+        ),
+        pytest.param(
             25,
-            EfficientGlobalOptimization[SearchSpace, FastUpdateModel](
+            EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
                 num_query_points=3,
             ),
             80.0,
+            id="IntegratedVarianceReduction/80",
         ),
-        (
+        pytest.param(
             25,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0]),
                 num_query_points=3,
             ),
             80.0,
+            id="IntegratedVarianceReduction/[78, 82]",
+        ),
+        pytest.param(
+            25,
+            EfficientGlobalOptimization(
+                LocalPenalization(
+                    BRANIN_SEARCH_SPACE,
+                    base_acquisition_function_builder=MakePositive(
+                        ExpectedFeasibility(80, delta=1)
+                    ),
+                ),
+                num_query_points=3,
+            ),
+            80.0,
+            id="LocalPenalization/MakePositive(ExpectedFeasibility)",
         ),
     ],
 )
