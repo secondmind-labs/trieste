@@ -408,7 +408,7 @@ def _perform_parallel_continuous_optimization(
 
     # Set up child greenlets
     child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
-    vectorized_child_results: List[Union[spo.OptimizeResult, np.ndarray[Any, Any]]] = [
+    vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
         gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
     ]
@@ -464,17 +464,17 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
 
     def run(
         self,
-        start: np.ndarray[Any, Any],
+        start: "np.ndarray[Any, Any]",
         bounds: spo.Bounds,
         optimizer_args: dict[str, Any] = dict(),
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
-        cache_y: Optional[np.ndarray[Any, Any]] = None
-        cache_dy_dx: Optional[np.ndarray[Any, Any]] = None
+        cache_y: Optional["np.ndarray[Any, Any]"] = None
+        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
 
         def value_and_gradient(
-            x: np.ndarray[Any, Any],
-        ) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+            x: "np.ndarray[Any, Any]",
+        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
             # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
@@ -485,7 +485,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
                 # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
                 cache_y, cache_dy_dx = self.parent.switch(cache_x)
 
-            return cast(np.ndarray[Any, Any], cache_y), cast(np.ndarray[Any, Any], cache_dy_dx)
+            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],

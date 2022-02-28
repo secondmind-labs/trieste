@@ -44,7 +44,7 @@ from trieste.acquisition.utils import split_acquisition_function
     ],
 )
 def test_split_acquisition_function(
-    f: AcquisitionFunction, x: np.ndarray[Any, Any], split_size: int, expected_batches: int
+    f: AcquisitionFunction, x: "np.ndarray[Any, Any]", split_size: int, expected_batches: int
 ) -> None:
 
     mock_f = MagicMock()

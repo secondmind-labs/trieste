@@ -68,7 +68,7 @@ def test_shapes_equal(this_shape: ShapeLike, that_shape: ShapeLike) -> None:
         (tf.reshape(tf.range(12), [3, -1]), np.arange(12).reshape(3, -1)),
     ],
 )
-def test_to_numpy(t: TensorType, expected: np.ndarray[Any, Any]) -> None:
+def test_to_numpy(t: TensorType, expected: "np.ndarray[Any, Any]") -> None:
     npt.assert_array_equal(to_numpy(t), expected)
 
 
