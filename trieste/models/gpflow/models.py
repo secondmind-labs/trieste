@@ -656,6 +656,18 @@ class SparseVariational(
 
         self._inducing_point_selector = inducing_point_selector
 
+        # GPflow stores num_data as a number. However, since we want to be able to update it
+        # without having to retrace the acquisition functions, put it in a Variable instead.
+        # So that the elbo method doesn't fail we also need to turn it into a property.
+        if not isinstance(self._model, NumDataPropertyMixin):
+
+            class SVGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
+                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
+                exposes it as a property."""
+
+            self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
+            self._model.__class__ = SVGPWrapper
+
     def __repr__(self) -> str:
         """"""
         return f"SparseVariational({self.model!r}, {self.optimizer!r})"
@@ -693,7 +705,7 @@ class SparseVariational(
             )
 
         num_data = dataset.query_points.shape[0]
-        self.model.num_data.assign(num_data)
+        self.model.num_data = num_data
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
