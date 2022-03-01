@@ -38,6 +38,7 @@ from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (
     GIBBON,
+    HIPPO,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
@@ -49,7 +50,6 @@ from .function import (
     ExpectedImprovement,
     Fantasizer,
     GreedyContinuousThompsonSampling,
-    HippoPenalizationAcquisitionFunction,
     IntegratedVarianceReduction,
     LocalPenalization,
     MinValueEntropySearch,

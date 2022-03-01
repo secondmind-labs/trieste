@@ -41,10 +41,10 @@ from trieste.acquisition import (
     ProbabilityOfFeasibility,
 )
 from trieste.acquisition.function.multi_objective import (
+    HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
-    HippoPenalizationAcquisitionFunction,
     batch_ehvi,
     expected_hv_improvement,
     hippo_penalizer,
@@ -630,9 +630,9 @@ def test_hippo_builder_raises_for_empty_data() -> None:
     model = {"": QuadraticMeanAndRBFKernel()}
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        HippoPenalizationAcquisitionFunction("").prepare_acquisition_function(model, dataset)
+        HIPPO("").prepare_acquisition_function(model, dataset)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        HippoPenalizationAcquisitionFunction("").prepare_acquisition_function(model, dataset)
+        HIPPO("").prepare_acquisition_function(model, dataset)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -690,7 +690,7 @@ def test_hippo_penalized_acquisitions_match_base_acquisition(
     data = {"": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
     model = {"": _mo_test_model(2, *[None] * 2)}
 
-    hippo_acq_builder = HippoPenalizationAcquisitionFunction(
+    hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
         "", base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, None)
@@ -721,12 +721,13 @@ def test_hippo_penalized_acquisitions_combine_base_and_penalization_correctly(
     model = {"": _mo_test_model(2, *[None] * 2)}
     pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
-    hippo_acq_builder = HippoPenalizationAcquisitionFunction(
+    hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
         "", base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, pending_points)
     base_acq = base_builder.prepare_acquisition_function(model, data)
     penalizer = hippo_penalizer(model[""], pending_points)
+    assert hippo_acq._get_tracing_count() == 0  # type: ignore
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -738,3 +739,4 @@ def test_hippo_penalized_acquisitions_combine_base_and_penalization_correctly(
     penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penalty_values))
 
     npt.assert_array_equal(hippo_acq_values, penalized_base_acq)
+    assert hippo_acq._get_tracing_count() == 1  # type: ignore

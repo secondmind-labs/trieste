@@ -386,13 +386,14 @@ class ExpectedConstrainedHypervolumeImprovement(
             self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
 
 
-class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[ProbabilisticModel]):
+class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     r"""
     HIPPO: HIghly Parallelizable Pareto Optimization
 
     Builder of the acquisition function for greedily collecting batches by HIPPO
-    penalization in multi-objective optimization. The resulting acquistion function
-    takes in a set of pending points and returns a base acquisition function
+    penalization in multi-objective optimization by penalizing batch points
+    by their distance in the objective space. The resulting acquistion function
+    takes in a set of pending points and returns a base multi-objective acquisition function
     penalized around those points.
 
     Penalization is applied to the acquisition function multiplicatively. However, to
@@ -403,10 +404,11 @@ class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Prob
         self,
         objective_tag: str = OBJECTIVE,
         base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModel]
+        | SingleModelAcquisitionBuilder[ProbabilisticModel]
         | None = None,
     ):
         """
-        Initializes the HIPPO penalization function.
+        Initializes the HIPPO acquisition function builder.
 
         :param objective_tag: The tag for the objective data and model.
         :param base_acquisition_function_builder: Base acquisition function to be
@@ -419,10 +421,10 @@ class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Prob
                 ProbabilisticModel
             ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
         else:
-            self._base_builder = base_acquisition_function_builder
-
-        if isinstance(self._base_builder, SingleModelAcquisitionBuilder):
-            self._base_builder = self._base_builder.using(self._objective_tag)
+            if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
+                self._base_builder = base_acquisition_function_builder.using(self._objective_tag)
+            else:
+                self._base_builder = base_acquisition_function_builder
 
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._penalization: Optional[PenalizationFunction] = None
@@ -430,7 +432,7 @@ class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Prob
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
@@ -458,7 +460,7 @@ class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Prob
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
@@ -522,7 +524,7 @@ class HippoPenalizationAcquisitionFunction(GreedyAcquisitionFunctionBuilder[Prob
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         if self._base_acquisition_function is None:

@@ -17,9 +17,9 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
+    HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
-    HippoPenalizationAcquisitionFunction,
 )
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.optimizer import generate_continuous_optimizer
@@ -76,12 +76,12 @@ from trieste.types import TensorType
         pytest.param(
             10,
             EfficientGlobalOptimization(
-                HippoPenalizationAcquisitionFunction(),
+                HIPPO(),
                 num_query_points=4,
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,
-            id="qehvi_vlmop2_q_4",
+            id="HIPPO/4",
         ),
         pytest.param(
             10,
