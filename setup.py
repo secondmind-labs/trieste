@@ -45,4 +45,7 @@ setup(
         "tensorflow-probability>=0.12",
         "greenlet>=1.1.0",
     ],
+    extras_require={
+        "plotting": ["seaborn"],
+    },
 )
