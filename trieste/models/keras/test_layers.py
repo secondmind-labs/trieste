@@ -11,7 +11,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
 from layers import DropConnect
-from tests.util.misc import ShapeLike, empty_dataset, random_seed
+# from tests.util.misc import ShapeLike, empty_dataset, random_seed
 
 @pytest.fixture(name="x", params=[tf.constant([[5., 3.4, 2.6], [5.4, 3.2, 1.]])])
 def _x_fixture(request: Any) -> tf.Tensor:
@@ -44,7 +44,7 @@ def test_dense_forward(layer:Dense, x, activation, units):
     assert (tf.equal(model.predict(x), model(x))).numpy().all(), "Model predict is not the same as a forward pass"
     assert (tf.equal(dense_model(x), model(x))).numpy().all(), "Forward pass calculations are wrong"
 
-@random_seed
+# @random_seed
 @pytest.mark.parametrize("p", [0, 1])
 @pytest.mark.parametrize("dropout_layer", [DropConnect(units=3)])
 def test_fit(dropout_layer, x, units, activation, p):

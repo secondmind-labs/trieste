@@ -331,12 +331,12 @@ class DropConnectNetwork(DropoutNetwork):
 
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            layer = MCDropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
-            input_tensor = layer(input_tensor)
+            layer = DropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
+            input_tensor = layer(input_tensor, training=True)
         return input_tensor
     
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
         output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output") # CHANGE THIS?
-        output_tensor = output_layer(input_tensor)
+        output_tensor = output_layer(input_tensor, training=True)
         return output_tensor
