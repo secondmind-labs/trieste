@@ -15,7 +15,7 @@ google-auth==2.6.0
 google-auth-oauthlib==0.4.6
 google-pasta==0.2.0
 gpflow==2.4.0
-gpflux==0.2.7
+gpflux==0.2.3
 greenlet==1.1.2
 grpcio==1.32.0
 h5py==2.10.0
