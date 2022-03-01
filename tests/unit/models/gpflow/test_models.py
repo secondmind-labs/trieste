@@ -496,12 +496,12 @@ def test_variational_gaussian_process_update_updates_num_data() -> None:
     x = tf.convert_to_tensor(x_np, x_np.dtype)
     y = fnc_3x_plus_10(x)
     m = VariationalGaussianProcess(vgp_model(x, y))
-    num_data = m.model.num_data
+    num_data = m.model.num_data.numpy()
 
     x_new = tf.concat([x, [[10.0], [11.0]]], 0)
     y_new = fnc_3x_plus_10(x_new)
     m.update(Dataset(x_new, y_new))
-    new_num_data = m.model.num_data
+    new_num_data = m.model.num_data.numpy()
     assert new_num_data - num_data == 2
 
 
