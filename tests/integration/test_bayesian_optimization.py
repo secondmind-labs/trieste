@@ -430,21 +430,14 @@ def _test_optimizer_finds_minimum(
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
 
-            dataset = (
-                BayesianOptimizer(observer, search_space)
-                .optimize(
-                    num_steps or 2,
-                    initial_data,
-                    cast(TrainableProbabilisticModelType, model),
-                    acquisition_rule,
-                    track_state=track_state,
-                )
-                .try_get_final_dataset()
+            result = BayesianOptimizer(observer, search_space).optimize(
+                num_steps or 2,
+                initial_data,
+                cast(TrainableProbabilisticModelType, model),
+                acquisition_rule,
+                track_state=track_state,
             )
-
-            arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-            best_y = dataset.observations[arg_min_idx]
-            best_x = dataset.query_points[arg_min_idx]
+            best_x, best_y, _ = result.try_get_optimal_point()
 
             if num_steps is None:
                 # this test is just being run to check for crashes, not performance

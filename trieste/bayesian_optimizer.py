@@ -138,6 +138,19 @@ class OptimizationResult(Generic[StateType]):
         else:
             raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
+    def try_get_optimal_point(self) -> tuple[TensorType, TensorType, TensorType]:
+        """
+        Convenience method to attempt to get the optimal point for a single dataset,
+        single objective run.
+
+        :return: Tuple of the optimal query point, observation and its index.
+        """
+        dataset = self.try_get_final_dataset()
+        if tf.rank(dataset.observations) != 2 or dataset.observations.shape[1] != 1:
+            raise ValueError("Expected a single objective")
+        arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+        return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
+
     def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.

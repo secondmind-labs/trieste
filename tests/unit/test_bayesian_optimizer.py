@@ -112,6 +112,32 @@ def test_optimization_result_try_get_final_models_for_failed_optimization() -> N
         result.try_get_final_models()
 
 
+def test_optimization_result_try_get_optimal_point_for_successful_optimization() -> None:
+    data = {"foo": mk_dataset([[0.25, 0.25], [0.5, 0.4]], [[0.8], [0.7]])}
+    result: OptimizationResult[None] = OptimizationResult(
+        Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
+    )
+    x, y, idx = result.try_get_optimal_point()
+    npt.assert_allclose(x, [0.5, 0.4])
+    npt.assert_allclose(y, [0.7])
+    npt.assert_allclose(idx, 1)
+
+
+def test_optimization_result_try_get_optimal_point_for_multiple_objectives() -> None:
+    data = {"foo": mk_dataset([[0.25], [0.5]], [[0.8, 0.5], [0.7, 0.4]])}
+    result: OptimizationResult[None] = OptimizationResult(
+        Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
+    )
+    with pytest.raises(ValueError):
+        result.try_get_optimal_point()
+
+
+def test_optimization_result_try_get_optimal_point_for_failed_optimization() -> None:
+    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    with pytest.raises(_Whoops):
+        result.try_get_optimal_point()
+
+
 @pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
     class _CountingObserver:
