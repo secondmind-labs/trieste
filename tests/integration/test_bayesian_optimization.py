@@ -51,6 +51,7 @@ from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
+    RandomSubSampleInducingPointSelector,
     SparseVariational,
     VariationalGaussianProcess,
     build_gpr,
@@ -58,7 +59,7 @@ from trieste.models.gpflow import (
 )
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
-from trieste.models.optimizer import BatchOptimizer, KerasOptimizer
+from trieste.models.optimizer import KerasOptimizer, Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -249,10 +250,10 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgra
 def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         SparseVariational,
-        50,
+        40,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         optimize_branin=True,
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
@@ -261,7 +262,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
         optimize_branin=True,
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.01))},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
     )
 
 
@@ -271,7 +272,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         SparseVariational,
         5,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
-        model_args={"optimizer": BatchOptimizer(tf.optimizers.Adam(0.1))},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
     )
 
 
@@ -398,8 +399,12 @@ def _test_optimizer_finds_minimum(
         model = VariationalGaussianProcess(vgp, **model_args)
 
     elif model_type is SparseVariational:
-        svgp = build_svgp(initial_data, search_space)
-        model = SparseVariational(svgp, **model_args)
+        svgp = build_svgp(initial_data, search_space, num_inducing_points=50)
+        model = SparseVariational(
+            svgp,
+            **model_args,
+            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+        )
 
     elif model_type is DeepGaussianProcess:
         track_state = False
