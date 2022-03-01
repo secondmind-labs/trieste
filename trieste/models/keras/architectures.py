@@ -19,14 +19,13 @@ This file contains implementations of neural network architectures with Keras.
 from __future__ import annotations
 
 from abc import abstractmethod
-from layers import DropConnect, MCDropConnect, MCDropout
 from multiprocessing.sharedctypes import Value
 from typing import Any, Sequence
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-
+from .layers import DropConnect, MCDropConnect, MCDropout
 class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
@@ -338,6 +337,6 @@ class DropConnectNetwork(DropoutNetwork):
     
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output")
+        output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output") # CHANGE THIS?
         output_tensor = output_layer(input_tensor)
         return output_tensor

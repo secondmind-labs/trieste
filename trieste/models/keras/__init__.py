@@ -21,9 +21,10 @@ to `False`.
 """
 
 from . import config
-from .architectures import GaussianNetwork, KerasEnsemble, KerasEnsembleNetwork
-from .builders import build_vanilla_keras_ensemble
+from .architectures import GaussianNetwork, KerasEnsemble, KerasEnsembleNetwork, DropConnectNetwork
+from .builders import build_vanilla_keras_ensemble, build_vanilla_keras_mcdropout
 from .interface import KerasPredictor
-from .models import DeepEnsemble
+from .layers import DropConnect, MCDropConnect, MCDropout
+from .models import DeepEnsemble, DropoutNetwork
 from .sampler import EnsembleTrajectorySampler
 from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement

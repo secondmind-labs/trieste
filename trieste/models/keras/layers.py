@@ -7,7 +7,7 @@ from tensorflow.python.eager import context
 
 class DropConnect(Dense):
     def __init__(self, p_dropout=0.5, *args, **kwargs):
-        self.p_dropout = p_dropout  
+        self.p_dropout = p_dropout
         super(DropConnect, self).__init__(*args, **kwargs)
     
     @property
@@ -19,13 +19,13 @@ class DropConnect(Dense):
         assert 0 <= p_dropout <= 1, f"prob needs to be a valid probability instead got {p_dropout}"
         self._p_dropout = p_dropout
         
-    def call(self, inputs, training = False):
+    def call(self, inputs, training = False, seed=None):
         if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:
             inputs = math_ops.cast(inputs, dtype=self._compute_dtype_object)
 
         #Drop Connect Code to mask the kernel
         if training:
-            mask = tf.cast(tf.random.uniform(shape=self.kernel.shape) >= self.p_dropout, dtype=self.kernel.dtype)
+            mask = tf.cast(tf.random.uniform(shape=self.kernel.shape, seed=seed) >= self.p_dropout, dtype=self.kernel.dtype)
             kernel = mask * self.kernel
         else:
             kernel = self.kernel
@@ -60,8 +60,8 @@ class DropConnect(Dense):
             outputs = self.activation(outputs)
         return outputs
 class MCDropout(Dropout):
-    def call(self, x):
-        return super().call(x, training=True)
+    def call(self, x, **kwargs):
+        return super().call(x, training=True, **kwargs)
 class MCDropConnect(DropConnect):
-    def call(self, x):
-        return super().call(x, training=True)
+    def call(self, x, **kwargs):
+        return super().call(x, training=True, **kwargs)
