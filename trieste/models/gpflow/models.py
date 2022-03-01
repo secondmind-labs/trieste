@@ -1005,7 +1005,7 @@ class VariationalGaussianProcess(
 
         model.data[0].assign(dataset.query_points)  # do not update data until called _whiten_points
         model.data[1].assign(dataset.observations)
-        model.num_data = len(dataset)
+        model.num_data = len(dataset)  # type: ignore
 
     def optimize(self, dataset: Dataset) -> None:
         """
