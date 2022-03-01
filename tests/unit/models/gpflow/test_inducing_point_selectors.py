@@ -55,7 +55,7 @@ def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
     model = SparseVariational(svgp)
     inducing_points = [mock_data()[0], mock_data()[0]]
     with pytest.raises(NotImplementedError):
-        selector.update(inducing_points, model, dataset)
+        selector.calculate_inducing_points(inducing_points, model, dataset)
 
 
 @pytest.mark.parametrize("more_inducing_points_than_data", [True, False])
@@ -78,7 +78,7 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
         inducing_points = tf.concat([mock_data()[0], mock_data()[0]], 0)
     else:
         inducing_points = mock_data()[0]
-    new_inducing_points = selector.update(inducing_points, model, dataset)
+    new_inducing_points = selector.calculate_inducing_points(inducing_points, model, dataset)
     npt.assert_array_equal(inducing_points.shape, new_inducing_points.shape)
 
 
@@ -99,7 +99,7 @@ def test_inducing_point_selectors_choose_points_still_in_space(
     svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
     inducing_points = X
-    new_inducing_points = selector.update(inducing_points, model, dataset)
+    new_inducing_points = selector.calculate_inducing_points(inducing_points, model, dataset)
     assert tf.reduce_all([point in Box([0.0, -1.0], [1.0, 0.0]) for point in new_inducing_points])
 
 
@@ -122,8 +122,10 @@ def test_inducing_point_selectors_update_correct_number_of_times(
     svgp = svgp_model(*mock_data())
     model = SparseVariational(svgp)
     inducing_points = mock_data()[0]
-    new_inducing_points_1 = selector.update(inducing_points, model, dataset)
-    new_inducing_points_2 = selector.update(new_inducing_points_1, model, dataset)
+    new_inducing_points_1 = selector.calculate_inducing_points(inducing_points, model, dataset)
+    new_inducing_points_2 = selector.calculate_inducing_points(
+        new_inducing_points_1, model, dataset
+    )
     npt.assert_raises(AssertionError, npt.assert_allclose, inducing_points, new_inducing_points_1)
     npt.assert_raises(AssertionError, npt.assert_allclose, inducing_points, new_inducing_points_2)
     if recalc_every_model_update:

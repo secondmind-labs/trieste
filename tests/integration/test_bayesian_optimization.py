@@ -58,9 +58,8 @@ from trieste.models.gpflow import (
     build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble, negative_log_likelihood
-from trieste.models.optimizer import BatchOptimizer, KerasOptimizer, Optimizer
-
+from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
+from trieste.models.optimizer import KerasOptimizer, Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
     BRANIN_SEARCH_SPACE,
@@ -406,7 +405,6 @@ def _test_optimizer_finds_minimum(
             **model_args,
             inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
         )
-
 
     elif model_type is DeepGaussianProcess:
         track_state = False

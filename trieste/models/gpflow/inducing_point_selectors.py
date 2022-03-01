@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module is the home of  Trieste's functionality for choosing the inducing points
-of sparse variational Gaussian processes.
+of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wrapper).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from scipy.cluster.vq import kmeans
 from ...data import Dataset
 from ...space import Box, SearchSpace
 from ...types import TensorType
-from ..interfaces import ProbabilisticModelType, SupportsGetInducingVariables
+from ..interfaces import ProbabilisticModel, ProbabilisticModelType
 
 
 class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
@@ -47,15 +47,15 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
     def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
         """
         :param search_space: The global search space over which the optimization is defined.
-        :param recalc_every_model_update: If True then update the inducing points for each
-            model update, otherwise just update on the first call.
+        :param recalc_every_model_update: If True then recalculate the inducing points for each
+            model update, otherwise just recalculate on the first call.
         """
 
         self._search_space = search_space
         self._recalc_every_model_update = recalc_every_model_update
         self._initialized = False
 
-    def update(
+    def calculate_inducing_points(
         self,
         current_inducing_points: TensorType,
         model: ProbabilisticModelType,
@@ -65,7 +65,8 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         Calculate the new inducing points given the existing inducing points.
 
         If `recalc_every_model_update` is set to False then we only generate new inducing points
-        for the first :meth:`update` call, otherwise we just return the current inducing points.
+        for the first :meth:`calculate_inducing_points` call, otherwise we just return the current
+        inducing points.
 
         :param current_inducing_points: The current inducing points used by the model.
         :param model: The sparse model.
@@ -111,13 +112,13 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         raise NotImplementedError
 
 
-class UniformInducingPointSelector(InducingPointSelector[SupportsGetInducingVariables]):
+class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     """
     An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
     """
 
     def _recalculate_inducing_points(
-        self, M: int, model: SupportsGetInducingVariables, dataset: Dataset
+        self, M: int, model: ProbabilisticModel, dataset: Dataset
     ) -> TensorType:
         """
         Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol
@@ -135,13 +136,13 @@ class UniformInducingPointSelector(InducingPointSelector[SupportsGetInducingVari
             return self._search_space.sample(M)
 
 
-class RandomSubSampleInducingPointSelector(InducingPointSelector[SupportsGetInducingVariables]):
+class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     """
     An :class:`InducingPointSelector` that chooses points at random from the training data.
     """
 
     def _recalculate_inducing_points(
-        self, M: int, model: SupportsGetInducingVariables, dataset: Dataset
+        self, M: int, model: ProbabilisticModel, dataset: Dataset
     ) -> TensorType:
         """
         Sample `M` points from the training data without replacement. If we require more
@@ -170,14 +171,14 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[SupportsGetIndu
         return sub_sample  # [M, d]
 
 
-class KMeansInducingPointSelector(InducingPointSelector[SupportsGetInducingVariables]):
+class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     """
     An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering
     of the training data.
     """
 
     def _recalculate_inducing_points(
-        self, M: int, model: SupportsGetInducingVariables, dataset: Dataset
+        self, M: int, model: ProbabilisticModel, dataset: Dataset
     ) -> TensorType:
         """
         Calculate `M` centroids from a K-means clustering of the training data.
