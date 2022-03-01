@@ -70,13 +70,15 @@ def test_dense_forward(layer:Dense, x, activation, units):
 #     assert h0.history["loss"][0] - 15.3 <= 1e-3, "Fit method not keeping weights with p = 0"
 #     assert h1.history["loss"][0] - 3.3333 <= 1e-3, "Fit method not dropping weights with p = 1"
 
+@pytest.mark.parametrize("p_dropout", [0.1, 0.3, 0.5, 0.7, 0.9])
+@pytest.mark.parametrize("layer", [DropConnect(units=1)])
+def test_p_dropout(p_dropout, layer):
+    '''Tests that weights are being dropped out at the write proportion'''
+    layer.p_dropout = p_dropout
+    x1 = tf.constant ([[1.]])
+    sims=1000
 
-# def test_p_dropout():
-#     '''Tests that weights are being dropped out at the write proportion'''
-#     p=0.7
-#     x1 = tf.constant ([[1.]])
-#     dc1 = DropConnect(p_dropout = p, units = 1)
-#     simulations = [np.sum(dc1(x1, training=True).numpy() == 0.) for _ in range(10000)]
+    simulations = [np.sum(layer(x1).numpy() == 0.) for _ in range(sims)]
     
-#     assert 6850 <= np.sum(simulations) <=7150, \
-#         f"Expected to dropout around {p} of the passes but only dropped {np.sum(simulations)/len(simulations)}"
+    npt.assert_approx_equal(np.sum(simulations), p_dropout * sims, significant=1, 
+        err_msg=f"Expected to dropout around {p_dropout} of the passes but only dropped {np.sum(simulations)/len(simulations)}")
