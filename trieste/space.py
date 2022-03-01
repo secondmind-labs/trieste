@@ -97,7 +97,8 @@ class SearchSpace(ABC):
     def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
         """
         Return the Cartesian product of ``other`` instances of this search space. For example, for
-        an exponent of `3`, and search space `s`, this is `s ** 3`. Note that this is
+        an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
+        `s * s * s`.
 
         :param other: The exponent, or number of instances of this search space to multiply
             together. Must be strictly positive.
