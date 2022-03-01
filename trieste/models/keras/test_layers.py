@@ -5,27 +5,35 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from tensorflow.keras import Input
-from tensorflow.keras.layers import Layer, Dense
+from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import MeanAbsoluteError
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
-
-from .architectures import DropoutNetwork
-from .layers import DropConnect, MCDropConnect, MCDropout 
+from layers import DropConnect
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 
-@pytest.mark.parametrize("units", [3])
-@pytest.mark.parametrize("activation", [tf.nn.relu])
+@pytest.fixture(name="x", params=[tf.constant([[5., 3.4, 2.6], [5.4, 3.2, 1.]])])
+def _x_fixture(request: Any) -> tf.Tensor:
+    return request.param
+
+@pytest.fixture(name="activation", params=[tf.nn.relu])
+def _activation_fixture(request: Any):
+    return request.param
+
+@pytest.fixture(name="units", params=[3])
+def _units_fixture(request: Any):
+    return request.param
+
+
 @pytest.mark.parametrize("layer", [DropConnect(units=3)])
-@pytest.mark.parametrize("x", [tf.constant([[5., 3.4, 2.6], [5.4, 3.2, 1.]])])
 def test_dense_forward(layer:Dense, x, activation, units):
     '''Tests the forward method is working properly within the model without dropout'''
 
     layer.units=units
     layer.activation=activation
 
-    inputs = Input(shape=(units,))
+    inputs = Input(shape=(x.shape[-1],))
     outputs = layer(inputs)
     model = Model(inputs=inputs, outputs=outputs)
 
@@ -36,49 +44,46 @@ def test_dense_forward(layer:Dense, x, activation, units):
     assert (tf.equal(model.predict(x), model(x))).numpy().all(), "Model predict is not the same as a forward pass"
     assert (tf.equal(dense_model(x), model(x))).numpy().all(), "Forward pass calculations are wrong"
 
-# def test_fit():
-#     '''Tests that the fit method with dropout is working properly'''
-#     x = tf.constant([[5., 3.4, 2.6], [5.4, 3.2, 1.]])
-
-#     weights = [
-#         np.array([
-#             [3., 6., -19.],
-#             [2., -5., 9.],
-#             [1., -1., 1.]
-#         ]),
-#         np.array([1., 3., 5.])
-#     ]
-
-#     y = tf.constant([[3., -4., 9.], [5., 1., 6.]])
-
-#     dc1 = DropConnect(p_dropout = 1, units = 3, activation="relu")
-#     dc0 = DropConnect(p_dropout = 0, units = 3, activation = "relu")
-
-#     inputs = Input(shape=(3,))
-#     m1 = Model(inputs=inputs, outputs=dc1(inputs))
-#     m0 = Model(inputs=inputs, outputs=dc0(inputs))
-
-#     m0.set_weights(weights)
-#     m1.set_weights(weights)
-
-#     m0.compile(Adam(), MeanAbsoluteError())
-#     m1.compile(Adam(), MeanAbsoluteError())
-
-#     h0 = m0.fit(x, y)
-#     h1 = m1.fit(x, y)
+@random_seed
+@pytest.mark.parametrize("p", [0, 1])
+@pytest.mark.parametrize("dropout_layer", [DropConnect(units=3)])
+def test_fit(dropout_layer, x, units, activation, p):
+    '''Tests that the fit method with dropout is working properly'''
+    y = tf.constant([[3., -4., 9.], [5., 1., 6.]])
     
-#     assert h0.history["loss"][0] - 15.3 <= 1e-3, "Fit method not keeping weights with p = 0"
-#     assert h1.history["loss"][0] - 3.3333 <= 1e-3, "Fit method not dropping weights with p = 1"
+    inputs = Input(shape=x.shape[-1])
+    dropout_layer.activation=activation
+    dropout_layer.p_dropout=p
+    dropout_layer.units=units
+    dense = Dense(units=units, activation=activation)
+
+    drop_model = Model(inputs=inputs, outputs=dropout_layer(inputs))
+    dense_model = Model(inputs=inputs, outputs=dense(inputs))
+    drop_model.compile(Adam(), MeanAbsoluteError())
+    dense_model.compile(Adam(), MeanAbsoluteError())
+
+    bias = drop_model.get_weights()[1]
+    weights = tf.zeros(shape=drop_model.get_weights()[0].shape) if p == 1 \
+        else drop_model.get_weights()[0]
+    dense.set_weights([weights, bias])
+
+    drop_fit = drop_model.fit(x, y)
+    dense_fit = dense_model.fit(x, y)
+
+    npt.assert_approx_equal(drop_fit.history["loss"][0], dense_fit.history["loss"][0], significant=3,
+        err_msg=f"Expected {dropout_layer} to drop {p} variables and get the same fit as an equivalent dense layer")
+    
+
 
 @pytest.mark.parametrize("p_dropout", [0.1, 0.3, 0.5, 0.7, 0.9])
-@pytest.mark.parametrize("layer", [DropConnect(units=1)])
-def test_p_dropout(p_dropout, layer):
+@pytest.mark.parametrize("drop_layer", [DropConnect(units=1, use_bias=False)])
+def test_p_dropout(p_dropout, drop_layer):
     '''Tests that weights are being dropped out at the write proportion'''
-    layer.p_dropout = p_dropout
+    drop_layer.p_dropout = p_dropout
     x1 = tf.constant ([[1.]])
     sims=1000
-
-    simulations = [np.sum(layer(x1).numpy() == 0.) for _ in range(sims)]
+    simulations = [np.sum(drop_layer(x1, training=True).numpy() == 0.) for _ in range(sims)]
     
-    npt.assert_approx_equal(np.sum(simulations), p_dropout * sims, significant=1, 
-        err_msg=f"Expected to dropout around {p_dropout} of the passes but only dropped {np.sum(simulations)/len(simulations)}")
+    #Test dropout up to twice the variance
+    assert np.abs(np.sum(simulations) - p_dropout * sims) <= 2 * p_dropout * (1-p_dropout) * sims, \
+        f"Expected to dropout around {p_dropout} of the passes but only dropped {np.sum(simulations)/len(simulations)}"

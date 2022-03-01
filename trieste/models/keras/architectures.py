@@ -25,7 +25,7 @@ from typing import Any, Sequence
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from .layers import DropConnect, MCDropConnect, MCDropout
+from layers import DropConnect, MCDropout
 class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
