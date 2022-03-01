@@ -81,7 +81,8 @@ class DeepEnsemble(
         :param optimizer: The optimizer wrapper with necessary specifications for compiling and
             training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
             :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss and a dictionary
-            of default arguments for Keras `fit` method: 100 epochs, batch size 100, and verbose 0.
+            of default arguments for Keras `fit` method: 1000 epochs, batch size 16, early stopping
+            callback with patience of 50, and verbose 0.
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
@@ -98,8 +99,13 @@ class DeepEnsemble(
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 100,
-                "batch_size": 100,
+                "epochs": 1000,
+                "batch_size": 16,
+                "callbacks": [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="loss", patience=50, restore_best_weights=True
+                    )
+                ],
             }
 
         if self.optimizer.loss is None:

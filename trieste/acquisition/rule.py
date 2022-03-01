@@ -262,11 +262,13 @@ class EfficientGlobalOptimization(
 
         summary_writer = get_tensorboard_writer()
         step_number = get_step_number()
+
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
                 value = self._acquisition_function(batched_points)[0][0]
-                tf.summary.scalar("EGO.acquisition_function.maximum_found", value)
+                greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
+                tf.summary.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for i in range(
@@ -286,7 +288,7 @@ class EfficientGlobalOptimization(
                     with summary_writer.as_default(step=step_number):
                         batched_points = tf.expand_dims(chosen_point, axis=0)
                         value = self._acquisition_function(batched_points)[0][0]
-                        tf.summary.scalar(f"EGO.acquisition_function.maximum_found.{i+1}", value)
+                        tf.summary.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
 
         return points
 
@@ -711,7 +713,7 @@ class AsynchronousGreedy(
                         batched_point = tf.expand_dims(new_point, axis=0)
                         value = self._acquisition_function(batched_point)[0][0]
                         tf.summary.scalar(
-                            f"AsyncGreedy.acquisition_function.maximum_found.{i}", value
+                            f"AsyncGreedy.acquisition_function/maximum_found[{i}]", value
                         )
                 state = state.add_pending_points(new_point)
                 new_points_batch = tf.concat([new_points_batch, new_point], axis=0)
