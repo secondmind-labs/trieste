@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union, cast
 
 import gpflow
 import tensorflow as tf
@@ -656,18 +656,6 @@ class SparseVariational(
 
         self._inducing_point_selector = inducing_point_selector
 
-        # GPflow stores num_data as a number. However, since we want to be able to update it
-        # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, NumDataPropertyMixin):
-
-            class SVGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
-                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
-                exposes it as a property."""
-
-            self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
-            self._model.__class__ = SVGPWrapper
-
     def __repr__(self) -> str:
         """"""
         return f"SparseVariational({self.model!r}, {self.optimizer!r})"
@@ -705,7 +693,7 @@ class SparseVariational(
             )
 
         num_data = dataset.query_points.shape[0]
-        self.model.num_data = num_data
+        self.model.num_data.assign(num_data)
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -757,7 +745,10 @@ class SparseVariational(
         self.model.q_sqrt.assign(new_q_sqrt)  # [L, N, N]
 
         if isinstance(self.model.inducing_variable, SharedIndependentInducingVariables):
-            self.model.inducing_variable.inducing_variable.Z.assign(new_inducing_points)  # [M, D]
+            # gpflow says inducing_variable might be a ndarray; it won't
+            cast(TensorType, self.model.inducing_variable.inducing_variable).Z.assign(
+                new_inducing_points
+            )  # [M, D]
         else:
             self.model.inducing_variable.Z.assign(new_inducing_points)  # [M, D]
 
@@ -776,10 +767,12 @@ class SparseVariational(
         inducing_variable = self.model.inducing_variable
 
         if isinstance(inducing_variable, SharedIndependentInducingVariables):
-            inducing_points = inducing_variable.inducing_variable.Z  # [M, D]
+            # gpflow says inducing_variable might be a ndarray; it won't
+            inducing_points = cast(TensorType, inducing_variable.inducing_variable).Z  # [M, D]
         elif isinstance(inducing_variable, SeparateIndependentInducingVariables):
             inducing_points = [
-                inducing_variable.Z for inducing_variable in inducing_variable.inducing_variables
+                cast(TensorType, inducing_variable).Z
+                for inducing_variable in inducing_variable.inducing_variables
             ]  # list of L [M, D] tensors
         else:
             inducing_points = inducing_variable.Z  # [M, D]
@@ -961,20 +954,6 @@ class VariationalGaussianProcess(
                 pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
             )
 
-        # GPflow stores num_data as a number. However, since we want to be able to update it
-        # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, NumDataPropertyMixin):
-
-            class VGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
-                """A wrapper around GPFlow's VGP class that stores num_data in a tf.Variable and
-                exposes it as a property."""
-
-            self._model._num_data = tf.Variable(
-                self._model.num_data or 0, trainable=False, dtype=tf.float64
-            )
-            self._model.__class__ = VGPWrapper
-
     def __repr__(self) -> str:
         """"""
         return f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
@@ -1005,7 +984,7 @@ class VariationalGaussianProcess(
 
         model.data[0].assign(dataset.query_points)  # do not update data until called _whiten_points
         model.data[1].assign(dataset.observations)
-        model.num_data = len(dataset)  # type: ignore
+        model.num_data.assign(len(dataset))
 
     def optimize(self, dataset: Dataset) -> None:
         """
