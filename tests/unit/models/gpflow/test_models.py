@@ -67,7 +67,6 @@ from trieste.models.gpflow.inducing_point_selectors import (
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
 )
-from trieste.models.gpflow.models import NumDataPropertyMixin
 from trieste.models.gpflow.sampler import (
     DecoupledTrajectorySampler,
     RandomFourierFeatureTrajectorySampler,
@@ -668,7 +667,6 @@ def test_sparse_variational_model_attribute() -> None:
     sv = SparseVariational(model)
     assert sv.model is model
     assert isinstance(sv.model, SVGP)
-    assert isinstance(sv.model, NumDataPropertyMixin)
     assert sv.inducing_point_selector is None
 
 
@@ -731,7 +729,6 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
     )
     sv = SparseVariational(model)
     assert sv.model is model
-    assert isinstance(sv.model, NumDataPropertyMixin)
     assert isinstance(sv.model, SVGPSubclass)
     assert sv.model.mol == 42
 

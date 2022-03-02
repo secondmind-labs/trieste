@@ -533,93 +533,6 @@ class GaussianProcessRegression(
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
 
-class NumDataPropertyMixin:
-    """Mixin class for exposing num_data as a property, stored in a tf.Variable. This is to work
-    around GPFlow storing it as a number, which prevents us from updating it without retracing.
-    The property is required due to the way num_data is used in the model elbo methods.
-
-    Note that this doesn't support a num_data value of None.
-
-    This should be removed once GPFlow is updated to support Variables as num_data.
-    """
-
-    _num_data: tf.Variable
-
-    @property
-    def num_data(self) -> TensorType:
-        return self._num_data.value()
-
-    @num_data.setter
-    def num_data(self, value: TensorType) -> None:
-        self._num_data.assign(value)
-
-
-class Parameter(gpflow.Parameter):
-    """A modified version of gpflow.Parameter that supports variable shapes."""
-
-    def __init__(
-        self,
-        value: TensorData,
-        *,
-        transform: Optional[Transform] = None,
-        prior: Optional[Prior] = None,
-        prior_on: Union[str, PriorOn] = PriorOn.CONSTRAINED,
-        trainable: bool = True,
-        dtype: Optional[DType] = None,
-        name: Optional[str] = None,
-        transformed_shape: Any = None,
-        pretransformed_shape: Any = None,
-    ):
-        """
-        A copy of gpflow.Parameter's init but with additional shape arguments that are passed
-        to a modified TransformedVariable.
-        """
-        if transform is None:
-            transform = tfp.bijectors.Identity()
-
-        value = _cast_to_dtype(value, dtype)
-        _validate_unconstrained_value(value, transform, dtype)
-
-        # An inlined, modified version of TransformedVariable's __init__ that also passes any shape
-        # parameter specified in kwargs to the DeferredTensor parent's __init__.
-        # (use same parameter names as TransformedVariable)
-        bijector = transform
-        initial_value = value
-
-        for attr in {
-            "forward",
-            "forward_event_shape",
-            "inverse",
-            "inverse_event_shape",
-            "name",
-            "dtype",
-        }:
-            if not hasattr(bijector, attr):
-                raise TypeError(
-                    "Argument `bijector` missing required `Bijector` "
-                    'attribute "{}".'.format(attr)
-                )
-
-        if callable(initial_value):
-            initial_value = initial_value()
-        initial_value = tf.convert_to_tensor(initial_value, dtype_hint=bijector.dtype, dtype=dtype)
-        super(TransformedVariable, self).__init__(  # type: ignore[call-arg]
-            pretransformed_input=tf.Variable(
-                initial_value=bijector.inverse(initial_value),
-                name=name,
-                dtype=dtype,
-                shape=pretransformed_shape,
-            ),
-            transform_fn=bijector,
-            shape=transformed_shape or initial_value.shape,
-            name=bijector.name,
-        )
-        self._bijector = bijector
-
-        self.prior = prior
-        self.prior_on = prior_on  # type: ignore  # see https://github.com/python/mypy/issues/3004
-
-
 class SparseVariational(
     GPflowPredictor,
     TrainableProbabilisticModel,
@@ -687,18 +600,20 @@ class SparseVariational(
                 )
 
         self._inducing_point_selector = inducing_point_selector
+        self._ensure_variable_model_data()
 
-        # GPflow stores num_data as a number. However, since we want to be able to update it
-        # without having to retrace the acquisition functions, put it in a Variable instead.
-        # So that the elbo method doesn't fail we also need to turn it into a property.
-        if not isinstance(self._model, NumDataPropertyMixin):
+        # Cache posterior for fast sequential predictions
+        # Note that this must happen *after* we ensure the model data is variable
+        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
 
-            class SVGPWrapper(type(self._model), NumDataPropertyMixin):  # type: ignore
-                """A wrapper around GPFlow's SVGP class that stores num_data in a tf.Variable and
-                exposes it as a property."""
-
-            self._model._num_data = tf.Variable(model.num_data, trainable=False, dtype=tf.float64)
-            self._model.__class__ = SVGPWrapper
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
+        # Thus here we ensure data is stored in dynamic shape Variables
+        if not is_variable(self._model.num_data):
+            self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
     def __repr__(self) -> str:
         """"""
@@ -712,9 +627,20 @@ class SparseVariational(
     def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
 
-    def update(self, dataset: Dataset) -> None:
-        # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
 
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
+    def update(self, dataset: Dataset) -> None:
+        self._ensure_variable_model_data()
+
+        # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
         current_inducing_points, q_mu, _, _ = self.get_inducing_variables()
 
         if isinstance(current_inducing_points, list):
@@ -737,7 +663,7 @@ class SparseVariational(
             )
 
         num_data = dataset.query_points.shape[0]
-        self.model.num_data = num_data
+        self.model.num_data.assign(num_data)
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -750,6 +676,16 @@ class SparseVariational(
                 )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
+
+        self._posterior.update_cache()
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+        :param dataset: The data with which to optimize the `model`.
+        """
+        self.optimizer.optimize(self.model, dataset)
+        self._posterior.update_cache()
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
