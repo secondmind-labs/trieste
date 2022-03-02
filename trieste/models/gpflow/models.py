@@ -34,6 +34,7 @@ from gpflow.inducing_variables import (
     SharedIndependentInducingVariables,
 )
 from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.models.vgp import update_vgp_data
 from gpflow.posteriors import PrecomputeCacheType
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
@@ -959,6 +960,10 @@ class VariationalGaussianProcess(
         self._natgrad_gamma = natgrad_gamma
         self._ensure_variable_model_data()
 
+        # Cache posterior for fast sequential predictions
+        # Note that this must happen *after* we ensure the model data is variable
+        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
@@ -966,42 +971,28 @@ class VariationalGaussianProcess(
         # Sometimes, for instance after serialization-deserialization, the shape can be overridden
         # Thus here we ensure data is stored in dynamic shape Variables
 
-        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+        model = self.model
+        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in model.data):
 
-            self._model.data = (
+            variable_data = (
                 tf.Variable(
-                    self._model.data[0],
+                    model.data[0],
                     trainable=False,
-                    shape=[None, *self._model.data[0].shape[1:]],
+                    shape=[None, *model.data[0].shape[1:]],
                 ),
                 tf.Variable(
-                    self._model.data[1],
+                    model.data[1],
                     trainable=False,
-                    shape=[None, *self._model.data[1].shape[1:]],
+                    shape=[None, *model.data[1].shape[1:]],
                 ),
             )
 
-            self._model.q_mu = Parameter(
-                self._model.q_mu,
-                transform=self._model.q_mu.bijector,
-                prior=self._model.q_mu.prior,
-                prior_on=self._model.q_mu.prior_on,
-                dtype=self._model.q_mu.dtype,
-                name=self._model.q_mu.unconstrained_variable.name,
-                trainable=self._model.q_mu.trainable,
-                transformed_shape=[None, *self._model.q_mu.shape[1:]],
-                pretransformed_shape=[None, *self._model.q_mu.unconstrained_variable.shape[1:]],
-            )
-            self._model.q_sqrt = Parameter(
-                self._model.q_sqrt,
-                transform=self._model.q_sqrt.bijector,
-                prior=self._model.q_sqrt.prior,
-                prior_on=self._model.q_sqrt.prior_on,
-                dtype=self._model.q_sqrt.dtype,
-                name=self._model.q_sqrt.unconstrained_variable.name,
-                trainable=self._model.q_sqrt.trainable,
-                transformed_shape=[*self._model.q_sqrt.shape[:-2], None, None],
-                pretransformed_shape=[*self._model.q_sqrt.unconstrained_variable.shape[:-1], None],
+            model.__init__(
+                variable_data,
+                model.kernel,
+                model.likelihood,
+                model.mean_function,
+                model.num_latent_gps,
             )
 
     def __repr__(self) -> str:
@@ -1012,6 +1003,16 @@ class VariationalGaussianProcess(
     def model(self) -> VGP:
         return self._model
 
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
     def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
@@ -1021,20 +1022,8 @@ class VariationalGaussianProcess(
             the covariance matrix.
         """
         self._ensure_variable_model_data()
-
-        model = self.model
-
-        x, y = self.model.data[0].value(), self.model.data[1].value()
-        assert_data_is_compatible(dataset, Dataset(x, y))
-
-        # GPflow's VGP model is hard-coded to use the whitened representation.
-        new_q_mu, new_q_sqrt = _whiten_points(self, dataset.query_points)
-        model.q_mu.assign(new_q_mu)
-        model.q_sqrt.assign(new_q_sqrt)
-
-        model.data[0].assign(dataset.query_points)  # do not update data until called _whiten_points
-        model.data[1].assign(dataset.observations)
-        model.num_data.assign(len(dataset))
+        update_vgp_data(self.model, (dataset.query_points, dataset.observations))
+        self._posterior.update_cache()
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -1077,6 +1066,8 @@ class VariationalGaussianProcess(
 
         else:
             self.optimizer.optimize(model, dataset)
+
+        self._posterior.update_cache()
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
