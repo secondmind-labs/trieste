@@ -912,7 +912,7 @@ class VariationalGaussianProcess(
                 ),
             )
 
-            model.__init__(
+            model.__init__(  # type: ignore[misc]
                 variable_data,
                 model.kernel,
                 model.likelihood,

@@ -837,7 +837,7 @@ def test_sparse_variational_correctly_returns_inducing_points(whiten: bool) -> N
 def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
     whiten: bool, mo_type: str
 ) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    x = tf.constant(np.arange(6).reshape(-1, 1), dtype=gpflow.default_float())
     svgp = two_output_svgp_model(x, mo_type, whiten)
     model = SparseVariational(svgp)
     model.model.whiten = whiten
