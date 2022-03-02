@@ -26,6 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
+from time import time
 from typing import Any, cast
 
 import gpflow
@@ -402,6 +403,7 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
         gpr_model(x, _3x_plus_gaussian_noise(x)), use_decoupled_sampler=use_decoupled_sampler
     )
     model.model.likelihood.variance.assign(1e-3)
+    model._posterior.update_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -622,6 +624,71 @@ def test_gaussian_process_regression_optimize(compile: bool) -> None:
 
 
 @random_seed
+@pytest.mark.parametrize("after_model_optimize", [True, False])
+@pytest.mark.parametrize("after_model_update", [True, False])
+def test_gaussian_process_cached_predictions_correct(
+    after_model_optimize: bool,
+    after_model_update: bool,
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 5, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    data = x, y
+    dataset = Dataset(*data)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if after_model_optimize:
+        model._optimizer = BatchOptimizer(tf.optimizers.SGD(), max_iter=1)
+        model.optimize(dataset)
+
+    if after_model_update:
+        new_x = np.linspace(0, 5, 3).reshape((-1, 1))
+        new_y = fnc_2sin_x_over_3(new_x)
+        new_dataset = Dataset(new_x, new_y)
+        cast(TrainableProbabilisticModel, model).update(new_dataset)
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+
+    # get cached predictions
+    cached_fmean, cached_fvar = model.predict(x_predict)
+    cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
+    cached_ymean, cached_yvar = model.predict_y(x_predict)
+
+    # get reference (slow) predictions from underlying model
+    reference_fmean, reference_fvar = model.model.predict_f(x_predict)
+    reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
+    reference_ymean, reference_yvar = model.model.predict_y(x_predict)
+
+    npt.assert_allclose(cached_fmean, reference_fmean)
+    npt.assert_allclose(cached_ymean, reference_ymean)
+    npt.assert_allclose(cached_joint_mean, reference_joint_mean)
+    npt.assert_allclose(cached_fvar, reference_fvar, atol=1e-5)
+    npt.assert_allclose(cached_yvar, reference_yvar, atol=1e-5)
+    npt.assert_allclose(cached_joint_var, reference_joint_var, atol=1e-5)
+    npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
+
+
+@random_seed
+def test_gaussian_process_cached_predictions_faster(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 10, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    model, _ = gpflow_interface_factory(x, y)
+    n_calls = 100
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    t_0 = time()
+    [model.predict(x_predict) for _ in range(n_calls)]
+    time_with_cache = time() - t_0
+    t_0 = time()
+    [model.model.predict_f(x_predict) for _ in range(n_calls)]
+    time_without_cache = time() - t_0
+
+    npt.assert_array_less(time_with_cache, time_without_cache)
+
+
+@random_seed
 def test_variational_gaussian_process_predict() -> None:
     x_observed = tf.constant(np.arange(3).reshape((-1, 1)), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -632,6 +699,7 @@ def test_variational_gaussian_process_predict() -> None:
         internal_model.training_loss_closure(),
         internal_model.trainable_variables,
     )
+    model._posterior.update_cache()
     x_predict = tf.constant([[1.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
@@ -739,7 +807,7 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
 )
 def test_sparse_variational_update_updates_num_data(mo_type: str) -> None:
     x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
-    svgp = two_output_svgp_model(x, mo_type)
+    svgp = two_output_svgp_model(x, mo_type, True)
     model = SparseVariational(svgp)
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
     assert model.model.num_data == 5
@@ -770,7 +838,7 @@ def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
     whiten: bool, mo_type: str
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    svgp = two_output_svgp_model(x, mo_type)
+    svgp = two_output_svgp_model(x, mo_type, whiten)
     model = SparseVariational(svgp)
     model.model.whiten = whiten
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
@@ -859,6 +927,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(whiten: bool)
     # for speed just pretend update rather than optimize
     model.model.q_sqrt.assign(tf.expand_dims(tf.eye(len(x)) * tf.math.sqrt(1e-5), 0))
     model.model.q_mu.assign(y)
+    model._posterior.update_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -1155,6 +1224,7 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
         num_inducing_points = tf.shape(model.model.q_sqrt)[1]
         sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
         model.model.q_sqrt.assign(sampled_q_sqrt)
+        model._posterior.update_cache()  # type: ignore
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
@@ -1182,7 +1252,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y1 = fnc_3x_plus_10(x)
     y2 = y1 * 0.5
 
-    svgp = two_output_svgp_model(x, mo_type)
+    svgp = two_output_svgp_model(x, mo_type, whiten)
 
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten

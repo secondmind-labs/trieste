@@ -14,20 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Optional, Tuple, Union, cast
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.base import (
-    DType,
-    Prior,
-    PriorOn,
-    TensorData,
-    Transform,
-    _cast_to_dtype,
-    _validate_unconstrained_value,
-)
 from gpflow.conditionals.util import sample_mvn
 from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
@@ -38,7 +29,6 @@ from gpflow.models.vgp import update_vgp_data
 from gpflow.posteriors import PrecomputeCacheType
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
-from tensorflow_probability.python.util import TransformedVariable
 
 from ...data import Dataset
 from ...types import TensorType
@@ -664,6 +654,7 @@ class SparseVariational(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data.assign(num_data)
+        self._posterior.update_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -676,8 +667,6 @@ class SparseVariational(
                 )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
-
-        self._posterior.update_cache()
 
     def optimize(self, dataset: Dataset) -> None:
         """
