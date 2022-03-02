@@ -34,7 +34,8 @@ from gpflow.inducing_variables import (
     SharedIndependentInducingVariables,
 )
 from gpflow.models import GPR, SGPR, SVGP, VGP
-from gpflow.utilities import multiple_assign, read_values
+from gpflow.posteriors import PrecomputeCacheType
+from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 from tensorflow_probability.python.util import TransformedVariable
 
@@ -74,6 +75,13 @@ class GaussianProcessRegression(
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
     or :class:`~gpflow.models.SGPR`.
+
+    As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
+    acquisition functions), rather than calling the model directly at prediction time we instead
+    call the posterior objects built by these models. These posterior objects store the
+    pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
+    note that these posterior objects need to be updated whenever the underlying model is changed
+    (i.e. after calling :meth:`update` or :meth:`optimize`).
     """
 
     def __init__(
@@ -118,6 +126,10 @@ class GaussianProcessRegression(
         self._use_decoupled_sampler = use_decoupled_sampler
         self._ensure_variable_model_data()
 
+        # Cache posterior for fast sequential predictions
+        # Note that this must happen *after* we ensure the model data is variable
+        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+
     def __repr__(self) -> str:
         """"""
         return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
@@ -133,7 +145,7 @@ class GaussianProcessRegression(
         # Sometimes, for instance after serialization-deserialization, the shape can be overridden
         # Thus here we ensure data is stored in dynamic shape Variables
 
-        if all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+        if all(is_variable(x) and x.shape[0] is None for x in self._model.data):
             # both query points and observations are in right shape
             # nothing to do
             return
@@ -146,6 +158,16 @@ class GaussianProcessRegression(
                 self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
             ),
         )
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points)
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self._posterior.predict_f(query_points, full_cov=True)
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -162,6 +184,7 @@ class GaussianProcessRegression(
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
+        self._posterior.update_cache()
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -271,6 +294,7 @@ class GaussianProcessRegression(
             )
 
         self.optimizer.optimize(self.model, dataset)
+        self._posterior.update_cache()
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -350,17 +374,17 @@ class GaussianProcessRegression(
         if isinstance(self.model, SGPR):
             raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
-        mean_add, cov_add = self.model.predict_f(
-            additional_data.query_points, full_cov=True
+        mean_add, cov_add = self.predict_joint(
+            additional_data.query_points
         )  # [..., N, L], [..., L, N, N]
-        mean_qp, var_qp = self.model.predict_f(query_points, full_cov=False)  # [M, L], [M, L]
+        mean_qp, var_qp = self.predict(query_points)  # [M, L], [M, L]
 
         cov_cross = self.covariance_between_points(
             additional_data.query_points, query_points
         )  # [..., L, N, M]
 
         cov_shape = tf.shape(cov_add)
-        noise = self.model.likelihood.variance * tf.eye(
+        noise = self.get_observation_noise() * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
         L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
@@ -425,7 +449,7 @@ class GaussianProcessRegression(
         query_points_r = tf.broadcast_to(query_points, new_shape)  # [..., M, D]
         points = tf.concat([additional_data.query_points, query_points_r], axis=-2)  # [..., N+M, D]
 
-        mean, cov = self.model.predict_f(points, full_cov=True)  # [..., N+M, L], [..., L, N+M, N+M]
+        mean, cov = self.predict_joint(points)  # [..., N+M, L], [..., L, N+M, N+M]
 
         N = tf.shape(additional_data.query_points)[-2]
 
@@ -437,7 +461,7 @@ class GaussianProcessRegression(
         cov_cross = cov[..., :N, N:]  # [..., L, N, M]
 
         cov_shape = tf.shape(cov_add)
-        noise = self.model.likelihood.variance * tf.eye(
+        noise = self.get_observation_noise() * tf.eye(
             cov_shape[-2], batch_shape=cov_shape[:-2], dtype=cov_add.dtype
         )
         L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
@@ -604,6 +628,13 @@ class SparseVariational(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+
+    Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SVGP` wrapper
+    directly calls the posterior objects built by these models at prediction
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+    faster subsequent predictions. However, note that these posterior objects need to be updated
+    whenever the underlying model is changed (i.e. after calling :meth:`update` or
+    :meth:`optimize`).
     """
 
     def __init__(
@@ -847,6 +878,13 @@ class VariationalGaussianProcess(
 
     A whitened representation and (optional) natural gradient steps are used to aid
     model optimization.
+
+    Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.VGP` wrapper
+    directly calls the posterior objects built by these models at prediction
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+    faster subsequent predictions. However, note that these posterior objects need to be updated
+    whenever the underlying model is changed (i.e. after calling :meth:`update` or
+    :meth:`optimize`).
     """
 
     def __init__(
