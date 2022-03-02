@@ -74,6 +74,7 @@ from trieste.models.gpflow.sampler import (
 )
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 from trieste.space import Box
+from trieste.types import TensorType
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -495,12 +496,12 @@ def test_variational_gaussian_process_update_updates_num_data() -> None:
     x = tf.convert_to_tensor(x_np, x_np.dtype)
     y = fnc_3x_plus_10(x)
     m = VariationalGaussianProcess(vgp_model(x, y))
-    num_data = m.model.num_data
+    num_data = m.model.num_data.numpy()
 
     x_new = tf.concat([x, [[10.0], [11.0]]], 0)
     y_new = fnc_3x_plus_10(x_new)
     m.update(Dataset(x_new, y_new))
-    new_num_data = m.model.num_data
+    new_num_data = m.model.num_data.numpy()
     assert new_num_data - num_data == 2
 
 
@@ -781,11 +782,13 @@ def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
 
     if isinstance(model.model.inducing_variable, SharedIndependentInducingVariables):
         npt.assert_allclose(
-            inducing_points, model.model.inducing_variable.inducing_variable.Z, atol=1e-5
+            inducing_points,
+            cast(TensorType, model.model.inducing_variable.inducing_variable).Z,
+            atol=1e-5,
         )
     elif isinstance(model.model.inducing_variable, SeparateIndependentInducingVariables):
         for i, points in enumerate(model.model.inducing_variable.inducing_variables):
-            npt.assert_allclose(inducing_points[i], points.Z, atol=1e-5)
+            npt.assert_allclose(inducing_points[i], cast(TensorType, points).Z, atol=1e-5)
     else:
         npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
 
