@@ -6,6 +6,8 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import MeanAbsoluteError
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
+from trieste.models.keras.builders import build_vanilla_keras_ensemble
+from builders import build_vanilla_keras_mcdropout
 
 # %%
 tf.random.set_seed(1234)

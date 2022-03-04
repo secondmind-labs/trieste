@@ -10,8 +10,8 @@ from tensorflow.keras.losses import MeanAbsoluteError
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
-from layers import DropConnect
-# from tests.util.misc import ShapeLike, empty_dataset, random_seed
+from trieste.models.keras.layers import DropConnect
+from tests.util.misc import ShapeLike, empty_dataset, random_seed
 
 @pytest.fixture(name="x", params=[tf.constant([[5., 3.4, 2.6], [5.4, 3.2, 1.]])])
 def _x_fixture(request: Any) -> tf.Tensor:
