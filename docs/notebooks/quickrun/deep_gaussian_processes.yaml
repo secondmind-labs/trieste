@@ -1,4 +1,3 @@
 replace:
   - { from: "num_steps = \\d+", to: "num_steps = 2" }
   - { from: "grid_size = \\d+", to: "grid_size = 10" }
-  - { from: "num_kernel_samples = \\d+", to: "num_kernel_samples = 2" }
