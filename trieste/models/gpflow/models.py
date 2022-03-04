@@ -26,7 +26,6 @@ from gpflow.inducing_variables import (
 )
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
-from gpflow.posteriors import PrecomputeCacheType
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
@@ -72,7 +71,8 @@ class GaussianProcessRegression(
     call the posterior objects built by these models. These posterior objects store the
     pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
     note that these posterior objects need to be updated whenever the underlying model is changed
-    (i.e. after calling :meth:`update` or :meth:`optimize`).
+    by calling :meth:`update_posterior_cache` (this
+    happens automatically after calls to :meth:`update` or :math:`optimize`).
     """
 
     def __init__(
@@ -116,10 +116,7 @@ class GaussianProcessRegression(
         self._num_rff_features = num_rff_features
         self._use_decoupled_sampler = use_decoupled_sampler
         self._ensure_variable_model_data()
-
-        # Cache posterior for fast sequential predictions
-        # Note that this must happen *after* we ensure the model data is variable
-        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+        self.create_posterior_cache()
 
     def __repr__(self) -> str:
         """"""
@@ -150,12 +147,6 @@ class GaussianProcessRegression(
             ),
         )
 
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points, full_cov=True)
-
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
@@ -175,7 +166,7 @@ class GaussianProcessRegression(
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -285,7 +276,7 @@ class GaussianProcessRegression(
             )
 
         self.optimizer.optimize(self.model, dataset)
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -537,8 +528,8 @@ class SparseVariational(
     directly calls the posterior objects built by these models at prediction
     time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
     faster subsequent predictions. However, note that these posterior objects need to be updated
-    whenever the underlying model is changed (i.e. after calling :meth:`update` or
-    :meth:`optimize`).
+    whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+    happens automatically after calls to :meth:`update` or :math:`optimize`).
     """
 
     def __init__(
@@ -591,10 +582,7 @@ class SparseVariational(
 
         self._inducing_point_selector = inducing_point_selector
         self._ensure_variable_model_data()
-
-        # Cache posterior for fast sequential predictions
-        # Note that this must happen *after* we ensure the model data is variable
-        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+        self.create_posterior_cache()
 
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
@@ -616,12 +604,6 @@ class SparseVariational(
     @property
     def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points, full_cov=True)
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
@@ -654,7 +636,7 @@ class SparseVariational(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data.assign(num_data)
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -674,7 +656,7 @@ class SparseVariational(
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
@@ -809,8 +791,8 @@ class VariationalGaussianProcess(
     directly calls the posterior objects built by these models at prediction
     time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
     faster subsequent predictions. However, note that these posterior objects need to be updated
-    whenever the underlying model is changed (i.e. after calling :meth:`update` or
-    :meth:`optimize`).
+    whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+    happens automatically after calls to :meth:`update` or :math:`optimize`).
     """
 
     def __init__(
@@ -884,10 +866,7 @@ class VariationalGaussianProcess(
         self._use_natgrads = use_natgrads
         self._natgrad_gamma = natgrad_gamma
         self._ensure_variable_model_data()
-
-        # Cache posterior for fast sequential predictions
-        # Note that this must happen *after* we ensure the model data is variable
-        self._posterior = model.posterior(PrecomputeCacheType.VARIABLE)
+        self.create_posterior_cache()
 
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
@@ -928,12 +907,6 @@ class VariationalGaussianProcess(
     def model(self) -> VGP:
         return self._model
 
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self._posterior.predict_f(query_points, full_cov=True)
-
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
@@ -948,7 +921,7 @@ class VariationalGaussianProcess(
         """
         self._ensure_variable_model_data()
         update_vgp_data(self.model, (dataset.query_points, dataset.observations))
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -992,7 +965,7 @@ class VariationalGaussianProcess(
         else:
             self.optimizer.optimize(model, dataset)
 
-        self._posterior.update_cache()
+        self.update_posterior_cache()
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """

@@ -403,7 +403,7 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
         gpr_model(x, _3x_plus_gaussian_noise(x)), use_decoupled_sampler=use_decoupled_sampler
     )
     model.model.likelihood.variance.assign(1e-3)
-    model._posterior.update_cache()
+    model.update_posterior_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -699,7 +699,7 @@ def test_variational_gaussian_process_predict() -> None:
         internal_model.training_loss_closure(),
         internal_model.trainable_variables,
     )
-    model._posterior.update_cache()
+    model.update_posterior_cache()
     x_predict = tf.constant([[1.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
@@ -927,7 +927,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(whiten: bool)
     # for speed just pretend update rather than optimize
     model.model.q_sqrt.assign(tf.expand_dims(tf.eye(len(x)) * tf.math.sqrt(1e-5), 0))
     model.model.q_mu.assign(y)
-    model._posterior.update_cache()
+    model.update_posterior_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -1224,7 +1224,7 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
         num_inducing_points = tf.shape(model.model.q_sqrt)[1]
         sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
         model.model.q_sqrt.assign(sampled_q_sqrt)
-        model._posterior.update_cache()  # type: ignore
+        model.update_posterior_cache()
 
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
