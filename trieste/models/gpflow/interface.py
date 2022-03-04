@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
+from gpflow.posteriors import BasePosterior, PrecomputeCacheType
 from typing_extensions import Protocol
 
 from ... import logging
@@ -38,7 +40,16 @@ from .sampler import BatchReparametrizationSampler
 class GPflowPredictor(
     SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, HasReparamSampler, ABC
 ):
-    """A trainable wrapper for a GPflow Gaussian process model."""
+    """
+    A trainable wrapper for a GPflow Gaussian process model.
+
+    As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
+    acquisition functions), rather than calling the model directly at prediction time we instead
+    call the posterior objects built by these models. These posterior objects store the
+    pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
+    note that these posterior objects need to be updated whenever the underlying model is changed
+    (i.e. after calling :meth:`update` or :meth:`optimize`).
+    """
 
     def __init__(self, optimizer: Optimizer | None = None):
         """
@@ -49,6 +60,13 @@ class GPflowPredictor(
             optimizer = Optimizer(gpflow.optimizers.Scipy())
 
         self._optimizer = optimizer
+        self._posterior: Optional[BasePosterior] = None
+
+    def update_posterior_cache(self) -> None:
+        """Update posterior objects. This needs to be called if the underlying model is changed
+        after predictions have already been made."""
+        if self._posterior is not None:
+            self._posterior.update_cache()
 
     @property
     def optimizer(self) -> Optimizer:
@@ -61,10 +79,14 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_f(query_points)
+        if self._posterior is None and hasattr(self.model, "posterior"):
+            self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+        return (self._posterior or self.model).predict_f(query_points)
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_f(query_points, full_cov=True)
+        if self._posterior is None and hasattr(self.model, "posterior"):
+            self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+        return (self._posterior or self.model).predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
