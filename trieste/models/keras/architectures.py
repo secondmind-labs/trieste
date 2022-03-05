@@ -25,7 +25,8 @@ from typing import Any, Sequence
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-# from layers import DropConnect, MCDropout
+
+from .layers import DropConnect, MCDropout
 class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
@@ -235,7 +236,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
         return input_tensor, output_tensor
 
 
-class DropoutNetwork():
+class DropoutNetwork(KerasEnsembleNetwork):
 
     def __init__(
         self,
@@ -246,26 +247,25 @@ class DropoutNetwork():
             {"units": 50, "activation": "relu"},
             {"units": 50, "activation": "relu"},
         ),
-        dropout_prob: Sequence[float] | float | int = 0.5,
-        network_name: str = ""
+        dropout_prob: Sequence[float] | float | int = 0.5
     ):
-        self.input_tensor_spec = input_tensor_spec
-        self.output_tensor_spec = output_tensor_spec
+
+        super().__init__(input_tensor_spec, output_tensor_spec)
+
         self._hidden_layer_args = hidden_layer_args
-        self.network_name = network_name #Do we want to implement network name in a different way?
-        self._dropout_prob = dropout_prob
-
-    #Probably want to move these properties to an abstract class when refactoring
-    @property
-    def flattened_output_shape(self) -> int:
-        return int(np.prod(self.output_tensor_spec.shape))
+        self.dropout_prob = dropout_prob
+        self._model = self._build_model()
 
     @property
-    def dropout_prob(self) -> Sequence:
+    def model(self) -> tf.keras.Model:
+        return self._model
+
+    @property
+    def dropout_prob(self) -> Sequence[float]:
         return self._dropout_prob
     
     @dropout_prob.setter
-    def dropout_prop(self, dropout_prob):
+    def dropout_prob(self, dropout_prob):
         if isinstance(dropout_prob, Sequence):
             if not len(dropout_prob) == len(self._hidden_layer_args):
                 raise ValueError(
@@ -275,7 +275,7 @@ class DropoutNetwork():
             for p in dropout_prob:
                 self._check_probability(p)
             self._dropout_prob = dropout_prob
-        elif isinstance(dropout_prob, [float, int]):
+        elif isinstance(dropout_prob, (float, int)):
             self._check_probability(dropout_prob)
             self._dropout_prob = [dropout_prob for _ in range(len(self._hidden_layer_args) + 1)]
         else:
@@ -292,7 +292,7 @@ class DropoutNetwork():
         input_tensor = tf.keras.Input(
             shape=self.input_tensor_spec.shape,
             dtype=self.input_tensor_spec.dtype,
-            name=self.network_name + "input"
+            name=self.input_layer_name
         )
         return input_tensor
 
@@ -300,7 +300,7 @@ class DropoutNetwork():
 
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            dropout = MCDropout(self._dropout_prob[index])
+            dropout = tf.keras.layers.Dropout(self._dropout_prob[index])
             layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
             dropout_tensor = dropout(input_tensor) #TEST THAT PASSING TRAINING HERE IS ENOUGH ONCE MODEL CONNECTED
             input_tensor = layer(dropout_tensor)
@@ -308,8 +308,8 @@ class DropoutNetwork():
 
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        dropout = MCDropout(self._dropout_prob[-1])
-        output_layer = tf.keras.layers.Dense(units=self.flattened_output_shape, name=self.network_name + "output")
+        dropout = tf.keras.layers.Dropout(self._dropout_prob[-1])
+        output_layer = tf.keras.layers.Dense(units=self.flattened_output_shape, name=self.output_layer_name)
         dropout_tensor = dropout(input_tensor)
         output_tensor = output_layer(dropout_tensor)
         return output_tensor
@@ -321,88 +321,29 @@ class DropoutNetwork():
         output_tensor = self._gen_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor
+    
+    def _build_model(self) -> tf.keras.Model:
+
+        inputs, outputs = self.connect_layers()
+        return tf.keras.Model(inputs=inputs, outputs=outputs)
+
 
 #Does this really need to be a separate class?
 class DropConnectNetwork(DropoutNetwork):
-    def __init__(self, **kwargs):
-        super(DropConnectNetwork, self).__init__(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super(DropConnectNetwork, self).__init__(*args, **kwargs)
     
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
             layer = DropConnect(**hidden_layer_args, p_dropout=self._dropout_prob[index], name=layer_name)
-            input_tensor = layer(input_tensor, training=True)
+            input_tensor = layer(input_tensor)
         return input_tensor
     
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        output_layer = DropConnect(units=self.flattened_output_shape, name=self.network_name + "output") # CHANGE THIS?
-        output_tensor = output_layer(input_tensor, training=True)
+        output_layer = DropConnect(units=self.flattened_output_shape, name=self.output_layer_name)
+        output_tensor = output_layer(input_tensor)
         return output_tensor
 
-
-import tensorflow as tf
-from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.python.ops import nn_ops, math_ops, sparse_ops, embedding_ops, gen_math_ops, standard_ops
-from tensorflow.python.framework import sparse_tensor
-from tensorflow.python.eager import context
-
-
-class DropConnect(Dense):
-    def __init__(self, p_dropout=0.5, *args, **kwargs):
-        self.p_dropout = p_dropout
-        super(DropConnect, self).__init__(*args, **kwargs)
-    
-    @property
-    def p_dropout(self):
-        return self._p_dropout
-
-    @p_dropout.setter
-    def p_dropout(self, p_dropout):
-        assert 0 <= p_dropout <= 1, f"prob needs to be a valid probability instead got {p_dropout}"
-        self._p_dropout = p_dropout
-        
-    def call(self, inputs, training = False):
-        if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:
-            inputs = math_ops.cast(inputs, dtype=self._compute_dtype_object)
-
-        #Drop Connect Code to mask the kernel
-        if training:
-            mask = tf.cast(tf.random.uniform(shape=self.kernel.shape) >= self.p_dropout, dtype=self.kernel.dtype)
-            kernel = mask * self.kernel
-        else:
-            kernel = self.kernel
-
-        #Code below from Tensorflow Dense Class
-        rank = inputs.shape.rank
-        if rank == 2 or rank is None:
-            if isinstance(inputs, sparse_tensor.SparseTensor):
-                inputs, _ = sparse_ops.sparse_fill_empty_rows(inputs, 0)
-                ids = sparse_tensor.SparseTensor(
-                    indices=inputs.indices,
-                    values=inputs.indices[:, 1],
-                    dense_shape=inputs.dense_shape)
-                weights = inputs
-                outputs = embedding_ops.embedding_lookup_sparse_v2(
-                    kernel, ids, weights, combiner='sum')
-            else:
-                outputs = gen_math_ops.MatMul(a=inputs, b=kernel)
-        # Broadcast kernel to inputs.
-        else:
-            outputs = standard_ops.tensordot(inputs, kernel, [[rank - 1], [0]])
-        # Reshape the output back to the original ndim of the input.
-        if not context.executing_eagerly():
-            shape = inputs.shape.as_list()
-            output_shape = shape[:-1] + [kernel.shape[-1]]
-            outputs.set_shape(output_shape)
-
-        if self.use_bias:
-            outputs = nn_ops.bias_add(outputs, self.bias)
-
-        if self.activation is not None:
-            outputs = self.activation(outputs)
-        return outputs
-class MCDropout(Dropout):
-    def call(self, x, **kwargs):
-        return super().call(x, training=True, **kwargs)
