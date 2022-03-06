@@ -237,6 +237,12 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
 
 class DropoutNetwork(KerasEnsembleNetwork):
+    """
+    This class builds a standard dropout neural network using Keras. The network
+    architecture is a multilayer fully-connected feed-forward network, with Dropout layers
+    preceding each fully connected dense layer. The network is meant to be passed to 
+    :class:`MCDropout` which will define the predict method to make this a probabilistic model.
+    """
 
     def __init__(
         self,
@@ -249,7 +255,21 @@ class DropoutNetwork(KerasEnsembleNetwork):
         ),
         dropout_prob: Sequence[float] | float | int = 0.5
     ):
-
+        """
+        :param input_tensor_spec: Tensor specification for the input to the network.
+        :param output_tensor_spec: Tensor specification for the output of the network.
+        :param hidden_layer_args: Specification for building dense hidden layers. Each element in
+            the sequence should be a dictionary containing arguments (keys) and their values for a
+            :class:`~tf.keras.layers.Dense` hidden layer. Please check Keras Dense layer API for
+            available arguments. Objects in the sequence will sequentially be used to add
+            :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of
+            hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
+            ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.
+        :param dropout_prob: Probability of dropout assigned to each layer of a fully connected network.
+            If scalar, the same probability will be assigned to each layer. Otherwise accepts a list of 
+            probabilities corresponding to each layer. 
+        :raise ValueError: If objects in ``hidden_layer_args`` are not dictionaries.
+        """
         super().__init__(input_tensor_spec, output_tensor_spec)
 
         self._hidden_layer_args = hidden_layer_args
@@ -315,7 +335,13 @@ class DropoutNetwork(KerasEnsembleNetwork):
         return output_tensor
 
     def connect_layers(self) -> tuple[tf.Tensor, tf.Tensor]:
+        """
+        Connect all layers in the network. We start by generating an input tensor based on input
+        tensor specification. Next we generate a sequence of hidden dense layers  and an output layer 
+        based on hidden layer arguments, output tensor specification, and the type of dropout network.
 
+        :return: Input and output tensor of the sequence of layers.
+        """
         input_tensor = self._gen_input_tensor()
         hidden_tensor = self._gen_hidden_layers(input_tensor)
         output_tensor = self._gen_output_layer(hidden_tensor)
@@ -330,6 +356,14 @@ class DropoutNetwork(KerasEnsembleNetwork):
 
 #Does this really need to be a separate class?
 class DropConnectNetwork(DropoutNetwork):
+    """
+    This class builds a variation of a dropout network using Keras. The network
+    architecture is a multilayer fully-connected feed-forward network of :class: `DropConnect`
+    layers. This is a generalization of standard dropout where each weight is dropped out 
+    with a certain probability. This network is meant to be passed to :class:`MCDropout` which 
+    will define the predict method to make this a probabilistic model.
+    """
+
     def __init__(self, *args, **kwargs):
         super(DropConnectNetwork, self).__init__(*args, **kwargs)
     

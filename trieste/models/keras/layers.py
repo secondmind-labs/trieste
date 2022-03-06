@@ -7,6 +7,12 @@ from tensorflow.python.eager import context
 
 class DropConnect(Dense):
     def __init__(self, p_dropout=0.5, *args, **kwargs):
+        """
+        :param units: Number of units to use in the layer.
+        :param p_dropout: The probability of dropout applied to each weight of a Dense Keras layer.
+        :param *args: Args passed to Dense Keras class.
+        "param **kwargs: Keyword arguments passed to Dense Keras class
+        """
         self.p_dropout = p_dropout
         super(DropConnect, self).__init__(*args, **kwargs)
     
