@@ -85,5 +85,5 @@ def test_dropout_rate(rate, drop_layer):
     simulations = [np.sum(drop_layer(x1, training=True).numpy() == 0.) for _ in range(sims)]
     
     #Test dropout up to twice the variance
-    assert np.abs(np.sum(simulations) - rate * sims) <= 2 * rate * (1-rate) * sims, \
+    assert np.abs(np.sum(simulations) - rate * sims) <= 1.5 * rate * (1-rate) * sims, \
         f"Expected to dropout around {rate} of the passes but only dropped {np.sum(simulations)/len(simulations)}"
