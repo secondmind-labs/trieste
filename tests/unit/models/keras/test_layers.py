@@ -45,15 +45,15 @@ def test_dense_forward(layer:Dense, x, activation, units):
     assert (tf.equal(dense_model(x), model(x))).numpy().all(), "Forward pass calculations are wrong"
 
 # @random_seed
-@pytest.mark.parametrize("p", [0, 1])
+@pytest.mark.parametrize("rate", [0, 1])
 @pytest.mark.parametrize("dropout_layer", [DropConnect(units=3)])
-def test_fit(dropout_layer, x, units, activation, p):
+def test_fit(dropout_layer, x, units, activation, rate):
     '''Tests that the fit method with dropout is working properly'''
     y = tf.constant([[3., -4., 9.], [5., 1., 6.]])
     
     inputs = Input(shape=x.shape[-1])
     dropout_layer.activation=activation
-    dropout_layer.p_dropout=p
+    dropout_layer.rate=rate
     dropout_layer.units=units
     dense = Dense(units=units, activation=activation)
 
@@ -63,7 +63,7 @@ def test_fit(dropout_layer, x, units, activation, p):
     dense_model.compile(Adam(), MeanAbsoluteError())
 
     bias = drop_model.get_weights()[1]
-    weights = tf.zeros(shape=drop_model.get_weights()[0].shape) if p == 1 \
+    weights = tf.zeros(shape=drop_model.get_weights()[0].shape) if rate == 1 \
         else drop_model.get_weights()[0]
     dense.set_weights([weights, bias])
 
@@ -71,19 +71,19 @@ def test_fit(dropout_layer, x, units, activation, p):
     dense_fit = dense_model.fit(x, y)
 
     npt.assert_approx_equal(drop_fit.history["loss"][0], dense_fit.history["loss"][0], significant=3,
-        err_msg=f"Expected {dropout_layer} to drop {p} variables and get the same fit as an equivalent dense layer")
+        err_msg=f"Expected {dropout_layer} to drop {rate} variables and get the same fit as an equivalent dense layer")
     
 
 
-@pytest.mark.parametrize("p_dropout", [0.1, 0.3, 0.5, 0.7, 0.9])
+@pytest.mark.parametrize("rate", [0.1, 0.3, 0.5, 0.7, 0.9])
 @pytest.mark.parametrize("drop_layer", [DropConnect(units=1, use_bias=False)])
-def test_p_dropout(p_dropout, drop_layer):
+def test_dropout_rate(rate, drop_layer):
     '''Tests that weights are being dropped out at the write proportion'''
-    drop_layer.p_dropout = p_dropout
+    drop_layer.rate = rate
     x1 = tf.constant ([[1.]])
     sims=1000
     simulations = [np.sum(drop_layer(x1, training=True).numpy() == 0.) for _ in range(sims)]
     
     #Test dropout up to twice the variance
-    assert np.abs(np.sum(simulations) - p_dropout * sims) <= 2 * p_dropout * (1-p_dropout) * sims, \
-        f"Expected to dropout around {p_dropout} of the passes but only dropped {np.sum(simulations)/len(simulations)}"
+    assert np.abs(np.sum(simulations) - rate * sims) <= 2 * rate * (1-rate) * sims, \
+        f"Expected to dropout around {rate} of the passes but only dropped {np.sum(simulations)/len(simulations)}"

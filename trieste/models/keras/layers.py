@@ -6,24 +6,24 @@ from tensorflow.python.eager import context
 
 
 class DropConnect(Dense):
-    def __init__(self, p_dropout=0.5, *args, **kwargs):
+    def __init__(self, rate=0.5, *args, **kwargs):
         """
         :param units: Number of units to use in the layer.
-        :param p_dropout: The probability of dropout applied to each weight of a Dense Keras layer.
+        :param rate: The probability of dropout applied to each weight of a Dense Keras layer.
         :param *args: Args passed to Dense Keras class.
         "param **kwargs: Keyword arguments passed to Dense Keras class
         """
-        self.p_dropout = p_dropout
+        self.rate = rate
         super(DropConnect, self).__init__(*args, **kwargs)
     
     @property
-    def p_dropout(self):
-        return self._p_dropout
+    def rate(self):
+        return self._rate
 
-    @p_dropout.setter
-    def p_dropout(self, p_dropout):
-        assert 0 <= p_dropout <= 1, f"prob needs to be a valid probability instead got {p_dropout}"
-        self._p_dropout = p_dropout
+    @rate.setter
+    def rate(self, rate):
+        assert 0 <= rate <= 1, f"prob needs to be a valid probability instead got {rate}"
+        self._rate = rate
         
     def call(self, inputs, training = False):
         if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:
@@ -31,7 +31,7 @@ class DropConnect(Dense):
 
         #Drop Connect Code to mask the kernel
         if training:
-            mask = tf.cast(tf.random.uniform(shape=self.kernel.shape) >= self.p_dropout, dtype=self.kernel.dtype)
+            mask = tf.cast(tf.random.uniform(shape=self.kernel.shape) >= self.rate, dtype=self.kernel.dtype)
             kernel = mask * self.kernel
         else:
             kernel = self.kernel

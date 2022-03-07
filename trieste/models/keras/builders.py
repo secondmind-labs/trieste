@@ -87,7 +87,7 @@ def build_vanilla_keras_mcdropout(
     num_hidden_layers: int = 3,
     units: int = 50,
     activation: str | tf.keras.layers.Activation = "relu",
-    dropout_prob: Sequence[float | int] | float | int = 0.5,
+    rate: Sequence[float | int] | float | int = 0.5,
     dropout: str = "standard"
 ) -> DropoutNetwork:
     
@@ -102,14 +102,14 @@ def build_vanilla_keras_mcdropout(
             input_tensor_spec,
             output_tensor_spec,
             hidden_layer_args,
-            dropout_prob
+            rate
         )
     elif dropout == "dropconnect":
         keras_mcdropout = DropConnectNetwork(
             input_tensor_spec,
             output_tensor_spec,
             hidden_layer_args,
-            dropout_prob
+            rate
         )
     else:
         raise ValueError(
