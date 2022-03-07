@@ -581,7 +581,17 @@ class SparseVariational(
                 )
 
         self._inducing_point_selector = inducing_point_selector
+        self._ensure_variable_model_data()
         self.create_posterior_cache()
+
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
+        # Thus here we ensure data is stored in dynamic shape Variables
+        if not is_variable(self._model.num_data):
+            self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
     def __repr__(self) -> str:
         """"""
@@ -600,6 +610,8 @@ class SparseVariational(
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
+        self._ensure_variable_model_data()
+
         # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
         current_inducing_points, q_mu, _, _ = self.get_inducing_variables()
 
@@ -622,6 +634,8 @@ class SparseVariational(
                 f" dimensions must match."
             )
 
+        num_data = dataset.query_points.shape[0]
+        self.model.num_data.assign(num_data)
         self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
