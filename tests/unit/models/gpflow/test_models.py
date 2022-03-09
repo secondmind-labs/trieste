@@ -167,7 +167,7 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
             ),
         )
         gpflow.optimizers.Scipy().minimize(
-            reference_model.training_loss_closure(compile=False),
+            reference_model.training_loss_closure(compile=True),
             reference_model.trainable_variables,
         )
 
