@@ -26,6 +26,7 @@ trieste model).
 from __future__ import annotations
 
 import unittest.mock
+from time import time
 from typing import Any, cast
 
 import gpflow
@@ -68,7 +69,6 @@ from trieste.models.gpflow.inducing_point_selectors import (
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
 )
-from trieste.models.gpflow.models import NumDataPropertyMixin
 from trieste.models.gpflow.sampler import (
     DecoupledTrajectorySampler,
     RandomFourierFeatureTrajectorySampler,
@@ -507,6 +507,7 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
         gpr_model(x, _3x_plus_gaussian_noise(x)), use_decoupled_sampler=use_decoupled_sampler
     )
     model.model.likelihood.variance.assign(1e-3)
+    model.update_posterior_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -535,6 +536,71 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.15)
 
 
+@random_seed
+@pytest.mark.parametrize("after_model_optimize", [True, False])
+@pytest.mark.parametrize("after_model_update", [True, False])
+def test_gaussian_process_cached_predictions_correct(
+    after_model_optimize: bool,
+    after_model_update: bool,
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 5, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    data = x, y
+    dataset = Dataset(*data)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if after_model_optimize:
+        model._optimizer = BatchOptimizer(tf.optimizers.SGD(), max_iter=1)
+        model.optimize(dataset)
+
+    if after_model_update:
+        new_x = np.linspace(0, 5, 3).reshape((-1, 1))
+        new_y = fnc_2sin_x_over_3(new_x)
+        new_dataset = Dataset(new_x, new_y)
+        cast(TrainableProbabilisticModel, model).update(new_dataset)
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+
+    # get cached predictions
+    cached_fmean, cached_fvar = model.predict(x_predict)
+    cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
+    cached_ymean, cached_yvar = model.predict_y(x_predict)
+
+    # get reference (slow) predictions from underlying model
+    reference_fmean, reference_fvar = model.model.predict_f(x_predict)
+    reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
+    reference_ymean, reference_yvar = model.model.predict_y(x_predict)
+
+    npt.assert_allclose(cached_fmean, reference_fmean)
+    npt.assert_allclose(cached_ymean, reference_ymean)
+    npt.assert_allclose(cached_joint_mean, reference_joint_mean)
+    npt.assert_allclose(cached_fvar, reference_fvar, atol=1e-5)
+    npt.assert_allclose(cached_yvar, reference_yvar, atol=1e-5)
+    npt.assert_allclose(cached_joint_var, reference_joint_var, atol=1e-5)
+    npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
+
+
+@random_seed
+def test_gaussian_process_cached_predictions_faster(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 10, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    model, _ = gpflow_interface_factory(x, y)
+    n_calls = 100
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    t_0 = time()
+    [model.predict(x_predict) for _ in range(n_calls)]
+    time_with_cache = time() - t_0
+    t_0 = time()
+    [model.model.predict_f(x_predict) for _ in range(n_calls)]
+    time_without_cache = time() - t_0
+
+    npt.assert_array_less(time_with_cache, time_without_cache)
+
+
 def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
     data = mock_data()
 
@@ -544,6 +610,95 @@ def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
     assert isinstance(model, GaussianProcessRegression)
     assert isinstance(model.optimizer, Optimizer)
     assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
+def test_gaussian_process_regression_conditional_predict_equations() -> None:
+    x = gpflow.utilities.to_default_float(
+        tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0)
+    )  # shape: [7, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model7 = GaussianProcessRegression(gpr_model(x, y))
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+
+    additional_data = Dataset(x[5:, :], y[5:, :])
+
+    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [14, 1]
+
+    predj_mean7, predj_cov7 = model7.predict_joint(query_points)
+    predj_mean5, predj_cov5 = model5.conditional_predict_joint(query_points, additional_data)
+
+    pred_mean7, pred_var7 = model7.predict(query_points)
+    pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
+
+    predy_mean7, predy_var7 = model7.predict_y(query_points)
+    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
+
+    np.testing.assert_allclose(tf.transpose(tf.linalg.diag_part(predj_cov5)), pred_var5, atol=1e-5)
+    np.testing.assert_allclose(predj_mean5, pred_mean5, atol=1e-5)
+    np.testing.assert_allclose(predj_mean5, predj_mean7, atol=1e-5)
+    np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
+    np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
+    np.testing.assert_allclose(predj_cov7, predj_cov5, atol=1e-5)
+    np.testing.assert_allclose(predy_mean7, predy_mean5, atol=1e-5)
+    np.testing.assert_allclose(predy_var7, predy_var5, atol=1e-5)
+
+
+def test_gaussian_process_regression_conditional_predict_equations_broadcast() -> None:
+    x = gpflow.utilities.to_default_float(
+        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
+    )  # shape: [23, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+
+    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
+
+    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
+
+    predj_mean5, predj_cov5 = model5.conditional_predict_joint(query_points, additional_data)
+    pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
+    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
+
+    for i in range(3):
+        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
+        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
+
+        modeli = GaussianProcessRegression(gpr_model(xi, yi))
+        predj_meani, predj_covi = modeli.predict_joint(query_points)
+        pred_meani, pred_vari = modeli.predict(query_points)
+        predy_meani, predy_vari = modeli.predict_y(query_points)
+
+        np.testing.assert_allclose(predj_mean5[i, ...], predj_meani, atol=1e-5)
+        np.testing.assert_allclose(pred_meani, pred_mean5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(pred_vari, pred_var5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
+        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
+
+
+def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
+    x = gpflow.utilities.to_default_float(
+        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
+    )  # shape: [23, 1]
+    y = fnc_2sin_x_over_3(x)
+
+    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
+    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
+    samples = model5.conditional_predict_f_sample(query_points, additional_data, num_samples=100000)
+    npt.assert_array_equal([3, 100000, 46, 1], samples.shape)
+
+    for i in range(3):
+        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
+        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
+
+        modeli = GaussianProcessRegression(gpr_model(xi, yi))
+        predj_meani, predj_covi = modeli.predict_joint(query_points)
+        sample_mean = tf.reduce_mean(samples[i], axis=0)
+        sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
+        np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
+        np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
 
 
 def test_sparse_gaussian_process_regression_raises_for_invalid_init() -> None:
@@ -801,6 +956,7 @@ def test_variational_gaussian_process_predict() -> None:
         internal_model.training_loss_closure(),
         internal_model.trainable_variables,
     )
+    model.update_posterior_cache()
     x_predict = tf.constant([[1.5]], gpflow.default_float())
     mean, variance = model.predict(x_predict)
     mean_y, variance_y = model.predict_y(x_predict)
@@ -829,7 +985,6 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(mean, reference_mean)
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
     npt.assert_allclose(variance_y - model.get_observation_noise(), variance, atol=5e-5)
-
 
 
 @pytest.mark.parametrize("use_natgrads", [True, False])
@@ -935,7 +1090,6 @@ def test_sparse_variational_model_attribute() -> None:
 
     assert sv.model is model
     assert isinstance(sv.model, SVGP)
-    assert isinstance(sv.model, NumDataPropertyMixin)
     assert sv.inducing_point_selector is None
 
 
@@ -998,7 +1152,6 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
     )
     sv = SparseVariational(model)
     assert sv.model is model
-    assert isinstance(sv.model, NumDataPropertyMixin)
     assert isinstance(sv.model, SVGPSubclass)
     assert sv.model.mol == 42
 
@@ -1009,7 +1162,7 @@ def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
 )
 def test_sparse_variational_update_updates_num_data(mo_type: str) -> None:
     x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
-    svgp = two_output_svgp_model(x, mo_type)
+    svgp = two_output_svgp_model(x, mo_type, True)
     model = SparseVariational(svgp)
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
     assert model.model.num_data == 5
@@ -1039,8 +1192,8 @@ def test_sparse_variational_correctly_returns_inducing_points(whiten: bool) -> N
 def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
     whiten: bool, mo_type: str
 ) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    svgp = two_output_svgp_model(x, mo_type)
+    x = tf.constant(np.arange(6).reshape(-1, 1), dtype=gpflow.default_float())
+    svgp = two_output_svgp_model(x, mo_type, whiten)
     model = SparseVariational(svgp)
     model.model.whiten = whiten
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
@@ -1128,6 +1281,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples() -> None:
     # for speed just pretend update rather than optimize
     model.model.q_sqrt.assign(tf.expand_dims(tf.eye(len(x)) * tf.math.sqrt(1e-5), 0))
     model.model.q_mu.assign(y)
+    model.update_posterior_cache()
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -1194,95 +1348,6 @@ def test_sparse_variational_raises_for_invalid_init() -> None:
         SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer2)
 
 
-def test_gaussian_process_regression_conditional_predict_equations() -> None:
-    x = gpflow.utilities.to_default_float(
-        tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0)
-    )  # shape: [7, 1]
-    y = fnc_2sin_x_over_3(x)
-
-    model7 = GaussianProcessRegression(gpr_model(x, y))
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
-
-    additional_data = Dataset(x[5:, :], y[5:, :])
-
-    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [14, 1]
-
-    predj_mean7, predj_cov7 = model7.predict_joint(query_points)
-    predj_mean5, predj_cov5 = model5.conditional_predict_joint(query_points, additional_data)
-
-    pred_mean7, pred_var7 = model7.predict(query_points)
-    pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
-
-    predy_mean7, predy_var7 = model7.predict_y(query_points)
-    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
-
-    np.testing.assert_allclose(tf.transpose(tf.linalg.diag_part(predj_cov5)), pred_var5, atol=1e-5)
-    np.testing.assert_allclose(predj_mean5, pred_mean5, atol=1e-5)
-    np.testing.assert_allclose(predj_mean5, predj_mean7, atol=1e-5)
-    np.testing.assert_allclose(pred_mean7, pred_mean5, atol=1e-5)
-    np.testing.assert_allclose(pred_var7, pred_var5, atol=1e-5)
-    np.testing.assert_allclose(predj_cov7, predj_cov5, atol=1e-5)
-    np.testing.assert_allclose(predy_mean7, predy_mean5, atol=1e-5)
-    np.testing.assert_allclose(predy_var7, predy_var5, atol=1e-5)
-
-
-def test_gaussian_process_regression_conditional_predict_equations_broadcast() -> None:
-    x = gpflow.utilities.to_default_float(
-        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
-    )  # shape: [23, 1]
-    y = fnc_2sin_x_over_3(x)
-
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
-
-    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
-
-    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
-
-    predj_mean5, predj_cov5 = model5.conditional_predict_joint(query_points, additional_data)
-    pred_mean5, pred_var5 = model5.conditional_predict_f(query_points, additional_data)
-    predy_mean5, predy_var5 = model5.conditional_predict_y(query_points, additional_data)
-
-    for i in range(3):
-        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
-        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
-
-        modeli = GaussianProcessRegression(gpr_model(xi, yi))
-        predj_meani, predj_covi = modeli.predict_joint(query_points)
-        pred_meani, pred_vari = modeli.predict(query_points)
-        predy_meani, predy_vari = modeli.predict_y(query_points)
-
-        np.testing.assert_allclose(predj_mean5[i, ...], predj_meani, atol=1e-5)
-        np.testing.assert_allclose(pred_meani, pred_mean5[i, ...], atol=1e-5)
-        np.testing.assert_allclose(pred_vari, pred_var5[i, ...], atol=1e-5)
-        np.testing.assert_allclose(predj_covi, predj_cov5[i, ...], atol=1e-5)
-        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
-        np.testing.assert_allclose(predy_vari, predy_var5[i, ...], atol=1e-5)
-
-
-def test_gaussian_process_regression_conditional_predict_f_sample() -> None:
-    x = gpflow.utilities.to_default_float(
-        tf.constant(np.arange(1, 24).reshape(-1, 1) / 8.0)
-    )  # shape: [23, 1]
-    y = fnc_2sin_x_over_3(x)
-
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
-    additional_data = Dataset(tf.reshape(x[5:, :], [3, 6, -1]), tf.reshape(y[5:, :], [3, 6, -1]))
-    query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [46, 1]
-    samples = model5.conditional_predict_f_sample(query_points, additional_data, num_samples=100000)
-    npt.assert_array_equal([3, 100000, 46, 1], samples.shape)
-
-    for i in range(3):
-        xi = tf.concat([x[:5, :], additional_data.query_points[i, ...]], axis=0)
-        yi = tf.concat([y[:5, :], additional_data.observations[i, ...]], axis=0)
-
-        modeli = GaussianProcessRegression(gpr_model(xi, yi))
-        predj_meani, predj_covi = modeli.predict_joint(query_points)
-        sample_mean = tf.reduce_mean(samples[i], axis=0)
-        sample_cov = tfp.stats.covariance(samples[i, :, :, 0], sample_axis=0)
-        np.testing.assert_allclose(sample_mean, predj_meani, atol=1e-2, rtol=1e-2)
-        np.testing.assert_allclose(sample_cov, predj_covi[0], atol=1e-2, rtol=1e-2)
-
-
 @random_seed
 @pytest.mark.parametrize("whiten", [True, False])
 @pytest.mark.parametrize(
@@ -1295,7 +1360,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y1 = fnc_3x_plus_10(x)
     y2 = y1 * 0.5
 
-    svgp = two_output_svgp_model(x, mo_type)
+    svgp = two_output_svgp_model(x, mo_type, whiten)
 
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
