@@ -34,6 +34,7 @@ from trieste.data import Dataset
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
+    SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
 )
@@ -45,7 +46,7 @@ from trieste.types import TensorType
     name="gpflow_interface_factory",
     params=[
         (GaussianProcessRegression, gpr_model),
-        (GaussianProcessRegression, sgpr_model),
+        (SparseGaussianProcessRegression, sgpr_model),
         (VariationalGaussianProcess, vgp_model),
         (SparseVariational, svgp_model),
     ],

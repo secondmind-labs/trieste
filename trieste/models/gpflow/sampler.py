@@ -520,8 +520,8 @@ class DecoupledTrajectorySampler(
         ):
             raise NotImplementedError(
                 f"RandomFourierFeatureTrajectorySampler only works with models that either support "
-                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
-                f"get_observation_noise and get_internal_data; but received {model.__repr__()}."
+                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel "
+                f"and get_inducing_variables; but received {model.__repr__()}."
             )
 
         tf.debugging.assert_positive(num_features)
