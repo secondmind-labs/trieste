@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 from math import ceil
-from typing import Callable, Tuple, TypeVar, Union
+from typing import Any, Callable, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
 
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -33,8 +34,9 @@ from trieste.acquisition.optimizer import (
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
+    split_acquisition_function_calls,
+    split_acquisition_function,
 )
-from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_SEARCH_SPACE,
@@ -702,3 +704,39 @@ def test_split_acquisition_function(batch_size: int) -> None:
         tf.size(call[0][0]) <= expected_batch_size for call in acquisition_function.call_args_list
     )
     assert acquisition_function.call_count == ceil(20 / expected_batch_size)
+
+
+@pytest.mark.parametrize(
+    "f",
+    [
+        lambda x: x ** 2,
+        lambda x: tf.cast(x, tf.float64),
+    ],
+)
+@pytest.mark.parametrize(
+    "x, split_size, expected_batches",
+    [
+        (np.zeros((0,)), 2, 1),
+        (np.array([1]), 2, 1),
+        (np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), 2, 6),
+        (np.array([1, 2, 3, 4]), 3, 2),
+        (np.array([1, 2, 3, 4]), 4, 1),
+        (np.array([1, 2, 3, 4]), 1, 4),
+        (np.array([1, 2, 3, 4]), 10, 1),
+    ],
+)
+def test_split_acquisition_function(
+    f: AcquisitionFunction, x: "np.ndarray[Any, Any]", split_size: int, expected_batches: int
+) -> None:
+
+    mock_f = MagicMock()
+    mock_f.side_effect = f
+    batch_f = split_acquisition_function(mock_f, split_size=split_size)
+    np.testing.assert_allclose(f(x), batch_f(x))
+    assert expected_batches == mock_f.call_count
+
+
+@pytest.mark.parametrize("split_size", [0, -1])
+def test_split_acquisition_function__invalid_split_size(split_size: int) -> None:
+    with pytest.raises(ValueError):
+        split_acquisition_function(MagicMock(), split_size=split_size)
