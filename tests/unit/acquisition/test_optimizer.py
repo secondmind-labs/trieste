@@ -34,8 +34,8 @@ from trieste.acquisition.optimizer import (
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
-    split_acquisition_function_calls,
     split_acquisition_function,
+    split_acquisition_function_calls,
 )
 from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
@@ -684,7 +684,7 @@ def test_split_acquisition_function_calls_raises_with_invalid_batch_size() -> No
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 9, 10, 11, 19, 20, 21, 100])
-def test_split_acquisition_function(batch_size: int) -> None:
+def test_split_acquisition_function_optimizer(batch_size: int) -> None:
     acquisition_function = MagicMock()
     acquisition_function.side_effect = lambda x: x
 

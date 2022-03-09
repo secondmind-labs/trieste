@@ -19,6 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
+import functools
 from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import greenlet as gr
@@ -96,7 +97,7 @@ def automatic_optimizer_selector(
     """
 
     if isinstance(space, DiscreteSearchSpace):
-        optimizer =  optimize_discrete
+        optimizer = optimize_discrete
     elif isinstance(space, (Box, TaggedProductSearchSpace)):
         num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
         num_runs = NUM_RUNS_DIM * tf.shape(space.lower)[-1]
@@ -645,17 +646,6 @@ def generate_random_search_optimizer(
         return _get_max_discrete_points(points, target_func)
 
     return optimize_random
-
-
-import functools
-from typing import Tuple, Union
-
-import tensorflow as tf
-
-from ..space import SearchSpaceType
-from ..types import TensorType
-from .interface import AcquisitionFunction
-from .optimizer import AcquisitionOptimizer
 
 
 def split_acquisition_function(
