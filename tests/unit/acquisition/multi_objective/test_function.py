@@ -629,7 +629,7 @@ def test_hippo_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = {"": empty_dataset([2], [num_obj])}
     model = {"": QuadraticMeanAndRBFKernel()}
-    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO())
+    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO(""))
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         hippo.prepare_acquisition_function(model, dataset)
