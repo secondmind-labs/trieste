@@ -403,8 +403,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def __init__(
         self,
         objective_tag: str = OBJECTIVE,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModel]
-        | SingleModelAcquisitionBuilder[ProbabilisticModel]
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
+        | SingleModelAcquisitionBuilder[ProbabilisticModelType]
         | None = None,
     ):
         """
@@ -418,7 +418,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:
             self._base_builder: AcquisitionFunctionBuilder[
-                ProbabilisticModel
+                ProbabilisticModelType
             ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
         else:
             if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
@@ -432,11 +432,13 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
+        Creates a new instance of the acquisition function.
+
         :param models: The models.
         :param datasets: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
@@ -460,12 +462,14 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
         """
+        Updates the acquisition function.
+
         :param function: The acquisition function to update.
         :param models: The models.
         :param datasets: The data from the observer. Must be populated.
@@ -524,7 +528,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
+        models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         if self._base_acquisition_function is None:

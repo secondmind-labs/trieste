@@ -49,6 +49,7 @@ from trieste.acquisition.function.multi_objective import (
     expected_hv_improvement,
     hippo_penalizer,
 )
+from trieste.acquisition.interface import GreedyAcquisitionFunctionBuilder
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.multi_objective.partition import (
     ExactPartition2dNonDominated,
@@ -628,11 +629,12 @@ def test_hippo_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = {"": empty_dataset([2], [num_obj])}
     model = {"": QuadraticMeanAndRBFKernel()}
+    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO())
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        HIPPO("").prepare_acquisition_function(model, dataset)
+        hippo.prepare_acquisition_function(model, dataset)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        HIPPO("").prepare_acquisition_function(model, dataset)
+        hippo.prepare_acquisition_function(model, dataset)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
