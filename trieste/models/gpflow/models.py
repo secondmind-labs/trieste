@@ -510,7 +510,7 @@ class SparseGaussianProcessRegression(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
-    
+
     Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SGPR` wrapper
     directly calls the posterior objects built by these models at prediction
     time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
@@ -524,7 +524,9 @@ class SparseGaussianProcessRegression(
         model: SGPR,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = None,
+        inducing_point_selector: Optional[
+            InducingPointSelector[SparseGaussianProcessRegression]
+        ] = None,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -535,7 +537,7 @@ class SparseGaussianProcessRegression(
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
         :param inducing_point_selector: The (optional) desired inducing_point_selector that
-            will update the underlying GPflow sparse variational model's inducing points as
+            will update the underlying GPflow SGPR model's inducing points as
             the optimization progresses.
         :raise NotImplementedError: If we try to use an inducing_point_selector with a model
             that has more than one set of inducing points.
@@ -564,7 +566,7 @@ class SparseGaussianProcessRegression(
 
         self._ensure_variable_model_data()
         self.create_posterior_cache()
-        
+
     def __repr__(self) -> str:
         """"""
         return (
@@ -578,7 +580,7 @@ class SparseGaussianProcessRegression(
 
     @property
     def inducing_point_selector(
-        self
+        self,
     ) -> Optional[InducingPointSelector[SparseGaussianProcessRegression]]:
         return self._inducing_point_selector
 
@@ -595,10 +597,14 @@ class SparseGaussianProcessRegression(
         if not all(is_variable(x) and x.shape[0] is None for x in self._model.data):
             self._model.data = (
                 tf.Variable(
-                    self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
+                    self._model.data[0],
+                    trainable=False,
+                    shape=[None, *self._model.data[0].shape[1:]],
                 ),
                 tf.Variable(
-                    self._model.data[1], trainable=False, shape=[None, *self._model.data[1].shape[1:]]
+                    self._model.data[1],
+                    trainable=False,
+                    shape=[None, *self._model.data[1].shape[1:]],
                 ),
             )
 
@@ -629,7 +635,7 @@ class SparseGaussianProcessRegression(
 
         self.model.data[0].assign(dataset.query_points)
         self.model.data[1].assign(dataset.observations)
-    
+
         current_inducing_points, q_mu, _, _ = self.get_inducing_variables()
 
         if isinstance(current_inducing_points, list):
@@ -1163,9 +1169,6 @@ class VariationalGaussianProcess(
                 model.mean_function,
                 model.num_latent_gps,
             )
-
-        # if not isinstance(self._model.num_data, tf.Variable):
-        #     self._model.num_data = tf.Variable(self._model.num_data, trainable=False, dtype=tf.int64)
 
     def __repr__(self) -> str:
         """"""
