@@ -30,12 +30,21 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.logging import (
+    SummaryFilter,
+    default_summary_filter,
+    get_current_name_scope,
     get_step_number,
+    get_summary_filter,
     get_tensorboard_writer,
+    histogram,
+    include_summary,
+    scalar,
     set_step_number,
+    set_summary_filter,
     set_tensorboard_writer,
     step_number,
     tensorboard_writer,
+    text,
 )
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
@@ -95,6 +104,75 @@ def test_step_number(step: int) -> None:
     assert get_step_number() == 0
 
 
+@pytest.mark.parametrize("fn", [lambda name: True, lambda name: False, lambda name: "a" in name])
+def test_set_get_summary_filter(fn: SummaryFilter) -> None:
+    try:
+        set_summary_filter(fn)
+        assert get_summary_filter() is fn
+    finally:
+        set_summary_filter(default_summary_filter)
+
+
+def test_get_current_name_scope() -> None:
+    assert get_current_name_scope() == ""
+    with tf.name_scope("outer"):
+        assert get_current_name_scope() == "outer"
+        with tf.name_scope("inner"):
+            assert get_current_name_scope() == "outer/inner"
+        assert get_current_name_scope() == "outer"
+    assert get_current_name_scope() == ""
+
+
+def test_include_summary() -> None:
+    try:
+        set_summary_filter(lambda name: "foo" in name)
+        assert include_summary("foo")
+        assert not include_summary("bar")
+        with tf.name_scope("foo"):
+            assert include_summary("bar")
+    finally:
+        set_summary_filter(default_summary_filter)
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+def test_scalar(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
+    scalar("this", 1, step=1)
+    scalar("_that", 2, step=2)
+    with tf.name_scope("foo"):
+        scalar("this", 3, step=3)
+        scalar("_that", 4, step=4)
+    assert len(mocked_summary_scalar.call_args_list) == 2
+    for i, j in enumerate([1, 3]):
+        assert mocked_summary_scalar.call_args_list[i][0] == ("this", j)
+        assert mocked_summary_scalar.call_args_list[i][1] == {"step": j}
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+def test_histogram(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
+    histogram("this", tf.constant(1), step=1)
+    histogram("_that", tf.constant(2), step=2)
+    with tf.name_scope("foo"):
+        histogram("this", tf.constant(3), step=3)
+        histogram("_that", tf.constant(4), step=4)
+    assert len(mocked_summary_histogram.call_args_list) == 2
+    for i, j in enumerate([1, 3]):
+        assert mocked_summary_histogram.call_args_list[i][0] == ("this", tf.constant(j))
+        assert mocked_summary_histogram.call_args_list[i][1] == {"step": j}
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.text")
+def test_text(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
+    text("this", "1", step=1)
+    text("_that", "2", step=2)
+    with tf.name_scope("foo"):
+        text("this", "3", step=3)
+        text("_that", "4", step=4)
+    assert len(mocked_summary_histogram.call_args_list) == 2
+    for i, j in enumerate([1, 3]):
+        assert mocked_summary_histogram.call_args_list[i][0] == ("this", str(j))
+        assert mocked_summary_histogram.call_args_list[i][1] == {"step": j}
+
+
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
 def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     mocked_summary_writer = unittest.mock.MagicMock()
@@ -129,8 +207,8 @@ def test_wallclock_time_logging(
     fit_initial_model: bool,
 ) -> None:
 
-    model_fit_time = 0.1
-    acq_time = 0.05
+    model_fit_time = 0.2
+    acq_time = 0.1
 
     class _PseudoTrainableQuadraticWithWaiting(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
         def optimize(self, dataset: Dataset) -> None:
@@ -159,9 +237,9 @@ def test_wallclock_time_logging(
 
     other_scalars = 0
 
-    for i, scalar in enumerate(mocked_summary_scalar.call_args_list):
-        name = scalar[0][0]
-        value = scalar[0][1]
+    for i, call_arg in enumerate(mocked_summary_scalar.call_args_list):
+        name = call_arg[0][0]
+        value = call_arg[0][1]
         step = i // (len(mocked_summary_scalar.call_args_list) / steps)
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times

@@ -26,10 +26,10 @@ from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 import numpy as np
 import tensorflow as tf
 
+from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import OptimizationResult, Record
 from .data import Dataset
-from .logging import get_step_number, get_tensorboard_writer
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .models.config import ModelConfigType
 from .observer import OBJECTIVE
@@ -378,16 +378,16 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         else:
             query_points = points_or_stateful
 
-        summary_writer = get_tensorboard_writer()
+        summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=get_step_number()):
+            with summary_writer.as_default(step=logging.get_step_number()):
                 if tf.rank(query_points) == 2:
                     for i in tf.range(tf.shape(query_points)[1]):
                         if len(query_points) == 1:
-                            tf.summary.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                            logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                         else:
-                            tf.summary.histogram(f"query_points/[{i}]", query_points[:, i])
-                tf.summary.scalar(
+                            logging.histogram(f"query_points/[{i}]", query_points[:, i])
+                logging.scalar(
                     "wallclock/query_point_generation",
                     query_point_generation_timer.time,
                 )
@@ -417,20 +417,20 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 model.update(dataset)
                 model.optimize(dataset)
 
-        summary_writer = get_tensorboard_writer()
+        summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=get_step_number()):
+            with summary_writer.as_default(step=logging.get_step_number()):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
-                    tf.summary.histogram(
+                    logging.histogram(
                         f"{tag}.observation/new_observations", new_data[tag].observations
                     )
-                    tf.summary.scalar(
+                    logging.scalar(
                         f"{tag}.observation/best_new_observation",
                         np.min(new_data[tag].observations),
                     )
-                    tf.summary.scalar(
+                    logging.scalar(
                         f"{tag}.observation/best_overall", np.min(self._datasets[tag].observations)
                     )
-                    tf.summary.scalar("wallclock/model_fitting", model_fitting_timer.time)
+                    logging.scalar("wallclock/model_fitting", model_fitting_timer.time)

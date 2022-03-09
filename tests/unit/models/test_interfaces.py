@@ -25,7 +25,7 @@ import tensorflow_probability as tfp
 
 from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.models.gpflow.models import (
-    GaussianProcessWithSamplers,
+    GaussianProcessWithBatchSamplers,
     PseudoTrainableProbModel,
     QuadraticMeanAndRBFKernel,
     gpr_model,
@@ -43,7 +43,7 @@ from trieste.types import TensorType
 
 
 class _QuadraticModel(
-    GaussianProcessWithSamplers, PseudoTrainableProbModel, TrainableSupportsPredictJoint
+    GaussianProcessWithBatchSamplers, PseudoTrainableProbModel, TrainableSupportsPredictJoint
 ):
     def __init__(
         self,
@@ -165,7 +165,7 @@ def test_model_stack_sample() -> None:
 
 
 def test_model_stack_training() -> None:
-    class Model(GaussianProcessWithSamplers, TrainableProbabilisticModel):
+    class Model(GaussianProcessWithBatchSamplers, TrainableProbabilisticModel):
         def __init__(
             self,
             mean_functions: Sequence[Callable[[TensorType], TensorType]],

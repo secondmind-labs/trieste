@@ -408,7 +408,7 @@ def _perform_parallel_continuous_optimization(
 
     # Set up child greenlets
     child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
-    vectorized_child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+    vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
         gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
     ]
@@ -436,14 +436,15 @@ def _perform_parallel_continuous_optimization(
                 continue
             vectorized_child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
+    final_vectorized_child_results: List[spo.OptimizeResult] = vectorized_child_results
     vectorized_successes = tf.constant(
-        [result.success for result in vectorized_child_results]
+        [result.success for result in final_vectorized_child_results]
     )  # [num_optimization_runs]
     vectorized_fun_values = tf.constant(
-        [-result.fun for result in vectorized_child_results], dtype=tf_dtype
+        [-result.fun for result in final_vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs]
     vectorized_chosen_x = tf.constant(
-        [result.x for result in vectorized_child_results], dtype=tf_dtype
+        [result.x for result in final_vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs, D]
 
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
@@ -462,15 +463,19 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
     """
 
     def run(
-        self, start: np.ndarray, bounds: spo.Bounds, optimizer_args: dict[str, Any] = dict()
+        self,
+        start: "np.ndarray[Any, Any]",
+        bounds: spo.Bounds,
+        optimizer_args: dict[str, Any] = dict(),
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
-        cache_y: Optional[np.ndarray] = None
-        cache_dy_dx: Optional[np.ndarray] = None
+        cache_y: Optional["np.ndarray[Any, Any]"] = None
+        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
 
         def value_and_gradient(
-            x: np.ndarray,
-        ) -> Tuple[np.ndarray, np.ndarray]:  # Collect function evaluations from parent greenlet
+            x: "np.ndarray[Any, Any]",
+        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
+            # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
             nonlocal cache_dy_dx
@@ -480,7 +485,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
                 # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
                 cache_y, cache_dy_dx = self.parent.switch(cache_x)
 
-            return cast(np.ndarray, cache_y), cast(np.ndarray, cache_dy_dx)
+            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],

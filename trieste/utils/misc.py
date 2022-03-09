@@ -52,7 +52,7 @@ def shapes_equal(this: TensorType, that: TensorType) -> TensorType:
     return tf.rank(this) == tf.rank(that) and tf.reduce_all(tf.shape(this) == tf.shape(that))
 
 
-def to_numpy(t: TensorType) -> np.ndarray:
+def to_numpy(t: TensorType) -> "np.ndarray[Any, Any]":
     """
     :param t: An array-like object.
     :return: ``t`` as a NumPy array.

@@ -21,13 +21,25 @@ from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import TrainableProbabilisticModel
+from ..interfaces import (
+    HasReparamSampler,
+    HasTrajectorySampler,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
 from ..optimizer import KerasOptimizer
 from .interface import GPfluxPredictor
-from .sampler import sample_dgp
+from .sampler import (
+    DeepGaussianProcessReparamSampler,
+    DeepGaussianProcessTrajectorySampler,
+    sample_dgp,
+)
 
 
-class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
+class DeepGaussianProcess(
+    GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
@@ -114,6 +126,24 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         for _ in range(num_samples):
             samples.append(sample_dgp(self.model_gpflux)(query_points))
         return tf.stack(samples)
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
+        """
+        Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
+
+        :param num_samples: The number of samples to obtain.
+        :return: The reparametrization sampler.
+        """
+        return DeepGaussianProcessReparamSampler(num_samples, self)
+
+    def trajectory_sampler(self) -> TrajectorySampler[GPfluxPredictor]:
+        """
+        Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+        trajectories using the GPflux default sampler.
+
+        :return: The trajectory sampler.
+        """
+        return DeepGaussianProcessTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points

@@ -44,6 +44,7 @@ from trieste.models.interfaces import (
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
+from trieste.utils import DEFAULTS
 
 
 def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:
@@ -112,12 +113,59 @@ class GaussianProcess(
         return tf.concat(covs, axis=-3)
 
 
+class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
+    """A (static) Gaussian process over a vector random variable with independent reparam sampler
+    but without noise variance."""
+
+    def __init__(
+        self,
+        mean_functions: Sequence[Callable[[TensorType], TensorType]],
+        kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
+    ):
+        self._mean_functions = mean_functions
+        self._kernels = kernels
+
+    def __repr__(self) -> str:
+        return f"GaussianProcessWithoutNoise({self._mean_functions!r}, {self._kernels!r})"
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, cov = self.predict_joint(query_points[..., None, :])
+        return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        means = [f(query_points) for f in self._mean_functions]
+        covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
+        return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        covs = [
+            k.tensor(query_points_1, query_points_2, 1, 1)[..., None, :, :] for k in self._kernels
+        ]
+        return tf.concat(covs, axis=-3)
+
+    def reparam_sampler(
+        self: GaussianProcessWithoutNoise, num_samples: int
+    ) -> ReparametrizationSampler[GaussianProcessWithoutNoise]:
+        return GaussianProcessSampler(num_samples, self)
+
+
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
-    """A (static) Gaussian process over a vector random variable with a reparam sampler"""
+    """A (static) Gaussian process over a vector random variable with independent reparam sampler"""
 
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[GaussianProcessWithSamplers]:
+        return GaussianProcessSampler(num_samples, self)
+
+
+class GaussianProcessWithBatchSamplers(GaussianProcess, HasReparamSampler):
+    """A (static) Gaussian process over a vector random variable with a batch reparam sampler"""
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[GaussianProcessWithBatchSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
 
@@ -141,6 +189,23 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
         return self.kernel
 
 
+class GaussianProcessSampler(ReparametrizationSampler[ProbabilisticModel]):
+    r"""A :class:`trieste.models.interfaces.ReparametrizationSampler` for a
+    :class:`GaussianProcess` model."""
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel):
+        super().__init__(sample_size, model)
+
+        self._model = model
+
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+        mean, var = self._model.predict(at)
+
+        return mean + tf.sqrt(var) * tf.random.normal(
+            [self._sample_size, 1, tf.shape(mean)[-1]], dtype=mean.dtype
+        )
+
+
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
     return (
         tf.constant([[1.1], [2.2], [3.3], [4.4]], gpflow.default_float()),
@@ -153,7 +218,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
-    a trajectory_sampler and reparam_sampler methods.
+    trajectory_sampler and reparam_sampler methods.
     """
 
     def __init__(
@@ -183,6 +248,50 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
+        return GaussianProcessSampler(num_samples, self)
+
+    def get_internal_data(self) -> Dataset:
+        return Dataset(self._dataset[0], self._dataset[1])
+
+    def update(self, dataset: Dataset) -> None:
+        self._dataset[0].assign(dataset.query_points)
+        self._dataset[1].assign(dataset.observations)
+
+
+class QuadraticMeanAndRBFKernelWithBatchSamplers(
+    QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and batch reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+        self._dataset = (  # mimic that when our models store data, it is as variables
+            tf.Variable(
+                dataset.query_points, trainable=False, shape=[None, *dataset.query_points.shape[1:]]
+            ),
+            tf.Variable(
+                dataset.observations, trainable=False, shape=[None, *dataset.observations.shape[1:]]
+            ),
+        )
+
+    def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithBatchSamplers]:
+        return RandomFourierFeatureTrajectorySampler(self, 100)
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithBatchSamplers]:
         return BatchReparametrizationSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
@@ -226,7 +335,7 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
-def two_output_svgp_model(x: tf.Tensor, type: str) -> SVGP:
+def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
 
     ker1 = gpflow.kernels.Matern32()
     ker2 = gpflow.kernels.Matern52()
@@ -250,7 +359,9 @@ def two_output_svgp_model(x: tf.Tensor, type: str) -> SVGP:
         kernel = ker1
         iv = x[:3]
 
-    return SVGP(kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2)
+    return SVGP(
+        kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2, whiten=whiten
+    )
 
 
 def vgp_model_bernoulli(x: tf.Tensor, y: tf.Tensor) -> VGP:
