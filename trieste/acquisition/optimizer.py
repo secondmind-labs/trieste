@@ -55,9 +55,8 @@ determining the number of acquisition function optimizations to be performed in 
 
 MAX_EVALS_IN_PARALLEL: int = 100_000
 """
-The default minimum number of optimization runs per dimension of the search space for
-:func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
-determining the number of acquisition function optimizations to be performed in parallel. TODO
+The default maximum number of acquisition function calls that can be performed in parallel. Setting
+this value to be lower can reduce peak memory usage.
 """
 
 
@@ -88,7 +87,7 @@ def automatic_optimizer_selector(
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
     an :const:`AcquisitionOptimizer` appropriate for the
-    problem's :class:`~trieste.space.SearchSpace`. TODO
+    problem's :class:`~trieste.space.SearchSpace`.
 
     :param space: The space of points over which to search, for points with shape [D].
     :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
