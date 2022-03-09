@@ -557,7 +557,7 @@ class SparseVariational(
         """
 
         if optimizer is None:
-            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
+            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
 
         super().__init__(optimizer)
         self._model = model
@@ -824,9 +824,9 @@ class VariationalGaussianProcess(
         tf.debugging.assert_rank(model.q_sqrt, 3)
 
         if optimizer is None and not use_natgrads:
-            optimizer = Optimizer(gpflow.optimizers.Scipy())
+            optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True)
         elif optimizer is None and use_natgrads:
-            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100)
+            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
 
         super().__init__(optimizer)
 
