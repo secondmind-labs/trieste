@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
+from gpflow.posteriors import BasePosterior, PrecomputeCacheType
 from typing_extensions import Protocol
 
 from ... import logging
@@ -49,11 +51,26 @@ class GPflowPredictor(
             optimizer = Optimizer(gpflow.optimizers.Scipy())
 
         self._optimizer = optimizer
+        self._posterior: Optional[BasePosterior] = None
 
     @property
     def optimizer(self) -> Optimizer:
         """The optimizer with which to train the model."""
         return self._optimizer
+
+    def create_posterior_cache(self) -> None:
+        """
+        Create a posterior cache for fast sequential predictions.  Note that this must happen
+        at initialisation and *after* we ensure the model data is variable. Furthermore,
+        the cache must be updated whenever the underlying model is changed.
+        """
+        self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
+
+    def update_posterior_cache(self) -> None:
+        """Update the posterior cache. This needs to be called whenever the underlying model
+        is changed."""
+        if self._posterior is not None:
+            self._posterior.update_cache()
 
     @property
     @abstractmethod
@@ -61,10 +78,10 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_f(query_points)
+        return (self._posterior or self.model).predict_f(query_points)
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_f(query_points, full_cov=True)
+        return (self._posterior or self.model).predict_f(query_points, full_cov=True)
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
