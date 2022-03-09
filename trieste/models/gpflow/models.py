@@ -76,7 +76,7 @@ class GaussianProcessRegression(
 
     def __init__(
         self,
-        model: SGPR,
+        model: GPR,
         optimizer: Optimizer | None = None,
         num_kernel_samples: int = 10,
         num_rff_features: int = 1000,
@@ -510,6 +510,13 @@ class SparseGaussianProcessRegression(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
+    
+    Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SGPR` wrapper
+    directly calls the posterior objects built by these models at prediction
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+    faster subsequent predictions. However, note that these posterior objects need to be updated
+    whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+    happens automatically after calls to :meth:`update` or :math:`optimize`).
     """
 
     def __init__(
@@ -556,6 +563,7 @@ class SparseGaussianProcessRegression(
         self._inducing_point_selector = inducing_point_selector
 
         self._ensure_variable_model_data()
+        self.create_posterior_cache()
         
     def __repr__(self) -> str:
         """"""
@@ -574,13 +582,17 @@ class SparseGaussianProcessRegression(
     ) -> Optional[InducingPointSelector[SparseGaussianProcessRegression]]:
         return self._inducing_point_selector
 
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
         # without having to retrace the acquisition functions, put it in Variables instead.
         # Data has to be stored in variables with dynamic shape to allow for changes
         # Sometimes, for instance after serialization-deserialization, the shape can be overridden
         # Thus here we ensure data is stored in dynamic shape Variables
-        if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in self._model.data):
+        if not all(is_variable(x) and x.shape[0] is None for x in self._model.data):
             self._model.data = (
                 tf.Variable(
                     self._model.data[0], trainable=False, shape=[None, *self._model.data[0].shape[1:]]
@@ -590,14 +602,17 @@ class SparseGaussianProcessRegression(
                 ),
             )
 
-        if not isinstance(self._model.num_data, tf.Variable):
+        if not is_variable(self._model.num_data):
             self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
-        if not hasattr(self.model, "q_mu") and not hasattr(self.model, "q_sqrt"):
-            q_mu, q_var = self.model.compute_qu()
-            q_sqrt = tf.linalg.cholesky(q_var)
-            self._model.q_mu = tf.Variable(self._model.q_mu, trainable=False)
-            self._model.q_sqrt = tf.Variable(self._model.q_sqrt, trainable=False)
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
+        self.optimizer.optimize(self.model, dataset)
+        self.update_posterior_cache()
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -638,6 +653,7 @@ class SparseGaussianProcessRegression(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data.assign(num_data)
+        self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -676,15 +692,6 @@ class SparseGaussianProcessRegression(
             tf.shape(old_inducing_points), tf.shape(new_inducing_points)
         )  # number of inducing points must not change
 
-        new_q_mu, new_f_cov = self.predict_joint(new_inducing_points)  # [N, L], [L, N, N]
-        jitter_mat = DEFAULTS.JITTER * tf.eye(
-            tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
-        )
-        new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
-
-        self.model.q_mu.assign(new_q_mu)  # [N, L]
-        self.model.q_sqrt.assign(new_q_sqrt)  # [L, N, N]
-
         if isinstance(self.model.inducing_variable, SharedIndependentInducingVariables):
             # gpflow says inducing_variable might be a ndarray; it won't
             cast(TensorType, self.model.inducing_variable.inducing_variable).Z.assign(
@@ -718,7 +725,11 @@ class SparseGaussianProcessRegression(
         else:
             inducing_points = inducing_variable.Z  # [M, D]
 
-        return inducing_points, self.model.q_mu, self.model.q_sqrt, False
+        q_mu, q_var = self.model.compute_qu()
+        q_sqrt = tf.linalg.cholesky(q_var)
+        whiten = False  # GPflow's SGPR model does not use the whitened representation
+
+        return inducing_points, q_mu, q_sqrt, whiten
 
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
@@ -906,6 +917,7 @@ class SparseVariational(
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize the model with the specified `dataset`.
+
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
@@ -1151,6 +1163,9 @@ class VariationalGaussianProcess(
                 model.mean_function,
                 model.num_latent_gps,
             )
+
+        # if not isinstance(self._model.num_data, tf.Variable):
+        #     self._model.num_data = tf.Variable(self._model.num_data, trainable=False, dtype=tf.int64)
 
     def __repr__(self) -> str:
         """"""

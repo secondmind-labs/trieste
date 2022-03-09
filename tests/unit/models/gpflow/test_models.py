@@ -280,6 +280,71 @@ def test_gpflow_models_raise_for_pairwise_covariance_for_invalid_query_points(
         model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))  # type: ignore
 
 
+@random_seed
+@pytest.mark.parametrize("after_model_optimize", [True, False])
+@pytest.mark.parametrize("after_model_update", [True, False])
+def test_gpflow_models_cached_predictions_correct(
+    after_model_optimize: bool,
+    after_model_update: bool,
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 5, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    data = x, y
+    dataset = Dataset(*data)
+    model, _ = gpflow_interface_factory(x, y)
+
+    if after_model_optimize:
+        model._optimizer = BatchOptimizer(tf.optimizers.SGD(), max_iter=1)
+        model.optimize(dataset)
+
+    if after_model_update:
+        new_x = np.linspace(0, 5, 3).reshape((-1, 1))
+        new_y = fnc_2sin_x_over_3(new_x)
+        new_dataset = Dataset(new_x, new_y)
+        cast(TrainableProbabilisticModel, model).update(new_dataset)
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+
+    # get cached predictions
+    cached_fmean, cached_fvar = model.predict(x_predict)
+    cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
+    cached_ymean, cached_yvar = model.predict_y(x_predict)
+
+    # get reference (slow) predictions from underlying model
+    reference_fmean, reference_fvar = model.model.predict_f(x_predict)
+    reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
+    reference_ymean, reference_yvar = model.model.predict_y(x_predict)
+
+    npt.assert_allclose(cached_fmean, reference_fmean)
+    npt.assert_allclose(cached_ymean, reference_ymean)
+    npt.assert_allclose(cached_joint_mean, reference_joint_mean)
+    npt.assert_allclose(cached_fvar, reference_fvar, atol=1e-5)
+    npt.assert_allclose(cached_yvar, reference_yvar, atol=1e-5)
+    npt.assert_allclose(cached_joint_var, reference_joint_var, atol=1e-5)
+    npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
+
+
+@random_seed
+def test_gpflow_models_cached_predictions_faster(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = np.linspace(0, 10, 10).reshape((-1, 1))
+    y = fnc_2sin_x_over_3(x)
+    model, _ = gpflow_interface_factory(x, y)
+    n_calls = 100
+
+    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
+    t_0 = time()
+    [model.predict(x_predict) for _ in range(n_calls)]
+    time_with_cache = time() - t_0
+    t_0 = time()
+    [model.model.predict_f(x_predict) for _ in range(n_calls)]
+    time_without_cache = time() - t_0
+
+    npt.assert_array_less(time_with_cache, time_without_cache)
+
+
 def test_gaussian_process_regression_raises_for_invalid_init() -> None:
     x_np = np.arange(5, dtype=np.float64).reshape(-1, 1)
     x = tf.convert_to_tensor(x_np, x_np.dtype)
@@ -536,71 +601,6 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.15)
 
 
-@random_seed
-@pytest.mark.parametrize("after_model_optimize", [True, False])
-@pytest.mark.parametrize("after_model_update", [True, False])
-def test_gaussian_process_cached_predictions_correct(
-    after_model_optimize: bool,
-    after_model_update: bool,
-    gpflow_interface_factory: ModelFactoryType,
-) -> None:
-    x = np.linspace(0, 5, 10).reshape((-1, 1))
-    y = fnc_2sin_x_over_3(x)
-    data = x, y
-    dataset = Dataset(*data)
-    model, _ = gpflow_interface_factory(x, y)
-
-    if after_model_optimize:
-        model._optimizer = BatchOptimizer(tf.optimizers.SGD(), max_iter=1)
-        model.optimize(dataset)
-
-    if after_model_update:
-        new_x = np.linspace(0, 5, 3).reshape((-1, 1))
-        new_y = fnc_2sin_x_over_3(new_x)
-        new_dataset = Dataset(new_x, new_y)
-        cast(TrainableProbabilisticModel, model).update(new_dataset)
-
-    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
-
-    # get cached predictions
-    cached_fmean, cached_fvar = model.predict(x_predict)
-    cached_joint_mean, cached_joint_var = model.predict_joint(x_predict)
-    cached_ymean, cached_yvar = model.predict_y(x_predict)
-
-    # get reference (slow) predictions from underlying model
-    reference_fmean, reference_fvar = model.model.predict_f(x_predict)
-    reference_joint_mean, reference_joint_var = model.model.predict_f(x_predict, full_cov=True)
-    reference_ymean, reference_yvar = model.model.predict_y(x_predict)
-
-    npt.assert_allclose(cached_fmean, reference_fmean)
-    npt.assert_allclose(cached_ymean, reference_ymean)
-    npt.assert_allclose(cached_joint_mean, reference_joint_mean)
-    npt.assert_allclose(cached_fvar, reference_fvar, atol=1e-5)
-    npt.assert_allclose(cached_yvar, reference_yvar, atol=1e-5)
-    npt.assert_allclose(cached_joint_var, reference_joint_var, atol=1e-5)
-    npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
-
-
-@random_seed
-def test_gaussian_process_cached_predictions_faster(
-    gpflow_interface_factory: ModelFactoryType,
-) -> None:
-    x = np.linspace(0, 10, 10).reshape((-1, 1))
-    y = fnc_2sin_x_over_3(x)
-    model, _ = gpflow_interface_factory(x, y)
-    n_calls = 100
-
-    x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
-    t_0 = time()
-    [model.predict(x_predict) for _ in range(n_calls)]
-    time_with_cache = time() - t_0
-    t_0 = time()
-    [model.model.predict_f(x_predict) for _ in range(n_calls)]
-    time_without_cache = time() - t_0
-
-    npt.assert_array_less(time_with_cache, time_without_cache)
-
-
 def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
     data = mock_data()
 
@@ -721,6 +721,23 @@ def test_sparse_gaussian_process_regression_raises_for_invalid_init() -> None:
         SparseGaussianProcessRegression(sgpr_model(x, y), optimizer=optimizer2)
 
 
+def test_sparse_gaussian_process_regression_default_optimizer_is_correct() -> None:
+    data = mock_data()
+
+    model = SparseGaussianProcessRegression(sgpr_model(*data))
+
+    assert isinstance(model.optimizer, Optimizer)
+    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
+def test_sparse_gaussian_process_regression_model_attribute() -> None:
+    sgpr = sgpr_model(*mock_data())
+    model = SparseGaussianProcessRegression(sgpr)
+
+    assert model.model is sgpr
+    assert isinstance(model.model, SGPR)
+    assert model.inducing_point_selector is None
+
 
 def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
     data = mock_data()
@@ -785,7 +802,7 @@ def test_sparse_gaussian_process_regression_optimize(compile: bool) -> None:
 
 
 @random_seed
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = SparseGaussianProcessRegression(sgpr_model(x, _3x_plus_gaussian_noise(x)))
@@ -793,6 +810,7 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
+
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
 
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [4.5], [8.5]], gpflow.default_float())
@@ -814,6 +832,90 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.01)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
 
+
+def test_sparse_gaussian_process_regression_correctly_returns_inducing_points() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    data = Dataset(x, fnc_3x_plus_10(x))
+    model = SparseGaussianProcessRegression(sgpr_model(data.query_points, data.observations))
+    model.update(data)
+
+    inducing_points, q_mu, q_sqrt, w = model.get_inducing_variables()
+
+    ref_q_mu, ref_q_var = model.model.compute_qu()
+    ref_q_sqrt = tf.linalg.cholesky(ref_q_var)
+
+    npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
+    npt.assert_allclose(q_mu, ref_q_mu, atol=1e-5)
+    npt.assert_allclose(q_sqrt, ref_q_sqrt, atol=1e-5)
+    assert w == False
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        UniformInducingPointSelector(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
+        KMeansInducingPointSelector(Box([0.0], [1.0])),
+    ],
+)
+def test_sparse_gaussian_process_regression_assigns_correct_inducing_point_selector(
+    selector: InducingPointSelector[SparseGaussianProcessRegression],
+) -> None:
+    model = sgpr_model(*mock_data())
+    sv = SparseGaussianProcessRegression(model, inducing_point_selector=selector)
+    assert isinstance(sv.inducing_point_selector, type(selector))
+
+
+@pytest.mark.parametrize("recalc_every_model_update", [True, False])
+def test_sparse_gaussian_process_regression_chooses_new_inducing_points_correct_number_of_times(
+    recalc_every_model_update: bool,
+) -> None:
+    model = sgpr_model(*mock_data())
+    selector = UniformInducingPointSelector(
+        Box([0.0], [1.0]), recalc_every_model_update=recalc_every_model_update
+    )
+    sv = SparseGaussianProcessRegression(model, inducing_point_selector=selector)
+    old_inducing_points = sv.model.inducing_variable.Z.numpy()
+    sv.update(Dataset(*mock_data()))
+    first_inducing_points = sv.model.inducing_variable.Z.numpy()
+    npt.assert_raises(
+        AssertionError, npt.assert_array_equal, old_inducing_points, first_inducing_points
+    )
+    sv.update(Dataset(*mock_data()))
+    second_inducing_points = sv.model.inducing_variable.Z.numpy()
+    if recalc_every_model_update:
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points
+        )
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, first_inducing_points, second_inducing_points
+        )
+    else:
+        npt.assert_raises(
+            AssertionError, npt.assert_array_equal, old_inducing_points, second_inducing_points
+        )
+        npt.assert_array_equal(first_inducing_points, second_inducing_points)
+
+
+@random_seed
+def test_sparse_gaussian_process_regression_updates_inducing_points_raises_if_you_change_shape() -> None:
+    model = SparseGaussianProcessRegression(
+        sgpr_model(tf.zeros([5, 2]), tf.zeros([5, 1])),
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # current inducing point has 2 elements
+        model._update_inducing_variables(tf.zeros([3, 2]))
+
+
+@pytest.mark.parametrize(
+    "new_data",
+    [Dataset(tf.zeros([3, 5]), tf.zeros([3, 1])), Dataset(tf.zeros([3, 4]), tf.zeros([3, 2]))],
+)
+def test_sparse_gaussian_process_regression_update_raises_for_invalid_shapes(new_data: Dataset) -> None:
+    model = SparseGaussianProcessRegression(
+        sgpr_model(tf.zeros([1, 4]), tf.zeros([1, 1])),
+    )
+    with pytest.raises(ValueError):
+        model.update(new_data)
 
 
 def test_variational_gaussian_process_raises_for_invalid_init() -> None:
