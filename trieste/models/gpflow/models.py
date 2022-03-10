@@ -556,6 +556,12 @@ class SparseVariational(
             that has more than one set of inducing points.
         """
 
+        tf.debugging.assert_rank(
+            model.q_sqrt, 
+            3, 
+            "SparseVariational requires an SVGP model with q_diag=True."
+        )
+
         if optimizer is None:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
 

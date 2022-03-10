@@ -730,6 +730,15 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(variance_y - model.get_observation_noise(), variance, atol=5e-5)
 
 
+
+def test_sparse_variational_raises_for_model_with_q_diag_true() ->None:
+    x = mock_data()[0]
+    model = SVGP(
+        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x), q_diag=True
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES): 
+        sv = SparseVariational(model)
+
 def test_sparse_variational_model_attribute() -> None:
     model = svgp_model(*mock_data())
     sv = SparseVariational(model)
