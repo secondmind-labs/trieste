@@ -557,7 +557,7 @@ class SparseVariational(
         """
 
         tf.debugging.assert_rank(
-            model.q_sqrt, 3, "SparseVariational requires an SVGP model with q_diag=True."
+            model.q_sqrt, 3, "SparseVariational requires an SVGP model with q_diag=False."
         )
 
         if optimizer is None:
