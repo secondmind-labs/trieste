@@ -48,6 +48,7 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    two_output_sgpr_model,
     two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
@@ -701,6 +702,9 @@ def test_sparse_gaussian_process_regression_raises_for_invalid_init() -> None:
     x = tf.convert_to_tensor(x_np, x_np.dtype)
     y = fnc_3x_plus_10(x)
 
+    with pytest.raises(NotImplementedError):
+        SparseGaussianProcessRegression(two_output_sgpr_model(x, y))
+
     with pytest.raises(ValueError):
         SparseGaussianProcessRegression(sgpr_model(x, y), num_rff_features=-1)
 
@@ -797,21 +801,19 @@ def test_sparse_gaussian_process_regression_optimize(compile: bool) -> None:
 
 
 @random_seed
-@pytest.mark.skip
 def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = SparseGaussianProcessRegression(sgpr_model(x, _3x_plus_gaussian_noise(x)))
     model.model.likelihood.variance.assign(1e-3)
+    model.update_posterior_cache()
 
-    num_samples = 100
+    num_samples = 300
     trajectory_sampler = model.trajectory_sampler()
 
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
 
-    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [4.5], [8.5]], gpflow.default_float())
-
     trajectory = trajectory_sampler.get_trajectory()
-    x_predict = tf.constant([[1.5], [4.5], [8.5]], gpflow.default_float())
+    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
     samples = trajectory(x_predict_parallel)  # [N, B]
@@ -819,12 +821,13 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
 
     true_mean, true_variance = model.predict(x_predict)
+
     # test predictions approx correct away from data
     npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.2)
     npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
 
     # test predictions almost correct at data
-    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.01)
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
 
 
@@ -838,6 +841,7 @@ def test_sparse_gaussian_process_regression_correctly_returns_inducing_points() 
 
     ref_q_mu, ref_q_var = model.model.compute_qu()
     ref_q_sqrt = tf.linalg.cholesky(ref_q_var)
+    ref_q_sqrt = tf.expand_dims(ref_q_sqrt, 0)
 
     npt.assert_allclose(inducing_points, model.model.inducing_variable.Z, atol=1e-5)
     npt.assert_allclose(q_mu, ref_q_mu, atol=1e-5)
@@ -893,7 +897,7 @@ def test_sparse_gaussian_process_regression_chooses_new_inducing_points_correct_
 
 
 @random_seed
-def test_sparse_gaussian_process_regression_updates_inducing_points_raises_if_you_change_shape() -> None:
+def test_sparse_gaussian_process_regression_update_inducing_points_raises_changed_shape() -> None:
     model = SparseGaussianProcessRegression(
         sgpr_model(
             tf.zeros([5, 2], gpflow.default_float()), tf.zeros([5, 1], gpflow.default_float())
@@ -1243,22 +1247,6 @@ def test_sparse_variational_chooses_new_inducing_points_correct_number_of_times(
         npt.assert_array_equal(first_inducing_points, second_inducing_points)
 
 
-def test_sparse_variational_model_num_data_mixin_supports_subclasses() -> None:
-    class SVGPSubclass(SVGP):
-        @property
-        def mol(self) -> int:
-            return 42
-
-    x = mock_data()[0]
-    model = SVGPSubclass(
-        gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x)
-    )
-    sv = SparseVariational(model)
-    assert sv.model is model
-    assert isinstance(sv.model, SVGPSubclass)
-    assert sv.model.mol == 42
-
-
 @random_seed
 @pytest.mark.parametrize(
     "mo_type", ["shared+shared", "separate+shared", "separate+separate", "auto"]
@@ -1388,10 +1376,8 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples() -> None:
 
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
 
-    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [4.5], [8.5]], gpflow.default_float())
-
     trajectory = trajectory_sampler.get_trajectory()
-    x_predict = tf.constant([[1.5], [4.5], [8.5]], gpflow.default_float())
+    x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
     samples = trajectory(x_predict_parallel)  # [N, B]

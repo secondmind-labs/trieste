@@ -67,6 +67,14 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
 class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
+    @property
+    def model(self):
+        return self
+
+    @property
+    def num_latent_gps(self):
+        return 1
+
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
         samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
@@ -362,6 +370,33 @@ def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
     return SVGP(
         kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2, whiten=whiten
     )
+
+
+def two_output_sgpr_model(x: tf.Tensor, y: tf.Tensor, type: str = "separate+separate") -> SGPR:
+
+    ker1 = gpflow.kernels.Matern32()
+    ker2 = gpflow.kernels.Matern52()
+
+    if type == "shared+shared":
+        kernel = gpflow.kernels.SharedIndependent(ker1, output_dim=2)
+        iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
+            gpflow.inducing_variables.InducingPoints(x[:3])
+        )
+    elif type == "separate+shared":
+        kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
+        iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
+            gpflow.inducing_variables.InducingPoints(x[:3])
+        )
+    elif type == "separate+separate":
+        kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
+        Zs = [x[(3 * i) : (3 * i + 3)] for i in range(2)]
+        iv_list = [gpflow.inducing_variables.InducingPoints(Z) for Z in Zs]
+        iv = gpflow.inducing_variables.SeparateIndependentInducingVariables(iv_list)
+    else:
+        kernel = ker1
+        iv = x[:3]
+
+    return SGPR((x, y), kernel, iv, num_latent_gps=2)
 
 
 def vgp_model_bernoulli(x: tf.Tensor, y: tf.Tensor) -> VGP:

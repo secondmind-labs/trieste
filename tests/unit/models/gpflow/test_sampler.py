@@ -18,6 +18,7 @@ from typing import List, Type
 
 import gpflow
 import gpflux
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -29,6 +30,7 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
+    two_output_svgp_model,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import (
@@ -36,6 +38,7 @@ from trieste.models.gpflow import (
     DecoupledTrajectorySampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
+    SparseVariational,
     feature_decomposition_trajectory,
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
@@ -266,10 +269,18 @@ def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
 
 
 def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
-
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     with pytest.raises(AssertionError):
+        RandomFourierFeatureTrajectorySampler(model, num_features=100)
+
+
+def test_rff_trajectory_sampler_raises_for_a_multi_latent_gp() -> None:
+    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())
+    svgp = two_output_svgp_model(x, "auto", True)
+    model = SparseVariational(svgp)
+
+    with pytest.raises(NotImplementedError):
         RandomFourierFeatureTrajectorySampler(model, num_features=100)
 
 
@@ -494,10 +505,19 @@ def test_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
 
 
 def test_decoupled_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
-
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
+
     with pytest.raises(AssertionError):
+        DecoupledTrajectorySampler(model, num_features=100)
+
+
+def test_decoupled_trajectory_sampler_raises_for_a_multi_latent_gp() -> None:
+    x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())
+    svgp = two_output_svgp_model(x, "auto", True)
+    model = SparseVariational(svgp)
+
+    with pytest.raises(NotImplementedError):
         DecoupledTrajectorySampler(model, num_features=100)
 
 

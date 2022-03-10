@@ -510,6 +510,9 @@ class SparseGaussianProcessRegression(
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
+    At the moment we only support models with a single latent GP. This is due to ``compute_qu``
+    method in :class:`~gpflow.models.SGPR` that is used for computing covariance between
+    query points and trajectory sampling, which at the moment works only for single latent GP.
 
     Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SGPR` wrapper
     directly calls the posterior objects built by these models at prediction
@@ -536,10 +539,11 @@ class SparseGaussianProcessRegression(
             kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
-        :param inducing_point_selector: The (optional) desired inducing_point_selector that
+        :param inducing_point_selector: The (optional) desired inducing point selector that
             will update the underlying GPflow SGPR model's inducing points as
             the optimization progresses.
-        :raise NotImplementedError: If we try to use an inducing_point_selector with a model
+        :raise NotImplementedError (or ValueError): If we try to use a model with more than one
+            latent GP, invalid ``num_rff_features``, or an ``inducing_point_selector`` with a model
             that has more than one set of inducing points.
         """
         super().__init__(optimizer)
@@ -563,6 +567,14 @@ class SparseGaussianProcessRegression(
                     """
                 )
         self._inducing_point_selector = inducing_point_selector
+
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                We do not currently support models with more than one latent GP,
+                however received a model with {self.model.num_latent_gps} outputs.
+                """
+            )
 
         self._ensure_variable_model_data()
         self.create_posterior_cache()
@@ -710,12 +722,16 @@ class SparseGaussianProcessRegression(
         self,
     ) -> Tuple[Union[TensorType, list[TensorType]], TensorType, TensorType, bool]:
         """
-        Return the model's inducing variables.
+        Return the model's inducing variables. The SGPR model does not have ``q_mu``, ``q_sqrt`` and
+        ``whiten`` objects. We can use ``compute_qu`` method to obtain ``q_mu`` and ``q_sqrt``,
+        while the SGPR model does not use the whitened representation. Note that at the moment
+        ``compute_qu`` works only for single latent GP and returns ``q_sqrt`` in a shape that is
+        inconsistent with the SVGP model (hence we need to do modify its shape).
 
         :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
-            list of Tensors (when the model has multiple inducing points); A tensor containing the
-            variational mean q_mu; a tensor containing the Cholesky decomposition of the variational
-            covariance q_sqrt; and a bool denoting if we are using whitened or
+            list of Tensors (when the model has multiple inducing points); a tensor containing the
+            variational mean ``q_mu``; a tensor containing the Cholesky decomposition of the
+            variational covariance ``q_sqrt``; and a bool denoting if we are using whitened or
             non-whitened representations.
         """
         inducing_variable = self.model.inducing_variable
@@ -733,7 +749,8 @@ class SparseGaussianProcessRegression(
 
         q_mu, q_var = self.model.compute_qu()
         q_sqrt = tf.linalg.cholesky(q_var)
-        whiten = False  # GPflow's SGPR model does not use the whitened representation
+        q_sqrt = tf.expand_dims(q_sqrt, 0)
+        whiten = False
 
         return inducing_points, q_mu, q_sqrt, whiten
 
@@ -765,11 +782,11 @@ class SparseGaussianProcessRegression(
     def trajectory_sampler(self) -> TrajectorySampler[SparseGaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`SparseGaussianProcessRegression`, we build
-        trajectories using a decoupled random Fourier feature approximation.
+        trajectories using a decoupled random Fourier feature approximation. Note that this
+        is available only for single output models.
 
         :return: The trajectory sampler.
         """
-
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
     def get_internal_data(self) -> Dataset:
