@@ -35,9 +35,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/active_learning_for_binary_classification
    notebooks/feasible_sets
    notebooks/openai_gym_lunar_lander
-
-   
-
+   notebooks/scalable_thompson_sampling_using_sparse_gaussian_processes
 
 Frequently asked questions
 --------------------------
