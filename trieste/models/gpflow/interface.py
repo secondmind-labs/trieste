@@ -66,6 +66,12 @@ class GPflowPredictor(
         """
         self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
 
+    def __setstate__(self, state: dict) -> None:
+        # when unpickling we may need to regenerate the posterior cache
+        self.__dict__.update(state)
+        if self._posterior is not None:
+            self.create_posterior_cache()
+
     def update_posterior_cache(self) -> None:
         """Update the posterior cache. This needs to be called whenever the underlying model
         is changed."""

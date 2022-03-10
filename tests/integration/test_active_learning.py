@@ -183,21 +183,6 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
     """
     search_space = BRANIN_SEARCH_SPACE
 
-    def build_model(data: Dataset) -> GaussianProcessRegression:
-        variance = tf.math.reduce_variance(data.observations)
-        kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2, 0.2])
-        prior_scale = tf.cast(1.0, dtype=tf.float64)
-        kernel.variance.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.variance), prior_scale
-        )
-        kernel.lengthscales.prior = tfp.distributions.LogNormal(
-            tf.math.log(kernel.lengthscales), prior_scale
-        )
-        gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
-        gpflow.set_trainable(gpr.likelihood, False)
-
-        return GaussianProcessRegression(gpr)
-
     num_initial_points = 6
     initial_query_points = search_space.sample_halton(num_initial_points)
     observer = mk_observer(branin)
