@@ -189,7 +189,7 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
             ),
         )
         gpflow.optimizers.Scipy().minimize(
-            reference_model.training_loss_closure(compile=False),
+            reference_model.training_loss_closure(compile=True),
             reference_model.trainable_variables,
         )
 
@@ -1189,6 +1189,19 @@ def test_vgp_config_builds_and_default_optimizer_is_correct(use_natgrads: bool) 
     else:
         assert isinstance(model.optimizer, Optimizer)
         assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
+
+
+def test_sparse_variational_raises_for_model_with_q_diag_true() -> None:
+    x = mock_data()[0]
+    model = SVGP(
+        gpflow.kernels.Matern32(),
+        gpflow.likelihoods.Gaussian(),
+        x[:2],
+        num_data=len(x),
+        q_diag=True,
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        SparseVariational(model)
 
 
 def test_sparse_variational_model_attribute() -> None:
