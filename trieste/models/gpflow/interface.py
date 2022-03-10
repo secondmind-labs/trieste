@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 import gpflow
 import tensorflow as tf
@@ -66,7 +66,7 @@ class GPflowPredictor(
         """
         self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         # when unpickling we may need to regenerate the posterior cache
         self.__dict__.update(state)
         if self._posterior is not None:
