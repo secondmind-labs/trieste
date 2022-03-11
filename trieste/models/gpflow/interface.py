@@ -48,7 +48,7 @@ class GPflowPredictor(
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
         """
         if optimizer is None:
-            optimizer = Optimizer(gpflow.optimizers.Scipy())
+            optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True)
 
         self._optimizer = optimizer
         self._posterior: Optional[BasePosterior] = None

@@ -167,7 +167,7 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
             ),
         )
         gpflow.optimizers.Scipy().minimize(
-            reference_model.training_loss_closure(compile=False),
+            reference_model.training_loss_closure(compile=True),
             reference_model.trainable_variables,
         )
 
@@ -728,6 +728,19 @@ def test_variational_gaussian_process_predict() -> None:
     npt.assert_allclose(mean, reference_mean)
     npt.assert_allclose(variance, reference_variance, atol=1e-3)
     npt.assert_allclose(variance_y - model.get_observation_noise(), variance, atol=5e-5)
+
+
+def test_sparse_variational_raises_for_model_with_q_diag_true() -> None:
+    x = mock_data()[0]
+    model = SVGP(
+        gpflow.kernels.Matern32(),
+        gpflow.likelihoods.Gaussian(),
+        x[:2],
+        num_data=len(x),
+        q_diag=True,
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        SparseVariational(model)
 
 
 def test_sparse_variational_model_attribute() -> None:
