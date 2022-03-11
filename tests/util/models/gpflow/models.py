@@ -68,11 +68,11 @@ class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
     @property
-    def model(self):
+    def model(self) -> ProbabilisticModel:
         return self
 
     @property
-    def num_latent_gps(self):
+    def num_latent_gps(self) -> int:
         return 1
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
