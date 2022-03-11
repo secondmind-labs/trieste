@@ -85,14 +85,14 @@ class GPflowPredictor(
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points)
-        # posterior predict has been observed to return negative variance values; stop it
+        # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
-        # posterior predict has been observed to return negative variance values; stop it
+        # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.linalg.set_diag(
                 cov, tf.clip_by_value(tf.linalg.diag_part(cov), 1e-12, cov.dtype.max)
