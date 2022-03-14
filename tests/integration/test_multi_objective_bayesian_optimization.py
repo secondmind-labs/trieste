@@ -17,6 +17,7 @@ import tensorflow as tf
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
+    HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
@@ -71,6 +72,16 @@ from trieste.types import TensorType
             ),
             -3.2095,
             id="BatchMonteCarloExpectedHypervolumeImprovement/4",
+        ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                HIPPO(),
+                num_query_points=4,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.2095,
+            id="HIPPO/4",
         ),
         pytest.param(
             10,
