@@ -24,6 +24,7 @@ from .active_learning import (
 )
 from .continuous_thompson_sampling import (
     GreedyContinuousThompsonSampling,
+    NegativeModelTrajectory,
     ParallelContinuousThompsonSampling,
 )
 from .entropy import (

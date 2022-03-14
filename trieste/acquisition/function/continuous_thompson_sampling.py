@@ -23,7 +23,20 @@ import tensorflow as tf
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
-from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
+from ..interface import SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
+
+
+class NegativeModelTrajectory(SingleModelAcquisitionBuilder[HasTrajectorySampler]):
+    def __repr__(self) -> str:
+        return f"NegativeModelTrajectory"
+
+    def prepare_acquisition_function(
+        self,
+        model: HasTrajectorySampler,
+        dataset: Optional[Dataset] = None,
+    ) -> TrajectoryFunction:
+        trajectory = model.trajectory_sampler().get_trajectory()
+        return lambda at: -trajectory(tf.squeeze(at, axis=1))
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
