@@ -1,0 +1,3 @@
+replace:
+  - { from: "num_query_points = \\d+", to: "num_query_points = 2" }
+  - { from: "num_steps = \\d+", to: "num_steps = 2" }
