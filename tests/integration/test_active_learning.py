@@ -138,7 +138,7 @@ def test_optimizer_learns_scaled_branin_function(
             id="ExpectedFeasibility/20",
         ),
         pytest.param(
-            35,
+            25,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
                 num_query_points=3,
@@ -147,7 +147,7 @@ def test_optimizer_learns_scaled_branin_function(
             id="IntegratedVarianceReduction/80",
         ),
         pytest.param(
-            35,
+            25,
             EfficientGlobalOptimization(
                 IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0]),
                 num_query_points=3,
