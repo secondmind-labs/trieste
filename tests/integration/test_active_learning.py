@@ -201,7 +201,7 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
 
     # we expect a model with initial data to fail the criteria
     initial_model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+        build_gpr(initial_data, search_space, likelihood_variance=1e-4)
     )
     initial_model.optimize(initial_data)
     initial_accuracy_global = _get_excursion_accuracy(global_test, initial_model, threshold)
@@ -212,7 +212,7 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
 
     # after active learning the model should be much more accurate
     model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+        build_gpr(initial_data, search_space, likelihood_variance=1e-4)
     )
     final_model = (
         BayesianOptimizer(observer, search_space)
