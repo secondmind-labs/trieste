@@ -95,7 +95,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 if function_key == 'branin':
     num_initial_points = 5
-    num_acquisitions = 5
+    num_acquisitions = 15
 else:
     num_initial_points = 20
     num_acquisitions = 480
