@@ -266,7 +266,6 @@ def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
 
 
 def test_rff_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
-
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
     with pytest.raises(AssertionError):
@@ -494,9 +493,9 @@ def test_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
 
 
 def test_decoupled_trajectory_sampler_raises_for_a_non_gpflow_kernel() -> None:
-
     dataset = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset=dataset)
+
     with pytest.raises(AssertionError):
         DecoupledTrajectorySampler(model, num_features=100)
 
