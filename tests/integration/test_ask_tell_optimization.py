@@ -66,7 +66,7 @@ OPTIMIZER_PARAMS = (
             id="EfficientGlobalOptimization/reload_state",
         ),
         pytest.param(15, False, lambda: TrustRegion(), id="TrustRegion"),
-        pytest.param(15, True, lambda: TrustRegion(), id="TrustRegion/reload_state"),
+        pytest.param(16, True, lambda: TrustRegion(), id="TrustRegion/reload_state"),
         pytest.param(
             10,
             False,
