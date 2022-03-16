@@ -251,6 +251,12 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
     y = fnc_3x_plus_10(x)
     model, _ = gpflow_interface_factory(x, y)
 
+    if isinstance(model.model, (VGP, SVGP)):  # for speed just update q_sqrt rather than optimize
+        num_inducing_points = tf.shape(model.model.q_sqrt)[1]
+        sampled_q_sqrt = tfp.distributions.WishartTriL(5, tf.eye(num_inducing_points)).sample(1)
+        model.model.q_sqrt.assign(sampled_q_sqrt)
+        model.update_posterior_cache()
+
     query_points_1 = tf.concat([0.5 * x, 0.5 * x], 0)  # shape: [8, 1]
     query_points_2 = tf.concat([2 * x, 2 * x, 2 * x], 0)  # shape: [12, 1]
 
@@ -1436,6 +1442,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples() -> None:
     sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
 
     true_mean, true_variance = model.predict(x_predict)
+
     # test predictions approx correct away from data
     npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.2)
     npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
