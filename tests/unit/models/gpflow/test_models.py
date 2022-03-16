@@ -48,7 +48,6 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
-    two_output_sgpr_model,
     two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
@@ -822,12 +821,11 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_raises_multi_late
 
 @random_seed
 def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model = SparseGaussianProcessRegression(sgpr_model(x, _3x_plus_gaussian_noise(x)))
-    model.model.likelihood.variance.assign(1e-3)
-    model.update_posterior_cache()
+    x = tf.constant(np.arange(10).reshape((-1, 1)), dtype=gpflow.default_float())
+    sgpr = SGPR((x, _3x_plus_gaussian_noise(x)), gpflow.kernels.Matern32(), x, noise_variance=1e-5)
+    model = SparseGaussianProcessRegression(sgpr)
 
-    num_samples = 300
+    num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
 
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
@@ -847,7 +845,7 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
 
     # test predictions almost correct at data
-    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.01)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
 
 

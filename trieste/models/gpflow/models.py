@@ -675,7 +675,6 @@ class SparseGaussianProcessRegression(
 
         num_data = dataset.query_points.shape[0]
         self.model.num_data.assign(num_data)
-        self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -688,6 +687,8 @@ class SparseGaussianProcessRegression(
                 )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
+
+        self.update_posterior_cache()
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
